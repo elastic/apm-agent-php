@@ -1,0 +1,7 @@
+ARG_ENABLE('elasticapm', 'elasticapm support', 'no');
+
+if (PHP_ELASTICAPM != 'no') {
+	AC_DEFINE('HAVE_ELASTICAPM', 1, 'elasticapm support enabled');
+
+	EXTENSION('elasticapm', 'elasticapm.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+}
