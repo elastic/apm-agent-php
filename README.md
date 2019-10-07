@@ -56,7 +56,7 @@ APM instance. You just need to configure the `elasticapm.host` and `elasticapm.s
 The `host` and `secret_token` are available in the APM section of Elastic Cloud
 (see the image below):
 
-![Elastic Cloud APM configuration](doc/elastic_cloud_apm_config.png)
+![Elastic Cloud APM configuration](docs/elastic_cloud_apm_config.png)
 
 You can set the host and the secret token using the following PHP code:
 
