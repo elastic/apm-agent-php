@@ -1,3 +1,17 @@
+/*
+   +----------------------------------------------------------------------+
+   | Elastic APM agent for PHP                                            |
+   +----------------------------------------------------------------------+
+   | Copyright (c) 2019 Elasticsearch B.V                                 |
+   +----------------------------------------------------------------------+
+   | Elasticsearch B.V licenses this file under the Apache 2.0 License.   |
+   | See the LICENSE file in the project root for more information.       |
+   +----------------------------------------------------------------------+
+   | Authors: Enrico Zimuel <enrico.zimuel@elastic.co>                    |
+   |          Philip Krauss <philip.krauss@elastic.co>                    |
+   +----------------------------------------------------------------------+
+ */
+ 
 void read_cpu(unsigned long long *user, unsigned long long *user_low, unsigned long long *sys, unsigned long long *idle);
 void read_cpu_process(int pid, unsigned long long *user, unsigned long long *user_low, unsigned long long *sys, unsigned long long *idle);
 

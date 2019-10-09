@@ -1,4 +1,16 @@
-/* elasticapm extension for PHP */
+/*
+   +----------------------------------------------------------------------+
+   | Elastic APM agent for PHP                                            |
+   +----------------------------------------------------------------------+
+   | Copyright (c) 2019 Elasticsearch B.V                                 |
+   +----------------------------------------------------------------------+
+   | Elasticsearch B.V licenses this file under the Apache 2.0 License.   |
+   | See the LICENSE file in the project root for more information.       |
+   +----------------------------------------------------------------------+
+   | Authors: Enrico Zimuel <enrico.zimuel@elastic.co>                    |
+   |          Philip Krauss <philip.krauss@elastic.co>                    |
+   +----------------------------------------------------------------------+
+ */
 
 #ifndef PHP_ELASTICAPM_H
 # define PHP_ELASTICAPM_H
@@ -11,6 +23,9 @@ extern zend_module_entry elasticapm_module_entry;
 # if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
 ZEND_TSRMLS_CACHE_EXTERN()
 # endif
+
+PHP_FUNCTION(elasticapm_get_transaction_id);
+PHP_FUNCTION(elasticapm_get_trace_id);
 
 # define RD_DEF(var) zval *var; zend_bool var##_found;
 

@@ -1,4 +1,16 @@
-/* elasticapm extension for PHP */
+/*
+   +----------------------------------------------------------------------+
+   | Elastic APM agent for PHP                                            |
+   +----------------------------------------------------------------------+
+   | Copyright (c) 2019 Elasticsearch B.V                                 |
+   +----------------------------------------------------------------------+
+   | Elasticsearch B.V licenses this file under the Apache 2.0 License.   |
+   | See the LICENSE file in the project root for more information.       |
+   +----------------------------------------------------------------------+
+   | Authors: Enrico Zimuel <enrico.zimuel@elastic.co>                    |
+   |          Philip Krauss <philip.krauss@elastic.co>                    |
+   +----------------------------------------------------------------------+
+ */
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
@@ -230,7 +242,7 @@ PHP_MINFO_FUNCTION(elasticapm)
 PHP_INI_BEGIN()
 	// Disable by default (to prevent sending HTTP request to APM server)
 	STD_PHP_INI_ENTRY("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
-	
+
     STD_PHP_INI_ENTRY("elasticapm.host", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
@@ -250,12 +262,33 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     return SUCCESS;
 }
 
+PHP_FUNCTION(elasticapm_get_transaction_id)
+{
+	char *id = emalloc(sizeof(char) * strlen(GA(transaction_id)));
+	sprintf(id, "%s", GA(transaction_id));
+	RETURN_STRING(id);
+}
+
+PHP_FUNCTION(elasticapm_get_trace_id)
+{
+	char *id = emalloc(sizeof(char) * strlen(GA(trace_id)));
+	sprintf(id, "%s", GA(trace_id));
+	RETURN_STRING(id);
+}
+
+static const zend_function_entry elasticapm_functions[] =
+{
+    PHP_FE(elasticapm_get_transaction_id, NULL)
+	PHP_FE(elasticapm_get_trace_id, NULL)
+	PHP_FE_END
+};
+
 /* {{{ elasticapm_module_entry
  */
 zend_module_entry elasticapm_module_entry = {
 	STANDARD_MODULE_HEADER,
 	"elasticapm",					/* Extension name */
-	NULL,							/* zend_function_entry */
+	elasticapm_functions,			/* zend_function_entry */
 	PHP_MINIT(elasticapm),		    /* PHP_MINIT - Module initialization */
 	PHP_MSHUTDOWN(elasticapm),		/* PHP_MSHUTDOWN - Module shutdown */
 	PHP_RINIT(elasticapm),			/* PHP_RINIT - Request initialization */
