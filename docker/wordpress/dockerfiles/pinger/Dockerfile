@@ -1,3 +1,14 @@
-FROM ubuntu:18.04
+FROM python:3.7.2-alpine3.9
 
-RUN wget https://storage.googleapis.com/hey-release/hey_linux_amd64
+RUN apk update
+
+WORKDIR /app
+
+COPY ./data/pinger /app
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+RUN chmod +x *.py
+
+#CMD /bin/sh -c /app/run.sh
+
+ENTRYPOINT [ "/bin/sh" ]

@@ -50,6 +50,16 @@ services:
       - wp
     restart: always
 
+  pinger:
+    container_name: pinger
+    build:
+      dockerfile: ${PWD}/dockerfiles/pinger/Dockerfile
+      context: ${PWD}
+    tty: true
+    depends_on:
+      - nginx
+    restart: always
+
 volumes:
   db_data: {}
   wp_app: {}
