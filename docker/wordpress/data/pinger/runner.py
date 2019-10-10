@@ -16,6 +16,16 @@ root.addHandler(handler)
 
 endpoints = [
     'http://nginx:8000/',
+    'http://nginx:8000/?page_id=2',
+    'http://nginx:8000/?page_id=16',
+    'http://nginx:8000/?p=6',
+    'http://nginx:8000/?p=8',
+    'http://nginx:8000/?p=10#comments',
+    'http://nginx:8000/?p=12',
+    'http://nginx:8000/?p=14',
+    'http://nginx:8000/?author=1',
+    'http://nginx:8000/?cat=1'
+
 ]
 
 while True:
