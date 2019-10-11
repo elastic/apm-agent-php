@@ -93,5 +93,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', dirname( __FILE__ ) . '/' );
 }
 
+//
+// Simple "Chaos monkey" to introduce random errors
+//
+if(rand(1, 5) == rand(1, 5)) {
+	throw new Exception("Random Error by Chaos Monkey.");
+}
+
 /** Sets up WordPress vars and included files. */
 require_once( ABSPATH . 'wp-settings.php' );
