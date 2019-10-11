@@ -58,7 +58,7 @@ services:
     tty: true
     depends_on:
       - nginx
-    restart: always
+    command: ['/app/run.sh']
 
 volumes:
   db_data: {}

@@ -18,10 +18,10 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
-timeout = 0.10
-n_threads = 4
+_timeout = 0.50
+_n_threads = 4
 if len(sys.argv) == 2:
-    n_threads = int(sys.argv[1])
+    _n_threads = int(sys.argv[1])
 
 endpoints = [
     'http://nginx:8000/',
@@ -50,14 +50,14 @@ def do_request(q, wid):
 
             # Do Request
             r = requests.get(url, headers=headers)
-            logging.info("[%d] %d - %s" % (r.status_code, wid, url))
+            logging.info("[%d] worker %d - %s" % (r.status_code, wid, url))
 
-        time.sleep(0.05)
+        time.sleep(_timeout)
 
 if __name__ == '__main__':
     q = Queue()
 
-    for i in range(n_threads):
+    for i in range(_n_threads):
         worker = Thread(target=do_request, args=(q, i))
         worker.setDaemon(True)
         worker.start()
