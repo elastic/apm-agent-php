@@ -18,8 +18,8 @@ make
 sudo make install
 ```
 
-You need to enable the extension in your `php.ini`. You need to add the following
-line to `php.ini`:
+You need to enable the extension in your `elasticapm.ini`. You need to add the following
+line to `elasticapm.ini`:
 
 ```
 extension=elasticapm.so
@@ -65,7 +65,7 @@ ini_set('elasticapm.host', 'insert here the host URL');
 ini_set('elasticapm.secret_token', 'insert here you token');
 ```
 
-or using the `php.ini` settings:
+or using the `elasticapm.ini` settings:
 
 ```ini
 elasticapm.host=insert here the host URL
