@@ -101,6 +101,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	struct curl_slist *chunk = NULL;
 	pid_t process_id;
 	double cpu_usage, cpu_process_usage, duration;
+	FILE *log_file;
 
 	if (!GA(enable)) {
 		return SUCCESS;
@@ -206,11 +207,18 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
 	    result = curl_easy_perform(curl);
 	    if(result != CURLE_OK) {
-	    	fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
+			// Log error if elasticapm.log is set
+			if (strlen(INI_STR("elasticapm.log")) > 0) {
+				log_file = fopen(INI_STR("elasticapm.log"), "a");
+				if (log_file == NULL) {
+    				zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
+				}
+				time_t t = time(NULL);
+  				struct tm tm = *localtime(&t);
+				fprintf(log_file, "[%d-%d-%d %d:%d:%d] %s %s\n", tm.tm_year + 1900, tm.tm_mon + 1,tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, INI_STR("elasticapm.host"), curl_easy_strerror(result));
+				fclose(log_file);
+			}
 		}
-		long response_code;
-    	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-		php_printf("Response code: %ld\n", response_code);
 		curl_easy_cleanup(curl);
 
 		efree(url);
@@ -246,6 +254,7 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("elasticapm.host", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
 
 PHP_MINIT_FUNCTION(elasticapm)
