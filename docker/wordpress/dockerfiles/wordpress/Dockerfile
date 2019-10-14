@@ -1,6 +1,6 @@
 FROM wordpress:php7.3-fpm-alpine
 
-COPY ./data/wordpress/wp-config.php /var/www/html/wp-config.php
+COPY ./data/wordpress/php/. /var/www/html/.
 RUN echo "<?php phpinfo();" > /var/www/html/info.php
 
 # Compile the ext

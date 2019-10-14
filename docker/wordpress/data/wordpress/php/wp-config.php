@@ -100,5 +100,12 @@ if(rand(1, 5) == rand(1, 5)) {
 	throw new Exception("Random Error by Chaos Monkey.");
 }
 
+//
+// Throw a FATAL PHP Error @ 1% likelyhood
+//
+if(rand(1, 10) == rand(1, 10)) {
+	require_once( ABSPATH . 'fatal.php' );
+}
+
 /** Sets up WordPress vars and included files. */
 require_once( ABSPATH . 'wp-settings.php' );
