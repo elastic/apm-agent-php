@@ -37,13 +37,21 @@ typedef struct apm_request_data {
 	RD_DEF(ts);
 	RD_DEF(script);
 	RD_DEF(method);
+	RD_DEF(path);
 } apm_request_data;
 
 ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	/* Structure used to store request data */
 	apm_request_data request_data;
-	char transaction_id[16];
-	char trace_id[32];
+	char transaction_id[17];
+	char trace_id[33];
+	/* error */
+	char error_id[33];
+	char *error_msg;
+	int error_code;
+	int error_line;
+	char *error_filename;
+	struct timeval error_time;
 
 	/* metrics */
 	struct timeval start_time;
