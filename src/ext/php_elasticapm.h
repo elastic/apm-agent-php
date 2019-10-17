@@ -45,13 +45,12 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	apm_request_data request_data;
 	char transaction_id[17];
 	char trace_id[33];
+
 	/* error */
-	char error_id[33];
-	char *error_msg;
-	int error_code;
-	int error_line;
-	char *error_filename;
-	struct timeval error_time;
+	char *errors;
+
+	/* exceptions */
+	char *exceptions;
 
 	/* metrics */
 	struct timeval start_time;

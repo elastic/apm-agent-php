@@ -52,13 +52,18 @@
 
 ZEND_DECLARE_MODULE_GLOBALS(elasticapm);
 
-static const char JSON_METADATA[] = "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"apm-agent-php\"}}}}";
-static const char JSON_TRANSACTION[] = "{\"transaction\":{\"name\":\"%s\",\"trace_id\":\"%s\",\"id\": \"%s\", \"type\": \"%s\", \"duration\": %.3f, \"timestamp\": %ld, \"result\": \"0\", \"context\": null, \"spans\": null, \"sampled\": null, \"span_count\": {\"started\": 0}}}";
-static const char JSON_METRICSET[] = "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%ld},\"system.memory.total\":{\"value\":%ld},\"system.process.memory.size\":{\"value\":%ld},\"system.process.memory.rss.bytes\":{\"value\":%ld}},\"timestamp\":%ld}}";
-static const char JSON_ERROR[] = "{\"error\":{\"timestamp\":%ld,\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\":%d,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"abs_path\":\"%s\",\"filename\":\"%s\",\"lineno\":%d}]},\"log\":{\"level\":\"%s\",\"logger_name\":\"PHP\",\"message\":\"%s\"}}}";
+static const char JSON_METADATA[] = "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"apm-agent-php\"}}}}\n";
+static const char JSON_TRANSACTION[] = "{\"transaction\":{\"name\":\"%s\",\"trace_id\":\"%s\",\"id\": \"%s\", \"type\": \"%s\", \"duration\": %.3f, \"timestamp\": %ld, \"result\": \"0\", \"context\": null, \"spans\": null, \"sampled\": null, \"span_count\": {\"started\": 0}}}\n";
+static const char JSON_METRICSET[] = "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%ld},\"system.memory.total\":{\"value\":%ld},\"system.process.memory.size\":{\"value\":%ld},\"system.process.memory.rss.bytes\":{\"value\":%ld}},\"timestamp\":%ld}}\n";
+static const char JSON_ERROR[] = "{\"error\":{\"timestamp\":%ld,\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\":%d,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"filename\":\"%s\",\"lineno\":%d}]},\"log\":{\"level\":\"%s\",\"logger_name\":\"PHP\",\"message\":\"%s\"}}}\n";
+static const char JSON_EXCEPTION[] = "{\"error\":{\"timestamp\":%ld,\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\":%ld,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"filename\":\"%s\",\"lineno\":%ld}]}}}\n";
 
 // Original error handler
 void (*original_zend_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+
+// Exception handler
+static void (*original_zend_throw_exception_hook)(zval *ex);
+void elastic_throw_exception_hook(zval *exception);
 
 /* {{{ PHP_RINIT_FUNCTION
  */
@@ -69,12 +74,12 @@ PHP_RINIT_FUNCTION(elasticapm)
 #endif
 	gettimeofday(&GA(start_time), NULL);
 
+	// Generate random transaction_id (64 bit in hex format)
 	memset(GA(transaction_id), 0, sizeof(char)*17);
-	// Generate random transaction_id and trace_id
 	for (int i=0, j=0; i<8; i++, j+=2) {
 		sprintf(GA(transaction_id)+j, "%02x", php_mt_rand() % 256);
 	}
-
+	// Generate random trace_id (128 bit in hex format)
 	memset(GA(trace_id), 0, sizeof(char)*33);
 	for (int i=0, j=0; i<16; i++, j+=2) {
 		sprintf(GA(trace_id)+j, "%02x", php_mt_rand() % 256);
@@ -109,7 +114,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	pid_t process_id;
 	double cpu_usage, cpu_process_usage, duration;
 	FILE *log_file;
-	char *body, *json_error;
+	char *body, *json_error, *json_exception;
 
 	if (!GA(enable)) {
 		return SUCCESS;
@@ -135,6 +140,9 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
   	/* get a curl handle */
   	curl = curl_easy_init();
   	if(curl) {
+		// body
+		char *body = emalloc(sizeof(char) * 102400); // max size 100 Kb
+
 		// Metadata
 		process_id = getpid();
 		char *json_metadata = emalloc(sizeof(char) * 1024);
@@ -142,23 +150,28 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 			zend_throw_exception(spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC);
 		}
 		sprintf(json_metadata, JSON_METADATA, process_id, INI_STR("elasticapm.service_name"), PHP_ELASTICAPM_VERSION);
+		strcpy(body, json_metadata);
+		efree (json_metadata);
 
 		// Transaction
 		char *json_transaction = emalloc(sizeof(char) * 1024);
 		int64_t timestamp = (int64_t) GA(start_time).tv_sec * MICRO_IN_SEC + (int64_t) GA(start_time).tv_usec;
 
-		char *transaction_type = emalloc(sizeof(char) * 8);
+		char transaction_type[8];
 		char *transaction_name = emalloc(sizeof(char) * 1024);
 
 		// if HTTP method exists it is a HTTP request
 		if (APM_RD(method_found)) {
-			transaction_type = "request";
+			sprintf(transaction_type, "%s", "request");
 			sprintf(transaction_name, "%s %s", APM_RD_STRVAL(method), APM_RD_STRVAL(uri));
 		} else {
-			transaction_type = "script";
+			sprintf(transaction_type, "%s", "script");
 			sprintf(transaction_name, "%s", APM_RD_STRVAL(script));
 		}
 		sprintf(json_transaction, JSON_TRANSACTION, transaction_name, GA(transaction_id), GA(trace_id), transaction_type, duration, timestamp);
+		strcat(body, json_transaction);
+		efree(json_transaction);
+		efree(transaction_name);
 
 #ifdef PHP_WIN32
 		cpu_usage = 0;
@@ -186,37 +199,16 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 			zend_memory_peak_usage(1 TSRMLS_CC), // system.process.memory.rss.bytes
 			timestamp_metricset
 		);
+		strcat(body, json_metricset);
+		efree(json_metricset);
 
-		// Error
-		if (GA(error_msg)) {
-			json_error = emalloc(sizeof(char) * 1024);
-			int64_t timestamp_error = (int64_t) GA(error_time).tv_sec * MICRO_IN_SEC + (int64_t) GA(error_time).tv_usec;
-
-			sprintf(
-				json_error,
-				JSON_ERROR,
-				timestamp_error,
-				GA(error_id),
-				GA(transaction_id),
-				GA(trace_id),
-				GA(error_code),
-				GA(error_msg),
-				get_php_error_name(GA(error_code)),
-				APM_RD_STRVAL(path),
-				GA(error_filename),
-				GA(error_line),
-				get_php_error_name(GA(error_code)),
-				GA(error_msg)
-			);
+		// Errors
+		if (GA(errors)) {
+			strcat(body, GA(errors));
 		}
-
-		if (GA(error_msg)) {
-			body = emalloc(sizeof(char) * (strlen(json_metricset) + strlen(json_transaction) + strlen(json_metadata) + strlen(json_error) + 4));
-			sprintf(body, "%s\n%s\n%s\n%s\n", json_metadata, json_transaction, json_metricset, json_error);
-		} else {
-			// Body in ndjson format
-			body = emalloc(sizeof(char) * (strlen(json_metricset) + strlen(json_transaction) + strlen(json_metadata) + 3));
-			sprintf(body, "%s\n%s\n%s\n", json_metadata, json_transaction, json_metricset);
+		// Exception
+		if (GA(exceptions)) {
+			strcat(body, GA(exceptions));
 		}
 
 		curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -257,16 +249,9 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		}
 		curl_easy_cleanup(curl);
 
+		efree(body);
 		efree(url);
 		efree(useragent);
-		efree(body);
-		efree(transaction_name);
-		efree(json_metadata);
-		efree(json_transaction);
-		efree(json_metricset);
-		if (GA(error_msg)) {
-			efree(json_error);
-		}
   	}
 	return SUCCESS;
 }
@@ -295,37 +280,118 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
 
-
-
-
+// Elastic error handler
 void elastic_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
 	va_list args_copy;
+	char *msg;
+	char error_id[33];
+	struct timeval time;
 
 	va_copy(args_copy, args);
-	vspprintf(&GA(error_msg), 0, format, args_copy);
+	vspprintf(&msg, 0, format, args_copy);
 	va_end(args_copy);
 
-	GA(error_code) = type;
-	GA(error_line) = error_lineno;
-	GA(error_filename) = emalloc(sizeof(char) * strlen(error_filename));
-	sprintf(GA(error_filename), "%s", error_filename);
+	gettimeofday(&time, NULL);
+	int64_t timestamp = (int64_t) time.tv_sec * MICRO_IN_SEC + (int64_t) time.tv_usec;
 
-	gettimeofday(&GA(error_time), NULL);
-
-	memset(GA(error_id), 0, sizeof(char)*33);
+	// Generate random error_id (128 bit in hex format)
+	memset(error_id, 0, sizeof(char)*33);
 	for (int i=0, j=0; i<16; i++, j+=2) {
-		sprintf(GA(error_id)+j, "%02x", php_mt_rand() % 256);
+		sprintf(error_id + j, "%02x", php_mt_rand() % 256);
 	}
 
+	char *json_error = emalloc(sizeof(char) * 1024);
+	sprintf(
+		json_error,
+		JSON_ERROR,
+		timestamp,
+		error_id,
+		GA(transaction_id),
+		GA(trace_id),
+		type,
+		msg,
+		get_php_error_name(type),
+		error_filename,
+		error_lineno,
+		get_php_error_name(type),
+		msg
+	);
+	if (GA(errors)) {
+		strcat(GA(errors), json_error);
+	} else {
+		GA(errors) = emalloc(sizeof(char) * 10240); // 10 Kb
+		strcpy(GA(errors), json_error);
+	}
+	efree(json_error);
+
     original_zend_error_cb(type, error_filename, error_lineno, format, args);
+}
+
+// Elastic exception handler
+void elastic_throw_exception_hook(zval *exception)
+{
+	zval *code, *message, *file, *line;
+	zval rv;
+	zend_class_entry *default_ce;
+	zend_string *classname;
+	char exception_id[33];
+	struct timeval time;
+
+	default_ce = Z_OBJCE_P(exception);
+
+	classname = Z_OBJ_HANDLER_P(exception, get_class_name)(Z_OBJ_P(exception));
+	code = zend_read_property(default_ce, exception, "code", sizeof("code")-1, 0, &rv);
+	message = zend_read_property(default_ce, exception, "message", sizeof("message")-1, 0, &rv);
+	file = zend_read_property(default_ce, exception, "file", sizeof("file")-1, 0, &rv);
+	line = zend_read_property(default_ce, exception, "line", sizeof("line")-1, 0, &rv);
+
+	// Generate random exception_id (128 bit in hex format)
+	memset(exception_id, 0, sizeof(char)*33);
+	for (int i=0, j=0; i<16; i++, j+=2) {
+		sprintf(exception_id + j, "%02x", php_mt_rand() % 256);
+	}
+
+	gettimeofday(&time, NULL);
+	int64_t timestamp = (int64_t) time.tv_sec * MICRO_IN_SEC + (int64_t) time.tv_usec;
+
+	char *json_exception = emalloc(sizeof(char) * 1024);
+	sprintf(
+		json_exception,
+		JSON_EXCEPTION,
+		timestamp,
+		exception_id,
+		GA(transaction_id),
+		GA(trace_id),
+		Z_LVAL_P(code),
+		Z_STRVAL_P(message),
+		ZSTR_VAL(classname),
+		Z_STRVAL_P(file),
+		Z_LVAL_P(line)
+	);
+	if (GA(exceptions)) {
+		strcat(GA(exceptions), json_exception);
+	} else {
+		GA(exceptions) = emalloc(sizeof(char) * 10240); // 10 Kb
+		strcpy(GA(exceptions), json_exception);
+	}
+	efree(json_exception);
+
+    if (original_zend_throw_exception_hook != NULL) {
+        original_zend_throw_exception_hook(exception);
+    }
 }
 
 PHP_MINIT_FUNCTION(elasticapm)
 {
     REGISTER_INI_ENTRIES();
+	// Error handler
 	original_zend_error_cb = zend_error_cb;
 	zend_error_cb = elastic_error_cb;
+
+	// Exception handler
+	original_zend_throw_exception_hook = zend_throw_exception_hook;
+    zend_throw_exception_hook = elastic_throw_exception_hook;
 
 	/* In windows, this will init the winsock stuff */
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -338,7 +404,7 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     UNREGISTER_INI_ENTRIES();
 	zend_error_cb = original_zend_error_cb;
 	curl_global_cleanup();
-	
+
     return SUCCESS;
 }
 
@@ -347,8 +413,6 @@ PHP_FUNCTION(elasticapm_get_transaction_id)
 	if (!GA(enable)) {
 		RETURN_STRING("");
 	}
-	//char *id = emalloc(sizeof(char) * strlen(GA(transaction_id)));
-	//sprintf(id, "%s", GA(transaction_id));
 	RETURN_STRING(GA(transaction_id));
 }
 
@@ -357,8 +421,6 @@ PHP_FUNCTION(elasticapm_get_trace_id)
 	if (!GA(enable)) {
 		RETURN_STRING("");
 	}
-	//char *id = emalloc(sizeof(char) * strlen(GA(trace_id)));
-	//sprintf(id, "%s", GA(trace_id));
 	RETURN_STRING(GA(trace_id));
 }
 
