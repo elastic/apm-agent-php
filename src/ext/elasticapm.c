@@ -69,6 +69,9 @@ void elastic_throw_exception_hook(zval *exception);
  */
 PHP_RINIT_FUNCTION(elasticapm)
 {
+	if (!GA(enable)) {
+		return SUCCESS;
+	}
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
@@ -385,6 +388,10 @@ void elastic_throw_exception_hook(zval *exception)
 PHP_MINIT_FUNCTION(elasticapm)
 {
     REGISTER_INI_ENTRIES();
+
+	if (!GA(enable)) {
+		return SUCCESS;
+	}
 	// Error handler
 	original_zend_error_cb = zend_error_cb;
 	zend_error_cb = elastic_error_cb;
@@ -401,7 +408,11 @@ PHP_MINIT_FUNCTION(elasticapm)
 
 PHP_MSHUTDOWN_FUNCTION(elasticapm)
 {
-    UNREGISTER_INI_ENTRIES();
+	UNREGISTER_INI_ENTRIES();
+	if (!GA(enable)) {
+		return SUCCESS;
+	}
+    
 	zend_error_cb = original_zend_error_cb;
 	curl_global_cleanup();
 
