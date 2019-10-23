@@ -45,13 +45,10 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	apm_request_data request_data;
 	char transaction_id[17];
 	char trace_id[33];
-
 	/* error */
 	char *errors;
-
 	/* exceptions */
 	char *exceptions;
-
 	/* metrics */
 	struct timeval start_time;
 #ifndef PHP_WIN32
@@ -69,6 +66,7 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	char *secret_token;
 	char *service_name;
 	char *log;
+	int log_level;
 	zend_bool enable;
 ZEND_END_MODULE_GLOBALS(elasticapm)
 

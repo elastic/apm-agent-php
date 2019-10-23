@@ -29,6 +29,7 @@
 #include <curl/curl.h>
 #include <sys/sysinfo.h>
 #include "php_error.h"
+#include "log.h"
 #ifndef PHP_WIN32
 #include "cpu_usage.h"
 #endif
@@ -64,6 +65,9 @@ void (*original_zend_error_cb)(int type, const char *error_filename, const uint 
 // Exception handler
 static void (*original_zend_throw_exception_hook)(zval *ex);
 void elastic_throw_exception_hook(zval *exception);
+
+// Log response
+static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response);
 
 /* {{{ PHP_RINIT_FUNCTION
  */
@@ -104,6 +108,15 @@ PHP_RINIT_FUNCTION(elasticapm)
 	if ((APM_RD(dest) = zend_hash_str_find(Z_ARRVAL_P(tmp), name, sizeof(name) - 1)) && (Z_TYPE_P(APM_RD(dest)) == (type))) { \
 		APM_RD(dest##_found) = 1; \
 	}
+
+static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response){
+	// size_t len = size * nmemb;
+	// response = emalloc(len + 1);
+	// sprintf(response, "%p", ptr);
+    // return len;
+	log_debug("Reponse body: %s", ptr);
+	return size * nmemb;
+}
 
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
@@ -214,8 +227,21 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 			strcat(body, GA(exceptions));
 		}
 
+		/* Initialize the log file */
+		log_file = fopen(INI_STR("elasticapm.log"), "a");
+		if (log_file == NULL) {
+			zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
+		}
+		log_set_fp(log_file);
+		log_set_quiet(1);
+		// TODO: check how to set lock and level
+		//log_set_lock(1);
+		//log_set_level(INI_INT("elasticapm.log_level"));
+
 		curl_easy_setopt(curl, CURLOPT_POST, 1L);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, log_response);
+		log_debug("Request body: %s", body);
 
 		// Authorization with secret token if present
 		if (strlen(INI_STR("elasticapm.secret_token")) > 0) {
@@ -238,20 +264,15 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
 	    result = curl_easy_perform(curl);
 	    if(result != CURLE_OK) {
-			// Log error if elasticapm.log is set
-			if (strlen(INI_STR("elasticapm.log")) > 0) {
-				log_file = fopen(INI_STR("elasticapm.log"), "a");
-				if (log_file == NULL) {
-    				zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
-				}
-				time_t t = time(NULL);
-  				struct tm tm = *localtime(&t);
-				fprintf(log_file, "[%d-%d-%d %d:%d:%d] %s %s\n", tm.tm_year + 1900, tm.tm_mon + 1,tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, INI_STR("elasticapm.host"), curl_easy_strerror(result));
-				fclose(log_file);
-			}
+			log_error("%s %s", INI_STR("elasticapm.host"), curl_easy_strerror(result));
+		} else {
+			long response_code;
+	    	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+			log_debug("Response HTTP code: %ld", response_code);
 		}
-		curl_easy_cleanup(curl);
 
+		curl_easy_cleanup(curl);
+		fclose(log_file);
 		efree(body);
 		efree(url);
 		efree(useragent);
@@ -280,7 +301,8 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("elasticapm.host", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
-	STD_PHP_INI_ENTRY("elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.log", "/tmp/elastic_apm_php.log", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
 
 // Elastic error handler
@@ -412,7 +434,7 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
 	if (!GA(enable)) {
 		return SUCCESS;
 	}
-    
+
 	zend_error_cb = original_zend_error_cb;
 	curl_global_cleanup();
 
