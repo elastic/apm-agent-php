@@ -69,11 +69,13 @@ void elastic_throw_exception_hook(zval *exception);
 // Log response
 static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response);
 
+//static void php_elasticapm_init_globals(zend_elasticapm_globals *ng) { memset(ng, 0, sizeof(zend_elasticapm_globals)); }
+
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(elasticapm)
 {
-	if (!GA(enable)) {
+	if (!INI_BOOL("elasticapm.enable")) {
 		return SUCCESS;
 	}
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
@@ -110,10 +112,6 @@ PHP_RINIT_FUNCTION(elasticapm)
 	}
 
 static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response){
-	// size_t len = size * nmemb;
-	// response = emalloc(len + 1);
-	// sprintf(response, "%p", ptr);
-    // return len;
 	log_debug("Reponse body: %s", ptr);
 	return size * nmemb;
 }
@@ -132,7 +130,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	FILE *log_file;
 	char *body, *json_error, *json_exception;
 
-	if (!GA(enable)) {
+	if (!INI_BOOL("elasticapm.enable")) {
 		return SUCCESS;
 	}
 
@@ -155,17 +153,14 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
   	/* get a curl handle */
   	curl = curl_easy_init();
-  	if(curl) {
+  	if(curl && strlen(GA(host))>0) {
 		// body
 		char *body = emalloc(sizeof(char) * 102400); // max size 100 Kb
 
 		// Metadata
 		process_id = getpid();
 		char *json_metadata = emalloc(sizeof(char) * 1024);
-		if (strlen(INI_STR("elasticapm.service_name")) <= 0) {
-			zend_throw_exception(spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC);
-		}
-		sprintf(json_metadata, JSON_METADATA, process_id, INI_STR("elasticapm.service_name"), PHP_ELASTICAPM_VERSION);
+		sprintf(json_metadata, JSON_METADATA, process_id, GA(service_name), PHP_ELASTICAPM_VERSION);
 		strcpy(body, json_metadata);
 		efree (json_metadata);
 
@@ -228,15 +223,16 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		}
 
 		/* Initialize the log file */
-		log_file = fopen(INI_STR("elasticapm.log"), "a");
+		log_file = fopen(GA(log), "a");
 		if (log_file == NULL) {
 			zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
 		}
 		log_set_fp(log_file);
 		log_set_quiet(1);
+		log_set_level(GA(log_level));
+
 		// TODO: check how to set lock and level
 		//log_set_lock(1);
-		//log_set_level(INI_INT("elasticapm.log_level"));
 
 		curl_easy_setopt(curl, CURLOPT_POST, 1L);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
@@ -244,9 +240,9 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		log_debug("Request body: %s", body);
 
 		// Authorization with secret token if present
-		if (strlen(INI_STR("elasticapm.secret_token")) > 0) {
+		if (strlen(GA(secret_token)) > 0) {
 			char *auth = emalloc(sizeof(char) * 256);
-			sprintf(auth, "Authorization: Bearer %s", INI_STR("elasticapm.secret_token"));
+			sprintf(auth, "Authorization: Bearer %s", GA(secret_token));
 			chunk = curl_slist_append(chunk, auth);
 			efree(auth);
 		}
@@ -259,12 +255,12 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, useragent);
 
 		char *url = emalloc(sizeof(char)* 256);
-		sprintf(url, "%s/intake/v2/events", INI_STR("elasticapm.host"));
+		sprintf(url, "%s/intake/v2/events", GA(host));
     	curl_easy_setopt(curl, CURLOPT_URL, url);
 
 	    result = curl_easy_perform(curl);
 	    if(result != CURLE_OK) {
-			log_error("%s %s", INI_STR("elasticapm.host"), curl_easy_strerror(result));
+			log_error("%s %s", GA(host), curl_easy_strerror(result));
 		} else {
 			long response_code;
 	    	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -295,13 +291,11 @@ PHP_MINFO_FUNCTION(elasticapm)
 /* }}} */
 
 PHP_INI_BEGIN()
-	// Disable by default (to prevent sending HTTP request to APM server)
-	STD_PHP_INI_ENTRY("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
-
-    STD_PHP_INI_ENTRY("elasticapm.host", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_BOOLEAN("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
+    STD_PHP_INI_ENTRY("elasticapm.host", "", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
-	STD_PHP_INI_ENTRY("elasticapm.log", "/tmp/elastic_apm_php.log", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.log", "/tmp/elasticapm.log", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
 
@@ -409,10 +403,15 @@ void elastic_throw_exception_hook(zval *exception)
 
 PHP_MINIT_FUNCTION(elasticapm)
 {
+	//ZEND_INIT_MODULE_GLOBALS(elasticapm, php_elasticapm_init_globals, NULL);
     REGISTER_INI_ENTRIES();
 
-	if (!GA(enable)) {
+	if (!INI_BOOL("elasticapm.enable")) {
 		return SUCCESS;
+	}
+
+	if (strlen(GA(service_name)) <= 0) {
+		zend_throw_exception(spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC);
 	}
 	// Error handler
 	original_zend_error_cb = zend_error_cb;
@@ -431,7 +430,8 @@ PHP_MINIT_FUNCTION(elasticapm)
 PHP_MSHUTDOWN_FUNCTION(elasticapm)
 {
 	UNREGISTER_INI_ENTRIES();
-	if (!GA(enable)) {
+
+	if (!INI_BOOL("elasticapm.enable")) {
 		return SUCCESS;
 	}
 
@@ -443,7 +443,7 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
 
 PHP_FUNCTION(elasticapm_get_transaction_id)
 {
-	if (!GA(enable)) {
+	if (!INI_BOOL("elasticapm.enable")) {
 		RETURN_STRING("");
 	}
 	RETURN_STRING(GA(transaction_id));
@@ -451,7 +451,7 @@ PHP_FUNCTION(elasticapm_get_transaction_id)
 
 PHP_FUNCTION(elasticapm_get_trace_id)
 {
-	if (!GA(enable)) {
+	if (!INI_BOOL("elasticapm.enable")) {
 		RETURN_STRING("");
 	}
 	RETURN_STRING(GA(trace_id));
