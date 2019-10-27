@@ -62,12 +62,12 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	unsigned long long cpu_process_idle;
 #endif
 	/* ini settings */
+	zend_bool enable;
 	char *host;
 	char *secret_token;
 	char *service_name;
 	char *log;
 	int log_level;
-	zend_bool enable;
 ZEND_END_MODULE_GLOBALS(elasticapm)
 
 # define APM_RD(data) GA(request_data).data

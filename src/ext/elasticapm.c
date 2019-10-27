@@ -18,6 +18,7 @@
 
 #include "php.h"
 #include "php_ini.h"
+#include <SAPI.h>
 #include "ext/standard/info.h"
 #include "Zend/zend_exceptions.h"
 #include "ext/spl/spl_exceptions.h"
@@ -69,13 +70,11 @@ void elastic_throw_exception_hook(zval *exception);
 // Log response
 static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response);
 
-//static void php_elasticapm_init_globals(zend_elasticapm_globals *ng) { memset(ng, 0, sizeof(zend_elasticapm_globals)); }
-
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(elasticapm)
 {
-	if (!INI_BOOL("elasticapm.enable")) {
+	if (!GA(enable)) {
 		return SUCCESS;
 	}
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
@@ -130,7 +129,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	FILE *log_file;
 	char *body, *json_error, *json_exception;
 
-	if (!INI_BOOL("elasticapm.enable")) {
+	if (!GA(enable)) {
 		return SUCCESS;
 	}
 
@@ -290,10 +289,27 @@ PHP_MINFO_FUNCTION(elasticapm)
 }
 /* }}} */
 
+#define ZEND_INI_DISP(name) void name(zend_ini_entry *ini_entry, int type)
+
+ZEND_INI_DISP(hide_secret)
+{
+    char mask[3] = "***";
+	char no_value[15] = "<i>no value</i>";
+
+	if ((type == ZEND_INI_DISPLAY_ORIG && ini_entry->modified && ini_entry->orig_value) ||
+		(type == ZEND_INI_DISPLAY_ACTIVE && ini_entry->value)) {
+		php_write(mask, 3);
+	} else {
+		if (!sapi_module.phpinfo_as_text) {
+			php_write(no_value, 15);
+		}
+	}
+}
+
 PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
     STD_PHP_INI_ENTRY("elasticapm.host", "", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
-	STD_PHP_INI_ENTRY("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY_EX("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals, hide_secret)
 	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log", "/tmp/elasticapm.log", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, zend_elasticapm_globals, elasticapm_globals)
@@ -403,10 +419,10 @@ void elastic_throw_exception_hook(zval *exception)
 
 PHP_MINIT_FUNCTION(elasticapm)
 {
-	//ZEND_INIT_MODULE_GLOBALS(elasticapm, php_elasticapm_init_globals, NULL);
     REGISTER_INI_ENTRIES();
 
-	if (!INI_BOOL("elasticapm.enable")) {
+	// __asm__("int3");
+	if (!GA(enable)) {
 		return SUCCESS;
 	}
 
@@ -431,7 +447,7 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
 {
 	UNREGISTER_INI_ENTRIES();
 
-	if (!INI_BOOL("elasticapm.enable")) {
+	if (!GA(enable)) {
 		return SUCCESS;
 	}
 
@@ -443,7 +459,7 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
 
 PHP_FUNCTION(elasticapm_get_transaction_id)
 {
-	if (!INI_BOOL("elasticapm.enable")) {
+	if (!GA(enable)) {
 		RETURN_STRING("");
 	}
 	RETURN_STRING(GA(transaction_id));
@@ -451,7 +467,7 @@ PHP_FUNCTION(elasticapm_get_transaction_id)
 
 PHP_FUNCTION(elasticapm_get_trace_id)
 {
-	if (!INI_BOOL("elasticapm.enable")) {
+	if (!GA(enable)) {
 		RETURN_STRING("");
 	}
 	RETURN_STRING(GA(trace_id));
@@ -477,7 +493,7 @@ zend_module_entry elasticapm_module_entry = {
 	PHP_MINFO(elasticapm),			/* PHP_MINFO - Module info */
 	PHP_ELASTICAPM_VERSION,		    /* Version */
 	PHP_MODULE_GLOBALS(elasticapm), /* PHP_MODULE_GLOBALS */
-	NULL,                           /* PHP_GINIT */
+	NULL, 					        /* PHP_GINIT */
 	NULL,		                    /* PHP_GSHUTDOWN */
 	NULL,
 	STANDARD_MODULE_PROPERTIES_EX
