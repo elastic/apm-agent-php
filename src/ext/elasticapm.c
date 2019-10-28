@@ -250,7 +250,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
 		// User agent
 		char *useragent = emalloc(sizeof(char) * 100);
-		sprintf(useragent, "apm-agent-php/%s", PHP_ELASTICAPM_VERSION);
+		sprintf(useragent, "elasticapm-php/%s", PHP_ELASTICAPM_VERSION);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, useragent);
 
 		char *url = emalloc(sizeof(char)* 256);
