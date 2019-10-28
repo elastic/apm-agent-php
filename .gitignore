@@ -1,2 +1,4 @@
 docker/wordpress/ephemeral/
 docker/wordpress/data/ext
+.DS_Store
+
