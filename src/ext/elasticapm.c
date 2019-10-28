@@ -135,8 +135,8 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
 	gettimeofday(&end_time, NULL);
 	// Get execution time (duration) in ms
-	duration = (end_time.tv_sec + end_time.tv_usec / MICRO_IN_SEC) -
-		(GA(start_time).tv_sec + GA(start_time).tv_usec / MICRO_IN_SEC);
+	duration = ((end_time.tv_sec + end_time.tv_usec / MICRO_IN_SEC) -
+		(GA(start_time).tv_sec + GA(start_time).tv_usec / MICRO_IN_SEC)) * 1000;
 
 	zend_is_auto_global_compat("_SERVER");
 	if (FETCH_HTTP_GLOBALS(SERVER)) {
