@@ -34,6 +34,8 @@ endpoints = [
     'http://nginx:8000/?p=14',
     'http://nginx:8000/?author=1',
     'http://nginx:8000/?cat=1',
+    'http://nginx:8000/trace.php',
+    'http://nginx:8000/info.php',
 ]
 
 def do_request(q, wid):
