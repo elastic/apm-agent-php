@@ -3,4 +3,4 @@ docker/wordpress/data/ext
 .DS_Store
 vendor/
 composer.lock
-
+.phpunit.result.cache
