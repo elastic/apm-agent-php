@@ -39,14 +39,8 @@ pipeline {
           deleteDir()
           unstash 'source'
           dir("${BASE_DIR}"){
-            sh '''
-              cd src/ext
-              phpize
-              ./configure --enable-elasticapm
-              make clean
-              make
-              sudo make install
-            '''
+            sh script: 'docker build --tag apm-agent-php .', name: 'prepare docker image'
+            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php', name: 'run docker container'
           }
         }
       }

@@ -1,0 +1,8 @@
+.ci
+.dockerignore
+.git
+.gitignore
+docker
+docs
+Dockerfile
+README.md
