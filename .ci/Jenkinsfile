@@ -40,7 +40,36 @@ pipeline {
           unstash 'source'
           dir("${BASE_DIR}"){
             sh script: 'docker build --tag apm-agent-php .', label: 'prepare docker image'
-            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php', label: 'run docker container'
+            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php', label: 'run build'
+          }
+        }
+      }
+    }
+    stage('Test') {
+      options { skipDefaultCheckout() }
+      steps {
+        withGithubNotify(context: 'Test', tab: 'tests') {
+          deleteDir()
+          unstash 'source'
+          dir("${BASE_DIR}"){
+            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php make test', label: 'run tests'
+          }
+        }
+      }
+      post {
+        always {
+          junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+        }
+      }
+    }
+    stage('Install') {
+      options { skipDefaultCheckout() }
+      steps {
+        withGithubNotify(context: 'Install') {
+          deleteDir()
+          unstash 'source'
+          dir("${BASE_DIR}"){
+            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php make install', label: 'run install'
           }
         }
       }
