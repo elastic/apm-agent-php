@@ -25,6 +25,24 @@ line to `elasticapm.ini`:
 extension=elasticapm.so
 ```
 
+### Local development
+
+If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
+
+
+```bash
+docker build --tag apm-agent-php .
+
+## To compile the library
+docker run --rm -ti -v $(pwd):/app apm-agent-php
+
+## To test the Library
+docker run --rm -ti -v $(pwd):/app apm-agent-php make test
+
+## To install the library
+docker run --rm -ti -v $(pwd):/app apm-agent-php make install
+```
+
 ## Configure
 
 You can configure the Elastic APM agent using the following ini settings for PHP:
