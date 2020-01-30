@@ -63,7 +63,7 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 #endif
 	/* ini settings */
 	zend_bool enable;
-	char *host;
+	char *server_url;
 	char *secret_token;
 	char *service_name;
 	char *log;

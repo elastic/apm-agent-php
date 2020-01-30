@@ -50,14 +50,12 @@ You can configure the Elastic APM agent using the following ini settings for PHP
 ```ini
 elasticapm.enable = 0
 elasticapm.host = localhost:8200
-elasticapm.service_name =
+elasticapm.service_name = "Unknown PHP service"
 elasticapm.log = 
 elasticapm.log_level= 0
 ```
 
 By default, the extension is disabled. You need to enable it setting `elasticapm.enable=1`.
-
-You need also to specify a `service_name`. The default `host` is `localhost:8200`.
 
 You can enable the logging of the PHP agent adding a file path in `elasticapm.log`.
 You can also specify the log level using the `elasticapm.log_level` key. The
@@ -82,7 +80,7 @@ following PHP code:
 
 ```php
 ini_set('elasticapm.enable', '1');
-ini_set('elasticapm.host', 'localhost:8200');
+ini_set('elasticapm.host', 'myhost:8200');
 ini_set('elasticapm.service_name', 'test');
 ini_set('elasticapm.log', '/tmp/elasticapm.log');
 ini_set('elasticapm.log_level', '4');

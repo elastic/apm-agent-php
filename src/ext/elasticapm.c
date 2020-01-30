@@ -73,7 +73,7 @@ static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response)
 // Generate a random hex string of len characters
 static char *random_hex(int len)
 {
-    char *result = malloc(sizeof(char)*(len+1));
+    char *result = emalloc(sizeof(char)*(len+1));
     for (int i = 0; i < len; i += 2)
     {
         sprintf(result+i, "%02lx", php_mt_rand_range(0,255));
@@ -136,10 +136,6 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	 	return SUCCESS;
 	}
 
-	if (strlen(GA(service_name)) == 0) {
-	 	zend_throw_exception(spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC);
-	}
-
 	gettimeofday(&end_time, NULL);
 	// Get execution time (duration) in ms
 	duration = ((end_time.tv_sec + end_time.tv_usec / MICRO_IN_SEC) -
@@ -159,7 +155,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
   	/* get a curl handle */
   	curl = curl_easy_init();
-  	if(curl && strlen(GA(host))>0) {
+  	if(curl && strlen(GA(server_url))>0) {
 		// body
 		char *body = emalloc(sizeof(char) * 102400); // max size 100 Kb
 
@@ -232,7 +228,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		if (strlen(GA(log))>0) {
 			log_file = fopen(GA(log), "a");
 			if (log_file == NULL) {
-				zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
+				// TODO: manage the error
 			}
 			log_set_fp(log_file);
 			log_set_quiet(1);
@@ -264,13 +260,13 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, useragent);
 
 		char *url = emalloc(sizeof(char)* 256);
-		sprintf(url, "%s/intake/v2/events", GA(host));
+		sprintf(url, "%s/intake/v2/events", GA(server_url));
     	curl_easy_setopt(curl, CURLOPT_URL, url);
 
 	    result = curl_easy_perform(curl);
 		if (strlen(GA(log))>0) {
 			if(result != CURLE_OK) {
-				log_error("%s %s", GA(host), curl_easy_strerror(result));
+				log_error("%s %s", GA(server_url), curl_easy_strerror(result));
 			} else {
 				long response_code;
 				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -320,9 +316,9 @@ ZEND_INI_DISP(hide_secret)
 
 PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
-    STD_PHP_INI_ENTRY("elasticapm.host", "localhost:8200", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
+    STD_PHP_INI_ENTRY("elasticapm.server_url", "localhost:8200", PHP_INI_ALL, OnUpdateString, server_url, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY_EX("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals, hide_secret)
-	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.service_name", "Unknown PHP service", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
