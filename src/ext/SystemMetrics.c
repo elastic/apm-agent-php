@@ -14,7 +14,7 @@
 #ifndef PHP_WIN32
 #   include <stdlib.h>
 #   include <stdio.h>
-#   include <system/sysinfo.h>
+#   include <sys/sysinfo.h>
 #endif
 
 #include <php.h>
