@@ -9,4 +9,12 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#ifndef ELASTICAPM_SUPPORTABILITY_H
+#define ELASTICAPM_SUPPORTABILITY_H
+
+#include "Zend/zend_modules.h"
+
+void elasticapmModuleInfo( zend_module_entry* zend_module);
+void displaySecretIniValue( zend_ini_entry *iniEntry, int type);
+
+#endif /* #ifndef ELASTICAPM_SUPPORTABILITY_H */

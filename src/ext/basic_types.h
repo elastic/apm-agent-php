@@ -9,4 +9,20 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#ifndef ELASTICAPM_BASIC_TYPES_H
+#define ELASTICAPM_BASIC_TYPES_H
+
+#include <stdint.h>
+
+typedef unsigned int UInt;
+typedef uint8_t UInt8;
+typedef int8_t Int8;
+typedef uint64_t UInt64;
+typedef int64_t Int64;
+
+typedef UInt8 Byte;
+
+typedef const char* String;
+typedef char* MutableString;
+
+#endif /* #ifndef ELASTICAPM_BASIC_TYPES_H */

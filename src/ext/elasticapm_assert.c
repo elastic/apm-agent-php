@@ -9,4 +9,18 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#include "elasticapm_assert.h"
+
+#ifdef ELASTICAPM_ASSERT_ENABLED
+
+#ifndef ELASTICAPM_ASSERT_DEFAULT_LEVEL
+#   ifdef NDEBUG
+#       define ELASTICAPM_ASSERT_DEFAULT_LEVEL elasticApmAssertLevel_O_1
+#   else
+#       define ELASTICAPM_ASSERT_DEFAULT_LEVEL elasticApmAssertLevel_O_n
+#   endif
+#endif
+
+int g_currentElasticApmAssertLevel = ELASTICAPM_ASSERT_DEFAULT_LEVEL;
+
+#endif
