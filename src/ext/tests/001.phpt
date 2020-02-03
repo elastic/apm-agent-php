@@ -8,7 +8,7 @@ if (!extension_loaded('elasticapm')) {
 ?>
 --FILE--
 <?php
-echo 'The extension "elasticapm" is available';
+echo 'extension_loaded( \'elasticapm\' ): ' . ( extension_loaded('elasticapm') ? 'true' : 'false' );
 ?>
 --EXPECT--
-The extension "elasticapm" is available
+extension_loaded( 'elasticapm' ): true
