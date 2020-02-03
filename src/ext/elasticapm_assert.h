@@ -43,7 +43,7 @@ extern int g_currentElasticApmAssertLevel;
 
 #else /* #if defined( ELASTICAPM_ASSERT_ENABLED ) && ( ELASTICAPM_ASSERT_ENABLED == 1 ) */
 
-#define ELASTICAPM_ASSERT( cond, msg )
+#define ELASTICAPM_ASSERT( cond )
 #define ELASTICAPM_ASSERT_MSG( cond, msg )
 #define ELASTICAPM_ASSERT_O_N( cond )
 #define ELASTICAPM_ASSERT_O_N_MSG( cond, msg )
