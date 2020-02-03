@@ -12,7 +12,11 @@
 #include "utils.h"
 
 #include <stdio.h>
-#include "ext/standard/php_mt_rand.h"
+
+#include <php.h>
+#include <ext/standard/php_rand.h>
+
+PHPAPI zend_long php_mt_rand_range(zend_long min, zend_long max);
 
 #include "dev_windows.h"
 

@@ -14,13 +14,13 @@
 
 #ifdef ELASTICAPM_DEV_WINDOWS
 
-#include "Zend/zend_config.w32.h"
-#include "Zend/zend.h"
-#include "Zend/zend_types.h"
-#include "Zend/zend_API.h"
-#include "Zend/zend_ini.h"
-#include "Zend/zend_alloc.h"
-#include "Zend/zend_modules.h"
+#include <Zend/zend_config.w32.h>
+#include <Zend/zend.h>
+#include <Zend/zend_types.h>
+#include <Zend/zend_API.h>
+#include <Zend/zend_ini.h>
+#include <Zend/zend_alloc.h>
+#include <Zend/zend_modules.h>
 
 size_t zend_vspprintf(char **pbuf, size_t max_len, const char *format, va_list ap);
 
