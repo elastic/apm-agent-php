@@ -12,14 +12,14 @@
 #include "utils.h"
 
 #include <stdio.h>
-#include <ext/standard/php_mt_rand.h>
+#include "ext/standard/php_mt_rand.h"
 
 #include "dev_windows.h"
 
 
 static void genRandomIdBinary( Byte* buffer, UInt8 idSizeBytes )
 {
-    FOR_EACH_INDEX( UInt8, i, idSizeBytes ) buffer[ i ] = (Byte) ( php_mt_rand_range( 0, 255 ) );
+    FOR_EACH_INDEX( UInt8, i, idSizeBytes ) buffer[ i ] = (Byte) ( php_mt_rand_range( 0, UINT8_MAX ) );
 }
 
 static ResultCode binaryIdToHexString( const Byte* idBinary, UInt8 idSizeBytes, String* pResult )
