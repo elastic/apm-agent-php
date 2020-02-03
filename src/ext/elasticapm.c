@@ -62,7 +62,7 @@ PHP_MINFO_FUNCTION(elasticapm)
 
 PHP_INI_BEGIN()
     STD_PHP_INI_BOOLEAN( "elasticapm.enable", "1", PHP_INI_ALL, OnUpdateBool, enable, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
-    STD_PHP_INI_ENTRY( "elasticapm.host", "localhost:8200", PHP_INI_ALL, OnUpdateString, host, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
+    STD_PHP_INI_ENTRY( "elasticapm.server_url", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, server_url, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
     STD_PHP_INI_ENTRY_EX( "elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, Config, ELASTICAPM_GLOBAL_STATE_CONFIG(), displaySecretIniValue)
     STD_PHP_INI_ENTRY( "elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
     STD_PHP_INI_ENTRY( "elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())

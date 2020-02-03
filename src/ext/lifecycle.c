@@ -60,7 +60,7 @@ static void elasticApmThrowExceptionHook( zval* exception )
     char* jsonBuffer = NULL;
     static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
     uint64_t timestamp;
-    GlobalState* globalState = getGlobalState();
+    GlobalState* const globalState = getGlobalState();
 
     default_ce = Z_OBJCE_P( exception );
 
@@ -118,7 +118,7 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
 
     uint64_t timestamp = getCurrentTimeEpochMicroseconds();
 
-    GlobalState* globalState = getGlobalState();
+    GlobalState* const globalState = getGlobalState();
     static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
     char* jsonBuffer = NULL;
     ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
@@ -156,16 +156,16 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
 ResultCode elasticApmModuleInit( int type, int moduleNumber )
 {
     ResultCode resultCode;
+    GlobalState* const globalState = getGlobalState();
+    const Config* config = NULL;
 
     LOG_FUNCTION_ENTRY();
 
-    GlobalState* globalState = getGlobalState();
     CALL_IF_FAILED_GOTO( initGlobalState( globalState ) );
 
     registerElasticApmIniEntries( moduleNumber );
     globalState->iniEntriesRegistered = true;
-
-    const Config* config = getCurrentConfig();
+    config = getCurrentConfig();
 
     // __asm__("int3");
     if ( !config->enable )
@@ -213,7 +213,7 @@ ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
 {
     LOG_FUNCTION_ENTRY();
 
-    GlobalState* globalState = getGlobalState();
+    GlobalState* const globalState = getGlobalState();
 
     if ( globalState->curlInited )
     {
@@ -254,7 +254,7 @@ ResultCode elasticApmRequestInit()
 #endif
 
     ResultCode resultCode;
-    GlobalState* globalState = getGlobalState();
+    GlobalState* const globalState = getGlobalState();
 
     LOG_FUNCTION_ENTRY();
 
@@ -390,25 +390,23 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
 {
     CURLcode result;
     struct curl_slist* chunk = NULL;
-    FILE * log_file = NULL;
+    FILE* logFile = NULL;
 
     /* Initialize the log file */
     if ( !strIsNullOrEmtpy( config->log ) )
     {
-        log_file = fopen( config->log, "a" );
-        if ( log_file == NULL )
+        logFile = fopen( config->log, "a" );
+        if ( logFile == NULL )
         {
-            zend_throw_exception(
-                    spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0
-                    TSRMLS_CC );
+            // TODO: manage the error
         }
-        log_set_fp( log_file );
+        log_set_fp( logFile );
         log_set_quiet( 1 );
         log_set_level( config->log_level );
-    }
 
-    // TODO: check how to set lock and level
-    //log_set_lock(1);
+        // TODO: check how to set lock and level
+        //log_set_lock(1);
+    }
 
     curl_easy_setopt( curl, CURLOPT_POST, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, body );
@@ -432,13 +430,13 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
     curl_easy_setopt( curl, CURLOPT_USERAGENT, useragent );
 
     char* url = emalloc( sizeof( char ) * 256 );
-    sprintf( url, "%s/intake/v2/events", config->host );
+    sprintf( url, "%s/intake/v2/events", config->server_url );
     curl_easy_setopt( curl, CURLOPT_URL, url );
 
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        log_error( "%s %s", config->host, curl_easy_strerror( result ) );
+        log_error( "%s %s", config->server_url, curl_easy_strerror( result ) );
     }
     else
     {
@@ -450,42 +448,40 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
     efree( url );
     efree( useragent );
 
-    fclose( log_file );
+    fclose( logFile );
 }
 
-int elasticApmRequestShutdown()
+ResultCode elasticApmRequestShutdown()
 {
-    LOG_FUNCTION_ENTRY();
-
-    CURL* curl;
+    ResultCode resultCode;
+    CURL* curl = NULL;
+    char* body = NULL;
+    TimePoint currentTime;
     GlobalState* globalState = getGlobalState();
-    const Config* config = &( globalState->config );
+    const Config* const config = &( globalState->config );
+
+    LOG_FUNCTION_ENTRY();
 
     if ( !config->enable )
     {
+        resultCode = resultSuccess;
         LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
-        return SUCCESS;
+        goto finally;
     }
 
-    if ( strIsNullOrEmtpy( config->host ) )
-    {
-        LOG_FUNCTION_EXIT_MSG( "Because `host' configuration setting has no value" );
-        return SUCCESS;
-    }
-
-    TimePoint currentTime;
     getCurrentTime( &currentTime );
 
     /* get a curl handle */
     curl = curl_easy_init();
     if ( curl == NULL )
     {
+        resultCode = resultFailure;
         LOG_FUNCTION_EXIT_MSG( "Because curl_easy_init() returned NULL" );
-        return SUCCESS;
+        goto failure;
     }
 
     // body
-    char* body = emalloc( sizeof( char ) * 102400 ); // max size 100 Kb
+    body = emalloc( sizeof( char ) * 102400 ); // max size 100 Kb
     body[ 0 ] = '\0';
 
     appendMetadata( config, body );
@@ -499,11 +495,15 @@ int elasticApmRequestShutdown()
 
     sendPayload( curl, config, body );
 
-    curl_easy_cleanup( curl );
-    EFREE_AND_SET_TO_NULL( body );
-
-    deleteTransactionAndSetToNull( &globalState->currentTransaction );
-
+    resultCode = resultSuccess;
     LOG_FUNCTION_EXIT();
-    return SUCCESS;
+
+    finally:
+    if ( curl != NULL ) curl_easy_cleanup( curl );
+    EFREE_AND_SET_TO_NULL( body );
+    deleteTransactionAndSetToNull( &globalState->currentTransaction );
+    return resultCode;
+
+    failure:
+    goto finally;
 }
