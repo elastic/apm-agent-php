@@ -51,7 +51,7 @@ static void readCpuFromProcStat( const char* procStatFilePath, CpuMetricsReading
      *      system: processes executing in kernel mode
      *      idle: twiddling thumbs
      */
-    int n = fscanf(proc_stat_file, "cpu %llu %llu %llu %llu", result->user, result->nice, result->system, result->idle);
+    int n = fscanf(proc_stat_file, "cpu %llu %llu %llu %llu", &result->user, &result->nice, &result->system, &result->idle);
     fclose(proc_stat_file);
 }
 
@@ -92,10 +92,10 @@ void getSystemMetrics( const SystemMetricsReading* startReading, const SystemMet
     result->machineMemoryTotal = 4ULL * 1024 * 1024 * 1024;
     result->machineMemoryFree = 1ULL * 1024 * 1024 * 1024;
 #else
-    struct sysinfo sys_info;
-    sysinfo( &sys_info );
-    result->machineMemoryTotal = sys_info->totalram;
-    result->machineMemoryFree = sys_info->freeram;
+    struct sysinfo sysInfo;
+    sysinfo( &sysInfo );
+    result->machineMemoryTotal = sysInfo.totalram;
+    result->machineMemoryFree = sysInfo.freeram;
 #endif
 
     result->processMemorySize = zend_memory_peak_usage( 0 TSRMLS_CC );
