@@ -2,9 +2,6 @@
 Check if elasticapm is loaded
 --SKIPIF--
 <?php
-if (!extension_loaded('elasticapm')) {
-	echo 'skip';
-}
 ?>
 --FILE--
 <?php
