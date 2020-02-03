@@ -19,7 +19,7 @@
 #ifdef PHP_WIN32
 #   include <win32/time.h>
 #else
-#   include <system/time.h>
+#   include <sys/time.h>
 #endif
 
 #include "constants.h"
