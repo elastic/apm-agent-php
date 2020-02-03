@@ -13,7 +13,7 @@
 #define ELASTICAPM_GLOBAL_STATE_H
 
 #include <stdbool.h>
-#include "Config.h"
+#include "elasticapm_config.h"
 #include "Transaction.h"
 #include "SystemMetrics.h"
 
