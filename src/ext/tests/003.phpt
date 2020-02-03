@@ -8,10 +8,8 @@ if (!extension_loaded('elasticapm')) {
 ?>
 --FILE--
 <?php
-ini_set('elasticapm.enable', 1);
-ini_set('elasticapm.service_name', 'test');
-printf("%d\n", strlen(elasticapm_get_transaction_id()));
-printf("%d\n", strlen(elasticapm_get_trace_id()));
+printf("%d\n", strlen(elasticApmGetCurrentTransactionId()));
+printf("%d\n", strlen(elasticApmGetCurrentTraceId()));
 ?>
 --EXPECT--
 16
