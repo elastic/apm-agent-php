@@ -70,28 +70,31 @@ void elastic_throw_exception_hook(zval *exception);
 // Log response
 static size_t log_response(void *ptr, size_t size, size_t nmemb, char *response);
 
+// Generate a random hex string of len characters
+static char *random_hex(int len)
+{
+    char *result = emalloc(sizeof(char)*(len+1));
+    for (int i = 0; i < len; i += 2)
+    {
+        sprintf(result+i, "%02lx", php_mt_rand_range(0,255));
+    }
+    result[len] = '\0';
+    return result;
+}
+
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(elasticapm)
 {
-	if (!GA(enable)) {
-		return SUCCESS;
-	}
+
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
+
 	gettimeofday(&GA(start_time), NULL);
 
-	// Generate random transaction_id (64 bit in hex format)
-	memset(GA(transaction_id), 0, sizeof(char)*17);
-	for (int i=0, j=0; i<8; i++, j+=2) {
-		sprintf(GA(transaction_id)+j, "%02x", php_mt_rand() % 256);
-	}
-	// Generate random trace_id (128 bit in hex format)
-	memset(GA(trace_id), 0, sizeof(char)*33);
-	for (int i=0, j=0; i<16; i++, j+=2) {
-		sprintf(GA(trace_id)+j, "%02x", php_mt_rand() % 256);
-	}
+	GA(transaction_id) = random_hex(16);
+	GA(trace_id) = random_hex(32);
 
 	// Get CPU usage and CPU process usage
 #ifndef PHP_WIN32
@@ -130,7 +133,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 	char *body, *json_error, *json_exception;
 
 	if (!GA(enable)) {
-		return SUCCESS;
+	 	return SUCCESS;
 	}
 
 	gettimeofday(&end_time, NULL);
@@ -152,7 +155,7 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
   	/* get a curl handle */
   	curl = curl_easy_init();
-  	if(curl && strlen(GA(host))>0) {
+  	if(curl && strlen(GA(server_url))>0) {
 		// body
 		char *body = emalloc(sizeof(char) * 102400); // max size 100 Kb
 
@@ -222,21 +225,24 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		}
 
 		/* Initialize the log file */
-		log_file = fopen(GA(log), "a");
-		if (log_file == NULL) {
-			zend_throw_exception(spl_ce_RuntimeException, "Cannot access the file specified in elasticapm.log", 0 TSRMLS_CC);
+		if (strlen(GA(log))>0) {
+			log_file = fopen(GA(log), "a");
+			if (log_file == NULL) {
+				// TODO: manage the error
+			}
+			log_set_fp(log_file);
+			log_set_quiet(1);
+			log_set_level(GA(log_level));
+
+			// TODO: check how to set lock and level
+			//log_set_lock(1);
 		}
-		log_set_fp(log_file);
-		log_set_quiet(1);
-		log_set_level(GA(log_level));
-
-		// TODO: check how to set lock and level
-		//log_set_lock(1);
-
 		curl_easy_setopt(curl, CURLOPT_POST, 1L);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, log_response);
-		log_debug("Request body: %s", body);
+		if (strlen(GA(log))>0) {
+			log_debug("Request body: %s", body);
+		}
 
 		// Authorization with secret token if present
 		if (strlen(GA(secret_token)) > 0) {
@@ -254,20 +260,24 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, useragent);
 
 		char *url = emalloc(sizeof(char)* 256);
-		sprintf(url, "%s/intake/v2/events", GA(host));
+		sprintf(url, "%s/intake/v2/events", GA(server_url));
     	curl_easy_setopt(curl, CURLOPT_URL, url);
 
 	    result = curl_easy_perform(curl);
-	    if(result != CURLE_OK) {
-			log_error("%s %s", GA(host), curl_easy_strerror(result));
-		} else {
-			long response_code;
-	    	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-			log_debug("Response HTTP code: %ld", response_code);
+		if (strlen(GA(log))>0) {
+			if(result != CURLE_OK) {
+				log_error("%s %s", GA(server_url), curl_easy_strerror(result));
+			} else {
+				long response_code;
+				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+				log_debug("Response HTTP code: %ld", response_code);
+			}
 		}
 
 		curl_easy_cleanup(curl);
-		fclose(log_file);
+		if (strlen(GA(log))>0) {
+			fclose(log_file);
+		}
 		efree(body);
 		efree(url);
 		efree(useragent);
@@ -289,8 +299,6 @@ PHP_MINFO_FUNCTION(elasticapm)
 }
 /* }}} */
 
-#define ZEND_INI_DISP(name) void name(zend_ini_entry *ini_entry, int type)
-
 ZEND_INI_DISP(hide_secret)
 {
     char mask[3] = "***";
@@ -308,10 +316,10 @@ ZEND_INI_DISP(hide_secret)
 
 PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("elasticapm.enable", "0", PHP_INI_ALL, OnUpdateBool, enable, zend_elasticapm_globals, elasticapm_globals)
-    STD_PHP_INI_ENTRY("elasticapm.host", "", PHP_INI_ALL, OnUpdateString, host, zend_elasticapm_globals, elasticapm_globals)
+    STD_PHP_INI_ENTRY("elasticapm.server_url", "localhost:8200", PHP_INI_ALL, OnUpdateString, server_url, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY_EX("elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, zend_elasticapm_globals, elasticapm_globals, hide_secret)
-	STD_PHP_INI_ENTRY("elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
-	STD_PHP_INI_ENTRY("elasticapm.log", "/tmp/elasticapm.log", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.service_name", "Unknown PHP service", PHP_INI_ALL, OnUpdateString, service_name, zend_elasticapm_globals, elasticapm_globals)
+	STD_PHP_INI_ENTRY("elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, zend_elasticapm_globals, elasticapm_globals)
 	STD_PHP_INI_ENTRY("elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, zend_elasticapm_globals, elasticapm_globals)
 PHP_INI_END()
 
@@ -320,7 +328,7 @@ void elastic_error_cb(int type, const char *error_filename, const uint error_lin
 {
 	va_list args_copy;
 	char *msg;
-	char error_id[33];
+	char *error_id;
 	struct timeval time;
 
 	va_copy(args_copy, args);
@@ -331,10 +339,7 @@ void elastic_error_cb(int type, const char *error_filename, const uint error_lin
 	int64_t timestamp = (int64_t) time.tv_sec * MICRO_IN_SEC + (int64_t) time.tv_usec;
 
 	// Generate random error_id (128 bit in hex format)
-	memset(error_id, 0, sizeof(char)*33);
-	for (int i=0, j=0; i<16; i++, j+=2) {
-		sprintf(error_id + j, "%02x", php_mt_rand() % 256);
-	}
+	error_id = random_hex(32);
 
 	char *json_error = emalloc(sizeof(char) * 1024);
 	sprintf(
@@ -370,7 +375,7 @@ void elastic_throw_exception_hook(zval *exception)
 	zval rv;
 	zend_class_entry *default_ce;
 	zend_string *classname;
-	char exception_id[33];
+	char *exception_id;
 	struct timeval time;
 
 	default_ce = Z_OBJCE_P(exception);
@@ -382,10 +387,7 @@ void elastic_throw_exception_hook(zval *exception)
 	line = zend_read_property(default_ce, exception, "line", sizeof("line")-1, 0, &rv);
 
 	// Generate random exception_id (128 bit in hex format)
-	memset(exception_id, 0, sizeof(char)*33);
-	for (int i=0, j=0; i<16; i++, j+=2) {
-		sprintf(exception_id + j, "%02x", php_mt_rand() % 256);
-	}
+	exception_id = random_hex(32);
 
 	gettimeofday(&time, NULL);
 	int64_t timestamp = (int64_t) time.tv_sec * MICRO_IN_SEC + (int64_t) time.tv_usec;
@@ -420,15 +422,7 @@ void elastic_throw_exception_hook(zval *exception)
 PHP_MINIT_FUNCTION(elasticapm)
 {
     REGISTER_INI_ENTRIES();
-
-	// __asm__("int3");
-	if (!GA(enable)) {
-		return SUCCESS;
-	}
-
-	if (strlen(GA(service_name)) <= 0) {
-		zend_throw_exception(spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC);
-	}
+	
 	// Error handler
 	original_zend_error_cb = zend_error_cb;
 	zend_error_cb = elastic_error_cb;
@@ -436,20 +430,16 @@ PHP_MINIT_FUNCTION(elasticapm)
 	// Exception handler
 	original_zend_throw_exception_hook = zend_throw_exception_hook;
     zend_throw_exception_hook = elastic_throw_exception_hook;
-
+	
 	/* In windows, this will init the winsock stuff */
 	curl_global_init(CURL_GLOBAL_ALL);
-
+	
     return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(elasticapm)
 {
 	UNREGISTER_INI_ENTRIES();
-
-	if (!GA(enable)) {
-		return SUCCESS;
-	}
 
 	zend_error_cb = original_zend_error_cb;
 	curl_global_cleanup();
@@ -459,17 +449,11 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
 
 PHP_FUNCTION(elasticapm_get_transaction_id)
 {
-	if (!GA(enable)) {
-		RETURN_STRING("");
-	}
 	RETURN_STRING(GA(transaction_id));
 }
 
 PHP_FUNCTION(elasticapm_get_trace_id)
 {
-	if (!GA(enable)) {
-		RETURN_STRING("");
-	}
 	RETURN_STRING(GA(trace_id));
 }
 

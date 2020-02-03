@@ -18,8 +18,8 @@ make
 sudo make install
 ```
 
-You need to enable the extension in your `elasticapm.ini`. You need to add the following
-line to `elasticapm.ini`:
+You need to enable the extension in your `php.ini`. You need to add the following
+line to `php.ini`:
 
 ```
 extension=elasticapm.so
@@ -49,20 +49,17 @@ You can configure the Elastic APM agent using the following ini settings for PHP
 
 ```ini
 elasticapm.enable = 0
-elasticapm.host =
-elasticapm.service_name =
-elasticapm.log =
+elasticapm.host = localhost:8200
+elasticapm.service_name = "Unknown PHP service"
+elasticapm.log = 
 elasticapm.log_level= 0
 ```
 
 By default, the extension is disabled. You need to enable it setting `elasticapm.enable=1`.
-The required settings are: `service_name` and `host`. You need to specify a
-service name and the APM server host where to send the data.
 
 You can enable the logging of the PHP agent adding a file path in `elasticapm.log`.
-You can also specify a log level using the `elasticapm.log_level` key. The
-default value is `0` that means everything (trace). All the logs below a given
-level will be ignored.
+You can also specify the log level using the `elasticapm.log_level` key. The
+default value is `0` that means log everything (trace). 
 
 The log levels are:
 ```
@@ -83,7 +80,7 @@ following PHP code:
 
 ```php
 ini_set('elasticapm.enable', '1');
-ini_set('elasticapm.host', 'insert the APM Server host here');
+ini_set('elasticapm.host', 'myhost:8200');
 ini_set('elasticapm.service_name', 'test');
 ini_set('elasticapm.log', '/tmp/elasticapm.log');
 ini_set('elasticapm.log_level', '4');

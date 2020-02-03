@@ -43,8 +43,8 @@ typedef struct apm_request_data {
 ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 	/* Structure used to store request data */
 	apm_request_data request_data;
-	char transaction_id[17];
-	char trace_id[33];
+	char *transaction_id;
+	char *trace_id;
 	/* error */
 	char *errors;
 	/* exceptions */
@@ -63,7 +63,7 @@ ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
 #endif
 	/* ini settings */
 	zend_bool enable;
-	char *host;
+	char *server_url;
 	char *secret_token;
 	char *service_name;
 	char *log;
