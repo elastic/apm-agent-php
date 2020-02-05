@@ -45,6 +45,13 @@ static inline bool strIsNullOrEmtpy( const char* str )
     return str == NULL || strIsEmtpy( str );
 }
 
+static inline void strReplaceChar( MutableString str, char originalChar, char replacementChar )
+{
+    ASSERT_VALID_PTR( str );
+
+    for ( size_t i = 0 ; str[ i ] != '\0' ; ++i ) if ( str[ i ] == originalChar ) str[ i ] = replacementChar;
+}
+
 static inline bool zstrIsEmtpy( const zend_string* zstr )
 {
     return ZSTR_LEN( zstr ) == 0;
