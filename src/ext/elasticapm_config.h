@@ -16,13 +16,12 @@
 
 struct Config
 {
-    bool enable;
-    const char* host;
-    const char* server_url;
-    const char* secret_token;
-    const char* service_name;
+    bool enabled;
+    const char* serverUrl;
+    const char* secretToken;
+    const char* serviceName;
     const char* log;
-    int log_level;
+    int logLevel;
 };
 
 typedef struct Config Config;

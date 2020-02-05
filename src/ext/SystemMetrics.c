@@ -19,7 +19,6 @@
 
 #include <php.h>
 
-#include "dev_windows.h"
 
 #ifdef PHP_WIN32
 

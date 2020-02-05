@@ -27,7 +27,9 @@ typedef struct Transaction Transaction;
 
 static inline void deleteTransactionAndSetToNull( Transaction** ppThisObj )
 {
-    Transaction* thisObj = *ppThisObj;
+    ASSERT_VALID_PTR( ppThisObj );
+    Transaction* const thisObj = *ppThisObj;
+    if ( thisObj == NULL ) return;
 
     ASSERT_VALID_IN_PTR_TO_PTR( ppThisObj );
 

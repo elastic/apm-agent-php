@@ -16,18 +16,19 @@
 
 static inline const char* getCurrentTransactionId()
 {
-    GlobalState* globalState = getGlobalState();
-    const Transaction* const currentTransaction = globalState->currentTransaction;
-
+    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
     return currentTransaction == NULL ? NULL : currentTransaction->id;
 }
 
 static inline const char* getCurrentTraceId()
 {
-    GlobalState* globalState = getGlobalState();
-    const Transaction* const currentTransaction = globalState->currentTransaction;
-
+    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
     return currentTransaction == NULL ? NULL : currentTransaction->traceId;
+}
+
+static inline bool isEnabled()
+{
+    return getGlobalState()->config.enabled;
 }
 
 #endif /* #ifndef ELASTICAPM_PUBLIC_API_H */

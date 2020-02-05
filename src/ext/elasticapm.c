@@ -13,19 +13,19 @@
 # include "config.h"
 #endif
 
-// external libraries
-#include <php.h>
-#include <SAPI.h>
-#include <Zend/zend_exceptions.h>
-#include <ext/spl/spl_exceptions.h>
-
 #include "php_elasticapm.h"
+
+// external libraries
+#include <php_ini.h>
+#include <Zend/zend_types.h>
+#include <Zend/zend_ini.h>
+
 #include "lifecycle.h"
 #include "supportability.h"
 #include "public_api.h"
 
 
-ZEND_DECLARE_MODULE_GLOBALS(elasticapm)
+ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
 static inline ZEND_RESULT_CODE resultCodeToZend( ResultCode resultCode )
 {
@@ -61,12 +61,12 @@ PHP_MINFO_FUNCTION(elasticapm)
 #define ELASTICAPM_GLOBAL_STATE_CONFIG() (ZEND_MODULE_GLOBALS_ACCESSOR(elasticapm, state).config)
 
 PHP_INI_BEGIN()
-    STD_PHP_INI_BOOLEAN( "elasticapm.enable", "1", PHP_INI_ALL, OnUpdateBool, enable, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
-    STD_PHP_INI_ENTRY( "elasticapm.server_url", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, server_url, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
-    STD_PHP_INI_ENTRY_EX( "elasticapm.secret_token", "", PHP_INI_ALL, OnUpdateString, secret_token, Config, ELASTICAPM_GLOBAL_STATE_CONFIG(), displaySecretIniValue)
-    STD_PHP_INI_ENTRY( "elasticapm.service_name", "", PHP_INI_ALL, OnUpdateString, service_name, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
-    STD_PHP_INI_ENTRY( "elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
-    STD_PHP_INI_ENTRY( "elasticapm.log_level", "0", PHP_INI_ALL, OnUpdateLong, log_level, Config, ELASTICAPM_GLOBAL_STATE_CONFIG())
+    STD_PHP_INI_BOOLEAN( "elasticapm.enabled", "true", PHP_INI_ALL, OnUpdateBool, enabled, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.serverUrl", "http://localhost:8200", PHP_INI_ALL, OnUpdateString, serverUrl, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY_EX( "elasticapm.secretToken", "", PHP_INI_ALL, OnUpdateString, secretToken, Config, ELASTICAPM_GLOBAL_STATE_CONFIG(), displaySecretIniValue )
+    STD_PHP_INI_ENTRY( "elasticapm.service_name", "Unknown PHP service", PHP_INI_ALL, OnUpdateString, serviceName, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.log", "", PHP_INI_ALL, OnUpdateString, log, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.logLevel", "0", PHP_INI_ALL, OnUpdateLong, logLevel, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
 PHP_INI_END()
 
 void registerElasticApmIniEntries( int module_number)
@@ -89,20 +89,26 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     return resultCodeToZend( elasticApmModuleShutdown( type, module_number ) );
 }
 
-PHP_FUNCTION(elasticApmGetCurrentTransactionId)
+PHP_FUNCTION( elasticApmIsEnabled )
+{
+    RETURN_BOOL( isEnabled() )
+}
+
+PHP_FUNCTION( elasticApmGetCurrentTransactionId )
 {
     RETURN_STRING( getCurrentTransactionId() )
 }
 
-PHP_FUNCTION(elasticApmGetCurrentTraceId)
+PHP_FUNCTION( elasticApmGetCurrentTraceId )
 {
     RETURN_STRING( getCurrentTraceId() )
 }
 
 static const zend_function_entry elasticapm_functions[] =
 {
-    PHP_FE(elasticApmGetCurrentTransactionId, NULL)
-	PHP_FE(elasticApmGetCurrentTraceId, NULL)
+    PHP_FE( elasticApmIsEnabled, NULL )
+    PHP_FE( elasticApmGetCurrentTransactionId, NULL )
+	PHP_FE( elasticApmGetCurrentTraceId, NULL )
 	PHP_FE_END
 };
 

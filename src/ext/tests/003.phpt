@@ -8,9 +8,22 @@ if (!extension_loaded('elasticapm')) {
 ?>
 --FILE--
 <?php
-printf("%d\n", strlen(elasticApmGetCurrentTransactionId()));
-printf("%d\n", strlen(elasticApmGetCurrentTraceId()));
+if ( elasticApmIsEnabled() ) {
+    if ( strlen( elasticApmGetCurrentTransactionId() ) !== 16 ) {
+    	echo 'strlen( elasticApmGetCurrentTransactionId() ): ' . strlen( elasticApmGetCurrentTransactionId() );
+    }
+    if ( strlen( elasticApmGetCurrentTraceId() ) !== 32 ) {
+    	echo 'strlen( elasticApmGetCurrentTraceId() ): ' . strlen( elasticApmGetCurrentTraceId() );
+    }
+} else {
+    if ( elasticApmGetCurrentTransactionId() !== null ) {
+    	echo 'elasticApmGetCurrentTransactionId(): ' . elasticApmGetCurrentTransactionId();
+    	var_dump( elasticApmGetCurrentTransactionId() );
+    }
+    if ( elasticApmGetCurrentTraceId() !== null ) {
+    	echo 'elasticApmGetCurrentTraceId(): ' . elasticApmGetCurrentTraceId();
+    	var_dump( elasticApmGetCurrentTraceId() );
+    }
+}
 ?>
 --EXPECT--
-16
-32

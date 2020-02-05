@@ -35,9 +35,4 @@ tests/*.log
 tests/*.sh
 
 # JetBrains CLion
-.idea/
-PHP_src/
-cmake-build-debug/
-CMakeLists.txt
-
-
+.tmp*

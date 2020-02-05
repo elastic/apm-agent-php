@@ -13,6 +13,7 @@
 #define ELASTICAPM_UTILS_H
 
 #include <stdbool.h>
+#include <php.h>
 #include <Zend/zend.h>
 #include <Zend/zend_string.h>
 
@@ -110,5 +111,12 @@ ResultCode genRandomIdHexString( UInt8 idSizeBytes, String* pResult );
         } \
     } while ( false ) \
     /**/
+
+#ifdef PHP_WIN32
+extern void* g_unusedParameterHelper;
+#define UNUSED_PARAMETER( parameter ) do { g_unusedParameterHelper = (void*)(&(parameter)); } while ( false )
+#else
+#define UNUSED_PARAMETER( paramter )
+#endif
 
 #endif /* #ifndef ELASTICAPM_UTILS_H */

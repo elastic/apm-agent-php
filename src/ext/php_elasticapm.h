@@ -12,7 +12,11 @@
 #ifndef PHP_ELASTICAPM_H
 #define PHP_ELASTICAPM_H
 
-#include "dev_windows.h"
+#include <php.h>
+#include <Zend/zend.h>
+#include <Zend/zend_API.h>
+#include <Zend/zend_modules.h>
+
 #include "GlobalState.h"
 #include "elasticapm_version.h"
 

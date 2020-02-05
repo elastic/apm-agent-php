@@ -12,11 +12,7 @@
 #include "utils.h"
 
 #include <stdio.h>
-
-#include <php.h>
 #include <ext/standard/php_rand.h>
-
-#include "dev_windows.h"
 
 
 static void genRandomIdBinary( Byte* buffer, UInt8 idSizeBytes )
@@ -66,3 +62,8 @@ ResultCode genRandomIdHexString( UInt8 idSizeBytes, String* pResult )
     EFREE_AND_SET_TO_NULL( result );
     goto finally;
 }
+
+#ifdef PHP_WIN32
+void* g_unusedParameterHelper;
+#endif
+

@@ -15,8 +15,9 @@
 #include <stdbool.h>
 #include <php.h>
 #include <Zend/zend.h>
+#include <Zend/zend_API.h>
+#include <Zend/zend_compile.h>
 #include <Zend/zend_exceptions.h>
-#include <ext/spl/spl_exceptions.h>
 
 #if defined(PHP_WIN32) && !defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
@@ -30,6 +31,7 @@
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "utils.h"
+#include "elasticapm_assert.h"
 
 static const char JSON_METADATA[] =
         "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"apm-agent-php\"}}}}\n";
@@ -43,10 +45,45 @@ static const char JSON_ERROR[] =
         "{\"error\":{\"timestamp\":%"PRIu64",\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\": %d,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"filename\":\"%s\",\"lineno\": %d}]},\"log\":{\"level\":\"%s\",\"logger_name\":\"PHP\",\"message\":\"%s\"}}}\n";
 
 // Log response
-static size_t log_response( void* ptr, size_t size, size_t nmemb, char* response )
+static size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* unusedUserDataParam )
 {
-    log_debug( "Response body: %s", ptr );
-    return size * nmemb;
+    // https://curl.haxx.se/libcurl/c/CURLOPT_WRITEFUNCTION.html
+    // size (unusedSizeParam) is always 1
+    UNUSED_PARAMETER( unusedSizeParam );
+    UNUSED_PARAMETER( unusedUserDataParam );
+    log_debug( "Response body: %.*s", dataSize, (const char*)data );
+    return dataSize;
+}
+
+static ResultCode ensureAllocatedAndAppend( MutableString* pBuffer, size_t maxLength, String strToAppend )
+{
+    ASSERT_VALID_PTR( pBuffer );
+
+    ResultCode resultCode;
+    size_t bufferUsedLength;
+    MutableString buffer = *pBuffer;
+
+    if ( buffer == NULL )
+    {
+        ALLOC_STRING_IF_FAILED_GOTO( maxLength, buffer );
+        bufferUsedLength = 0;
+    }
+    else
+    {
+        bufferUsedLength = strnlen( buffer, maxLength );
+    }
+
+    strncat( buffer + bufferUsedLength, strToAppend, maxLength - bufferUsedLength );
+
+    resultCode = resultSuccess;
+    if ( *pBuffer == NULL ) *pBuffer = buffer;
+
+    finally:
+    return resultCode;
+
+    failure:
+    if ( *pBuffer == NULL ) EFREE_AND_SET_TO_NULL( buffer );
+    goto finally;
 }
 
 static void elasticApmThrowExceptionHook( zval* exception )
@@ -87,9 +124,7 @@ static void elasticApmThrowExceptionHook( zval* exception )
              , Z_STRVAL_P( file )
              , (long)Z_LVAL_P( line ) );
 
-    static const UInt maxGlobalStateExceptionsLength = 100 * 1024; // 100 KB
-    if ( globalState->exceptions == NULL ) ALLOC_STRING_IF_FAILED_GOTO( maxGlobalStateExceptionsLength, globalState->exceptions );
-    strcpy( globalState->exceptions, jsonBuffer );
+    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &globalState->exceptions, 100 * 1024, jsonBuffer ) );
 
     finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
@@ -111,7 +146,7 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
 
     va_copy( args_copy, args );
     vspprintf( &msg, 0, format, args_copy );
-            va_end( args_copy );
+    va_end( args_copy );
 
     const char* errorId;
     CALL_IF_FAILED_GOTO( genRandomIdHexString( ERROR_ID_SIZE_IN_BYTES, &errorId ) );
@@ -137,9 +172,7 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
              , msg
     );
 
-    static const UInt maxGlobalStateErrorsLength = 100 * 1024; // 100 KB
-    if ( globalState->errors == NULL ) ALLOC_STRING_IF_FAILED_GOTO( maxGlobalStateErrorsLength, globalState->errors );
-    strcpy( globalState->errors, jsonBuffer );
+    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &globalState->errors, 100 * 1024, jsonBuffer ) );
 
     finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
@@ -168,17 +201,10 @@ ResultCode elasticApmModuleInit( int type, int moduleNumber )
     config = getCurrentConfig();
 
     // __asm__("int3");
-    if ( !config->enable )
+    if ( !config->enabled )
     {
         LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
-    }
-
-    if ( strIsNullOrEmtpy( config->service_name ) )
-    {
-        LOG_MSG( "Because elasticapm.service_name is not set" );
-        zend_throw_exception(
-                spl_ce_RuntimeException, "You need to specify a service name in elasticapm.service_name", 0 TSRMLS_CC );
     }
 
     globalState->originalZendErrorCallback = zend_error_cb;
@@ -211,6 +237,7 @@ ResultCode elasticApmModuleInit( int type, int moduleNumber )
 
 ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
 {
+    UNUSED_PARAMETER( type );
     LOG_FUNCTION_ENTRY();
 
     GlobalState* const globalState = getGlobalState();
@@ -258,7 +285,7 @@ ResultCode elasticApmRequestInit()
 
     LOG_FUNCTION_ENTRY();
 
-    if ( !globalState->config.enable )
+    if ( !globalState->config.enabled )
     {
         resultCode = resultSuccess;
         LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
@@ -282,7 +309,7 @@ ResultCode elasticApmRequestInit()
 static void appendMetadata( const Config* config, char* body )
 {
     char* json_metadata = emalloc( sizeof( char ) * 1024 );
-    sprintf( json_metadata, JSON_METADATA, getpid(), config->service_name, PHP_ELASTICAPM_VERSION );
+    sprintf( json_metadata, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
 
     strcat( body, json_metadata );
     efree( json_metadata );
@@ -372,8 +399,8 @@ static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading
     SystemMetrics system_metrics;
     getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
 
-    char* json_metricset = emalloc( sizeof( char ) * 1024 );
-    sprintf( json_metricset
+    char* jsonBuffer = emalloc( sizeof( char ) * 1024 );
+    sprintf( jsonBuffer
              , JSON_METRICSET
              , system_metrics.machineCpu          // system.cpu.total.norm.pct
              , system_metrics.processCpu          // system.process.cpu.total.norm.pct
@@ -382,8 +409,8 @@ static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading
              , system_metrics.processMemorySize  // system.process.memory.size
              , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
              , timePointToEpochMicroseconds( currentTime ) );
-    strcat( body, json_metricset );
-    efree( json_metricset );
+    strcat( body, jsonBuffer );
+    efree( jsonBuffer );
 }
 
 static void sendPayload( CURL* curl, const Config* config, const char* body )
@@ -402,7 +429,7 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
         }
         log_set_fp( logFile );
         log_set_quiet( 1 );
-        log_set_level( config->log_level );
+        log_set_level( config->logLevel );
 
         // TODO: check how to set lock and level
         //log_set_lock(1);
@@ -410,14 +437,14 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
 
     curl_easy_setopt( curl, CURLOPT_POST, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, body );
-    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, log_response );
+    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, logResponse );
     log_debug( "Request body: %s", body );
 
     // Authorization with secret token if present
-    if ( !strIsNullOrEmtpy( config->secret_token ) )
+    if ( !strIsNullOrEmtpy( config->secretToken ) )
     {
         char* auth = emalloc( sizeof( char ) * 256 );
-        sprintf( auth, "Authorization: Bearer %s", config->secret_token );
+        sprintf( auth, "Authorization: Bearer %s", config->secretToken );
         chunk = curl_slist_append( chunk, auth );
         efree( auth );
     }
@@ -430,13 +457,13 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
     curl_easy_setopt( curl, CURLOPT_USERAGENT, useragent );
 
     char* url = emalloc( sizeof( char ) * 256 );
-    sprintf( url, "%s/intake/v2/events", config->server_url );
+    sprintf( url, "%s/intake/v2/events", config->serverUrl );
     curl_easy_setopt( curl, CURLOPT_URL, url );
 
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        log_error( "%s %s", config->server_url, curl_easy_strerror( result ) );
+        log_error( "%s %s", config->serverUrl, curl_easy_strerror( result ) );
     }
     else
     {
@@ -457,15 +484,15 @@ ResultCode elasticApmRequestShutdown()
     CURL* curl = NULL;
     char* body = NULL;
     TimePoint currentTime;
-    GlobalState* globalState = getGlobalState();
+    GlobalState* const globalState = getGlobalState();
     const Config* const config = &( globalState->config );
 
     LOG_FUNCTION_ENTRY();
 
-    if ( !config->enable )
+    if ( globalState->currentTransaction == NULL )
     {
         resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
         goto finally;
     }
 
