@@ -96,12 +96,16 @@ PHP_FUNCTION( elasticApmIsEnabled )
 
 PHP_FUNCTION( elasticApmGetCurrentTransactionId )
 {
-    RETURN_STRING( getCurrentTransactionId() )
+    const char* retVal = getCurrentTransactionId();
+    if ( retVal == NULL ) RETURN_NULL();
+    RETURN_STRING( retVal )
 }
 
 PHP_FUNCTION( elasticApmGetCurrentTraceId )
 {
-    RETURN_STRING( getCurrentTraceId() )
+    const char* retVal = getCurrentTraceId();
+    if ( retVal == NULL ) RETURN_NULL();
+    RETURN_STRING( retVal )
 }
 
 static const zend_function_entry elasticapm_functions[] =

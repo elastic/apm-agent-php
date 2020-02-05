@@ -47,4 +47,3 @@ void displaySecretIniValue( zend_ini_entry* iniEntry, int type )
 
     php_printf( sapi_module.phpinfo_as_text ? "%s" : "<i>%s</i>", valueToPrint );
 }
-

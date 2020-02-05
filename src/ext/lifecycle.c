@@ -51,7 +51,7 @@ static size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, 
     // size (unusedSizeParam) is always 1
     UNUSED_PARAMETER( unusedSizeParam );
     UNUSED_PARAMETER( unusedUserDataParam );
-    log_debug( "Response body: %.*s", dataSize, (const char*)data );
+    log_debug( "APM Server's response body [length: %"PRIu64"]: %.*s", (UInt64)dataSize, dataSize, (const char*)data );
     return dataSize;
 }
 
@@ -89,19 +89,30 @@ static ResultCode ensureAllocatedAndAppend( MutableString* pBuffer, size_t maxLe
 static void elasticApmThrowExceptionHook( zval* exception )
 {
     ResultCode resultCode;
-    zval * code, *message, *file, *line;
+    zval* code;
+    zval* message;
+    zval* file;
+    zval* line;
     zval rv;
-    zend_class_entry * default_ce;
-    zend_string * classname;
+    zend_class_entry* default_ce;
+    zend_string* className;
     const char* errorId = NULL;
     char* jsonBuffer = NULL;
     static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
     uint64_t timestamp;
     GlobalState* const globalState = getGlobalState();
+    Transaction* const currentTransaction = globalState->currentTransaction;
+
+    if ( currentTransaction == NULL )
+    {
+        resultCode = resultSuccess;
+        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
+        goto finally;
+    }
 
     default_ce = Z_OBJCE_P( exception );
 
-    classname = Z_OBJ_HANDLER_P( exception, get_class_name )( Z_OBJ_P( exception ) );
+    className = Z_OBJ_HANDLER_P( exception, get_class_name )( Z_OBJ_P( exception ) );
     code = zend_read_property( default_ce, exception, "code", sizeof( "code" ) - 1, 0, &rv );
     message = zend_read_property( default_ce, exception, "message", sizeof( "message" ) - 1, 0, &rv );
     file = zend_read_property( default_ce, exception, "file", sizeof( "file" ) - 1, 0, &rv );
@@ -116,15 +127,15 @@ static void elasticApmThrowExceptionHook( zval* exception )
              , JSON_EXCEPTION
              , timestamp
              , errorId
-             , globalState->currentTransaction->id
-             , globalState->currentTransaction->traceId
+             , currentTransaction->id
+             , currentTransaction->traceId
              , (long)Z_LVAL_P( code )
              , Z_STRVAL_P( message )
-             , ZSTR_VAL( classname )
+             , ZSTR_VAL( className )
              , Z_STRVAL_P( file )
              , (long)Z_LVAL_P( line ) );
 
-    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &globalState->exceptions, 100 * 1024, jsonBuffer ) );
+    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->exceptions, 100 * 1024, jsonBuffer ) );
 
     finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
@@ -142,27 +153,34 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
 {
     ResultCode resultCode;
     va_list args_copy;
-    char* msg;
+    char* msg = NULL;
+    const char* errorId = NULL;
+    GlobalState* const globalState = getGlobalState();
+    Transaction* const currentTransaction = globalState->currentTransaction;
+    static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
+    char* jsonBuffer = NULL;
+    const uint64_t timestamp = getCurrentTimeEpochMicroseconds();
+
+    if ( currentTransaction == NULL )
+    {
+        resultCode = resultSuccess;
+        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
+        goto finally;
+    }
 
     va_copy( args_copy, args );
     vspprintf( &msg, 0, format, args_copy );
     va_end( args_copy );
 
-    const char* errorId;
     CALL_IF_FAILED_GOTO( genRandomIdHexString( ERROR_ID_SIZE_IN_BYTES, &errorId ) );
 
-    uint64_t timestamp = getCurrentTimeEpochMicroseconds();
-
-    GlobalState* const globalState = getGlobalState();
-    static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
-    char* jsonBuffer = NULL;
     ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
     sprintf( jsonBuffer
              , JSON_ERROR
              , timestamp
              , errorId
-             , globalState->currentTransaction->id
-             , globalState->currentTransaction->traceId
+             , currentTransaction->id
+             , currentTransaction->traceId
              , type
              , msg
              , get_php_error_name( type )
@@ -172,7 +190,7 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
              , msg
     );
 
-    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &globalState->errors, 100 * 1024, jsonBuffer ) );
+    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->errors, 100 * 1024, jsonBuffer ) );
 
     finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
@@ -306,13 +324,20 @@ ResultCode elasticApmRequestInit()
     goto finally;
 }
 
-static void appendMetadata( const Config* config, char* body )
-{
-    char* json_metadata = emalloc( sizeof( char ) * 1024 );
-    sprintf( json_metadata, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
+static const size_t serializedEventsMaxLength = 1000 * 1000; // one million
 
-    strcat( body, json_metadata );
-    efree( json_metadata );
+static void appendSerializedEvent( const char* serializedEvent, char* serializedEventsBuffer )
+{
+    size_t bufferUsedLength = strnlen( serializedEventsBuffer, serializedEventsMaxLength );
+    strncat( serializedEventsBuffer + bufferUsedLength, serializedEvent, serializedEventsMaxLength - bufferUsedLength );
+}
+
+static void appendMetadata( const Config* config, char* serializedEventsBuffer )
+{
+    char* jsonBuffer = emalloc( sizeof( char ) * 1024 );
+    sprintf( jsonBuffer, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
+    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
+    EFREE_AND_SET_TO_NULL( jsonBuffer );
 }
 
 #define ELASTICAPM_REQUEST_DATA_FIELD( var ) zval *var; bool var##Found
@@ -354,17 +379,18 @@ static void getRequestData( RequestData* requestData )
     }
 }
 
-static void appendTransaction( const Transaction* transaction, const TimePoint* currentTime, char* body )
+static void appendTransaction( const Transaction* transaction, const TimePoint* currentTime, char* serializedEventsBuffer )
 {
     // Transaction
     char txType[8];
     char* jsonBuffer = NULL;
+    char* txName = NULL;
 
     RequestData requestData;
     getRequestData( &requestData );
 
     // if HTTP method exists it is a HTTP request
-    char* txName = emalloc( sizeof( char ) * 1024 );
+    txName = emalloc( sizeof( char ) * 1024 );
     if ( requestData.httpMethodFound )
     {
         sprintf( txType, "%s", "request" );
@@ -375,6 +401,9 @@ static void appendTransaction( const Transaction* transaction, const TimePoint* 
         sprintf( txType, "%s", "script" );
         const char* const txNameSrc = ( requestData.scriptNameFound && ! strIsNullOrEmtpy( Z_STRVAL_P( requestData.scriptName ) ) ) ? Z_STRVAL_P( requestData.scriptName ) : "Unknown";
         sprintf( txName, "%s", txNameSrc );
+#ifdef PHP_WIN32
+        strReplaceChar( txName, '\\', '/' );
+#endif
     }
 
     jsonBuffer = emalloc( sizeof( char ) * 1024 );
@@ -387,12 +416,12 @@ static void appendTransaction( const Transaction* transaction, const TimePoint* 
              , durationMicrosecondsToMilliseconds( durationMicroseconds( &transaction->startTime, currentTime ) )
              , timePointToEpochMicroseconds( &transaction->startTime )
     );
-    strcat( body, jsonBuffer );
-    efree( jsonBuffer );
-    efree( txName );
+    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
+    EFREE_AND_SET_TO_NULL( jsonBuffer );
+    EFREE_AND_SET_TO_NULL( txName );
 }
 
-static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, char* body )
+static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, char* serializedEventsBuffer )
 {
     SystemMetricsReading endSystemMetricsReading;
     readSystemMetrics( &endSystemMetricsReading );
@@ -409,13 +438,16 @@ static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading
              , system_metrics.processMemorySize  // system.process.memory.size
              , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
              , timePointToEpochMicroseconds( currentTime ) );
-    strcat( body, jsonBuffer );
-    efree( jsonBuffer );
+    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
+    EFREE_AND_SET_TO_NULL( jsonBuffer );
 }
 
-static void sendPayload( CURL* curl, const Config* config, const char* body )
+static void sendEventsToApmServer( CURL* curl, const Config* config, const char* serializedEventsBuffer )
 {
     CURLcode result;
+    char* auth = NULL;
+    char* userAgent = NULL;
+    char* url = NULL;
     struct curl_slist* chunk = NULL;
     FILE* logFile = NULL;
 
@@ -436,27 +468,26 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
     }
 
     curl_easy_setopt( curl, CURLOPT_POST, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, body );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, serializedEventsBuffer );
     curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    log_debug( "Request body: %s", body );
+    log_debug( "Request serializedEventsBuffer [length: %"PRIu64"]: %s", (UInt64)strnlen( serializedEventsBuffer, serializedEventsMaxLength ), serializedEventsBuffer );
 
     // Authorization with secret token if present
     if ( !strIsNullOrEmtpy( config->secretToken ) )
     {
-        char* auth = emalloc( sizeof( char ) * 256 );
+        auth = emalloc( sizeof( char ) * 256 );
         sprintf( auth, "Authorization: Bearer %s", config->secretToken );
         chunk = curl_slist_append( chunk, auth );
-        efree( auth );
     }
     chunk = curl_slist_append( chunk, "Content-Type: application/x-ndjson" );
     curl_easy_setopt( curl, CURLOPT_HTTPHEADER, chunk );
 
     // User agent
-    char* useragent = emalloc( sizeof( char ) * 100 );
-    sprintf( useragent, "elasticapm-php/%s", PHP_ELASTICAPM_VERSION );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, useragent );
+    userAgent = emalloc( sizeof( char ) * 100 );
+    sprintf( userAgent, "elasticapm-php/%s", PHP_ELASTICAPM_VERSION );
+    curl_easy_setopt( curl, CURLOPT_USERAGENT, userAgent );
 
-    char* url = emalloc( sizeof( char ) * 256 );
+    url = emalloc( sizeof( char ) * 256 );
     sprintf( url, "%s/intake/v2/events", config->serverUrl );
     curl_easy_setopt( curl, CURLOPT_URL, url );
 
@@ -472,24 +503,26 @@ static void sendPayload( CURL* curl, const Config* config, const char* body )
         log_debug( "Response HTTP code: %ld", response_code );
     }
 
-    efree( url );
-    efree( useragent );
+    EFREE_AND_SET_TO_NULL( url );
+    EFREE_AND_SET_TO_NULL( userAgent );
+    EFREE_AND_SET_TO_NULL( auth );
 
-    fclose( logFile );
+    if ( logFile != NULL ) fclose( logFile );
 }
 
 ResultCode elasticApmRequestShutdown()
 {
     ResultCode resultCode;
     CURL* curl = NULL;
-    char* body = NULL;
+    char* serializedEventsBuffer = NULL;
     TimePoint currentTime;
     GlobalState* const globalState = getGlobalState();
     const Config* const config = &( globalState->config );
+    Transaction* const currentTransaction = globalState->currentTransaction;
 
     LOG_FUNCTION_ENTRY();
 
-    if ( globalState->currentTransaction == NULL )
+    if ( currentTransaction == NULL )
     {
         resultCode = resultSuccess;
         LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
@@ -507,27 +540,26 @@ ResultCode elasticApmRequestShutdown()
         goto failure;
     }
 
-    // body
-    body = emalloc( sizeof( char ) * 102400 ); // max size 100 Kb
-    body[ 0 ] = '\0';
+    ALLOC_STRING_IF_FAILED_GOTO( serializedEventsMaxLength, serializedEventsBuffer ); // max length 10^6
+    serializedEventsBuffer[ 0 ] = '\0';
 
-    appendMetadata( config, body );
+    appendMetadata( config, serializedEventsBuffer );
 
-    appendTransaction( globalState->currentTransaction, &currentTime, body );
+    appendTransaction( currentTransaction, &currentTime, serializedEventsBuffer );
 
-    appendMetrics( &globalState->startSystemMetricsReading, &currentTime, body );
+    appendMetrics( &globalState->startSystemMetricsReading, &currentTime, serializedEventsBuffer );
 
-    if ( !strIsNullOrEmtpy( globalState->errors ) ) strcat( body, globalState->errors );
-    if ( !strIsNullOrEmtpy( globalState->exceptions ) ) strcat( body, globalState->exceptions );
+//    if ( !strIsNullOrEmtpy( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
+    if ( !strIsNullOrEmtpy( currentTransaction->exceptions ) ) appendSerializedEvent( currentTransaction->exceptions, serializedEventsBuffer );
 
-    sendPayload( curl, config, body );
+    sendEventsToApmServer( curl, config, serializedEventsBuffer );
 
     resultCode = resultSuccess;
     LOG_FUNCTION_EXIT();
 
     finally:
     if ( curl != NULL ) curl_easy_cleanup( curl );
-    EFREE_AND_SET_TO_NULL( body );
+    EFREE_AND_SET_TO_NULL( serializedEventsBuffer );
     deleteTransactionAndSetToNull( &globalState->currentTransaction );
     return resultCode;
 

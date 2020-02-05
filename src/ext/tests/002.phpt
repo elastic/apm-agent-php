@@ -1,5 +1,5 @@
 --TEST--
-Check if elasticapm throws exception if service_name not specified
+elasticapm should work even if service_name configuration option is not set
 --SKIPIF--
 <?php
 if (!extension_loaded('elasticapm')) {

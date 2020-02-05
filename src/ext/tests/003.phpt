@@ -18,11 +18,9 @@ if ( elasticApmIsEnabled() ) {
 } else {
     if ( elasticApmGetCurrentTransactionId() !== null ) {
     	echo 'elasticApmGetCurrentTransactionId(): ' . elasticApmGetCurrentTransactionId();
-    	var_dump( elasticApmGetCurrentTransactionId() );
     }
     if ( elasticApmGetCurrentTraceId() !== null ) {
     	echo 'elasticApmGetCurrentTraceId(): ' . elasticApmGetCurrentTraceId();
-    	var_dump( elasticApmGetCurrentTraceId() );
     }
 }
 ?>

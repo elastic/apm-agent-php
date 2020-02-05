@@ -21,6 +21,8 @@ struct Transaction
     TimePoint startTime;
     String id;
     String traceId;
+    MutableString errors;
+    MutableString exceptions;
 };
 
 typedef struct Transaction Transaction;
@@ -35,6 +37,8 @@ static inline void deleteTransactionAndSetToNull( Transaction** ppThisObj )
 
     EFREE_AND_SET_TO_NULL( thisObj->id );
     EFREE_AND_SET_TO_NULL( thisObj->traceId );
+    EFREE_AND_SET_TO_NULL( thisObj->errors );
+    EFREE_AND_SET_TO_NULL( thisObj->exceptions );
     EFREE_AND_SET_TO_NULL( *ppThisObj );
 }
 
@@ -49,6 +53,9 @@ static inline ResultCode newTransaction( Transaction** ppThisObj )
     getCurrentTime( &thisObj->startTime );
     CALL_IF_FAILED_GOTO( genRandomIdHexString( EXECUTION_SEGMENT_ID_SIZE_IN_BYTES, &thisObj->id ) );
     CALL_IF_FAILED_GOTO( genRandomIdHexString( TRACE_ID_SIZE_IN_BYTES, &thisObj->traceId ) );
+
+    thisObj->errors = NULL;
+    thisObj->exceptions = NULL;
 
     resultCode = resultSuccess;
     *ppThisObj = thisObj;

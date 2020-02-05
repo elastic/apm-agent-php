@@ -23,9 +23,6 @@ struct GlobalState
     Transaction* currentTransaction;
     SystemMetricsReading startSystemMetricsReading;
 
-    char* errors;
-    char* exceptions;
-
     bool iniEntriesRegistered;
     bool curlInited;
 
@@ -42,8 +39,6 @@ static inline ResultCode initGlobalState( GlobalState* thisObj )
     ASSERT_VALID_PTR( thisObj );
 
     thisObj->currentTransaction = NULL;
-    thisObj->errors = NULL;
-    thisObj->exceptions = NULL;
     thisObj->iniEntriesRegistered = false;
     thisObj->curlInited = false;
     thisObj->originalZendErrorCallback = NULL;
@@ -57,9 +52,6 @@ static inline ResultCode initGlobalState( GlobalState* thisObj )
 static inline void cleanupGlobalState( GlobalState* thisObj )
 {
     ASSERT_VALID_PTR( thisObj );
-
-    EFREE_AND_SET_TO_NULL( thisObj->errors );
-    EFREE_AND_SET_TO_NULL( thisObj->exceptions );
 }
 
 #endif /* #ifndef ELASTICAPM_GLOBAL_STATE_H */
