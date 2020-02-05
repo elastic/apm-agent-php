@@ -35,15 +35,15 @@ void log_log(int level, const char *file, int line, const char *fmt, ...);
 
 #ifdef PHP_WIN32
 #   ifdef ELASTICAPM_DEV_WINDOWS
-#       define LOG_FUNCTION_ENTRY() OutputDebugString("ElasticAPM: DUMMY for LOG_FUNCTION_ENTRY")
-#       define LOG_FUNCTION_EXIT() OutputDebugString("ElasticAPM: DUMMY for LOG_FUNCTION_EXIT")
-#       define LOG_FUNCTION_EXIT_MSG(msg) OutputDebugString("ElasticAPM: DUMMY for LOG_FUNCTION_EXIT_MSG")
-#       define LOG_MSG( msg ) OutputDebugString("ElasticAPM: DUMMY for LOG_MSG")
+#       define LOG_FUNCTION_ENTRY() OutputDebugString( "ElasticAPM: DUMMY for LOG_FUNCTION_ENTRY" )
+#       define LOG_FUNCTION_EXIT() OutputDebugString( "ElasticAPM: DUMMY for LOG_FUNCTION_EXIT" )
+#       define LOG_FUNCTION_EXIT_MSG( msg ) OutputDebugString( "ElasticAPM: DUMMY for LOG_FUNCTION_EXIT_MSG" )
+#       define LOG_MSG( msg ) OutputDebugString( "ElasticAPM: DUMMY for LOG_MSG" )
 #   else
-#       define LOG_FUNCTION_ENTRY() OutputDebugString("ElasticAPM: " __FUNCTION__ ": Entered")
-#       define LOG_FUNCTION_EXIT() OutputDebugString("ElasticAPM: " __FUNCTION__ ": Exiting")
-#       define LOG_FUNCTION_EXIT_MSG(msg) OutputDebugString("ElasticAPM: " __FUNCTION__ ": Exiting: " msg)
-#       define LOG_MSG ( msg ) OutputDebugString("ElasticAPM: " __FUNCTION__ ": " msg)
+#       define LOG_FUNCTION_ENTRY() OutputDebugString( "ElasticAPM: " __FUNCTION__ ": Entered" )
+#       define LOG_FUNCTION_EXIT() OutputDebugString( "ElasticAPM: " __FUNCTION__ ": Exiting" )
+#       define LOG_FUNCTION_EXIT_MSG( msg ) OutputDebugString( "ElasticAPM: " __FUNCTION__ ": Exiting: " msg )
+#       define LOG_MSG( msg ) OutputDebugString( "ElasticAPM: " __FUNCTION__ ": " msg )
 #   endif
 #else
 #   define LOG_FUNCTION_ENTRY() /**/

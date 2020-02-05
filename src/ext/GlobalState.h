@@ -38,6 +38,8 @@ static inline ResultCode initGlobalState( GlobalState* thisObj )
 {
     ASSERT_VALID_PTR( thisObj );
 
+    initConfig( &thisObj->config );
+
     thisObj->currentTransaction = NULL;
     thisObj->iniEntriesRegistered = false;
     thisObj->curlInited = false;
@@ -52,6 +54,8 @@ static inline ResultCode initGlobalState( GlobalState* thisObj )
 static inline void cleanupGlobalState( GlobalState* thisObj )
 {
     ASSERT_VALID_PTR( thisObj );
+
+    cleanupConfig( &thisObj->config );
 }
 
 #endif /* #ifndef ELASTICAPM_GLOBAL_STATE_H */

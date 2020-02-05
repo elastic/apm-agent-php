@@ -9,10 +9,13 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_CONFIGURATION_H
-#define ELASTICAPM_CONFIGURATION_H
+#ifndef ELASTICAPM_CONFIG_H
+#define ELASTICAPM_CONFIG_H
 
 #include <stdbool.h>
+
+#include "elasticapm_assert.h"
+#include "ResultCode.h"
 
 struct Config
 {
@@ -26,4 +29,34 @@ struct Config
 
 typedef struct Config Config;
 
-#endif /* #ifndef ELASTICAPM_CONFIGURATION_H */
+#define ENABLED_CONFIG_DEFAULT_VALUE (true)
+#define ENABLED_CONFIG_DEFAULT_STR_VALUE ("true")
+#define SERVER_URL_CONFIG_DEFAULT_VALUE ("http://localhost:8200")
+#define SECRET_TOKEN_CONFIG_DEFAULT_VALUE ("")
+#define SERVICE_NAME_CONFIG_DEFAULT_VALUE ("Unknown PHP service")
+#define LOG_CONFIG_DEFAULT_VALUE ("")
+#define LOG_LEVEL_CONFIG_DEFAULT_VALUE (0)
+#define LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE ("0")
+
+static inline void cleanupConfig( Config* thisObj )
+{
+    ASSERT_VALID_PTR( thisObj );
+
+    thisObj->enabled = ENABLED_CONFIG_DEFAULT_VALUE;
+    thisObj->serverUrl = SERVER_URL_CONFIG_DEFAULT_VALUE;
+    thisObj->secretToken = SECRET_TOKEN_CONFIG_DEFAULT_VALUE;
+    thisObj->serviceName = SERVICE_NAME_CONFIG_DEFAULT_VALUE;
+    thisObj->log = LOG_CONFIG_DEFAULT_VALUE;
+    thisObj->logLevel = LOG_LEVEL_CONFIG_DEFAULT_VALUE;
+}
+
+static inline ResultCode initConfig( Config* thisObj )
+{
+    ASSERT_VALID_PTR( thisObj );
+
+    cleanupConfig( thisObj );
+
+    return resultSuccess;
+}
+
+#endif /* #ifndef ELASTICAPM_CONFIG_H */

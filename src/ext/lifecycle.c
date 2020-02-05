@@ -66,6 +66,7 @@ static ResultCode ensureAllocatedAndAppend( MutableString* pBuffer, size_t maxLe
     if ( buffer == NULL )
     {
         ALLOC_STRING_IF_FAILED_GOTO( maxLength, buffer );
+        buffer[ 0 ] = '\0';
         bufferUsedLength = 0;
     }
     else
@@ -123,7 +124,8 @@ static void elasticApmThrowExceptionHook( zval* exception )
     timestamp = getCurrentTimeEpochMicroseconds();
 
     ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
-    sprintf( jsonBuffer
+    snprintf( jsonBuffer
+             , jsonBufferMaxLength + 1
              , JSON_EXCEPTION
              , timestamp
              , errorId
@@ -143,6 +145,7 @@ static void elasticApmThrowExceptionHook( zval* exception )
 
     if ( globalState->originalZendThrowExceptionHook != NULL ) globalState->originalZendThrowExceptionHook( exception );
 
+    UNUSED_LOCAL_VAR( resultCode );
     return;
 
     failure:
@@ -175,7 +178,8 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
     CALL_IF_FAILED_GOTO( genRandomIdHexString( ERROR_ID_SIZE_IN_BYTES, &errorId ) );
 
     ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
-    sprintf( jsonBuffer
+    snprintf( jsonBuffer
+             , jsonBufferMaxLength + 1
              , JSON_ERROR
              , timestamp
              , errorId
@@ -190,14 +194,19 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
              , msg
     );
 
+#ifdef PHP_WIN32
+    strReplaceChar( jsonBuffer, '\\', '/' );
+#endif
     CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->errors, 100 * 1024, jsonBuffer ) );
 
     finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
     EFREE_AND_SET_TO_NULL( errorId );
+    EFREE_AND_SET_TO_NULL( msg );
 
     if ( globalState->originalZendErrorCallback != NULL ) globalState->originalZendErrorCallback( type, error_filename, error_lineno, format, args );
 
+    UNUSED_LOCAL_VAR( resultCode );
     return;
 
     failure:
@@ -549,7 +558,7 @@ ResultCode elasticApmRequestShutdown()
 
     appendMetrics( &globalState->startSystemMetricsReading, &currentTime, serializedEventsBuffer );
 
-//    if ( !strIsNullOrEmtpy( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
+    if ( !strIsNullOrEmtpy( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
     if ( !strIsNullOrEmtpy( currentTransaction->exceptions ) ) appendSerializedEvent( currentTransaction->exceptions, serializedEventsBuffer );
 
     sendEventsToApmServer( curl, config, serializedEventsBuffer );

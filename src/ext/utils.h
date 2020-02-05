@@ -122,6 +122,7 @@ ResultCode genRandomIdHexString( UInt8 idSizeBytes, String* pResult );
 #ifdef PHP_WIN32
 extern void* g_unusedParameterHelper;
 #define UNUSED_PARAMETER( parameter ) do { g_unusedParameterHelper = (void*)(&(parameter)); } while ( false )
+#define UNUSED_LOCAL_VAR( localVar ) do { g_unusedParameterHelper = (void*)(&(localVar)); } while ( false )
 #else
 #define UNUSED_PARAMETER( paramter )
 #endif
