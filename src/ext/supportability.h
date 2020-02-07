@@ -9,4 +9,9 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#pragma once
+
+#include "Zend/zend_modules.h"
+
+void elasticapmModuleInfo( zend_module_entry* zend_module);
+void displaySecretIniValue( zend_ini_entry *iniEntry, int type);

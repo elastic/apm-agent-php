@@ -3,5 +3,32 @@ ARG_ENABLE('elasticapm', 'elasticapm support', 'no');
 if (PHP_ELASTICAPM != 'no') {
 	AC_DEFINE('HAVE_ELASTICAPM', 1, 'elasticapm support enabled');
 
-	EXTENSION('elasticapm', 'elasticapm.c php_error.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+	if (CHECK_LIB("libcurl_a.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("zlib_a.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("libssh2_debug.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("nghttp2_debug.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("libcrypto.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("libssl.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("wldap32.lib", "elasticapm", PHP_ELASTICAPM)
+	    && CHECK_LIB("normaliz.lib", "elasticapm", PHP_ELASTICAPM)
+    ) {
+        ELASTICAPM_PHP_EXT_SOURCES =
+            "elasticapm.c" + " " +
+            "elasticapm_assert.c" + " " +
+            "lifecycle.c" + " " +
+            "log.c" + " " +
+            "php_error.c" + " " +
+            "supportability.c" + " " +
+            "SystemMetrics.c" + " " +
+            "utils.c" + " " +
+            "";
+
+        EXTENSION('elasticapm', ELASTICAPM_PHP_EXT_SOURCES, null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+
+        AC_DEFINE('HAVE_CURL', 1, 'Have cURL library');
+        ADD_FLAG("CFLAGS_CURL", "/D CURL_STATICLIB");
+
+	} else {
+		WARNING("elasticapm cannot be built - required libraries not found");
+	}    
 }

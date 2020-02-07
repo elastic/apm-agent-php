@@ -78,7 +78,18 @@ if test "$PHP_ELASTICAPM" != "no"; then
   dnl # In case of no dependencies
   AC_DEFINE(HAVE_ELASTICAPM, 1, [ Have elasticapm support ])
 
-  PHP_NEW_EXTENSION(elasticapm, elasticapm.c cpu_usage.c php_error.c log.c, $ext_shared)
+  ELASTICAPM_PHP_EXT_SOURCES="\
+    elasticapm.c \
+    elasticapm_assert.c \
+    lifecycle.c \
+    log.c \
+    php_error.c \
+    supportability.c \
+    SystemMetrics.c \
+    utils.c \
+  "
+
+  PHP_NEW_EXTENSION(elasticapm, $ELASTICAPM_PHP_EXT_SOURCES, $ext_shared)
   PHP_CHECK_LIBRARY(curl, curl_easy_setopt, [EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lcurl"])
   PHP_SUBST(EXTRA_LDFLAGS)
 fi

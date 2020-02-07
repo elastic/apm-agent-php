@@ -48,14 +48,13 @@ docker run --rm -ti -v $(pwd):/app apm-agent-php make install
 You can configure the Elastic APM agent using the following ini settings for PHP:
 
 ```ini
-elasticapm.enable = 0
 elasticapm.host = localhost:8200
 elasticapm.service_name = "Unknown PHP service"
 elasticapm.log = 
 elasticapm.log_level= 0
 ```
 
-By default, the extension is disabled. You need to enable it setting `elasticapm.enable=1`.
+By default, the extension is enabled. You can disable it by setting `elasticapm.enabled=false`.
 
 You can enable the logging of the PHP agent adding a file path in `elasticapm.log`.
 You can also specify the log level using the `elasticapm.log_level` key. The
@@ -75,11 +74,10 @@ E.g. if you specify `4`, all log `0`, `1`, `2` and `3` will be ignored.
 
 You can see an example of `elasticapm.ini` [here](src/ext/elasticapm.ini).
 
-If you want you can also change the Elastic APM agent at runtime, using the
+If you want you can also change the Elastic APM agent configuration at runtime, using the
 following PHP code:
 
 ```php
-ini_set('elasticapm.enable', '1');
 ini_set('elasticapm.host', 'myhost:8200');
 ini_set('elasticapm.service_name', 'test');
 ini_set('elasticapm.log', '/tmp/elasticapm.log');

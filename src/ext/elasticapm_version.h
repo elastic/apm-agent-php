@@ -9,4 +9,6 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#pragma once
+
+#define PHP_ELASTICAPM_VERSION "0.1-preview"

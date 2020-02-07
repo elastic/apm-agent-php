@@ -9,4 +9,23 @@
    +----------------------------------------------------------------------+
  */
 
-const char *get_php_error_name(int code);
+#pragma once
+
+#include "php_elasticapm.h"
+
+static inline const char* getCurrentTransactionId()
+{
+    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
+    return currentTransaction == NULL ? NULL : currentTransaction->id;
+}
+
+static inline const char* getCurrentTraceId()
+{
+    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
+    return currentTransaction == NULL ? NULL : currentTransaction->traceId;
+}
+
+static inline bool isEnabled()
+{
+    return getGlobalState()->config.enabled;
+}
