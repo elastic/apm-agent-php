@@ -14,9 +14,6 @@
 #include <stdbool.h>
 #include <php.h>
 #include <Zend/zend.h>
-//#include <Zend/zend_API.h>
-//#include <Zend/zend_string.h>
-//#include <Zend/zend_hash.h>
 
 #ifdef PHP_WIN32
 #   include <win32/time.h>
@@ -28,7 +25,6 @@
 #include "basic_types.h"
 #include "ResultCode.h"
 #include "elasticapm_assert.h"
-#include "StringView.h"
 
 
 #define FOR_EACH_INDEX_START_END( indexVarType, indexVar, rangeStart, rangeExcludedEnd ) \
