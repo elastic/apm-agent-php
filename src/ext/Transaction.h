@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_TRANSACTION_H
-#define ELASTICAPM_TRANSACTION_H
+#pragma once
 
 #include "utils.h"
 #include "elasticapm_assert.h"
@@ -67,5 +66,3 @@ static inline ResultCode newTransaction( Transaction** ppThisObj )
     deleteTransactionAndSetToNull( &thisObj );
     goto finally;
 }
-
-#endif /* #ifndef ELASTICAPM_TRANSACTION_H */

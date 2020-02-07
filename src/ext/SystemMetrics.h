@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_SYSTEM_METRICS_H
-#define ELASTICAPM_SYSTEM_METRICS_H
+#pragma once
 
 #include "basic_types.h"
 
@@ -45,5 +44,3 @@ typedef struct SystemMetrics SystemMetrics;
 void readSystemMetrics( SystemMetricsReading* systemMetricsReading );
 
 void getSystemMetrics( const SystemMetricsReading* startReading, const SystemMetricsReading* endReading, SystemMetrics* result );
-
-#endif /* #ifndef ELASTICAPM_SYSTEM_METRICS_H */

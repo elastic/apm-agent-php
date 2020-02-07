@@ -8,19 +8,19 @@ if (!extension_loaded('elasticapm')) {
 ?>
 --FILE--
 <?php
-if ( elasticApmIsEnabled() ) {
-    if ( strlen( elasticApmGetCurrentTransactionId() ) !== 16 ) {
-    	echo 'strlen( elasticApmGetCurrentTransactionId() ): ' . strlen( elasticApmGetCurrentTransactionId() );
+if ( elasticapm_is_enabled() ) {
+    if ( strlen( elasticapm_get_current_transaction_id() ) !== 16 ) {
+    	echo 'strlen( elasticapm_get_current_transaction_id() ): ' . strlen( elasticapm_get_current_transaction_id() );
     }
-    if ( strlen( elasticApmGetCurrentTraceId() ) !== 32 ) {
-    	echo 'strlen( elasticApmGetCurrentTraceId() ): ' . strlen( elasticApmGetCurrentTraceId() );
+    if ( strlen( elasticapm_get_current_trace_id() ) !== 32 ) {
+    	echo 'strlen( elasticapm_get_current_trace_id() ): ' . strlen( elasticapm_get_current_trace_id() );
     }
 } else {
-    if ( elasticApmGetCurrentTransactionId() !== null ) {
-    	echo 'elasticApmGetCurrentTransactionId(): ' . elasticApmGetCurrentTransactionId();
+    if ( elasticapm_get_current_transaction_id() !== null ) {
+    	echo 'elasticapm_get_current_transaction_id(): ' . elasticapm_get_current_transaction_id();
     }
-    if ( elasticApmGetCurrentTraceId() !== null ) {
-    	echo 'elasticApmGetCurrentTraceId(): ' . elasticApmGetCurrentTraceId();
+    if ( elasticapm_get_current_trace_id() !== null ) {
+    	echo 'elasticapm_get_current_trace_id(): ' . elasticapm_get_current_trace_id();
     }
 }
 ?>

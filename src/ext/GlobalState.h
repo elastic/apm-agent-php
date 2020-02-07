@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_GLOBAL_STATE_H
-#define ELASTICAPM_GLOBAL_STATE_H
+#pragma once
 
 #include <stdbool.h>
 #include "elasticapm_config.h"
@@ -57,5 +56,3 @@ static inline void cleanupGlobalState( GlobalState* thisObj )
 
     cleanupConfig( &thisObj->config );
 }
-
-#endif /* #ifndef ELASTICAPM_GLOBAL_STATE_H */

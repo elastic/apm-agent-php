@@ -22,7 +22,7 @@
 
 #include "lifecycle.h"
 #include "supportability.h"
-#include "public_api.h"
+#include "internal_php_API.h"
 
 
 ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
@@ -65,8 +65,8 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY( "elasticapm.serverUrl", SERVER_URL_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, serverUrl, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
     STD_PHP_INI_ENTRY_EX( "elasticapm.secretToken", SECRET_TOKEN_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, secretToken, Config, ELASTICAPM_GLOBAL_STATE_CONFIG(), displaySecretIniValue )
     STD_PHP_INI_ENTRY( "elasticapm.service_name", SERVICE_NAME_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, serviceName, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
-    STD_PHP_INI_ENTRY( "elasticapm.log", LOG_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, log, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
-    STD_PHP_INI_ENTRY( "elasticapm.logLevel", LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE, PHP_INI_ALL, OnUpdateLong, logLevel, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.log_file", LOG_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, logFile, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.log_level", LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE, PHP_INI_ALL, OnUpdateLong, logLevel, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
 PHP_INI_END()
 
 void registerElasticApmIniEntries( int module_number)
@@ -89,19 +89,19 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     return resultCodeToZend( elasticApmModuleShutdown( type, module_number ) );
 }
 
-PHP_FUNCTION( elasticApmIsEnabled )
+PHP_FUNCTION( elasticapm_is_enabled )
 {
     RETURN_BOOL( isEnabled() )
 }
 
-PHP_FUNCTION( elasticApmGetCurrentTransactionId )
+PHP_FUNCTION( elasticapm_get_current_transaction_id )
 {
     const char* retVal = getCurrentTransactionId();
     if ( retVal == NULL ) RETURN_NULL();
     RETURN_STRING( retVal )
 }
 
-PHP_FUNCTION( elasticApmGetCurrentTraceId )
+PHP_FUNCTION( elasticapm_get_current_trace_id )
 {
     const char* retVal = getCurrentTraceId();
     if ( retVal == NULL ) RETURN_NULL();
@@ -110,9 +110,9 @@ PHP_FUNCTION( elasticApmGetCurrentTraceId )
 
 static const zend_function_entry elasticapm_functions[] =
 {
-    PHP_FE( elasticApmIsEnabled, NULL )
-    PHP_FE( elasticApmGetCurrentTransactionId, NULL )
-	PHP_FE( elasticApmGetCurrentTraceId, NULL )
+    PHP_FE( elasticapm_is_enabled, NULL )
+    PHP_FE( elasticapm_get_current_transaction_id, NULL )
+	PHP_FE( elasticapm_get_current_trace_id, NULL )
 	PHP_FE_END
 };
 

@@ -9,13 +9,14 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_UTILS_H
-#define ELASTICAPM_UTILS_H
+#pragma once
 
 #include <stdbool.h>
 #include <php.h>
 #include <Zend/zend.h>
-#include <Zend/zend_string.h>
+//#include <Zend/zend_API.h>
+//#include <Zend/zend_string.h>
+//#include <Zend/zend_hash.h>
 
 #ifdef PHP_WIN32
 #   include <win32/time.h>
@@ -27,39 +28,40 @@
 #include "basic_types.h"
 #include "ResultCode.h"
 #include "elasticapm_assert.h"
+#include "StringView.h"
 
 
 #define FOR_EACH_INDEX_START_END( indexVarType, indexVar, rangeStart, rangeExcludedEnd ) \
-    for ( indexVarType indexVar = rangeStart ; indexVar < rangeExcludedEnd ; ++indexVar )
+    for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; ++(indexVar) )
 
 #define FOR_EACH_INDEX( indexVarType, indexVar, rangeSize ) \
     FOR_EACH_INDEX_START_END( indexVarType, indexVar, 0, rangeSize )
 
-static inline bool strIsEmtpy( const char* str )
+static inline bool isEmtpyStr( const char* str )
 {
     return strlen( str ) == 0;
 }
 
-static inline bool strIsNullOrEmtpy( const char* str )
+static inline bool isNullOrEmtpyStr( const char* str )
 {
-    return str == NULL || strIsEmtpy( str );
+    return str == NULL || isEmtpyStr( str );
 }
 
-static inline void strReplaceChar( MutableString str, char originalChar, char replacementChar )
+static inline void replaceChar( MutableString str, char originalChar, char replacementChar )
 {
     ASSERT_VALID_PTR( str );
 
     for ( size_t i = 0 ; str[ i ] != '\0' ; ++i ) if ( str[ i ] == originalChar ) str[ i ] = replacementChar;
 }
 
-static inline bool zstrIsEmtpy( const zend_string* zstr )
+static inline bool isEmtpyZstr( const zend_string* zStr )
 {
-    return ZSTR_LEN( zstr ) == 0;
+    return ZSTR_LEN( zStr ) == 0;
 }
 
-static inline bool zstrIsNullOrEmtpy( const zend_string* zstr )
+static inline bool isNullOrEmtpyZstr( const zend_string* zStr )
 {
-    return zstr == NULL || zstrIsEmtpy( zstr );
+    return zStr == NULL || isEmtpyZstr( zStr );
 }
 
 static inline const char* boolToStr( bool boolValue )
@@ -125,6 +127,36 @@ extern void* g_unusedParameterHelper;
 #define UNUSED_LOCAL_VAR( localVar ) do { g_unusedParameterHelper = (void*)(&(localVar)); } while ( false )
 #else
 #define UNUSED_PARAMETER( paramter )
+#define UNUSED_LOCAL_VAR( localVar )
 #endif
 
-#endif /* #ifndef ELASTICAPM_UTILS_H */
+#define ELASTIC_PP_STRINGIZE_IMPL( token ) #token
+#define ELASTIC_PP_STRINGIZE( token ) ELASTIC_PP_STRINGIZE_IMPL( token )
+
+struct StringView
+{
+    const char* begin;
+    size_t length;
+};
+
+typedef struct StringView StringView;
+
+static inline StringView makeStringView( const char* begin, size_t length )
+{
+    StringView result = { .begin = begin, .length = length };
+    return result;
+}
+
+#define STRING_LITERAL_TO_VIEW( stringLiteral ) makeStringView( (stringLiteral), sizeof( stringLiteral ) - 1 )
+
+static inline bool isZarray( const zval* zValue )
+{
+    ASSERT_VALID_PTR( zValue );
+
+    return Z_TYPE_P( zValue ) == IS_ARRAY;
+}
+
+static inline const zval* findInZarrayByStrKey( const zend_array* zArray, StringView key )
+{
+    return zend_hash_str_find( zArray, key.begin, key.length );
+}

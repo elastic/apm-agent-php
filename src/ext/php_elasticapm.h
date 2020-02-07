@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef PHP_ELASTICAPM_H
-#define PHP_ELASTICAPM_H
+#pragma once
 
 #include <php.h>
 #include <Zend/zend.h>
@@ -47,5 +46,3 @@ static inline const Config* getCurrentConfig()
 
 void registerElasticApmIniEntries( int module_number);
 void unregisterElasticApmIniEntries( int module_number);
-
-#endif	/* PHP_ELASTICAPM_H */

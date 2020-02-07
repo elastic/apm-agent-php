@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_CONSTANTS_H
-#define ELASTICAPM_CONSTANTS_H
+#pragma once
 
 #define NUMBER_OF_MICROSECONDS_IN_SECOND (1000000)
 #define NUMBER_OF_MICROSECONDS_IN_MILLISECOND (1000)
@@ -27,5 +26,3 @@
 // https://github.com/elastic/apm-server/blob/6.5/docs/spec/errors/v2_error.json#L13
 // 128 random bits ID
 #define ERROR_ID_SIZE_IN_BYTES (16)
-
-#endif /* #ifndef ELASTICAPM_CONSTANTS_H */

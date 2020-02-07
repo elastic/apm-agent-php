@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_PUBLIC_API_H
-#define ELASTICAPM_PUBLIC_API_H
+#pragma once
 
 #include "php_elasticapm.h"
 
@@ -30,5 +29,3 @@ static inline bool isEnabled()
 {
     return getGlobalState()->config.enabled;
 }
-
-#endif /* #ifndef ELASTICAPM_PUBLIC_API_H */

@@ -23,8 +23,10 @@ void elasticapmModuleInfo( zend_module_entry* zend_module )
 {
     LOG_FUNCTION_ENTRY();
 
+    const Config* const config = &getGlobalState()->config;
+
     php_info_print_table_start();
-    php_info_print_table_header( 2, "Elastic APM agent", "enabled" );
+    php_info_print_table_header( 2, "Enabled", config->enabled ? "true" : "FALSE" );
     php_info_print_table_row( 2, "Version", PHP_ELASTICAPM_VERSION );
     php_info_print_table_end();
 
@@ -43,7 +45,7 @@ void displaySecretIniValue( zend_ini_entry* iniEntry, int type )
     const char* const redacted = "***";
     const char* const noValue = "no value";
 
-    const char* const valueToPrint = zstrIsNullOrEmtpy( iniEntryValue( iniEntry, type ) ) ? noValue : redacted;
+    const char* const valueToPrint = isNullOrEmtpyZstr( iniEntryValue( iniEntry, type ) ) ? noValue : redacted;
 
     php_printf( sapi_module.phpinfo_as_text ? "%s" : "<i>%s</i>", valueToPrint );
 }

@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_LIFECYCLE_H
-#define ELASTICAPM_LIFECYCLE_H
+#pragma once
 
 #include "ResultCode.h"
 
@@ -22,5 +21,3 @@ ResultCode elasticApmModuleShutdown( int type, int moduleNumber );
 ResultCode elasticApmRequestInit();
 
 ResultCode elasticApmRequestShutdown();
-
-#endif /* #ifndef ELASTICAPM_LIFECYCLE_H */

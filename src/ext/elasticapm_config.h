@@ -9,13 +9,14 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_CONFIG_H
-#define ELASTICAPM_CONFIG_H
+#pragma once
 
 #include <stdbool.h>
 
 #include "elasticapm_assert.h"
 #include "ResultCode.h"
+#include "utils.h"
+#include "log.h"
 
 struct Config
 {
@@ -23,20 +24,22 @@ struct Config
     const char* serverUrl;
     const char* secretToken;
     const char* serviceName;
-    const char* log;
+    const char* logFile;
     int logLevel;
 };
 
 typedef struct Config Config;
 
-#define ENABLED_CONFIG_DEFAULT_VALUE (true)
-#define ENABLED_CONFIG_DEFAULT_STR_VALUE ("true")
-#define SERVER_URL_CONFIG_DEFAULT_VALUE ("http://localhost:8200")
-#define SECRET_TOKEN_CONFIG_DEFAULT_VALUE ("")
-#define SERVICE_NAME_CONFIG_DEFAULT_VALUE ("Unknown PHP service")
-#define LOG_CONFIG_DEFAULT_VALUE ("")
-#define LOG_LEVEL_CONFIG_DEFAULT_VALUE (0)
-#define LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE ("0")
+// We don't wrap value in parenthesis because it's stringized later
+#define ENABLED_CONFIG_DEFAULT_VALUE true
+#define ENABLED_CONFIG_DEFAULT_STR_VALUE ( ELASTIC_PP_STRINGIZE( ENABLED_CONFIG_DEFAULT_VALUE ) )
+#define SERVER_URL_CONFIG_DEFAULT_VALUE ( "http://localhost:8200" )
+#define SECRET_TOKEN_CONFIG_DEFAULT_VALUE ( "" )
+#define SERVICE_NAME_CONFIG_DEFAULT_VALUE ( "Unknown PHP service" )
+#define LOG_CONFIG_DEFAULT_VALUE ( "" )
+// We don't wrap value in parenthesis because it's stringized later
+#define LOG_LEVEL_CONFIG_DEFAULT_VALUE 0
+#define LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE ( ELASTIC_PP_STRINGIZE( LOG_LEVEL_CONFIG_DEFAULT_VALUE ) )
 
 static inline void cleanupConfig( Config* thisObj )
 {
@@ -46,7 +49,7 @@ static inline void cleanupConfig( Config* thisObj )
     thisObj->serverUrl = SERVER_URL_CONFIG_DEFAULT_VALUE;
     thisObj->secretToken = SECRET_TOKEN_CONFIG_DEFAULT_VALUE;
     thisObj->serviceName = SERVICE_NAME_CONFIG_DEFAULT_VALUE;
-    thisObj->log = LOG_CONFIG_DEFAULT_VALUE;
+    thisObj->logFile = LOG_CONFIG_DEFAULT_VALUE;
     thisObj->logLevel = LOG_LEVEL_CONFIG_DEFAULT_VALUE;
 }
 
@@ -58,5 +61,3 @@ static inline ResultCode initConfig( Config* thisObj )
 
     return resultSuccess;
 }
-
-#endif /* #ifndef ELASTICAPM_CONFIG_H */

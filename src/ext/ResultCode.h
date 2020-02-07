@@ -9,9 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_STATUS_CODE_H
-#define ELASTICAPM_STATUS_CODE_H
-
+#pragma once
 
 enum ResultCode
 {
@@ -50,5 +48,3 @@ typedef enum ResultCode ResultCode;
         resultCode = (expr); \
         if ( resultCode != resultSuccess ) goto failure; \
     } while( false )
-
-#endif /* #ifndef ELASTICAPM_STATUS_CODE_H */

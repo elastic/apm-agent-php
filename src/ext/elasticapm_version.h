@@ -9,9 +9,6 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_VERSION_H
-#define ELASTICAPM_VERSION_H
+#pragma once
 
-#define PHP_ELASTICAPM_VERSION "0.1"
-
-#endif /* #ifndef ELASTICAPM_VERSION_H */
+#define PHP_ELASTICAPM_VERSION "0.1-preview"

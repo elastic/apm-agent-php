@@ -195,7 +195,7 @@ static void elasticApmErrorCallback( int type, const char* error_filename, const
     );
 
 #ifdef PHP_WIN32
-    strReplaceChar( jsonBuffer, '\\', '/' );
+    replaceChar( jsonBuffer, '\\', '/' );
 #endif
     CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->errors, 100 * 1024, jsonBuffer ) );
 
@@ -227,7 +227,6 @@ ResultCode elasticApmModuleInit( int type, int moduleNumber )
     globalState->iniEntriesRegistered = true;
     config = getCurrentConfig();
 
-    // __asm__("int3");
     if ( !config->enabled )
     {
         LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
@@ -349,73 +348,139 @@ static void appendMetadata( const Config* config, char* serializedEventsBuffer )
     EFREE_AND_SET_TO_NULL( jsonBuffer );
 }
 
-#define ELASTICAPM_REQUEST_DATA_FIELD( var ) zval *var; bool var##Found
-
 struct RequestData
 {
-    ELASTICAPM_REQUEST_DATA_FIELD( uri );
-    ELASTICAPM_REQUEST_DATA_FIELD( host );
-    ELASTICAPM_REQUEST_DATA_FIELD( clientIp );
-//    ELASTICAPM_REQUEST_DATA_FIELD(referer);
-//    ELASTICAPM_REQUEST_DATA_FIELD(request_time);
-    ELASTICAPM_REQUEST_DATA_FIELD( scriptName );
-    ELASTICAPM_REQUEST_DATA_FIELD( httpMethod );
-    ELASTICAPM_REQUEST_DATA_FIELD( path );
+    String clientAddress;
+    String httpHost;
+    String httpMethod;
+    String scriptFilePath;
+    String urlPath;
 };
 typedef struct RequestData RequestData;
 
-static void getRequestData( RequestData* requestData )
+static ResultCode getRequestDataStrField( const zend_array* serverHttpGlobals, StringView key, String* pField )
 {
-    zval * tmp;
+    ResultCode resultCode;
 
-#define FETCH_HTTP_GLOBALS( name ) (tmp = &PG(http_globals)[TRACK_VARS_##name])
-#define REGISTER_INFO( name, request_data_field, type ) \
-        requestData->request_data_field##Found = \
-            ((requestData->request_data_field = zend_hash_str_find(Z_ARRVAL_P(tmp), name, sizeof(name) - 1)) \
-            && (Z_TYPE_P(requestData->request_data_field) == (type)));
+    ASSERT_VALID_PTR( pField );
 
-    zend_is_auto_global_str( ZEND_STRL( "_SERVER" ) );
-    if ( FETCH_HTTP_GLOBALS( SERVER ) )
+    *pField = NULL;
+
+    const zval* fieldZval = findInZarrayByStrKey( serverHttpGlobals, key );
+    if ( fieldZval == NULL )
     {
-        REGISTER_INFO( "REQUEST_URI", uri, IS_STRING )
-        REGISTER_INFO( "HTTP_HOST", host, IS_STRING )
-//        REGISTER_INFO("HTTP_REFERER", referer, IS_STRING)
-//        REGISTER_INFO("REQUEST_TIME", request_time, IS_LONG)
-        REGISTER_INFO( "SCRIPT_FILENAME", scriptName, IS_STRING )
-        REGISTER_INFO( "REQUEST_METHOD", httpMethod, IS_STRING )
-        REGISTER_INFO( "REMOTE_ADDR", clientIp, IS_STRING )
-        REGISTER_INFO( "PWD", path, IS_STRING )
+        resultCode = resultSuccess;
+        LOG_FUNCTION_EXIT_MSG( "array does not contain the key - setting pField to NULL" );
+        goto finally;
     }
+
+    if ( Z_TYPE_P( fieldZval ) != IS_STRING )
+    {
+        resultCode = resultSuccess;
+        LOG_FUNCTION_EXIT_MSG( "array contains the key but the value's type is not string - setting pField to NULL" );
+        goto failure;
+    }
+
+    *pField = Z_STRVAL_P( fieldZval );
+
+    resultCode = resultSuccess;
+    LOG_FUNCTION_EXIT();
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+
 }
 
-static void appendTransaction( const Transaction* transaction, const TimePoint* currentTime, char* serializedEventsBuffer )
+static ResultCode getRequestData( RequestData* requestData )
 {
-    // Transaction
+    ResultCode resultCode;
+    const zval* serverHttpGlobalsZval = NULL;
+    zend_array* serverHttpGlobals = NULL;
+
+    LOG_FUNCTION_ENTRY();
+
+    memset( requestData, 0, sizeof( *requestData ) );
+
+    if ( ! zend_is_auto_global_str( ZEND_STRL( "_SERVER" ) ) )
+    {
+        resultCode = resultFailure;
+        LOG_FUNCTION_EXIT_MSG( "zend_is_auto_global_str( ZEND_STRL( \"_SERVER\" ) ) failed" );
+        goto failure;
+    }
+
+    serverHttpGlobalsZval = &PG( http_globals )[ TRACK_VARS_SERVER ];
+    if ( serverHttpGlobalsZval == NULL )
+    {
+        resultCode = resultFailure;
+        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobalsZval is NULL" );
+        goto failure;
+    }
+
+    if ( ! isZarray( serverHttpGlobalsZval ) )
+    {
+        resultCode = resultFailure;
+        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobalsZval is not array" );
+        goto failure;
+    }
+
+    serverHttpGlobals = Z_ARRVAL_P( serverHttpGlobalsZval );
+    if ( serverHttpGlobals == NULL )
+    {
+        resultCode = resultFailure;
+        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobals is NULL" );
+        goto failure;
+    }
+
+    // https://www.php.net/manual/en/reserved.variables.server.php
+    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REMOTE_ADDR" ), &requestData->clientAddress ) );
+    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "HTTP_HOST" ), &requestData->httpHost ) );
+    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REQUEST_METHOD" ), &requestData->httpMethod ) );
+    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "SCRIPT_FILENAME" ), &requestData->scriptFilePath ) );
+    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REQUEST_URI" ), &requestData->urlPath ) );
+
+    resultCode = resultSuccess;
+    LOG_FUNCTION_EXIT();
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+static ResultCode appendTransaction( const Transaction* transaction, const TimePoint* currentTime, char* serializedEventsBuffer )
+{
+    ResultCode resultCode;
     char txType[8];
     char* jsonBuffer = NULL;
     char* txName = NULL;
-
     RequestData requestData;
-    getRequestData( &requestData );
 
-    // if HTTP method exists it is a HTTP request
-    txName = emalloc( sizeof( char ) * 1024 );
-    if ( requestData.httpMethodFound )
+    LOG_FUNCTION_ENTRY();
+
+    CALL_IF_FAILED_GOTO( getRequestData( &requestData ) );
+
+    ALLOC_STRING_IF_FAILED_GOTO( 1024, txName );
+
+    // if HTTP method and URL exist then it is a HTTP request
+    if ( isNullOrEmtpyStr( requestData.httpMethod ) || isNullOrEmtpyStr( requestData.urlPath ) )
     {
-        sprintf( txType, "%s", "request" );
-        sprintf( txName, "%s %s", Z_STRVAL_P( requestData.httpMethod ), Z_STRVAL_P( requestData.uri ) );
+        sprintf( txType, "%s", "script" );
+        sprintf( txName, "%s", isNullOrEmtpyStr( requestData.scriptFilePath ) ? "Unknown" : requestData.scriptFilePath );
+#ifdef PHP_WIN32
+        replaceChar( txName, '\\', '/' );
+#endif
     }
     else
     {
-        sprintf( txType, "%s", "script" );
-        const char* const txNameSrc = ( requestData.scriptNameFound && ! strIsNullOrEmtpy( Z_STRVAL_P( requestData.scriptName ) ) ) ? Z_STRVAL_P( requestData.scriptName ) : "Unknown";
-        sprintf( txName, "%s", txNameSrc );
-#ifdef PHP_WIN32
-        strReplaceChar( txName, '\\', '/' );
-#endif
+        sprintf( txType, "%s", "request" );
+        sprintf( txName, "%s %s", requestData.httpMethod, requestData.urlPath );
     }
 
-    jsonBuffer = emalloc( sizeof( char ) * 1024 );
+    ALLOC_STRING_IF_FAILED_GOTO( 10 * 1024, jsonBuffer );
     sprintf( jsonBuffer
              , JSON_TRANSACTION
              , txName
@@ -425,9 +490,18 @@ static void appendTransaction( const Transaction* transaction, const TimePoint* 
              , durationMicrosecondsToMilliseconds( durationMicroseconds( &transaction->startTime, currentTime ) )
              , timePointToEpochMicroseconds( &transaction->startTime )
     );
+
     appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
+    resultCode = resultSuccess;
+    LOG_FUNCTION_EXIT();
+
+    finally:
     EFREE_AND_SET_TO_NULL( jsonBuffer );
     EFREE_AND_SET_TO_NULL( txName );
+    return resultCode;
+
+    failure:
+    goto finally;
 }
 
 static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, char* serializedEventsBuffer )
@@ -461,9 +535,9 @@ static void sendEventsToApmServer( CURL* curl, const Config* config, const char*
     FILE* logFile = NULL;
 
     /* Initialize the log file */
-    if ( !strIsNullOrEmtpy( config->log ) )
+    if ( !isNullOrEmtpyStr( config->logFile ) )
     {
-        logFile = fopen( config->log, "a" );
+        logFile = fopen( config->logFile, "a" );
         if ( logFile == NULL )
         {
             // TODO: manage the error
@@ -482,7 +556,7 @@ static void sendEventsToApmServer( CURL* curl, const Config* config, const char*
     log_debug( "Request serializedEventsBuffer [length: %"PRIu64"]: %s", (UInt64)strnlen( serializedEventsBuffer, serializedEventsMaxLength ), serializedEventsBuffer );
 
     // Authorization with secret token if present
-    if ( !strIsNullOrEmtpy( config->secretToken ) )
+    if ( !isNullOrEmtpyStr( config->secretToken ) )
     {
         auth = emalloc( sizeof( char ) * 256 );
         sprintf( auth, "Authorization: Bearer %s", config->secretToken );
@@ -554,14 +628,15 @@ ResultCode elasticApmRequestShutdown()
 
     appendMetadata( config, serializedEventsBuffer );
 
+    // We ignore appendTransaction ResultCode because we want to send the rest of the events even without the transaction
     appendTransaction( currentTransaction, &currentTime, serializedEventsBuffer );
 
-    appendMetrics( &globalState->startSystemMetricsReading, &currentTime, serializedEventsBuffer );
-
-    if ( !strIsNullOrEmtpy( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
-    if ( !strIsNullOrEmtpy( currentTransaction->exceptions ) ) appendSerializedEvent( currentTransaction->exceptions, serializedEventsBuffer );
-
-    sendEventsToApmServer( curl, config, serializedEventsBuffer );
+//    appendMetrics( &globalState->startSystemMetricsReading, &currentTime, serializedEventsBuffer );
+//
+//    if ( !isNullOrEmtpyStr( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
+//    if ( !isNullOrEmtpyStr( currentTransaction->exceptions ) ) appendSerializedEvent( currentTransaction->exceptions, serializedEventsBuffer );
+//
+//    sendEventsToApmServer( curl, config, serializedEventsBuffer );
 
     resultCode = resultSuccess;
     LOG_FUNCTION_EXIT();

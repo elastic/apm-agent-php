@@ -9,8 +9,7 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_ASSERT_H
-#define ELASTICAPM_ASSERT_H
+#pragma once
 
 #include <assert.h>
 
@@ -54,5 +53,3 @@ extern int g_currentElasticApmAssertLevel;
 #define ASSERT_VALID_PTR( ptr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptr ) )
 #define ASSERT_VALID_OUT_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptrToPtr ) && ( *(ptrToPtr) == NULL ) )
 #define ASSERT_VALID_IN_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptrToPtr ) && ELASTICAPM_IS_VALID_PTR( *(ptrToPtr) ) )
-
-#endif /* #ifndef ELASTICAPM_ASSERT_H */

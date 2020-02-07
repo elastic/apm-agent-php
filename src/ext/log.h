@@ -5,8 +5,7 @@
  * under the terms of the MIT license. See `log.c` for details.
  */
 
-#ifndef LOG_H
-#define LOG_H
+#pragma once
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -50,6 +49,4 @@ void log_log(int level, const char *file, int line, const char *fmt, ...);
 #   define LOG_FUNCTION_EXIT() /**/
 #   define LOG_FUNCTION_EXIT_MSG( msg ) /**/
 #   define LOG_MSG( msg ) /**/
-#endif
-
 #endif
