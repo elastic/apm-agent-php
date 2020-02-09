@@ -25,9 +25,6 @@ extern zend_module_entry elasticapm_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
-PHP_FUNCTION(elasticApmGetCurrentTransactionId);
-PHP_FUNCTION(elasticApmGetCurrentTraceId);
-
 ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
     GlobalState state;
 ZEND_END_MODULE_GLOBALS(elasticapm)

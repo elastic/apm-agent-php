@@ -27,6 +27,12 @@
 
 ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
+#ifndef ZEND_PARSE_PARAMETERS_NONE
+#   define ZEND_PARSE_PARAMETERS_NONE() \
+        ZEND_PARSE_PARAMETERS_START(0, 0) \
+        ZEND_PARSE_PARAMETERS_END()
+#endif
+
 static inline ZEND_RESULT_CODE resultCodeToZend( ResultCode resultCode )
 {
     if ( resultCode == resultSuccess ) return SUCCESS;
@@ -40,7 +46,6 @@ PHP_RINIT_FUNCTION(elasticapm)
     return resultCodeToZend( elasticApmRequestInit() );
 }
 /* }}} */
-
 
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
@@ -89,32 +94,58 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     return resultCodeToZend( elasticApmModuleShutdown( type, module_number ) );
 }
 
+/* {{{ bool elasticapm_is_enabled()
+ */
 PHP_FUNCTION( elasticapm_is_enabled )
 {
+    ZEND_PARSE_PARAMETERS_NONE();
+
     RETURN_BOOL( isEnabled() )
 }
+/* }}} */
 
+/* {{{ string elasticapm_get_current_transaction_id()
+ */
 PHP_FUNCTION( elasticapm_get_current_transaction_id )
 {
-    const char* retVal = getCurrentTransactionId();
+    const char* const retVal = getCurrentTransactionId();
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
     if ( retVal == NULL ) RETURN_NULL()
     RETURN_STRING( retVal )
 }
+/* }}} */
 
+/* {{{ string elasticapm_get_current_trace_id()
+ */
 PHP_FUNCTION( elasticapm_get_current_trace_id )
 {
-    const char* retVal = getCurrentTraceId();
+    const char* const retVal = getCurrentTraceId();
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
     if ( retVal == NULL ) RETURN_NULL()
     RETURN_STRING( retVal )
 }
+/* }}} */
 
+/* {{{ arginfo
+ */
+ZEND_BEGIN_ARG_INFO(elasticapm_no_paramters_arginfo, 0)
+ZEND_END_ARG_INFO()
+/* }}} */
+
+/* {{{ elasticapm_functions[]
+ */
 static const zend_function_entry elasticapm_functions[] =
 {
-    PHP_FE( elasticapm_is_enabled, NULL )
-    PHP_FE( elasticapm_get_current_transaction_id, NULL )
-	PHP_FE( elasticapm_get_current_trace_id, NULL )
-	PHP_FE_END
+    PHP_FE( elasticapm_is_enabled, elasticapm_no_paramters_arginfo )
+    PHP_FE( elasticapm_get_current_transaction_id, elasticapm_no_paramters_arginfo )
+    PHP_FE( elasticapm_get_current_trace_id, elasticapm_no_paramters_arginfo )
+    PHP_FE_END
 };
+/* }}} */
 
 /* {{{ elasticapm_module_entry
  */
