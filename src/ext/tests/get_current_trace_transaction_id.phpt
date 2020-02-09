@@ -23,5 +23,8 @@ if ( elasticapm_is_enabled() ) {
     	echo 'elasticapm_get_current_trace_id(): ' . elasticapm_get_current_trace_id();
     }
 }
+
+echo 'Test completed'
 ?>
 --EXPECT--
+Test completed

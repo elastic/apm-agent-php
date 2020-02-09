@@ -97,14 +97,14 @@ PHP_FUNCTION( elasticapm_is_enabled )
 PHP_FUNCTION( elasticapm_get_current_transaction_id )
 {
     const char* retVal = getCurrentTransactionId();
-    if ( retVal == NULL ) RETURN_NULL();
+    if ( retVal == NULL ) RETURN_NULL()
     RETURN_STRING( retVal )
 }
 
 PHP_FUNCTION( elasticapm_get_current_trace_id )
 {
     const char* retVal = getCurrentTraceId();
-    if ( retVal == NULL ) RETURN_NULL();
+    if ( retVal == NULL ) RETURN_NULL()
     RETURN_STRING( retVal )
 }
 
