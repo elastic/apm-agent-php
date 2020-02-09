@@ -1,0 +1,27 @@
+root = true
+
+[*]
+charset = utf-8
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{c,h}]
+# C-style doc comments
+block_comment_start = /*
+block_comment = *
+block_comment_end = */
+
+[*.php]
+# C-style doc comments
+block_comment_start = /*
+block_comment = *
+block_comment_end = */
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*Makefile]
+indent_style = tab
+
