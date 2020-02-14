@@ -1,0 +1,12 @@
+# Mac
+.DS_Store
+
+# JetBrains PhpStorm
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# Composer
+composer.lock
+vendor/

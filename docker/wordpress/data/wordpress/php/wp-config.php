@@ -97,7 +97,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Simple "Chaos monkey" to introduce random errors
 //
 if(rand(1, 5) == rand(1, 5)) {
-	throw new Exception("Random Error by Chaos Monkey.");
+    /** @noinspection PhpUnhandledExceptionInspection */
+    throw new Exception("Random Error by Chaos Monkey.");
 }
 
 //
@@ -108,4 +109,5 @@ if(rand(1, 10) == rand(1, 10)) {
 }
 
 /** Sets up WordPress vars and included files. */
-require_once( ABSPATH . 'wp-settings.php' );
+/** @noinspection PhpIncludeInspection */
+require_once(ABSPATH . 'wp-settings.php' );
