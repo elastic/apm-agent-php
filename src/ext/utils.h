@@ -107,6 +107,8 @@ static inline double durationMicrosecondsToMilliseconds( Int64 durationMicros )
 
 ResultCode genRandomIdHexString( UInt8 idSizeBytes, String* pResult );
 
+ResultCode elasticApmExecutePhpFile( const char *filename TSRMLS_DC );
+
 #define EFREE_AND_SET_TO_NULL( ptr ) \
     do { \
         if ( (ptr) != NULL ) \
