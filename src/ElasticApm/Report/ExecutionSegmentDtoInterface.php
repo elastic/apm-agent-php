@@ -50,4 +50,26 @@ interface ExecutionSegmentDtoInterface extends TimedEventDtoInterface
      * @see getType() For the description
      */
     public function setType(string $type): void;
+
+    /**
+     * Apm Server 6.5: A flat mapping of user-defined tags with string values.
+     * Apm Server 6.7+: A flat mapping of user-defined tags with string, boolean or number values.
+     *
+     * @param string $key
+     * @param null   $default
+     *
+     * @return string|bool|int|float|null
+     *
+     * @link https://github.com/elastic/apm-server/blob/6.5/docs/spec/tags.json
+     * @link https://github.com/elastic/apm-server/blob/6.7/docs/spec/tags.json
+     */
+    public function getTag(string $key, $default = null);
+
+    /**
+     * @param string $key
+     * @param string|bool|int|float|null $value
+     *
+     * @see getTag() For the description
+     */
+    public function setTag(string $key, $value): void;
 }

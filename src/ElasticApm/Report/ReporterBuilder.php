@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace ElasticApm\Report;
 
-class ReporterBuilder
+final class ReporterBuilder
 {
+    /**
+     * Constructor is hidden because startNew() should be used instead.
+     */
+    private function __construct()
+    {
+    }
+
     public static function startNew(): self
     {
         return new self();

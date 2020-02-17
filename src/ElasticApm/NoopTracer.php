@@ -21,4 +21,14 @@ class NoopTracer implements TracerInterface
     {
         return NoopTransaction::create();
     }
+
+    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    {
+        return NoopTransaction::create();
+    }
+
+    public function getCurrentTransaction(): TransactionInterface
+    {
+        return NoopTransaction::create();
+    }
 }

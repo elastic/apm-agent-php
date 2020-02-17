@@ -9,8 +9,15 @@ namespace ElasticApmTests\Util;
  *
  * @internal
  */
-abstract class ArrayUtil
+final class ArrayUtil
 {
+    /**
+     * Constructor is hidden because it's a "static" class
+     */
+    private function __construct()
+    {
+    }
+
     /**
      * @template       T
      * @phpstan-param  array<T> $haystack
@@ -32,5 +39,29 @@ abstract class ArrayUtil
         }
 
         return -1;
+    }
+
+    /**
+     * @template        T
+     * @phpstan-param   iterable<T> $haystack
+     * @phpstan-param   callable $predicate
+     * @phpstan-param   T $default
+     * @phpstan-return  T|null
+     *
+     * @param iterable $haystack
+     * @param callable $predicate
+     * @param null     $default
+     *
+     * @return mixed
+     */
+    public static function findByPredicate(iterable $haystack, callable $predicate, $default = null)
+    {
+        foreach ($haystack as $value) {
+            if ($predicate($value)) {
+                return $value;
+            }
+        }
+
+        return $default;
     }
 }

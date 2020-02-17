@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use ElasticApm\Impl\Util\IdGenerator;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -17,6 +19,7 @@ trait ExecutionSegment
     public function constructExecutionSegment(Tracer $tracer, string $type): void
     {
         $this->tracer = $tracer;
+        $this->setId(IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES));
         $this->setType($type);
     }
 

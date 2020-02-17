@@ -6,11 +6,6 @@ namespace ElasticApm\Report;
 
 use ElasticApm\Impl\Util\NoopObjectTrait;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
 class NoopReporter implements ReporterInterface
 {
     use NoopObjectTrait;

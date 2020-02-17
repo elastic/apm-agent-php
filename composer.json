@@ -58,9 +58,9 @@
             "./vendor/bin/phpcbf ./examples/"
         ],
         "phpstan": [
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max",
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./tests/ --level max",
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./examples/ --level max"
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=100M",
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=100M",
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=100M"
         ],
         "static_check": [
             "composer run-script parallel_lint",
