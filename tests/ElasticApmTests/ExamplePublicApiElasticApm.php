@@ -11,8 +11,8 @@ use ElasticApm\ElasticApm;
  */
 final class ExamplePublicApiElasticApm
 {
-    /** @var bool */
-    private $isDataInCache = false;
+    /** @var array<string, bool> */
+    private $isDataInCache = [];
 
     public function processCheckoutRequest(string $shopId): void
     {
@@ -41,9 +41,10 @@ final class ExamplePublicApiElasticApm
 
     private function fetchData(string $dataId): void
     {
-        ElasticApm::getCurrentSpan()->setTag('is-data-in-cache', $this->isDataInCache);
+        $isDataInCache = $this->checkIfDataInCache($dataId);
+        ElasticApm::getCurrentSpan()->setTag('is-data-in-cache', $isDataInCache);
 
-        if ($this->isDataInCache) {
+        if ($isDataInCache) {
             $this->redisFetch($dataId);
         } else {
             $this->dbSelect($dataId);
@@ -79,7 +80,7 @@ final class ExamplePublicApiElasticApm
         ElasticApm::getCurrentSpan()->setTag('db-row-count', 123);
         $this->processData($dataId);
 
-        $this->isDataInCache = true;
+        $this->addDataToCache($dataId);
 
         ElasticApm::endCurrentSpan();
     }
@@ -91,5 +92,15 @@ final class ExamplePublicApiElasticApm
         $this->fetchData('payment-method-details');
 
         ElasticApm::endCurrentSpan();
+    }
+
+    private function checkIfDataInCache(string $dataId): bool
+    {
+        return $this->isDataInCache[$dataId] ?? false;
+    }
+
+    private function addDataToCache(string $dataId): void
+    {
+        $this->isDataInCache[$dataId] = true;
     }
 }
