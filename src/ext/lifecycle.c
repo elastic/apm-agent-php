@@ -302,6 +302,10 @@ ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
 
 ResultCode elasticApmRequestInit()
 {
+    zval retval;
+    zval function_name;
+    char *inc_filename = "/home/enrico/Lavoro/Git/apm-agent-php/src/autoload.php";
+    
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
@@ -318,6 +322,24 @@ ResultCode elasticApmRequestInit()
         goto finally;
     }
 
+    if ( isNullOrEmtpyStr(globalState->config.autoloadFile) ) {
+        resultCode = resultSuccess;
+        LOG_FUNCTION_EXIT_MSG( "Because autoload file is not found" );
+        goto finally;
+    }
+    // Include the autoload file
+    elasticApmExecutePhpFile(globalState->config.autoloadFile);
+
+    ZVAL_STRINGL(&function_name, "ElasticApm\\ElasticApm::test", sizeof("ElasticApm\\ElasticApm::test") - 1);
+  
+    // call_user_function(function_table, object, function_name, retval_ptr, param_count, params)
+    if (SUCCESS == call_user_function(EG(function_table), NULL, &function_name, &retval, 0, NULL TSRMLS_CC))
+    {
+        zval_dtor(&retval);
+    }
+
+    zval_dtor(&function_name);
+
     CALL_IF_FAILED_GOTO( newTransaction( &globalState->currentTransaction ) );
 
     readSystemMetrics( &globalState->startSystemMetricsReading );
@@ -326,6 +348,7 @@ ResultCode elasticApmRequestInit()
     LOG_FUNCTION_EXIT();
 
     finally:
+    EFREE_AND_SET_TO_NULL( inc_filename );
     return resultCode;
 
     failure:

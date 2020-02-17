@@ -1,0 +1,78 @@
+{
+    "name": "elastic/apm-agent",
+    "description": "Elastic APM PHP Agent",
+    "keywords": [ "elastic", "apm", "tracing", "apm-agent" ],
+    "type": "library",
+    "license": "Apache-2.0",
+    "authors": [
+        { "name": "Enrico Zimuel" },
+        { "name": "Philip Krauss" },
+        { "name": "Sergey Kleyman" }
+    ],
+    "require": {
+        "php": "^7.2",
+        "ext-json": "*",
+        "guzzlehttp/guzzle": "^6.0",
+        "psr/log": "^1.0"
+    },
+    "require-dev": {
+        "jakub-onderka/php-parallel-lint": "^1.0",
+        "jchook/phpunit-assert-throws": "^1.0",
+        "monolog/monolog": "^2.0",
+        "phpstan/phpstan": "^0.12.9",
+        "phpunit/phpunit": "^8.0",
+        "squizlabs/php_codesniffer": "^3.5.4"
+    },
+    "suggest": {
+        "ext-curl": "*",
+        "monolog/monolog": "Allows for client-level logging and tracing"
+    },
+    "autoload": {
+        "psr-4": {
+            "ElasticApm\\": "./src/ElasticApm/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ElasticApmTests\\": "./tests/ElasticApmTests/",
+            "ElasticApmExamples\\": "./examples/ElasticApmExamples/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "parallel_lint": [
+            "./vendor/bin/parallel-lint ./src/ElasticApm/",
+            "./vendor/bin/parallel-lint ./tests/",
+            "./vendor/bin/parallel-lint ./examples/"
+        ],
+        "php_codesniffer_check": [
+            "./vendor/bin/phpcs -s ./src/ElasticApm/",
+            "./vendor/bin/phpcs -s ./tests/",
+            "./vendor/bin/phpcs -s ./examples/"
+        ],
+        "php_codesniffer_fix": [
+            "./vendor/bin/phpcbf ./src/ElasticApm",
+            "./vendor/bin/phpcbf ./tests",
+            "./vendor/bin/phpcbf ./examples/"
+        ],
+        "phpstan": [
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max",
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./tests/ --level max",
+            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./examples/ --level max"
+        ],
+        "static_check": [
+            "composer run-script parallel_lint",
+            "composer run-script php_codesniffer_check",
+            "composer run-script phpstan"
+        ],
+        "test": [
+            "./vendor/bin/phpunit"
+        ],
+        "static_check_and_test": [
+            "composer run-script static_check",
+            "composer run-script test"
+        ]
+    }
+}

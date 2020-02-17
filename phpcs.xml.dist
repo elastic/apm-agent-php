@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<ruleset name="ElasticApm">
+    <rule ref="PSR12" />
+    <rule ref="Generic.PHP.RequireStrictTypes" />
+</ruleset>

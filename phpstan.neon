@@ -1,0 +1,12 @@
+parameters:
+    excludes_analyse:
+        # Temporarily disabling as it uses ...
+        # - src/ElasticApm/???.php
+
+    ignoreErrors:
+        # because of ...
+        # - '#Call to an undefined method ElasticApm\\XYZ::abc\(\)#'
+
+        # nullable types are missing everywhere
+        # - '#Variable (.*) in isset\(\) always exists and is not nullable.#'
+
