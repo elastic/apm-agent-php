@@ -12,7 +12,7 @@ use ElasticApm\SpanInterface;
  *
  * @internal
  */
-class Span extends SpanDto implements SpanInterface
+final class Span extends SpanDto implements SpanInterface
 {
     use ExecutionSegment;
 
@@ -30,13 +30,18 @@ class Span extends SpanDto implements SpanInterface
         ?string $subtype = null,
         ?string $action = null
     ) {
-
         $this->constructExecutionSegment($containingTransaction->getTracer(), $type);
+
         $this->setName($name);
         $this->setSubtype($subtype);
         $this->setAction($action);
+
         $this->containingTransaction = $containingTransaction;
+        $this->setTransactionId($containingTransaction->getId());
+        $this->setTraceId($containingTransaction->getTraceId());
+
         $this->parentSpan = $parentSpan;
+        $this->setParentId($parentSpan === null ? $containingTransaction->getId() : $parentSpan->getId());
     }
 
     public function beginChildSpan(
@@ -51,5 +56,14 @@ class Span extends SpanDto implements SpanInterface
     public function end($endTime = null): void
     {
         $this->tracer->getReporter()->reportSpan($this);
+
+        if ($this->containingTransaction->getCurrentSpan() === $this) {
+            $this->containingTransaction->popCurrentSpan();
+        }
+    }
+
+    public function getParentSpan(): ?Span
+    {
+        return $this->parentSpan;
     }
 }

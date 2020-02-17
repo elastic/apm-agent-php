@@ -8,7 +8,11 @@ namespace ElasticApmTests;
 
 use ElasticApm\NoopTransaction;
 use ElasticApm\Report\NoopReporter;
+use ElasticApm\Report\SpanDtoInterface;
+use ElasticApm\Report\TransactionDtoInterface;
 use ElasticApm\TracerBuilder;
+use ElasticApm\TracerSingleton;
+use ElasticApmTests\Util\ArrayUtil;
 use ElasticApmTests\Util\MockReporter;
 use ElasticApmTests\Util\NotFoundException;
 
@@ -93,9 +97,12 @@ class PublicApiTest extends Util\TestCaseBase
         $this->assertNull($reportedSpan_2_2->getSubtype());
         $this->assertSame('test_span_2_2_action', $reportedSpan_2_2->getAction());
 
-        $this->assertThrows(NotFoundException::class, function () use ($mockReporter) {
-            $mockReporter->getSpanByName('nonexistent_test_span_name');
-        });
+        $this->assertThrows(
+            NotFoundException::class,
+            function () use ($mockReporter) {
+                $mockReporter->getSpanByName('nonexistent_test_span_name');
+            }
+        );
     }
 
     public function testDisabledTracer(): void
@@ -141,5 +148,124 @@ class PublicApiTest extends Util\TestCaseBase
         $this->assertTrue($noopReporter->isNoop());
         $this->assertFalse($tracer->isNoop());
         $this->assertFalse($tx->isNoop());
+    }
+
+    public function testGeneratedIds(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter();
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+        $span->end();
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getTransactions()));
+        $this->assertSame($tx, $mockReporter->getTransactions()[0]);
+        $this->assertSame(1, count($mockReporter->getSpans()));
+        $this->assertSame($span, $mockReporter->getSpans()[0]);
+
+        $this->assertValidTransaction($tx);
+        $this->assertValidSpan($span);
+
+        $this->assertValidTransactionAndItsSpans($tx, $mockReporter->getSpans());
+    }
+
+    public function testExamplePublicApiElasticApm(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter();
+        TracerSingleton::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
+
+        // Act
+        $exampleApp = new ExamplePublicApiElasticApm();
+        $exampleApp->processCheckoutRequest('Shop #1');
+        $exampleApp->processCheckoutRequest('Shop #2');
+
+        // Assert
+        // 2 calls to processCheckoutRequest == 2 transactions
+        $this->assertSame(2, count($mockReporter->getTransactions()));
+        /** @var TransactionDtoInterface */
+        $tx1 = ArrayUtil::findByPredicate(
+            $mockReporter->getTransactions(),
+            function (TransactionDtoInterface $tx): bool {
+                return $tx->getTag('shop-id') === 'Shop #1';
+            }
+        );
+        /** @var TransactionDtoInterface */
+        $tx2 = ArrayUtil::findByPredicate(
+            $mockReporter->getTransactions(),
+            function (TransactionDtoInterface $tx): bool {
+                return $tx->getTag('shop-id') === 'Shop #2';
+            }
+        );
+
+        // each transaction produces 4 spans
+        // 1) Get shopping cart items
+        //      1.1) DB query or Fetch from Redis
+        // 2) Charge payment
+        //      2.1) DB query or Fetch from Redis
+        $this->assertSame(8, count($mockReporter->getSpans()));
+
+        $verifyTxAndSpans = function (TransactionDtoInterface $tx, array $spans, bool $isFirstTx) {
+            $this->assertSame(4, count($spans));
+
+            $this->assertValidTransactionAndItsSpans($tx, $spans);
+
+            foreach ($spans as $span) {
+                if ($isFirstTx) {
+                    $this->assertSame("Shop #1", $span->getTag('shop-id'));
+                } else {
+                    $this->assertSame("Shop #2", $span->getTag('shop-id'));
+                }
+            }
+
+            /** @var array<SpanDtoInterface> */
+            $businessSpans = array_filter(
+                $spans,
+                function (SpanDtoInterface $span): bool {
+                    return $span->getType() === 'business';
+                }
+            );
+
+            $this->assertSame(2, count($businessSpans));
+            /** @var SpanDtoInterface $businessSpan */
+            foreach ($businessSpans as $businessSpan) {
+                if ($isFirstTx && ($businessSpan->getName() === 'Get shopping cart items')) {
+                    $this->assertSame(false, $businessSpan->getTag('is-data-in-cache'));
+                } else {
+                    $this->assertSame(true, $businessSpan->getTag('is-data-in-cache'));
+                }
+            }
+
+            /** @var array<SpanDtoInterface> */
+            $dbSpans = array_filter(
+                $spans,
+                function (SpanDtoInterface $span): bool {
+                    return $span->getType() === 'db';
+                }
+            );
+
+            $this->assertSame(2, count($dbSpans));
+            /** @var SpanDtoInterface $dbSpan */
+            foreach ($dbSpans as $dbSpan) {
+                $dataId = $dbSpan->getTag('data-id');
+                $this->assertTrue($dataId === 'shopping-cart-items' || $dataId === 'payment-method-details');
+            }
+        };
+
+        $verifyTxAndSpans($tx1, $mockReporter->getSpansForTransaction($tx1), /* $isFirstTx: */ true);
+        $verifyTxAndSpans($tx2, $mockReporter->getSpansForTransaction($tx2), /* $isFirstTx: */ false);
+
+        $spansWithLostTag = array_filter(
+            $mockReporter->getSpans(),
+            function (SpanDtoInterface $span): bool {
+                return $span->getTag('lost-tag-because-there-is-no-current-span') !== null;
+            }
+        );
+        $this->assertSame(0, count($spansWithLostTag));
     }
 }

@@ -17,7 +17,6 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
     {
     }
 
-    /** @inheritDoc */
     public function getParentId(): ?string
     {
         return null;
@@ -27,14 +26,26 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
     {
     }
 
-    /** @inheritDoc */
     public function getName(): ?string
     {
         return null;
     }
 
-    /** @inheritDoc */
     public function setName(?string $name): void
     {
+    }
+
+    public function beginCurrentSpan(
+        string $name,
+        string $type,
+        ?string $subtype = null,
+        ?string $action = null
+    ): SpanInterface {
+        return NoopSpan::create();
+    }
+
+    public function getCurrentSpan(): SpanInterface
+    {
+        return NoopSpan::create();
     }
 }

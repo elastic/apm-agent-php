@@ -58,10 +58,25 @@ class MockReporter implements ReporterInterface
                 return $s->getName() === $name;
             }
         );
-        if ($index == -1) {
+        if ($index === -1) {
             throw new NotFoundException("Span with the name `$name' not found");
         }
         return $this->spans[$index];
+    }
+
+    /**
+     * @param TransactionDtoInterface $transaction
+     *
+     * @return array<SpanDtoInterface>
+     */
+    public function getSpansForTransaction(TransactionDtoInterface $transaction): array
+    {
+        return array_filter(
+            $this->spans,
+            function (SpanDtoInterface $s) use ($transaction): bool {
+                return $s->getTransactionId() === $transaction->getId();
+            }
+        );
     }
 
     public function isNoop(): bool

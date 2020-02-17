@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use ElasticApm\NoopTransaction;
 use ElasticApm\Report\ReporterInterface;
 use ElasticApm\TracerInterface;
 use ElasticApm\TransactionInterface;
@@ -13,14 +14,18 @@ use ElasticApm\TransactionInterface;
  *
  * @internal
  */
-class Tracer implements TracerInterface
+final class Tracer implements TracerInterface
 {
     /** @var ReporterInterface */
     private $reporter;
 
+    /** @var TransactionInterface|null */
+    private $currentTransaction;
+
     public function __construct(ReporterInterface $reporter)
     {
         $this->reporter = $reporter;
+        $this->currentTransaction = null;
     }
 
     public function beginTransaction(?string $name, string $type): TransactionInterface
@@ -36,5 +41,21 @@ class Tracer implements TracerInterface
     public function isNoop(): bool
     {
         return false;
+    }
+
+    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    {
+        $this->currentTransaction = $this->beginTransaction($name, $type);
+        return $this->currentTransaction;
+    }
+
+    public function getCurrentTransaction(): TransactionInterface
+    {
+        return $this->currentTransaction ?? NoopTransaction::create();
+    }
+
+    public function resetCurrentTransaction(): void
+    {
+        $this->currentTransaction = null;
     }
 }

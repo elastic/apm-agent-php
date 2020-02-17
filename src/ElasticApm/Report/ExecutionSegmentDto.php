@@ -15,6 +15,9 @@ abstract class ExecutionSegmentDto extends TimedEventDto implements ExecutionSeg
     /** @var string */
     private $type;
 
+    /** @var array<string, string|bool|int|float|null> */
+    private $tags = [];
+
     /** @inheritDoc */
     public function getId(): string
     {
@@ -49,5 +52,17 @@ abstract class ExecutionSegmentDto extends TimedEventDto implements ExecutionSeg
     public function setType(string $type): void
     {
         $this->type = $type;
+    }
+
+    /** @inheritDoc */
+    public function setTag(string $key, $value): void
+    {
+        $this->tags[$key] = $value;
+    }
+
+    /** @inheritDoc */
+    public function getTag(string $key, $default = null)
+    {
+        return $this->tags[$key] ?? $default;
     }
 }

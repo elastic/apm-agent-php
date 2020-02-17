@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace ElasticApm;
 
-class TracerSingleton
+final class TracerSingleton
 {
     /** @var TracerInterface */
     private static $singletonInstance;
+
+    /**
+     * Constructor is hidden because it's a "static" class
+     */
+    private function __construct()
+    {
+    }
 
     public static function get(): TracerInterface
     {
