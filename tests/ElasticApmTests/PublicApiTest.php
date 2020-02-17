@@ -234,7 +234,7 @@ class PublicApiTest extends Util\TestCaseBase
             $this->assertSame(2, count($businessSpans));
             /** @var SpanDtoInterface $businessSpan */
             foreach ($businessSpans as $businessSpan) {
-                if ($isFirstTx && ($businessSpan->getName() === 'Get shopping cart items')) {
+                if ($isFirstTx) {
                     $this->assertSame(false, $businessSpan->getTag('is-data-in-cache'));
                 } else {
                     $this->assertSame(true, $businessSpan->getTag('is-data-in-cache'));
