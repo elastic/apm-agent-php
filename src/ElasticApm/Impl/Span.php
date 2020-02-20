@@ -58,12 +58,10 @@ final class Span extends ExecutionSegment implements SpanInterface
         $this->parentSpan = $parentSpan;
         $this->parentId = $parentSpan === null ? $containingTransaction->getId() : $parentSpan->getId();
 
-        $this->start = TimeUtil::calcDuration(
-            $containingTransaction->getMonotonicBeginTime(),
-            $this->getMonotonicBeginTime()
-        );
+        $this->start = TimeUtil::calcDuration($containingTransaction->getTimestamp(), $this->getTimestamp());
     }
 
+    /** @inheritDoc */
     public function beginChildSpan(
         string $name,
         string $type,
@@ -73,6 +71,7 @@ final class Span extends ExecutionSegment implements SpanInterface
         return new Span($this->containingTransaction, /* parentSpan: */ $this, $name, $type, $subtype, $action);
     }
 
+    /** @inheritDoc */
     public function end(?float $duration = null): void
     {
         parent::end($duration);
@@ -84,51 +83,61 @@ final class Span extends ExecutionSegment implements SpanInterface
         }
     }
 
+    /** @inheritDoc */
     public function getTransactionId(): string
     {
         return $this->transactionId;
     }
 
+    /** @inheritDoc */
     public function getParentId(): string
     {
         return $this->parentId;
     }
 
+    /** @inheritDoc */
     public function getStart(): float
     {
         return $this->start;
     }
 
+    /** @inheritDoc */
     public function getName(): string
     {
         return $this->name;
     }
 
+    /** @inheritDoc */
     public function setName(string $name): void
     {
         $this->name = $name;
     }
 
+    /** @inheritDoc */
     public function getSubtype(): ?string
     {
         return $this->subtype;
     }
 
+    /** @inheritDoc */
     public function setSubtype(?string $subtype): void
     {
         $this->subtype = $subtype;
     }
 
+    /** @inheritDoc */
     public function getAction(): ?string
     {
         return $this->action;
     }
 
+    /** @inheritDoc */
     public function setAction(?string $action): void
     {
         $this->action = $action;
     }
 
+    /** @inheritDoc */
     public function getParentSpan(): ?Span
     {
         return $this->parentSpan;

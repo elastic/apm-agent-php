@@ -32,7 +32,8 @@ final class Clock implements ClockInterface
 
     private static function getHighResolutionCurrentTime(): float
     {
-        // the nanoseconds are returned as integer (64bit platforms) or float (32bit platforms)
+        // hrtime(/* get_as_number */ true):
+        //      the nanoseconds are returned as integer (64bit platforms) or float (32bit platforms)
         return round(TimeUtil::nanosecondsToMicroseconds((float)(hrtime(/* get_as_number */ true))));
     }
 }

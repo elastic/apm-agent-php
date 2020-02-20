@@ -9,9 +9,6 @@ use ElasticApmTests\Util\MockReporter;
 
 class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 {
-    /** @var float Timestamp for February 20, 2020 18:04:47.987 */
-    private const PAST_TIMESTAMP = 1582221887987;
-
     public function testTransactionBeginEnd(): void
     {
         // Arrange
@@ -31,7 +28,6 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         // Assert
         $this->assertSame(1, count($mockReporter->getTransactions()));
         $reportedTx = $mockReporter->getTransactions()[0];
-        $this->assertGreaterThan(self::PAST_TIMESTAMP, $reportedTx->getTimestamp());
         $this->assertGreaterThanOrEqual($beforeBegin, $reportedTx->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($beforeSleep, $afterSleep),
@@ -92,7 +88,6 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         // Assert
         $this->assertSame(1, count($mockReporter->getSpans()));
         $reportedSpan = $mockReporter->getSpans()[0];
-        $this->assertGreaterThan(self::PAST_TIMESTAMP, $reportedSpan->getTimestamp());
         $this->assertGreaterThanOrEqual($beforeBeginSpan, $reportedSpan->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($afterBeginTransaction, $beforeBeginSpan),

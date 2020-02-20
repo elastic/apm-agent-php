@@ -60,13 +60,13 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
             /* $isFirstTx: */ false
         );
 
-        $spansWithLostTag = array_filter(
+        $spansWithLostLabel = array_filter(
             $mockReporter->getSpans(),
             function (SpanInterface $span): bool {
-                return $span->getLabel('lost-tag-because-there-is-no-current-span') !== null;
+                return $span->getLabel('lost-label-because-there-is-no-current-span') !== null;
             }
         );
-        $this->assertSame(0, count($spansWithLostTag));
+        $this->assertSame(0, count($spansWithLostLabel));
     }
 
     /**
@@ -102,12 +102,31 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
         $this->assertSame(2, count($businessSpans));
         /** @var SpanInterface $businessSpan */
         foreach ($businessSpans as $businessSpan) {
+            $this->assertSame($transaction->getId(), $businessSpan->getParentId());
             if ($isFirstTx) {
                 $this->assertSame(false, $businessSpan->getLabel('is-data-in-cache'));
             } else {
                 $this->assertSame(true, $businessSpan->getLabel('is-data-in-cache'));
             }
         }
+
+        /** @var SpanInterface $getShoppingCartItemsSpan */
+        $getShoppingCartItemsSpan = ArrayUtil::findByPredicate(
+            $businessSpans,
+            function (SpanInterface $span): bool {
+                return $span->getName() === 'Get shopping cart items';
+            }
+        );
+        $this->assertNotNull($getShoppingCartItemsSpan);
+
+        /** @var SpanInterface $chargePaymentSpan */
+        $chargePaymentSpan = ArrayUtil::findByPredicate(
+            $businessSpans,
+            function (SpanInterface $span): bool {
+                return $span->getName() === 'Charge payment';
+            }
+        );
+        $this->assertNotNull($chargePaymentSpan);
 
         /** @var array<SpanInterface> */
         $dbSpans = array_filter(
@@ -121,7 +140,12 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
         /** @var SpanInterface $dbSpan */
         foreach ($dbSpans as $dbSpan) {
             $dataId = $dbSpan->getLabel('data-id');
-            $this->assertTrue($dataId === 'shopping-cart-items' || $dataId === 'payment-method-details');
+            if ($dataId === 'shopping-cart-items') {
+                $this->assertSame($getShoppingCartItemsSpan->getId(), $dbSpan->getParentId());
+            } else {
+                $this->assertSame('payment-method-details', $dataId);
+                $this->assertSame($chargePaymentSpan->getId(), $dbSpan->getParentId());
+            }
         }
     }
 }

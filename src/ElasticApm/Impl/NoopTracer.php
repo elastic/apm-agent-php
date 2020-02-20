@@ -17,16 +17,19 @@ class NoopTracer implements TracerInterface
 {
     use NoopObjectTrait;
 
+    /** @inheritDoc */
     public function beginTransaction(?string $name, string $type): TransactionInterface
     {
         return NoopTransaction::create();
     }
 
+    /** @inheritDoc */
     public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
     {
         return NoopTransaction::create();
     }
 
+    /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
         return NoopTransaction::create();

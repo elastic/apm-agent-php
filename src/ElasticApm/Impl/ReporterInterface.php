@@ -15,5 +15,6 @@ use ElasticApm\TransactionInterface;
 interface ReporterInterface
 {
     public function reportTransaction(TransactionInterface $transaction): void;
+
     public function reportSpan(SpanInterface $span): void;
 }
