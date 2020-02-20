@@ -2,28 +2,24 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm;
+namespace ElasticApm\Impl;
 
 use ElasticApm\Impl\Util\NoopObjectTrait;
+use ElasticApm\SpanInterface;
+use ElasticApm\TransactionInterface;
 
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
 class NoopTransaction extends NoopExecutionSegment implements TransactionInterface
 {
     use NoopObjectTrait;
 
-    /**
-     * Constructor is hidden because create() should be used instead.
-     */
-    private function __construct()
-    {
-    }
-
     public function getParentId(): ?string
     {
         return null;
-    }
-
-    public function setParentId(?string $parentId): void
-    {
     }
 
     public function getName(): ?string

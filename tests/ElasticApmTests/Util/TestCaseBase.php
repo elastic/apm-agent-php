@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use ElasticApm\Impl\Constants;
-use ElasticApm\Report\ExecutionSegmentDtoInterface;
-use ElasticApm\Report\SpanDtoInterface;
-use ElasticApm\Report\TransactionDtoInterface;
-use ElasticApm\TracerSingleton;
+use ElasticApm\ExecutionSegmentInterface;
+use ElasticApm\Impl\ExecutionSegment;
+use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\SpanInterface;
+use ElasticApm\TransactionInterface;
 use Jchook\AssertThrows\AssertThrows;
 use PHPUnit\Framework\TestCase;
 
@@ -22,7 +22,7 @@ class TestCaseBase extends TestCase
         TracerSingleton::reset();
     }
 
-    protected function assertValidId(string $id, int $expectedSizeInBytes): void
+    public function assertValidId(string $id, int $expectedSizeInBytes): void
     {
         $this->assertSame($expectedSizeInBytes * 2, strlen($id));
 
@@ -31,20 +31,20 @@ class TestCaseBase extends TestCase
         }
     }
 
-    protected function assertValidExecutionSegment(ExecutionSegmentDtoInterface $executionSegment): void
+    public function assertValidExecutionSegment(ExecutionSegmentInterface $executionSegment): void
     {
-        $this->assertValidId($executionSegment->getId(), Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
-        $this->assertValidId($executionSegment->getTraceId(), Constants::TRACE_ID_SIZE_IN_BYTES);
+        $this->assertValidId($executionSegment->getId(), ExecutionSegment::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $this->assertValidId($executionSegment->getTraceId(), ExecutionSegment::TRACE_ID_SIZE_IN_BYTES);
 
         $this->assertNotNull($executionSegment->getType());
     }
 
-    protected function assertValidTransaction(TransactionDtoInterface $transaction): void
+    public function assertValidTransaction(TransactionInterface $transaction): void
     {
         $this->assertValidExecutionSegment($transaction);
     }
 
-    protected function assertValidSpan(SpanDtoInterface $span): void
+    public function assertValidSpan(SpanInterface $span): void
     {
         $this->assertValidExecutionSegment($span);
 
@@ -52,10 +52,10 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param TransactionDtoInterface    $transaction
-     * @param iterable<SpanDtoInterface> $spans
+     * @param TransactionInterface    $transaction
+     * @param iterable<SpanInterface> $spans
      */
-    protected function assertValidTransactionAndItsSpans(TransactionDtoInterface $transaction, iterable $spans): void
+    public function assertValidTransactionAndItsSpans(TransactionInterface $transaction, iterable $spans): void
     {
         $this->assertValidTransaction($transaction);
 

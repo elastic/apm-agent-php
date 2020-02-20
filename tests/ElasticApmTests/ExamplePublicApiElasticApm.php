@@ -16,33 +16,35 @@ final class ExamplePublicApiElasticApm
 
     public function processCheckoutRequest(string $shopId): void
     {
-        ElasticApm::beginCurrentTransaction('Checkout', 'request');
+        $tx = ElasticApm::beginCurrentTransaction('Checkout transaction', 'request');
 
-        ElasticApm::getCurrentTransaction()->setTag('shop-id', $shopId);
+        $tx->setLabel('shop-id', $shopId);
 
         $this->getShoppingCartItems();
         $this->chargePayment();
 
-        ElasticApm::getCurrentSpan()->setTag('lost-tag-because-there-is-no-current-span', 123.456);
+        ElasticApm::getCurrentSpan()->setLabel('lost-tag-because-there-is-no-current-span', 123.456);
 
-        ElasticApm::endCurrentTransaction();
+        $tx->end();
 
-        ElasticApm::getCurrentSpan()->setTag('lost-tag-because-there-is-no-current-transaction', null);
+        ElasticApm::getCurrentTransaction()->setLabel('lost-tag-because-there-is-no-current-transaction', null);
     }
 
     private function getShoppingCartItems(): void
     {
-        ElasticApm::beginCurrentSpan('Get shopping cart items', 'business');
+        ElasticApm::getCurrentTransaction();
+
+        $span = ElasticApm::beginCurrentSpan('Get shopping cart items', 'business');
 
         $this->fetchData('shopping-cart-items');
 
-        ElasticApm::endCurrentSpan();
+        $span->end();
     }
 
     private function fetchData(string $dataId): void
     {
         $isDataInCache = $this->checkIfDataInCache($dataId);
-        ElasticApm::getCurrentSpan()->setTag('is-data-in-cache', $isDataInCache);
+        ElasticApm::getCurrentSpan()->setLabel('is-data-in-cache', $isDataInCache);
 
         if ($isDataInCache) {
             $this->redisFetch($dataId);
@@ -50,48 +52,50 @@ final class ExamplePublicApiElasticApm
             $this->dbSelect($dataId);
         }
 
-        ElasticApm::getCurrentSpan()->setTag('shop-id', ElasticApm::getCurrentTransaction()->getTag('shop-id'));
+        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabel('shop-id'));
     }
 
     private function redisFetch(string $dataId): void
     {
-        ElasticApm::beginCurrentSpan("Fetch from Redis", 'db', 'redis', 'query');
+        $span = ElasticApm::beginCurrentSpan('Fetch from Redis', 'db', 'redis', 'query');
 
         // ...
 
-        ElasticApm::getCurrentSpan()->setTag('redis-response-id', "abc");
+        ElasticApm::getCurrentSpan()->setLabel('redis-response-id', 'abc');
         $this->processData($dataId);
 
-        ElasticApm::endCurrentSpan();
+        $span->end();
     }
 
     private function processData(string $dataId): void
     {
-        ElasticApm::getCurrentSpan()->setTag('data-id', $dataId);
-        ElasticApm::getCurrentSpan()->setTag('shop-id', ElasticApm::getCurrentTransaction()->getTag('shop-id'));
+        ElasticApm::getCurrentSpan()->setLabel('data-id', $dataId);
+        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabel('shop-id'));
     }
 
     private function dbSelect(string $dataId): void
     {
-        ElasticApm::beginCurrentSpan("DB query", 'db', 'mysql', 'query');
+        $span = ElasticApm::beginCurrentSpan('DB query', 'db', 'mysql', 'query');
 
         // ...
 
-        ElasticApm::getCurrentSpan()->setTag('db-row-count', 123);
+        // $span1 = $span->getParentSpan();
+
+        ElasticApm::getCurrentSpan()->setLabel('db-row-count', 123);
         $this->processData($dataId);
 
         $this->addDataToCache($dataId);
 
-        ElasticApm::endCurrentSpan();
+        $span->end();
     }
 
     private function chargePayment(): void
     {
-        ElasticApm::beginCurrentSpan('Charge payment', 'business');
+        $span = ElasticApm::beginCurrentSpan('Charge payment', 'business');
 
         $this->fetchData('payment-method-details');
 
-        ElasticApm::endCurrentSpan();
+        $span->end();
     }
 
     private function checkIfDataInCache(string $dataId): bool
