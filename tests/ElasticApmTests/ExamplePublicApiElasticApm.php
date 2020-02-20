@@ -5,29 +5,55 @@ declare(strict_types=1);
 namespace ElasticApmTests;
 
 use ElasticApm\ElasticApm;
+use ElasticApm\TransactionInterface;
 
 /**
  * @see \ElasticApmTests\PublicApiTest::testExamplePublicApiElasticApm - test that depends on this class
  */
 final class ExamplePublicApiElasticApm
 {
+    /** @var string */
+    public const TRANSACTION_NAME = 'Checkout transaction';
+
+    /** @var string */
+    public const TRANSACTION_TYPE = 'shopping';
+
+    /** @var string */
+    public const LOST_LABEL = 'lost-label';
+
     /** @var array<string, bool> */
     private $isDataInCache = [];
 
-    public function processCheckoutRequest(string $shopId): void
+    public function processCheckoutRequest(int $shopNumber): void
     {
-        $tx = ElasticApm::beginCurrentTransaction('Checkout transaction', 'request');
+        $shopId = 'Shop #' . $shopNumber;
+        if ($shopNumber == 1) {
+            $tx = ElasticApm::beginCurrentTransaction(self::TRANSACTION_NAME, self::TRANSACTION_TYPE);
+            $this->processCheckoutRequestImpl($shopId, $tx);
+            $tx->end();
+        } else {
+            ElasticApm::captureCurrentTransaction(
+                self::TRANSACTION_NAME,
+                self::TRANSACTION_TYPE,
+                function (TransactionInterface $tx) use ($shopId) {
+                    $this->processCheckoutRequestImpl($shopId, $tx);
+                }
+            );
+        }
+    }
 
+    private function processCheckoutRequestImpl(string $shopId, TransactionInterface $tx): void
+    {
         $tx->setLabel('shop-id', $shopId);
 
         $this->getShoppingCartItems();
         $this->chargePayment();
 
-        ElasticApm::getCurrentSpan()->setLabel('lost-label-because-there-is-no-current-span', 123.456);
+        // Lost label because there is no current span
+        ElasticApm::getCurrentSpan()->setLabel(self::LOST_LABEL, 123.456);
 
-        $tx->end();
-
-        ElasticApm::getCurrentTransaction()->setLabel('lost-label-because-there-is-no-current-transaction', null);
+        // Lost label because there is no current transaction
+        ElasticApm::getCurrentTransaction()->setLabel(self::LOST_LABEL, null);
     }
 
     private function getShoppingCartItems(): void
@@ -75,18 +101,20 @@ final class ExamplePublicApiElasticApm
 
     private function dbSelect(string $dataId): void
     {
-        $span = ElasticApm::beginCurrentSpan('DB query', 'db', 'mysql', 'query');
+        ElasticApm::captureCurrentSpan(
+            'DB query',
+            'db',
+            function () use ($dataId): void {
+                // ...
 
-        // ...
+                ElasticApm::getCurrentSpan()->setLabel('db-row-count', 123);
+                $this->processData($dataId);
 
-        // $span1 = $span->getParentSpan();
-
-        ElasticApm::getCurrentSpan()->setLabel('db-row-count', 123);
-        $this->processData($dataId);
-
-        $this->addDataToCache($dataId);
-
-        $span->end();
+                $this->addDataToCache($dataId);
+            },
+            'mysql',
+            'query'
+        );
     }
 
     private function chargePayment(): void

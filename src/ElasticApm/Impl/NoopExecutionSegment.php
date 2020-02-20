@@ -1,9 +1,12 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use Closure;
 use ElasticApm\ExecutionSegmentInterface;
 use ElasticApm\SpanInterface;
 
@@ -66,6 +69,17 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         ?string $action = null
     ): SpanInterface {
         return NoopSpan::create();
+    }
+
+    /** @inheritDoc */
+    public function captureChildSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null
+    ) {
+        return $callback(NoopSpan::create());
     }
 
     /** @inheritDoc */

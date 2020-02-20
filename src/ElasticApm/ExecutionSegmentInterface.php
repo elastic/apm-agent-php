@@ -1,20 +1,58 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm;
+
+use Closure;
 
 /**
  * This interface has functionality shared between Transaction and Span.
  */
 interface ExecutionSegmentInterface
 {
+    /**
+     * Begins a new span with this execution segment as the new span's parent.
+     *
+     * @param string      $name    New span's name
+     * @param string      $type    New span's type
+     * @param string|null $subtype New span's subtype
+     * @param string|null $action  New span's action
+     *
+     * @return SpanInterface New span
+     */
     public function beginChildSpan(
         string $name,
         string $type,
         ?string $subtype = null,
         ?string $action = null
     ): SpanInterface;
+
+    /**
+     * Begins a new span with this execution segment as the new span's parent,
+     * runs the provided callback as the new span and automatically ends the new span.
+     *
+     * @param string      $name     New span's name
+     * @param string      $type     New span's type
+     * @param Closure     $callback Callback to execute as the new span
+     * @param string|null $subtype  New span's subtype
+     * @param string|null $action   New span's action
+     *
+     * @template        T
+     * @phpstan-param   Closure(SpanInterface $newSpan): T $callback
+     * @phpstan-return  T
+     *
+     * @return mixed The return value of $callback
+     */
+    public function captureChildSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null
+    );
 
     /**
      * Sets the end timestamp and finalizes this object's state.
