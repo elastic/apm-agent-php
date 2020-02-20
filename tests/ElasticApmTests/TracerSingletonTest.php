@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests;
 
-use ElasticApm\TracerSingleton;
+use ElasticApm\Impl\TracerSingleton;
 
 class TracerSingletonTest extends Util\TestCaseBase
 {

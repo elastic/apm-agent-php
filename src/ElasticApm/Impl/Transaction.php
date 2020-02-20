@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace ElasticApm\Impl;
 
 use ElasticApm\Impl\Util\IdGenerator;
-use ElasticApm\NoopSpan;
-use ElasticApm\Report\TransactionDto;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
 
@@ -15,21 +13,39 @@ use ElasticApm\TransactionInterface;
  *
  * @internal
  */
-final class Transaction extends TransactionDto implements TransactionInterface
+final class Transaction extends ExecutionSegment implements TransactionInterface
 {
-    use ExecutionSegment;
+    /** @var string|null */
+    private $parentId;
+
+    /** @var string|null */
+    private $name;
 
     /** @var Span|null */
     private $currentSpan;
 
     public function __construct(Tracer $tracer, ?string $name, string $type)
     {
-        $this->constructExecutionSegment($tracer, $type);
+        parent::__construct($tracer, IdGenerator::generateId(self::TRACE_ID_SIZE_IN_BYTES), $type);
 
         $this->setName($name);
-        $this->setTraceId(IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES));
 
         $this->currentSpan = null;
+    }
+
+    public function getParentId(): ?string
+    {
+        return $this->parentId;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(?string $name): void
+    {
+        $this->name = $name;
     }
 
     public function beginChildSpan(
@@ -41,15 +57,6 @@ final class Transaction extends TransactionDto implements TransactionInterface
         return $this->beginChildSpanImpl(/* parentSpan: */ null, $name, $type, $subtype, $action);
     }
 
-    public function end($endTime = null): void
-    {
-        $this->tracer->getReporter()->reportTransaction($this);
-
-        if ($this->tracer->getCurrentTransaction() === $this) {
-            $this->tracer->resetCurrentTransaction();
-        }
-    }
-
     public function beginCurrentSpan(
         string $name,
         string $type,
@@ -58,6 +65,16 @@ final class Transaction extends TransactionDto implements TransactionInterface
     ): SpanInterface {
         $this->currentSpan = $this->beginChildSpanImpl($this->currentSpan, $name, $type, $subtype, $action);
         return $this->currentSpan;
+    }
+
+    private function beginChildSpanImpl(
+        ?Span $parentSpan,
+        string $name,
+        string $type,
+        ?string $subtype = null,
+        ?string $action = null
+    ): Span {
+        return new Span(/* containingTransaction: */ $this, $parentSpan, $name, $type, $subtype, $action);
     }
 
     public function getCurrentSpan(): SpanInterface
@@ -72,13 +89,14 @@ final class Transaction extends TransactionDto implements TransactionInterface
         }
     }
 
-    private function beginChildSpanImpl(
-        ?Span $parentSpan,
-        string $name,
-        string $type,
-        ?string $subtype = null,
-        ?string $action = null
-    ): Span {
-        return new Span(/* containingTransaction: */ $this, $parentSpan, $name, $type, $subtype, $action);
+    public function end(?float $duration = null): void
+    {
+        parent::end($duration);
+
+        $this->getTracer()->getReporter()->reportTransaction($this);
+
+        if ($this->getTracer()->getCurrentTransaction() === $this) {
+            $this->getTracer()->resetCurrentTransaction();
+        }
     }
 }

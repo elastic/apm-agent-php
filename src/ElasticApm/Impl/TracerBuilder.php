@@ -2,16 +2,22 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm;
+namespace ElasticApm\Impl;
 
-use ElasticApm\Impl\Tracer;
-use ElasticApm\Report\ReporterBuilder;
-use ElasticApm\Report\ReporterInterface;
+use ElasticApm\TracerInterface;
 
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
 final class TracerBuilder
 {
     /** @var bool */
     private $isEnabled = true;
+
+    /** @var ClockInterface|null */
+    private $clock;
 
     /** @var ReporterInterface|null */
     private $reporter;
@@ -34,6 +40,12 @@ final class TracerBuilder
         return $this;
     }
 
+    public function withClock(ClockInterface $clock): self
+    {
+        $this->clock = $clock;
+        return $this;
+    }
+
     public function withReporter(ReporterInterface $reporter): self
     {
         $this->reporter = $reporter;
@@ -46,8 +58,9 @@ final class TracerBuilder
             return NoopTracer::create();
         }
 
-        $reporter = $this->reporter ?? ReporterBuilder::startNew()->build();
-
-        return new Tracer($reporter);
+        return new Tracer(
+            $this->clock ?? Clock::create(),
+            $this->reporter ?? NoopReporter::create()
+        );
     }
 }

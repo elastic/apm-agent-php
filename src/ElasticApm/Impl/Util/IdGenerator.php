@@ -11,12 +11,7 @@ namespace ElasticApm\Impl\Util;
  */
 final class IdGenerator
 {
-    /**
-     * Constructor is hidden because it's a "static" class
-     */
-    private function __construct()
-    {
-    }
+    use StaticClassTrait;
 
     public static function generateId(int $idLengthInBytes): string
     {

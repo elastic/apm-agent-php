@@ -4,41 +4,45 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use ElasticApm\Report\ReporterInterface;
-use ElasticApm\Report\SpanDtoInterface;
-use ElasticApm\Report\TransactionDtoInterface;
+use ElasticApm\Impl\ReporterInterface;
+use ElasticApm\SpanInterface;
+use ElasticApm\TransactionInterface;
 
 class MockReporter implements ReporterInterface
 {
-    /** @var TransactionDtoInterface[] */
-    private $transactions;
+    /** @var TestCaseBase */
+    private $testCaseBase;
 
-    /** @var SpanDtoInterface[] */
-    private $spans;
+    /** @var TransactionInterface[] */
+    private $transactions = [];
 
-    public function __construct()
+    /** @var SpanInterface[] */
+    private $spans = [];
+
+    public function __construct(TestCaseBase $testCaseBase)
     {
-        $this->transactions = [];
-        $this->spans = [];
+        $this->testCaseBase = $testCaseBase;
     }
 
-    public function reportTransaction(TransactionDtoInterface $transactionDto): void
+    public function reportTransaction(TransactionInterface $transaction): void
     {
-        $this->transactions[] = $transactionDto;
+        $this->testCaseBase->assertValidTransaction($transaction);
+        $this->transactions[] = $transaction;
     }
 
-    /** @return TransactionDtoInterface[] */
+    /** @return TransactionInterface[] */
     public function getTransactions(): array
     {
         return $this->transactions;
     }
 
-    public function reportSpan(SpanDtoInterface $spanDto): void
+    public function reportSpan(SpanInterface $span): void
     {
-        $this->spans[] = $spanDto;
+        $this->testCaseBase->assertValidSpan($span);
+        $this->spans[] = $span;
     }
 
-    /** @return SpanDtoInterface[] */
+    /** @return SpanInterface[] */
     public function getSpans(): array
     {
         return $this->spans;
@@ -47,14 +51,14 @@ class MockReporter implements ReporterInterface
     /**
      * @param string $name
      *
-     * @return SpanDtoInterface
+     * @return SpanInterface
      * @throws NotFoundException
      */
-    public function getSpanByName(string $name): SpanDtoInterface
+    public function getSpanByName(string $name): SpanInterface
     {
         $index = ArrayUtil::findIndexByPredicate(
             $this->spans,
-            function (SpanDtoInterface $s) use ($name): bool {
+            function (SpanInterface $s) use ($name): bool {
                 return $s->getName() === $name;
             }
         );
@@ -65,22 +69,17 @@ class MockReporter implements ReporterInterface
     }
 
     /**
-     * @param TransactionDtoInterface $transaction
+     * @param TransactionInterface $transaction
      *
-     * @return array<SpanDtoInterface>
+     * @return array<SpanInterface>
      */
-    public function getSpansForTransaction(TransactionDtoInterface $transaction): array
+    public function getSpansForTransaction(TransactionInterface $transaction): array
     {
         return array_filter(
             $this->spans,
-            function (SpanDtoInterface $s) use ($transaction): bool {
+            function (SpanInterface $s) use ($transaction): bool {
                 return $s->getTransactionId() === $transaction->getId();
             }
         );
-    }
-
-    public function isNoop(): bool
-    {
-        return false;
     }
 }

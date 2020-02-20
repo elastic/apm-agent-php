@@ -9,12 +9,13 @@ namespace ElasticApm\Impl\Util;
  *
  * @internal
  */
-trait NoopObjectTrait
+trait StaticClassTrait
 {
-    use CachedSingletonInstanceTrait;
-
-    public function isNoop(): bool
+    /**
+     * Constructor is hidden because it's a "static" class
+     */
+    /** @noinspection PhpUnused */
+    private function __construct()
     {
-        return true;
     }
 }

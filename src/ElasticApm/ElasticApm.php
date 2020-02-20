@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace ElasticApm;
 
+use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\Impl\Util\StaticClassTrait;
+
 final class ElasticApm
 {
-    /**
-     * Constructor is hidden because it's a "static" class
-     */
-    private function __construct()
-    {
-    }
+    use StaticClassTrait;
+
+    public const VERSION = '0.1-preview';
 
     public static function beginCurrentTransaction(?string $name, string $type): TransactionInterface
     {
@@ -21,11 +21,6 @@ final class ElasticApm
     public static function getCurrentTransaction(): TransactionInterface
     {
         return TracerSingleton::get()->getCurrentTransaction();
-    }
-
-    public static function endCurrentTransaction(): void
-    {
-        self::getCurrentTransaction()->end();
     }
 
     public static function beginCurrentSpan(
@@ -40,10 +35,5 @@ final class ElasticApm
     public static function getCurrentSpan(): SpanInterface
     {
         return self::getCurrentTransaction()->getCurrentSpan();
-    }
-
-    public static function endCurrentSpan(): void
-    {
-        self::getCurrentSpan()->end();
     }
 }

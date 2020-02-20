@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm;
+namespace ElasticApm\Impl;
 
 use ElasticApm\Impl\Util\NoopObjectTrait;
+use ElasticApm\SpanInterface;
 
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
 class NoopSpan extends NoopExecutionSegment implements SpanInterface
 {
     use NoopObjectTrait;
@@ -13,21 +19,10 @@ class NoopSpan extends NoopExecutionSegment implements SpanInterface
     /** @var string */
     public const NAME = 'NO-OP span';
 
-    /**
-     * Constructor is hidden because create() should be used instead.
-     */
-    private function __construct()
-    {
-    }
-
     /** @inheritDoc */
     public function getTransactionId(): string
     {
         return NoopTransaction::ID;
-    }
-
-    public function setTransactionId(string $transactionId): void
-    {
     }
 
     /** @inheritDoc */
@@ -37,19 +32,9 @@ class NoopSpan extends NoopExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function setParentId(string $parentId): void
+    public function getStart(): ?float
     {
-    }
-
-    /** @inheritDoc */
-    public function getStart(): int
-    {
-        return 0;
-    }
-
-    /** @inheritDoc */
-    public function setStart(?int $start): void
-    {
+        return 0.0;
     }
 
     /** @inheritDoc */
