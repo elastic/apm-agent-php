@@ -21,8 +21,8 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
 
         // Act
         $exampleApp = new ExamplePublicApiElasticApm();
-        $exampleApp->processCheckoutRequest('Shop #1');
-        $exampleApp->processCheckoutRequest('Shop #2');
+        $exampleApp->processCheckoutRequest(1);
+        $exampleApp->processCheckoutRequest(2);
 
         // Assert
         // 2 calls to processCheckoutRequest == 2 transactions
@@ -63,10 +63,18 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
         $spansWithLostLabel = array_filter(
             $mockReporter->getSpans(),
             function (SpanInterface $span): bool {
-                return $span->getLabel('lost-label-because-there-is-no-current-span') !== null;
+                return $span->getLabel(ExamplePublicApiElasticApm::LOST_LABEL) !== null;
             }
         );
         $this->assertSame(0, count($spansWithLostLabel));
+
+        $transactionsWithLostLabel = array_filter(
+            $mockReporter->getTransactions(),
+            function (TransactionInterface $transaction): bool {
+                return $transaction->getLabel(ExamplePublicApiElasticApm::LOST_LABEL) !== null;
+            }
+        );
+        $this->assertSame(0, count($transactionsWithLostLabel));
     }
 
     /**
@@ -82,6 +90,9 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
         $this->assertSame(4, count($spans));
 
         $this->assertValidTransactionAndItsSpans($transaction, $spans);
+
+        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_NAME, $transaction->getName());
+        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_TYPE, $transaction->getType());
 
         foreach ($spans as $span) {
             if ($isFirstTx) {

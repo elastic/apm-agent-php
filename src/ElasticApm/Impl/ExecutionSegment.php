@@ -1,9 +1,12 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use Closure;
 use ElasticApm\ExecutionSegmentInterface;
 use ElasticApm\Impl\Util\IdGenerator;
 use ElasticApm\Impl\Util\TimeUtil;
@@ -39,6 +42,9 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface
     /** @var array<string, string|bool|int|float|null> */
     private $tags = [];
 
+    /** @var bool */
+    private $isEnded = false;
+
     protected function __construct(Tracer $tracer, string $traceId, string $type)
     {
         $this->timestamp = $tracer->getClock()->getSystemClockCurrentTime();
@@ -49,14 +55,37 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface
         $this->setType($type);
     }
 
-    public function end(?float $duration = null): void
+    /** @inheritDoc */
+    public function captureChildSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null
+    ) {
+        $newSpan = $this->beginChildSpan($name, $type, $subtype, $action);
+        try {
+            return $callback($newSpan);
+        } finally {
+            $newSpan->end();
+        }
+    }
+
+    protected function endExecutionSegment(?float $duration = null): bool
     {
+        if ($this->isEnded) {
+            return false;
+        }
+
         if ($duration === null) {
             $monotonicEndTime = $this->tracer->getClock()->getMonotonicClockCurrentTime();
             $this->duration = TimeUtil::calcDuration($this->monotonicBeginTime, $monotonicEndTime);
         } else {
             $this->duration = $duration;
         }
+
+        $this->isEnded = true;
+        return true;
     }
 
     public function isNoop(): bool

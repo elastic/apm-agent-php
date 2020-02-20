@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApm\ExecutionSegmentInterface;
+use ElasticApm\Impl\TracerBuilder;
 use ElasticApm\Impl\TracerSingleton;
 use ElasticApm\Impl\Util\IdGenerator;
 use ElasticApm\Impl\Util\TimeUtil;
@@ -88,5 +89,12 @@ class TestCaseBase extends TestCase
                 $span->getTimestamp()
             );
         }
+    }
+
+    protected function setUpElasticApmWithMockReporter(): MockReporter
+    {
+        $mockReporter = new MockReporter($this);
+        TracerSingleton::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
+        return $mockReporter;
     }
 }

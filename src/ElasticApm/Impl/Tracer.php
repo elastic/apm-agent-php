@@ -1,9 +1,12 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use Closure;
 use ElasticApm\TracerInterface;
 use ElasticApm\TransactionInterface;
 
@@ -30,9 +33,39 @@ final class Tracer implements TracerInterface
         $this->currentTransaction = null;
     }
 
+    /** @inheritDoc */
     public function beginTransaction(?string $name, string $type): TransactionInterface
     {
         return new Transaction($this, $name, $type);
+    }
+
+    /** @inheritDoc */
+    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    {
+        $this->currentTransaction = $this->beginTransaction($name, $type);
+        return $this->currentTransaction;
+    }
+
+    /** @inheritDoc */
+    public function captureTransaction(?string $name, string $type, Closure $callback)
+    {
+        $transaction = $this->beginTransaction($name, $type);
+        try {
+            return $callback($transaction);
+        } finally {
+            $transaction->end();
+        }
+    }
+
+    /** @inheritDoc */
+    public function captureCurrentTransaction(?string $name, string $type, Closure $callback)
+    {
+        $transaction = $this->beginCurrentTransaction($name, $type);
+        try {
+            return $callback($transaction);
+        } finally {
+            $transaction->end();
+        }
     }
 
     public function getClock(): ClockInterface
@@ -48,12 +81,6 @@ final class Tracer implements TracerInterface
     public function isNoop(): bool
     {
         return false;
-    }
-
-    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
-    {
-        $this->currentTransaction = $this->beginTransaction($name, $type);
-        return $this->currentTransaction;
     }
 
     public function getCurrentTransaction(): TransactionInterface

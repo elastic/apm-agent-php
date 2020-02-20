@@ -74,7 +74,9 @@ final class Span extends ExecutionSegment implements SpanInterface
     /** @inheritDoc */
     public function end(?float $duration = null): void
     {
-        parent::end($duration);
+        if (!$this->endExecutionSegment($duration)) {
+            return;
+        }
 
         $this->getTracer()->getReporter()->reportSpan($this);
 

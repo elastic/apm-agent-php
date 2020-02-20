@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace ElasticApmTests;
 
+use ElasticApm\ElasticApm;
 use ElasticApm\ExecutionSegmentInterface;
 use ElasticApm\Impl\NoopExecutionSegment;
 use ElasticApm\Impl\NoopReporter;
 use ElasticApm\Impl\NoopSpan;
 use ElasticApm\Impl\NoopTransaction;
 use ElasticApm\Impl\TracerBuilder;
+use ElasticApm\Impl\TracerSingleton;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
 use ElasticApmTests\Util\MockReporter;
@@ -32,6 +34,91 @@ class NoopEventsTest extends Util\TestCaseBase
 
         $span->end();
         $tx->end();
+
+        $counter = 123;
+        $tracer->captureTransaction(
+            null,
+            'test_TX_type',
+            function (TransactionInterface $transaction) use (&$counter): void {
+                $this->assertNoopTransaction($transaction);
+                $this->assertSame(123, $counter);
+                ++$counter;
+                $transaction->captureChildSpan(
+                    'test_span_name',
+                    'test_span_type',
+                    function (SpanInterface $span) use (&$counter): void {
+                        $this->assertNoopSpan($span);
+                        $this->assertSame(124, $counter);
+                        ++$counter;
+                    }
+                );
+            }
+        );
+        $this->assertSame(125, $counter);
+
+        $tracer->captureCurrentTransaction(
+            null,
+            'test_TX_type',
+            function (TransactionInterface $transaction) use (&$counter): void {
+                $this->assertNoopTransaction($transaction);
+                $this->assertSame(125, $counter);
+                ++$counter;
+                $transaction->captureCurrentSpan(
+                    'test_span_name',
+                    'test_span_type',
+                    function (SpanInterface $span) use (&$counter): void {
+                        $this->assertNoopSpan($span);
+                        $this->assertSame(126, $counter);
+                        ++$counter;
+                    }
+                );
+            }
+        );
+        $this->assertSame(127, $counter);
+
+        // Assert
+        $this->assertNoopTransaction($tx);
+        $this->assertNoopSpan($span);
+        $this->assertSame(0, count($mockReporter->getSpans()));
+        $this->assertSame(0, count($mockReporter->getTransactions()));
+    }
+    public function testDisabledTracerUsingElasticApmFacade(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        TracerSingleton::set(TracerBuilder::startNew()->withEnabled(false)->withReporter($mockReporter)->build());
+
+        // Act
+        $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
+        $this->assertNoopTransaction($tx);
+
+        $span =
+            ElasticApm::beginCurrentSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
+        $this->assertNoopSpan($span);
+
+        $span->end();
+        $tx->end();
+
+        $counter = 125;
+        ElasticApm::captureCurrentTransaction(
+            'test_TX_name',
+            'test_TX_type',
+            function (TransactionInterface $transaction) use (&$counter): void {
+                $this->assertNoopTransaction($transaction);
+                $this->assertSame(125, $counter);
+                ++$counter;
+                ElasticApm::captureCurrentSpan(
+                    'test_span_name',
+                    'test_span_type',
+                    function (SpanInterface $span) use (&$counter): void {
+                        $this->assertNoopSpan($span);
+                        $this->assertSame(126, $counter);
+                        ++$counter;
+                    }
+                );
+            }
+        );
+        $this->assertSame(127, $counter);
 
         // Assert
         $this->assertNoopTransaction($tx);

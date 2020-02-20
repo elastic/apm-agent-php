@@ -1,9 +1,12 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use Closure;
 use ElasticApm\Impl\Util\IdGenerator;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
@@ -54,7 +57,14 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?string $subtype = null,
         ?string $action = null
     ): SpanInterface {
-        return $this->beginChildSpanImpl(/* parentSpan: */ null, $name, $type, $subtype, $action);
+        return new Span(
+            $this /* <- containingTransaction*/,
+            null /* <- parentSpan */,
+            $name,
+            $type,
+            $subtype,
+            $action
+        );
     }
 
     public function beginCurrentSpan(
@@ -63,18 +73,31 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?string $subtype = null,
         ?string $action = null
     ): SpanInterface {
-        $this->currentSpan = $this->beginChildSpanImpl($this->currentSpan, $name, $type, $subtype, $action);
+        $this->currentSpan = new Span(
+            $this /* <- containingTransaction */,
+            $this->currentSpan /* <- parentSpan */,
+            $name,
+            $type,
+            $subtype,
+            $action
+        );
         return $this->currentSpan;
     }
 
-    private function beginChildSpanImpl(
-        ?Span $parentSpan,
+    /** @inheritDoc */
+    public function captureCurrentSpan(
         string $name,
         string $type,
+        Closure $callback,
         ?string $subtype = null,
         ?string $action = null
-    ): Span {
-        return new Span(/* containingTransaction: */ $this, $parentSpan, $name, $type, $subtype, $action);
+    ) {
+        $newSpan = $this->beginCurrentSpan($name, $type, $subtype, $action);
+        try {
+            return $callback($newSpan);
+        } finally {
+            $newSpan->end();
+        }
     }
 
     public function getCurrentSpan(): SpanInterface
@@ -91,7 +114,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function end(?float $duration = null): void
     {
-        parent::end($duration);
+        if (!$this->endExecutionSegment($duration)) {
+            return;
+        }
 
         $this->getTracer()->getReporter()->reportTransaction($this);
 

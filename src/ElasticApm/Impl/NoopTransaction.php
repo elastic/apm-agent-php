@@ -1,9 +1,12 @@
 <?php
 
+/** @noinspection PhpUndefinedClassInspection */
+
 declare(strict_types=1);
 
 namespace ElasticApm\Impl;
 
+use Closure;
 use ElasticApm\Impl\Util\NoopObjectTrait;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
@@ -42,6 +45,17 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
         ?string $action = null
     ): SpanInterface {
         return NoopSpan::create();
+    }
+
+    /** @inheritDoc */
+    public function captureCurrentSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null
+    ) {
+        return $callback(NoopSpan::create());
     }
 
     /** @inheritDoc */
