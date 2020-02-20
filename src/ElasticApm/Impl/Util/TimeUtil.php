@@ -23,15 +23,18 @@ final class TimeUtil
     private const NUMBER_OF_MICROSECONDS_IN_MILLISECOND = 1000;
 
     /**
-     * @param float $monotonicBeginTime Begin time in microseconds
-     * @param float $monotonicEndTime End time in microseconds
+     * @param float $beginTime Begin time in microseconds
+     * @param float $endTime   End time in microseconds
+     *
      * @return float Duration in milliseconds
      *
      * @see ClockInterface::getMonotonicClockCurrentTime() For the description
      */
-    public static function calcDuration(float $monotonicBeginTime, float $monotonicEndTime): float
+    public static function calcDuration(float $beginTime, float $endTime): float
     {
-        return self::microsecondsToMilliseconds($monotonicEndTime - $monotonicBeginTime);
+        $diff = $endTime - $beginTime;
+        $diff = $diff < 0 ? 0 : $diff;
+        return self::microsecondsToMilliseconds($diff);
     }
 
     public static function microsecondsToMilliseconds(float $microseconds): float

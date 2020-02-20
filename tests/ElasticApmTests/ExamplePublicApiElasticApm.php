@@ -23,11 +23,11 @@ final class ExamplePublicApiElasticApm
         $this->getShoppingCartItems();
         $this->chargePayment();
 
-        ElasticApm::getCurrentSpan()->setLabel('lost-tag-because-there-is-no-current-span', 123.456);
+        ElasticApm::getCurrentSpan()->setLabel('lost-label-because-there-is-no-current-span', 123.456);
 
         $tx->end();
 
-        ElasticApm::getCurrentTransaction()->setLabel('lost-tag-because-there-is-no-current-transaction', null);
+        ElasticApm::getCurrentTransaction()->setLabel('lost-label-because-there-is-no-current-transaction', null);
     }
 
     private function getShoppingCartItems(): void

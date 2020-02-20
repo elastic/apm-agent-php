@@ -26,7 +26,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function __construct(Tracer $tracer, ?string $name, string $type)
     {
-        parent::__construct($tracer, IdGenerator::generateId(self::TRACE_ID_SIZE_IN_BYTES), $type);
+        parent::__construct($tracer, IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES), $type);
 
         $this->setName($name);
 
