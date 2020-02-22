@@ -11,7 +11,7 @@ use ElasticApm\Impl\NoopReporter;
 use ElasticApm\Impl\NoopSpan;
 use ElasticApm\Impl\NoopTransaction;
 use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\Impl\GlobalTracerHolder;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
 use ElasticApmTests\Util\MockReporter;
@@ -86,7 +86,7 @@ class NoopEventsTest extends Util\TestCaseBase
     {
         // Arrange
         $mockReporter = new MockReporter($this);
-        TracerSingleton::set(TracerBuilder::startNew()->withEnabled(false)->withReporter($mockReporter)->build());
+        GlobalTracerHolder::set(TracerBuilder::startNew()->withEnabled(false)->withReporter($mockReporter)->build());
 
         // Act
         $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');

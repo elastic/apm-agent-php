@@ -6,7 +6,7 @@ namespace ElasticApmTests\Util;
 
 use ElasticApm\ExecutionSegmentInterface;
 use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\Impl\GlobalTracerHolder;
 use ElasticApm\Impl\Util\IdGenerator;
 use ElasticApm\Impl\Util\TimeUtil;
 use ElasticApm\SpanInterface;
@@ -24,7 +24,7 @@ class TestCaseBase extends TestCase
 
     public function tearDown(): void
     {
-        TracerSingleton::reset();
+        GlobalTracerHolder::reset();
     }
 
     public function assertValidId(string $id, int $expectedSizeInBytes): void
@@ -94,7 +94,7 @@ class TestCaseBase extends TestCase
     protected function setUpElasticApmWithMockReporter(): MockReporter
     {
         $mockReporter = new MockReporter($this);
-        TracerSingleton::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
+        GlobalTracerHolder::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
         return $mockReporter;
     }
 }

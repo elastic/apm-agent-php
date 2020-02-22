@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests;
 
 use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\Impl\GlobalTracerHolder;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
 use ElasticApmTests\Util\ArrayUtil;
@@ -17,7 +17,7 @@ class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
     {
         // Arrange
         $mockReporter = new MockReporter($this);
-        TracerSingleton::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
+        GlobalTracerHolder::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
 
         // Act
         $exampleApp = new ExamplePublicApiElasticApm();

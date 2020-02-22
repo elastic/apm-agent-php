@@ -7,7 +7,7 @@ namespace ElasticApm\Impl;
 use ElasticApm\Impl\Util\StaticClassTrait;
 use ElasticApm\TracerInterface;
 
-final class TracerSingleton
+final class GlobalTracerHolder
 {
     use StaticClassTrait;
 
