@@ -7,9 +7,12 @@ declare(strict_types=1);
 namespace ElasticApm;
 
 use Closure;
-use ElasticApm\Impl\TracerSingleton;
+use ElasticApm\Impl\GlobalTracerHolder;
 use ElasticApm\Impl\Util\StaticClassTrait;
 
+/**
+ * Class ElasticApm is a facade (as in Facade design pattern) to the rest of Elastic APM public API.
+ */
 final class ElasticApm
 {
     use StaticClassTrait;
@@ -26,7 +29,7 @@ final class ElasticApm
      */
     public static function beginCurrentTransaction(?string $name, string $type): TransactionInterface
     {
-        return TracerSingleton::get()->beginCurrentTransaction($name, $type);
+        return GlobalTracerHolder::get()->beginCurrentTransaction($name, $type);
     }
 
     /**
@@ -48,7 +51,7 @@ final class ElasticApm
         string $type,
         Closure $callback
     ) {
-        return TracerSingleton::get()->captureCurrentTransaction($name, $type, $callback);
+        return GlobalTracerHolder::get()->captureCurrentTransaction($name, $type, $callback);
     }
 
     /**
@@ -58,7 +61,7 @@ final class ElasticApm
      */
     public static function getCurrentTransaction(): TransactionInterface
     {
-        return TracerSingleton::get()->getCurrentTransaction();
+        return GlobalTracerHolder::get()->getCurrentTransaction();
     }
 
     /**
