@@ -34,20 +34,20 @@ final class Tracer implements TracerInterface
     }
 
     /** @inheritDoc */
-    public function beginTransaction(?string $name, string $type): TransactionInterface
+    public function beginTransaction(string $name, string $type): TransactionInterface
     {
         return new Transaction($this, $name, $type);
     }
 
     /** @inheritDoc */
-    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    public function beginCurrentTransaction(string $name, string $type): TransactionInterface
     {
         $this->currentTransaction = $this->beginTransaction($name, $type);
         return $this->currentTransaction;
     }
 
     /** @inheritDoc */
-    public function captureTransaction(?string $name, string $type, Closure $callback)
+    public function captureTransaction(string $name, string $type, Closure $callback)
     {
         $transaction = $this->beginTransaction($name, $type);
         try {
@@ -58,7 +58,7 @@ final class Tracer implements TracerInterface
     }
 
     /** @inheritDoc */
-    public function captureCurrentTransaction(?string $name, string $type, Closure $callback)
+    public function captureCurrentTransaction(string $name, string $type, Closure $callback)
     {
         $transaction = $this->beginCurrentTransaction($name, $type);
         try {

@@ -22,12 +22,12 @@ final class ElasticApm
     /**
      * Begins a new transaction and sets as the current transaction.
      *
-     * @param string|null $name New transaction's name
-     * @param string      $type New transaction's type
+     * @param string $name New transaction's name
+     * @param string $type New transaction's type
      *
      * @return TransactionInterface New transaction
      */
-    public static function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    public static function beginCurrentTransaction(string $name, string $type): TransactionInterface
     {
         return GlobalTracerHolder::get()->beginCurrentTransaction($name, $type);
     }
@@ -36,9 +36,9 @@ final class ElasticApm
      * Begins a new transaction, sets as the current transaction,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
-     * @param string|null $name     New transaction's name
-     * @param string      $type     New transaction's type
-     * @param Closure     $callback Callback to execute as the new transaction
+     * @param string  $name     New transaction's name
+     * @param string  $type     New transaction's type
+     * @param Closure $callback Callback to execute as the new transaction
      *
      * @template        T
      * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
@@ -47,7 +47,7 @@ final class ElasticApm
      * @return mixed The return value of $callback
      */
     public static function captureCurrentTransaction(
-        ?string $name,
+        string $name,
         string $type,
         Closure $callback
     ) {
