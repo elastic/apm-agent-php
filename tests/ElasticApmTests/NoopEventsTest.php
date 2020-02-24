@@ -37,7 +37,7 @@ class NoopEventsTest extends Util\TestCaseBase
 
         $counter = 123;
         $tracer->captureTransaction(
-            null,
+            'test_TX_name',
             'test_TX_type',
             function (TransactionInterface $transaction) use (&$counter): void {
                 $this->assertNoopTransaction($transaction);
@@ -57,7 +57,7 @@ class NoopEventsTest extends Util\TestCaseBase
         $this->assertSame(125, $counter);
 
         $tracer->captureCurrentTransaction(
-            null,
+            'test_TX_name',
             'test_TX_type',
             function (TransactionInterface $transaction) use (&$counter): void {
                 $this->assertNoopTransaction($transaction);
@@ -163,8 +163,6 @@ class NoopEventsTest extends Util\TestCaseBase
 
         $this->assertNull($transaction->getName());
         $transaction->setName('test_TX_name');
-        $this->assertNull($transaction->getName());
-        $transaction->setName(null);
         $this->assertNull($transaction->getName());
     }
 

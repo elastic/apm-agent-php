@@ -21,13 +21,13 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var string|null */
     private $parentId;
 
-    /** @var string|null */
+    /** @var string */
     private $name;
 
     /** @var Span|null */
     private $currentSpan;
 
-    public function __construct(Tracer $tracer, ?string $name, string $type)
+    public function __construct(Tracer $tracer, string $name, string $type)
     {
         parent::__construct($tracer, IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES), $type);
 
@@ -46,7 +46,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->name;
     }
 
-    public function setName(?string $name): void
+    public function setName(string $name): void
     {
         $this->name = $name;
     }

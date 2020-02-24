@@ -70,9 +70,9 @@ interface TransactionInterface extends ExecutionSegmentInterface
     public function getName(): ?string;
 
     /**
-     * @param string|null $name
+     * @param string $name
      *
      * @see getName() For the description
      */
-    public function setName(?string $name): void;
+    public function setName(string $name): void;
 }
