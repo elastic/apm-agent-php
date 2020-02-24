@@ -7,6 +7,11 @@ namespace ElasticApm\Impl;
 use ElasticApm\Impl\Util\StaticClassTrait;
 use ElasticApm\TracerInterface;
 
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
 final class GlobalTracerHolder
 {
     use StaticClassTrait;
