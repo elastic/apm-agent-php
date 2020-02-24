@@ -68,7 +68,7 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         ?string $subtype = null,
         ?string $action = null
     ): SpanInterface {
-        return NoopSpan::create();
+        return NoopSpan::instance();
     }
 
     /** @inheritDoc */
@@ -79,7 +79,7 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         ?string $subtype = null,
         ?string $action = null
     ) {
-        return $callback(NoopSpan::create());
+        return $callback(NoopSpan::instance());
     }
 
     /** @inheritDoc */

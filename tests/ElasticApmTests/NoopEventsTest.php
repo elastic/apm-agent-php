@@ -130,7 +130,7 @@ class NoopEventsTest extends Util\TestCaseBase
     public function testNoopReporter(): void
     {
         // Arrange
-        $noopReporter = NoopReporter::create();
+        $noopReporter = NoopReporter::instance();
         $tracer = TracerBuilder::startNew()->withReporter($noopReporter)->build();
 
         // Act & Assert
