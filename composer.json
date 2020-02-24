@@ -15,7 +15,6 @@
         "psr/log": "^1.0"
     },
     "require-dev": {
-        "jakub-onderka/php-parallel-lint": "^1.0",
         "jchook/phpunit-assert-throws": "^1.0",
         "monolog/monolog": "^2.0",
         "phpstan/phpstan": "^0.12.9",
@@ -41,11 +40,6 @@
         "sort-packages": true
     },
     "scripts": {
-        "parallel_lint": [
-            "./vendor/bin/parallel-lint ./src/ElasticApm/",
-            "./vendor/bin/parallel-lint ./tests/",
-            "./vendor/bin/parallel-lint ./examples/"
-        ],
         "php_codesniffer_check": [
             "./vendor/bin/phpcs -s ./src/ElasticApm/",
             "./vendor/bin/phpcs -s ./tests/",
@@ -62,7 +56,6 @@
             "./vendor/bin/phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=100M"
         ],
         "static_check": [
-            "composer run-script parallel_lint",
             "composer run-script php_codesniffer_check",
             "composer run-script phpstan"
         ],
