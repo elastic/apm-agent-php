@@ -7,6 +7,7 @@ namespace ElasticApmTests;
 use ElasticApm\ElasticApm;
 use ElasticApm\SpanInterface;
 use ElasticApm\TransactionInterface;
+use ElasticApmTests\Util\TestDummyException;
 
 class CapturePublicApiTest extends Util\TestCaseBase
 {
@@ -137,5 +138,44 @@ class CapturePublicApiTest extends Util\TestCaseBase
         $this->assertNotNull($span);
         $this->assertSame(1, count($mockReporter->getSpans()));
         $this->assertSame($span, $mockReporter->getSpans()[0]);
+    }
+
+    public function testWhenExceptionThrown(): void
+    {
+        // Arrange
+        $mockReporter = $this->setUpElasticApmWithMockReporter();
+
+        $throwingFunc = function (bool $shouldThrow): bool {
+            if ($shouldThrow) {
+                throw new TestDummyException("A message");
+            }
+            return $shouldThrow;
+        };
+
+        $captureTx = function (bool $shouldThrow) use ($throwingFunc): bool {
+            return ElasticApm::captureCurrentTransaction(
+                'test_TX_name',
+                'test_TX_type',
+                function () use ($throwingFunc, $shouldThrow): bool {
+                    return ElasticApm::captureCurrentSpan(
+                        'test_span_name',
+                        'test_span_type',
+                        function () use ($throwingFunc, $shouldThrow): bool {
+                            return $throwingFunc($shouldThrow);
+                        }
+                    );
+                }
+            );
+        };
+
+        // Act
+        $this->assertSame(false, $captureTx(false));
+        $this->assertThrows(TestDummyException::class, function () use ($captureTx) {
+            $captureTx(true);
+        });
+
+        // Assert
+        $this->assertSame(2, count($mockReporter->getTransactions()));
+        $this->assertSame(2, count($mockReporter->getSpans()));
     }
 }
