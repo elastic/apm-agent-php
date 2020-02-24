@@ -85,7 +85,7 @@ final class Tracer implements TracerInterface
 
     public function getCurrentTransaction(): TransactionInterface
     {
-        return $this->currentTransaction ?? NoopTransaction::create();
+        return $this->currentTransaction ?? NoopTransaction::instance();
     }
 
     public function resetCurrentTransaction(): void

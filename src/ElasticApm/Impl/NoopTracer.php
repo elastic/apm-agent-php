@@ -23,30 +23,30 @@ class NoopTracer implements TracerInterface
     /** @inheritDoc */
     public function beginTransaction(?string $name, string $type): TransactionInterface
     {
-        return NoopTransaction::create();
+        return NoopTransaction::instance();
     }
 
     /** @inheritDoc */
     public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
     {
-        return NoopTransaction::create();
+        return NoopTransaction::instance();
     }
 
     /** @inheritDoc */
     public function captureTransaction(?string $name, string $type, Closure $callback)
     {
-        return $callback(NoopTransaction::create());
+        return $callback(NoopTransaction::instance());
     }
 
     /** @inheritDoc */
     public function captureCurrentTransaction(?string $name, string $type, Closure $callback)
     {
-        return $callback(NoopTransaction::create());
+        return $callback(NoopTransaction::instance());
     }
 
     /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
-        return NoopTransaction::create();
+        return NoopTransaction::instance();
     }
 }

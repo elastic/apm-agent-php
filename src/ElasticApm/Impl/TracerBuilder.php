@@ -55,12 +55,12 @@ final class TracerBuilder
     public function build(): TracerInterface
     {
         if (!$this->isEnabled) {
-            return NoopTracer::create();
+            return NoopTracer::instance();
         }
 
         return new Tracer(
-            $this->clock ?? Clock::create(),
-            $this->reporter ?? NoopReporter::create()
+            $this->clock ?? Clock::instance(),
+            $this->reporter ?? NoopReporter::instance()
         );
     }
 }

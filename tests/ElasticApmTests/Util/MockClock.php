@@ -18,7 +18,7 @@ class MockClock implements ClockInterface
 
     public function __construct()
     {
-        $this->systemClockCurrentTime = Clock::create()->getSystemClockCurrentTime();
+        $this->systemClockCurrentTime = Clock::instance()->getSystemClockCurrentTime();
         $this->monotonicClockCurrentTime = 1000000000;
     }
 

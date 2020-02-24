@@ -22,7 +22,7 @@ trait CachedSingletonInstanceTrait
     {
     }
 
-    public static function create(): self
+    public static function instance(): self
     {
         if (!isset(self::$cachedInstance)) {
             self::$cachedInstance = new self();

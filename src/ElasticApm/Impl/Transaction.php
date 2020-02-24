@@ -102,7 +102,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function getCurrentSpan(): SpanInterface
     {
-        return $this->currentSpan ?? NoopSpan::create();
+        return $this->currentSpan ?? NoopSpan::instance();
     }
 
     public function popCurrentSpan(): void

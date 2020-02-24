@@ -44,7 +44,7 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
         ?string $subtype = null,
         ?string $action = null
     ): SpanInterface {
-        return NoopSpan::create();
+        return NoopSpan::instance();
     }
 
     /** @inheritDoc */
@@ -55,12 +55,12 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
         ?string $subtype = null,
         ?string $action = null
     ) {
-        return $callback(NoopSpan::create());
+        return $callback(NoopSpan::instance());
     }
 
     /** @inheritDoc */
     public function getCurrentSpan(): SpanInterface
     {
-        return NoopSpan::create();
+        return NoopSpan::instance();
     }
 }
