@@ -99,6 +99,116 @@ class PublicApiTest extends Util\TestCaseBase
         );
     }
 
+    public function testTransactionSetName(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name_1', 'test_TX_type');
+        $tx->setName('test_TX_name_2');
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getTransactions()));
+        $reportedTx = $mockReporter->getTransactions()[0];
+        $this->assertSame('test_TX_name_2', $reportedTx->getName());
+    }
+
+    public function testTransactionSetType(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type_1');
+        $tx->setType('test_TX_type_2');
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getTransactions()));
+        $reportedTx = $mockReporter->getTransactions()[0];
+        $this->assertSame('test_TX_type_2', $reportedTx->getType());
+    }
+
+    public function testSpanSetName(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name_1', 'test_span_type');
+        $span->setName('test_span_name_2');
+        $span->end();
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getSpans()));
+        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame('test_span_name_2', $reportedSpan->getName());
+    }
+
+    public function testSpanSetType(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type_1');
+        $span->setType('test_span_type_2');
+        $span->end();
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getSpans()));
+        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame('test_span_type_2', $reportedSpan->getType());
+    }
+
+    public function testSpanSetSubtype(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+        $span->setSubtype('test_span_subtype');
+        $span->end();
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getSpans()));
+        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame('test_span_subtype', $reportedSpan->getSubtype());
+    }
+
+    public function testSpanSetAction(): void
+    {
+        // Arrange
+        $mockReporter = new MockReporter($this);
+        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
+
+        // Act
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+        $span->setAction('test_span_action');
+        $span->end();
+        $tx->end();
+
+        // Assert
+        $this->assertSame(1, count($mockReporter->getSpans()));
+        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame('test_span_action', $reportedSpan->getAction());
+    }
+
     public function testGeneratedIds(): void
     {
         // Arrange
