@@ -27,13 +27,13 @@
     },
     "autoload": {
         "psr-4": {
-            "ElasticApm\\": "./src/ElasticApm/"
+            "Elastic\\Apm\\": "./src/ElasticApm/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ElasticApmTests\\": "./tests/ElasticApmTests/",
-            "ElasticApmExamples\\": "./examples/ElasticApmExamples/"
+            "Elastic\\Apm\\Tests\\": "./tests/ElasticApmTests/",
+            "Elastic\\Apm\\Examples\\": "./examples/ElasticApmExamples/"
         }
     },
     "config": {

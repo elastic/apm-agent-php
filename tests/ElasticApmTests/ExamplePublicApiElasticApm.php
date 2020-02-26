@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\ElasticApm;
-use ElasticApm\TransactionInterface;
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\TransactionInterface;
 
 /**
- * @see \ElasticApmTests\PublicApiTest::testExamplePublicApiElasticApm - test that depends on this class
+ * @see \Elastic\Apm\Tests\PublicApiTest::testExamplePublicApiElasticApm - test that depends on this class
  */
 final class ExamplePublicApiElasticApm
 {

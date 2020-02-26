@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 
 class GlobalTracerTest extends Util\TestCaseBase
 {

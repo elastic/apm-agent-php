@@ -4,11 +4,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm;
+namespace Elastic\Apm;
 
 use Closure;
-use ElasticApm\Impl\GlobalTracerHolder;
-use ElasticApm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
  * Class ElasticApm is a facade (as in Facade design pattern) to the rest of Elastic APM public API.

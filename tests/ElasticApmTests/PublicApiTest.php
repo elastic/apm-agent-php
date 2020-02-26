@@ -4,12 +4,12 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\ElasticApm;
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApmTests\Util\MockReporter;
-use ElasticApmTests\Util\NotFoundException;
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Tests\Util\MockReporter;
+use Elastic\Apm\Tests\Util\NotFoundException;
 
 class PublicApiTest extends Util\TestCaseBase
 {

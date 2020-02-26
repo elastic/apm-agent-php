@@ -4,12 +4,12 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmExamples\UsingPublicApi;
+namespace Elastic\Apm\Examples\UsingPublicApi;
 
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\TransactionInterface;
-use ElasticApmTests\Util\MockReporter;
-use ElasticApmTests\Util\TestCaseBase;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\Tests\Util\MockReporter;
+use Elastic\Apm\Tests\Util\TestCaseBase;
 
 class ExampleUsingPublicApi extends TestCaseBase
 {

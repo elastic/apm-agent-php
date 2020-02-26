@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Tests\Util;
 
-use ElasticApm\Impl\ReporterInterface;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
+use Elastic\Apm\Impl\ReporterInterface;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
 
 class MockReporter implements ReporterInterface
 {

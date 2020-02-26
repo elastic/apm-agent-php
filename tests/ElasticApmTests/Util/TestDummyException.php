@@ -4,7 +4,7 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Tests\Util;
 
 use Exception;
 use Throwable;

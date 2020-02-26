@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\GlobalTracerHolder;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
-use ElasticApmTests\Util\ArrayUtil;
-use ElasticApmTests\Util\MockReporter;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\Tests\Util\ArrayUtil;
+use Elastic\Apm\Tests\Util\MockReporter;
 
 class ExamplePublicApiElasticApmTest extends Util\TestCaseBase
 {

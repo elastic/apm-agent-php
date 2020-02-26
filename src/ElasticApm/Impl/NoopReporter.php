@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm\Impl;
+namespace Elastic\Apm\Impl;
 
-use ElasticApm\Impl\Util\NoopObjectTrait;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.

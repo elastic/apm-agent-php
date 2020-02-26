@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Tests\Util;
 
-use ElasticApm\Impl\Clock;
-use ElasticApm\Impl\ClockInterface;
-use ElasticApm\Impl\Util\TimeUtil;
+use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\ClockInterface;
+use Elastic\Apm\Impl\Util\TimeUtil;
 
 class MockClock implements ClockInterface
 {
@@ -27,15 +27,15 @@ class MockClock implements ClockInterface
         return $this->getSystemClockCurrentTime();
     }
 
-    public function fastForward(float $numberOfMicroseconds): void
+    public function fastForwardMicroseconds(float $numberOfMicroseconds): void
     {
         $this->systemClockCurrentTime += $numberOfMicroseconds;
         $this->monotonicClockCurrentTime += $numberOfMicroseconds;
     }
 
-    public function fastForwardDuration(float $durationInMilliseconds): void
+    public function fastForwardMilliseconds(float $durationInMilliseconds): void
     {
-        $this->fastForward(TimeUtil::millisecondsToMicroseconds($durationInMilliseconds));
+        $this->fastForwardMicroseconds(TimeUtil::millisecondsToMicroseconds($durationInMilliseconds));
     }
 
     public function getSystemClockCurrentTime(): float
