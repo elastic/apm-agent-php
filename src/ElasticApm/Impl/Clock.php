@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm\Impl;
+namespace Elastic\Apm\Impl;
 
-use ElasticApm\Impl\Util\CachedSingletonInstanceTrait;
-use ElasticApm\Impl\Util\TimeUtil;
+use Elastic\Apm\Impl\Util\LazySingletonInstanceTrait;
+use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -14,7 +14,7 @@ use ElasticApm\Impl\Util\TimeUtil;
  */
 final class Clock implements ClockInterface
 {
-    use CachedSingletonInstanceTrait;
+    use LazySingletonInstanceTrait;
 
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float

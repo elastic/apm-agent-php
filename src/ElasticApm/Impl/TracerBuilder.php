@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm\Impl;
+namespace Elastic\Apm\Impl;
 
-use ElasticApm\TracerInterface;
+use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
+use Elastic\Apm\TracerInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -13,6 +14,11 @@ use ElasticApm\TracerInterface;
  */
 final class TracerBuilder
 {
+    /**
+     * Constructor is hidden because startNew() should be used instead
+     */
+    use HiddenConstructorTrait;
+
     /** @var bool */
     private $isEnabled = true;
 
@@ -21,13 +27,6 @@ final class TracerBuilder
 
     /** @var ReporterInterface|null */
     private $reporter;
-
-    /**
-     * Constructor is hidden because startNew() should be used instead.
-     */
-    private function __construct()
-    {
-    }
 
     public static function startNew(): self
     {

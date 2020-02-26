@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\ElasticApm;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
-use ElasticApmTests\Util\TestDummyException;
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\Tests\Util\TestDummyException;
 
 class CapturePublicApiTest extends Util\TestCaseBase
 {

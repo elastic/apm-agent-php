@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApmTests\Util\MockClock;
-use ElasticApmTests\Util\MockReporter;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Tests\Util\MockClock;
+use Elastic\Apm\Tests\Util\MockReporter;
 
 class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
 {
@@ -18,11 +18,11 @@ class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
         $tracer = TracerBuilder::startNew()->withClock($mockClock)->withReporter($mockReporter)->build();
 
         // Act
-        $mockClock->fastForward(987654321);
+        $mockClock->fastForwardMicroseconds(987654321);
         $expectedTimestamp = $mockClock->getTimestamp();
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $expectedDuration = 12345.678;
-        $mockClock->fastForwardDuration($expectedDuration);
+        $mockClock->fastForwardMilliseconds($expectedDuration);
         $tx->end();
 
         // Assert
@@ -40,10 +40,10 @@ class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
         $tracer = TracerBuilder::startNew()->withClock($mockClock)->withReporter($mockReporter)->build();
 
         // Act
-        $mockClock->fastForward(987654321);
+        $mockClock->fastForwardMicroseconds(987654321);
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $expectedDuration = 12345.678;
-        $mockClock->fastForwardDuration($expectedDuration + 123456789);
+        $mockClock->fastForwardMilliseconds($expectedDuration + 123456789);
         $tx->end($expectedDuration);
 
         // Assert
@@ -60,14 +60,14 @@ class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
         $tracer = TracerBuilder::startNew()->withClock($mockClock)->withReporter($mockReporter)->build();
 
         // Act
-        $mockClock->fastForward(987654321);
+        $mockClock->fastForwardMicroseconds(987654321);
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $expectedTxBeginToSpanBeginDuration = 112233.445;
-        $mockClock->fastForwardDuration($expectedTxBeginToSpanBeginDuration);
+        $mockClock->fastForwardMilliseconds($expectedTxBeginToSpanBeginDuration);
         $expectedSpanTimestamp = $mockClock->getTimestamp();
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
         $expectedSpanDuration = 12345.678;
-        $mockClock->fastForwardDuration($expectedSpanDuration);
+        $mockClock->fastForwardMilliseconds($expectedSpanDuration);
         $span->end();
         $tx->end();
 
@@ -87,12 +87,12 @@ class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
         $tracer = TracerBuilder::startNew()->withClock($mockClock)->withReporter($mockReporter)->build();
 
         // Act
-        $mockClock->fastForward(987654321);
+        $mockClock->fastForwardMicroseconds(987654321);
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
-        $mockClock->fastForward(987654321);
+        $mockClock->fastForwardMicroseconds(987654321);
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
         $expectedSpanDuration = 12345.678;
-        $mockClock->fastForwardDuration($expectedSpanDuration + 123456789);
+        $mockClock->fastForwardMilliseconds($expectedSpanDuration + 123456789);
         $span->end($expectedSpanDuration);
         $tx->end();
 

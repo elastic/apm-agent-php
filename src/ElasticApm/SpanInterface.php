@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm;
+namespace Elastic\Apm;
 
 interface SpanInterface extends ExecutionSegmentInterface
 {

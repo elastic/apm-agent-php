@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApmTests\Util\MockReporter;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Tests\Util\MockReporter;
 
 class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 {

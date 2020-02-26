@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Tests\Util;
 
-use ElasticApm\ExecutionSegmentInterface;
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\GlobalTracerHolder;
-use ElasticApm\Impl\Util\IdGenerator;
-use ElasticApm\Impl\Util\TimeUtil;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
+use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\TimeUtil;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
 use Jchook\AssertThrows\AssertThrows;
 use PHPUnit\Framework\TestCase;
 

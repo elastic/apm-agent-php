@@ -4,12 +4,12 @@
 
 declare(strict_types=1);
 
-namespace ElasticApm\Impl;
+namespace Elastic\Apm\Impl;
 
 use Closure;
-use ElasticApm\ExecutionSegmentInterface;
-use ElasticApm\Impl\Util\IdGenerator;
-use ElasticApm\Impl\Util\TimeUtil;
+use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.

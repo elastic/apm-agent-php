@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
 final class TestDummyObject
 {

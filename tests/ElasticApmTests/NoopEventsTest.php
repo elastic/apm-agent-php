@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests;
+namespace Elastic\Apm\Tests;
 
-use ElasticApm\ElasticApm;
-use ElasticApm\ExecutionSegmentInterface;
-use ElasticApm\Impl\NoopExecutionSegment;
-use ElasticApm\Impl\NoopReporter;
-use ElasticApm\Impl\NoopSpan;
-use ElasticApm\Impl\NoopTransaction;
-use ElasticApm\Impl\TracerBuilder;
-use ElasticApm\Impl\GlobalTracerHolder;
-use ElasticApm\SpanInterface;
-use ElasticApm\TransactionInterface;
-use ElasticApmTests\Util\MockReporter;
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\NoopExecutionSegment;
+use Elastic\Apm\Impl\NoopReporter;
+use Elastic\Apm\Impl\NoopSpan;
+use Elastic\Apm\Impl\NoopTransaction;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\Tests\Util\MockReporter;
 
 class NoopEventsTest extends Util\TestCaseBase
 {

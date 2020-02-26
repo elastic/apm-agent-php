@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmExamples\UsingPublicApi;
+namespace Elastic\Apm\Examples\UsingPublicApi;
 
 require __DIR__ . '/../../../vendor/autoload.php';
 

@@ -9,10 +9,13 @@ namespace Elastic\Apm\Impl\Util;
  *
  * @internal
  */
-trait StaticClassTrait
+trait HiddenConstructorTrait
 {
     /**
-     * Constructor is hidden because it's a "static" class
+     * Constructor is hidden
      */
-    use HiddenConstructorTrait;
+    /** @noinspection PhpUnused */
+    private function __construct()
+    {
+    }
 }

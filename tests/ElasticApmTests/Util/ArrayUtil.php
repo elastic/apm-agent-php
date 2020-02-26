@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Tests\Util;
+
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -11,12 +13,7 @@ namespace ElasticApmTests\Util;
  */
 final class ArrayUtil
 {
-    /**
-     * Constructor is hidden because it's a "static" class
-     */
-    private function __construct()
-    {
-    }
+    use StaticClassTrait;
 
     /**
      * @template       T
