@@ -72,6 +72,7 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY( "elasticapm.service_name", SERVICE_NAME_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, serviceName, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
     STD_PHP_INI_ENTRY( "elasticapm.log_file", LOG_CONFIG_DEFAULT_VALUE, PHP_INI_ALL, OnUpdateString, logFile, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
     STD_PHP_INI_ENTRY( "elasticapm.log_level", LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE, PHP_INI_ALL, OnUpdateLong, logLevel, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
+    STD_PHP_INI_ENTRY( "elasticapm.autoload_file", AUTOLOAD_FILE_DEFAULT_VALUE, PHP_INI_SYSTEM, OnUpdateString, autoloadFile, Config, ELASTICAPM_GLOBAL_STATE_CONFIG() )
 PHP_INI_END()
 
 void registerElasticApmIniEntries( int module_number)
