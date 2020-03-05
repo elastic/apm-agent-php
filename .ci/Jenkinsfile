@@ -74,6 +74,8 @@ pipeline {
             }
           }
           stage('Install') {
+            agent { label 'linux && immutable' }
+            options { skipDefaultCheckout() }
             steps {
               withGithubNotify(context: "Install-${PHP_VERSION}") {
                 deleteDir()
