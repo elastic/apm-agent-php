@@ -296,6 +296,12 @@ ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
     cleanupGlobalState( getGlobalState() );
     // from this point global state should not be used anymore
 
+    // Introduce intentional segmentation fault to verify that CI fails
+    {
+        char* dummy = NULL;
+        dummy[ 0 ] = '\0';
+    }
+
     LOG_FUNCTION_EXIT();
     return resultSuccess;
 }
