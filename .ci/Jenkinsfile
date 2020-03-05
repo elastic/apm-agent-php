@@ -62,6 +62,8 @@ pipeline {
           stage('Test') {
             steps {
               withGithubNotify(context: "Test-${PHP_VERSION}", tab: 'tests') {
+                deleteDir()
+                unstash 'source'
                 dir("${BASE_DIR}"){
                   sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION} make test", label: 'run tests'
                 }
@@ -76,6 +78,8 @@ pipeline {
           stage('Install') {
             steps {
               withGithubNotify(context: "Install-${PHP_VERSION}") {
+                deleteDir()
+                unstash 'source'
                 dir("${BASE_DIR}"){
                   sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
                 }
