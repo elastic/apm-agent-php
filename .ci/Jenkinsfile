@@ -33,40 +33,58 @@ pipeline {
         stash allowEmpty: true, name: 'source', useDefaultExcludes: false
       }
     }
-    stage('Build') {
-      options { skipDefaultCheckout() }
-      steps {
-        withGithubNotify(context: 'Build') {
-          deleteDir()
-          unstash 'source'
-          dir("${BASE_DIR}"){
-            sh script: 'docker build --tag apm-agent-php .', label: 'prepare docker image'
-            sh script: 'docker run --rm -u $(id -u):$(id -g) -t -v $(pwd):/app apm-agent-php', label: 'run build'
+    stage('BuildAndTest') {
+      matrix {
+        agent { label 'linux && immutable' }
+        options { skipDefaultCheckout() }
+        axes {
+          axis {
+            name 'PHP_VERSION'
+            values '7.2', '7.3', '7.4'
           }
         }
-      }
-    }
-    stage('Test') {
-      options { skipDefaultCheckout() }
-      steps {
-        withGithubNotify(context: 'Test', tab: 'tests') {
-          dir("${BASE_DIR}"){
-            sh script: 'docker run --rm -u $(id -u):$(id -g) -t -v $(pwd):/app apm-agent-php make test', label: 'run tests'
+        stages {
+          stage('Build') {
+            steps {
+              withGithubNotify(context: "Build-${PHP_VERSION}") {
+                deleteDir()
+                unstash 'source'
+                dir("${BASE_DIR}"){
+                  retry(3) {
+                    sleep randomNumber(min: 2, max: 5)
+                    sh script: "docker build --build-arg PHP_VERSION=${PHP_VERSION} --tag test-php:${PHP_VERSION} .", label: 'prepare docker image'
+                  }
+                  sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION}", label: 'run build'
+                }
+              }
+            }
           }
-        }
-      }
-      post {
-        always {
-          junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
-        }
-      }
-    }
-    stage('Install') {
-      options { skipDefaultCheckout() }
-      steps {
-        withGithubNotify(context: 'Install') {
-          dir("${BASE_DIR}"){
-            sh script: 'docker run --rm -t -v $(pwd):/app apm-agent-php make install', label: 'run install'
+          stage('Test') {
+            steps {
+              withGithubNotify(context: "Test-${PHP_VERSION}", tab: 'tests') {
+                dir("${BASE_DIR}"){
+                  sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION} make test", label: 'run tests'
+                }
+              }
+            }
+            post {
+              always {
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+              }
+            }
+          }
+          stage('Install') {
+            agent { label 'linux && immutable' }
+            options { skipDefaultCheckout() }
+            steps {
+              withGithubNotify(context: "Install-${PHP_VERSION}") {
+                deleteDir()
+                unstash 'source'
+                dir("${BASE_DIR}"){
+                  sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
+                }
+              }
+            }
           }
         }
       }
