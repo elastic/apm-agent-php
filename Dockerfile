@@ -1,7 +1,14 @@
 ARG PHP_VERSION=7.2
-FROM wordpress:php${PHP_VERSION}-fpm-alpine
+FROM wordpress:php${PHP_VERSION}-fpm
 
-RUN apk --no-cache add build-base autoconf curl-dev
+RUN apt-get -qq update \
+ && apt-get -qq install -y \
+    build-essential \
+    autoconf \
+    curl \
+    libcurl4-openssl-dev \
+	--no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/src/ext
 
