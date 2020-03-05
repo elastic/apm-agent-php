@@ -329,7 +329,8 @@ ResultCode elasticApmRequestInit()
     // Include the autoload file
     elasticApmExecutePhpFile(globalState->config.autoloadFile);
 
-    ZVAL_STRINGL(&function_name, "ElasticApm\\ElasticApm::test", sizeof("ElasticApm\\ElasticApm::test") - 1);
+    const char function_name_str[] = "ElasticApm\\AutoloadedFromExtension::callFromExtension";
+    ZVAL_STRINGL(&function_name, function_name_str, sizeof( function_name_str ) - 1);
   
     // call_user_function(function_table, object, function_name, retval_ptr, param_count, params)
     if (SUCCESS == call_user_function(EG(function_table), NULL, &function_name, &retval, 0, NULL TSRMLS_CC))
