@@ -1,4 +1,5 @@
-FROM wordpress:php7.3-fpm-alpine
+ARG VERSION=php7.2
+FROM wordpress:$VERSION
 
 RUN apk --no-cache add build-base autoconf curl-dev
 
