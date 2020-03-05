@@ -74,14 +74,10 @@ pipeline {
             }
           }
           stage('Install') {
-            agent { label 'linux && immutable' }
-            options { skipDefaultCheckout() }
             steps {
               withGithubNotify(context: "Install-${PHP_VERSION}") {
-                deleteDir()
-                unstash 'source'
                 dir("${BASE_DIR}"){
-                  sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
+                  sh script: "docker run --rm -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
                 }
               }
             }
