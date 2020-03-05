@@ -1,4 +1,4 @@
-FROM wordpress:php7.4-fpm
+FROM wordpress:php7.2-fpm
 
 RUN apt-get -qq update \
  && apt-get -qq install -y \
