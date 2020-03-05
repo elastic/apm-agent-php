@@ -40,7 +40,7 @@ pipeline {
         axes {
           axis {
             name 'VERSION'
-            values 'php7.2', 'php7.3', 'php7.4'
+            values '7.2', '7.3', '7.4'
           }
         }
         stages {
@@ -50,7 +50,7 @@ pipeline {
                 deleteDir()
                 unstash 'source'
                 dir("${BASE_DIR}"){
-                  sh script: "docker build --build-arg IMAGE=${VERSION} --tag apm-agent-php:${VERSION} .", label: 'prepare docker image'
+                  sh script: "docker build --build-arg PHP_VERSION=${VERSION} --tag apm-agent-php:${VERSION} .", label: 'prepare docker image'
                   sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app apm-agent-php:${VERSION}", label: 'run build'
                 }
               }

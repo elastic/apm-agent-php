@@ -1,5 +1,5 @@
-ARG VERSION=php7.2
-FROM wordpress:$VERSION
+ARG PHP_VERSION=7.2
+FROM wordpress:php${PHP_VERSION}-fpm-alpine
 
 RUN apk --no-cache add build-base autoconf curl-dev
 
