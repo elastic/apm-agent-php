@@ -26,6 +26,7 @@ struct Config
     const char* serviceName;
     const char* logFile;
     int logLevel;
+    const char* autoloadFile;
 };
 
 typedef struct Config Config;
@@ -40,6 +41,7 @@ typedef struct Config Config;
 // We don't wrap value in parenthesis because it's stringized later
 #define LOG_LEVEL_CONFIG_DEFAULT_VALUE 0
 #define LOG_LEVEL_CONFIG_DEFAULT_STR_VALUE ( ELASTIC_PP_STRINGIZE( LOG_LEVEL_CONFIG_DEFAULT_VALUE ) )
+#define AUTOLOAD_FILE_DEFAULT_VALUE ( "" )
 
 static inline void cleanupConfig( Config* thisObj )
 {
@@ -51,6 +53,7 @@ static inline void cleanupConfig( Config* thisObj )
     thisObj->serviceName = SERVICE_NAME_CONFIG_DEFAULT_VALUE;
     thisObj->logFile = LOG_CONFIG_DEFAULT_VALUE;
     thisObj->logLevel = LOG_LEVEL_CONFIG_DEFAULT_VALUE;
+    thisObj->autoloadFile = AUTOLOAD_FILE_DEFAULT_VALUE;
 }
 
 static inline ResultCode initConfig( Config* thisObj )

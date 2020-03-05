@@ -11,6 +11,9 @@ junit.xml
 # JetBrains PhpStorm
 .idea/
 
+# Visual Studio
+.vs/
+
 # Visual Studio Code
 .vscode/
 

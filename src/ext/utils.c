@@ -10,7 +10,7 @@
  */
 
 #include "utils.h"
-
+#include <php_main.h>
 #include <stdio.h>
 #include <ext/standard/php_rand.h>
 
@@ -60,6 +60,59 @@ ResultCode genRandomIdHexString( UInt8 idSizeBytes, String* pResult )
 
     failure:
     EFREE_AND_SET_TO_NULL( result );
+    goto finally;
+}
+
+ResultCode elasticApmExecutePhpFile( const char *filename TSRMLS_DC ) {
+    ResultCode resultCode = resultFailure;
+    int filename_len = strlen(filename);
+    zval dummy;
+    zend_file_handle file_handle;
+    zend_op_array *new_op_array = NULL;
+    zval result;
+    int ret;
+    zend_string *opened_path = NULL;
+
+    if (filename_len == 0) {
+        goto failure;
+    }
+
+    ret = php_stream_open_for_zend_ex(filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE);
+
+    if (ret == SUCCESS) {
+        
+        if (!file_handle.opened_path) {
+            file_handle.opened_path = zend_string_init(filename, filename_len, 0);
+        }
+        opened_path = zend_string_copy(file_handle.opened_path);
+        ZVAL_NULL(&dummy);
+        if (zend_hash_add(&EG(included_files), opened_path, &dummy)) {
+
+            new_op_array = zend_compile_file(&file_handle, ZEND_REQUIRE);
+            zend_destroy_file_handle(&file_handle);
+        } else {
+            new_op_array = NULL;
+            zend_file_handle_dtor(&file_handle);
+        }
+        zend_string_release(opened_path);
+        if (new_op_array) {
+            ZVAL_UNDEF(&result);
+
+            zend_execute(new_op_array, &result);
+
+            destroy_op_array(new_op_array);
+            zval_ptr_dtor(&result);
+
+            resultCode = resultSuccess;
+        }
+    } 
+
+    finally:
+    EFREE_AND_SET_TO_NULL( new_op_array );
+    EFREE_AND_SET_TO_NULL( opened_path );
+    return resultCode;
+
+    failure:
     goto finally;
 }
 
