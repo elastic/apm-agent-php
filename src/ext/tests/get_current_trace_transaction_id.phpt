@@ -7,7 +7,7 @@ if (!extension_loaded('elasticapm')) {
 }
 ?>
 --INI--
-elasticapm.autoload_file=/mnt/hgfs/Elastic_Dev/PHP_Agent/Linux/_TEMP/work/PHP_my_fork_2/src/autoload.php
+elasticapm.autoload_file=../autoload.php
 --FILE--
 <?php
 if ( elasticapm_is_enabled() ) {

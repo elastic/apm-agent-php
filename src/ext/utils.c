@@ -87,7 +87,6 @@ ResultCode elasticApmExecutePhpFile( const char *filename TSRMLS_DC ) {
         opened_path = zend_string_copy(file_handle.opened_path);
         ZVAL_NULL(&dummy);
         if (zend_hash_add(&EG(included_files), opened_path, &dummy)) {
-
             new_op_array = zend_compile_file(&file_handle, ZEND_REQUIRE);
             zend_destroy_file_handle(&file_handle);
         } else {
@@ -95,12 +94,14 @@ ResultCode elasticApmExecutePhpFile( const char *filename TSRMLS_DC ) {
             zend_file_handle_dtor(&file_handle);
         }
         zend_string_release(opened_path);
+        opened_path = NULL;
         if (new_op_array) {
             ZVAL_UNDEF(&result);
 
             zend_execute(new_op_array, &result);
 
             destroy_op_array(new_op_array);
+            new_op_array = NULL;
             zval_ptr_dtor(&result);
 
             resultCode = resultSuccess;
