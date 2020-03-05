@@ -1,6 +1,13 @@
-FROM wordpress:php7.3-fpm-alpine
+FROM wordpress:php7.2-fpm
 
-RUN apk --no-cache add build-base autoconf curl-dev
+RUN apt-get -qq update \
+ && apt-get -qq install -y \
+    build-essential \
+    autoconf \
+    curl \
+    libcurl4-openssl-dev \
+	--no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/src/ext
 
