@@ -41,26 +41,26 @@
     },
     "scripts": {
         "php_codesniffer_check": [
-            "./vendor/bin/phpcs -s ./src/ElasticApm/",
-            "./vendor/bin/phpcs -s ./tests/",
-            "./vendor/bin/phpcs -s ./examples/"
+            "phpcs -s ./src/ElasticApm/",
+            "phpcs -s ./tests/",
+            "phpcs -s ./examples/"
         ],
         "php_codesniffer_fix": [
-            "./vendor/bin/phpcbf ./src/ElasticApm",
-            "./vendor/bin/phpcbf ./tests",
-            "./vendor/bin/phpcbf ./examples/"
+            "phpcbf ./src/ElasticApm",
+            "phpcbf ./tests",
+            "phpcbf ./examples/"
         ],
         "phpstan": [
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=100M",
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=100M",
-            "./vendor/bin/phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=100M"
+            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=100M",
+            "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=100M",
+            "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=100M"
         ],
         "static_check": [
             "composer run-script php_codesniffer_check",
             "composer run-script phpstan"
         ],
         "test": [
-            "./vendor/bin/phpunit"
+            "phpunit"
         ],
         "static_check_and_test": [
             "composer run-script static_check",
