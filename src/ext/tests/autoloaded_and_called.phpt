@@ -6,6 +6,9 @@ AutoloadedFromExtension class in the file pointed by elasticapm.autoload_file sh
 elasticapm.autoload_file=../autoload.php
 --FILE--
 <?php
+declare(strict_types=1);
+require __DIR__ . '/../tests_util//bootstrap.php';
+
 if (!\ElasticApm\AutoloadedFromExtension::wasCalledByExtension()) {
     die('\AutoloadedFromExtension::wasCalledByExtension(): false');
 }
