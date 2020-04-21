@@ -94,6 +94,7 @@ PHP_INI_BEGIN()
     #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
+    ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_AUTOLOAD_FILE )
     ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ENABLED )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_FILE )
@@ -136,23 +137,17 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
 
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
-        bool isSecret;
-        String name = NULL;
-        String envVarName = NULL;
-        StringView iniName;
-        getConfigManagerOptionMetadata(
-                cfgManager,
-                optId,
-                /* out */ &isSecret,
-                /* out */ &name,
-                /* out */ &envVarName,
-                /* out */ &iniName );
-        if ( ! isSecret ) continue;
-        resultCode = zend_ini_register_displayer( (char*)( iniName.begin ), (uint32_t)( iniName.length ), displaySecretIniValue );
+        GetConfigManagerOptionMetadataResult getMetaRes;
+        getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
+        if ( ! getMetaRes.isSecret ) continue;
+        resultCode = zend_ini_register_displayer( (char*) ( getMetaRes.iniName.begin )
+                                                  , (uint32_t) ( getMetaRes.iniName.length )
+                                                  , displaySecretIniValue );
         if ( resultCode != resultSuccess )
         {
             ELASTICAPM_LOG_ERROR( "REGISTER_INI_DISPLAYER(...) failed. resultCode: %s (%d). iniName: %.*s."
-                                , resultCodeToString( resultCode ), resultCode, (int) iniName.length, iniName.begin );
+                                  , resultCodeToString( resultCode ), resultCode
+                                  , (int) getMetaRes.iniName.length, getMetaRes.iniName.begin );
             goto failure;
         }
     }

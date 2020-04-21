@@ -50,6 +50,7 @@ enum OptionId
     #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
+    optionId_autoloadFile,
     optionId_enabled,
     optionId_internalChecksLevel,
     optionId_logFile,
@@ -84,6 +85,7 @@ struct ConfigSnapshot
         #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     AssertLevel assertLevel;
         #endif
+    String autoloadFile;
     bool enabled;
     InternalChecksLevel internalChecksLevel;
     String logFile;
@@ -113,26 +115,49 @@ const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgM
 ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* didConfigChange );
 void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager );
 
+struct GetConfigManagerOptionValueByNameResult
+{
+    zval parsedValueAsZval;
+    TextOutputStream txtOutStream;
+    String streamedParsedValue;
+};
+typedef struct GetConfigManagerOptionValueByNameResult GetConfigManagerOptionValueByNameResult;
+
 ResultCode getConfigManagerOptionValueByName(
-        const ConfigManager* cfgManager,
-        String optionName,
-        zval* parsedValueAsZval,
-        TextOutputStream* txtOutStream,
-        String* streamedParsedValue );
+        const ConfigManager* cfgManager
+        , String optionName
+        , GetConfigManagerOptionValueByNameResult* result
+);
+
+struct GetConfigManagerOptionMetadataResult
+{
+    bool isSecret;
+    String optName;
+    String envVarName;
+    StringView iniName;
+};
+typedef struct GetConfigManagerOptionMetadataResult GetConfigManagerOptionMetadataResult;
+
 void getConfigManagerOptionMetadata(
-        const ConfigManager* cfgManager,
-        OptionId optId,
-        /* out */ bool* isSecret,
-        /* out */ String* optName,
-        /* out */ String* envVarName,
-        /* out */ StringView* iniName );
+        const ConfigManager* cfgManager
+        , OptionId optId
+        , GetConfigManagerOptionMetadataResult* result
+);
+
+struct GetConfigManagerOptionValueByIdResult
+{
+    TextOutputStream txtOutStream;
+    String streamedParsedValue;
+    String rawValue;
+    String rawValueSourceDescription;
+};
+typedef struct GetConfigManagerOptionValueByIdResult GetConfigManagerOptionValueByIdResult;
+
 void getConfigManagerOptionValueById(
-        const ConfigManager* cfgManager,
-        OptionId optId,
-        TextOutputStream* txtOutStream,
-        /* out */ String* streamedParsedValue,
-        /* out */ String* rawValue,
-        /* out */ String* rawValueSource );
+        const ConfigManager* cfgManager
+        , OptionId optId
+        , GetConfigManagerOptionValueByIdResult* result
+);
 
 enum RawConfigSource
 {
@@ -169,6 +194,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 #define ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
+#define ELASTICAPM_CFG_OPT_NAME_AUTOLOAD_FILE "autoload_file"
 #define ELASTICAPM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
 #define ELASTICAPM_CFG_OPT_NAME_LOG_FILE "log_file"

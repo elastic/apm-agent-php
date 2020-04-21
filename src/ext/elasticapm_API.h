@@ -46,18 +46,18 @@ static inline ResultCode elasticApmGetConfigOption( String optionName, zval* ret
 {
     ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "optionName: `%s'", optionName );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    String streamedParsedValue = NULL;
+    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    GetConfigManagerOptionValueByNameResult getOptValueByNameRes;
+    getOptValueByNameRes.txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    getOptValueByNameRes.streamedParsedValue = NULL;
     const ResultCode resultCode = getConfigManagerOptionValueByName(
-            getGlobalTracer()->configManager,
-            optionName,
-            /* parsedValueAsZval: */ return_value,
-            &txtOutStream,
-            &streamedParsedValue );
+            getGlobalTracer()->configManager
+            , optionName
+            , &getOptValueByNameRes );
+    if ( resultCode == resultSuccess ) *return_value = getOptValueByNameRes.parsedValueAsZval;
 
     ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG(
-            "ResultCode: %s. Option's: name: `%s', value: %s",
-            resultCodeToString( resultCode ), optionName, streamedParsedValue );
+            "ResultCode: %s. Option's: name: `%s', value: %s"
+            , resultCodeToString( resultCode ), optionName, getOptValueByNameRes.streamedParsedValue );
     return resultCode;
 }

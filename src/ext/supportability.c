@@ -45,37 +45,20 @@ void printConfigurationInfo()
     php_info_print_table_header( 4, "Option", "Parsed value", "Raw value", "Source" );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
+        GetConfigManagerOptionMetadataResult getMetaRes;
+        GetConfigManagerOptionValueByIdResult getValRes;
         char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        txtOutStream.shouldEncloseUserString = ( sapi_module.phpinfo_as_text != 0 );
-        bool isSecret;
-        String optName = NULL;
-        StringView iniName;
-        String envVarName = NULL;
-        String streamedParsedValue = NULL;
-        String rawValue = NULL;
-        String rawValueSourceDescription = NULL;
+        getValRes.txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        getValRes.txtOutStream.shouldEncloseUserString = ( sapi_module.phpinfo_as_text != 0 );
 
-        getConfigManagerOptionMetadata(
-                cfgManager,
-                optId,
-                /* out */ &isSecret,
-                /* out */ &optName,
-                /* out */ &envVarName,
-                /* out */ &iniName );
-        getConfigManagerOptionValueById(
-                cfgManager,
-                optId,
-                &txtOutStream,
-                /* out */ &streamedParsedValue,
-                /* out */ &rawValue,
-                /* out */ &rawValueSourceDescription );
+        getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
+        getConfigManagerOptionValueById( cfgManager, optId, &getValRes );
         php_info_print_table_row(
                 4,
-                optName,
-                redactIfSecret( rawValue == NULL ? NULL : streamedParsedValue, isSecret ),
-                redactIfSecret( rawValue, isSecret ),
-                rawValueSourceDescription == NULL ? "Default" : rawValueSourceDescription );
+                getMetaRes.optName,
+                redactIfSecret( getValRes.rawValue == NULL ? NULL : getValRes.streamedParsedValue, getMetaRes.isSecret ),
+                redactIfSecret( getValRes.rawValue, getMetaRes.isSecret ),
+                getValRes.rawValueSourceDescription == NULL ? "Default" : getValRes.rawValueSourceDescription );
     }
     php_info_print_table_end();
 }
@@ -94,20 +77,11 @@ void printIniEntries()
             "Current value" );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
-        bool isSecret;
-        String name = NULL;
-        String envVarName = NULL;
-        StringView iniName;
+        GetConfigManagerOptionMetadataResult getMetaRes;
         String originalRawValue = NULL;
         String interpretedRawValue = NULL;
 
-        getConfigManagerOptionMetadata(
-                cfgManager,
-                optId,
-                /* out */ &isSecret,
-                /* out */ &name,
-                /* out */ &envVarName,
-                /* out */ &iniName );
+        getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
         getConfigManagerRawData(
                 cfgManager,
                 optId,
@@ -120,10 +94,10 @@ void printIniEntries()
         bool currentValueExists;
         php_info_print_table_row(
                 4,
-                streamStringView( iniName, &txtOutStream ),
+                streamStringView( getMetaRes.iniName, &txtOutStream ),
                 originalRawValue,
                 interpretedRawValue,
-                redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), isSecret ) );
+                redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), getMetaRes.isSecret ) );
     }
     php_info_print_table_end();
 }
@@ -137,20 +111,11 @@ void printEnvVars()
     php_info_print_table_header( 3, "Name", "Value used for the current config", "Current value" );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
-        bool isSecret;
-        String name = NULL;
-        String envVarName = NULL;
-        StringView iniName;
+        GetConfigManagerOptionMetadataResult getMetaRes;
         String originalRawValue = NULL;
         String interpretedRawValue = NULL;
 
-        getConfigManagerOptionMetadata(
-                cfgManager,
-                optId,
-                /* out */ &isSecret,
-                /* out */ &name,
-                /* out */ &envVarName,
-                /* out */ &iniName );
+        getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
         getConfigManagerRawData(
                 cfgManager,
                 optId,
@@ -160,9 +125,9 @@ void printEnvVars()
 
         php_info_print_table_row(
                 3,
-                envVarName,
+                getMetaRes.envVarName,
                 originalRawValue,
-                redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), isSecret ) );
+                redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), getMetaRes.isSecret ) );
     }
     php_info_print_table_end();
 }

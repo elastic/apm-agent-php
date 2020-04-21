@@ -479,6 +479,7 @@ ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
 #   if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
+ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, autoloadFile )
 ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
 ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
@@ -585,6 +586,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             assertLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
+
+    ELASTICAPM_INIT_METADATA(
+            buildStringOptionMetadata,
+            autoloadFile,
+            ELASTICAPM_CFG_OPT_NAME_AUTOLOAD_FILE,
+            /* defaultValue: */ NULL );
 
     ELASTICAPM_INIT_METADATA(
             buildBoolOptionMetadata,
@@ -1117,15 +1124,13 @@ ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 }
 
 ResultCode getConfigManagerOptionValueByName(
-        const ConfigManager* cfgManager,
-        String optionName,
-        zval* parsedValueAsZval,
-        TextOutputStream* txtOutStream,
-        String* streamedParsedValue )
+        const ConfigManager* cfgManager
+        , String optionName
+        , GetConfigManagerOptionValueByNameResult* result
+)
 {
-    ELASTICAPM_ASSERT_VALID_PTR( parsedValueAsZval );
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( streamedParsedValue );
+    ELASTICAPM_ASSERT_VALID_PTR( result );
+    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
 
     const OptionMetadata* optMeta = NULL;
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
@@ -1138,60 +1143,51 @@ ResultCode getConfigManagerOptionValueByName(
     }
     if ( optMeta == NULL ) return resultFailure;
 
-    optMeta->parsedValueToZval( optMeta, optMeta->getField( optMeta, &cfgManager->current.snapshot ), parsedValueAsZval );
-    *streamedParsedValue = optMeta->streamParsedValue(
-            optMeta, optMeta->getField( optMeta, &( cfgManager->current.snapshot ) ), txtOutStream );
+    optMeta->parsedValueToZval( optMeta, optMeta->getField( optMeta, &cfgManager->current.snapshot ), &result->parsedValueAsZval );
+    result->streamedParsedValue = optMeta->streamParsedValue(
+            optMeta, optMeta->getField( optMeta, &( cfgManager->current.snapshot ) ), &result->txtOutStream );
     return resultSuccess;
 }
 
 void getConfigManagerOptionMetadata(
-        const ConfigManager* cfgManager,
-        OptionId optId,
-        /* out */ bool* isSecret,
-        /* out */ String* optName,
-        /* out */ String* envVarName,
-        /* out */ StringView* iniName )
+        const ConfigManager* cfgManager
+        , OptionId optId
+        , GetConfigManagerOptionMetadataResult* result
+)
 {
     ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( isSecret );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( optName );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( envVarName );
-    ELASTICAPM_ASSERT_VALID_PTR( iniName );
+    ELASTICAPM_ASSERT_VALID_PTR( result );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
-    *isSecret = optMeta->isSecret;
-    *optName = optMeta->name;
-    *envVarName = cfgManager->meta.envVarNames[ optId ];
-    *iniName = optMeta->iniName;
+    result->isSecret = optMeta->isSecret;
+    result->optName = optMeta->name;
+    result->envVarName = cfgManager->meta.envVarNames[ optId ];
+    result->iniName = optMeta->iniName;
 }
 
 void getConfigManagerOptionValueById(
-        const ConfigManager* cfgManager,
-        OptionId optId,
-        TextOutputStream* txtOutStream,
-        /* out */ String* streamedParsedValue,
-        /* out */ String* rawValue,
-        /* out */ String* rawValueSource )
+        const ConfigManager* cfgManager
+        , OptionId optId
+        , GetConfigManagerOptionValueByIdResult* result
+)
 {
     ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
     ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( streamedParsedValue );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( rawValue );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( rawValueSource );
+    ELASTICAPM_ASSERT_VALID_PTR( result );
+    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
-    *streamedParsedValue = optMeta->streamParsedValue(
-            optMeta, optMeta->getField( optMeta, &( cfgManager->current.snapshot ) ), txtOutStream );
+    result->streamedParsedValue = optMeta->streamParsedValue(
+            optMeta, optMeta->getField( optMeta, &( cfgManager->current.snapshot ) ), &result->txtOutStream );
     if ( cfgManager->current.rawData == NULL )
     {
-        *rawValue = NULL;
-        *rawValueSource = NULL;
+        result->rawValue = NULL;
+        result->rawValueSourceDescription = NULL;
     }
     else
     {
-        *rawValue = cfgManager->current.rawData->combined.original[ optId ];
-        *rawValueSource = cfgManager->current.rawData->combined.sourceDescriptions[ optId ];
+        result->rawValue = cfgManager->current.rawData->combined.original[ optId ];
+        result->rawValueSourceDescription = cfgManager->current.rawData->combined.sourceDescriptions[ optId ];
     }
 }
 
