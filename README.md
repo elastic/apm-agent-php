@@ -31,16 +31,16 @@ If you don't want to install any of the dependencies you might need to compile a
 
 
 ```bash
-docker build --tag apm-agent-php .
+docker build --tag test-php .
 
 ## To compile the library
-docker run --rm -ti -v $(pwd):/app apm-agent-php
+docker run --rm -ti -v $(pwd):/app test-php
 
 ## To test the Library
-docker run --rm -ti -v $(pwd):/app apm-agent-php make test
+docker run --rm -ti -v $(pwd):/app test-php make test
 
 ## To install the library
-docker run --rm -ti -v $(pwd):/app apm-agent-php make install
+docker run --rm -ti -v $(pwd):/app test-php make install
 ```
 
 ## Configure

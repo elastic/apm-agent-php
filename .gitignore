@@ -1,6 +1,11 @@
+# Docker
 docker/wordpress/ephemeral/
 docker/wordpress/data/ext
+
+# Mac
 .DS_Store
+
+# JUnit
 junit.xml
 
 # JetBrains PhpStorm
@@ -9,6 +14,22 @@ junit.xml
 # Visual Studio
 .vs/
 
+# Visual Studio Code
+.vscode/
+
 # Generated files
 _GENERATED/
 
+# Composer
+composer.lock
+composer.phar
+vendor/
+
+# PHP_CodeSniffer
+.php_cs.cache
+
+# PHPUnit
+# phpunit.xml.dist is checked into version control and phpunit.xml is ignored by version control.
+# This allows a developer to use a custom configuration without running the risk of accidentally checking it into version control.
+phpunit.xml
+.phpunit.result.cache
