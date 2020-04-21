@@ -11,7 +11,7 @@ elasticapm.log_file=log_file_from_ini.txt
 --FILE--
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../tests_util//bootstrap.php';
+require __DIR__ . '/../tests_util/tests_util.php';
 
 elasticApmAssertSame(
     'log_file_from_env_vars.txt',

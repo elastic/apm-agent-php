@@ -7,7 +7,7 @@ elasticapm.autoload_file=../autoload.php
 --FILE--
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../tests_util//bootstrap.php';
+require __DIR__ . '/../tests_util/tests_util.php';
 
 if (!\ElasticApm\AutoloadedFromExtension::wasCalledByExtension()) {
     die('\AutoloadedFromExtension::wasCalledByExtension(): false');
