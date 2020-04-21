@@ -11,45 +11,121 @@
 
 #pragma once
 
-#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h> // NULL
+#include "basic_macros.h" // ELASTICAPM_NO_RETURN_ATTRIBUTE
+#include "internal_checks.h"
 
-#ifndef ELASTICAPM_ASSERT_ENABLED
-#   ifdef NDEBUG
-#       define ELASTICAPM_ASSERT_ENABLED 0
+void elasticApmAbort() ELASTICAPM_NO_RETURN_ATTRIBUTE;
+
+#define ELASTICAPM_STATIC_ASSERT( cond ) \
+    typedef char ELASTICAPM_PP_CONCAT( elasticapm_static_assert_t_, ELASTICAPM_PP_CONCAT( __LINE__, ELASTICAPM_PP_CONCAT( _, __COUNTER__ ) ) ) [ (cond) ? 1 : -1 ]
+
+#ifndef ELASTICAPM_ASSERT_ENABLED_01
+#   if defined( ELASTICAPM_ASSERT_ENABLED ) && ( ELASTICAPM_ASSERT_ENABLED == 0 )
+#       define ELASTICAPM_ASSERT_ENABLED_01 0
 #   else
-#       define ELASTICAPM_ASSERT_ENABLED 1
+#       define ELASTICAPM_ASSERT_ENABLED_01 1
 #   endif
 #endif
 
-#if defined( ELASTICAPM_ASSERT_ENABLED ) && ( ELASTICAPM_ASSERT_ENABLED == 1 )
+#if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 
-enum ElasticApmAssertLevel
+enum AssertLevel
 {
-    elasticApmAssertLevel_O_1 = 1,
-    elasticApmAssertLevel_O_n = 2
+    assertLevel_not_set = -1,
+    assertLevel_off = 0,
+
+    assertLevel_O_1,
+    assertLevel_O_n,
+
+    assertLevel_all,
+    numberOfAssertLevels = assertLevel_all + 1
 };
+typedef enum AssertLevel AssertLevel;
 
-extern int g_currentElasticApmAssertLevel;
+extern const char* assertLevelNames[ numberOfAssertLevels ];
 
-#define ELASTICAPM_ASSERT( cond ) ELASTICAPM_ASSERT_MSG( cond, NULL )
-#define ELASTICAPM_ASSERT_MSG( cond, msg ) ELASTICAPM_ASSERT_IMPL( elasticApmAssertLevel_O_1, cond, msg )
-#define ELASTICAPM_ASSERT_O_N( cond ) ELASTICAPM_ASSERT_O_N_MSG( cond, NULL )
-#define ELASTICAPM_ASSERT_O_N_MSG( cond, msg ) ELASTICAPM_ASSERT_IMPL( elasticApmAssertLevel_O_N, cond, msg )
+AssertLevel internalChecksToAssertLevel( InternalChecksLevel internalChecksLevel );
 
-#define ELASTICAPM_ASSERT_IMPL( level, cond, msg ) \
-    if ( g_currentElasticApmAssertLevel >= (level) ) \
-        assert( cond )
+#ifndef ELASTICAPM_ASSERT_DEFAULT_LEVEL
+#   if ( ELASTICAPM_IS_DEBUG_BUILD_01 != 0 )
+#       define ELASTICAPM_ASSERT_DEFAULT_LEVEL assertLevel_all
+#   else
+#       define ELASTICAPM_ASSERT_DEFAULT_LEVEL assertLevel_off
+#   endif
+#endif
 
-#else /* #if defined( ELASTICAPM_ASSERT_ENABLED ) && ( ELASTICAPM_ASSERT_ENABLED == 1 ) */
+void elasticApmAssertFailed(
+        const char* condExpr,
+        const char* filePath,
+        unsigned int lineNumber,
+        const char* funcName,
+        const char* msg );
 
-#define ELASTICAPM_ASSERT( cond )
-#define ELASTICAPM_ASSERT_MSG( cond, msg )
-#define ELASTICAPM_ASSERT_O_N( cond )
-#define ELASTICAPM_ASSERT_O_N_MSG( cond, msg )
+#ifndef ELASTICAPM_ASSERT_FAILED_FUNC
+#   define ELASTICAPM_ASSERT_FAILED_FUNC elasticApmAssertFailed
+#   define ELASTICAPM_ASSERT_FAILED_FUNC_NO_RETURN_ATTRIBUTE ELASTICAPM_NO_RETURN_ATTRIBUTE
+#endif
 
-#endif /* #if defined( ELASTICAPM_ASSERT_ENABLED ) && ( ELASTICAPM_ASSERT_ENABLED == 1 ) */
+#ifndef ELASTICAPM_ASSERT_FAILED_FUNC_NO_RETURN_ATTRIBUTE
+#   define ELASTICAPM_ASSERT_FAILED_FUNC_NO_RETURN_ATTRIBUTE
+#endif
 
-#define ELASTICAPM_IS_VALID_PTR( ptr ) ( (ptr) != NULL )
-#define ASSERT_VALID_PTR( ptr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptr ) )
-#define ASSERT_VALID_OUT_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptrToPtr ) && ( *(ptrToPtr) == NULL ) )
-#define ASSERT_VALID_IN_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( ELASTICAPM_IS_VALID_PTR( ptrToPtr ) && ELASTICAPM_IS_VALID_PTR( *(ptrToPtr) ) )
+// Declare to avoid warnings
+void ELASTICAPM_ASSERT_FAILED_FUNC(
+        const char* condExpr,
+        const char* filePath,
+        unsigned int lineNumber,
+        const char* funcName,
+        const char* msg )
+        ELASTICAPM_ASSERT_FAILED_FUNC_NO_RETURN_ATTRIBUTE;
+
+AssertLevel getGlobalAssertLevel();
+
+#define ELASTICAPM_ASSERT_WITH_LEVEL( level, cond, /* msg: */ ... ) \
+    do { \
+        if ( getGlobalAssertLevel() >= (level) && ( ! (cond) ) ) \
+            ELASTICAPM_ASSERT_FAILED_FUNC ( \
+                    #cond, \
+                    __FILE__, \
+                    __LINE__, \
+                    __FUNCTION__, \
+                    /* msg: */ ( NULL, ##__VA_ARGS__ ) ); \
+    } while ( 0 )
+
+#define ELASTICAPM_ASSERT_VALID_OBJ_WITH_LEVEL( level, assertValidObjCall ) \
+    do { \
+        if ( getGlobalAssertLevel() >= level ) \
+            (void)(assertValidObjCall); \
+    } while ( 0 )
+
+#else // #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+
+#define ELASTICAPM_ASSERT_WITH_LEVEL( level, cond, /* msg: */ ... ) ELASTICAPM_NOOP_STATEMENT
+#define ELASTICAPM_ASSERT_VALID_OBJ_WITH_LEVEL( level, assertValidObjCall ) ELASTICAPM_NOOP_STATEMENT
+
+#endif // #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+
+#define ELASTICAPM_ASSERT( cond, /* , msg: */ ... ) ELASTICAPM_ASSERT_WITH_LEVEL( assertLevel_O_1, cond /* msg: */ , ##__VA_ARGS__ )
+#define ELASTICAPM_ASSERT_O_N( cond, /* , msg: */ ... ) ELASTICAPM_ASSERT_WITH_LEVEL( assertLevel_O_n, cond /* msg: */ , ##__VA_ARGS__ )
+
+#define ELASTICAPM_ASSERT_VALID_OBJ( assertValidObjCall ) ELASTICAPM_ASSERT_VALID_OBJ_WITH_LEVEL( assertLevel_O_1, assertValidObjCall )
+#define ELASTICAPM_ASSERT_VALID_OBJ_O_N( assertValidObjCall ) ELASTICAPM_ASSERT_VALID_OBJ_WITH_LEVEL( assertLevel_O_n, assertValidObjCall )
+
+static inline
+bool isValidPtr( const void* ptr )
+{
+    return ptr != NULL;
+}
+
+#define ELASTICAPM_ASSERT_VALID_PTR( ptr ) ELASTICAPM_ASSERT_VALID_OBJ( isValidPtr( ptr ) )
+
+#define ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( isValidPtr( ptrToPtr ) && ( *(ptrToPtr) == NULL ) )
+#define ELASTICAPM_ASSERT_VALID_IN_PTR_TO_PTR( ptrToPtr ) ELASTICAPM_ASSERT( isValidPtr( ptrToPtr ) && isValidPtr( *(ptrToPtr) ) )
+#define ELASTICAPM_ASSERT_VALID_STRING( str ) ELASTICAPM_ASSERT_VALID_PTR( str )
+
+struct TextOutputStream;
+typedef struct TextOutputStream TextOutputStream;
+typedef const char* String;
+String streamAssertLevel( AssertLevel level, TextOutputStream* txtOutStream );

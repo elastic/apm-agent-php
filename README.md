@@ -50,27 +50,32 @@ You can configure the Elastic APM agent using the following ini settings for PHP
 ```ini
 elasticapm.host = localhost:8200
 elasticapm.service_name = "Unknown PHP service"
-elasticapm.log = 
-elasticapm.log_level= 0
 ```
 
 By default, the extension is enabled. You can disable it by setting `elasticapm.enabled=false`.
 
-You can enable the logging of the PHP agent adding a file path in `elasticapm.log`.
-You can also specify the log level using the `elasticapm.log_level` key. The
-default value is `0` that means log everything (trace). 
-
+The agent supports logging to the following sinks: file, syslog and stderr.
+You can control level of logging either for individual sinks using
+`elasticapm.log_level_file`, `elasticapm.log_level_syslog` and `elasticapm.log_level_stderr` keys
+or using fallback setting `elasticapm.log_level`
+which has effect for sink xyz when the more specific `elasticapm.log_level_xyz` option is not set.   
 The log levels are:
 ```
-0 trace
-1 debug
-2 info
-3 warning
-4 error
-5 fatal
+OFF
+CRITICAL
+ERROR
+WARNING
+NOTICE
+INFO
+DEBUG
+TRACE
 ```
+E.g. if you specify `WARNING`, logging statements with levels `NOTICE`, `INFO`, `DEBUG` and `TRACE`
+will be ignored.
 
-E.g. if you specify `4`, all log `0`, `1`, `2` and `3` will be ignored.
+In order to enable logging to a file you need to specify a file path in `elasticapm.log_file`. 
+The default log level for file logging sink (which can be controlled using `elasticapm.log_level_file` key)
+is `INFO`. 
 
 You can see an example of `elasticapm.ini` [here](src/ext/elasticapm.ini).
 
@@ -78,10 +83,10 @@ If you want you can also change the Elastic APM agent configuration at runtime, 
 following PHP code:
 
 ```php
-ini_set('elasticapm.host', 'myhost:8200');
+ini_set('elasticapm.server_url', 'http://myhost:8200');
 ini_set('elasticapm.service_name', 'test');
-ini_set('elasticapm.log', '/tmp/elasticapm.log');
-ini_set('elasticapm.log_level', '4');
+ini_set('elasticapm.log_file', '/tmp/elasticapm.log');
+ini_set('elasticapm.log_level', 'WARNING');
 ```
 
 ## Configure with Elastic Cloud
@@ -89,7 +94,7 @@ ini_set('elasticapm.log_level', '4');
 You can also configure the PHP agent to send data to an [Elastic Cloud](https://www.elastic.co/cloud/)
 APM instance. You just need to configure the `elasticapm.host` and `elasticapm.secret_token`.
 
-The `host` and `secret_token` are available in the APM section of Elastic Cloud
+The `server_url` and `secret_token` are available in the APM section of Elastic Cloud
 (see the image below):
 
 ![Elastic Cloud APM configuration](docs/elastic_cloud_apm_config.png)
@@ -97,8 +102,8 @@ The `host` and `secret_token` are available in the APM section of Elastic Cloud
 You can set the host and the secret token using the following PHP code:
 
 ```php
-ini_set('elasticapm.host', 'insert here the host URL');
-ini_set('elasticapm.secret_token', 'insert here you token');
+ini_set('elasticapm.server_url', 'insert your APM Server URL here');
+ini_set('elasticapm.secret_token', 'insert your token here');
 ```
 
 or using the `elasticapm.ini` settings:

@@ -11,58 +11,71 @@
 
 #pragma once
 
-#include "utils.h"
 #include "elasticapm_assert.h"
+#include "elasticapm_alloc.h"
 #include "ResultCode.h"
+#include "TextOutputStream.h"
+
+
+enum
+{
+    errorsBufferSize = 1024 * 1024,
+    exceptionsBufferSize = 1024 * 1024
+};
 
 struct Transaction
 {
     TimePoint startTime;
-    String id;
-    String traceId;
-    MutableString errors;
-    MutableString exceptions;
+    char id[ executionSegmentIdAsHexStringBufferSize ];
+    char traceId[ traceIdAsHexStringBufferSize ];
+
+    char* errorsBuffer;
+    TextOutputStream errorsTextOutputStream;
+
+    char* exceptionsBuffer;
+    TextOutputStream exceptionsTextOutputStream;
 };
 
 typedef struct Transaction Transaction;
 
-static inline void deleteTransactionAndSetToNull( Transaction** ppThisObj )
+static inline void deleteTransactionAndSetToNull( Transaction** pTransaction )
 {
-    ASSERT_VALID_PTR( ppThisObj );
-    Transaction* const thisObj = *ppThisObj;
-    if ( thisObj == NULL ) return;
+    ELASTICAPM_ASSERT_VALID_PTR( pTransaction );
 
-    ASSERT_VALID_IN_PTR_TO_PTR( ppThisObj );
+    Transaction* const transaction = *pTransaction;
+    if ( transaction == NULL ) return;
+    ELASTICAPM_ASSERT_VALID_PTR( transaction );
 
-    EFREE_AND_SET_TO_NULL( thisObj->id );
-    EFREE_AND_SET_TO_NULL( thisObj->traceId );
-    EFREE_AND_SET_TO_NULL( thisObj->errors );
-    EFREE_AND_SET_TO_NULL( thisObj->exceptions );
-    EFREE_AND_SET_TO_NULL( *ppThisObj );
+    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( errorsBufferSize, transaction->errorsBuffer );
+    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( exceptionsBufferSize, transaction->exceptionsBuffer );
+    // TODO: Sergey Kleyman: Try commenting out to test memory tracker
+    ELASTICAPM_EFREE_INSTANCE_AND_SET_TO_NULL( Transaction, *pTransaction );
 }
 
-static inline ResultCode newTransaction( Transaction** ppThisObj )
+static inline ResultCode newTransaction( Transaction** pNewTransaction )
 {
+    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewTransaction );
+
     ResultCode resultCode;
-    Transaction* thisObj = NULL;
+    Transaction* newTransaction = NULL;
 
-    ASSERT_VALID_OUT_PTR_TO_PTR( ppThisObj );
+    ELASTICAPM_EMALLOC_INSTANCE_IF_FAILED_GOTO( Transaction, newTransaction );
+    ELASTICAPM_ZERO_STRUCT( newTransaction );
 
-    ALLOC_IF_FAILED_GOTO( Transaction, thisObj );
-    getCurrentTime( &thisObj->startTime );
-    CALL_IF_FAILED_GOTO( genRandomIdHexString( EXECUTION_SEGMENT_ID_SIZE_IN_BYTES, &thisObj->id ) );
-    CALL_IF_FAILED_GOTO( genRandomIdHexString( TRACE_ID_SIZE_IN_BYTES, &thisObj->traceId ) );
+    getCurrentTime( &newTransaction->startTime );
+    ELASTICAPM_GEN_RANDOM_ID_AS_HEX_STRING( executionSegmentIdSizeInBytes, newTransaction->id );
+    ELASTICAPM_GEN_RANDOM_ID_AS_HEX_STRING( traceIdSizeInBytes, newTransaction->traceId );
 
-    thisObj->errors = NULL;
-    thisObj->exceptions = NULL;
+    newTransaction->errorsBuffer = NULL;
+    newTransaction->exceptionsBuffer = NULL;
 
     resultCode = resultSuccess;
-    *ppThisObj = thisObj;
+    *pNewTransaction = newTransaction;
 
     finally:
     return resultCode;
 
     failure:
-    deleteTransactionAndSetToNull( &thisObj );
+    deleteTransactionAndSetToNull( &newTransaction );
     goto finally;
 }

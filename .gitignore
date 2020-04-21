@@ -5,3 +5,10 @@ junit.xml
 
 # JetBrains PhpStorm
 .idea/
+
+# Visual Studio
+.vs/
+
+# Generated files
+_GENERATED/
+

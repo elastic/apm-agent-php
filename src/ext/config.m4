@@ -79,14 +79,19 @@ if test "$PHP_ELASTICAPM" != "no"; then
   AC_DEFINE(HAVE_ELASTICAPM, 1, [ Have elasticapm support ])
 
   ELASTICAPM_PHP_EXT_SOURCES="\
+    ConfigManager.c \
     elasticapm.c \
     elasticapm_assert.c \
+    internal_checks.c \
     lifecycle.c \
     log.c \
+    MemoryTracker.c \
     php_error.c \
+    platform.c \
     supportability.c \
     SystemMetrics.c \
-    utils.c \
+    Tracer.c \
+    util.c \
   "
 
   PHP_NEW_EXTENSION(elasticapm, $ELASTICAPM_PHP_EXT_SOURCES, $ext_shared)

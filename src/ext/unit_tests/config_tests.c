@@ -9,23 +9,26 @@
    +----------------------------------------------------------------------+
  */
 
-#pragma once
+#include "cmocka_wrapped_for_unit_tests.h"
+#include "unit_test_util.h"
+// TODO: Sergey Kleyman: Implement config tests
+//#include "mock_env_vars.h"
+//#include "mock_php_ini.h"
 
-#include "php_elasticapm.h"
 
-static inline const char* getCurrentTransactionId()
+static
+void dummy( void** testFixtureState )
 {
-    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
-    return currentTransaction == NULL ? NULL : currentTransaction->id;
+    ELASTICAPM_UNUSED( testFixtureState );
+
 }
 
-static inline const char* getCurrentTraceId()
+int run_config_tests()
 {
-    const Transaction* const currentTransaction = getGlobalState()->currentTransaction;
-    return currentTransaction == NULL ? NULL : currentTransaction->traceId;
-}
+    const struct CMUnitTest tests [] =
+    {
+        ELASTICAPM_CMOCKA_UNIT_TEST( dummy ),
+    };
 
-static inline bool isEnabled()
-{
-    return getGlobalState()->config.enabled;
+    return cmocka_run_group_tests( tests, NULL, NULL );
 }

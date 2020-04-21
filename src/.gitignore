@@ -1,6 +1,3 @@
 # JetBrains CLion
-.idea/
-cmake-build-debug/
-PHP_src/
-CMakeLists.txt
-
+/PHP_src/
+/CMakeLists.txt
