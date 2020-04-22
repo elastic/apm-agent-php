@@ -96,7 +96,7 @@ void destructLogger( Logger* logger );
 void logWithLogger(
         Logger* logger,  /* <- argument #1 */
         bool isForced,
-        LogLevel level,
+        LogLevel statementLevel,
         StringView filePath,
         UInt lineNumber,
         StringView funcName,
