@@ -26,7 +26,7 @@ int perTestDefaultSetup( void** testFixtureState )
     // Revert to failed ELASTICAPM_ASSERT invoking abort() in production code ASAP
     // so that any failed assert in production code triggers a real abort and causes test to fail
     //
-    setProductionCodeAssertFailed( elasticApmAssertFailed );
+    setProductionCodeAssertFailed( vElasticApmAssertFailed );
 
     initMockLogCustomSink( getGlobalMockLogCustomSink() );
     initMockEnvVars();
@@ -54,7 +54,7 @@ int perTestDefaultTeardown( void** testFixtureState )
     // Revert to failed ELASTICAPM_ASSERT invoking abort() in production code ASAP
     // so that any failed assert in production code triggers a real abort and causes test to fail
     //
-    setProductionCodeAssertFailed( elasticApmAssertFailed );
+    setProductionCodeAssertFailed( vElasticApmAssertFailed );
 
     revertToRealCurrentTime();
 

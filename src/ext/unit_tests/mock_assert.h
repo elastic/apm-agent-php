@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <stdarg.h>
 #include "basic_types.h"
 #include "basic_macros.h"
 

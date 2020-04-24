@@ -9,14 +9,14 @@
 
 CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 
-IF ( WIN32 )
-    # From https://github.com/microsoft/vcpkg/blob/master/docs/users/integration.md#using-an-environment-variable-instead-of-a-command-line-option
-    IF ( DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE )
-        SET( CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-             CACHE STRING "" )
-        MESSAGE( "Set CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}" )
-    ENDIF ()
-ENDIF ()
+#IF ( WIN32 )
+#    # From https://github.com/microsoft/vcpkg/blob/master/docs/users/integration.md#using-an-environment-variable-instead-of-a-command-line-option
+#    IF ( DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE )
+#        SET( CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+#             CACHE STRING "" )
+#        MESSAGE( "Set CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}" )
+#    ENDIF ()
+#ENDIF ()
 
 PROJECT( unit_tests C )
 
@@ -75,8 +75,8 @@ IF ( WIN32 )
     ADD_COMPILE_DEFINITIONS( _CRT_SECURE_NO_WARNINGS )
 ENDIF()
 
-FIND_PACKAGE( cmocka REQUIRED )
-#FIND_LIBRARY( cmocka_static_lib cmocka )
+#FIND_PACKAGE( cmocka REQUIRED )
+FIND_LIBRARY( cmocka_static_lib cmocka )
 IF ( NOT cmocka_static_lib )
     IF ( WIN32 )
         IF ( DEFINED ENV{cmocka_installed_dir} )

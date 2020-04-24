@@ -48,4 +48,6 @@ const zval* findInZarrayByStringKey( const zend_array* zArray, StringView key )
 
 ResultCode loadPhpFile( const char* filename TSRMLS_DC );
 ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel );
+ResultCode callPhpFunctionEx( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[] );
 
+void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );

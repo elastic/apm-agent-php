@@ -28,3 +28,9 @@ ResultCode elasticApmGetInterceptCallsToPhpFunction( String funcToIntercept
                                                      , String funcToCallBeforeIntercepted
                                                      , String funcToCallAfterIntercepted
 );
+
+ResultCode elasticApmGetInterceptCallsToPhpMethod( String className
+                                                   , String methodName
+                                                   , String preHookFunc
+                                                   , String postHookFunc
+);

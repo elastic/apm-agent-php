@@ -90,9 +90,24 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
     goto finally;
 }
 
-ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel )
+void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount )
 {
-    ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s'", (int) phpFunctionName.length, phpFunctionName.begin );
+    *argsCount = ZEND_CALL_NUM_ARGS( execute_data );
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 0, /* max_num_args: */ ((int)dstArraySize) )
+    Z_PARAM_OPTIONAL
+    ELASTICAPM_FOR_EACH_INDEX( i, *argsCount )
+    {
+        zval* pArgAsZval;
+        Z_PARAM_ZVAL( pArgAsZval )
+        dstArray[ i ] = *pArgAsZval;
+    }
+    ZEND_PARSE_PARAMETERS_END();
+}
+
+ResultCode callPhpFunctionEx( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[] )
+{
+    ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s', argsCount: %u"
+            , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
 
     ResultCode resultCode;
     zval phpFunctionCallRetVal;
@@ -102,7 +117,13 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel )
 
     ZVAL_STRINGL( &phpFunctionNameAsZval, phpFunctionName.begin, phpFunctionName.length );
     // call_user_function(function_table, object, function_name, retval_ptr, param_count, params)
-    int callUserFunctionRetVal = call_user_function( EG( function_table ), NULL, &phpFunctionNameAsZval, &phpFunctionCallRetVal, 0, NULL TSRMLS_CC );
+    int callUserFunctionRetVal = call_user_function(
+            EG( function_table )
+            , /* object: */ NULL
+            , /* function_name: */ &phpFunctionNameAsZval
+            , /* retval_ptr: */ &phpFunctionCallRetVal
+            , argsCount
+            , args TSRMLS_CC );
     if ( callUserFunctionRetVal != SUCCESS )
     {
         ELASTICAPM_LOG_ERROR( "call_user_function failed. Return value: %d", callUserFunctionRetVal );
@@ -121,4 +142,9 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel )
 
     failure:
     goto finally;
+}
+
+ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel )
+{
+    return callPhpFunctionEx( phpFunctionName, logLevel, /* argsCount: */ 0, /* args: */ NULL );
 }

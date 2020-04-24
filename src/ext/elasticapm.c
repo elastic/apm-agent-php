@@ -271,14 +271,40 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_function )
     Z_PARAM_STRING( postHookFunc, postHookFuncLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmGetInterceptCallsToPhpFunction( funcToIntercept, preHookFunc, postHookFunc ) != resultSuccess )
-    {
-        RETURN_TRUE
-    }
-    else
-    {
-        RETURN_FALSE
-    }
+    if ( elasticApmGetInterceptCallsToPhpFunction( funcToIntercept, preHookFunc, postHookFunc ) != resultSuccess ) RETURN_FALSE
+    RETURN_TRUE
+}
+/* }}} */
+
+
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_method_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 4 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, className, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, methodName, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, preHookFunc, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, postHookFunc, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elasticapm_intercept_calls_to_method( string $funcToIntercept, string $preHookFunc, string $postHookFunc ): bool
+ */
+PHP_FUNCTION( elasticapm_intercept_calls_to_method )
+{
+    char* className = NULL;
+    size_t classNameLength = 0;
+    char* methodName = NULL;
+    size_t methodNameLength = 0;
+    char* preHookFunc = NULL;
+    size_t preHookFuncLength = 0;
+    char* postHookFunc = NULL;
+    size_t postHookFuncLength = 0;
+
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 4, /* max_num_args: */ 4 )
+    Z_PARAM_STRING( className, classNameLength )
+    Z_PARAM_STRING( methodName, methodNameLength )
+    Z_PARAM_STRING( preHookFunc, preHookFuncLength )
+    Z_PARAM_STRING( postHookFunc, postHookFuncLength )
+    ZEND_PARSE_PARAMETERS_END();
+
+    if ( elasticApmGetInterceptCallsToPhpMethod( className, methodName, preHookFunc, postHookFunc ) != resultSuccess ) RETURN_FALSE
+    RETURN_TRUE
 }
 /* }}} */
 
@@ -301,6 +327,7 @@ static const zend_function_entry elasticapm_functions[] =
     PHP_FE( elasticapm_get_current_trace_id, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
     PHP_FE( elasticapm_intercept_calls_to_function, elasticapm_intercept_calls_to_function_arginfo )
+    PHP_FE( elasticapm_intercept_calls_to_method, elasticapm_intercept_calls_to_method_arginfo )
     PHP_FE_END
 };
 /* }}} */
