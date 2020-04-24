@@ -14,39 +14,19 @@ elasticapm.log_level_file=dEb
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_WARNING,
-    elasticapm_get_config_option_by_name('log_level'),
-    "elasticapm_get_config_option_by_name('log_level')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level')", elasticapm_get_config_option_by_name('log_level'), ELASTICAPM_LOG_LEVEL_WARNING);
 
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_OFF,
-    elasticapm_get_config_option_by_name('log_level_stderr'),
-    "elasticapm_get_config_option_by_name('log_level_stderr')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_stderr')", elasticapm_get_config_option_by_name('log_level_stderr'), ELASTICAPM_LOG_LEVEL_OFF);
 
 if ( ! elasticApmIsOsWindows()) {
-    elasticApmAssertSame(
-        ELASTICAPM_LOG_LEVEL_ERROR,
-        elasticapm_get_config_option_by_name('log_level_syslog'),
-        "elasticapm_get_config_option_by_name('log_level_syslog')"
-    );
+    elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_syslog')", elasticapm_get_config_option_by_name('log_level_syslog'), ELASTICAPM_LOG_LEVEL_ERROR);
 }
 
 if (elasticApmIsOsWindows()) {
-    elasticApmAssertSame(
-        ELASTICAPM_LOG_LEVEL_TRACE,
-        elasticapm_get_config_option_by_name('log_level_win_sys_debug'),
-        "elasticapm_get_config_option_by_name('log_level_win_sys_debug')"
-    );
+    elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_win_sys_debug')", elasticapm_get_config_option_by_name('log_level_win_sys_debug'), ELASTICAPM_LOG_LEVEL_TRACE);
 }
 
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_DEBUG,
-    elasticapm_get_config_option_by_name('log_level_file'),
-    "elasticapm_get_config_option_by_name('log_level_file')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_file')", elasticapm_get_config_option_by_name('log_level_file'), ELASTICAPM_LOG_LEVEL_DEBUG);
 
 echo 'Test completed'
 ?>

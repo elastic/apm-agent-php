@@ -21,201 +21,89 @@ require __DIR__ . '/../tests_util/tests_util.php';
 //////////////////////////////////////////////
 ///////////////  enabled
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_ENABLED'),
-    "getenv('ELASTIC_APM_ENABLED')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLED'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.enabled'),
-    "ini_get('elasticapm.enabled')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.enabled')", ini_get('elasticapm.enabled'), false);
 
-elasticApmAssertSame(
-    true,
-    elasticapm_is_enabled(),
-    "elasticapm_is_enabled()"
-);
+elasticApmAssertSame("elasticapm_is_enabled()", elasticapm_is_enabled(), true);
 
-elasticApmAssertSame(
-    true,
-    elasticapm_get_config_option_by_name('enabled'),
-    "elasticapm_get_config_option_by_name('enabled')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('enabled')", elasticapm_get_config_option_by_name('enabled'), true);
 
 //////////////////////////////////////////////
 ///////////////  log_file
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_LOG_FILE'),
-    "getenv('ELASTIC_APM_LOG_FILE')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_LOG_FILE')", getenv('ELASTIC_APM_LOG_FILE'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.log_file'),
-    "ini_get('elasticapm.log_file')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.log_file')", ini_get('elasticapm.log_file'), false);
 
-elasticApmAssertSame(
-    null,
-    elasticapm_get_config_option_by_name('log_file'),
-    "elasticapm_get_config_option_by_name('log_file')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_file')", elasticapm_get_config_option_by_name('log_file'), null);
 
 //////////////////////////////////////////////
 ///////////////  log_level
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_LOG_LEVEL'),
-    "getenv('ELASTIC_APM_LOG_LEVEL')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL')", getenv('ELASTIC_APM_LOG_LEVEL'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.log_level'),
-    "ini_get('elasticapm.log_level')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.log_level')", ini_get('elasticapm.log_level'), false);
 
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_NOT_SET,
-    elasticapm_get_config_option_by_name('log_level'),
-    "elasticapm_get_config_option_by_name('log_level')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level')", elasticapm_get_config_option_by_name('log_level'), ELASTICAPM_LOG_LEVEL_NOT_SET);
 
 //////////////////////////////////////////////
 ///////////////  log_level_file
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_LOG_LEVEL_FILE'),
-    "getenv('ELASTIC_APM_LOG_LEVEL_FILE')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_FILE')", getenv('ELASTIC_APM_LOG_LEVEL_FILE'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.log_level_file'),
-    "ini_get('elasticapm.log_level_file')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.log_level_file')", ini_get('elasticapm.log_level_file'), false);
 
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_NOT_SET,
-    elasticapm_get_config_option_by_name('log_level_file'),
-    "elasticapm_get_config_option_by_name('log_level_file')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_file')", elasticapm_get_config_option_by_name('log_level_file'), ELASTICAPM_LOG_LEVEL_NOT_SET);
 
 //////////////////////////////////////////////
 ///////////////  log_level_syslog
 
 if ( ! elasticApmIsOsWindows()) {
-    elasticApmAssertSame(
-        false,
-        getenv('ELASTIC_APM_LOG_LEVEL_SYSLOG'),
-        "getenv('ELASTIC_APM_LOG_LEVEL_SYSLOG')"
-    );
+    elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_SYSLOG')", getenv('ELASTIC_APM_LOG_LEVEL_SYSLOG'), false);
 
-    elasticApmAssertEqual(
-        false,
-        ini_get('elasticapm.log_level_syslog'),
-        "ini_get('elasticapm.log_level_syslog')"
-    );
+    elasticApmAssertEqual("ini_get('elasticapm.log_level_syslog')", ini_get('elasticapm.log_level_syslog'), false);
 
-    elasticApmAssertSame(
-        ELASTICAPM_LOG_LEVEL_NOT_SET,
-        elasticapm_get_config_option_by_name('log_level_syslog'),
-        "elasticapm_get_config_option_by_name('log_level_syslog')"
-    );
+    elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_syslog')", elasticapm_get_config_option_by_name('log_level_syslog'), ELASTICAPM_LOG_LEVEL_NOT_SET);
 }
 
 //////////////////////////////////////////////
 ///////////////  log_level_win_sys_debug
 
 if (elasticApmIsOsWindows()) {
-    elasticApmAssertSame(
-        false,
-        getenv('ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG'),
-        "getenv('ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG')"
-    );
+    elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG')", getenv('ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG'), false);
 
-    elasticApmAssertEqual(
-        false,
-        ini_get('elasticapm.log_level_win_sys_debug'),
-        "ini_get('elasticapm.log_level_win_sys_debug')"
-    );
+    elasticApmAssertEqual("ini_get('elasticapm.log_level_win_sys_debug')", ini_get('elasticapm.log_level_win_sys_debug'), false);
 
-    elasticApmAssertSame(
-        ELASTICAPM_LOG_LEVEL_NOT_SET,
-        elasticapm_get_config_option_by_name('log_level_win_sys_debug'),
-        "elasticapm_get_config_option_by_name('log_level_win_sys_debug')"
-    );
+    elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_win_sys_debug')", elasticapm_get_config_option_by_name('log_level_win_sys_debug'), ELASTICAPM_LOG_LEVEL_NOT_SET);
 }
 
 //////////////////////////////////////////////
 ///////////////  secret_token
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_SECRET_TOKEN'),
-    "getenv('ELASTIC_APM_SECRET_TOKEN')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_SECRET_TOKEN')", getenv('ELASTIC_APM_SECRET_TOKEN'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.secret_token'),
-    "ini_get('elasticapm.secret_token')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.secret_token')", ini_get('elasticapm.secret_token'), false);
 
-elasticApmAssertSame(
-    null,
-    elasticapm_get_config_option_by_name('secret_token'),
-    "elasticapm_get_config_option_by_name('secret_token')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('secret_token')", elasticapm_get_config_option_by_name('secret_token'), null);
 
 //////////////////////////////////////////////
 ///////////////  server_url
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_SERVER_URL'),
-    "getenv('ELASTIC_APM_SERVER_URL')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_SERVER_URL')", getenv('ELASTIC_APM_SERVER_URL'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.server_url'),
-    "ini_get('elasticapm.server_url')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.server_url')", ini_get('elasticapm.server_url'), false);
 
-elasticApmAssertSame(
-    'http://localhost:8200',
-    elasticapm_get_config_option_by_name('server_url'),
-    "elasticapm_get_config_option_by_name('server_url')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('server_url')", elasticapm_get_config_option_by_name('server_url'), 'http://localhost:8200');
 
 //////////////////////////////////////////////
 ///////////////  service_name
 
-elasticApmAssertSame(
-    false,
-    getenv('ELASTIC_APM_SERVICE_NAME'),
-    "getenv('ELASTIC_APM_SERVICE_NAME')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_SERVICE_NAME')", getenv('ELASTIC_APM_SERVICE_NAME'), false);
 
-elasticApmAssertEqual(
-    false,
-    ini_get('elasticapm.service_name'),
-    "ini_get('elasticapm.service_name')"
-);
+elasticApmAssertEqual("ini_get('elasticapm.service_name')", ini_get('elasticapm.service_name'), false);
 
-elasticApmAssertSame(
-    'Unknown PHP service',
-    elasticapm_get_config_option_by_name('service_name'),
-    "elasticapm_get_config_option_by_name('service_name')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('service_name')", elasticapm_get_config_option_by_name('service_name'), 'Unknown PHP service');
 
 echo 'Test completed'
 ?>

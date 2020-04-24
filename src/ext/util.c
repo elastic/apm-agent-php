@@ -30,7 +30,7 @@ void binaryIdToHexString( const Byte* idBinary, UInt8 idSizeBytes, char* idAsHex
 
     const size_t idAsHexStringLen = ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) - 1;
     // +1 for terminating '\0'
-    ELASTICAPM_ASSERT( idAsHexStringBufferSize >= ( idAsHexStringLen + 1 ) );
+    ELASTICAPM_ASSERT_GE_UINT64( idAsHexStringBufferSize, ( idAsHexStringLen + 1 ) );
 
     ELASTICAPM_FOR_EACH_INDEX_EX( UInt8, i, idSizeBytes )
         sprintf( idAsHexStringBuffer + i * 2, "%02x", (UInt) ( idBinary[ i ] ) );
@@ -39,10 +39,10 @@ void binaryIdToHexString( const Byte* idBinary, UInt8 idSizeBytes, char* idAsHex
 
 void genRandomIdAsHexString( UInt8 idSizeBytes, char* idAsHexStringBuffer, size_t idAsHexStringBufferSize )
 {
-    ELASTICAPM_ASSERT( idSizeBytes <= idMaxSizeInBytes );
+    ELASTICAPM_ASSERT_LE_UINT64( idSizeBytes, idMaxSizeInBytes );
     ELASTICAPM_ASSERT_VALID_PTR( idAsHexStringBuffer );
     // +1 for terminating '\0'
-    ELASTICAPM_ASSERT( idAsHexStringBufferSize >= ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) );
+    ELASTICAPM_ASSERT_GE_UINT64( idAsHexStringBufferSize, ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) );
 
     Byte idBinary[ idMaxSizeInBytes ];
 

@@ -12,9 +12,10 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdarg.h>
 #include "ResultCode.h"
 #include "basic_types.h"
-#include "basic_macros.h"
+#include "basic_macros.h" // ELASTICAPM_PRINTF_ATTRIBUTE
 #include "TextOutputStream.h"
 
 /**
@@ -93,16 +94,28 @@ typedef struct Logger Logger;
 ResultCode constructLogger( Logger* logger );
 void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel generalLevel );
 void destructLogger( Logger* logger );
+
 void logWithLogger(
-        Logger* logger,  /* <- argument #1 */
-        bool isForced,
-        LogLevel statementLevel,
-        StringView filePath,
-        UInt lineNumber,
-        StringView funcName,
-        String msgPrintfFmt, /* <- printf format is argument #7 */
-        ... )                /* <- arguments for printf format placeholders start from argument #8 */
-        ELASTICAPM_PRINTF_ATTRIBUTE( /* fmtPos: */ 7, /* fmtArgsPos: */ 8 );
+        Logger* logger /* <- argument #1 */
+        , bool isForced
+        , LogLevel statementLevel
+        , StringView filePath
+        , UInt lineNumber
+        , StringView funcName
+        , String msgPrintfFmt /* <- printf format is argument #7 */
+        , ...                /* <- arguments for printf format placeholders start from argument #8 */
+) ELASTICAPM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 7, /* printfFmtArgsPos: */ 8 );
+
+void vLogWithLogger(
+        Logger* logger
+        , bool isForced
+        , LogLevel statementLevel
+        , StringView filePath
+        , UInt lineNumber
+        , StringView funcName
+        , String msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+);
 
 LogLevel calcMaxEnabledLogLevel( LogLevel levelPerSinkType[ numberOfLogSinkTypes ] );
 
@@ -138,6 +151,7 @@ Logger* getGlobalLogger();
 
 #define ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( statementLevel, fmt, ... ) ELASTICAPM_LOG_WITH_LEVEL( statementLevel, "%s" fmt, "Entered: ", ##__VA_ARGS__ )
 #define ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( fmt, ... ) ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( fmt, ... ) ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
 
 #define ELASTICAPM_LOG_FUNCTION_EXIT_WITH_LEVEL( statementLevel ) ELASTICAPM_LOG_WITH_LEVEL( statementLevel, "%s", "Exiting" )
 #define ELASTICAPM_LOG_TRACE_FUNCTION_EXIT() ELASTICAPM_LOG_FUNCTION_EXIT_WITH_LEVEL( logLevel_trace )
@@ -145,6 +159,7 @@ Logger* getGlobalLogger();
 
 #define ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( statementLevel, fmt, ... ) ELASTICAPM_LOG_WITH_LEVEL( statementLevel, "%s" fmt, "Exiting: ", ##__VA_ARGS__ )
 #define ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( fmt, ... ) ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( fmt, ... ) ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
 
 #define ELASTICAPM_FORCE_LOG_CRITICAL( fmt, ... ) \
     do { \

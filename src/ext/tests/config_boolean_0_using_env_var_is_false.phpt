@@ -10,17 +10,9 @@ ELASTIC_APM_LOG_LEVEL_STDERR=OFF
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame(
-    '0',
-    getenv('ELASTIC_APM_ENABLED'),
-    "getenv('ELASTIC_APM_ENABLED')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLED'), '0');
 
-elasticApmAssertSame(
-    false,
-    elasticapm_is_enabled(),
-    "elasticapm_is_enabled()"
-);
+elasticApmAssertSame('elasticapm_is_enabled()', elasticapm_is_enabled(), false);
 
 echo 'Test completed'
 ?>

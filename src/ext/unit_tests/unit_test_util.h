@@ -20,6 +20,30 @@
 #include "cmocka_wrapped_for_unit_tests.h"
 #include "default_test_fixture.h"
 
+//////////////////////////////////////////////////////////////////////////////
+//
+// ELASTICAPM_PRINTF_FORMAT_ARGS
+//
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_0( ... ) "%s", ""
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_1( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_2( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_3( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_4( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_5( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_6( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_7( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_8( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_9( ... ) __VA_ARGS__
+#define ELASTICAPM_PRINTF_FORMAT_ARGS_10( ... ) __VA_ARGS__
+
+#define ELASTICAPM_PRINTF_FORMAT_ARGS( ... ) \
+    ELASTICAPM_PP_EXPAND( ELASTICAPM_PP_CONCAT( ELASTICAPM_PRINTF_FORMAT_ARGS_, ELASTICAPM_PP_VARIADIC_ARGS_COUNT( __VA_ARGS__ ) ) ) ( __VA_ARGS__ )
+
+//
+// ELASTICAPM_PRINTF_FORMAT_ARGS
+//
+//////////////////////////////////////////////////////////////////////////////
+
 void elasticApmCmockaAssertStringEqual(
         String a,                   /* <- argument #1 */
         String b,
@@ -33,7 +57,6 @@ ELASTICAPM_PRINTF_ATTRIBUTE( /* fmtPos: */ 7, /* fmtArgsPos: */ 8 );
 
 #define ELASTICAPM_CMOCKA_ASSERT_STRING_EQUAL( a, b, /* printfFmt, printfFmtArgs... */ ... ) \
     elasticApmCmockaAssertStringEqual( (a), (b), #a, #b, __FILE__,  __LINE__, ELASTICAPM_PRINTF_FORMAT_ARGS( __VA_ARGS__ ) )
-
 
 
 void elasticApmCmockaAssertStringViewEqual( StringView a, StringView b, String filePath, int lineNumber );

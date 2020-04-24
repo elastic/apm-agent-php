@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include "constants.h"
 #include "basic_types.h"
+#include "StringView.h"
 #include "basic_macros.h"
 #include "basic_util.h"
 #include "ResultCode.h"
@@ -131,36 +132,6 @@ bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
             return false;
 
     return true;
-}
-
-static inline UInt64 timePointToEpochMicroseconds( const TimePoint* timePoint )
-{
-    ELASTICAPM_ASSERT_VALID_PTR( timePoint );
-
-    return timePoint->systemClockTime.tv_sec * (UInt64) ( ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_SECOND ) + timePoint->systemClockTime.tv_usec;
-}
-
-static inline UInt64 getCurrentTimeEpochMicroseconds()
-{
-    TimePoint currentTime;
-    getCurrentTime( &currentTime );
-    return timePointToEpochMicroseconds( &currentTime );
-}
-
-static inline
-Int64 durationMicroseconds( const TimePoint* start, const TimePoint* end )
-{
-    ELASTICAPM_ASSERT_VALID_PTR( start );
-    ELASTICAPM_ASSERT_VALID_PTR( end );
-
-    return timePointToEpochMicroseconds( end ) - timePointToEpochMicroseconds( start );
-}
-
-// in ms with 3 decimal points
-static inline
-double durationMicrosecondsToMilliseconds( Int64 durationMicros )
-{
-    return ( (double) durationMicros ) / ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
 }
 
 void genRandomIdAsHexString( UInt8 idSizeBytes, char* idAsHexStringBuffer, size_t idAsHexStringBufferSize );

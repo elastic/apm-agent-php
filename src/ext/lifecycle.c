@@ -10,11 +10,9 @@
  */
 
 #include "lifecycle.h"
-
-#include <inttypes.h>
+#include <inttypes.h> // PRIu64
 #include <stdbool.h>
 #include <php.h>
-#include <php_main.h>
 #include <zend_compile.h>
 #include <zend_exceptions.h>
 #if defined(PHP_WIN32) && !defined(CURL_STATICLIB)
@@ -23,12 +21,12 @@
 #include <curl/curl.h>
 #include "php_elasticapm.h"
 #include "log.h"
-#include "constants.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
-#include "util_for_php_types.h"
+#include "util_for_php.h"
 #include "elasticapm_assert.h"
 #include "MemoryTracker.h"
+#include "supportability.h"
 
 static const char JSON_METADATA[] =
         "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"PHP\"},\"agent\":{\"version\":\"%s\",\"name\":\"PHP\"}}}}\n";
@@ -190,6 +188,46 @@ static void elasticApmErrorCallback( int type, String error_filename, uint32_t e
     goto finally;
 }
 
+static
+String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoBuffer)
+{
+    TextOutputStream txtOutStream = makeTextOutputStream( supportInfoBuffer, supportInfoBufferSize );
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
+        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+
+    StructuredTextToOutputStreamPrinter structTxtToOutStreamPrinter;
+    initStructuredTextToOutputStreamPrinter(
+            /* in */ &txtOutStream
+            , /* prefix */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+            , /* out */ &structTxtToOutStreamPrinter );
+
+    printSupportabilityInfo( (StructuredTextPrinter*) &structTxtToOutStreamPrinter );
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
+}
+
+void logSupportabilityInfo( LogLevel logLevel )
+{
+    ResultCode resultCode;
+    enum { supportInfoBufferSize = 100 * 1000 + 1 };
+    char* supportInfoBuffer = NULL;
+
+    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
+    String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
+
+    ELASTICAPM_LOG_WITH_LEVEL( logLevel, "Supportability info:\n%s", supportabilityInfo );
+
+    // resultCode = resultSuccess;
+
+    finally:
+    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( supportInfoBufferSize, supportInfoBuffer );
+    return;
+
+    failure:
+    goto finally;
+}
+
 ResultCode elasticApmModuleInit( int type, int moduleNumber )
 {
     ResultCode resultCode;
@@ -203,11 +241,12 @@ ResultCode elasticApmModuleInit( int type, int moduleNumber )
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
     ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    logSupportabilityInfo( logLevel_debug );
     config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( ! config->enabled )
     {
-        ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
@@ -285,127 +324,33 @@ ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
     return resultCode;
 }
 
-ResultCode executePhpFile( const char* filename TSRMLS_DC )
-{
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
-
-    ResultCode resultCode;
-    size_t filename_len = strlen( filename );
-    zval dummy;
-    zend_file_handle file_handle;
-    zend_op_array * new_op_array = NULL;
-    zval result;
-    int ret;
-    zend_string* opened_path = NULL;
-
-    if ( filename_len == 0 )
-    {
-        ELASTICAPM_LOG_ERROR( "filename_len == 0" );
-        resultCode = resultFailure;
-        goto failure;
-    }
-
-    ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
-    if ( ret != SUCCESS )
-    {
-        ELASTICAPM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d", ret );
-        resultCode = resultFailure;
-        goto failure;
-    }
-
-    if ( ! file_handle.opened_path )
-    {
-        file_handle.opened_path = zend_string_init( filename, filename_len, 0 );
-    }
-    opened_path = zend_string_copy( file_handle.opened_path );
-    ZVAL_NULL( &dummy );
-    if ( zend_hash_add( &EG( included_files ), opened_path, &dummy ) )
-    {
-        new_op_array = zend_compile_file( &file_handle, ZEND_REQUIRE );
-        zend_destroy_file_handle( &file_handle );
-    }
-    else
-    {
-        new_op_array = NULL;
-        zend_file_handle_dtor( &file_handle );
-    }
-    if ( new_op_array )
-    {
-        resultCode = resultFailure;
-        goto failure;
-    }
-
-    ZVAL_UNDEF( &result );
-    zend_execute( new_op_array, &result );
-    zval_ptr_dtor( &result );
-
-    resultCode = resultSuccess;
-
-    finally:
-    if( new_op_array )
-    {
-        destroy_op_array( new_op_array );
-        efree( new_op_array );
-        new_op_array = NULL;
-    }
-
-    if ( opened_path )
-    {
-        zend_string_release( opened_path );
-        opened_path = NULL;
-    }
-
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
 static
 ResultCode bootstrapPhpPart( const ConfigSnapshot* config )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
+    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
+                                             , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
 
     ResultCode resultCode;
-    zval retval;
-    zval function_name;
 
-    ZVAL_UNDEF( &retval );
-    ZVAL_UNDEF( &function_name );
-
-    if ( config->autoloadFile == NULL )
+    if ( config->bootstrapPhpPartFile == NULL )
     {
         // For now we don't consider option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
-        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_autoloadFile, &getMetaRes );
+        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
         ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
         resultCode = resultSuccess;
         goto finally;
     }
 
-    // Include the autoload file
-    executePhpFile( config->autoloadFile );
-
-    const char function_name_str[] = "ElasticApm\\AutoloadedFromExtension::callFromExtension";
-    ZVAL_STRINGL( &function_name, function_name_str, sizeof( function_name_str ) - 1 );
-
-    // call_user_function(function_table, object, function_name, retval_ptr, param_count, params)
-    int callRetVal = call_user_function( EG( function_table ), NULL, &function_name, &retval, 0, NULL TSRMLS_CC );
-    if ( callRetVal != SUCCESS )
-    {
-        ELASTICAPM_LOG_ERROR( "call_user_function failed. call_user_function return value: %d", callRetVal );
-        resultCode = resultFailure;
-        goto failure;
-    }
+    ELASTICAPM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
+    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunction( ELASTICAPM_STRING_LITERAL_TO_VIEW( "\\ElasticApm\\Impl\\bootstrapPhpPart" ), logLevel_debug ) );
 
     resultCode = resultSuccess;
 
     finally:
-    zval_dtor( &function_name );
-    zval_dtor( &retval );
-
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -441,6 +386,7 @@ ResultCode elasticApmRequestInit()
     }
 
     ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    logSupportabilityInfo( logLevel_trace );
 
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
@@ -659,6 +605,7 @@ void sendEventsToApmServer( CURL* curl, const ConfigSnapshot* config, String ser
     curl_easy_setopt( curl, CURLOPT_POST, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, serializedEventsBuffer );
     curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, logResponse );
+    curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT_MS, (long)durationToMilliseconds( config->serverConnectTimeout ) );
 
     // Authorization with secret token if present
     if ( !isNullOrEmtpyString( config->secretToken ) )

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "elasticapm_is_debug_build.h"
+#include "basic_types.h" // String
 
 enum InternalChecksLevel
 {
@@ -39,7 +40,6 @@ extern const char* internalChecksLevelNames[ numberOfInternalChecksLevels ];
 
 struct TextOutputStream;
 typedef struct TextOutputStream TextOutputStream;
-typedef const char* String;
 String streamInternalChecksLevel( InternalChecksLevel level, TextOutputStream* txtOutStream );
 
 InternalChecksLevel getGlobalInternalChecksLevel();

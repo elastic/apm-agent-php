@@ -81,6 +81,7 @@ if test "$PHP_ELASTICAPM" != "no"; then
   ELASTICAPM_PHP_EXT_SOURCES="\
     ConfigManager.c \
     elasticapm.c \
+    elasticapm_API.c \
     elasticapm_assert.c \
     internal_checks.c \
     lifecycle.c \
@@ -90,8 +91,10 @@ if test "$PHP_ELASTICAPM" != "no"; then
     platform.c \
     supportability.c \
     SystemMetrics.c \
+    time_util.c \
     Tracer.c \
     util.c \
+    util_for_php.c \
   "
 
   PHP_NEW_EXTENSION(elasticapm, $ELASTICAPM_PHP_EXT_SOURCES, $ext_shared)

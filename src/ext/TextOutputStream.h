@@ -18,6 +18,7 @@
 #include <inttypes.h>
 #include "elasticapm_assert.h"
 #include "basic_types.h"
+#include "StringView.h"
 #include "basic_macros.h"
 #include "basic_util.h"
 
@@ -62,33 +63,39 @@ ELASTICAPM_STATIC_ASSERT( ELASTICAPM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE >= 2
 ELASTICAPM_STATIC_ASSERT( ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE >= ELASTICAPM_TEXT_OUTPUT_STREAM_MIN_BUFFER_SIZE );
 
 static inline
-bool isValidBeginPtrIntoTextOutputStream( const char* ptr, const TextOutputStream* txtOutStream )
+void assertValidEndPtrIntoTextOutputStream( const char* ptr, const TextOutputStream* txtOutStream )
 {
-    return isValidPtr( ptr )
-           && ( txtOutStream->bufferBegin <= ptr )
-           && ( ptr < ( txtOutStream->bufferBegin + txtOutStream->bufferSize ) );
+    ELASTICAPM_ASSERT_VALID_PTR( ptr );
+    ELASTICAPM_ASSERT_LE_PTR( txtOutStream->bufferBegin, ptr );
+    ELASTICAPM_ASSERT_LE_PTR( ptr, txtOutStream->bufferBegin + txtOutStream->bufferSize );
 }
 
 static inline
-bool isValidEndPtrIntoTextOutputStream( const char* ptr, const TextOutputStream* txtOutStream )
+void assertValidBeginPtrIntoTextOutputStream( const char* ptr, const TextOutputStream* txtOutStream )
 {
-    return isValidPtr( ptr )
-           && ( txtOutStream->bufferBegin <= ptr )
-           && ( ptr <= ( txtOutStream->bufferBegin + txtOutStream->bufferSize ) );
+    assertValidEndPtrIntoTextOutputStream( ptr, txtOutStream );
+    ELASTICAPM_ASSERT_LT_PTR( ptr, txtOutStream->bufferBegin + txtOutStream->bufferSize );
+}
+
+static inline
+void assertValidTextOutputStream( const TextOutputStream* txtOutStream )
+{
+    ELASTICAPM_ASSERT_VALID_PTR( txtOutStream );
+    ELASTICAPM_ASSERT_VALID_PTR( txtOutStream->bufferBegin );
+    ELASTICAPM_ASSERT_GE_UINT64( txtOutStream->bufferSize, ELASTICAPM_TEXT_OUTPUT_STREAM_MIN_BUFFER_SIZE );
+    if ( txtOutStream->isOverflowed )
+    {
+        assertValidEndPtrIntoTextOutputStream( txtOutStream->freeSpaceBegin, txtOutStream );
+    }
+    else
+    {
+        assertValidBeginPtrIntoTextOutputStream( txtOutStream->freeSpaceBegin, txtOutStream );
+    }
 }
 
 #define ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream ) \
-    ELASTICAPM_ASSERT \
-    ( \
-        isValidPtr( txtOutStream ) \
-        && isValidPtr( (txtOutStream)->bufferBegin ) \
-        && ( (txtOutStream)->bufferSize >= ELASTICAPM_TEXT_OUTPUT_STREAM_MIN_BUFFER_SIZE ) \
-        && ( (txtOutStream)->isOverflowed \
-                ? isValidEndPtrIntoTextOutputStream( (txtOutStream)->freeSpaceBegin, (txtOutStream) ) \
-                : isValidBeginPtrIntoTextOutputStream( (txtOutStream)->freeSpaceBegin, (txtOutStream) ) ) \
-    ) \
-    /**/
-
+    ELASTICAPM_ASSERT_VALID_OBJ( assertValidTextOutputStream( txtOutStream ) ) \
+/**/
 
 static inline
 bool textOutputStreamIsOverflowed( TextOutputStream* txtOutStream )
@@ -102,7 +109,7 @@ static inline
 TextOutputStream makeTextOutputStream( char* bufferBegin, size_t bufferSize )
 {
     ELASTICAPM_ASSERT_VALID_PTR( bufferBegin );
-    ELASTICAPM_ASSERT( bufferSize >= ELASTICAPM_TEXT_OUTPUT_STREAM_MIN_BUFFER_SIZE );
+    ELASTICAPM_ASSERT_GE_UINT64( bufferSize, ELASTICAPM_TEXT_OUTPUT_STREAM_MIN_BUFFER_SIZE );
 
     TextOutputStream txtOutStream =
     {
@@ -123,7 +130,7 @@ TextOutputStream makeTextOutputStream( char* bufferBegin, size_t bufferSize )
         // If buffer is not zero sized then mark it as empty
         if ( bufferSize != 0 ) *bufferBegin = '\0';
 
-        ELASTICAPM_ASSERT( textOutputStreamIsOverflowed( &txtOutStream ) );
+        ELASTICAPM_ASSERT( textOutputStreamIsOverflowed( &txtOutStream ), "" );
     }
 
     ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &txtOutStream );
@@ -187,7 +194,7 @@ String textOutputStreamEndEntryEx(
 {
     ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
     ELASTICAPM_ASSERT_VALID_PTR( txtOutStreamStateOnEntryStart );
-    ELASTICAPM_ASSERT( isValidEndPtrIntoTextOutputStream( contentEnd, txtOutStream ) );
+    ELASTICAPM_ASSERT_VALID_OBJ( assertValidEndPtrIntoTextOutputStream( contentEnd, txtOutStream ) );
 
     txtOutStream->autoTermZero = txtOutStreamStateOnEntryStart->autoTermZero;
 
@@ -201,7 +208,7 @@ String textOutputStreamEndEntryEx(
         return txtOutStreamStateOnEntryStart->freeSpaceBegin;
     }
 
-    ELASTICAPM_ASSERT( textOutputStreamHasReservedSpace( txtOutStream ) );
+    ELASTICAPM_ASSERT( textOutputStreamHasReservedSpace( txtOutStream ), "" );
     if ( txtOutStream->autoTermZero ) *( txtOutStream->freeSpaceBegin++ ) = '\0';
 
     return txtOutStreamStateOnEntryStart->freeSpaceBegin;
@@ -216,13 +223,13 @@ String textOutputStreamEndEntryAsOverflowed( const TextOutputStreamState* txtOut
 
     if ( ! textOutputStreamIsOverflowed( txtOutStream ) )
     {
-        ELASTICAPM_ASSERT( textOutputStreamHasReservedSpace( txtOutStream ) );
+        ELASTICAPM_ASSERT( textOutputStreamHasReservedSpace( txtOutStream ), "" );
 
         strcpy( txtOutStream->freeSpaceBegin, ELASTICAPM_TEXT_OUTPUT_STREAM_OVERFLOWED_MARKER );
         txtOutStream->freeSpaceBegin += ELASTICAPM_TEXT_OUTPUT_STREAM_OVERFLOWED_MARKER_LENGTH;
 
         txtOutStream->isOverflowed = true;
-        ELASTICAPM_ASSERT( textOutputStreamIsOverflowed( txtOutStream ) );
+        ELASTICAPM_ASSERT( textOutputStreamIsOverflowed( txtOutStream ), "" );
     }
 
     return textOutputStreamEndEntryEx( contentEnd, txtOutStreamStateOnEntryStart,txtOutStream );
@@ -259,7 +266,7 @@ void textOutputStreamRewind( TextOutputStream* txtOutStream )
 static inline
 void textOutputStreamSkipNChars( TextOutputStream* txtOutStream, size_t numberCharsToSkip )
 {
-    ELASTICAPM_ASSERT( textOutputStreamGetFreeSpaceSize( txtOutStream ) >= numberCharsToSkip );
+    ELASTICAPM_ASSERT_GE_UINT64( textOutputStreamGetFreeSpaceSize( txtOutStream ), numberCharsToSkip );
 
     txtOutStream->freeSpaceBegin += numberCharsToSkip;
 }
@@ -267,7 +274,7 @@ void textOutputStreamSkipNChars( TextOutputStream* txtOutStream, size_t numberCh
 static inline
 void textOutputStreamGoBack( TextOutputStream* txtOutStream, size_t numberCharsToGoBack )
 {
-    ELASTICAPM_ASSERT( txtOutStream->freeSpaceBegin >= txtOutStream->bufferBegin + numberCharsToGoBack );
+    ELASTICAPM_ASSERT_GE_PTR( txtOutStream->freeSpaceBegin, txtOutStream->bufferBegin + numberCharsToGoBack );
 
     txtOutStream->freeSpaceBegin -= numberCharsToGoBack;
 }
@@ -276,8 +283,8 @@ static inline
 StringView textOutputStreamViewFrom( TextOutputStream* txtOutStream, const char* stringViewBegin )
 {
     ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
-    ELASTICAPM_ASSERT( txtOutStream->bufferBegin <= stringViewBegin );
-    ELASTICAPM_ASSERT( stringViewBegin <= txtOutStream->freeSpaceBegin );
+    ELASTICAPM_ASSERT_LE_PTR( txtOutStream->bufferBegin, stringViewBegin );
+    ELASTICAPM_ASSERT_LE_PTR( stringViewBegin, txtOutStream->freeSpaceBegin );
 
     return makeStringView( stringViewBegin, (size_t)( txtOutStream->freeSpaceBegin - stringViewBegin ) );
 }
@@ -303,7 +310,7 @@ String streamStringView( StringView value, TextOutputStream* txtOutStream )
 }
 
 static inline
-String streamVPrintf( TextOutputStream* txtOutStream, String fmt, va_list args )
+String streamVPrintf( TextOutputStream* txtOutStream, String printfFmt, va_list printfFmtArgs )
 {
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
@@ -312,7 +319,7 @@ String streamVPrintf( TextOutputStream* txtOutStream, String fmt, va_list args )
     const size_t freeSpaceSize = textOutputStreamGetFreeSpaceSize( txtOutStream );
 
     // We can take one more char from reserved space for printf's terminating '\0'
-    int snprintfRetVal = vsnprintf( txtOutStreamStateOnEntryStart.freeSpaceBegin, freeSpaceSize + 1, fmt, args );
+    int snprintfRetVal = vsnprintf( txtOutStreamStateOnEntryStart.freeSpaceBegin, freeSpaceSize + 1, printfFmt, printfFmtArgs );
 
     // snprintf: If an encoding error occurs, a negative number is returned
     // so we don't change advance the buffer tracker
@@ -334,18 +341,18 @@ String streamVPrintf( TextOutputStream* txtOutStream, String fmt, va_list args )
 // It seems that it's a compilation error to put __attribute__ at function definition
 // so we add a seemingly redundant declaration just for __attribute__ ( ( format ( printf, ?, ? ) ) )
 static inline
-String streamPrintf( TextOutputStream* txtOutStream, String fmt, ... )
+String streamPrintf( TextOutputStream* txtOutStream, String printfFmt, /* printfFmtArgs: */ ... )
         ELASTICAPM_PRINTF_ATTRIBUTE( /* fmtPos: */ 2, /* fmtArgsPos: */ 3 );
 
 static inline
-String streamPrintf( TextOutputStream* txtOutStream, String fmt, ... )
+String streamPrintf( TextOutputStream* txtOutStream, String printfFmt, ... )
 {
     String retVal = NULL;
 
-    va_list args;
-    va_start( args, fmt );
-    retVal = streamVPrintf( txtOutStream, fmt, args );
-    va_end( args );
+    va_list printfFmtArgs;
+    va_start( printfFmtArgs, printfFmt );
+    retVal = streamVPrintf( txtOutStream, printfFmt, printfFmtArgs );
+    va_end( printfFmtArgs );
 
     return retVal;
 }
@@ -380,4 +387,18 @@ String streamUserString( String value, TextOutputStream* txtOutStream )
     return ( value == NULL )
         ? streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "NULL" ), txtOutStream )
         : streamPrintf( txtOutStream, "`%s'", value );
+}
+
+static inline
+String streamIndent( unsigned int nestingDepth, TextOutputStream* txtOutStream )
+{
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
+        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+
+    StringView indent = ELASTICAPM_STRING_LITERAL_TO_VIEW( "    " );
+
+    ELASTICAPM_REPEAT_N_TIMES( nestingDepth ) streamStringView( indent, txtOutStream );
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
 }

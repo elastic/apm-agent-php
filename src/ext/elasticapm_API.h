@@ -11,53 +11,20 @@
 
 #pragma once
 
-#include "php_elasticapm.h"
-#include "util.h"
-#include "log.h"
+#include <stdbool.h>
+#include <zend_types.h>
+#include "basic_types.h"
+#include "ResultCode.h"
 
+String elasticApmGetCurrentTransactionId();
 
-static inline String elasticApmGetCurrentTransactionId()
-{
-    const Transaction* const currentTransaction = getGlobalTracer()->currentTransaction;
-    const String result = currentTransaction == NULL ? NULL : currentTransaction->id;
+String elasticApmGetCurrentTraceId();
 
-    ELASTICAPM_LOG_TRACE( "Result: %s", result == NULL ? "NULL" : result );
-    return result;
-}
+bool elasticApmIsEnabled();
 
-static inline String elasticApmGetCurrentTraceId()
-{
-    const Transaction* const currentTransaction = getGlobalTracer()->currentTransaction;
-    const String result = currentTransaction == NULL ? NULL : currentTransaction->traceId;
+ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );
 
-    ELASTICAPM_LOG_TRACE( "Result: %s", result == NULL ? "NULL" : result );
-    return result;
-}
-
-static inline bool elasticApmIsEnabled()
-{
-    const bool result = getTracerCurrentConfigSnapshot( getGlobalTracer() )->enabled;
-
-    ELASTICAPM_LOG_TRACE( "Result: %s", boolToString( result ) );
-    return result;
-}
-
-static inline ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
-{
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "optionName: `%s'", optionName );
-
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    GetConfigManagerOptionValueByNameResult getOptValueByNameRes;
-    getOptValueByNameRes.txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    getOptValueByNameRes.streamedParsedValue = NULL;
-    const ResultCode resultCode = getConfigManagerOptionValueByName(
-            getGlobalTracer()->configManager
-            , optionName
-            , &getOptValueByNameRes );
-    if ( resultCode == resultSuccess ) *return_value = getOptValueByNameRes.parsedValueAsZval;
-
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG(
-            "ResultCode: %s. Option's: name: `%s', value: %s"
-            , resultCodeToString( resultCode ), optionName, getOptValueByNameRes.streamedParsedValue );
-    return resultCode;
-}
+ResultCode elasticApmGetInterceptCallsToPhpFunction( String funcToIntercept
+                                                     , String funcToCallBeforeIntercepted
+                                                     , String funcToCallAfterIntercepted
+);

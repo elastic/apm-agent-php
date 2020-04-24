@@ -12,34 +12,40 @@
 #pragma once
 
 #include <stdbool.h>
-
 #include <php.h>
 #include <zend.h>
-
 #include "elasticapm_assert.h"
 #include "basic_types.h"
 #include "ResultCode.h"
 #include "MemoryTracker.h"
+#include "log.h"
 
-
-static inline bool isEmtpyZstring( const zend_string* zStr )
+static inline
+bool isEmtpyZstring( const zend_string* zStr )
 {
     return ZSTR_LEN( zStr ) == 0;
 }
 
-static inline bool isNullOrEmtpyZstring( const zend_string* zStr )
+static inline
+bool isNullOrEmtpyZstring( const zend_string* zStr )
 {
     return zStr == NULL || isEmtpyZstring( zStr );
 }
 
-static inline bool isZarray( const zval* zValue )
+static inline
+bool isZarray( const zval* zValue )
 {
     ELASTICAPM_ASSERT_VALID_PTR( zValue );
 
     return Z_TYPE_P( zValue ) == IS_ARRAY;
 }
 
-static inline const zval* findInZarrayByStringKey( const zend_array* zArray, StringView key )
+static inline
+const zval* findInZarrayByStringKey( const zend_array* zArray, StringView key )
 {
     return zend_hash_str_find( zArray, key.begin, key.length );
 }
+
+ResultCode loadPhpFile( const char* filename TSRMLS_DC );
+ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel );
+

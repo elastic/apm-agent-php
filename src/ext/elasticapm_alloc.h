@@ -121,7 +121,7 @@ void ELASTICAPM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 
 #define ELASTICAPM_PHP_ALLOC_DUP_STRING_IF_FAILED_DO( srcStr, isPersistent, outPtr, doOnFailure ) \
     do { \
-        ELASTICAPM_ASSERT( (srcStr) != NULL ); \
+        ELASTICAPM_ASSERT( (srcStr) != NULL, "" ); \
         char* elasticApmPemallocDupStringTempPtr = NULL; \
         ELASTICAPM_PHP_ALLOC_ARRAY_IF_FAILED_DO( \
                 char, \

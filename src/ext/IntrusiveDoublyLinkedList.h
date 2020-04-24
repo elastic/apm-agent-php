@@ -36,7 +36,7 @@ void assertValidLinksIntrusiveDoublyLinkedList( const IntrusiveDoublyLinkedList*
     for ( const IntrusiveDoublyLinkedListNode* nodeBeforeCurrent = &list->sentinelHead;
           nodeBeforeCurrent != &list->sentinelTail;
           nodeBeforeCurrent = nodeBeforeCurrent->next )
-        ELASTICAPM_ASSERT( nodeBeforeCurrent->next->prev == nodeBeforeCurrent );
+        ELASTICAPM_ASSERT_EQ_PTR( nodeBeforeCurrent->next->prev, nodeBeforeCurrent );
 }
 
 static inline
@@ -44,8 +44,8 @@ void assertValidIntrusiveDoublyLinkedList( const IntrusiveDoublyLinkedList* list
 {
     ELASTICAPM_ASSERT_VALID_PTR( list );
 
-    ELASTICAPM_ASSERT( list->sentinelHead.prev == NULL );
-    ELASTICAPM_ASSERT( list->sentinelTail.next == NULL );
+    ELASTICAPM_ASSERT_PTR_IS_NULL( list->sentinelHead.prev );
+    ELASTICAPM_ASSERT_PTR_IS_NULL( list->sentinelTail.next );
 
     ELASTICAPM_ASSERT_VALID_OBJ_O_N( assertValidLinksIntrusiveDoublyLinkedList( list ) );
 }
@@ -157,7 +157,7 @@ static inline
 const IntrusiveDoublyLinkedListNode* currentNodeIntrusiveDoublyLinkedList( IntrusiveDoublyLinkedListIterator iterator )
 {
     ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator );
-    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ) );
+    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ), "" );
 
     return iterator.currentNode;
 }
@@ -166,7 +166,7 @@ static inline
 IntrusiveDoublyLinkedListIterator advanceIntrusiveDoublyLinkedListIterator( IntrusiveDoublyLinkedListIterator iterator )
 {
     ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator );
-    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ) );
+    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ), "" );
 
     return nodeToIntrusiveDoublyLinkedListIterator( iterator.list, iterator.currentNode->next );
 }
@@ -181,8 +181,8 @@ void assertInvalidatedIntrusiveDoublyLinkedListIterator( IntrusiveDoublyLinkedLi
 {
     ELASTICAPM_ASSERT_VALID_PTR( iterator.list );
     ELASTICAPM_ASSERT_VALID_PTR( iterator.currentNode );
-    ELASTICAPM_ASSERT( iterator.currentNode->prev == NULL );
-    ELASTICAPM_ASSERT( iterator.currentNode->next == NULL );
+    ELASTICAPM_ASSERT_PTR_IS_NULL( iterator.currentNode->prev );
+    ELASTICAPM_ASSERT_PTR_IS_NULL( iterator.currentNode->next );
 }
 
 #define ELASTICAPM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator ) \
@@ -192,7 +192,7 @@ static inline
 void removeCurrentNodeIntrusiveDoublyLinkedList( IntrusiveDoublyLinkedListIterator iterator )
 {
     ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator );
-    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ) );
+    ELASTICAPM_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator ), "" );
 
     IntrusiveDoublyLinkedListNode* removedNode = (IntrusiveDoublyLinkedListNode*)currentNodeIntrusiveDoublyLinkedList( iterator );
 

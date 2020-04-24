@@ -20,7 +20,7 @@
 #include <zend_types.h>
 
 #include "lifecycle.h"
-#include "supportability.h"
+#include "supportability_zend.h"
 #include "elasticapm_API.h"
 #include "ConfigManager.h"
 #include "elasticapm_assert.h"
@@ -30,7 +30,7 @@ ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
 Tracer* getGlobalTracer()
 {
-    return &(ZEND_MODULE_GLOBALS_ACCESSOR(elasticapm, globalTracer));
+    return &( ZEND_MODULE_GLOBALS_ACCESSOR( elasticapm, globalTracer ) );
 }
 
 #ifndef ZEND_PARSE_PARAMETERS_NONE
@@ -94,7 +94,7 @@ PHP_INI_BEGIN()
     #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
-    ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_AUTOLOAD_FILE )
+    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ENABLED )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_FILE )
@@ -111,6 +111,7 @@ PHP_INI_BEGIN()
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
     #endif
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SECRET_TOKEN )
+    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVER_URL )
     ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVICE_NAME )
 PHP_INI_END()
@@ -233,7 +234,7 @@ PHP_FUNCTION( elasticapm_get_current_trace_id )
 }
 /* }}} */
 
-/* {{{ mixed elasticapm_get_config_option_by_name( string $optionName )
+/* {{{ elasticapm_get_config_option_by_name( string $optionName ): mixed
  */
 PHP_FUNCTION( elasticapm_get_config_option_by_name )
 {
@@ -248,13 +249,46 @@ PHP_FUNCTION( elasticapm_get_config_option_by_name )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_function_arginfo, 0, 0, 3 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, funcToIntercept, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, preHookFunc, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, postHookFunc, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elasticapm_intercept_calls_to_function( string $funcToIntercept, string $preHookFunc, string $postHookFunc ): bool
+ */
+PHP_FUNCTION( elasticapm_intercept_calls_to_function )
+{
+    char* funcToIntercept = NULL;
+    size_t funcToInterceptLength = 0;
+    char* preHookFunc = NULL;
+    size_t preHookFuncLength = 0;
+    char* postHookFunc = NULL;
+    size_t postHookFuncLength = 0;
+
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 3, /* max_num_args: */ 3 )
+    Z_PARAM_STRING( funcToIntercept, funcToInterceptLength )
+    Z_PARAM_STRING( preHookFunc, preHookFuncLength )
+    Z_PARAM_STRING( postHookFunc, postHookFuncLength )
+    ZEND_PARSE_PARAMETERS_END();
+
+    if ( elasticApmGetInterceptCallsToPhpFunction( funcToIntercept, preHookFunc, postHookFunc ) != resultSuccess )
+    {
+        RETURN_TRUE
+    }
+    else
+    {
+        RETURN_FALSE
+    }
+}
+/* }}} */
+
 /* {{{ arginfo
  */
 ZEND_BEGIN_ARG_INFO(elasticapm_no_paramters_arginfo, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX( elasticapm_string_paramter_arginfo, 0, 0, 1 )
-    ZEND_ARG_TYPE_INFO( 0, optionName, IS_STRING, 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, optionName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 /* }}} */
 
@@ -266,6 +300,7 @@ static const zend_function_entry elasticapm_functions[] =
     PHP_FE( elasticapm_get_current_transaction_id, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_current_trace_id, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
+    PHP_FE( elasticapm_intercept_calls_to_function, elasticapm_intercept_calls_to_function_arginfo )
     PHP_FE_END
 };
 /* }}} */

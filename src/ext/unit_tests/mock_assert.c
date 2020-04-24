@@ -11,17 +11,22 @@
 
 #include "mock_assert.h"
 #include "elasticapm_assert.h"
+#include <stdarg.h>
 
-static ProductionCodeAssertFailed g_prodCodeAssertFailed = elasticApmAssertFailed;
+static ProductionCodeAssertFailed g_prodCodeAssertFailed = vElasticApmAssertFailed;
 
 void productionCodeAssertFailed(
-        const char* condExpr,
-        const char* fileName,
-        unsigned int lineNumber,
-        const char* funcName,
-        const char* msg )
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , /* msgPrintfFmtArgs */ ...
+)
 {
-    g_prodCodeAssertFailed( condExpr, fileName, lineNumber, funcName, msg );
+    va_list msgPrintfFmtArgs;
+    va_start( msgPrintfFmtArgs, msgPrintfFmt );
+    g_prodCodeAssertFailed( filePath, lineNumber, funcName, msgPrintfFmt, msgPrintfFmtArgs );
+    va_end( msgPrintfFmtArgs );
 }
 
 void setProductionCodeAssertFailed( ProductionCodeAssertFailed prodCodeAssertFailed )
@@ -34,17 +39,18 @@ void setProductionCodeAssertFailed( ProductionCodeAssertFailed prodCodeAssertFai
 static UInt64 g_productionCodeAssertFailedCount = 0;
 
 void productionCodeAssertFailedCountingMock(
-        const char* condExpr,
-        const char* fileName,
-        unsigned int lineNumber,
-        const char* funcName,
-        const char* msg )
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+)
 {
-    ELASTICAPM_UNUSED( condExpr );
-    ELASTICAPM_UNUSED( fileName );
+    ELASTICAPM_UNUSED( filePath );
     ELASTICAPM_UNUSED( lineNumber );
     ELASTICAPM_UNUSED( funcName );
-    ELASTICAPM_UNUSED( msg );
+    ELASTICAPM_UNUSED( msgPrintfFmt );
+    ELASTICAPM_UNUSED( msgPrintfFmtArgs );
 
     ++g_productionCodeAssertFailedCount;
 }

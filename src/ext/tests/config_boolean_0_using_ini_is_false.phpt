@@ -11,17 +11,9 @@ elasticapm.enabled=0
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame(
-    '0',
-    ini_get('elasticapm.enabled'),
-    "ini_get('elasticapm.enabled')"
-);
+elasticApmAssertSame("ini_get('elasticapm.enabled')", ini_get('elasticapm.enabled'), '0');
 
-elasticApmAssertSame(
-    false,
-    elasticapm_is_enabled(),
-    "elasticapm_is_enabled()"
-);
+elasticApmAssertSame("elasticapm_is_enabled()", elasticapm_is_enabled(), false);
 
 echo 'Test completed'
 ?>

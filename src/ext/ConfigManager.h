@@ -18,11 +18,13 @@
 #   include <php.h>
 #endif
 #include "elasticapm_assert.h"
+#include "StringView.h"
 #include "ResultCode.h"
 #include "util.h"
 #include "log.h"
 #include "internal_checks.h"
 #include "MemoryTracker.h"
+#include "time_util.h"
 
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
 //      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
@@ -50,7 +52,7 @@ enum OptionId
     #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
-    optionId_autoloadFile,
+    optionId_bootstrapPhpPartFile,
     optionId_enabled,
     optionId_internalChecksLevel,
     optionId_logFile,
@@ -67,6 +69,7 @@ enum OptionId
     optionId_memoryTrackingLevel,
     #endif
     optionId_secretToken,
+    optionId_serverConnectTimeout,
     optionId_serverUrl,
     optionId_serviceName,
 
@@ -85,7 +88,7 @@ struct ConfigSnapshot
         #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
     AssertLevel assertLevel;
         #endif
-    String autoloadFile;
+    String bootstrapPhpPartFile;
     bool enabled;
     InternalChecksLevel internalChecksLevel;
     String logFile;
@@ -102,6 +105,7 @@ struct ConfigSnapshot
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
     String secretToken;
+    Duration serverConnectTimeout;
     String serverUrl;
     String serviceName;
 };
@@ -159,15 +163,15 @@ void getConfigManagerOptionValueById(
         , GetConfigManagerOptionValueByIdResult* result
 );
 
-enum RawConfigSource
+enum RawConfigSourceId
 {
     // In order of precedence
 
-    rawConfigSource_iniFile,
-    rawConfigSource_envVars,
+    rawConfigSourceId_iniFile,
+    rawConfigSourceId_envVars,
     numberOfRawConfigSources
 };
-typedef enum RawConfigSource RawConfigSource;
+typedef enum RawConfigSourceId RawConfigSourceId;
 
 String readRawOptionValueFromEnvVars(
         const ConfigManager* cfgManager,
@@ -179,7 +183,7 @@ String readRawOptionValueFromIni(
 void getConfigManagerRawData(
         const ConfigManager* cfgManager,
         OptionId optId,
-        RawConfigSource rawConfigSource,
+        RawConfigSourceId rawCfgSourceId,
         /* out */ String* originalRawValue,
         /* out */ String* interpretedRawValue );
 
@@ -194,7 +198,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 #define ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
-#define ELASTICAPM_CFG_OPT_NAME_AUTOLOAD_FILE "autoload_file"
+#define ELASTICAPM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTICAPM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
 #define ELASTICAPM_CFG_OPT_NAME_LOG_FILE "log_file"
@@ -211,6 +215,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTICAPM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
 #define ELASTICAPM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
+#define ELASTICAPM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT "server_connect_timeout"
 #define ELASTICAPM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTICAPM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 

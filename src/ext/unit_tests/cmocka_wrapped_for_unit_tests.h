@@ -15,9 +15,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-
 #include "basic_macros.h"
-
 
 void cm_print_error( const char* format, ...)
         ELASTICAPM_PRINTF_ATTRIBUTE( /* fmtPos: */ 1, /* fmtArgsPos: */ 2 );

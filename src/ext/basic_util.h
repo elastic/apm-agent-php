@@ -13,7 +13,6 @@
 
 #include <stdbool.h>
 
-
 static inline String boolToString( bool boolValue )
 {
     return boolValue ? "true" : "false";

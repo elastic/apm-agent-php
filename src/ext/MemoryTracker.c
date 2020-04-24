@@ -169,8 +169,8 @@ void memoryTrackerAfterAlloc(
         size_t stackTraceAddressesCount )
 {
     ELASTICAPM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
-    ELASTICAPM_ASSERT( actuallyRequestedSize >= originallyRequestedSize );
-    ELASTICAPM_ASSERT( stackTraceAddressesCount <= maxCaptureStackTraceDepth );
+    ELASTICAPM_ASSERT_GE_UINT64( actuallyRequestedSize, originallyRequestedSize );
+    ELASTICAPM_ASSERT_LE_UINT64( stackTraceAddressesCount, maxCaptureStackTraceDepth );
 
     UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
     *allocated += originallyRequestedSize;
@@ -248,16 +248,11 @@ void memoryTrackerBeforeFree(
     ELASTICAPM_UNUSED( allocatedBlock );
     ELASTICAPM_ASSERT_VALID_PTR( possibleActuallyRequestedSize );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
 
-    ELASTICAPM_ASSERT( *allocated >= originallyRequestedSize,
-            streamPrintf( &txtOutStream,
-                    "Attempting to free more %s memory than allocated."
-                    " Allocated: %"PRIu64". Attempting to free: %"PRIu64,
-                    allocType( isPersistent ),
-                    *allocated, (UInt64)originallyRequestedSize ) );
+    ELASTICAPM_ASSERT( *allocated >= originallyRequestedSize
+            , "Attempting to free more %s memory than allocated. Allocated: %"PRIu64". Attempting to free: %"PRIu64
+            , allocType( isPersistent ), *allocated, (UInt64)originallyRequestedSize );
 
     *possibleActuallyRequestedSize = originallyRequestedSize;
     // Since memory tracking level can only be reduced it means that
@@ -339,7 +334,7 @@ String streamAllocCallStackTrace(
         return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
     Byte* postHeader = ((Byte*)trackingDataHeader) + sizeof( EmbeddedTrackingDataHeader );
-    ELASTICAPM_ASSERT( trackingDataHeader->stackTraceAddressesCount <= maxCaptureStackTraceDepth );
+    ELASTICAPM_ASSERT_LE_UINT64( trackingDataHeader->stackTraceAddressesCount, maxCaptureStackTraceDepth );
     void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
     memcpy( stackTraceAddresses, postHeader, sizeof( void* ) * trackingDataHeader->stackTraceAddressesCount );
     streamStackTrace(
@@ -404,8 +399,7 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
             whenDesc, allocType( isPersistent ), allocated );
 
     ELASTICAPM_FORCE_LOG_CRITICAL(
-            "Number of allocations not freed: %"PRIu64 ". Following are the first %"PRIu64 " not freed allocation(s)",
-            (UInt64)numberOfAllocations, (UInt64)numberOfAllocationsToReport );
+            "Number of allocations not freed: %"PRIu64 ". Following are the first %"PRIu64 " not freed allocation(s)", (UInt64) numberOfAllocations, (UInt64) numberOfAllocationsToReport );
 
     ELASTICAPM_FOR_EACH_INDEX( allocationIndex, numberOfAllocationsToReport)
         reportAllocation( allocationsToReport[ allocationIndex ], allocationIndex, numberOfAllocations );
@@ -445,7 +439,7 @@ MemoryTrackingLevel internalChecksToMemoryTrackingLevel( InternalChecksLevel int
     ELASTICAPM_STATIC_ASSERT( memoryTrackingLevel_not_set == internalChecksLevel_not_set );
     ELASTICAPM_STATIC_ASSERT( numberOfMemoryTrackingLevels <= numberOfInternalChecksLevels );
 
-    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all ) );
+    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all );
 
     if ( internalChecksLevel >= internalChecksLevel_all ) return memoryTrackingLevel_all;
     if ( internalChecksLevel < ( memoryTrackingLevel_all - 1 ) ) return (MemoryTrackingLevel)internalChecksLevel;

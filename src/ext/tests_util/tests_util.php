@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 error_reporting(E_ALL | E_STRICT);
 
-function elasticApmOnAssertFailure(string $condDesc, $expected, $actual, string $expr)
+function elasticApmOnAssertFailure(string $condDesc, string $expr, $actual, $expected)
 {
     if ( $expected === $actual ) return;
 
@@ -33,18 +33,18 @@ function elasticApmOnAssertFailure(string $condDesc, $expected, $actual, string 
     die();
 }
 
-function elasticApmAssertSame($expected, $actual, string $expr)
+function elasticApmAssertSame(string $expr, $actual, $expected)
 {
     if ( $expected === $actual ) return;
 
-    elasticApmOnAssertFailure("the same", $expected, $actual, $expr);
+    elasticApmOnAssertFailure("the same", $expr, $actual, $expected);
 }
 
-function elasticApmAssertEqual($expected, $actual, string $expr)
+function elasticApmAssertEqual(string $expr, $actual, $expected)
 {
     if ( $expected == $actual ) return;
 
-    elasticApmOnAssertFailure("equal", $expected, $actual, $expr);
+    elasticApmOnAssertFailure("equal", $expr, $actual, $expected);
 }
 
 function elasticApmIsOsWindows(): bool

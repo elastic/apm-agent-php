@@ -93,7 +93,7 @@ String streamErrNo( int errnoValue, TextOutputStream* txtOutStream )
 
     // +1 to detect overflow and +1 for terminating '\0'
     const size_t freeSizePlus = freeSpaceSize + 2;
-    ELASTICAPM_ASSERT( isValidEndPtrIntoTextOutputStream( txtOutStreamStateOnEntryStart.freeSpaceBegin + freeSizePlus, txtOutStream ) );
+    ELASTICAPM_ASSERT_VALID_OBJ( assertValidEndPtrIntoTextOutputStream( txtOutStreamStateOnEntryStart.freeSpaceBegin + freeSizePlus, txtOutStream ) );
 
     // Write terminating zero to detect if anything was written to the buffer
     // by the function converting errno to string

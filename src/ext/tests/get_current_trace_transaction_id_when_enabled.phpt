@@ -11,23 +11,11 @@ if (!extension_loaded('elasticapm')) {
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame(
-    true,
-    elasticapm_is_enabled(),
-    "elasticapm_is_enabled()"
-);
+elasticApmAssertSame("elasticapm_is_enabled()", elasticapm_is_enabled(), true);
 
-elasticApmAssertSame(
-    16,
-    strlen( elasticapm_get_current_transaction_id() ),
-    "strlen( elasticapm_get_current_transaction_id() )"
-);
+elasticApmAssertSame("strlen( elasticapm_get_current_transaction_id() )", strlen( elasticapm_get_current_transaction_id() ), 16);
 
-elasticApmAssertSame(
-    32,
-    strlen( elasticapm_get_current_trace_id() ),
-    "strlen( elasticapm_get_current_trace_id() )"
-);
+elasticApmAssertSame("strlen( elasticapm_get_current_trace_id() )", strlen( elasticapm_get_current_trace_id() ), 32);
 
 echo 'Test completed'
 ?>

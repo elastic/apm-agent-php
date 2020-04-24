@@ -10,7 +10,6 @@
  */
 
 #include "elasticapm_assert.h"
-#include <stdarg.h>
 #include "log.h"
 #include "ConfigManager.h"
 
@@ -32,39 +31,45 @@ void elasticApmAbort()
     #endif
     abort();
 }
-void elasticApmAssertFailed(
-        const char* condExpr,
-        const char* filePath,
-        unsigned int lineNumber,
-        const char* funcName,
-        const char* msg )
+
+void vElasticApmAssertFailed(
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+)
 {
-    if ( msg == NULL )
-    {
-        logWithLogger(
-                getGlobalLogger(),
-                /* isForced: */ true,
-                logLevel_critical,
-                makeStringViewFromString( filePath ),
-                lineNumber,
-                makeStringViewFromString( funcName ),
-                "Assertion failed! Condition: %s.",
-                condExpr );
-    }
-    else
-    {
-        logWithLogger(
-                getGlobalLogger(),
-                /* isForced: */ true,
-                logLevel_critical,
-                makeStringViewFromString( filePath ),
-                lineNumber,
-                makeStringViewFromString( funcName ),
-                "Assertion failed! Condition: %s. Message: %s.",
-                condExpr, msg );
-    }
+    vLogWithLogger( getGlobalLogger()
+                    , /* isForced: */ true
+                    , logLevel_critical
+                    , makeStringViewFromString( filePath )
+                    , lineNumber
+                    , makeStringViewFromString( funcName )
+                    , msgPrintfFmt
+                    , msgPrintfFmtArgs );
 
     elasticApmAbort();
+}
+
+void elasticApmAssertFailed(
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , /* msgPrintfFmtArgs */ ...
+)
+{
+    va_list msgPrintfFmtArgs;
+    va_start( msgPrintfFmtArgs, msgPrintfFmt );
+
+    vElasticApmAssertFailed( filePath
+                             , lineNumber
+                             , funcName
+                             , msgPrintfFmt
+                             , msgPrintfFmtArgs );
+
+    va_end( msgPrintfFmtArgs );
 }
 
 AssertLevel internalChecksToAssertLevel( InternalChecksLevel internalChecksLevel )
@@ -72,7 +77,8 @@ AssertLevel internalChecksToAssertLevel( InternalChecksLevel internalChecksLevel
     ELASTICAPM_STATIC_ASSERT( assertLevel_not_set == internalChecksLevel_not_set );
     ELASTICAPM_STATIC_ASSERT( numberOfAssertLevels <= numberOfInternalChecksLevels );
 
-    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all ) );
+    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all )
+                       , "internalChecksLevel: %d", internalChecksLevel );
 
     if ( internalChecksLevel >= internalChecksLevel_all ) return assertLevel_all;
     if ( internalChecksLevel < ( assertLevel_all - 1 ) ) return (AssertLevel)internalChecksLevel;

@@ -18,9 +18,10 @@
 void assertValidDynamicArray( const DynamicArray* dynArr, size_t elementTypeSize )
 {
     ELASTICAPM_ASSERT_VALID_PTR( dynArr );
-    ELASTICAPM_ASSERT( elementTypeSize != 0 );
-    ELASTICAPM_ASSERT( ( dynArr->capacity == 0 ) == ( dynArr->elements == NULL ) );
-    ELASTICAPM_ASSERT( dynArr->size <= dynArr->capacity );
+    ELASTICAPM_ASSERT( elementTypeSize != 0, "" );
+    ELASTICAPM_ASSERT( ( dynArr->capacity == 0 ) == ( dynArr->elements == NULL )
+            , "dynArr->capacity: %"PRIu64". dynArr->elements: %p", (UInt64)dynArr->capacity, dynArr->elements );
+    ELASTICAPM_ASSERT_LE_UINT64( dynArr->size, dynArr->capacity );
 }
 
 #define ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY_ELEMENT_TYPE_SIZE( dynArr, elementTypeSize ) \
@@ -31,7 +32,7 @@ void assertValidDynamicArray( const DynamicArray* dynArr, size_t elementTypeSize
 static
 void poisonDynamicArray( DynamicArray* dynArr )
 {
-    ELASTICAPM_ASSERT( dynArr->elements == NULL );
+    ELASTICAPM_ASSERT_PTR_IS_NULL( dynArr->elements );
     dynArr->capacity = 0xBADC0FFE;
     dynArr->size = 0xDEADBEEF;
 }
@@ -119,14 +120,14 @@ size_t getDynamicArraySize( const DynamicArray* dynArr, size_t elementTypeSize )
 const void* getDynamicArrayElementAt( const DynamicArray* dynArr, size_t index, size_t elementTypeSize )
 {
     ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY_ELEMENT_TYPE_SIZE( dynArr, elementTypeSize );
-    ELASTICAPM_ASSERT( index < dynArr->size );
+    ELASTICAPM_ASSERT_LT_UINT64( index, dynArr->size );
     return (const Byte*)( dynArr->elements ) + ( index * elementTypeSize );
 }
 
 void removeDynamicArrayElementAt( DynamicArray* dynArr, size_t index, size_t elementTypeSize )
 {
     ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY_ELEMENT_TYPE_SIZE( dynArr, elementTypeSize );
-    ELASTICAPM_ASSERT( index < dynArr->size );
+    ELASTICAPM_ASSERT_LT_UINT64( index, dynArr->size );
 
     if ( index != ( dynArr->size - 1 ) )
     {
@@ -148,7 +149,7 @@ size_t getDynamicArrayCapacity( const DynamicArray* dynArr, size_t elementTypeSi
 ResultCode changeDynamicArrayCapacity( DynamicArray* dynArr, size_t newCapacity, size_t elementTypeSize )
 {
     ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY_ELEMENT_TYPE_SIZE( dynArr, elementTypeSize );
-    ELASTICAPM_ASSERT( newCapacity >= dynArr->size );
+    ELASTICAPM_ASSERT_GE_UINT64( newCapacity, dynArr->size );
 
     ResultCode resultCode;
     void* newElements = NULL;
@@ -171,7 +172,7 @@ ResultCode changeDynamicArrayCapacity( DynamicArray* dynArr, size_t newCapacity,
 
     finally:
     ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY_ELEMENT_TYPE_SIZE( dynArr, elementTypeSize );
-    if ( resultCode == resultSuccess ) ELASTICAPM_ASSERT( dynArr->capacity == newCapacity );
+    if ( resultCode == resultSuccess ) ELASTICAPM_ASSERT_EQ_UINT64( dynArr->capacity, newCapacity );
     return resultCode;
 
     failure:

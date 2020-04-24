@@ -8,6 +8,16 @@
 # +----------------------------------------------------------------------+
 
 CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
+
+IF ( WIN32 )
+    # From https://github.com/microsoft/vcpkg/blob/master/docs/users/integration.md#using-an-environment-variable-instead-of-a-command-line-option
+    IF ( DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE )
+        SET( CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+             CACHE STRING "" )
+        MESSAGE( "Set CMAKE_TOOLCHAIN_FILE to ${CMAKE_TOOLCHAIN_FILE}" )
+    ENDIF ()
+ENDIF ()
+
 PROJECT( unit_tests C )
 
 INCLUDE( CTest )
@@ -65,7 +75,8 @@ IF ( WIN32 )
     ADD_COMPILE_DEFINITIONS( _CRT_SECURE_NO_WARNINGS )
 ENDIF()
 
-FIND_LIBRARY( cmocka_static_lib cmocka )
+FIND_PACKAGE( cmocka REQUIRED )
+#FIND_LIBRARY( cmocka_static_lib cmocka )
 IF ( NOT cmocka_static_lib )
     IF ( WIN32 )
         IF ( DEFINED ENV{cmocka_installed_dir} )
@@ -96,6 +107,7 @@ LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/intern
 LIST( APPEND source_files ${src_ext_dir}/log.h ${src_ext_dir}/log.c )
 LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTracker.c )
 LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.c )
+LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
 
 IF ( NOT WIN32 )

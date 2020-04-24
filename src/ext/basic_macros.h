@@ -31,6 +31,10 @@
 
 #define ELASTICAPM_FOR_EACH_INDEX( indexVar, rangeSize ) ELASTICAPM_FOR_EACH_INDEX_EX( size_t, indexVar, rangeSize )
 
+#define ELASTICAPM_REPEAT_N_TIMES( numberOfTimes ) \
+    ELASTICAPM_FOR_EACH_INDEX_EX( size_t, ELASTICAPM_PP_CONCAT( elasticapm_repeat_n_times_index_var, __LINE__ ), numberOfTimes )
+/**/
+
 #define ELASTICAPM_FOR_EACH_BACKWARDS( indexVar, rangeSize ) \
     for \
     ( \
@@ -103,28 +107,24 @@
 
 #define ELASTICAPM_FIELD_SIZEOF( StructType, field ) (sizeof( ((StructType*)NULL)->field ))
 
-
-//////////////////////////////////////////////////////////////////////////////
-//
-// ELASTICAPM_PRINTF_FORMAT_ARGS
-//
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_0( ... ) "%s", ""
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_1( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_2( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_3( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_4( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_5( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_6( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_7( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_8( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_9( ... ) __VA_ARGS__
-#define ELASTICAPM_PRINTF_FORMAT_ARGS_10( ... ) __VA_ARGS__
-
-#define ELASTICAPM_PRINTF_FORMAT_ARGS( ... ) \
-    ELASTICAPM_PP_EXPAND( ELASTICAPM_PP_CONCAT( ELASTICAPM_PRINTF_FORMAT_ARGS_, ELASTICAPM_PP_VARIADIC_ARGS_COUNT( __VA_ARGS__ ) ) ) ( __VA_ARGS__ )
-
-//
-// ELASTICAPM_PRINTF_FORMAT_ARGS
-//
-//////////////////////////////////////////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////
+////
+//// ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE
+////
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_0( ifToken, elseToken ) ifToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_1( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_2( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_3( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_4( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_5( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_6( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_7( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_8( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_9( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_10( ifToken, elseToken ) elseToken
+#define ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE( ifToken, elseToken, ... ) \
+    ELASTICAPM_PP_EXPAND( ELASTICAPM_PP_CONCAT( ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE_, ELASTICAPM_PP_VARIADIC_ARGS_COUNT( __VA_ARGS__ ) ) ) ( ifToken, elseToken )
+////
+//// ELASTICAPM_IF_VA_ARGS_EMPTY_ELSE
+////
+////////////////////////////////////////////////////////////////////////////////

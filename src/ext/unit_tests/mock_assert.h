@@ -19,27 +19,31 @@
  * via ELASTICAPM_ASSERT_FAILED_FUNC defined in unit tests' CMakeLists.txt
  */
 void productionCodeAssertFailed(
-        const char* condExpr,
-        const char* fileName,
-        unsigned int lineNumber,
-        const char* funcName,
-        const char* msg );
+        const char* filePath /* <- argument #1 */
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt /* <- printf format is argument #4 */
+        , /* msgPrintfFmtArgs */ ... /* <- arguments for printf format placeholders start from argument #5 */
+) ELASTICAPM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 4, /* printfFmtArgsPos: */ 5 );
 
 ELASTICAPM_SUPPRESS_UNUSED( productionCodeAssertFailed );
 
 typedef void (* ProductionCodeAssertFailed )(
-        const char* condExpr,
-        const char* fileName,
-        UInt lineNumber,
-        const char* funcName,
-        const char* msg );
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+);
+
 void setProductionCodeAssertFailed( ProductionCodeAssertFailed prodCodeAssertFailed );
 
 void productionCodeAssertFailedCountingMock(
-        const char* condExpr,
-        const char* fileName,
-        UInt lineNumber,
-        const char* funcName,
-        const char* msg );
+        const char* filePath
+        , unsigned int lineNumber
+        , const char* funcName
+        , const char* msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+);
 UInt64 getProductionCodeAssertFailedCount();
 void resetProductionCodeAssertFailedCount();

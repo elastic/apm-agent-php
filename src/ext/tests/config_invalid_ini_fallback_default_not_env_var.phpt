@@ -13,37 +13,17 @@ elasticapm.log_level_file=not a valid log level
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame(
-    'CRITICAL',
-    getenv('ELASTIC_APM_LOG_LEVEL_FILE'),
-    "getenv('ELASTIC_APM_LOG_LEVEL_FILE')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_FILE')", getenv('ELASTIC_APM_LOG_LEVEL_FILE'), 'CRITICAL');
 
-elasticApmAssertSame(
-    'O_n',
-    getenv('ELASTIC_APM_ASSERT_LEVEL'),
-    "getenv('ELASTIC_APM_ASSERT_LEVEL')"
-);
+elasticApmAssertSame("getenv('ELASTIC_APM_ASSERT_LEVEL')", getenv('ELASTIC_APM_ASSERT_LEVEL'), 'O_n');
 
-elasticApmAssertSame(
-    'not a valid log level',
-    ini_get('elasticapm.log_level_file'),
-    "ini_get('elasticapm.log_level_file')"
-);
+elasticApmAssertSame("ini_get('elasticapm.log_level_file')", ini_get('elasticapm.log_level_file'), 'not a valid log level');
 
 // log_level_file is set in ini albeit the value is invalid so it does fall back on env vars
-elasticApmAssertSame(
-    ELASTICAPM_LOG_LEVEL_NOT_SET,
-    elasticapm_get_config_option_by_name('log_level_file'),
-    "elasticapm_get_config_option_by_name('log_level_file')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('log_level_file')", elasticapm_get_config_option_by_name('log_level_file'), ELASTICAPM_LOG_LEVEL_NOT_SET);
 
 // assert_level is not set in ini so it does fall back on env vars
-elasticApmAssertSame(
-    ELASTICAPM_ASSERT_LEVEL_O_N,
-    elasticapm_get_config_option_by_name('assert_level'),
-    "elasticapm_get_config_option_by_name('assert_level')"
-);
+elasticApmAssertSame("elasticapm_get_config_option_by_name('assert_level')", elasticapm_get_config_option_by_name('assert_level'), ELASTICAPM_ASSERT_LEVEL_O_N);
 
 echo 'Test completed'
 ?>

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <time.h>
+#include <stdbool.h>
 
 #ifdef PHP_WIN32
 #   ifdef ELASTICAPM_MOCK_CLOCK
@@ -38,7 +39,6 @@ struct timezone
 #ifdef PHP_WIN32
 #   include "platform.h"
 #endif
-
 
 static inline
 bool convertUtcToLocalTimeDefaultImpl( time_t input, struct tm* output, long* secondsAheadUtc )
@@ -92,15 +92,3 @@ bool convertUtcToLocalTime( time_t input, struct tm* output, long* secondsAheadU
 }
 
 #endif
-
-struct TimePoint
-{
-    struct timeval systemClockTime;
-};
-
-typedef struct TimePoint TimePoint;
-
-static inline void getCurrentTime( TimePoint* result )
-{
-    getSystemClockCurrentTimeAsUtc( &( result->systemClockTime ) );
-}

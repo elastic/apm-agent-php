@@ -12,9 +12,7 @@
 #pragma once
 
 #include "basic_macros.h"
-
 #include "elasticapm_assert.h"
-
 
 // +1 for terminating '\0'
 #define ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) ( (idSizeBytes) * 2 +1 )

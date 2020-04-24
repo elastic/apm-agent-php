@@ -13,13 +13,15 @@
 
 #include <stdbool.h>
 #include "basic_types.h"
+#include "basic_macros.h"
 
 enum ZValueType
 {
     zvalType_null,
     zvalType_bool,
     zvalType_long,
-    zvalType_string
+    zvalType_string,
+    zvalType_double
 };
 typedef enum ZValueType ZValueType;
 
@@ -28,6 +30,7 @@ union ZValueUnion
     bool boolValue;
     long longValue;
     String stringValue;
+    double doubleValue;
 };
 typedef union ZValueUnion ZValueUnion;
 
@@ -65,33 +68,22 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
 //////////////////////////////////////////////////////////////////////////////
 
 
-#define ZVAL_NULL( pZvalArg ) \
+#define ZVAL_ASSIGN_NULL( pZvalArg ) \
     do { \
         (pZvalArg)->type = zvalType_null; \
 	} while (0)
 
-#define ZVAL_BOOL( pZvalArg, boolValueArg ) \
+#define ZVAL_ASSIGN( pZvalArg, valueTypeArg, valueArg ) \
     do { \
-		(pZvalArg)->type = zvalType_bool; \
-		(pZvalArg)->value.boolValue = (boolValueArg); \
+		(pZvalArg)->type = zvalType_##valueTypeArg; \
+		(pZvalArg)->value . valueTypeArg##Value = (valueArg); \
 	} while (0)
 
-#define ZVAL_LONG( pZvalArg, longValueArg ) \
-    do { \
-		(pZvalArg)->type = zvalType_long; \
-		(pZvalArg)->value.longValue = (longValueArg); \
-	} while (0)
-
-#define ZVAL_STRING( pZvalArg, stringValueArg ) \
-    do { \
-		(pZvalArg)->type = zvalType_string; \
-		(pZvalArg)->value.stringValue = (stringValueArg); \
-	} while (0)
-
-#define RETVAL_NULL()                   ZVAL_NULL( return_value )
-#define RETVAL_BOOL( boolValueArg )     ZVAL_BOOL( return_value, boolValueArg )
-#define RETVAL_LONG( longValueArg )     ZVAL_LONG( return_value, longValueArg )
-#define RETVAL_STRING( stringValueArg ) ZVAL_STRING( return_value, stringValueArg )
+#define RETVAL_NULL()                   ZVAL_ASSIGN_NULL( return_value )
+#define RETVAL_BOOL( boolValueArg )     ZVAL_ASSIGN( return_value, bool, boolValueArg )
+#define RETVAL_LONG( longValueArg )     ZVAL_ASSIGN( return_value, long, longValueArg )
+#define RETVAL_STRING( stringValueArg ) ZVAL_ASSIGN( return_value, string, stringValueArg )
+#define RETVAL_DOUBLE( doubleValueArg ) ZVAL_ASSIGN( return_value, double, doubleValueArg )
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -110,6 +102,7 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
 #define RETURN_BOOL( boolValueArg )     { RETVAL_BOOL( boolValueArg ); return; }
 #define RETURN_LONG( longValueArg )     { RETVAL_LONG( longValueArg ); return; }
 #define RETURN_STRING( stringValueArg ) { RETVAL_STRING( stringValueArg ); return; }
+#define RETURN_DOUBLE( doubleValueArg ) { RETVAL_DOUBLE( doubleValueArg ); return; }
 
 #ifdef ELASTICAPM_UNDER_IDE
 #   pragma clang diagnostic pop

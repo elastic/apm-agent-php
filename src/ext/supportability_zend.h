@@ -11,21 +11,8 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <sys/types.h>
-#include <string.h>
+#include <zend_modules.h>
 
-typedef unsigned int UInt;
-typedef uint8_t UInt8;
-typedef int8_t Int8;
-typedef uint16_t UInt16;
-typedef int16_t Int16;
-typedef uint32_t UInt32;
-typedef int32_t Int32;
-typedef uint64_t UInt64;
-typedef int64_t Int64;
+void elasticapmModuleInfo( zend_module_entry* zend_module );
 
-typedef UInt8 Byte;
-
-typedef const char* String;
-typedef char* MutableString;
+void displaySecretIniValue( zend_ini_entry* iniEntry, int type );

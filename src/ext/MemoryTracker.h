@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include "basic_types.h"
+#include "StringView.h"
 #include "basic_macros.h"
 #include "IntrusiveDoublyLinkedList.h"
 #include "internal_checks.h"
@@ -41,8 +42,10 @@ enum MemoryTrackingLevel
 };
 typedef enum MemoryTrackingLevel MemoryTrackingLevel;
 
-#define ELASTICAPM_ASSERT_VALID_MEMORY_TRACKING_LEVEL(level ) \
-    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_END_EXCLUDED_RANGE( memoryTrackingLevel_not_set, (level), numberOfMemoryTrackingLevels ) )
+#define ELASTICAPM_ASSERT_VALID_MEMORY_TRACKING_LEVEL( level ) \
+    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_END_EXCLUDED_RANGE( memoryTrackingLevel_not_set, (level), numberOfMemoryTrackingLevels ) \
+        , #level ": %u", (unsigned int)(level) ) \
+/**/
 
 extern const char* memoryTrackingLevelNames[ numberOfMemoryTrackingLevels ];
 
@@ -106,7 +109,7 @@ void reconfigureMemoryTracker(
         bool newConfiguredAbortOnMemoryLeak )
 {
     ELASTICAPM_ASSERT_VALID_MEMORY_TRACKING_LEVEL( newConfiguredLevel );
-    ELASTICAPM_ASSERT( newConfiguredLevel != memoryTrackingLevel_not_set );
+    ELASTICAPM_ASSERT( newConfiguredLevel != memoryTrackingLevel_not_set, "" );
 
     /// We cannot increase tacking level after the start because it's possible that some allocations were already made
     /// so starting tracking with higher level after some allocations were already made will produce invalid results

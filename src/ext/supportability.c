@@ -10,13 +10,14 @@
  */
 
 #include "supportability.h"
+#include "supportability_zend.h"
 #include <php.h>
 #include <ext/standard/info.h>
 #include <SAPI.h>
 #include "php_elasticapm.h"
 #include "log.h"
 #include "ConfigManager.h"
-#include "util_for_php_types.h"
+#include "util_for_php.h"
 #include "elasticapm_assert.h"
 #include "MemoryTracker.h"
 
@@ -28,21 +29,109 @@ String redactIfSecret( String value, bool isSecret )
     return value == NULL ? NULL : ( isSecret ? redacted : value );
 }
 
-static
-void printSectionHeading( String heading )
+void php_info_printSectionHeading( StructuredTextPrinter* structTxtPrinter, String heading )
 {
+    ELASTICAPM_UNUSED( structTxtPrinter );
+
     php_info_print_table_start();
     php_info_print_table_header( 1, heading );
     php_info_print_table_end();
 }
 
+void php_info_printTableBegin( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
+{
+    ELASTICAPM_UNUSED( structTxtPrinter );
+    ELASTICAPM_UNUSED( numberOfColumns );
+
+    php_info_print_table_start();
+}
+
 static
-void printConfigurationInfo()
+void php_info_printTableCells(
+        StructuredTextPrinter* structTxtPrinter
+        , size_t numberOfColumns
+        , String columns[]
+        , void (* variadicPrintCellsFunc )( int numberOfColumns, ... )
+)
+{
+    ELASTICAPM_UNUSED( structTxtPrinter );
+
+    if ( numberOfColumns >= 5 )
+    {
+        variadicPrintCellsFunc( 5, columns[ 0 ], columns[ 1 ], columns[ 2 ], columns[ 3 ], columns[ 4 ] );
+        return;
+    }
+
+    switch ( numberOfColumns )
+    {
+        case 0:
+            variadicPrintCellsFunc( 0 );
+            return;
+
+        case 1:
+            variadicPrintCellsFunc( 1, columns[ 0 ] );
+            return;
+
+        case 2:
+            variadicPrintCellsFunc( 2, columns[ 0 ], columns[ 1 ] );
+            return;
+
+        case 3:
+            variadicPrintCellsFunc( 3, columns[ 0 ], columns[ 1 ], columns[ 2 ] );
+            return;
+
+        case 4:
+            variadicPrintCellsFunc( 4, columns[ 0 ], columns[ 1 ], columns[ 2 ], columns[ 3 ] );
+            return;
+    }
+}
+
+void php_info_printTableHeader( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columnHeaders[] )
+{
+    php_info_printTableCells(
+            structTxtPrinter
+            , numberOfColumns
+            , columnHeaders
+            , php_info_print_table_header );
+}
+
+void php_info_printTableRow( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columns[] )
+{
+    ELASTICAPM_UNUSED( structTxtPrinter );
+
+    php_info_printTableCells(
+            structTxtPrinter
+            , numberOfColumns
+            , columns
+            , php_info_print_table_row );
+}
+
+void php_info_printTableEnd( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
+{
+    ELASTICAPM_UNUSED( structTxtPrinter );
+    ELASTICAPM_UNUSED( numberOfColumns );
+
+    php_info_print_table_end();
+}
+
+void init_php_info_StructuredTextPrinter( StructuredTextPrinter* structTxtPrinter )
+{
+    structTxtPrinter->printSectionHeading = php_info_printSectionHeading;
+    structTxtPrinter->printTableBegin = php_info_printTableBegin;
+    structTxtPrinter->printTableHeader = php_info_printTableHeader;
+    structTxtPrinter->printTableRow = php_info_printTableRow;
+    structTxtPrinter->printTableEnd = php_info_printTableEnd;
+}
+
+static
+void printConfigurationInfo( StructuredTextPrinter* structTxtPrinter )
 {
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
-    printSectionHeading( "Configuration" );
-    php_info_print_table_start();
-    php_info_print_table_header( 4, "Option", "Parsed value", "Raw value", "Source" );
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "Configuration" );
+    String columnHeaders[] = { "Option", "Parsed value", "Raw value", "Source" };
+    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
@@ -53,28 +142,33 @@ void printConfigurationInfo()
 
         getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
         getConfigManagerOptionValueById( cfgManager, optId, &getValRes );
-        php_info_print_table_row(
-                4,
-                getMetaRes.optName,
-                redactIfSecret( getValRes.rawValue == NULL ? NULL : getValRes.streamedParsedValue, getMetaRes.isSecret ),
-                redactIfSecret( getValRes.rawValue, getMetaRes.isSecret ),
-                getValRes.rawValueSourceDescription == NULL ? "Default" : getValRes.rawValueSourceDescription );
+        String columns[ numberOfColumns ] =
+                {
+                        getMetaRes.optName
+                        , redactIfSecret( getValRes.rawValue == NULL ? NULL : getValRes.streamedParsedValue, getMetaRes.isSecret )
+                        , redactIfSecret( getValRes.rawValue, getMetaRes.isSecret )
+                        , getValRes.rawValueSourceDescription == NULL ? "Default" : getValRes.rawValueSourceDescription
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
     }
-    php_info_print_table_end();
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
 static
-void printIniEntries()
+void printIniEntries( StructuredTextPrinter* structTxtPrinter )
 {
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
-    printSectionHeading( "INI entries" );
-    php_info_print_table_start();
-    php_info_print_table_header(
-            4,
-            "Name",
-            "Raw value used for the current config",
-            "Interpreted raw value used for the current config",
-            "Current value" );
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "INI entries" );
+    String columnHeaders[] =
+            {
+                    "Name"
+                    , "Raw value used for the current config"
+                    , "Interpreted raw value used for the current config"
+                    , "Current value"
+            };
+    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
@@ -85,30 +179,36 @@ void printIniEntries()
         getConfigManagerRawData(
                 cfgManager,
                 optId,
-                rawConfigSource_iniFile,
+                rawConfigSourceId_iniFile,
                 /* out */ &originalRawValue,
                 /* out */ &interpretedRawValue );
 
         char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         bool currentValueExists;
-        php_info_print_table_row(
-                4,
-                streamStringView( getMetaRes.iniName, &txtOutStream ),
-                originalRawValue,
-                interpretedRawValue,
-                redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), getMetaRes.isSecret ) );
+        String columns[ numberOfColumns ] =
+                {
+                        streamStringView( getMetaRes.iniName, &txtOutStream )
+                        , originalRawValue
+                        , interpretedRawValue
+                        , redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), getMetaRes.isSecret )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
     }
-    php_info_print_table_end();
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
 static
-void printEnvVars()
+void printEnvVars( StructuredTextPrinter* structTxtPrinter )
 {
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
-    printSectionHeading( "Environment variables" );
-    php_info_print_table_start();
-    php_info_print_table_header( 3, "Name", "Value used for the current config", "Current value" );
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "Environment variables" );
+
+    String columnHeaders[] = { "Name", "Value used for the current config", "Current value" };
+    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
     ELASTICAPM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
@@ -119,119 +219,182 @@ void printEnvVars()
         getConfigManagerRawData(
                 cfgManager,
                 optId,
-                rawConfigSource_envVars,
+                rawConfigSourceId_envVars,
                 /* out */ &originalRawValue,
                 /* out */ &interpretedRawValue );
 
-        php_info_print_table_row(
-                3,
-                getMetaRes.envVarName,
-                originalRawValue,
-                redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), getMetaRes.isSecret ) );
+        String columns[ numberOfColumns ] =
+                {
+                        getMetaRes.envVarName
+                        , originalRawValue
+                        , redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), getMetaRes.isSecret )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
     }
-    php_info_print_table_end();
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
 static
-void printMiscSelfDiagnostics()
+void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
 {
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "Misc. self diagnostics" );
+
     char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    php_info_print_table_start();
+    String columnHeaders[] = { "What", "Current", "Default" };
+    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
 
-    php_info_print_table_header( 3, "What", "Current", "Default" );
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
 
-    php_info_print_table_row(
-            3,
-            "Assert level",
-            streamAssertLevel( getGlobalAssertLevel(), &txtOutStream ),
-            streamAssertLevel( ELASTICAPM_ASSERT_DEFAULT_LEVEL, &txtOutStream ) );
-    textOutputStreamRewind( &txtOutStream );
+    {
+        String columns[ numberOfColumns ] =
+                {
+                        "Assert level"
+                        , streamAssertLevel( getGlobalAssertLevel(), &txtOutStream )
+                        , streamAssertLevel( ELASTICAPM_ASSERT_DEFAULT_LEVEL, &txtOutStream )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
 
-    php_info_print_table_row(
-            3,
-            "Memory tracking level",
-            streamMemoryTrackingLevel( getGlobalMemoryTracker()->level, &txtOutStream ),
-            streamMemoryTrackingLevel( ELASTICAPM_MEMORY_TRACKING_DEFAULT_LEVEL, &txtOutStream ) );
-    textOutputStreamRewind( &txtOutStream );
-    php_info_print_table_row(
-            3,
-            "Abort on memory leak",
-            boolToString( getGlobalMemoryTracker()->abortOnMemoryLeak ),
-            boolToString( ELASTICAPM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK ) );
-    textOutputStreamRewind( &txtOutStream );
+    {
+        textOutputStreamRewind( &txtOutStream );
+        String columns[ numberOfColumns ] =
+                {
+                        "Memory tracking level"
+                        , streamMemoryTrackingLevel( getGlobalMemoryTracker()->level, &txtOutStream )
+                        , streamMemoryTrackingLevel( ELASTICAPM_MEMORY_TRACKING_DEFAULT_LEVEL, &txtOutStream )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
 
-    php_info_print_table_row(
-            3,
-            "Internal checks level",
-            streamInternalChecksLevel( getGlobalInternalChecksLevel(), &txtOutStream ),
-            streamInternalChecksLevel( ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL, &txtOutStream ) );
-    textOutputStreamRewind( &txtOutStream );
+    {
+        textOutputStreamRewind( &txtOutStream );
+        String columns[ numberOfColumns ] =
+                {
+                        "Abort on memory leak"
+                        , boolToString( getGlobalMemoryTracker()->abortOnMemoryLeak )
+                        , boolToString( ELASTICAPM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
 
-    php_info_print_table_row( 2, "NDEBUG defined",
-    #ifdef NDEBUG
-            "Yes"
-    #else
-            "No"
-    #endif
-    );
-    php_info_print_table_row( 2, "ELASTICAPM_IS_DEBUG_BUILD_01",
-            streamInt( (int)(ELASTICAPM_IS_DEBUG_BUILD_01), &txtOutStream ) );
-    textOutputStreamRewind( &txtOutStream );
+    {
+        textOutputStreamRewind( &txtOutStream );
+        String columns[ numberOfColumns ] =
+                {
+                        "Internal checks level"
+                        , streamInternalChecksLevel( getGlobalInternalChecksLevel(), &txtOutStream )
+                        , streamInternalChecksLevel( ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL, &txtOutStream )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
 
-    php_info_print_table_end();
+    {
+        textOutputStreamRewind( &txtOutStream );
+        String columns[ numberOfColumns - 1 ] =
+                {
+                        "NDEBUG defined"
+                        #ifdef NDEBUG
+                        , "Yes"
+                        #else
+                        , "No"
+                        #endif
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
+
+    {
+        textOutputStreamRewind( &txtOutStream );
+        String columns[ numberOfColumns - 1 ] =
+                {
+                        "ELASTICAPM_IS_DEBUG_BUILD_01"
+                        , streamInt( (int)(ELASTICAPM_IS_DEBUG_BUILD_01), &txtOutStream )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    }
+
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
 static
-void printEffectiveLogLevels()
+void printEffectiveLogLevels( StructuredTextPrinter* structTxtPrinter )
 {
     char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     const Logger* const logger = &( getGlobalTracer()->logger );
 
-    printSectionHeading( "Effective log levels" );
-    php_info_print_table_start();
-    php_info_print_table_header( 3, "Sink", "Current", "Default" );
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "Effective log levels" );
+
+    String columnHeaders[] = { "Sink", "Current", "Default" };
+    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
 
     ELASTICAPM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
     {
-        php_info_print_table_row(
-                3,
-                logSinkTypeName[ logSinkType ],
-                streamLogLevel( logger->config.levelPerSinkType[ logSinkType ], &txtOutStream ),
-                streamLogLevel( defaultLogLevelPerSinkType[ logSinkType ], &txtOutStream ) );
+        String columns[ numberOfColumns ] =
+                {
+                        logSinkTypeName[ logSinkType ]
+                        , streamLogLevel( logger->config.levelPerSinkType[ logSinkType ], &txtOutStream )
+                        , streamLogLevel( defaultLogLevelPerSinkType[ logSinkType ], &txtOutStream )
+                };
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
         textOutputStreamRewind( &txtOutStream );
     }
 
-    php_info_print_table_row(
-            3,
-            "Max enabled log level",
-            streamLogLevel( logger->maxEnabledLevel, &txtOutStream ),
-            streamLogLevel( calcMaxEnabledLogLevel( defaultLogLevelPerSinkType ), &txtOutStream ) );
+    String columns[ numberOfColumns ] =
+            {
+                    "Max enabled log level"
+                    , streamLogLevel( logger->maxEnabledLevel, &txtOutStream )
+                    , streamLogLevel( calcMaxEnabledLogLevel( defaultLogLevelPerSinkType ), &txtOutStream )
+            };
+    structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
 
-    php_info_print_table_end();
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
+}
+
+static
+void printMiscInfo( StructuredTextPrinter* structTxtPrinter )
+{
+    structTxtPrinter->printSectionHeading( structTxtPrinter, "Misc. info" );
+
+    enum { numberOfColumns = 2 };
+    structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
+    String columns[numberOfColumns] = { "Version", PHP_ELASTICAPM_VERSION };
+    structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
+}
+
+void printSupportabilityInfo( StructuredTextPrinter* structTxtPrinter )
+{
+    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
+
+    printMiscInfo( structTxtPrinter );
+
+    printConfigurationInfo( structTxtPrinter );
+
+    printIniEntries( structTxtPrinter );
+    printEnvVars( structTxtPrinter );
+
+    printMiscSelfDiagnostics( structTxtPrinter );
+    printEffectiveLogLevels( structTxtPrinter );
+
+    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT();
 }
 
 void elasticapmModuleInfo( zend_module_entry* zend_module )
 {
     ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
 
-    php_info_print_table_start();
-    php_info_print_table_row( 2, "Version", PHP_ELASTICAPM_VERSION );
-    php_info_print_table_end();
+    StructuredTextPrinter structTxtPrinter;
+    init_php_info_StructuredTextPrinter( &structTxtPrinter );
 
-    printConfigurationInfo();
+    printSupportabilityInfo( &structTxtPrinter );
 
-    printIniEntries();
-    printEnvVars();
-
-    printSectionHeading( "Self Diagnostics" );
-
-    printMiscSelfDiagnostics();
-    printEffectiveLogLevels();
-
-    printSectionHeading( "INI entries (displayed by default PHP mechanism)" );
+    structTxtPrinter.printSectionHeading( &structTxtPrinter, "INI entries (displayed by default PHP mechanism)" );
     DISPLAY_INI_ENTRIES();
 
     ELASTICAPM_LOG_TRACE_FUNCTION_EXIT();
@@ -249,4 +412,116 @@ void displaySecretIniValue( zend_ini_entry* iniEntry, int type )
     const String valueToPrint = isNullOrEmtpyZstring( iniEntryValue( iniEntry, type ) ) ? noValue : redacted;
 
     php_printf( sapi_module.phpinfo_as_text ? "%s" : "<i>%s</i>", valueToPrint );
+}
+
+void printSectionHeadingToTextOutputStream( StructuredTextPrinter* structTxtPrinter, String heading )
+{
+    StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter = (StructuredTextToOutputStreamPrinter*)structTxtPrinter;
+
+    streamStringView( structTxtToOutStreamPrinter->prefix, structTxtToOutStreamPrinter->txtOutStream );
+    streamPrintf( structTxtToOutStreamPrinter->txtOutStream, "\n" );
+    streamStringView( structTxtToOutStreamPrinter->prefix, structTxtToOutStreamPrinter->txtOutStream );
+    streamPrintf( structTxtToOutStreamPrinter->txtOutStream, "%s\n", heading );
+}
+
+#define ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH 25
+
+// Section A
+//      +---------------------------------+---------------------------------+---------------------------------+
+//      | Header 1                        | Header 2                        | Header 3                        |
+//      +---------------------------------+---------------------------------+---------------------------------+
+//      | 1234567890123456789001234567890 | 1234567890123456789001234567890 | abc                             |
+//      | 456                             | abc                             | 1234567890123456789001234567890 |
+//      +---------------------------------+---------------------------------+---------------------------------+
+//
+// Section B
+//      +---------------------------------+---------------------------------+---------------------------------+
+//      | Header 1                        | Header 2                        | Header 3                        |
+//      +---------------------------------+---------------------------------+---------------------------------+
+//      | 1234567890123456789001234567890 | 1234567890123456789001234567890 | abc                             |
+//      | 456                             | abc                             | 1234567890123456789001234567890 |
+//      +---------------------------------+---------------------------------+---------------------------------+
+
+static
+void beginTableLineToTextOutputStream( StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter )
+{
+    streamStringView( structTxtToOutStreamPrinter->prefix, structTxtToOutStreamPrinter->txtOutStream );
+    streamIndent( /* nestingDepth */ 1, structTxtToOutStreamPrinter->txtOutStream );
+}
+
+void printTableHorizontalBorder( size_t numberOfColumns, StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter )
+{
+    if ( numberOfColumns == 0 ) return;
+
+    beginTableLineToTextOutputStream( structTxtToOutStreamPrinter );
+
+    streamChar( '+', structTxtToOutStreamPrinter->txtOutStream );
+    ELASTICAPM_REPEAT_N_TIMES( numberOfColumns )
+    {
+        ELASTICAPM_REPEAT_N_TIMES( ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH + 2 )
+        {
+            streamChar( '-', structTxtToOutStreamPrinter->txtOutStream );
+        }
+        streamChar( '+', structTxtToOutStreamPrinter->txtOutStream );
+    }
+    streamPrintf( structTxtToOutStreamPrinter->txtOutStream, "\n" );
+}
+
+void printTableBeginToTextOutputStream( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
+{
+    printTableHorizontalBorder( numberOfColumns, (StructuredTextToOutputStreamPrinter*)structTxtPrinter );
+}
+
+static
+void printTableRowToTextOutputStream( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columns[] )
+{
+    if ( numberOfColumns == 0 ) return;
+
+    StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter = (StructuredTextToOutputStreamPrinter*)structTxtPrinter;
+
+    beginTableLineToTextOutputStream( structTxtToOutStreamPrinter );
+    streamString( "|", structTxtToOutStreamPrinter->txtOutStream );
+    ELASTICAPM_FOR_EACH_INDEX( i, numberOfColumns )
+    {
+        streamString( " ", structTxtToOutStreamPrinter->txtOutStream );
+        streamPrintf( structTxtToOutStreamPrinter->txtOutStream
+                      , "%-" ELASTICAPM_PP_STRINGIZE( ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH ) "s"
+                      , columns[ i ] );
+        streamString( " |", structTxtToOutStreamPrinter->txtOutStream );
+    }
+    streamPrintf( structTxtToOutStreamPrinter->txtOutStream, "\n" );
+}
+
+static
+void printTableHeaderToTextOutputStream( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columnHeaders[] )
+{
+    if ( numberOfColumns == 0 ) return;
+
+    StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter = (StructuredTextToOutputStreamPrinter*)structTxtPrinter;
+
+    printTableRowToTextOutputStream( structTxtPrinter, numberOfColumns, columnHeaders );
+
+    printTableHorizontalBorder( numberOfColumns, structTxtToOutStreamPrinter );
+}
+
+void printTableEndToTextOutputStream( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
+{
+    printTableHorizontalBorder( numberOfColumns, (StructuredTextToOutputStreamPrinter*)structTxtPrinter );
+}
+#undef ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH
+
+void initStructuredTextToOutputStreamPrinter(
+        /* in */ TextOutputStream* txtOutStream
+        , StringView prefix
+        , /* out */ StructuredTextToOutputStreamPrinter* structTxtToOutStreamPrinter
+)
+{
+    structTxtToOutStreamPrinter->base.printSectionHeading = printSectionHeadingToTextOutputStream;
+    structTxtToOutStreamPrinter->base.printTableBegin = printTableBeginToTextOutputStream;
+    structTxtToOutStreamPrinter->base.printTableHeader = printTableHeaderToTextOutputStream;
+    structTxtToOutStreamPrinter->base.printTableRow = printTableRowToTextOutputStream;
+    structTxtToOutStreamPrinter->base.printTableEnd = printTableEndToTextOutputStream;
+
+    structTxtToOutStreamPrinter->txtOutStream = txtOutStream;
+    structTxtToOutStreamPrinter->prefix = prefix;
 }

@@ -330,9 +330,8 @@ StringView insertPrefixAtEachNewLine(
 )
 {
     ELASTICAPM_ASSERT_VALID_PTR( logger->auxMessageBuffer );
-    ELASTICAPM_ASSERT( maxSizeForNewMessage <= loggerMessageBufferSize );
+    ELASTICAPM_ASSERT_LE_UINT64( maxSizeForNewMessage, loggerMessageBufferSize );
 
-    StringView indent = ELASTICAPM_STRING_LITERAL_TO_VIEW( "    " ); // 4 spaces
     TextOutputStream txtOutStream = makeTextOutputStream( logger->auxMessageBuffer, maxSizeForNewMessage );
     // We don't need terminating '\0' after the prefix because we return it as StringView
     txtOutStream.autoTermZero = false;
@@ -350,7 +349,7 @@ StringView insertPrefixAtEachNewLine(
         streamStringView( makeStringViewFromBeginEnd( oldMessageLeft.begin, stringViewEnd( eolSeq ) ), &txtOutStream );
         streamStringView( sinkSpecificPrefix, &txtOutStream );
         streamStringView( commonPrefix, &txtOutStream );
-        streamStringView( indent, &txtOutStream );
+        streamIndent( /* nestingDepth */ 1, &txtOutStream );
         oldMessageLeft = makeStringViewFromBeginEnd( stringViewEnd( eolSeq ), oldMessageEnd );
     }
 
@@ -591,9 +590,33 @@ void logWithLogger(
         , ...
 )
 {
+    va_list msgPrintfFmtArgs;
+    va_start( msgPrintfFmtArgs, msgPrintfFmt );
+    vLogWithLogger( logger
+                    , isForced
+                    , statementLevel
+                    , filePath
+                    , lineNumber
+                    , funcName
+                    , msgPrintfFmt
+                    , msgPrintfFmtArgs );
+    va_end( msgPrintfFmtArgs );
+}
+
+void vLogWithLogger(
+        Logger* logger
+        , bool isForced
+        , LogLevel statementLevel
+        , StringView filePath
+        , UInt lineNumber
+        , StringView funcName
+        , String msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+)
+{
     if ( logger->reentrancyDepth + 1 > maxLoggerReentrancyDepth ) return;
     ++logger->reentrancyDepth;
-    ELASTICAPM_ASSERT( logger->reentrancyDepth > 0 );
+    ELASTICAPM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
 
     ELASTICAPM_ASSERT_VALID_PTR( logger );
 
@@ -605,21 +628,21 @@ void logWithLogger(
     if ( isForced || logger->config.levelPerSinkType[ logSink_stderr ] >= statementLevel )
     {
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
-        va_list msgArgs;
-        va_start( msgArgs, msgPrintfFmt );
-        writeToStderr( logger, statementLevel, commonPrefix, msgPrintfFmt, msgArgs );
-        va_end( msgArgs );
+        va_list msgPrintfFmtArgsCopy;
+        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+        writeToStderr( logger, statementLevel, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
         fflush( stderr );
+        va_end( msgPrintfFmtArgsCopy );
     }
 
     #ifndef PHP_WIN32
     if ( isForced || logger->config.levelPerSinkType[ logSink_syslog ] >= statementLevel )
     {
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
-        va_list msgArgs;
-        va_start( msgArgs, msgPrintfFmt );
-        writeToSyslog( logger, statementLevel, commonPrefix, msgPrintfFmt, msgArgs );
-        va_end( msgArgs );
+        va_list msgPrintfFmtArgsCopy;
+        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+        writeToSyslog( logger, statementLevel, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        va_end( msgPrintfFmtArgsCopy );
     }
     #endif
 
@@ -627,10 +650,10 @@ void logWithLogger(
     if ( isForced || logger->config.levelPerSinkType[ logSink_winSysDebug ] >= statementLevel )
     {
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
-        va_list msgArgs;
-        va_start( msgArgs, msgPrintfFmt );
-        writeToWinSysDebug( logger, commonPrefix, msgPrintfFmt, msgArgs );
-        va_end( msgArgs );
+        va_list msgPrintfFmtArgsCopy;
+        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+        writeToWinSysDebug( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        va_end( msgPrintfFmtArgsCopy );
     }
     #endif
 
@@ -638,20 +661,20 @@ void logWithLogger(
 //    if ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel )
 //    {
 //        // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
-//        va_list msgArgs;
-//        va_start( msgArgs, msgPrintfFmt );
-//        writeToFile( logger, commonPrefix, msgPrintfFmt, msgArgs );
-//        va_end( msgArgs );
+//        va_list msgPrintfFmtArgsCopy;
+//        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+//        writeToFile( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+//        va_end( msgPrintfFmtArgsCopy );
 //    }
 
 #ifdef ELASTICAPM_LOG_CUSTOM_SINK_FUNC
-    va_list msgArgs;
-    va_start( msgArgs, msgPrintfFmt );
-    buildFullTextAndWriteToCustomSink( logger, commonPrefix, msgPrintfFmt, msgArgs );
-    va_end( msgArgs );
+    va_list msgPrintfFmtArgsCopy;
+    va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+    buildFullTextAndWriteToCustomSink( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+    va_end( msgPrintfFmtArgsCopy );
 #endif
 
-    ELASTICAPM_ASSERT( logger->reentrancyDepth > 0 );
+    ELASTICAPM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
     --logger->reentrancyDepth;
 }
 
