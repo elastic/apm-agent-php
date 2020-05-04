@@ -14,23 +14,17 @@
 #include <stdbool.h>
 #include <zend_types.h>
 #include "basic_types.h"
+#include "StringView.h"
 #include "ResultCode.h"
-
-String elasticApmGetCurrentTransactionId();
-
-String elasticApmGetCurrentTraceId();
 
 bool elasticApmIsEnabled();
 
 ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );
 
-ResultCode elasticApmGetInterceptCallsToPhpFunction( String funcToIntercept
-                                                     , String funcToCallBeforeIntercepted
-                                                     , String funcToCallAfterIntercepted
-);
+ResultCode elasticApmInterceptCallsToMethod( String className, String methodName, uint32_t* callToInterceptId );
 
-ResultCode elasticApmGetInterceptCallsToPhpMethod( String className
-                                                   , String methodName
-                                                   , String preHookFunc
-                                                   , String postHookFunc
-);
+//ResultCode elasticApmCallInterceptedOriginal( uint32_t funcToInterceptId, uint32_t originalArgsCount, zval* originalArgs );
+
+void resetCallInterceptionOnRequestShutdown();
+
+ResultCode elasticApmSendToServer( String serializedEvents );

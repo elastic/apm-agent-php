@@ -12,19 +12,15 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
-
 #include "php_elasticapm.h"
-
 // external libraries
 #include <php_ini.h>
 #include <zend_types.h>
-
 #include "lifecycle.h"
 #include "supportability_zend.h"
 #include "elasticapm_API.h"
 #include "ConfigManager.h"
 #include "elasticapm_assert.h"
-
 
 ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
@@ -39,12 +35,6 @@ Tracer* getGlobalTracer()
         ZEND_PARSE_PARAMETERS_END()
 #endif
 
-static inline ZEND_RESULT_CODE resultCodeToZend( ResultCode resultCode )
-{
-    if ( resultCode == resultSuccess ) return SUCCESS;
-    return FAILURE;
-}
-
 static inline ResultCode zendToResultCode( ZEND_RESULT_CODE zendResultCode )
 {
     if ( zendResultCode == SUCCESS ) return resultSuccess;
@@ -55,7 +45,10 @@ static inline ResultCode zendToResultCode( ZEND_RESULT_CODE zendResultCode )
  */
 PHP_RINIT_FUNCTION(elasticapm)
 {
-    return resultCodeToZend( elasticApmRequestInit() );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    elasticApmRequestInit();
+    return SUCCESS;
 }
 /* }}} */
 
@@ -63,7 +56,10 @@ PHP_RINIT_FUNCTION(elasticapm)
  */
 PHP_RSHUTDOWN_FUNCTION(elasticapm)
 {
-    return resultCodeToZend( elasticApmRequestShutdown() );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    elasticApmRequestShutdown();
+    return SUCCESS;
 }
 /* }}} */
 
@@ -190,12 +186,18 @@ PHP_MINIT_FUNCTION(elasticapm)
     REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_O_N", assertLevel_O_n, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_ALL", assertLevel_all, CONST_CS|CONST_PERSISTENT );
 
-    return resultCodeToZend( elasticApmModuleInit( type, module_number ) );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    elasticApmModuleInit( type, module_number );
+    return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(elasticapm)
 {
-    return resultCodeToZend( elasticApmModuleShutdown( type, module_number ) );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    elasticApmModuleShutdown( type, module_number );
+    return SUCCESS;
 }
 
 /* {{{ bool elasticapm_is_enabled()
@@ -205,32 +207,6 @@ PHP_FUNCTION( elasticapm_is_enabled )
     ZEND_PARSE_PARAMETERS_NONE();
 
     RETURN_BOOL( elasticApmIsEnabled() )
-}
-/* }}} */
-
-/* {{{ string elasticapm_get_current_transaction_id()
- */
-PHP_FUNCTION( elasticapm_get_current_transaction_id )
-{
-    const String retVal = elasticApmGetCurrentTransactionId();
-
-    ZEND_PARSE_PARAMETERS_NONE();
-
-    if ( retVal == NULL ) RETURN_NULL()
-    RETURN_STRING( retVal )
-}
-/* }}} */
-
-/* {{{ string elasticapm_get_current_trace_id()
- */
-PHP_FUNCTION( elasticapm_get_current_trace_id )
-{
-    const String retVal = elasticApmGetCurrentTraceId();
-
-    ZEND_PARSE_PARAMETERS_NONE();
-
-    if ( retVal == NULL ) RETURN_NULL()
-    RETURN_STRING( retVal )
 }
 /* }}} */
 
@@ -249,41 +225,11 @@ PHP_FUNCTION( elasticapm_get_config_option_by_name )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_function_arginfo, 0, 0, 3 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, funcToIntercept, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, preHookFunc, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, postHookFunc, IS_STRING, /* allow_null: */ 0 )
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ className, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ methodName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_function( string $funcToIntercept, string $preHookFunc, string $postHookFunc ): bool
- */
-PHP_FUNCTION( elasticapm_intercept_calls_to_function )
-{
-    char* funcToIntercept = NULL;
-    size_t funcToInterceptLength = 0;
-    char* preHookFunc = NULL;
-    size_t preHookFuncLength = 0;
-    char* postHookFunc = NULL;
-    size_t postHookFuncLength = 0;
-
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 3, /* max_num_args: */ 3 )
-    Z_PARAM_STRING( funcToIntercept, funcToInterceptLength )
-    Z_PARAM_STRING( preHookFunc, preHookFuncLength )
-    Z_PARAM_STRING( postHookFunc, postHookFuncLength )
-    ZEND_PARSE_PARAMETERS_END();
-
-    if ( elasticApmGetInterceptCallsToPhpFunction( funcToIntercept, preHookFunc, postHookFunc ) != resultSuccess ) RETURN_FALSE
-    RETURN_TRUE
-}
-/* }}} */
-
-
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_method_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 4 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, className, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, methodName, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, preHookFunc, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, postHookFunc, IS_STRING, /* allow_null: */ 0 )
-ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_method( string $funcToIntercept, string $preHookFunc, string $postHookFunc ): bool
+/* {{{ elasticapm_intercept_calls_to_method( string $className, string $methodName ): int // <- callToInterceptId
  */
 PHP_FUNCTION( elasticapm_intercept_calls_to_method )
 {
@@ -291,20 +237,107 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_method )
     size_t classNameLength = 0;
     char* methodName = NULL;
     size_t methodNameLength = 0;
-    char* preHookFunc = NULL;
-    size_t preHookFuncLength = 0;
-    char* postHookFunc = NULL;
-    size_t postHookFuncLength = 0;
+    uint32_t callToInterceptId;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 4, /* max_num_args: */ 4 )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
     Z_PARAM_STRING( className, classNameLength )
     Z_PARAM_STRING( methodName, methodNameLength )
-    Z_PARAM_STRING( preHookFunc, preHookFuncLength )
-    Z_PARAM_STRING( postHookFunc, postHookFuncLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmGetInterceptCallsToPhpMethod( className, methodName, preHookFunc, postHookFunc ) != resultSuccess ) RETURN_FALSE
+    if ( elasticApmInterceptCallsToMethod( className, methodName, &callToInterceptId ) != resultSuccess )
+        RETURN_LONG( -1 )
+
+    RETURN_LONG( callToInterceptId )
+}
+/* }}} */
+
+//ZEND_BEGIN_ARG_INFO_EX( elasticapm_call_intercepted_original_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 3 )
+//                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgsCount, IS_LONG, /* allow_null: */ 0 )
+//                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgs, IS_ARRAY, /* allow_null: */ 0 )
+//ZEND_END_ARG_INFO()
+///* {{{ elasticapm_call_intercepted_original([int $interceptedFuncId, mixed ...$interceptedCallArgs]): mixed
+// */
+//PHP_FUNCTION( elasticapm_call_intercepted_original )
+//{
+//    zend_long wrapperArgsCount = 0;
+//    zval* wrapperArgs = NULL;
+//
+//    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
+//    Z_PARAM_LONG( wrapperArgsCount )
+//    Z_PARAM_ARRAY( wrapperArgs )
+//    ZEND_PARSE_PARAMETERS_END();
+//
+//    if ( elasticApmInterceptCallsToFunction( funcToIntercept, &interceptedFuncId ) != resultSuccess )
+//    RETURN_LONG( -1 )
+//
+//    RETURN_LONG( interceptedFuncId )
+//}
+///* }}} */
+
+/* {{{ elasticapm_send_to_server( string $serializedEvents ): bool
+ */
+PHP_FUNCTION( elasticapm_send_to_server )
+{
+    char* serializedEvents = NULL;
+    size_t serializedEventsLength = 0;
+
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 1, /* max_num_args: */ 1 )
+    Z_PARAM_STRING( serializedEvents, serializedEventsLength )
+    ZEND_PARSE_PARAMETERS_END();
+
+    if ( elasticApmSendToServer( serializedEvents  ) != resultSuccess ) RETURN_FALSE
     RETURN_TRUE
+}
+/* }}} */
+
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_log_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 6 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, isForced, IS_LONG, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, level, IS_LONG, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, file, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, line, IS_LONG, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, func, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, message, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+
+/* {{{ elasticapm_log(
+ *      int $isForced,
+ *      int $level,
+ *      string $file,
+ *      int $line,
+ *      string $func,
+ *      string $message
+ *  ): void
+ */
+PHP_FUNCTION( elasticapm_log )
+{
+    zend_long isForced = 0;
+    zend_long level = 0;
+    char* file = NULL;
+    size_t fileLength = 0;
+    zend_long line = 0;
+    char* func = NULL;
+    size_t funcLength = 0;
+    char* message = NULL;
+    size_t messageLength = 0;
+
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 6, /* max_num_args: */ 6 )
+    Z_PARAM_LONG( isForced )
+    Z_PARAM_LONG( level )
+    Z_PARAM_STRING( file, fileLength )
+    Z_PARAM_LONG( line )
+    Z_PARAM_STRING( func, funcLength )
+    Z_PARAM_STRING( message, messageLength )
+    ZEND_PARSE_PARAMETERS_END();
+
+    logWithLogger(
+            getGlobalLogger()
+            , /* isForced: */ ( isForced != 0 )
+            , /* statementLevel: */ (LogLevel) level
+            , /* filePath: */ makeStringView( file, fileLength )
+            , /* lineNumber: */ (UInt) line
+            , /* funcName: */ makeStringView( func, funcLength )
+            , /* msgPrintfFmt: */ "%s"
+            ,  /* msgPrintfFmtArgs: */ message );
 }
 /* }}} */
 
@@ -323,11 +356,11 @@ ZEND_END_ARG_INFO()
 static const zend_function_entry elasticapm_functions[] =
 {
     PHP_FE( elasticapm_is_enabled, elasticapm_no_paramters_arginfo )
-    PHP_FE( elasticapm_get_current_transaction_id, elasticapm_no_paramters_arginfo )
-    PHP_FE( elasticapm_get_current_trace_id, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
-    PHP_FE( elasticapm_intercept_calls_to_function, elasticapm_intercept_calls_to_function_arginfo )
     PHP_FE( elasticapm_intercept_calls_to_method, elasticapm_intercept_calls_to_method_arginfo )
+//    PHP_FE( elasticapm_call_intercepted_original, elasticapm_call_intercepted_original_arginfo )
+    PHP_FE( elasticapm_send_to_server, elasticapm_string_paramter_arginfo )
+    PHP_FE( elasticapm_log, elasticapm_log_arginfo )
     PHP_FE_END
 };
 /* }}} */

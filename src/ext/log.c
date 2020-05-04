@@ -90,13 +90,14 @@ static void getCurrentLocalTime( LocalTime* localCurrentTime )
     calcTimeZoneShift( secondsAheadUtc, &( localCurrentTime->timeZoneShift ) );
 }
 
-// 2020-02-15 21:51:32.123456+02:00 | ERROR    | 12345:67890 | lifecycle.c:482     | sendEventsToApmServer        | Couldn't connect to server blah blah blah blah blah blah blah blah
-// 2020-02-15 21:51:32.123456+02:00 | WARNING  | 12345:67890 | ConfigManager.c:45  | constructSnapshotUsingDefaults | Not found blah blah blah blah blah blah blah blah
-// 2020-02-15 21:51:32.123456+02:00 | CRITICAL |   345:  345 | lifecycle.c:482     | constructSnapshotUsingDefaults | Send failed. Error message: Couldn't connect to server. server_url: `http://localhost:8200'
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^ ^^^^^   ^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// ^                                  ^          ^     ^       ^                     ^                              Message text
-// ^                                  ^          ^     ^       ^                     function name (padded with spaces on the right to 30 chars)
-// ^                                  ^          ^     ^       file name:line number (padded with spaces on the right to 20 chars)
+// 2020-02-15 21:51:32.123456+02:00 | ERROR    | 12345:67890 | lifecycle.c:482                     | sendEventsToApmServer          | Couldn't connect to server blah blah blah blah blah blah blah blah
+// 2020-02-15 21:51:32.123456+02:00 | WARNING  | 12345:67890 | ConfigManager.c:45                  | constructSnapshotUsingDefaults | Not found blah blah blah blah blah blah blah blah
+// 2020-02-15 21:51:32.123456+02:00 | CRITICAL |   345:  345 | BootstrapShutdownHelper.php:123     | constructSnapshotUsingDefaults | Send failed. Error message: Couldn't connect to server. server_url: `http://localhost:8200'
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^ ^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ^                                  ^          ^     ^       ^                                     ^                                ^
+// ^                                  ^          ^     ^       ^                                     ^                                Message text
+// ^                                  ^          ^     ^       ^                                     function name (padded with spaces on the right to 30 chars)
+// ^                                  ^          ^     ^       file name:line number (padded with spaces on the right to 35 chars)
 // ^                                  ^          ^     thread ID (padded with spaces on the left to 5 chars) - included only if ZTS is defined
 // ^                                  ^          process ID (padded with spaces on the left to 5 chars)
 // ^                                  level (padded with spaces on the right to 8 chars)
@@ -235,7 +236,7 @@ void appendFileNameLineNumberPart(
             normalizedFileName.begin,
             lineNumber );
 
-    #define ELASTICAPM_LOG_FMT_FILE_NAME_AND_LINE_NUMBER_MIN_WIDTH 20
+    #define ELASTICAPM_LOG_FMT_FILE_NAME_AND_LINE_NUMBER_MIN_WIDTH 35
     streamPrintf(
             txtOutStream
             , ELASTICAPM_LOG_FMT_STRING_PAD_END( ELASTICAPM_LOG_FMT_FILE_NAME_AND_LINE_NUMBER_MIN_WIDTH )

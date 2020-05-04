@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
@@ -16,46 +17,45 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-final class Transaction extends ExecutionSegment implements TransactionInterface
+final class Transaction extends TransactionData implements TransactionInterface
 {
-    /** @var string|null */
-    private $parentId;
-
-    /** @var string */
-    private $name;
+    use ExecutionSegmentTrait;
 
     /** @var Span|null */
-    private $currentSpan;
+    private $currentSpan = null;
 
-    public function __construct(Tracer $tracer, string $name, string $type)
+    /** @var Logger */
+    private $logger;
+
+    public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
     {
-        parent::__construct($tracer, IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES), $type);
+        $this->constructExecutionSegmentTrait(
+            $tracer,
+            IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES),
+            $name,
+            $type,
+            $timestamp
+        );
 
         $this->setName($name);
 
-        $this->currentSpan = null;
+        $this->logger = $this->createLogger(__CLASS__, __FILE__);
+
+        ($loggerProxy = $this->logger->ifEnabledDebug())
+        && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId], __LINE__, __METHOD__);
     }
 
-    public function getParentId(): ?string
+    public function addStartedSpan(): void
     {
-        return $this->parentId;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): void
-    {
-        $this->name = $name;
+        ++$this->startedSpansCount;
     }
 
     public function beginChildSpan(
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ): SpanInterface {
         return new Span(
             $this /* <- containingTransaction*/,
@@ -63,7 +63,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $name,
             $type,
             $subtype,
-            $action
+            $action,
+            $timestamp
         );
     }
 
@@ -71,7 +72,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ): SpanInterface {
         $this->currentSpan = new Span(
             $this /* <- containingTransaction */,
@@ -79,7 +81,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $name,
             $type,
             $subtype,
-            $action
+            $action,
+            $timestamp
         );
         return $this->currentSpan;
     }
@@ -90,9 +93,10 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         string $type,
         Closure $callback,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ) {
-        $newSpan = $this->beginCurrentSpan($name, $type, $subtype, $action);
+        $newSpan = $this->beginCurrentSpan($name, $type, $subtype, $action, $timestamp);
         try {
             return $callback($newSpan);
         } finally {
@@ -118,10 +122,15 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        $this->getTracer()->getReporter()->reportTransaction($this);
+        $this->getTracer()->getEventSink()->consumeTransactionData($this);
 
         if ($this->getTracer()->getCurrentTransaction() === $this) {
             $this->getTracer()->resetCurrentTransaction();
         }
+    }
+
+    public function __toString(): string
+    {
+        return self::dataToString($this, 'Transaction');
     }
 }

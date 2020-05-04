@@ -14,24 +14,7 @@
 #include "log.h"
 #include "Tracer.h"
 #include "util_for_php.h"
-
-String elasticApmGetCurrentTransactionId()
-{
-    const Transaction* const currentTransaction = getGlobalTracer()->currentTransaction;
-    const String result = currentTransaction == NULL ? NULL : currentTransaction->id;
-
-    ELASTICAPM_LOG_TRACE( "Result: %s", result == NULL ? "NULL" : result );
-    return result;
-}
-
-String elasticApmGetCurrentTraceId()
-{
-    const Transaction* const currentTransaction = getGlobalTracer()->currentTransaction;
-    const String result = currentTransaction == NULL ? NULL : currentTransaction->traceId;
-
-    ELASTICAPM_LOG_TRACE( "Result: %s", result == NULL ? "NULL" : result );
-    return result;
-}
+#include "elasticapm_alloc.h"
 
 bool elasticApmIsEnabled()
 {
@@ -61,28 +44,80 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
     return resultCode;
 }
 
-zif_handler g_interceptedFuncOriginalHandler = NULL;
-String g_interceptedFuncPreHookFunc = NULL;
-String g_interceptedFuncPostHookFunc = NULL;
-
-ZEND_NAMED_FUNCTION( interceptedFuncReplacement )
+// TODO: Sergey Kleyman: Move to Tracer
+enum
 {
-    if ( g_interceptedFuncPreHookFunc != NULL )
-    {
-        enum{ maxArgsCount = 100 };
-        zval args[ maxArgsCount ];
-        uint32_t argsCount;
-        getArgsFromZendExecuteData( execute_data, maxArgsCount, args, &argsCount );
-        callPhpFunctionEx( stringToStringView( g_interceptedFuncPreHookFunc ), logLevel_debug, argsCount, args );
-    }
+    maxCallsToIntercept = 100
+};
+static uint32_t g_nextFreeCallToInterceptId = 0;
+struct CallToInterceptData
+{
+    zif_handler originalHandler;
+    zend_function* funcEntry;
+};
+typedef struct CallToInterceptData CallToInterceptData;
+static CallToInterceptData g_callsToInterceptData[maxCallsToIntercept];
 
-    // if we want to call the original function
-    g_interceptedFuncOriginalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
+#define ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\InterceptionManager::"
+#define ELASTICAPM_PHP_INTERCEPTED_CALL_PRE_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPreHook"
+#define ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPostHook"
 
-    if ( g_interceptedFuncPostHookFunc != NULL )
-    {
-        callPhpFunctionEx( stringToStringView( g_interceptedFuncPostHookFunc ), logLevel_debug, 1, return_value );
-    }
+static
+void internalFunctionCallReplacementImpl( zend_execute_data* execute_data, zval* return_value )
+{
+    ResultCode resultCode;
+    // TODO: Sergey Kleyman: Implement: Passing actual callToInterceptId
+    uint32_t callToInterceptId = 0;
+
+    zval callToInterceptIdAsZval;
+    ZVAL_UNDEF( &callToInterceptIdAsZval );
+    zval preHookRetVal;
+    ZVAL_UNDEF( &preHookRetVal );
+
+    enum { maxInterceptedCallArgsCount = 100 };
+    zval preHookArgs[maxInterceptedCallArgsCount];
+    // The first argument to InterceptionManager::interceptedCallPreHook is $callToInterceptId
+
+    ZVAL_LONG( &callToInterceptIdAsZval, callToInterceptId )
+    preHookArgs[ 0 ] = callToInterceptIdAsZval;
+
+    uint32_t interceptedCallArgsCount;
+    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount - 1, &( preHookArgs[ 1 ] ), &interceptedCallArgsCount );
+    ELASTICAPM_CALL_IF_FAILED_GOTO(
+            callPhpFunctionRetZval(
+                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_PRE_HOOK )
+                    , logLevel_debug
+                    , interceptedCallArgsCount + 1
+                    , preHookArgs
+                    , &preHookRetVal ) );
+
+    g_callsToInterceptData[ callToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
+
+    zval postHookArgs[] = { preHookRetVal, *return_value };
+    ELASTICAPM_CALL_IF_FAILED_GOTO(
+            callPhpFunctionRetVoid(
+                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK )
+                    , logLevel_debug
+                    , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
+                    , postHookArgs ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+    zval_dtor( &callToInterceptIdAsZval );
+    zval_dtor( &preHookRetVal );
+
+    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTICAPM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
+ZEND_NAMED_FUNCTION( elasticApmInterceptedCallReplacement )
+{
+    internalFunctionCallReplacementImpl( INTERNAL_FUNCTION_PARAM_PASSTHRU );
 }
 
 //static
@@ -106,40 +141,106 @@ ZEND_NAMED_FUNCTION( interceptedFuncReplacement )
 //    return ZEND_HASH_APPLY_KEEP;
 //}
 
-ResultCode elasticApmGetInterceptCallsToPhpFunction(
-        String funcToIntercept
-        , String preHookFunc
-        , String postHookFunc
-)
+//ResultCode elasticApmInterceptCallsToFunction(
+//        String funcToIntercept
+//        , String funcToCallBeforeIntercepted
+//        , String funcToCallAfterIntercepted
+//)
+//{
+//    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "funcToIntercept: `%s'; preHookFunc: `%s'; postHookFunc: `%s'"
+//                                             , funcToIntercept, funcToCallBeforeIntercepted, funcToCallAfterIntercepted );
+//    ResultCode resultCode;
+//
+////    ELASTICAPM_LOG_NOTICE( "Content of EG( function_table ):" );
+////    zend_hash_apply_with_arguments( EG( function_table ), print_key_apply_cb, 0 );
+////
+////    ELASTICAPM_LOG_NOTICE( "Content of EG( class_table ):" );
+////    zend_hash_apply_with_arguments( EG( class_table ), print_key_apply_cb, 0 );
+////
+////    ELASTICAPM_LOG_NOTICE( "Content of CG( class_table ):" );
+////    zend_hash_apply_with_arguments( CG( class_table ), print_key_apply_cb, 0 );
+//
+////    ELASTICAPM_LOG_NOTICE( "Content of CG( class_table ) + sub-tables:" );
+////    zend_hash_apply_with_arguments( CG( class_table ), class_table_apply_cb, 0 );
+//
+//    zend_function* originalFuncEntry = zend_hash_str_find_ptr( EG( function_table ), funcToIntercept, strlen( funcToIntercept ) );
+//    if ( originalFuncEntry == NULL )
+//    {
+//        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr failed. funcToIntercept: `%s'", funcToIntercept );
+//        resultCode = resultFailure;
+//        goto failure;
+//    }
+//
+//    g_interceptedFuncPreHookFunc = strdup( funcToCallBeforeIntercepted );
+//    g_interceptedFuncPostHookFunc = strdup( funcToCallAfterIntercepted );
+//    g_interceptedFuncOriginalHandler = originalFuncEntry->internal_function.handler;
+//    originalFuncEntry->internal_function.handler = interceptedCallReplacement;
+//
+//    resultCode = resultSuccess;
+//
+//    finally:
+//
+//    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+//    return resultCode;
+//
+//    failure:
+//    goto finally;
+//}
+
+void resetCallInterceptionOnRequestShutdown()
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "funcToIntercept: `%s'; preHookFunc: `%s'; postHookFunc: `%s'"
-                                             , funcToIntercept, preHookFunc, postHookFunc );
+    ELASTICAPM_FOR_EACH_INDEX( i, g_nextFreeCallToInterceptId )
+    {
+        CallToInterceptData* data = &( g_callsToInterceptData[ i ] );
+
+        data->funcEntry->internal_function.handler = data->originalHandler;
+    }
+
+    g_nextFreeCallToInterceptId = 0;
+}
+
+ResultCode elasticApmInterceptCallsToMethod( String className, String methodName, uint32_t* callToInterceptId )
+{
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
+
     ResultCode resultCode;
 
-//    ELASTICAPM_LOG_NOTICE( "Content of EG( function_table ):" );
-//    zend_hash_apply_with_arguments( EG( function_table ), print_key_apply_cb, 0 );
-//
-//    ELASTICAPM_LOG_NOTICE( "Content of EG( class_table ):" );
-//    zend_hash_apply_with_arguments( EG( class_table ), print_key_apply_cb, 0 );
-//
-//    ELASTICAPM_LOG_NOTICE( "Content of CG( class_table ):" );
-//    zend_hash_apply_with_arguments( CG( class_table ), print_key_apply_cb, 0 );
+    // TODO: Sergey Kleyman: Implement: Actually convert className to lower case
+    #ifdef PHP_WIN32
+    className = "pdo";
+    #endif
 
-//    ELASTICAPM_LOG_NOTICE( "Content of CG( class_table ) + sub-tables:" );
-//    zend_hash_apply_with_arguments( CG( class_table ), class_table_apply_cb, 0 );
-
-    zend_function* originalFuncEntry = zend_hash_str_find_ptr( EG( function_table ), funcToIntercept, strlen( funcToIntercept ) );
-    if ( originalFuncEntry == NULL )
+    zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
+    if ( classEntry == NULL )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr failed. funcToIntercept: `%s'", funcToIntercept );
+        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
         resultCode = resultFailure;
         goto failure;
     }
 
-    g_interceptedFuncPreHookFunc = strdup( preHookFunc );
-    g_interceptedFuncPostHookFunc = strdup( postHookFunc );
-    g_interceptedFuncOriginalHandler = originalFuncEntry->internal_function.handler;
-    originalFuncEntry->internal_function.handler = interceptedFuncReplacement;
+    zend_function* funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
+    if ( funcEntry == NULL )
+    {
+        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
+                              " className: `%s'; methodName: `%s'", className, methodName );
+        resultCode = resultFailure;
+        goto failure;
+    }
+
+
+    if ( g_nextFreeCallToInterceptId >= maxCallsToIntercept )
+    {
+        ELASTICAPM_LOG_ERROR( "Reached maxCallsToIntercept."
+                              " maxCallsToIntercept: %u. g_nextFreeCallToInterceptId: %u."
+                              , maxCallsToIntercept, g_nextFreeCallToInterceptId );
+        resultCode = resultFailure;
+        goto failure;
+    }
+
+    *callToInterceptId = g_nextFreeCallToInterceptId ++;
+    g_callsToInterceptData[ *callToInterceptId ].funcEntry = funcEntry;
+    g_callsToInterceptData[ *callToInterceptId ].originalHandler = funcEntry->internal_function.handler;
+    funcEntry->internal_function.handler = elasticApmInterceptedCallReplacement;
 
     resultCode = resultSuccess;
 
@@ -152,45 +253,26 @@ ResultCode elasticApmGetInterceptCallsToPhpFunction(
     goto finally;
 }
 
-ResultCode elasticApmGetInterceptCallsToPhpMethod( String className
-                                                   , String methodName
-                                                   , String preHookFunc
-                                                   , String postHookFunc
-)
+ResultCode elasticApmSendToServer( String serializedEvents )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'; preHookFunc: `%s'; postHookFunc: `%s'"
-                                             , className, methodName, preHookFunc, postHookFunc );
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+
     ResultCode resultCode;
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
-    #ifdef PHP_WIN32
-    className = "pdo";
-    #endif
-    zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
-    if ( classEntry == NULL )
+    if ( ! tracer->isInited )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
         resultCode = resultFailure;
+        ELASTICAPM_LOG_ERROR( "Extension is not initialized" );
         goto failure;
     }
 
-    zend_function* originalFuncEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
-    if ( originalFuncEntry == NULL )
-    {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
-                              " className: `%s'; methodName: `%s'", className, methodName );
-        resultCode = resultFailure;
-        goto failure;
-    }
-
-    g_interceptedFuncPreHookFunc = strdup( preHookFunc );
-    g_interceptedFuncPostHookFunc = strdup( postHookFunc );
-    g_interceptedFuncOriginalHandler = originalFuncEntry->internal_function.handler;
-    originalFuncEntry->internal_function.handler = interceptedFuncReplacement;
+    sendEventsToApmServer( config, serializedEvents );
 
     resultCode = resultSuccess;
 
     finally:
-
     ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 

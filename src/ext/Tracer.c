@@ -21,10 +21,12 @@ AssertLevel getGlobalAssertLevel()
 #endif
 
 #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+
 MemoryTracker* getGlobalMemoryTracker()
 {
     return &getGlobalTracer()->memTracker;
 }
+
 #endif
 
 InternalChecksLevel getGlobalInternalChecksLevel()
@@ -57,14 +59,14 @@ void ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* config )
 }
 
 #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+
 static
 void ensureMemoryTrackerHasLatestConfig( MemoryTracker* memTracker, const ConfigSnapshot* config )
 {
     MemoryTrackingLevel levelsDescendingPrecedence[] =
-    {
-        config->memoryTrackingLevel,
-        internalChecksToMemoryTrackingLevel( config->internalChecksLevel )
-    };
+            {
+                    config->memoryTrackingLevel, internalChecksToMemoryTrackingLevel( config->internalChecksLevel )
+            };
 
     MemoryTrackingLevel newLevel = ELASTICAPM_MEMORY_TRACKING_DEFAULT_LEVEL;
     ELASTICAPM_FOR_EACH_INDEX( i, ELASTICAPM_STATIC_ARRAY_SIZE( levelsDescendingPrecedence ) )
@@ -76,17 +78,18 @@ void ensureMemoryTrackerHasLatestConfig( MemoryTracker* memTracker, const Config
 
     reconfigureMemoryTracker( memTracker, newLevel, config->abortOnMemoryLeak );
 }
+
 #endif // #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
 
 #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+
 static
 void ensureAssertHasLatestConfig( Tracer* tracer, const ConfigSnapshot* config )
 {
     AssertLevel levelsDescendingPrecedence[] =
-    {
-        config->assertLevel,
-        internalChecksToAssertLevel( config->internalChecksLevel )
-    };
+            {
+                    config->assertLevel, internalChecksToAssertLevel( config->internalChecksLevel )
+            };
 
     AssertLevel newLevel = ELASTICAPM_ASSERT_DEFAULT_LEVEL;
     ELASTICAPM_FOR_EACH_INDEX( i, ELASTICAPM_STATIC_ARRAY_SIZE( levelsDescendingPrecedence ) )
@@ -97,6 +100,7 @@ void ensureAssertHasLatestConfig( Tracer* tracer, const ConfigSnapshot* config )
     }
     tracer->currentAssertLevel = newLevel;
 }
+
 #endif // #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 
 static
@@ -142,7 +146,7 @@ ResultCode ensureAllComponentsHaveLatestConfig( Tracer* tracer )
     goto finally;
 }
 
-const ConfigSnapshot* getTracerCurrentConfigSnapshot( Tracer* tracer )
+const ConfigSnapshot* getTracerCurrentConfigSnapshot( const Tracer* tracer )
 {
     return getConfigManagerCurrentSnapshot( tracer->configManager );
 }
@@ -174,6 +178,7 @@ ResultCode constructTracer( Tracer* tracer )
 
     resultCode = resultSuccess;
     tracer->isInited = true;
+    tracer->isFailed = false;
 
     finally:
     return resultCode;
@@ -181,6 +186,18 @@ ResultCode constructTracer( Tracer* tracer )
     failure:
     destructTracer( tracer );
     goto finally;
+}
+
+void moveTracerToFailedState( Tracer* tracer )
+{
+    ELASTICAPM_LOG_CRITICAL( "Moving tracer to failed state - Elastic APM will be DISABLED!" );
+    tracer->isFailed = true;
+}
+
+bool isTracerInFunctioningState( const Tracer* tracer )
+{
+    return tracer->isInited && getTracerCurrentConfigSnapshot( tracer )->enabled && ( ! tracer->isFailed );
+
 }
 
 void destructTracer( Tracer* tracer )

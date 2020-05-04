@@ -13,7 +13,6 @@
 
 #include <stdbool.h>
 #include "ConfigManager.h"
-#include "Transaction.h"
 #include "SystemMetrics.h"
 #include "elasticapm_assert.h"
 #include "log.h"
@@ -39,23 +38,20 @@ struct Tracer
     MemoryTracker memTracker;
         #endif
     ConfigManager* configManager;
-    Transaction* currentTransaction;
     SystemMetricsReading startSystemMetricsReading;
 
     bool isInited;
+    bool isFailed;
     IniEntriesRegistrationState iniEntriesRegistrationState;
     bool curlInited;
-
-    void (* originalZendErrorCallback )( int type, String error_filename, uint32_t error_lineno, String format, va_list args );
-    bool originalZendErrorCallbackSet;
-    void (* originalZendThrowExceptionHook )( zval* exception );
-    bool originalZendThrowExceptionHookSet;
 };
 typedef struct Tracer Tracer;
 
 ResultCode constructTracer( Tracer* tracer );
 ResultCode ensureAllComponentsHaveLatestConfig( Tracer* tracer );
-const ConfigSnapshot* getTracerCurrentConfigSnapshot( Tracer* tracer );
+const ConfigSnapshot* getTracerCurrentConfigSnapshot( const Tracer* tracer );
+void moveTracerToFailedState( Tracer* tracer );
+bool isTracerInFunctioningState( const Tracer* tracer );
 void destructTracer( Tracer* tracer );
 
 Tracer* getGlobalTracer();

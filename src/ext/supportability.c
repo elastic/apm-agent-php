@@ -56,12 +56,6 @@ void php_info_printTableCells(
 {
     ELASTICAPM_UNUSED( structTxtPrinter );
 
-    if ( numberOfColumns >= 5 )
-    {
-        variadicPrintCellsFunc( 5, columns[ 0 ], columns[ 1 ], columns[ 2 ], columns[ 3 ], columns[ 4 ] );
-        return;
-    }
-
     switch ( numberOfColumns )
     {
         case 0:
@@ -82,6 +76,10 @@ void php_info_printTableCells(
 
         case 4:
             variadicPrintCellsFunc( 4, columns[ 0 ], columns[ 1 ], columns[ 2 ], columns[ 3 ] );
+            return;
+
+        default:
+            variadicPrintCellsFunc( 5, columns[ 0 ], columns[ 1 ], columns[ 2 ], columns[ 3 ], columns[ 4 ] );
             return;
     }
 }

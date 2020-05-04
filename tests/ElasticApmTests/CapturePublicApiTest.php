@@ -13,9 +13,6 @@ class CapturePublicApiTest extends Util\TestCaseBase
 {
     public function testElasticApmCurrentTransactionReturnVoid(): void
     {
-        // Arrange
-        $mockReporter = $this->setUpElasticApmWithMockReporter();
-
         // Act
         /** @var TransactionInterface $tx */
         $tx = null;
@@ -34,15 +31,12 @@ class CapturePublicApiTest extends Util\TestCaseBase
         $this->assertTrue(is_null($retVal));
         $this->assertNull($retVal);
         $this->assertNotNull($tx);
-        $this->assertSame(1, count($mockReporter->getTransactions()));
-        $this->assertSame($tx, $mockReporter->getTransactions()[0]);
+        $this->assertSame(1, count($this->mockEventSink->getTransactions()));
+        $this->assertTransactionEquals($tx, $this->mockEventSink->getTransactions()[0]);
     }
 
     public function testElasticApmCurrentTransactionReturnObject(): void
     {
-        // Arrange
-        $mockReporter = $this->setUpElasticApmWithMockReporter();
-
         // Act
         /** @var TransactionInterface $tx */
         $tx = null;
@@ -62,15 +56,12 @@ class CapturePublicApiTest extends Util\TestCaseBase
         $this->assertInstanceOf(TestDummyObject::class, $retVal);
         $this->assertSame('some dummy property value', $retVal->dummyPublicStringProperty);
         $this->assertNotNull($tx);
-        $this->assertSame(1, count($mockReporter->getTransactions()));
-        $this->assertSame($tx, $mockReporter->getTransactions()[0]);
+        $this->assertSame(1, count($this->mockEventSink->getTransactions()));
+        $this->assertTransactionEquals($tx, $this->mockEventSink->getTransactions()[0]);
     }
 
     public function testElasticApmCurrentSpanReturnVoid(): void
     {
-        // Arrange
-        $mockReporter = $this->setUpElasticApmWithMockReporter();
-
         // Act
         /** @var SpanInterface $span */
         $span = null;
@@ -98,15 +89,12 @@ class CapturePublicApiTest extends Util\TestCaseBase
         // Assert
         $this->assertTrue(is_null($retVal));
         $this->assertNotNull($span);
-        $this->assertSame(1, count($mockReporter->getSpans()));
-        $this->assertSame($span, $mockReporter->getSpans()[0]);
+        $this->assertSame(1, count($this->mockEventSink->getSpans()));
+        $this->assertSpanEquals($span, $this->mockEventSink->getSpans()[0]);
     }
 
     public function testElasticApmCurrentSpanReturnObject(): void
     {
-        // Arrange
-        $mockReporter = $this->setUpElasticApmWithMockReporter();
-
         // Act
         /** @var SpanInterface $span */
         $span = null;
@@ -136,15 +124,12 @@ class CapturePublicApiTest extends Util\TestCaseBase
         $this->assertInstanceOf(TestDummyObject::class, $retVal);
         $this->assertSame('some dummy property value', $retVal->dummyPublicStringProperty);
         $this->assertNotNull($span);
-        $this->assertSame(1, count($mockReporter->getSpans()));
-        $this->assertSame($span, $mockReporter->getSpans()[0]);
+        $this->assertSame(1, count($this->mockEventSink->getSpans()));
+        $this->assertSpanEquals($span, $this->mockEventSink->getSpans()[0]);
     }
 
     public function testWhenExceptionThrown(): void
     {
-        // Arrange
-        $mockReporter = $this->setUpElasticApmWithMockReporter();
-
         $throwingFunc = function (bool $shouldThrow): bool {
             if ($shouldThrow) {
                 throw new TestDummyException("A message");
@@ -175,7 +160,7 @@ class CapturePublicApiTest extends Util\TestCaseBase
         });
 
         // Assert
-        $this->assertSame(2, count($mockReporter->getTransactions()));
-        $this->assertSame(2, count($mockReporter->getSpans()));
+        $this->assertSame(2, count($this->mockEventSink->getTransactions()));
+        $this->assertSame(2, count($this->mockEventSink->getSpans()));
     }
 }

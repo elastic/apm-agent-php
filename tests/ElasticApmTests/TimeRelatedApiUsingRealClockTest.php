@@ -5,19 +5,15 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests;
 
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Tests\Util\MockReporter;
+use Elastic\Apm\Tests\Util\MockEventSink;
 
 class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 {
     public function testTransactionBeginEnd(): void
     {
-        // Arrange
-        $mockReporter = new MockReporter($this);
-        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
-
         // Act
         $beforeBegin = self::getCurrentTimestamp();
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         // In milliseconds with 3 decimal points
         $beforeSleep = self::getCurrentTimestamp();
         self::sleepDuration(456.789);
@@ -26,8 +22,8 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $this->assertSame(1, count($mockReporter->getTransactions()));
-        $reportedTx = $mockReporter->getTransactions()[0];
+        $this->assertSame(1, count($this->mockEventSink->getTransactions()));
+        $reportedTx = $this->mockEventSink->getTransactions()[0];
         $this->assertGreaterThanOrEqual($beforeBegin, $reportedTx->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($beforeSleep, $afterSleep),
@@ -39,13 +35,9 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 
     public function testTransactionBeginEndWithDuration(): void
     {
-        // Arrange
-        $mockReporter = new MockReporter($this);
-        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
-
         // Act
         $beforeBegin = self::getCurrentTimestamp();
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         // In milliseconds with 3 decimal points
         $expectedDuration = 322.556;
         $beforeSleep = self::getCurrentTimestamp();
@@ -55,8 +47,8 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $this->assertSame(1, count($mockReporter->getTransactions()));
-        $reportedTx = $mockReporter->getTransactions()[0];
+        $this->assertSame(1, count($this->mockEventSink->getTransactions()));
+        $reportedTx = $this->mockEventSink->getTransactions()[0];
         $this->assertGreaterThanOrEqual(
             self::calcDuration($beforeSleep, $afterSleep),
             self::calcDuration($beforeBegin, $afterEnd)
@@ -67,13 +59,9 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 
     public function testSpanBeginEnd(): void
     {
-        // Arrange
-        $mockReporter = new MockReporter($this);
-        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
-
         // Act
         $beforeBeginTransaction = self::getCurrentTimestamp();
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $afterBeginTransaction = self::getCurrentTimestamp();
         self::sleepDuration(158.432);
         $beforeBeginSpan = self::getCurrentTimestamp();
@@ -86,8 +74,8 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $this->assertSame(1, count($mockReporter->getSpans()));
-        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame(1, count($this->mockEventSink->getSpans()));
+        $reportedSpan = $this->mockEventSink->getSpans()[0];
         $this->assertGreaterThanOrEqual($beforeBeginSpan, $reportedSpan->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($afterBeginTransaction, $beforeBeginSpan),
@@ -109,12 +97,8 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
 
     public function testSpanBeginEndWithDuration(): void
     {
-        // Arrange
-        $mockReporter = new MockReporter($this);
-        $tracer = TracerBuilder::startNew()->withReporter($mockReporter)->build();
-
         // Act
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
         $afterBeginSpan = self::getCurrentTimestamp();
         // In milliseconds with 3 decimal points
@@ -125,8 +109,8 @@ class TimeRelatedApiUsingRealClockTest extends Util\TestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertSame(1, count($mockReporter->getSpans()));
-        $reportedSpan = $mockReporter->getSpans()[0];
+        $this->assertSame(1, count($this->mockEventSink->getSpans()));
+        $reportedSpan = $this->mockEventSink->getSpans()[0];
         $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
         $this->assertGreaterThan($expectedSpanDuration, self::calcDuration($afterBeginSpan, $beforeEnd));
     }
