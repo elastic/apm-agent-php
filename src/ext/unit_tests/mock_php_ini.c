@@ -15,7 +15,6 @@
 #include "unit_test_util.h"
 
 static bool g_isMockPhpIniInited = false;
-// TODO: Sergey Kleyman: Implement MockPhpIni
 //static StringToStringMap* g_mockPhpIniMap = NULL;
 
 void initMockPhpIni()
@@ -35,7 +34,6 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
     ELASTICAPM_ASSERT_VALID_PTR( name );
     ELASTICAPM_UNUSED( orig );
 
-// TODO: Sergey Kleyman: Implement: zend_ini_string_ex for MockPhpIni
 //    assertValidStringToStringMap();
 //
 //    StringToStringMapEntry* entry = findEntry( makeStringView( name, name_length ) );

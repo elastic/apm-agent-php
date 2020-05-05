@@ -22,6 +22,9 @@ trait ExecutionSegmentTrait
     /** @var Tracer */
     protected $tracer;
 
+    /** @var float */
+    private $durationOnBegin;
+
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
 
@@ -38,11 +41,13 @@ trait ExecutionSegmentTrait
         string $type,
         ?float $timestamp = null
     ): void {
+        $systemClockCurrentTime = $this->timestamp = $tracer->getClock()->getSystemClockCurrentTime();
         if ($timestamp === null) {
-            $this->timestamp = $tracer->getClock()->getSystemClockCurrentTime();
+            $this->timestamp = $systemClockCurrentTime;
         } else {
             $this->timestamp = $timestamp;
         }
+        $this->durationOnBegin = TimeUtil::calcDuration($this->timestamp, $systemClockCurrentTime);
         $this->monotonicBeginTime = $tracer->getClock()->getMonotonicClockCurrentTime();
         $this->tracer = $tracer;
         $this->traceId = $traceId;
@@ -85,7 +90,11 @@ trait ExecutionSegmentTrait
 
         if ($duration === null) {
             $monotonicEndTime = $this->tracer->getClock()->getMonotonicClockCurrentTime();
-            $this->duration = TimeUtil::calcDuration($this->monotonicBeginTime, $monotonicEndTime);
+            $this->duration = $this->durationOnBegin
+                              + TimeUtil::calcDuration($this->monotonicBeginTime, $monotonicEndTime);
+            if ($this->duration < 0) {
+                $this->duration = 0;
+            }
         } else {
             $this->duration = $duration;
         }

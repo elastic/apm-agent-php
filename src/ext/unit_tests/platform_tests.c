@@ -70,8 +70,6 @@ void capturing_stack_trace( void** testFixtureState )
 {
     ELASTICAPM_UNUSED( testFixtureState );
 
-    // printf( "stackTraceAsString:\n%s", stackTraceAsString );
-    // TODO: Sergey Kleyman: Implement: captureStackTraceWindows
     #ifndef PHP_WIN32
     void* addressesBuffer[ maxCaptureStackTraceDepth ];
     size_t addressesCount = ELASTICAPM_CAPTURE_STACK_TRACE( &(addressesBuffer[ 0 ]), ELASTICAPM_STATIC_ARRAY_SIZE( addressesBuffer ) );

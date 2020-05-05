@@ -15,6 +15,7 @@
 #include "Tracer.h"
 #include "util_for_php.h"
 #include "elasticapm_alloc.h"
+#include "numbered_intercepting_callbacks.h"
 
 bool elasticApmIsEnabled()
 {
@@ -47,7 +48,7 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
 // TODO: Sergey Kleyman: Move to Tracer
 enum
 {
-    maxCallsToIntercept = 100
+    maxCallsToIntercept = numberedInterceptingCallbacksCount
 };
 static uint32_t g_nextFreeCallToInterceptId = 0;
 struct CallToInterceptData
@@ -63,23 +64,21 @@ static CallToInterceptData g_callsToInterceptData[maxCallsToIntercept];
 #define ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPostHook"
 
 static
-void internalFunctionCallReplacementImpl( zend_execute_data* execute_data, zval* return_value )
+void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
 {
     ResultCode resultCode;
-    // TODO: Sergey Kleyman: Implement: Passing actual callToInterceptId
-    uint32_t callToInterceptId = 0;
 
-    zval callToInterceptIdAsZval;
-    ZVAL_UNDEF( &callToInterceptIdAsZval );
+    zval funcToInterceptIdAsZval;
+    ZVAL_UNDEF( &funcToInterceptIdAsZval );
     zval preHookRetVal;
     ZVAL_UNDEF( &preHookRetVal );
 
     enum { maxInterceptedCallArgsCount = 100 };
     zval preHookArgs[maxInterceptedCallArgsCount];
-    // The first argument to InterceptionManager::interceptedCallPreHook is $callToInterceptId
 
-    ZVAL_LONG( &callToInterceptIdAsZval, callToInterceptId )
-    preHookArgs[ 0 ] = callToInterceptIdAsZval;
+    // The first argument to InterceptionManager::interceptedCallPreHook is $funcToInterceptId
+    ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
+    preHookArgs[ 0 ] = funcToInterceptIdAsZval;
 
     uint32_t interceptedCallArgsCount;
     getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount - 1, &( preHookArgs[ 1 ] ), &interceptedCallArgsCount );
@@ -91,7 +90,7 @@ void internalFunctionCallReplacementImpl( zend_execute_data* execute_data, zval*
                     , preHookArgs
                     , &preHookRetVal ) );
 
-    g_callsToInterceptData[ callToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
+    g_callsToInterceptData[ funcToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
 
     zval postHookArgs[] = { preHookRetVal, *return_value };
     ELASTICAPM_CALL_IF_FAILED_GOTO(
@@ -104,7 +103,7 @@ void internalFunctionCallReplacementImpl( zend_execute_data* execute_data, zval*
     resultCode = resultSuccess;
 
     finally:
-    zval_dtor( &callToInterceptIdAsZval );
+    zval_dtor( &funcToInterceptIdAsZval );
     zval_dtor( &preHookRetVal );
 
     ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
@@ -113,11 +112,6 @@ void internalFunctionCallReplacementImpl( zend_execute_data* execute_data, zval*
 
     failure:
     goto finally;
-}
-
-ZEND_NAMED_FUNCTION( elasticApmInterceptedCallReplacement )
-{
-    internalFunctionCallReplacementImpl( INTERNAL_FUNCTION_PARAM_PASSTHRU );
 }
 
 //static
@@ -189,7 +183,10 @@ ZEND_NAMED_FUNCTION( elasticApmInterceptedCallReplacement )
 
 void resetCallInterceptionOnRequestShutdown()
 {
-    ELASTICAPM_FOR_EACH_INDEX( i, g_nextFreeCallToInterceptId )
+    // We restore original handlers in the reverse order
+    // so that if the same function is registered for interception more than once
+    // the original handler will be restored correctly
+    ELASTICAPM_FOR_EACH_BACKWARDS( i, g_nextFreeCallToInterceptId )
     {
         CallToInterceptData* data = &( g_callsToInterceptData[ i ] );
 
@@ -199,7 +196,7 @@ void resetCallInterceptionOnRequestShutdown()
     g_nextFreeCallToInterceptId = 0;
 }
 
-ResultCode elasticApmInterceptCallsToMethod( String className, String methodName, uint32_t* callToInterceptId )
+ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* funcToInterceptId )
 {
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
 
@@ -237,10 +234,10 @@ ResultCode elasticApmInterceptCallsToMethod( String className, String methodName
         goto failure;
     }
 
-    *callToInterceptId = g_nextFreeCallToInterceptId ++;
-    g_callsToInterceptData[ *callToInterceptId ].funcEntry = funcEntry;
-    g_callsToInterceptData[ *callToInterceptId ].originalHandler = funcEntry->internal_function.handler;
-    funcEntry->internal_function.handler = elasticApmInterceptedCallReplacement;
+    *funcToInterceptId = g_nextFreeCallToInterceptId ++;
+    g_callsToInterceptData[ *funcToInterceptId ].funcEntry = funcEntry;
+    g_callsToInterceptData[ *funcToInterceptId ].originalHandler = funcEntry->internal_function.handler;
+    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *funcToInterceptId ];
 
     resultCode = resultSuccess;
 

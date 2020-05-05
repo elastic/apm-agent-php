@@ -21,7 +21,7 @@ bool elasticApmIsEnabled();
 
 ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );
 
-ResultCode elasticApmInterceptCallsToMethod( String className, String methodName, uint32_t* callToInterceptId );
+ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* funcToInterceptId );
 
 //ResultCode elasticApmCallInterceptedOriginal( uint32_t funcToInterceptId, uint32_t originalArgsCount, zval* originalArgs );
 

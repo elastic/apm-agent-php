@@ -11,7 +11,6 @@
 
 #include "cmocka_wrapped_for_unit_tests.h"
 #include "unit_test_util.h"
-// TODO: Sergey Kleyman: Implement config tests
 //#include "mock_env_vars.h"
 //#include "mock_php_ini.h"
 

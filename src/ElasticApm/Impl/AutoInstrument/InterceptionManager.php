@@ -28,16 +28,16 @@ final class InterceptionManager
      *
      * @noinspection PhpUnused
      *
-     * @param int   $callToInterceptId
+     * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
      * @return null|CallTrackerInterface
      */
     public static function interceptedCallPreHook(
-        int $callToInterceptId,
+        int $funcToInterceptId,
         ...$interceptedCallArgs
     ): ?CallTrackerInterface {
-        return self::onInterceptedCallBegin($callToInterceptId, ...$interceptedCallArgs);
+        return self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
     }
 
     /**
@@ -58,15 +58,15 @@ final class InterceptionManager
     //  *
     //  * @noinspection PhpUnused
     //  *
-    //  * @param int   $callToInterceptId
+    //  * @param int   $funcToInterceptId
     //  * @param mixed ...$interceptedCallArgs
     //  *
     //  * @return mixed
     //  * @throws Throwable
     //  */
-    // public static function wrapInterceptedCall(int $callToInterceptId, ...$interceptedCallArgs)
+    // public static function wrapInterceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
     // {
-    //     $callTracker = self::onInterceptedCallBegin($callToInterceptId, ...$interceptedCallArgs);
+    //     $callTracker = self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
     //     if (is_null($callTracker)) {
     //         /**
     //          * elasticapm_* functions are provided by the elasticapm extension
@@ -74,7 +74,7 @@ final class InterceptionManager
     //          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
     //          * @phpstan-ignore-next-line
     //          */
-    //         return \elasticapm_call_intercepted_original($callToInterceptId, ...$interceptedCallArgs);
+    //         return \elasticapm_call_intercepted_original($funcToInterceptId, ...$interceptedCallArgs);
     //     }
     //
     //     try {
@@ -85,7 +85,7 @@ final class InterceptionManager
     //          * @phpstan-ignore-next-line
     //          */
     //         return $callTracker->onCallNormalEnd(
-    //             \elasticapm_call_intercepted_original($callToInterceptId, func_num_args(), func_get_args())
+    //             \elasticapm_call_intercepted_original($funcToInterceptId, func_num_args(), func_get_args())
     //         );
     //     } catch (Throwable $throwable) {
     //         throw $callTracker->onCallEndByException($throwable);
@@ -99,7 +99,7 @@ final class InterceptionManager
             /** @var CallTrackerFactoryInterface[] */
             public $callTrackerFactories = [];
 
-            public function interceptMethod(
+            public function interceptCallsToInternalMethod(
                 string $className,
                 string $methodName,
                 CallTrackerFactoryInterface $callTrackerFactory
@@ -110,9 +110,9 @@ final class InterceptionManager
                  * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
                  * @phpstan-ignore-next-line
                  */
-                $callToInterceptId = \elasticapm_intercept_calls_to_method($className, $methodName);
-                if ($callToInterceptId >= 0) {
-                    $this->callTrackerFactories[$callToInterceptId] = $callTrackerFactory;
+                $funcToInterceptId = \elasticapm_intercept_calls_to_internal_method($className, $methodName);
+                if ($funcToInterceptId >= 0) {
+                    $this->callTrackerFactories[$funcToInterceptId] = $callTrackerFactory;
                 }
             }
         };
@@ -124,15 +124,15 @@ final class InterceptionManager
     }
 
     /**
-     * @param int   $callToInterceptId
+     * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
      * @return null|CallTrackerInterface
      */
     private static function onInterceptedCallBegin(
-        int $callToInterceptId,
+        int $funcToInterceptId,
         ...$interceptedCallArgs
     ): ?CallTrackerInterface {
-        return self::$callTrackerFactories[$callToInterceptId]->onCallBegin(...$interceptedCallArgs);
+        return self::$callTrackerFactories[$funcToInterceptId]->onCallBegin(...$interceptedCallArgs);
     }
 }

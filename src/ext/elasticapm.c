@@ -225,29 +225,29 @@ PHP_FUNCTION( elasticapm_get_config_option_by_name )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ className, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ methodName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_method( string $className, string $methodName ): int // <- callToInterceptId
+/* {{{ elasticapm_intercept_calls_to_internal_method( string $className, string $methodName ): int // <- funcToInterceptId
  */
-PHP_FUNCTION( elasticapm_intercept_calls_to_method )
+PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
 {
     char* className = NULL;
     size_t classNameLength = 0;
     char* methodName = NULL;
     size_t methodNameLength = 0;
-    uint32_t callToInterceptId;
+    uint32_t funcToInterceptId;
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
     Z_PARAM_STRING( className, classNameLength )
     Z_PARAM_STRING( methodName, methodNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmInterceptCallsToMethod( className, methodName, &callToInterceptId ) != resultSuccess )
+    if ( elasticApmInterceptCallsToInternalMethod( className, methodName, &funcToInterceptId ) != resultSuccess )
         RETURN_LONG( -1 )
 
-    RETURN_LONG( callToInterceptId )
+    RETURN_LONG( funcToInterceptId )
 }
 /* }}} */
 
@@ -357,7 +357,7 @@ static const zend_function_entry elasticapm_functions[] =
 {
     PHP_FE( elasticapm_is_enabled, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
-    PHP_FE( elasticapm_intercept_calls_to_method, elasticapm_intercept_calls_to_method_arginfo )
+    PHP_FE( elasticapm_intercept_calls_to_internal_method, elasticapm_intercept_calls_to_internal_method_arginfo )
 //    PHP_FE( elasticapm_call_intercepted_original, elasticapm_call_intercepted_original_arginfo )
     PHP_FE( elasticapm_send_to_server, elasticapm_string_paramter_arginfo )
     PHP_FE( elasticapm_log, elasticapm_log_arginfo )

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
@@ -78,7 +80,7 @@ final class BootstrapShutdownHelper
             self::logCritical(
                 'One of the steps in shutdown sequence failed - skipping the rest of the steps.'
                 . ' Exception message: ' . $ex->getMessage()
-                . PHP_EOL . 'Stack trace:\n' . $ex->getTraceAsString(),
+                . PHP_EOL . 'Stack trace:' . PHP_EOL . $ex->getTraceAsString(),
                 __LINE__,
                 __FUNCTION__
             );
@@ -99,7 +101,7 @@ final class BootstrapShutdownHelper
     }
 
     /**
-     * @see registerAutoloader()
+     * @see          registerAutoloader()
      * @noinspection PhpUnused
      */
     public static function autoloadCodeForClass(string $fqClassName): void
@@ -158,8 +160,35 @@ final class BootstrapShutdownHelper
             ['transactionForRequest' => self::$transactionForRequest]
         );
 
+        $timestamp = null;
+        $timestampAsString = '';
+        if (
+            ArrayUtil::getValueIfKeyExists('REQUEST_TIME_FLOAT', $_SERVER, /* ref */ $timestampAsString)
+            // && is_numeric($timestampAsString)
+        ) {
+            $timestampInSeconds = floatval($timestampAsString);
+            $timestamp = $timestampInSeconds * 1000000;
+            if (PHP_INT_SIZE >= 8) {
+                self::logTrace('Using intval($timestamp): ' . intval($timestamp), __LINE__, __FUNCTION__);
+            } else {
+                self::logTrace("Using timestamp: $timestamp", __LINE__, __FUNCTION__);
+            }
+        }
+
+        $txName = 'UNKNOWN';
+        if (array_key_exists('REQUEST_URI', $_SERVER)) {
+            $txName = '';
+            if (array_key_exists('REQUEST_METHOD', $_SERVER)) {
+                $txName = $_SERVER['REQUEST_METHOD'] . ' ';
+            }
+            $txName .= $_SERVER['REQUEST_URI'];
+        }
         // TODO: Sergey Kleyman: Implement: beginTransactionForRequest - get real data
-        self::$transactionForRequest = ElasticApm::beginCurrentTransaction('GET /dummy_TX_name', 'request');
+        self::$transactionForRequest = ElasticApm::beginCurrentTransaction(
+            $txName,
+            Constants::TRANSACTION_TYPE_REQUEST,
+            $timestamp
+        );
     }
 
     private static function endTransactionForRequest(): void

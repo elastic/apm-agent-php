@@ -22,6 +22,7 @@
 #   endif
 #   include <windows.h>
 #endif
+#include "gen_numbered_intercepting_callbacks_src.h"
 
 void printInfo();
 
@@ -58,6 +59,8 @@ int main( int argc, char* argv[] )
         #endif
     failedTestsCount += run_Logger_tests();
     failedTestsCount += run_config_tests();
+
+    // gen_numbered_intercepting_callbacks_src( 1000 );
 
     return failedTestsCount;
 }
