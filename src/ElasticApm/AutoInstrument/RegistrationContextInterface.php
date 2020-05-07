@@ -13,7 +13,7 @@ interface RegistrationContextInterface
      * @param string                          $methodName
      * @param OnInterceptedCallBeginInterface $onInterceptedCallBegin
      */
-    public function interceptCallsToInternalMethod(
+    public function interceptCallsToMethod(
         string $className,
         string $methodName,
         OnInterceptedCallBeginInterface $onInterceptedCallBegin
@@ -23,7 +23,7 @@ interface RegistrationContextInterface
      * @param string                          $functionName
      * @param OnInterceptedCallBeginInterface $onInterceptedCallBegin
      */
-    public function interceptCallsToInternalFunction(
+    public function interceptCallsToFunction(
         string $functionName,
         OnInterceptedCallBeginInterface $onInterceptedCallBegin
     ): void;

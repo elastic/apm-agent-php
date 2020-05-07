@@ -101,6 +101,8 @@ final class BootstrapShutdownHelper
     }
 
     /**
+     * @param string $fqClassName
+     *
      * @see          registerAutoloader()
      * @noinspection PhpUnused
      */

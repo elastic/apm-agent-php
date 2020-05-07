@@ -8,6 +8,7 @@ namespace Elastic\Apm\Impl\AutoInstrument\Curl;
 
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationTrait;
 use Elastic\Apm\Impl\AutoInstrument\InterceptedCallToSpanBase;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -19,53 +20,49 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
  */
 final class CurlAutoInstrumentation
 {
+    use AutoInstrumentationTrait;
+
     public static function register(RegistrationContextInterface $ctx): void
     {
-        self::curlExec($ctx);
+        self::interceptCallsToFunction($ctx, 'curl_exec', [__CLASS__, 'curlExec']);
     }
 
-    public static function curlExec(RegistrationContextInterface $ctx): void
+    public static function curlExec(): InterceptedCallToSpanBase
     {
-        $ctx->interceptCallsToInternalFunction(
-            'curl_exec',
-            InterceptedCallToSpanBase::wrap(
-                function (): InterceptedCallToSpanBase {
-                    return new class extends InterceptedCallToSpanBase {
-                        /** @var resource|null */
-                        public $curlHandle;
+        return new class extends InterceptedCallToSpanBase {
+            /** @var resource|null */
+            public $curlHandle;
 
-                        /** @inheritDoc */
-                        public function beginSpan(...$interceptedCallArgs): void
-                        {
-                            $this->curlHandle = count($interceptedCallArgs) != 0 && is_resource($interceptedCallArgs[0])
-                                ? $interceptedCallArgs[0]
-                                : null;
+            /** @inheritDoc */
+            public function beginSpan(...$interceptedCallArgs): void
+            {
+                $this->curlHandle = count($interceptedCallArgs) != 0 && is_resource($interceptedCallArgs[0])
+                    ? $interceptedCallArgs[0]
+                    : null;
 
-                            $this->span = ElasticApm::beginCurrentSpan(
-                                'curl_exec', // TODO: Sergey Kleyman: fetch HTTP method + path for span name
-                                Constants::SPAN_TYPE_EXTERNAL,
-                                Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP
-                            );
+                $this->span = ElasticApm::beginCurrentSpan(
+                    'curl_exec', // TODO: Sergey Kleyman: fetch HTTP method + path for span name
+                    Constants::SPAN_TYPE_EXTERNAL,
+                    Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP
+                );
+            }
+
+            /** @inheritDoc */
+            public function endSpan(bool $hasExitedByException, $returnValueOrThrown): void
+            {
+                if (!$hasExitedByException) {
+                    if (!is_null($this->curlHandle)) {
+                        $httpCode = null;
+                        $info = curl_getinfo($this->curlHandle);
+                        if (ArrayUtil::getValueIfKeyExists('http_code', $info, /* ref */ $httpCode)) {
+                            // TODO: Sergey Kleyman: use the corresponding property in Intake API
+                            $this->span->setLabel('HTTP status', $httpCode);
                         }
-
-                        /** @inheritDoc */
-                        public function endSpan(bool $hasExitedByException, $returnValueOrThrown): void
-                        {
-                            if (!$hasExitedByException) {
-                                if (!is_null($this->curlHandle)) {
-                                    $httpCode = null;
-                                    $info = curl_getinfo($this->curlHandle);
-                                    if (ArrayUtil::getValueIfKeyExists('http_code', $info, /* ref */ $httpCode)) {
-                                        $this->span->setLabel('HTTP status', $httpCode);
-                                    }
-                                }
-                            }
-
-                            parent::endSpan($hasExitedByException, $returnValueOrThrown);
-                        }
-                    };
+                    }
                 }
-            )
-        );
+
+                parent::endSpan($hasExitedByException, $returnValueOrThrown);
+            }
+        };
     }
 }

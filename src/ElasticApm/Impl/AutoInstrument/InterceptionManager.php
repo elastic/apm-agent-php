@@ -105,7 +105,7 @@ final class InterceptionManager
             /** @var OnInterceptedCallBeginInterface[] */
             public $registeredCallbacks = [];
 
-            public function interceptCallsToInternalMethod(
+            public function interceptCallsToMethod(
                 string $className,
                 string $methodName,
                 OnInterceptedCallBeginInterface $onInterceptedCallBegin
@@ -122,7 +122,7 @@ final class InterceptionManager
                 }
             }
 
-            public function interceptCallsToInternalFunction(
+            public function interceptCallsToFunction(
                 string $functionName,
                 OnInterceptedCallBeginInterface $onInterceptedCallBegin
             ): void {
