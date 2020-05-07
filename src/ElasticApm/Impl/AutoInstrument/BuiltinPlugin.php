@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\AutoInstrument\PluginInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
+use Elastic\Apm\Impl\AutoInstrument\Curl\CurlAutoInstrumentation;
 use Elastic\Apm\Impl\AutoInstrument\Pdo\PdoAutoInstrumentation;
 
 /**
@@ -12,10 +14,11 @@ use Elastic\Apm\Impl\AutoInstrument\Pdo\PdoAutoInstrumentation;
  *
  * @internal
  */
-final class BuiltinAutoInstrumentations
+final class BuiltinPlugin implements PluginInterface
 {
-    public static function register(RegistrationContextInterface $ctx): void
+    public function register(RegistrationContextInterface $ctx): void
     {
         PdoAutoInstrumentation::register($ctx);
+        CurlAutoInstrumentation::register($ctx);
     }
 }

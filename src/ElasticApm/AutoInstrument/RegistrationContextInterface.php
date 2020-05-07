@@ -8,9 +8,23 @@ namespace Elastic\Apm\AutoInstrument;
 
 interface RegistrationContextInterface
 {
+    /**
+     * @param string                          $className
+     * @param string                          $methodName
+     * @param OnInterceptedCallBeginInterface $onInterceptedCallBegin
+     */
     public function interceptCallsToInternalMethod(
         string $className,
         string $methodName,
-        CallTrackerFactoryInterface $callTrackerFactory
+        OnInterceptedCallBeginInterface $onInterceptedCallBegin
+    ): void;
+
+    /**
+     * @param string                          $functionName
+     * @param OnInterceptedCallBeginInterface $onInterceptedCallBegin
+     */
+    public function interceptCallsToInternalFunction(
+        string $functionName,
+        OnInterceptedCallBeginInterface $onInterceptedCallBegin
     ): void;
 }

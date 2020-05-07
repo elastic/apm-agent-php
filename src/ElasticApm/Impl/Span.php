@@ -88,6 +88,9 @@ final class Span extends SpanData implements SpanInterface
             return;
         }
 
+        ($loggerProxy = $this->logger->ifEnabledDebug())
+        && $loggerProxy->log('Span ended', [], __LINE__, __METHOD__);
+
         $this->getTracer()->getEventSink()->consumeSpanData($this);
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {

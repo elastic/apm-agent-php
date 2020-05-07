@@ -23,6 +23,8 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );
 
 ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* funcToInterceptId );
 
+ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* funcToInterceptId );
+
 //ResultCode elasticApmCallInterceptedOriginal( uint32_t funcToInterceptId, uint32_t originalArgsCount, zval* originalArgs );
 
 void resetCallInterceptionOnRequestShutdown();

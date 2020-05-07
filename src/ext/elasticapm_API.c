@@ -48,16 +48,16 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
 // TODO: Sergey Kleyman: Move to Tracer
 enum
 {
-    maxCallsToIntercept = numberedInterceptingCallbacksCount
+    maxFunctionsToIntercept = numberedInterceptingCallbacksCount
 };
-static uint32_t g_nextFreeCallToInterceptId = 0;
+static uint32_t g_nextFreeFunctionToInterceptId = 0;
 struct CallToInterceptData
 {
     zif_handler originalHandler;
     zend_function* funcEntry;
 };
 typedef struct CallToInterceptData CallToInterceptData;
-static CallToInterceptData g_callsToInterceptData[maxCallsToIntercept];
+static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 
 #define ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\InterceptionManager::"
 #define ELASTICAPM_PHP_INTERCEPTED_CALL_PRE_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPreHook"
@@ -66,6 +66,8 @@ static CallToInterceptData g_callsToInterceptData[maxCallsToIntercept];
 static
 void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
 {
+    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "funcToInterceptId: %u", funcToInterceptId );
+
     ResultCode resultCode;
 
     zval funcToInterceptIdAsZval;
@@ -73,7 +75,10 @@ void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_exec
     zval preHookRetVal;
     ZVAL_UNDEF( &preHookRetVal );
 
-    enum { maxInterceptedCallArgsCount = 100 };
+    enum
+    {
+        maxInterceptedCallArgsCount = 100
+    };
     zval preHookArgs[maxInterceptedCallArgsCount];
 
     // The first argument to InterceptionManager::interceptedCallPreHook is $funcToInterceptId
@@ -89,16 +94,20 @@ void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_exec
                     , interceptedCallArgsCount + 1
                     , preHookArgs
                     , &preHookRetVal ) );
+    ELASTICAPM_LOG_TRACE( "Successfully finished pre-hook call. Z_TYPE( preHookRetVal ): %u", Z_TYPE( preHookRetVal ) );
 
-    g_callsToInterceptData[ funcToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
+    g_functionsToInterceptData[ funcToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
 
-    zval postHookArgs[] = { preHookRetVal, *return_value };
-    ELASTICAPM_CALL_IF_FAILED_GOTO(
-            callPhpFunctionRetVoid(
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK )
-                    , logLevel_debug
-                    , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
-                    , postHookArgs ) );
+    if ( Z_TYPE( preHookRetVal ) != IS_NULL )
+    {
+        zval postHookArgs[] = { preHookRetVal, *return_value };
+        ELASTICAPM_CALL_IF_FAILED_GOTO(
+                callPhpFunctionRetVoid(
+                        ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK )
+                        , logLevel_debug
+                        , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
+                        , postHookArgs ) );
+    }
 
     resultCode = resultSuccess;
 
@@ -186,15 +195,34 @@ void resetCallInterceptionOnRequestShutdown()
     // We restore original handlers in the reverse order
     // so that if the same function is registered for interception more than once
     // the original handler will be restored correctly
-    ELASTICAPM_FOR_EACH_BACKWARDS( i, g_nextFreeCallToInterceptId )
+    ELASTICAPM_FOR_EACH_BACKWARDS( i, g_nextFreeFunctionToInterceptId )
     {
-        CallToInterceptData* data = &( g_callsToInterceptData[ i ] );
+        CallToInterceptData* data = &( g_functionsToInterceptData[ i ] );
 
         data->funcEntry->internal_function.handler = data->originalHandler;
     }
 
-    g_nextFreeCallToInterceptId = 0;
+    g_nextFreeFunctionToInterceptId = 0;
 }
+
+bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* funcToInterceptId )
+{
+    if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
+    {
+        ELASTICAPM_LOG_ERROR( "Reached maxFunctionsToIntercept."
+                              " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
+                              , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
+        return false;
+    }
+
+    *funcToInterceptId = g_nextFreeFunctionToInterceptId ++;
+    g_functionsToInterceptData[ *funcToInterceptId ].funcEntry = funcEntry;
+    g_functionsToInterceptData[ *funcToInterceptId ].originalHandler = funcEntry->internal_function.handler;
+    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *funcToInterceptId ];
+
+    return true;
+}
+
 
 ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* funcToInterceptId )
 {
@@ -224,20 +252,43 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
         goto failure;
     }
 
-
-    if ( g_nextFreeCallToInterceptId >= maxCallsToIntercept )
+    if ( ! addToFunctionsToInterceptData( funcEntry, funcToInterceptId ) )
     {
-        ELASTICAPM_LOG_ERROR( "Reached maxCallsToIntercept."
-                              " maxCallsToIntercept: %u. g_nextFreeCallToInterceptId: %u."
-                              , maxCallsToIntercept, g_nextFreeCallToInterceptId );
         resultCode = resultFailure;
         goto failure;
     }
 
-    *funcToInterceptId = g_nextFreeCallToInterceptId ++;
-    g_callsToInterceptData[ *funcToInterceptId ].funcEntry = funcEntry;
-    g_callsToInterceptData[ *funcToInterceptId ].originalHandler = funcEntry->internal_function.handler;
-    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *funcToInterceptId ];
+    resultCode = resultSuccess;
+
+    finally:
+
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* funcToInterceptId )
+{
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
+
+    ResultCode resultCode;
+
+    zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
+    if ( funcEntry == NULL )
+    {
+        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+                              " functionName: `%s'", functionName );
+        resultCode = resultFailure;
+        goto failure;
+    }
+
+    if ( ! addToFunctionsToInterceptData( funcEntry, funcToInterceptId ) )
+    {
+        resultCode = resultFailure;
+        goto failure;
+    }
 
     resultCode = resultSuccess;
 

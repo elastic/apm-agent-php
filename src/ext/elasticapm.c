@@ -251,6 +251,28 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_function_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 1 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ functionName, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elasticapm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- funcToInterceptId
+ */
+PHP_FUNCTION( elasticapm_intercept_calls_to_internal_function )
+{
+    char* functionName = NULL;
+    size_t functionNameLength = 0;
+    uint32_t funcToInterceptId;
+
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 1, /* max_num_args: */ 1 )
+    Z_PARAM_STRING( functionName, functionNameLength )
+    ZEND_PARSE_PARAMETERS_END();
+
+    if ( elasticApmInterceptCallsToInternalFunction( functionName, &funcToInterceptId ) != resultSuccess )
+        RETURN_LONG( -1 )
+
+    RETURN_LONG( funcToInterceptId )
+}
+/* }}} */
+
 //ZEND_BEGIN_ARG_INFO_EX( elasticapm_call_intercepted_original_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 3 )
 //                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgsCount, IS_LONG, /* allow_null: */ 0 )
 //                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgs, IS_ARRAY, /* allow_null: */ 0 )
@@ -358,6 +380,7 @@ static const zend_function_entry elasticapm_functions[] =
     PHP_FE( elasticapm_is_enabled, elasticapm_no_paramters_arginfo )
     PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
     PHP_FE( elasticapm_intercept_calls_to_internal_method, elasticapm_intercept_calls_to_internal_method_arginfo )
+    PHP_FE( elasticapm_intercept_calls_to_internal_function, elasticapm_intercept_calls_to_internal_function_arginfo )
 //    PHP_FE( elasticapm_call_intercepted_original, elasticapm_call_intercepted_original_arginfo )
     PHP_FE( elasticapm_send_to_server, elasticapm_string_paramter_arginfo )
     PHP_FE( elasticapm_log, elasticapm_log_arginfo )

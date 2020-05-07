@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\CallTrackerFactoryInterface;
-use Elastic\Apm\AutoInstrument\CallTrackerInterface;
+use Elastic\Apm\AutoInstrument\OnInterceptedCallBeginInterface;
+use Elastic\Apm\AutoInstrument\OnInterceptedCallEndInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -15,8 +16,8 @@ use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
  */
 final class InterceptionManager
 {
-    /** @var CallTrackerFactoryInterface[] */
-    private static $callTrackerFactories;
+    /** @var OnInterceptedCallBeginInterface[] */
+    private static $registeredCallbacks;
 
     public static function init(): void
     {
@@ -31,12 +32,13 @@ final class InterceptionManager
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return null|CallTrackerInterface
+     * @return OnInterceptedCallEndInterface|null
      */
     public static function interceptedCallPreHook(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?CallTrackerInterface {
+    ): ?OnInterceptedCallEndInterface {
+        self::logTrace("Entered. funcToInterceptId: $funcToInterceptId", __LINE__, __FUNCTION__);
         return self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
     }
 
@@ -45,12 +47,16 @@ final class InterceptionManager
      *
      * @noinspection PhpUnused
      *
-     * @param CallTrackerInterface $callTracker
-     * @param mixed                $returnValue Return value of the intercepted call
+     * @param OnInterceptedCallEndInterface $onInterceptedCallEnd
+     * @param mixed|Throwable               $returnValueOrThrown Return value of the intercepted call or thrown object
      */
-    public static function interceptedCallPostHook(CallTrackerInterface $callTracker, $returnValue): void
-    {
-        $callTracker->onCallNormalEnd($returnValue);
+    public static function interceptedCallPostHook(
+        OnInterceptedCallEndInterface $onInterceptedCallEnd,
+        $returnValueOrThrown
+    ): void {
+        self::logTrace("Entered", __LINE__, __FUNCTION__);
+        // TODO: Sergey Kleyman: Implement: getting real value for hasExitedByException
+        $onInterceptedCallEnd->onInterceptedCallEnd(/* hasExitedByException */ false, $returnValueOrThrown);
     }
 
     // /**
@@ -96,13 +102,13 @@ final class InterceptionManager
     {
         $registerCtx = new class implements RegistrationContextInterface {
 
-            /** @var CallTrackerFactoryInterface[] */
-            public $callTrackerFactories = [];
+            /** @var OnInterceptedCallBeginInterface[] */
+            public $registeredCallbacks = [];
 
             public function interceptCallsToInternalMethod(
                 string $className,
                 string $methodName,
-                CallTrackerFactoryInterface $callTrackerFactory
+                OnInterceptedCallBeginInterface $onInterceptedCallBegin
             ): void {
                 /**
                  * elasticapm_* functions are provided by the elasticapm extension
@@ -112,27 +118,85 @@ final class InterceptionManager
                  */
                 $funcToInterceptId = \elasticapm_intercept_calls_to_internal_method($className, $methodName);
                 if ($funcToInterceptId >= 0) {
-                    $this->callTrackerFactories[$funcToInterceptId] = $callTrackerFactory;
+                    $this->registeredCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
+                }
+            }
+
+            public function interceptCallsToInternalFunction(
+                string $functionName,
+                OnInterceptedCallBeginInterface $onInterceptedCallBegin
+            ): void {
+                /**
+                 * elasticapm_* functions are provided by the elasticapm extension
+                 *
+                 * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+                 * @phpstan-ignore-next-line
+                 */
+                $funcToInterceptId = \elasticapm_intercept_calls_to_internal_function($functionName);
+                if ($funcToInterceptId >= 0) {
+                    $this->registeredCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
                 }
             }
         };
 
-        BuiltinAutoInstrumentations::register($registerCtx);
+        (new BuiltinPlugin())->register($registerCtx);
         // self::loadConfiguredPlugins();
 
-        self::$callTrackerFactories = $registerCtx->callTrackerFactories;
+        self::$registeredCallbacks = $registerCtx->registeredCallbacks;
     }
 
     /**
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return null|CallTrackerInterface
+     * @return OnInterceptedCallEndInterface|null
      */
     private static function onInterceptedCallBegin(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?CallTrackerInterface {
-        return self::$callTrackerFactories[$funcToInterceptId]->onCallBegin(...$interceptedCallArgs);
+    ): ?OnInterceptedCallEndInterface {
+        return self::$registeredCallbacks[$funcToInterceptId]->onInterceptedCallBegin(...$interceptedCallArgs);
+    }
+
+    // TODO: Sergey Kleyman: Switch to Logger
+    private static function logTrace(
+        string $message,
+        int $sourceCodeLine,
+        string $sourceCodeFunc
+    ): void {
+        /** @noinspection PhpUndefinedConstantInspection */
+        self::log(
+        /**
+         * ELASTICAPM_* constants are provided by the elasticapm extension
+         *
+         * @phpstan-ignore-next-line
+         */
+            ELASTICAPM_LOG_LEVEL_TRACE,
+            $message,
+            $sourceCodeLine,
+            $sourceCodeFunc
+        );
+    }
+
+    private static function log(
+        int $statementLevel,
+        string $message,
+        int $sourceCodeLine,
+        string $sourceCodeFunc
+    ): void {
+        /**
+         * elasticapm_* functions are provided by the elasticapm extension
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        \elasticapm_log(
+            0 /* $isForced */,
+            $statementLevel,
+            __FILE__,
+            $sourceCodeLine,
+            $sourceCodeFunc,
+            $message
+        );
     }
 }

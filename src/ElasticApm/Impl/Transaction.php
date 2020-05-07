@@ -122,6 +122,9 @@ final class Transaction extends TransactionData implements TransactionInterface
             return;
         }
 
+        ($loggerProxy = $this->logger->ifEnabledDebug())
+        && $loggerProxy->log('Transaction ended', [], __LINE__, __METHOD__);
+
         $this->getTracer()->getEventSink()->consumeTransactionData($this);
 
         if ($this->getTracer()->getCurrentTransaction() === $this) {
