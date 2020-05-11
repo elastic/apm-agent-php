@@ -99,17 +99,19 @@ void logWithLogger(
         Logger* logger /* <- argument #1 */
         , bool isForced
         , LogLevel statementLevel
+        , StringView category
         , StringView filePath
         , UInt lineNumber
         , StringView funcName
         , String msgPrintfFmt /* <- printf format is argument #7 */
-        , ...                /* <- arguments for printf format placeholders start from argument #8 */
-) ELASTICAPM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 7, /* printfFmtArgsPos: */ 8 );
+        , ...                /* <- arguments for printf format placeholders start from argument #9 */
+) ELASTICAPM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 8, /* printfFmtArgsPos: */ 9 );
 
 void vLogWithLogger(
         Logger* logger
         , bool isForced
         , LogLevel statementLevel
+        , StringView category
         , StringView filePath
         , UInt lineNumber
         , StringView funcName
@@ -130,6 +132,7 @@ Logger* getGlobalLogger();
                 globalStateLogger, \
                 /* isForced: */ false, \
                 (statementLevel), \
+                ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CURRENT_LOG_CATEGORY ), \
                 ELASTICAPM_STRING_LITERAL_TO_VIEW( __FILE__ ), \
                 __LINE__, \
                 ELASTICAPM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ), \
@@ -167,6 +170,7 @@ Logger* getGlobalLogger();
             getGlobalLogger(), \
             /* isForced: */ true, \
             logLevel_critical, \
+            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CURRENT_LOG_CATEGORY ), \
             ELASTICAPM_STRING_LITERAL_TO_VIEW( __FILE__ ), \
             __LINE__, \
             ELASTICAPM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ), \
@@ -184,3 +188,15 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
 
     return streamString( logLevelNames[ level ], txtOutStream );
 }
+
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_INFRA "Ext-Infra"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_CONFIG "Configuration"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_API "Ext-API"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_ASSERT "Assert"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_LIFECYCLE "Lifecycle"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_LOG "Log"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_MEM_TRACKER "MemoryTracker"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_PLATFORM "Platform"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_SUPPORT "Supportability"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_SYS_METRICS "SystemMetrics"
+#define ELASTICAPM_CURRENT_LOG_CATEGORY_UTIL "Util"

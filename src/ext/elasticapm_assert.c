@@ -15,6 +15,8 @@
 
 #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_ASSERT
+
 const char* assertLevelNames[ numberOfAssertLevels ] =
 {
     [ assertLevel_off ] = "OFF",
@@ -43,6 +45,7 @@ void vElasticApmAssertFailed(
     vLogWithLogger( getGlobalLogger()
                     , /* isForced: */ true
                     , logLevel_critical
+                    , ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CURRENT_LOG_CATEGORY )
                     , makeStringViewFromString( filePath )
                     , lineNumber
                     , makeStringViewFromString( funcName )

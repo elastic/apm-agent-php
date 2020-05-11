@@ -154,6 +154,56 @@ final class TextUtil
         return $result;
     }
 
+    public static function snakeToCamelCase(string $input): string
+    {
+        $inputLen = strlen($input);
+        $result = '';
+        /** @var int */
+        $inputRemainderPos = 0;
+        while (true) {
+            $underscorePos = strpos($input, '_', $inputRemainderPos);
+            if ($underscorePos === false) {
+                break;
+            }
+
+            $result .= substr($input, $inputRemainderPos, $underscorePos - $inputRemainderPos);
+
+            $nonUnderscorePos = null;
+            for ($i = $underscorePos; $i !== $inputLen; ++$i) {
+                if ($input[$i] !== '_') {
+                    $nonUnderscorePos = $i;
+                    break;
+                }
+            }
+
+            if (is_null($nonUnderscorePos)) {
+                $inputRemainderPos = strlen($input);
+                break;
+            }
+
+            // Don't uppercase the first letter
+            if (empty($result)) {
+                $result .= $input[$nonUnderscorePos];
+            } else {
+                $result .= chr(self::toUpperCaseLetter(ord($input[$nonUnderscorePos])));
+            }
+            if ($nonUnderscorePos === $inputRemainderPos - 1) {
+                break;
+            }
+            $inputRemainderPos = $nonUnderscorePos + 1;
+        }
+
+        if ($inputRemainderPos === strlen($input)) {
+            return $result;
+        }
+
+        if (empty($result)) {
+            return $input;
+        }
+
+        return $result . substr($input, $inputRemainderPos, $inputLen - $inputRemainderPos);
+    }
+
     public static function camelToPascalCase(string $input): string
     {
         if (empty($input)) {

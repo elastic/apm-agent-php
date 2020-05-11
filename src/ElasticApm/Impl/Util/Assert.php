@@ -16,6 +16,12 @@ final class Assert
     /** @var int */
     private static $maxEnabledLevel = AssertLevel::O_1;
 
+    public static function configure(int $maxEnabledLevel): void
+    {
+        // TODO: Sergey Kleyman: Configure based on input configuration
+        self::$maxEnabledLevel = $maxEnabledLevel;
+    }
+
     public static function ifEnabled(): ?EnabledAssertProxy
     {
         return self::ifEnabledLevel(AssertLevel::O_1);
@@ -23,6 +29,6 @@ final class Assert
 
     private static function ifEnabledLevel(int $statementLevel): ?EnabledAssertProxy
     {
-        return (self::$maxEnabledLevel >= $statementLevel) ? new EnabledAssertProxy($statementLevel) : null;
+        return (self::$maxEnabledLevel >= $statementLevel) ? new EnabledAssertProxy() : null;
     }
 }

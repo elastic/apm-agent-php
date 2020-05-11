@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests;
 
-use Elastic\Apm\Impl\ClockInterface;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Tests\Util\MockClock;
-use Elastic\Apm\Tests\Util\MockEventSink;
 
 class TimeRelatedApiUsingMockClockTest extends Util\TestCaseBase
 {
     /** @var MockClock */
     protected $mockClock;
 
-    public function __construct()
+    public function setUp(): void
     {
         $this->mockClock = new MockClock();
-        parent::__construct(
+        $this->setUpTestEnv(
             function (TracerBuilder $builder): void {
                 $builder->withClock($this->mockClock);
             }

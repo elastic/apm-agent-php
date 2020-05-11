@@ -12,11 +12,6 @@ use Elastic\Apm\Tests\Deserialization\ServerApiSchemaValidator;
 
 class ServerApiSchemaValidationTest extends Util\TestCaseBase
 {
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
     private function createSerializedTransaction(): string
     {
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');

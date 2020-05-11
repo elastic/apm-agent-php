@@ -13,6 +13,8 @@
 
 #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_MEM_TRACKER
+
 #include <stddef.h>
 #include "util.h"
 #include "TextOutputStream.h"

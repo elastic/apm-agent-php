@@ -15,9 +15,9 @@ use Elastic\Apm\TransactionInterface;
 
 class NoopEventsTest extends Util\TestCaseBase
 {
-    public function __construct()
+    public function setUp(): void
     {
-        parent::__construct(
+        $this->setUpTestEnv(
             function (TracerBuilder $builder): void {
                 $builder->withEnabled(false);
             }

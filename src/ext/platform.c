@@ -26,6 +26,8 @@
 #   include <execinfo.h>
 #endif
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_PLATFORM
+
 pid_t getCurrentProcessId()
 {
     #ifdef PHP_WIN32

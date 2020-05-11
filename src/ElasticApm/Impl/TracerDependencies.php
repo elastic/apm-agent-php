@@ -19,11 +19,15 @@ final class TracerDependencies
     /** @var ?EventSinkInterface */
     public $eventSink = null;
 
+    /** @var ?Log\SinkInterface */
+    public $logSink = null;
+
     public function __toString(): string
     {
         $builder = new ObjectToStringBuilder();
         $builder->add('clock', self::depToString($this->clock));
         $builder->add('eventSink', self::depToString($this->eventSink));
+        $builder->add('logSink', self::depToString($this->logSink));
         return $builder->build();
     }
 

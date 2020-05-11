@@ -39,10 +39,10 @@ final class Transaction extends TransactionData implements TransactionInterface
 
         $this->setName($name);
 
-        $this->logger = $this->createLogger(__CLASS__, __FILE__);
+        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
-        ($loggerProxy = $this->logger->ifEnabledDebug())
-        && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId], __LINE__, __METHOD__);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId]);
     }
 
     public function addStartedSpan(): void
@@ -122,8 +122,8 @@ final class Transaction extends TransactionData implements TransactionInterface
             return;
         }
 
-        ($loggerProxy = $this->logger->ifEnabledDebug())
-        && $loggerProxy->log('Transaction ended', [], __LINE__, __METHOD__);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Transaction ended', []);
 
         $this->getTracer()->getEventSink()->consumeTransactionData($this);
 

@@ -25,6 +25,8 @@
 #include "elasticapm_alloc.h"
 #include "time_util.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_CONFIG
+
 enum ParsedOptionValueType
 {
     parsedOptionValueType_undefined = 0,

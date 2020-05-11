@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\OnInterceptedCallBeginInterface;
-use Elastic\Apm\AutoInstrument\OnInterceptedCallEndInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
+use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Tracer;
 use Throwable;
 
 /**
@@ -16,11 +17,17 @@ use Throwable;
  */
 final class InterceptionManager
 {
-    /** @var OnInterceptedCallBeginInterface[] */
-    private static $registeredCallbacks;
+    /** @var callable[] */
+    private static $onInterceptedCallBeginCallbacks;
 
-    public static function init(): void
+    /** @var Logger */
+    private static $logger;
+
+    public static function init(Tracer $tracer): void
     {
+        self::$logger = $tracer->loggerFactory()
+                               ->loggerForClass(LogCategory::INTERCEPTION, __NAMESPACE__, __CLASS__, __FILE__);
+
         self::loadPlugins();
     }
 
@@ -32,14 +39,19 @@ final class InterceptionManager
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return OnInterceptedCallEndInterface|null
+     * @return OnInterceptedCallEndWrapper|null
      */
     public static function interceptedCallPreHook(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?OnInterceptedCallEndInterface {
-        self::logTrace("Entered. funcToInterceptId: $funcToInterceptId", __LINE__, __FUNCTION__);
-        return self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
+    ): ?OnInterceptedCallEndWrapper {
+        ($loggerProxy = self::$logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['funcToInterceptId' => $funcToInterceptId]);
+
+        $onInterceptedCallEnd = self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
+        return is_null($onInterceptedCallEnd)
+            ? null
+            : new OnInterceptedCallEndWrapper($funcToInterceptId, $onInterceptedCallEnd);
     }
 
     /**
@@ -47,16 +59,20 @@ final class InterceptionManager
      *
      * @noinspection PhpUnused
      *
-     * @param OnInterceptedCallEndInterface $onInterceptedCallEnd
-     * @param mixed|Throwable               $returnValueOrThrown Return value of the intercepted call or thrown object
+     * @param OnInterceptedCallEndWrapper $onInterceptedCallEndWrapper
+     * @param mixed|Throwable             $returnValueOrThrown Return value of the intercepted call or thrown object
      */
     public static function interceptedCallPostHook(
-        OnInterceptedCallEndInterface $onInterceptedCallEnd,
+        OnInterceptedCallEndWrapper $onInterceptedCallEndWrapper,
         $returnValueOrThrown
     ): void {
-        self::logTrace("Entered", __LINE__, __FUNCTION__);
-        // TODO: Sergey Kleyman: Implement: getting real value for hasExitedByException
-        $onInterceptedCallEnd->onInterceptedCallEnd(/* hasExitedByException */ false, $returnValueOrThrown);
+        ($loggerProxy = self::$logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['funcToInterceptId' => $onInterceptedCallEndWrapper->funcToInterceptId]);
+
+        ($onInterceptedCallEndWrapper->wrappedOnInterceptedCallEndCallback)(
+            false /* hasExitedByException */,
+            $returnValueOrThrown
+        );
     }
 
     // /**
@@ -102,13 +118,13 @@ final class InterceptionManager
     {
         $registerCtx = new class implements RegistrationContextInterface {
 
-            /** @var OnInterceptedCallBeginInterface[] */
-            public $registeredCallbacks = [];
+            /** @var callable[] */
+            public $onInterceptedCallBeginCallbacks;
 
             public function interceptCallsToMethod(
                 string $className,
                 string $methodName,
-                OnInterceptedCallBeginInterface $onInterceptedCallBegin
+                callable $onInterceptedCallBegin
             ): void {
                 /**
                  * elasticapm_* functions are provided by the elasticapm extension
@@ -118,13 +134,13 @@ final class InterceptionManager
                  */
                 $funcToInterceptId = \elasticapm_intercept_calls_to_internal_method($className, $methodName);
                 if ($funcToInterceptId >= 0) {
-                    $this->registeredCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
+                    $this->onInterceptedCallBeginCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
                 }
             }
 
             public function interceptCallsToFunction(
                 string $functionName,
-                OnInterceptedCallBeginInterface $onInterceptedCallBegin
+                callable $onInterceptedCallBegin
             ): void {
                 /**
                  * elasticapm_* functions are provided by the elasticapm extension
@@ -134,7 +150,7 @@ final class InterceptionManager
                  */
                 $funcToInterceptId = \elasticapm_intercept_calls_to_internal_function($functionName);
                 if ($funcToInterceptId >= 0) {
-                    $this->registeredCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
+                    $this->onInterceptedCallBeginCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
                 }
             }
         };
@@ -142,61 +158,21 @@ final class InterceptionManager
         (new BuiltinPlugin())->register($registerCtx);
         // self::loadConfiguredPlugins();
 
-        self::$registeredCallbacks = $registerCtx->registeredCallbacks;
+        self::$onInterceptedCallBeginCallbacks = $registerCtx->onInterceptedCallBeginCallbacks;
     }
 
     /**
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return OnInterceptedCallEndInterface|null
+     * @return callable|null
      */
     private static function onInterceptedCallBegin(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?OnInterceptedCallEndInterface {
-        return self::$registeredCallbacks[$funcToInterceptId]->onInterceptedCallBegin(...$interceptedCallArgs);
-    }
-
-    // TODO: Sergey Kleyman: Switch to Logger
-    private static function logTrace(
-        string $message,
-        int $sourceCodeLine,
-        string $sourceCodeFunc
-    ): void {
-        /** @noinspection PhpUndefinedConstantInspection */
-        self::log(
-        /**
-         * ELASTICAPM_* constants are provided by the elasticapm extension
-         *
-         * @phpstan-ignore-next-line
-         */
-            ELASTICAPM_LOG_LEVEL_TRACE,
-            $message,
-            $sourceCodeLine,
-            $sourceCodeFunc
-        );
-    }
-
-    private static function log(
-        int $statementLevel,
-        string $message,
-        int $sourceCodeLine,
-        string $sourceCodeFunc
-    ): void {
-        /**
-         * elasticapm_* functions are provided by the elasticapm extension
-         *
-         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-         * @phpstan-ignore-next-line
-         */
-        \elasticapm_log(
-            0 /* $isForced */,
-            $statementLevel,
-            __FILE__,
-            $sourceCodeLine,
-            $sourceCodeFunc,
-            $message
-        );
+    ): ?callable {
+        /** @var callable */
+        $onInterceptedCallBegin = self::$onInterceptedCallBeginCallbacks[$funcToInterceptId];
+        return $onInterceptedCallBegin(...$interceptedCallArgs);
     }
 }

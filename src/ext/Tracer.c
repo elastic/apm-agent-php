@@ -11,6 +11,8 @@
 
 #include "Tracer.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_INFRA
+
 #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
 
 AssertLevel getGlobalAssertLevel()

@@ -12,7 +12,7 @@ namespace Elastic\Apm\Impl\Util;
 class ObjectToStringBuilder
 {
     /** @var int */
-    private const MAX_HORIZONTAL_LENGTH = 80;
+    private const MAX_HORIZONTAL_LENGTH = 200;
 
     /** @var string|null */
     private $type;
@@ -28,6 +28,7 @@ class ObjectToStringBuilder
      *
      * @param string|null $type
      * @param mixed       $initialKeyValuePairs
+     * @param bool        $shouldFormatOnlyHorizontally
      */
     public function __construct(
         ?string $type = null,
@@ -36,7 +37,7 @@ class ObjectToStringBuilder
     ) {
         $this->type = $type;
         $this->shouldFormatOnlyHorizontally = $shouldFormatOnlyHorizontally;
-        $this->addAll($initialKeyValuePairs);
+        $this->keyValuePairs = $initialKeyValuePairs;
     }
 
     /**
@@ -107,12 +108,12 @@ class ObjectToStringBuilder
         if (!is_null($this->type)) {
             $result .= $this->type;
         }
-        $result .= PHP_EOL;
         foreach ($this->keyValuePairs as $key => $value) {
+            $result .= PHP_EOL;
             $valueAsString = $keyValueAsStringPairs[$key] ?? strval($value);
             $result .= TextUtil::indent($key);
             $result .= ': ';
-            $result .= TextUtil::indent($valueAsString, /* level: */ 1, /* prefixFirstLine: */ false);
+            $result .= $valueAsString;
         }
 
         return $result;

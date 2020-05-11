@@ -33,4 +33,25 @@ final class ArrayUtil
         $valueDst = $array[$key];
         return true;
     }
+
+    /**
+     * @param string       $key
+     * @param array<mixed> $array
+     * @param mixed        $fallbackValue
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T[] $array
+     * @phpstan-param   T $fallbackValue
+     * @phpstan-return  T
+     */
+    public static function getValueIfKeyExistsElse(string $key, array $array, $fallbackValue)
+    {
+        if (!array_key_exists($key, $array)) {
+            return $fallbackValue;
+        }
+
+        return $array[$key];
+    }
 }

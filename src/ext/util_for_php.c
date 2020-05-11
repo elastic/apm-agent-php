@@ -20,6 +20,8 @@
 #include "time_util.h"
 #include "ConfigManager.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_UTIL
+
 ResultCode loadPhpFile( const char* filename TSRMLS_DC )
 {
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );

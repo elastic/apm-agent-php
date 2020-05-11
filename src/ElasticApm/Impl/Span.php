@@ -54,12 +54,12 @@ final class Span extends SpanData implements SpanInterface
 
         $this->start = TimeUtil::calcDuration($containingTransaction->getTimestamp(), $this->getTimestamp());
 
-        $this->logger = $this->createLogger(__CLASS__, __FILE__);
+        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
         $containingTransaction->addStartedSpan();
 
-        ($loggerProxy = $this->logger->ifEnabledDebug())
-        && $loggerProxy->log('Span created', ['parentId' => $this->parentId], __LINE__, __METHOD__);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
     }
 
     /** @inheritDoc */
@@ -88,8 +88,8 @@ final class Span extends SpanData implements SpanInterface
             return;
         }
 
-        ($loggerProxy = $this->logger->ifEnabledDebug())
-        && $loggerProxy->log('Span ended', [], __LINE__, __METHOD__);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Span ended', []);
 
         $this->getTracer()->getEventSink()->consumeSpanData($this);
 

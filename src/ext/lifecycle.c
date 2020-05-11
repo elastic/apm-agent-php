@@ -30,6 +30,8 @@
 #include "elasticapm_alloc.h"
 #include "elasticapm_API.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_LIFECYCLE
+
 static const char JSON_METADATA[] =
         "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"php\"}}}}\n";
 static const char JSON_METRICSET[] =

@@ -7,6 +7,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\TransactionInterface;
@@ -52,9 +53,20 @@ final class BootstrapShutdownHelper
 
         try {
             self::registerAutoloader();
-            self::buildTracer();
+
+            /** @var Tracer|null */
+            $tracer = self::buildTracer();
+            if (is_null($tracer)) {
+                self::logDebug(
+                    'Successfully completed bootstrap sequence - tracing is disabled',
+                    __LINE__,
+                    __FUNCTION__
+                );
+                return true;
+            }
+
             self::beginTransactionForRequest();
-            InterceptionManager::init();
+            InterceptionManager::init($tracer);
         } catch (Throwable $ex) {
             self::logCritical(
                 'One of the steps in bootstrap sequence failed.'
@@ -130,7 +142,7 @@ final class BootstrapShutdownHelper
         $classSrcFileAbsolute = self::$elasticApmSrcDir . DIRECTORY_SEPARATOR . $classSrcFileRelative;
 
         if (file_exists($classSrcFileAbsolute)) {
-            self::logTrace("require `$classSrcFileAbsolute' ...", __LINE__, __FUNCTION__);
+            self::logTrace("About to execute require `$classSrcFileAbsolute' ...", __LINE__, __FUNCTION__);
             /** @noinspection PhpIncludeInspection */
             require $classSrcFileAbsolute;
         } else {
@@ -143,7 +155,10 @@ final class BootstrapShutdownHelper
         }
     }
 
-    private static function buildTracer(): void
+    /**
+     * @return mixed
+     */
+    private static function buildTracer()
     {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!GlobalTracerHolder::isSet())
@@ -151,6 +166,8 @@ final class BootstrapShutdownHelper
             '!GlobalTracerHolder::isSet()',
             ['GlobalTracerHolder::get()' => GlobalTracerHolder::get()]
         );
+
+        return GlobalTracerHolder::get()->isNoop() ? null : GlobalTracerHolder::get();
     }
 
     private static function beginTransactionForRequest(): void
@@ -158,16 +175,13 @@ final class BootstrapShutdownHelper
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!isset(self::$transactionForRequest))
         && $assertProxy->info(
-            'DUMMY - !isset(self::$transactionForRequest)',
+            '!isset(self::$transactionForRequest)',
             ['transactionForRequest' => self::$transactionForRequest]
         );
 
         $timestamp = null;
         $timestampAsString = '';
-        if (
-            ArrayUtil::getValueIfKeyExists('REQUEST_TIME_FLOAT', $_SERVER, /* ref */ $timestampAsString)
-            // && is_numeric($timestampAsString)
-        ) {
+        if (ArrayUtil::getValueIfKeyExists('REQUEST_TIME_FLOAT', $_SERVER, /* ref */ $timestampAsString)) {
             $timestampInSeconds = floatval($timestampAsString);
             $timestamp = $timestampInSeconds * 1000000;
             if (PHP_INT_SIZE >= 8) {
@@ -284,6 +298,7 @@ final class BootstrapShutdownHelper
         \elasticapm_log(
             0 /* $isForced */,
             $statementLevel,
+            'Bootstrap' /* category */,
             __FILE__,
             $sourceCodeLine,
             $sourceCodeFunc,

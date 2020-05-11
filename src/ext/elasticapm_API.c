@@ -17,6 +17,8 @@
 #include "elasticapm_alloc.h"
 #include "numbered_intercepting_callbacks.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_API
+
 bool elasticApmIsEnabled()
 {
     const bool result = getTracerCurrentConfigSnapshot( getGlobalTracer() )->enabled;

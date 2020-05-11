@@ -22,6 +22,8 @@
 #include "ConfigManager.h"
 #include "elasticapm_assert.h"
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_INFRA
+
 ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
 Tracer* getGlobalTracer()
@@ -312,9 +314,10 @@ PHP_FUNCTION( elasticapm_send_to_server )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_log_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 6 )
+ZEND_BEGIN_ARG_INFO_EX( elasticapm_log_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 7 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, isForced, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, level, IS_LONG, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, category, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, file, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, line, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, func, IS_STRING, /* allow_null: */ 0 )
@@ -324,6 +327,7 @@ ZEND_END_ARG_INFO()
 /* {{{ elasticapm_log(
  *      int $isForced,
  *      int $level,
+ *      string $category,
  *      string $file,
  *      int $line,
  *      string $func,
@@ -336,15 +340,18 @@ PHP_FUNCTION( elasticapm_log )
     zend_long level = 0;
     char* file = NULL;
     size_t fileLength = 0;
+    char* category = NULL;
+    size_t categoryLength = 0;
     zend_long line = 0;
     char* func = NULL;
     size_t funcLength = 0;
     char* message = NULL;
     size_t messageLength = 0;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 6, /* max_num_args: */ 6 )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 7, /* max_num_args: */ 7 )
     Z_PARAM_LONG( isForced )
     Z_PARAM_LONG( level )
+    Z_PARAM_STRING( category, categoryLength )
     Z_PARAM_STRING( file, fileLength )
     Z_PARAM_LONG( line )
     Z_PARAM_STRING( func, funcLength )
@@ -355,6 +362,7 @@ PHP_FUNCTION( elasticapm_log )
             getGlobalLogger()
             , /* isForced: */ ( isForced != 0 )
             , /* statementLevel: */ (LogLevel) level
+            , /* category: */ makeStringView( category, categoryLength )
             , /* filePath: */ makeStringView( file, fileLength )
             , /* lineNumber: */ (UInt) line
             , /* funcName: */ makeStringView( func, funcLength )

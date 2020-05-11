@@ -7,14 +7,12 @@ namespace Elastic\Apm\Tests\Util;
 use Closure;
 use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\Deserialization\SpanDataDeserializer;
 use Elastic\Apm\TransactionDataInterface;
 use Jchook\AssertThrows\AssertThrows;
 use PHPUnit\Framework\Constraint\IsEqual;
@@ -32,57 +30,23 @@ class TestCaseBase extends TestCase
     /** @var TracerInterface */
     protected $tracer;
 
-    /** @var Closure|null */
-    private $tracerBuildCallback = null;
-
-    /** @var bool */
-    private $shouldDeferTestEnvSetUp;
-
-    /**
-     * TestCaseBase constructor.
-     *
-     * @param Closure|null|bool $arg
-     */
-    public function __construct($arg = null)
-    {
-        parent::__construct();
-
-        if (!is_null($arg)) {
-            if (is_bool($arg)) {
-                $this->shouldDeferTestEnvSetUp = $arg;
-            } else {
-                $this->tracerBuildCallback = $arg;
-            }
-        }
-    }
-
     public function setUp(): void
     {
-        if (!$this->shouldDeferTestEnvSetUp) {
-            self::setUpTestEnvImpl(
-                $this->tracerBuildCallback ?? function (TracerBuilder $builder) {
-                }
-            );
-        }
+        $this->setUpTestEnv();
     }
 
-    private function setUpTestEnvImpl(Closure $tracerBuildCallback, bool $shouldCreateMockEventSink = true): void
+    protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
         $builder = TracerBuilder::startNew();
         if ($shouldCreateMockEventSink) {
             $this->mockEventSink = new MockEventSink();
             $builder->withEventSink($this->mockEventSink);
         }
-        $tracerBuildCallback($builder);
+        if (!is_null($tracerBuildCallback)) {
+            $tracerBuildCallback($builder);
+        }
         $this->tracer = $builder->build();
         GlobalTracerHolder::set($this->tracer);
-    }
-
-    public function setUpTestEnv(Closure $tracerBuildCallback, bool $shouldCreateMockEventSink = true): void
-    {
-        $this->assertTrue($this->shouldDeferTestEnvSetUp);
-        $this->assertNull($this->tracerBuildCallback);
-        $this->setUpTestEnvImpl($tracerBuildCallback, $shouldCreateMockEventSink);
     }
 
     public function tearDown(): void

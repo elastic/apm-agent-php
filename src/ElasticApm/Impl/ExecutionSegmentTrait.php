@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
@@ -54,12 +55,13 @@ trait ExecutionSegmentTrait
         $this->id = IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
-        $this->logger = $this->createLogger(__CLASS__, __FILE__);
+        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
     }
 
-    protected function createLogger(string $className, string $sourceCodeFile): Logger
+    protected function createLogger(string $namespace, string $className, string $sourceCodeFile): Logger
     {
-        $logger = $this->tracer->ambientContext()->loggerFactory->loggerForClass($className, $sourceCodeFile);
+        $logger = $this->tracer
+            ->loggerFactory()->loggerForClass(LogCategory::PUBLIC_API, $namespace, $className, $sourceCodeFile);
         $logger->addKeyValueToAttachedContext('Id', $this->getId());
         $logger->addKeyValueToAttachedContext('TraceId', $this->getId());
         return $logger;
@@ -132,12 +134,10 @@ trait ExecutionSegmentTrait
     public function setLabel(string $key, $value): void
     {
         if (!ExecutionSegmentData::doesValueHaveSupportedLabelType($value)) {
-            ($loggerProxy = $this->logger->ifEnabledError())
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Value for label is of unsupported type - it will be discarded',
-                ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value],
-                __LINE__,
-                __METHOD__
+                ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value]
             );
             return;
         }

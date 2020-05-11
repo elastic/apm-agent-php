@@ -9,7 +9,7 @@ namespace Elastic\Apm\Impl\Util;
  *
  * @internal
  */
-class AssertException extends InternalFailureException
+final class AssertException extends InternalFailureException
 {
     public function __construct(string $message)
     {

@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\ServerComm\EventSender;
@@ -33,8 +34,8 @@ final class Tracer implements TracerInterface
     /** @var Log\Backend */
     private $logBackend;
 
-    /** @var AmbientContext */
-    private $ambientContext;
+    /** @var LoggerFactory */
+    private $loggerFactory;
 
     /** @var Logger */
     private $logger;
@@ -49,14 +50,15 @@ final class Tracer implements TracerInterface
         $this->clock = $providedDependencies->clock ?? Clock::instance();
         $this->eventSink = $providedDependencies->eventSink ?? new EventSender();
 
-        $this->logBackend = new Log\Backend();
-        $this->ambientContext = new AmbientContext(new LoggerFactory($this->logBackend));
-        $this->logger = $this->ambientContext->loggerFactory->loggerForClass(__CLASS__, __FILE__);
+        $this->logBackend = new Log\Backend($providedDependencies->logSink);
+        $this->loggerFactory = new LoggerFactory($this->logBackend);
+        $this->logger = $this->loggerFactory
+            ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
 
         $this->currentTransaction = null;
 
-        ($loggerProxy = $this->logger->ifEnabledDebug())
-        && $loggerProxy->log('Tracer created', ['providedDependencies' => $providedDependencies], __LINE__, __METHOD__);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Tracer created', ['providedDependencies' => $providedDependencies]);
 
         $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata());
     }
@@ -139,9 +141,9 @@ final class Tracer implements TracerInterface
         return TextUtil::ensureMaxLength($nonKeywordString, Constants::NON_KEYWORD_STRING_MAX_LENGTH);
     }
 
-    public function ambientContext(): AmbientContext
+    public function loggerFactory(): LoggerFactory
     {
-        return $this->ambientContext;
+        return $this->loggerFactory;
     }
 
     public function __toString(): string

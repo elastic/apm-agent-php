@@ -24,10 +24,10 @@ final class DbgUtil
 
         $stackFrame = $stackFrames[$callerStackFrameIndex];
         return new CallerInfo(
-            $stackFrame['file'],
-            (int)$stackFrame['line'],
-            $stackFrame['class'] ?? null,
-            $stackFrame['function']
+            ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null),
+            ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, null),
+            ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null),
+            ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, null)
         );
     }
 
@@ -112,33 +112,50 @@ final class DbgUtil
     private static function formatCurrentStackFrame(array $stackFrame): string
     {
         $result = '';
-        if (array_key_exists('class', $stackFrame)) {
-            $result .= $stackFrame['class'];
+        if (!is_null($className = ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null))) {
+            $result .= $className;
             $result .= '::';
         }
-        $result .= $stackFrame['function'];
+
+        $result .= ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, '<UNKNOWN FUNCTION>');
+
         $result .= ' called at [';
-        $result .= basename($stackFrame['file']);
+        if (!is_null($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null))) {
+            $result .= self::formatSourceCodeFilePath($srcFile);
+        } else {
+            $result .= '<UNKNOWN FILE>';
+        }
         $result .= ':';
-        $result .= $stackFrame['line'];
+        $result .= ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, '<UNKNOWN LINE>');
         $result .= ']';
-        if (array_key_exists('object', $stackFrame)) {
+
+        if (!is_null($callThisObj = ArrayUtil::getValueIfKeyExistsElse('object', $stackFrame, null))) {
             $result .= ' | this: ';
-            $result .= self::formatValue($stackFrame['object']);
+            $result .= self::formatValue($callThisObj);
         }
-        $isFirstArg = true;
-        foreach ($stackFrame['args'] as $arg) {
-            if ($isFirstArg) {
-                $isFirstArg = false;
-                $result .= ' | args[';
-                $result .= count($stackFrame['args']);
-                $result .= ']: ';
-            } else {
-                $result .= ', ';
+
+        if (!is_null($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))) {
+            $isFirstArg = true;
+            foreach ($callArgs as $arg) {
+                if ($isFirstArg) {
+                    $isFirstArg = false;
+                    $result .= ' | args[';
+                    $result .= count($callArgs);
+                    $result .= ']: ';
+                } else {
+                    $result .= ', ';
+                }
+                $result .= self::formatValue($arg);
             }
-            $result .= self::formatValue($arg);
         }
+
         return $result;
+    }
+
+    public static function formatSourceCodeFilePath(string $srcFile): string
+    {
+        // TODO: Sergey Kleyman: Implement: cutoff only shared prefix
+        return basename($srcFile);
     }
 
     public static function formatCurrentStackTrace(int $numberOfStackFramesToSkip): string

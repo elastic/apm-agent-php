@@ -19,8 +19,12 @@ final class LoggerFactory
         $this->backend = $backend;
     }
 
-    public function loggerForClass(string $className, string $sourceCodeFile): Logger
-    {
-        return new Logger($className, $sourceCodeFile, $this->backend);
+    public function loggerForClass(
+        string $category,
+        string $namespace,
+        string $className,
+        string $sourceCodeFile
+    ): Logger {
+        return new Logger($category, $namespace, $className, $sourceCodeFile, $this->backend);
     }
 }

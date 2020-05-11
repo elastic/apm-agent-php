@@ -11,23 +11,41 @@ namespace Elastic\Apm\Impl\Util;
  */
 final class CallerInfo
 {
-    /** @var string */
+    /** @var string|null */
     public $file;
 
-    /** @var int */
+    /** @var int|null */
     public $line;
 
     /** @var string|null */
     public $class;
 
-    /** @var string */
+    /** @var string|null */
     public $function;
 
-    public function __construct(string $file, int $line, ?string $class, string $function)
+    public function __construct(?string $file, ?int $line, ?string $class, ?string $function)
     {
         $this->file = $file;
         $this->line = $line;
         $this->class = $class;
         $this->function = $function;
+    }
+
+    public function __toString(): string
+    {
+        $result = '';
+        if (!is_null($this->class)) {
+            $result .= $this->class;
+            $result .= '::';
+        }
+
+        $result .= $this->function ?? '<UNKNOWN FUNCTION>';
+
+        $result .= ' at ';
+        $result .= is_null($this->file) ? '<UNKNOWN FILE>' : DbgUtil::formatSourceCodeFilePath($this->file);
+        $result .= ':';
+        $result .= $this->line ?? '<UNKNOWN LINE>';
+
+        return $result;
     }
 }

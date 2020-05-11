@@ -12,19 +12,32 @@ namespace Elastic\Apm\Impl\Log;
 final class LoggerData
 {
     /** @var string */
+    public $category;
+
+    /** @var string */
+    public $namespace;
+
+    /** @var string */
     public $className;
 
     /** @var string */
     public $sourceCodeFile;
 
     /** @var array<mixed> */
-    public $attachedContext = [];
+    public $attachedCtx = [];
 
     /** @var Backend */
     public $backend;
 
-    public function __construct(string $className, string $sourceCodeFile, Backend $backend)
-    {
+    public function __construct(
+        string $category,
+        string $namespace,
+        string $className,
+        string $sourceCodeFile,
+        Backend $backend
+    ) {
+        $this->category = $category;
+        $this->namespace = $namespace;
         $this->className = $className;
         $this->sourceCodeFile = $sourceCodeFile;
         $this->backend = $backend;

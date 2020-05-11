@@ -23,6 +23,7 @@ line to `php.ini`:
 
 ```
 extension=elasticapm.so
+elasticapm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
 ```
 
 ### Local development
@@ -49,7 +50,7 @@ You can configure the Elastic APM agent using the following ini settings for PHP
 
 ```ini
 elasticapm.host = localhost:8200
-elasticapm.service_name = "Unknown PHP service"
+elasticapm.service_name = My_PHP_service
 ```
 
 By default, the extension is enabled. You can disable it by setting `elasticapm.enabled=false`.

@@ -17,9 +17,14 @@ final class Logger
     /** @var int */
     private $maxEnabledLevel;
 
-    public function __construct(string $className, string $sourceCodeFile, Backend $backend)
-    {
-        $this->data = new LoggerData($className, $sourceCodeFile, $backend);
+    public function __construct(
+        string $category,
+        string $namespace,
+        string $className,
+        string $sourceCodeFile,
+        Backend $backend
+    ) {
+        $this->data = new LoggerData($category, $namespace, $className, $sourceCodeFile, $backend);
         $this->maxEnabledLevel = $backend->maxEnabledLevel();
     }
 
@@ -28,7 +33,7 @@ final class Logger
      */
     public function addKeyValueToAttachedContext(string $key, $value): void
     {
-        $this->data->attachedContext[$key] = $value;
+        $this->data->attachedCtx[$key] = $value;
     }
 
     /**
@@ -36,23 +41,48 @@ final class Logger
      */
     public function addValueToAttachedContext($value): void
     {
-        $this->data->attachedContext[] = $value;
+        $this->data->attachedCtx[] = $value;
     }
 
-    public function ifEnabledError(): ?EnabledLoggerProxy
+    public function ifCriticalLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
-        return $this->ifEnabledLevel(Level::ERROR);
+        return $this->ifLevelEnabled(Level::CRITICAL, $srcCodeLine, $srcCodeFunc);
     }
 
-    public function ifEnabledDebug(): ?EnabledLoggerProxy
+    public function ifErrorLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
-        return $this->ifEnabledLevel(Level::DEBUG);
+        return $this->ifLevelEnabled(Level::ERROR, $srcCodeLine, $srcCodeFunc);
     }
 
-    private function ifEnabledLevel(int $statementLevel): ?EnabledLoggerProxy
+    public function ifWarningLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    {
+        return $this->ifLevelEnabled(Level::WARNING, $srcCodeLine, $srcCodeFunc);
+    }
+
+    public function ifNoticeLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    {
+        return $this->ifLevelEnabled(Level::NOTICE, $srcCodeLine, $srcCodeFunc);
+    }
+
+    public function ifInfoLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    {
+        return $this->ifLevelEnabled(Level::INFO, $srcCodeLine, $srcCodeFunc);
+    }
+
+    public function ifDebugLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    {
+        return $this->ifLevelEnabled(Level::DEBUG, $srcCodeLine, $srcCodeFunc);
+    }
+
+    public function ifTraceLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    {
+        return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
+    }
+
+    private function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
         return ($this->maxEnabledLevel >= $statementLevel)
-            ? new EnabledLoggerProxy($statementLevel, $this->data)
+            ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)
             : null;
     }
 }

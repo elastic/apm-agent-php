@@ -52,6 +52,12 @@ final class TracerBuilder
         return $this;
     }
 
+    public function withLogSink(Log\SinkInterface $logSink): self
+    {
+        $this->tracerDependencies->logSink = $logSink;
+        return $this;
+    }
+
     public function build(): TracerInterface
     {
         if (!$this->isEnabled) {

@@ -14,29 +14,35 @@ final class EnabledLoggerProxy
     /** @var int */
     private $statementLevel;
 
+    /** @var int */
+    private $srcCodeLine;
+
+    /** @var string */
+    private $srcCodeFunc;
+
     /** @var LoggerData */
     private $loggerData;
 
-    public function __construct(int $statementLevel, LoggerData $loggerData)
+    public function __construct(int $statementLevel, int $srcCodeLine, string $srcCodeFunc, LoggerData $loggerData)
     {
         $this->statementLevel = $statementLevel;
+        $this->srcCodeLine = $srcCodeLine;
+        $this->srcCodeFunc = $srcCodeFunc;
         $this->loggerData = $loggerData;
     }
 
     /**
      * @param string       $message
-     * @param array<mixed> $context
-     * @param int          $sourceCodeLine
-     * @param string       $sourceCodeMethod
+     * @param array<mixed> $statementCtx
      */
-    public function log(string $message, array $context, int $sourceCodeLine, string $sourceCodeMethod): bool
+    public function log(string $message, array $statementCtx): bool
     {
         $this->loggerData->backend->log(
             $this->statementLevel,
             $message,
-            $context,
-            $sourceCodeLine,
-            $sourceCodeMethod,
+            $statementCtx,
+            $this->srcCodeLine,
+            $this->srcCodeFunc,
             $this->loggerData,
             /* numberOfStackFramesToSkip */ 1
         );
