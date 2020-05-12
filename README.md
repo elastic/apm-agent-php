@@ -1,4 +1,4 @@
-# PHP agent for Elastic APM Server
+# Elastic APM Agent for PHP
 
 The official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
 This agent is a PHP extension that must be installed in your PHP environment.
