@@ -34,7 +34,7 @@ pipeline {
         script {
           dir("${BASE_DIR}"){
             // Skip all the stages except docs for PR's with asciidoc and md changes only
-            env.ONLY_DOCS = isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md)' ], shouldMatchAll: true)
+            env.ONLY_DOCS = isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md|png)' ], shouldMatchAll: true)
           }
         }
       }
@@ -91,6 +91,69 @@ pipeline {
                 }
               }
             }
+          }
+        }
+      }
+    }
+    stage('Package') {
+      when {
+        beforeAgent true
+        expression { return env.ONLY_DOCS == "false" }
+      }
+      steps {
+        withGithubNotify(context: 'Package') {
+          deleteDir()
+          unstash 'source'
+          echo 'TBD'
+        }
+      }
+    }
+    stage('Testing') {
+      when {
+        beforeAgent true
+        expression { return env.ONLY_DOCS == "false" }
+      }
+      matrix {
+        agent { label 'linux && immutable' }
+        options { skipDefaultCheckout() }
+        axes {
+          axis {
+            name 'PHP_VERSION'
+            values '7.2', '7.3', '7.4'
+          }
+          axis {
+            name 'FRAMEWORK'
+            values 'nginx', 'apache', 'redis', 'memcached', 'mysql'
+          }
+        }
+        stages {
+          stage('Install') {
+            steps {
+              deleteDir()
+              unstash 'source'
+              dir("${BASE_DIR}"){
+                echo 'TBD'
+              }
+            }
+          }
+          stage('Test') {
+            steps {
+              deleteDir()
+              unstash 'source'
+              dir("${BASE_DIR}"){
+                sh 'scripts/test-framework.sh ${PHP_VERSION} ${FRAMEWORK}'
+              }
+            }
+            post {
+              always {
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+              }
+            }
+          }
+        }
+        post {
+          always {
+            echo 'STORE docker logs'
           }
         }
       }
