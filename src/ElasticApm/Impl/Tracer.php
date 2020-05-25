@@ -10,6 +10,8 @@ use Closure;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\ServerComm\EventSender;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -43,14 +45,17 @@ final class Tracer implements TracerInterface
     /** @var TransactionInterface|null */
     private $currentTransaction;
 
+    /** @var bool */
+    private $isRecording = true;
+
     public function __construct(TracerDependencies $providedDependencies)
     {
         $this->providedDependencies = $providedDependencies;
 
-        $this->clock = $providedDependencies->clock ?? Clock::instance();
+        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
         $this->eventSink = $providedDependencies->eventSink ?? new EventSender();
 
-        $this->logBackend = new Log\Backend($providedDependencies->logSink);
+        $this->logBackend = new LogBackend(LogLevel::TRACE, $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
         $this->logger = $this->loggerFactory
             ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
@@ -66,6 +71,9 @@ final class Tracer implements TracerInterface
     /** @inheritDoc */
     public function beginTransaction(string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
+        if (!$this->isRecording) {
+            return NoopTransaction::singletonInstance();
+        }
         return new Transaction($this, $name, $type, $timestamp);
     }
 
@@ -115,7 +123,7 @@ final class Tracer implements TracerInterface
 
     public function getCurrentTransaction(): TransactionInterface
     {
-        return $this->currentTransaction ?? NoopTransaction::instance();
+        return $this->currentTransaction ?? NoopTransaction::singletonInstance();
     }
 
     public function resetCurrentTransaction(): void
@@ -144,6 +152,21 @@ final class Tracer implements TracerInterface
     public function loggerFactory(): LoggerFactory
     {
         return $this->loggerFactory;
+    }
+
+    public function pauseRecording(): void
+    {
+        $this->isRecording = false;
+    }
+
+    public function resumeRecording(): void
+    {
+        $this->isRecording = true;
+    }
+
+    public function isRecording(): bool
+    {
+        return $this->isRecording;
     }
 
     public function __toString(): string

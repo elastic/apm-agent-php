@@ -26,10 +26,8 @@ abstract class OptionMetadataBase implements OptionMetadataInterface
         $this->defaultValue = $defaultValue;
     }
 
-    /** @inheritDoc */
     abstract public function parse(string $rawValue);
 
-    /** @inheritDoc */
     public function defaultValue()
     {
         return $this->defaultValue;

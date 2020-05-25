@@ -13,6 +13,8 @@ use Elastic\Apm\Impl\Util\TextUtil;
  */
 final class Snapshot
 {
+    use SnapshotTrait;
+
     /** @var bool */
     private $enabled;
 
@@ -26,10 +28,7 @@ final class Snapshot
      */
     public function __construct(array $optNameToParsedValue)
     {
-        foreach ($optNameToParsedValue as $optName => $parsedValue) {
-            $propertyName = TextUtil::snakeToCamelCase($optName);
-            $this->$propertyName = $parsedValue;
-        }
+        $this->setPropertiesToValuesFrom($optNameToParsedValue);
     }
 
     public function enabled(): bool

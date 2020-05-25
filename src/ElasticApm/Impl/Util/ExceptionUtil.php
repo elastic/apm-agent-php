@@ -13,12 +13,12 @@ final class ExceptionUtil
 {
     use StaticClassTrait;
 
-    public static function buildMessageWithStacktrace(string $msgStart): string
+    public static function buildMessageWithStacktrace(string $msgStart, int $numberOfStackFramesToSkip): string
     {
         $message = $msgStart;
         $message .= '. Stack trace:';
         $message .= PHP_EOL;
-        $message .= TextUtil::indent(DbgUtil::formatCurrentStackTrace(/* numberOfStackFramesToSkip: */ 1));
+        $message .= TextUtil::indent(DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1));
 
         return $message;
     }

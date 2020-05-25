@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Throwable;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -12,6 +14,8 @@ namespace Elastic\Apm\Impl\Util;
 final class DbgUtil
 {
     use StaticClassTrait;
+
+    public const NULL_AS_STRING = /** @lang text */ '<null>';
 
     public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
     {
@@ -49,10 +53,33 @@ final class DbgUtil
      *
      * @return string
      */
-    private static function formatValue($value): string
+    public static function formatValue($value): string
     {
+        try {
+            return self::formatValueImpl($value);
+        } catch (Throwable $thrown) {
+            return '<' . 'FAILED to format value of type ' . self::getType($value)
+                   . ': ' . self::formatThrowable($thrown) . '>';
+        }
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return string
+     */
+    private static function formatValueImpl($value): string
+    {
+        if (is_null($value)) {
+            return self::NULL_AS_STRING;
+        }
+
         if (is_bool($value)) {
             return self::formatBool($value);
+        }
+
+        if (is_scalar($value)) {
+            return strval($value);
         }
 
         if (is_array($value)) {
@@ -76,14 +103,15 @@ final class DbgUtil
      *
      * @return string
      */
-    private static function formatArray(array $arrayValue): string
+    public static function formatArray(array $arrayValue): string
     {
-        $result = 'array [' . count($arrayValue) . ']{';
+        $result = 'array[' . count($arrayValue) . ']{';
         $isFirst = true;
         foreach ($arrayValue as $key => $value) {
             if ($isFirst) {
-                $result .= ', ';
                 $isFirst = false;
+            } else {
+                $result .= ', ';
             }
             $result .= self::formatValue($value);
         }
@@ -93,6 +121,10 @@ final class DbgUtil
 
     private static function formatObject(object $objectValue): string
     {
+        if ($objectValue instanceof Throwable) {
+            return self::formatThrowable($objectValue);
+        }
+
         if (method_exists($objectValue, '__debugInfo')) {
             return self::formatValue($objectValue->__debugInfo());
         }
@@ -104,12 +136,23 @@ final class DbgUtil
         return self::getType($objectValue);
     }
 
+    private static function formatThrowable(Throwable $throwable): string
+    {
+        $throwableAsString = $throwable->__toString();
+        $throwableClassName = get_class($throwable);
+        if (TextUtil::isPrefixOf($throwableClassName, $throwableAsString)) {
+            return $throwableAsString;
+        }
+
+        return "$throwableClassName: $throwableAsString";
+    }
+
     /**
      * @param array<mixed> $stackFrame
      *
      * @return string
      */
-    private static function formatCurrentStackFrame(array $stackFrame): string
+    private static function formatStackFrame(array $stackFrame): string
     {
         $result = '';
         if (!is_null($className = ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null))) {
@@ -117,16 +160,18 @@ final class DbgUtil
             $result .= '::';
         }
 
-        $result .= ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, '<UNKNOWN FUNCTION>');
+        $result .= ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, /** @lang text */ '<UNKNOWN FUNCTION>');
 
         $result .= ' called at [';
         if (!is_null($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null))) {
             $result .= self::formatSourceCodeFilePath($srcFile);
         } else {
-            $result .= '<UNKNOWN FILE>';
+            $result
+                .= /** @lang text */
+                '<UNKNOWN FILE>';
         }
         $result .= ':';
-        $result .= ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, '<UNKNOWN LINE>');
+        $result .= ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, /** @lang text */ '<UNKNOWN LINE>');
         $result .= ']';
 
         if (!is_null($callThisObj = ArrayUtil::getValueIfKeyExistsElse('object', $stackFrame, null))) {
@@ -135,17 +180,18 @@ final class DbgUtil
         }
 
         if (!is_null($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))) {
-            $isFirstArg = true;
-            foreach ($callArgs as $arg) {
-                if ($isFirstArg) {
-                    $isFirstArg = false;
+            $argIndex = 1;
+            foreach ($callArgs as $argValue) {
+                if ($argIndex === 1) {
                     $result .= ' | args[';
                     $result .= count($callArgs);
                     $result .= ']: ';
                 } else {
                     $result .= ', ';
                 }
-                $result .= self::formatValue($arg);
+                $result .= "arg$argIndex: ";
+                $result .= self::formatValue($argValue);
+                ++$argIndex;
             }
         }
 
@@ -176,10 +222,19 @@ final class DbgUtil
                 $result .= '#';
                 $result .= ($index - $actualNumberOfStackFramesToSkip);
                 $result .= '  ';
-                $result .= self::formatCurrentStackFrame($stackFrame);
+                $result .= self::formatStackFrame($stackFrame);
             }
             ++$index;
         }
         return $result;
+    }
+
+    public static function fqToShortClassName(string $fqClassName): string
+    {
+        $forwardSlashPos = strrchr($fqClassName, '\\');
+        if ($forwardSlashPos === false) {
+            return $fqClassName;
+        }
+        return substr($forwardSlashPos, 1);
     }
 }

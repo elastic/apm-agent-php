@@ -34,7 +34,7 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        return NoopSpan::instance();
+        return NoopSpan::singletonInstance();
     }
 
     /** @inheritDoc */
@@ -46,13 +46,13 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
         ?string $action = null,
         ?float $timestamp = null
     ) {
-        return $callback(NoopSpan::instance());
+        return $callback(NoopSpan::singletonInstance());
     }
 
     /** @inheritDoc */
     public function getCurrentSpan(): SpanInterface
     {
-        return NoopSpan::instance();
+        return NoopSpan::singletonInstance();
     }
 
     public function __toString(): string

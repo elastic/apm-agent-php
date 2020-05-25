@@ -199,7 +199,6 @@ void moveTracerToFailedState( Tracer* tracer )
 bool isTracerInFunctioningState( const Tracer* tracer )
 {
     return tracer->isInited && getTracerCurrentConfigSnapshot( tracer )->enabled && ( ! tracer->isFailed );
-
 }
 
 void destructTracer( Tracer* tracer )

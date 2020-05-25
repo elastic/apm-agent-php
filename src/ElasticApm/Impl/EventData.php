@@ -26,9 +26,9 @@ class EventData implements JsonSerializable
 
         // Until this bug https://github.com/phpstan/phpstan/issues/1060 is fixed
         // @phpstan-ignore-next-line
-        foreach ($this as $propKey => $propValue) {
-            if ($this->shouldSerializeProperty($propKey, $propValue)) {
-                $this->serializeProperty($propKey, $propValue, /* ref */ $result);
+        foreach ($this as $thisObjPropName => $thisObjPropValue) {
+            if ($this->shouldSerializeProperty($thisObjPropName, $thisObjPropValue)) {
+                $this->serializeProperty($thisObjPropName, $thisObjPropValue, /* ref */ $result);
             }
         }
 

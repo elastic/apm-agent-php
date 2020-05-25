@@ -70,6 +70,10 @@ final class Span extends SpanData implements SpanInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
+            return NoopSpan::singletonInstance();
+        }
+
         return new Span(
             $this->containingTransaction,
             /* parentSpan: */ $this,
@@ -88,9 +92,6 @@ final class Span extends SpanData implements SpanInterface
             return;
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Span ended', []);
-
         $this->getTracer()->getEventSink()->consumeSpanData($this);
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
@@ -101,22 +102,25 @@ final class Span extends SpanData implements SpanInterface
     /** @inheritDoc */
     public function setAction(?string $action): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         $this->action = $this->tracer->limitNullableKeywordString($action);
     }
 
     /** @inheritDoc */
     public function setSubtype(?string $subtype): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         $this->subtype = $this->tracer->limitNullableKeywordString($subtype);
     }
 
     public function getParentSpan(): ?Span
     {
         return $this->parentSpan;
-    }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this, 'Span');
     }
 }

@@ -22,31 +22,44 @@ final class NoopTracer implements TracerInterface
     /** @inheritDoc */
     public function beginTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
-        return NoopTransaction::instance();
+        return NoopTransaction::singletonInstance();
     }
 
     /** @inheritDoc */
     public function beginCurrentTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
-        return NoopTransaction::instance();
+        return NoopTransaction::singletonInstance();
     }
 
     /** @inheritDoc */
     public function captureTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
-        return $callback(NoopTransaction::instance());
+        return $callback(NoopTransaction::singletonInstance());
     }
 
     /** @inheritDoc */
     public function captureCurrentTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
-        return $callback(NoopTransaction::instance());
+        return $callback(NoopTransaction::singletonInstance());
     }
 
     /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
-        return NoopTransaction::instance();
+        return NoopTransaction::singletonInstance();
+    }
+
+    public function pauseRecording(): void
+    {
+    }
+
+    public function resumeRecording(): void
+    {
+    }
+
+    public function isRecording(): bool
+    {
+        return false;
     }
 
     public function __toString(): string

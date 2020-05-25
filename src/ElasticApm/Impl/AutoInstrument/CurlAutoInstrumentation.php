@@ -49,9 +49,8 @@ final class CurlAutoInstrumentation
                 return function (bool $hasExitedByException, $returnValueOrThrown) use ($span, $curlHandle): void {
                     if (!$hasExitedByException) {
                         if (!is_null($curlHandle)) {
-                            $httpCode = null;
                             $info = curl_getinfo($curlHandle);
-                            if (ArrayUtil::getValueIfKeyExists('http_code', $info, /* ref */ $httpCode)) {
+                            if (!is_null($httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null))) {
                                 // TODO: Sergey Kleyman: use the corresponding property in Intake API
                                 $span->setLabel('HTTP status', $httpCode);
                             }

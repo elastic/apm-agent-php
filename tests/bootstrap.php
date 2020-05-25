@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 error_reporting(E_ALL | E_STRICT);
 
-use Elastic\Apm\Tests\Deserialization\ServerApiSchemaValidator;
+use Elastic\Apm\Tests\TestsRootDir;
 
 // Ensure that composer has installed all dependencies
 if (!file_exists(dirname(__DIR__) . '/composer.lock')) {
@@ -14,6 +14,8 @@ if (!file_exists(dirname(__DIR__) . '/composer.lock')) {
     );
 }
 
-ServerApiSchemaValidator::$pathToSpecsRootDir = __DIR__ . '/APM_Server_intake_API_schema';
-
 require __DIR__ . '/../vendor/autoload.php';
+
+require __DIR__ . '/polyfills/load.php';
+
+TestsRootDir::$fullPath = __DIR__;

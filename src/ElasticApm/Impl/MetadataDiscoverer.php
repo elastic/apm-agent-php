@@ -13,6 +13,9 @@ use Elastic\Apm\ElasticApm;
  */
 final class MetadataDiscoverer
 {
+    public const AGENT_NAME = 'php';
+    public const LANGUAGE_NAME = 'PHP';
+
     public static function discoverMetadata(): MetadataInterface
     {
         return (new class extends Metadata {
@@ -36,11 +39,11 @@ final class MetadataDiscoverer
                 $result = new ServiceData();
 
                 // TODO: Sergey Kleyman: Implement: Getting service name and version from configuration
-                $result->name = 'Unknown PHP service';
+                $result->name = 'Unnamed PHP service';
                 // $result->version = ???;
 
-                $result->agent = new NameVersionData('php', ElasticApm::VERSION);
-                $result->language = new NameVersionData('PHP', PHP_VERSION);
+                $result->agent = new NameVersionData(MetadataDiscoverer::AGENT_NAME, ElasticApm::VERSION);
+                $result->language = new NameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
                 $result->runtime = $result->language;
 
                 return $result;

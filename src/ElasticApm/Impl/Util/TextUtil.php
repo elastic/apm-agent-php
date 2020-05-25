@@ -45,7 +45,7 @@ final class TextUtil
         return false;
     }
 
-    public static function endOfLineSeqLength(string $text, int $textLen, int $index): int
+    public static function ifEndOfLineSeqGetLength(string $text, int $textLen, int $index): int
     {
         $charAsInt = ord($text[$index]);
         if ($charAsInt === self::CR_AS_INT && $index != ($textLen - 1) && ord($text[$index + 1]) === self::LF_AS_INT) {
@@ -57,32 +57,32 @@ final class TextUtil
         return 0;
     }
 
-    public static function prefixEachLine(string $text, string $prefix, bool $prefixFirstLine = true): string
+    public static function prefixEachLine(string $text, string $prefix): string
     {
         $result = $prefix;
-        $prevIndex = 0;
-        $currentIndex = 0;
+        $prevPos = 0;
+        $currentPos = $prevPos;
         $textLen = strlen($text);
-        for (; $currentIndex != $textLen;) {
-            $endOfLineSeqLength = self::endOfLineSeqLength($text, $textLen, $currentIndex);
+        for (; $currentPos != $textLen;) {
+            $endOfLineSeqLength = self::ifEndOfLineSeqGetLength($text, $textLen, $currentPos);
             if ($endOfLineSeqLength === 0) {
-                ++$currentIndex;
+                ++$currentPos;
                 continue;
             }
-            $result .= substr($text, $prevIndex, $currentIndex + $endOfLineSeqLength - $prevIndex);
+            $result .= substr($text, $prevPos, $currentPos + $endOfLineSeqLength - $prevPos);
             $result .= $prefix;
-            $prevIndex = $currentIndex + $endOfLineSeqLength;
-            $currentIndex += $endOfLineSeqLength;
+            $prevPos = $currentPos + $endOfLineSeqLength;
+            $currentPos = $prevPos;
         }
 
-        $result .= substr($text, $prevIndex, $currentIndex - $prevIndex);
+        $result .= substr($text, $prevPos, $currentPos - $prevPos);
 
         return $result;
     }
 
-    public static function indent(string $text, int $level = 1, bool $prefixFirstLine = true): string
+    public static function indent(string $text, int $level = 1): string
     {
-        return self::prefixEachLine($text, /* $prefix */ self::indentationForLevel($level), $prefixFirstLine);
+        return self::prefixEachLine($text, /* $prefix */ self::indentationForLevel($level));
     }
 
     private static function indentationForLevel(int $level): string
@@ -210,5 +210,15 @@ final class TextUtil
             return '';
         }
         return chr(self::toUpperCaseLetter(ord($input[0]))) . substr($input, 1, strlen($input) - 1);
+    }
+
+    public static function isPrefixOf(string $prefix, string $text): bool
+    {
+        $prefixLen = strlen($prefix);
+        if (strlen($text) < $prefixLen) {
+            return false;
+        }
+
+        return strncmp($text, $prefix, $prefixLen) === 0;
     }
 }

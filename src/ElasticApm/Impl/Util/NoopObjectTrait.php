@@ -11,7 +11,7 @@ namespace Elastic\Apm\Impl\Util;
  */
 trait NoopObjectTrait
 {
-    use LazySingletonInstanceTrait;
+    use SingletonInstanceTrait;
 
     public function isNoop(): bool
     {

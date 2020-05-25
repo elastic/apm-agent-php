@@ -31,16 +31,17 @@ class EventSender implements EventSinkInterface
     /** @inheritDoc */
     public function consumeTransactionData(TransactionDataInterface $transactionData): void
     {
-        $serializedEvents = '';
-        $serializedEvents .= '{"metadata":';
-        $serializedEvents .= SerializationUtil::serializeMetadata($this->metadata);
-        $serializedEvents .= "}";
+        $serializedMetadata = '{"metadata":';
+        $serializedMetadata .= SerializationUtil::serializeMetadata($this->metadata);
+        $serializedMetadata .= "}";
+
+        $serializedEvents = $serializedMetadata;
 
         $serializedEvents .= "\n";
         $serializedEvents .= '{"transaction":';
         $serializedEvents .= SerializationUtil::serializeTransaction($transactionData);
         $serializedEvents .= "}";
-        
+
         foreach ($this->spans as $span) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"span":';
@@ -55,7 +56,7 @@ class EventSender implements EventSinkInterface
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            \elasticapm_send_to_server($serializedEvents);
+            \elasticapm_send_to_server($serializedMetadata, $serializedEvents);
         }
     }
 

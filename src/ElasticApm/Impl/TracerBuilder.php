@@ -61,7 +61,7 @@ final class TracerBuilder
     public function build(): TracerInterface
     {
         if (!$this->isEnabled) {
-            return NoopTracer::instance();
+            return NoopTracer::singletonInstance();
         }
 
         return new Tracer($this->tracerDependencies);

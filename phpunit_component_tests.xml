@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    verbose= "true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    beStrictAboutOutputDuringTests= "false"
+>
+    <testsuites>
+        <testsuite name="Tests">
+            <directory>./tests/ElasticApmTests/ComponentTests</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src/ElasticApm/</directory>
+        </whitelist>
+    </filter>
+    <extensions>
+        <extension class="\Elastic\Apm\Tests\ComponentTests\Util\PhpUnitExtension" />
+    </extensions>
+    <logging>
+        <log type="junit" target="./_GENERATED/COMPONENT_TESTS/log_as_junit.xml"/>
+    </logging>
+</phpunit>

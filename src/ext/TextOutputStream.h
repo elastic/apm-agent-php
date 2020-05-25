@@ -243,7 +243,7 @@ String textOutputStreamEndEntry( const TextOutputStreamState* txtOutStreamStateO
     if ( txtOutStreamStateOnEntryStart->autoTermZero && ( textOutputStreamGetFreeSpaceSize( txtOutStream ) == 0 ) )
         return textOutputStreamEndEntryAsOverflowed( txtOutStreamStateOnEntryStart, txtOutStream );
 
-    return textOutputStreamEndEntryEx( /* contentEnd: */ txtOutStream->freeSpaceBegin, txtOutStreamStateOnEntryStart,txtOutStream );
+    return textOutputStreamEndEntryEx( /* contentEnd: */ txtOutStream->freeSpaceBegin, txtOutStreamStateOnEntryStart, txtOutStream );
 }
 
 static inline

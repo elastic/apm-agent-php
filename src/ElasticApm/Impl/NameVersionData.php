@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 
 /**
@@ -37,9 +38,13 @@ class NameVersionData extends EventData implements NameVersionDataInterface
         return $this->version;
     }
 
-    public static function dataToString(NameVersionDataInterface $data, ?string $type = null): string
+    public static function dataToString(?NameVersionDataInterface $data, ?string $type = null): string
     {
-        $builder = new ObjectToStringBuilder();
+        if (is_null($data)) {
+            return DbgUtil::NULL_AS_STRING;
+        }
+
+        $builder = new ObjectToStringBuilder($type);
         $builder->add('name', $data->name());
         $builder->add('version', $data->version());
         return $builder->build();

@@ -7,11 +7,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Examples\UsingPublicApi;
 
 use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Tests\UnitTests\Util\MockEventSink;
+use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
 use Elastic\Apm\TransactionInterface;
-use Elastic\Apm\Tests\Util\MockEventSink;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 
-class ExampleUsingPublicApi extends TestCaseBase
+class ExampleUsingPublicApi extends UnitTestCaseBase
 {
     public function main(): void
     {
@@ -24,10 +24,8 @@ class ExampleUsingPublicApi extends TestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertSame(0, count($mockEventSink->getSpans()));
-        $this->assertSame(1, count($mockEventSink->getTransactions()));
-        /** @var TransactionInterface $reportedTx */
-        $reportedTx = $mockEventSink->getTransactions()[0];
+        $this->assertEmpty($mockEventSink->getIdToSpan());
+        $reportedTx = $mockEventSink->getSingleTransaction();
         $this->assertSame('test_TX_name', $reportedTx->getName());
         $this->assertSame('test_TX_type', $reportedTx->getType());
 

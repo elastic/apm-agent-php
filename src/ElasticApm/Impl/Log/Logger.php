@@ -17,31 +17,53 @@ final class Logger
     /** @var int */
     private $maxEnabledLevel;
 
-    public function __construct(
+    private function __construct(LoggerData $data, int $maxEnabledLevel)
+    {
+        $this->data = $data;
+        $this->maxEnabledLevel = $maxEnabledLevel;
+    }
+
+    public static function makeRoot(
         string $category,
         string $namespace,
         string $className,
-        string $sourceCodeFile,
+        string $srcCodeFile,
         Backend $backend
-    ) {
-        $this->data = new LoggerData($category, $namespace, $className, $sourceCodeFile, $backend);
-        $this->maxEnabledLevel = $backend->maxEnabledLevel();
+    ): self {
+        return new self(
+            LoggerData::makeRoot($category, $namespace, $className, $srcCodeFile, $backend),
+            $backend->maxEnabledLevel()
+        );
+    }
+
+    public function inherit(): self
+    {
+        return new self(LoggerData::inherit($this->data), $this->maxEnabledLevel);
     }
 
     /**
-     * @param mixed $value
+     * @param string $key
+     * @param mixed  $value
+     *
+     * @return Logger
      */
-    public function addKeyValueToAttachedContext(string $key, $value): void
+    public function addContext(string $key, $value): Logger
     {
-        $this->data->attachedCtx[$key] = $value;
+        $this->data->context[$key] = $value;
+        return $this;
     }
 
     /**
-     * @param mixed $value
+     * @param array<string, mixed> $keyValuePairs
+     *
+     * @return Logger
      */
-    public function addValueToAttachedContext($value): void
+    public function addAllContext(array $keyValuePairs): Logger
     {
-        $this->data->attachedCtx[] = $value;
+        foreach ($keyValuePairs as $key => $value) {
+            $this->addContext($key, $value);
+        }
+        return $this;
     }
 
     public function ifCriticalLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
@@ -79,7 +101,7 @@ final class Logger
         return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
     }
 
-    private function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
+    public function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
         return ($this->maxEnabledLevel >= $statementLevel)
             ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)

@@ -8,8 +8,8 @@
     beStrictAboutOutputDuringTests= "true"
 >
     <testsuites>
-        <testsuite name="ElasticApmTests">
-            <directory>./tests/ElasticApmTests/</directory>
+        <testsuite name="Tests">
+            <directory>./tests/ElasticApmTests/UnitTests</directory>
         </testsuite>
     </testsuites>
     <filter>
@@ -17,7 +17,4 @@
             <directory suffix=".php">./src/ElasticApm/</directory>
         </whitelist>
     </filter>
-    <php>
-        <ini name="date.timezone" value="UTC"/>
-    </php>
 </phpunit>

@@ -15,27 +15,12 @@ final class Level
 {
     use StaticClassTrait;
 
-    /** @var int */
     public const OFF = 0;
-
-    /** @var int */
     public const CRITICAL = self::OFF + 1;
-
-    /** @var int */
     public const ERROR = self::CRITICAL + 1;
-
-    /** @var int */
     public const WARNING = self::ERROR + 1;
-
-    /** @var int */
     public const NOTICE = self::WARNING + 1;
-
-    /** @var int */
     public const INFO = self::NOTICE + 1;
-
-    /** @var int */
     public const DEBUG = self::INFO + 1;
-
-    /** @var int */
     public const TRACE = self::DEBUG + 1;
 }

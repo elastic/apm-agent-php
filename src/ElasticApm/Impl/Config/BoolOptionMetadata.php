@@ -28,16 +28,18 @@ final class BoolOptionMetadata extends OptionMetadataBase
     public function __construct(bool $defaultValue)
     {
         parent::__construct($defaultValue);
-        foreach (self::$trueRawValues as $index => $trueRawValue) {
+        foreach (self::$trueRawValues as $trueRawValue) {
             $this->stringNameToValue[$trueRawValue] = true;
         }
 
-        foreach (self::$falseRawValues as $index => $falseRawValue) {
+        foreach (self::$falseRawValues as $falseRawValue) {
             $this->stringNameToValue[$falseRawValue] = false;
         }
     }
 
     /**
+     * @param string $rawValue
+     *
      * @return mixed
      *
      * @phpstan-return bool
@@ -46,7 +48,7 @@ final class BoolOptionMetadata extends OptionMetadataBase
     {
         $value = ArrayUtil::getValueIfKeyExistsElse(strtolower($rawValue), $this->stringNameToValue, null);
         if (is_null($value)) {
-            throw new ParseException("Given value is not a valid boolean option value. Raw option value: `$rawValue'");
+            throw new ParseException("Not a valid boolean value. Raw option value: `$rawValue'");
         }
 
         return $value;

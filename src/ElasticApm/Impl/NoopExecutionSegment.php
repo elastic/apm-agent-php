@@ -8,6 +8,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 
 /**
@@ -83,7 +84,7 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        return NoopSpan::instance();
+        return NoopSpan::singletonInstance();
     }
 
     /** @inheritDoc */
@@ -95,7 +96,7 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         ?string $action = null,
         ?float $timestamp = null
     ) {
-        return $callback(NoopSpan::instance());
+        return $callback(NoopSpan::singletonInstance());
     }
 
     /** @inheritDoc */
@@ -118,5 +119,14 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     public function getLabels(): array
     {
         return [];
+    }
+
+    public function discard(): void
+    {
+    }
+
+    public function __toString(): string
+    {
+        return DbgUtil::fqToShortClassName(get_class());
     }
 }

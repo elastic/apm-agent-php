@@ -24,18 +24,18 @@ final class SerializationUtil
 
     /**
      * @param mixed  $data
-     * @param string $dbgDataAsString
+     * @param string $dbgDataDesc
      *
      * @return string
      */
-    public static function serializeAsJson($data, string $dbgDataAsString): string
+    public static function serializeAsJson($data, string $dbgDataDesc): string
     {
         $serializedData = json_encode($data);
         if ($serializedData === false) {
             throw new SerializationException(
                 'Serialization failed'
                 . '. json_last_error_msg(): ' . json_last_error_msg()
-                . '. $data: ' . $dbgDataAsString
+                . '. $data: ' . $dbgDataDesc
             );
         }
         return $serializedData;
