@@ -35,7 +35,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param string       $key
+     * @param string|int   $key
      * @param array<mixed> $array
      * @param mixed        $fallbackValue
      *
@@ -46,7 +46,7 @@ final class ArrayUtil
      * @phpstan-param   T $fallbackValue
      * @phpstan-return  T
      */
-    public static function getValueIfKeyExistsElse(string $key, array $array, $fallbackValue)
+    public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
         if (!array_key_exists($key, $array)) {
             return $fallbackValue;

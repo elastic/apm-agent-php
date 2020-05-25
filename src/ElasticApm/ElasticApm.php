@@ -159,4 +159,20 @@ final class ElasticApm
     {
         return self::getCurrentTransaction()->getCurrentSpan();
     }
+
+    /**
+     * Pauses recording
+     */
+    public static function pauseRecording(): void
+    {
+        GlobalTracerHolder::get()->pauseRecording();
+    }
+
+    /**
+     * Resumes recording
+     */
+    public static function resumeRecording(): void
+    {
+        GlobalTracerHolder::get()->resumeRecording();
+    }
 }

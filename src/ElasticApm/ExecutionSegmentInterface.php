@@ -110,4 +110,6 @@ interface ExecutionSegmentInterface extends ExecutionSegmentDataInterface
     public function setType(string $type): void;
 
     public function isNoop(): bool;
+
+    public function discard(): void;
 }

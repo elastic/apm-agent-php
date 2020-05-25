@@ -20,6 +20,18 @@ interface RegistrationContextInterface
     ): void;
 
     /**
+     * @param string   $className
+     * @param string   $methodName
+     * @param callable $onInterceptedCallBegin
+     */
+    public function interceptCallsToMethod2(
+        string $className,
+        string $methodName,
+        CallbackFactoryInterface $callback
+    ): void;
+
+
+    /**
      * @param string   $functionName
      * @param callable $onInterceptedCallBegin
      */

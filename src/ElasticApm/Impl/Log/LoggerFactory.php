@@ -23,8 +23,8 @@ final class LoggerFactory
         string $category,
         string $namespace,
         string $className,
-        string $sourceCodeFile
+        string $srcCodeFile
     ): Logger {
-        return new Logger($category, $namespace, $className, $sourceCodeFile, $this->backend);
+        return Logger::makeRoot($category, $namespace, $className, $srcCodeFile, $this->backend);
     }
 }

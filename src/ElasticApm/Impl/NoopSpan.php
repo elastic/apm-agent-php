@@ -55,9 +55,4 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
     public function setAction(?string $action): void
     {
     }
-
-    public function __toString(): string
-    {
-        return 'NO-OP Span';
-    }
 }

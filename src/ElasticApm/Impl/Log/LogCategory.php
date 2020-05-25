@@ -15,7 +15,8 @@ final class LogCategory
 {
     use StaticClassTrait;
 
+    public const CONFIGURATION = 'Configuration';
+    public const DISCOVERY = 'Discovery';
     public const INTERCEPTION = 'Interception';
     public const PUBLIC_API = 'Public-API';
-    public const CONFIGURATION = 'Configuration';
 }

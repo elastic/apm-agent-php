@@ -2,20 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+use Elastic\Apm\Impl\SrcRootDir;
 
-require __DIR__ . '/ElasticApm/Impl/AutoInstrument/BootstrapShutdownHelper.php';
+require __DIR__ . '/ElasticApm/Impl/SrcRootDir.php';
+SrcRootDir::$fullPath = __DIR__;
 
-/** Called by elasticapm extension */
-/** @noinspection PhpUnused */
-function bootstrapTracerPhpPart(int $maxEnabledLogLevel): bool
-{
-    return BootstrapShutdownHelper::bootstrap($maxEnabledLogLevel, /* srcDir */ __DIR__);
-}
-
-/** Called by elasticapm extension */
-/** @noinspection PhpUnused */
-function shutdownTracerPhpPart(): void
-{
-    BootstrapShutdownHelper::shutdown();
-}
+require __DIR__ . '/ElasticApm/Impl/AutoInstrument/bootstrap_php_part.php';

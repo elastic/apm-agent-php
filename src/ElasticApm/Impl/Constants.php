@@ -16,6 +16,7 @@ final class Constants
     public const NON_KEYWORD_STRING_MAX_LENGTH = 10 * 1024;
 
     public const TRANSACTION_TYPE_REQUEST = 'request';
+    public const TRANSACTION_TYPE_CLI = 'cli';
 
     public const SPAN_TYPE_DB = 'db';
     public const SPAN_TYPE_EXTERNAL = 'external';

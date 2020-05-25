@@ -13,9 +13,10 @@
 #include "util.h"
 #include "log.h"
 #include "Tracer.h"
-#include "util_for_php.h"
+#include "util_for_PHP.h"
 #include "elasticapm_alloc.h"
 #include "numbered_intercepting_callbacks.h"
+#include "tracer_PHP_part.h"
 
 #define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_API
 
@@ -61,10 +62,6 @@ struct CallToInterceptData
 typedef struct CallToInterceptData CallToInterceptData;
 static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 
-#define ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\InterceptionManager::"
-#define ELASTICAPM_PHP_INTERCEPTED_CALL_PRE_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPreHook"
-#define ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK ELASTICAPM_PHP_INTERCEPTED_CALL_HOOK_FUNC_PREFIX "interceptedCallPostHook"
-
 static
 void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
 {
@@ -72,49 +69,18 @@ void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_exec
 
     ResultCode resultCode;
 
-    zval funcToInterceptIdAsZval;
-    ZVAL_UNDEF( &funcToInterceptIdAsZval );
     zval preHookRetVal;
     ZVAL_UNDEF( &preHookRetVal );
 
-    enum
-    {
-        maxInterceptedCallArgsCount = 100
-    };
-    zval preHookArgs[maxInterceptedCallArgsCount];
+    ELASTICAPM_CALL_IF_FAILED_GOTO( tracerPhpPartInterceptedCallPreHook( funcToInterceptId, execute_data, &preHookRetVal ) );
 
-    // The first argument to InterceptionManager::interceptedCallPreHook is $funcToInterceptId
-    ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
-    preHookArgs[ 0 ] = funcToInterceptIdAsZval;
+    g_functionsToInterceptData[ funcToInterceptId ].originalHandler( execute_data, return_value );
 
-    uint32_t interceptedCallArgsCount;
-    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount - 1, &( preHookArgs[ 1 ] ), &interceptedCallArgsCount );
-    ELASTICAPM_CALL_IF_FAILED_GOTO(
-            callPhpFunctionRetZval(
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_PRE_HOOK )
-                    , logLevel_debug
-                    , interceptedCallArgsCount + 1
-                    , preHookArgs
-                    , &preHookRetVal ) );
-    ELASTICAPM_LOG_TRACE( "Successfully finished pre-hook call. Z_TYPE( preHookRetVal ): %u", Z_TYPE( preHookRetVal ) );
-
-    g_functionsToInterceptData[ funcToInterceptId ].originalHandler( INTERNAL_FUNCTION_PARAM_PASSTHRU );
-
-    if ( Z_TYPE( preHookRetVal ) != IS_NULL )
-    {
-        zval postHookArgs[] = { preHookRetVal, *return_value };
-        ELASTICAPM_CALL_IF_FAILED_GOTO(
-                callPhpFunctionRetVoid(
-                        ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_INTERCEPTED_CALL_POST_HOOK )
-                        , logLevel_debug
-                        , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
-                        , postHookArgs ) );
-    }
+    ELASTICAPM_CALL_IF_FAILED_GOTO( tracerPhpPartInterceptedCallPostHook( funcToInterceptId, preHookRetVal, *return_value ) );
 
     resultCode = resultSuccess;
 
     finally:
-    zval_dtor( &funcToInterceptIdAsZval );
     zval_dtor( &preHookRetVal );
 
     ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
@@ -303,7 +269,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
     goto finally;
 }
 
-ResultCode elasticApmSendToServer( String serializedEvents )
+ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView serializedEvents )
 {
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
 
@@ -318,6 +284,7 @@ ResultCode elasticApmSendToServer( String serializedEvents )
         goto failure;
     }
 
+    ELASTICAPM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
     sendEventsToApmServer( config, serializedEvents );
 
     resultCode = resultSuccess;

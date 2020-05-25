@@ -43,4 +43,9 @@ final class RangeUtil
             }
         }
     }
+
+    public static function isInInclusiveRange(int $begin, int $value, int $end): bool
+    {
+        return ($begin <= $value) && ($value <= $end);
+    }
 }

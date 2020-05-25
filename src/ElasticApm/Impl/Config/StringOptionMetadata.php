@@ -20,6 +20,8 @@ final class StringOptionMetadata extends OptionMetadataBase
     }
 
     /**
+     * @param string $rawValue
+     *
      * @return mixed
      *
      * @phpstan-return string

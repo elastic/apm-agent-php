@@ -12,7 +12,7 @@ namespace Elastic\Apm\Impl\Util;
 class ObjectToStringBuilder
 {
     /** @var int */
-    private const MAX_HORIZONTAL_LENGTH = 200;
+    private const MAX_HORIZONTAL_LENGTH = 2000;
 
     /** @var string|null */
     private $type;
@@ -72,10 +72,10 @@ class ObjectToStringBuilder
         if (!is_null($this->type)) {
             $result .= $this->type;
         }
-        $result .= '{ ';
+        $result .= '{';
         $isFirst = true;
         foreach ($this->keyValuePairs as $key => $value) {
-            $valueAsString = strval($value);
+            $valueAsString = DbgUtil::formatValue($value);
             $keyValueAsStringPairs[$key] = $valueAsString;
             if (!$this->shouldFormatOnlyHorizontally && TextUtil::containsNewLine($valueAsString)) {
                 return null;
@@ -92,7 +92,7 @@ class ObjectToStringBuilder
                 return null;
             }
         }
-        $result .= ' }';
+        $result .= '}';
 
         return $result;
     }

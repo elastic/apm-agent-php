@@ -17,7 +17,7 @@
 #include "php_elasticapm.h"
 #include "log.h"
 #include "ConfigManager.h"
-#include "util_for_php.h"
+#include "util_for_PHP.h"
 #include "elasticapm_assert.h"
 #include "MemoryTracker.h"
 
@@ -145,7 +145,7 @@ void printConfigurationInfo( StructuredTextPrinter* structTxtPrinter )
         String columns[ numberOfColumns ] =
                 {
                         getMetaRes.optName
-                        , redactIfSecret( getValRes.rawValue == NULL ? NULL : getValRes.streamedParsedValue, getMetaRes.isSecret )
+                        , redactIfSecret( getValRes.streamedParsedValue, getMetaRes.isSecret )
                         , redactIfSecret( getValRes.rawValue, getMetaRes.isSecret )
                         , getValRes.rawValueSourceDescription == NULL ? "Default" : getValRes.rawValueSourceDescription
                 };

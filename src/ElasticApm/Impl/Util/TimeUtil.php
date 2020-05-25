@@ -13,14 +13,29 @@ final class TimeUtil
 {
     use StaticClassTrait;
 
-    /** @var int */
-    private const NUMBER_OF_MICROSECONDS_IN_SECOND = 1000000;
+    public const NUMBER_OF_NANOSECONDS_IN_MICROSECOND = 1000;
+    public const NUMBER_OF_MICROSECONDS_IN_MILLISECOND = 1000;
+    public const NUMBER_OF_MILLISECONDS_IN_SECOND = 1000;
+    public const NUMBER_OF_MICROSECONDS_IN_SECOND
+        = self::NUMBER_OF_MILLISECONDS_IN_SECOND * self::NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
+    public const NUMBER_OF_SECONDS_IN_MINUTE = 60;
+    public const NUMBER_OF_MINUTES_IN_HOUR = 60;
+    public const NUMBER_OF_HOURS_IN_DAY = 24;
 
-    /** @var int */
-    private const NUMBER_OF_NANOSECONDS_IN_MICROSECOND = 1000;
-
-    /** @var int */
-    private const NUMBER_OF_MICROSECONDS_IN_MILLISECOND = 1000;
+    /**
+     * @param float $beginTime Begin time in microseconds
+     * @param float $endTime   End time in microseconds
+     *
+     * @return float Duration in microseconds
+     *
+     * @see ClockInterface::getMonotonicClockCurrentTime() For the description
+     */
+    public static function calcDurationInMicroseconds(float $beginTime, float $endTime): float
+    {
+        $diff = $endTime - $beginTime;
+        $diff = $diff < 0 ? 0 : $diff;
+        return $diff;
+    }
 
     /**
      * @param float $beginTime Begin time in microseconds
@@ -32,9 +47,7 @@ final class TimeUtil
      */
     public static function calcDuration(float $beginTime, float $endTime): float
     {
-        $diff = $endTime - $beginTime;
-        $diff = $diff < 0 ? 0 : $diff;
-        return self::microsecondsToMilliseconds($diff);
+        return self::microsecondsToMilliseconds(self::calcDurationInMicroseconds($beginTime, $endTime));
     }
 
     public static function microsecondsToMilliseconds(float $microseconds): float

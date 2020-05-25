@@ -34,11 +34,11 @@ final class Parser
     }
 
     /**
-     * @param RawSnapshot $rawSnapshot
+     * @param RawSnapshotInterface $rawSnapshot
      *
      * @return array<string, mixed> Option name to parsed value
      */
-    public function parse(RawSnapshot $rawSnapshot): array
+    public function parse(RawSnapshotInterface $rawSnapshot): array
     {
         $optNameToParsedValue = [];
         foreach ($this->optNameToMeta as $optName => $optMeta) {

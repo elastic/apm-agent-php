@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util;
 
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentData;
+use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\NameVersionDataInterface;
 use Elastic\Apm\Impl\ProcessDataInterface;
@@ -36,7 +38,11 @@ final class ValidationUtil
             $msgStart .= $msgDetails;
         }
 
-        return new InvalidEventDataException(ExceptionUtil::buildMessageWithStacktrace($msgStart), $code, $previous);
+        return new InvalidEventDataException(
+            ExceptionUtil::buildMessageWithStacktrace($msgStart, /* numberOfStackFramesToSkip */ 1),
+            $code,
+            $previous
+        );
     }
 
     public static function assertThat(bool $condition): void
@@ -297,9 +303,20 @@ final class ValidationUtil
         self::assertValidNullableKeywordString($serviceData->environment());
 
         self::assertValidNameVersionData($serviceData->agent());
+        assert(!is_null($serviceData->agent()));
+        self::assertThat($serviceData->agent()->name() === MetadataDiscoverer::AGENT_NAME);
+        self::assertThat($serviceData->agent()->version() === ElasticApm::VERSION);
+
         self::assertValidNameVersionData($serviceData->framework());
+
         self::assertValidNameVersionData($serviceData->language());
+        assert(!is_null($serviceData->language()));
+        self::assertThat($serviceData->language()->name() === MetadataDiscoverer::LANGUAGE_NAME);
+
         self::assertValidNameVersionData($serviceData->runtime());
+        assert(!is_null($serviceData->runtime()));
+        self::assertThat($serviceData->runtime()->name() === MetadataDiscoverer::LANGUAGE_NAME);
+        self::assertThat($serviceData->runtime()->version() === $serviceData->language()->version());
     }
 
     public static function assertValidMetadata(MetadataInterface $metadata): void

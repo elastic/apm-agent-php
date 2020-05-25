@@ -23,17 +23,16 @@
 #include "log.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
-#include "util_for_php.h"
+#include "util_for_PHP.h"
 #include "elasticapm_assert.h"
 #include "MemoryTracker.h"
 #include "supportability.h"
 #include "elasticapm_alloc.h"
 #include "elasticapm_API.h"
+#include "tracer_PHP_part.h"
 
 #define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_LIFECYCLE
 
-static const char JSON_METADATA[] =
-        "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"php\"}}}}\n";
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
 
@@ -165,108 +164,21 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ELASTICAPM_UNUSED( resultCode );
 }
 
-#define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "\\Elastic\\Apm\\Impl\\AutoInstrument\\"
-#define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "bootstrapTracerPhpPart"
-#define ELASTICAPM_PHP_PART_SHUTDOWN_FUNC ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "shutdownTracerPhpPart"
-
-static
-ResultCode bootstrapPhpPart( const ConfigSnapshot* config )
-{
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
-                                             , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
-
-    ResultCode resultCode;
-    bool bootstrapTracerPhpPartRetVal;
-    zval maxEnabledLevel;
-    ZVAL_UNDEF( &maxEnabledLevel );
-
-    if ( config->bootstrapPhpPartFile == NULL )
-    {
-        // For now we don't consider option not being set as a failure
-        GetConfigManagerOptionMetadataResult getMetaRes;
-        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
-        resultCode = resultSuccess;
-        goto finally;
-    }
-
-    ELASTICAPM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
-
-    ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel )
-    zval bootstrapTracerPhpPartArgs[] = { maxEnabledLevel };
-    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC )
-            , logLevel_debug
-            , /* argsCount */ ELASTICAPM_STATIC_ARRAY_SIZE( bootstrapTracerPhpPartArgs )
-            , /* args */ bootstrapTracerPhpPartArgs
-            , &bootstrapTracerPhpPartRetVal ) );
-    if ( ! bootstrapTracerPhpPartRetVal )
-    {
-        ELASTICAPM_LOG_CRITICAL( "%s failed (returned false). See log for more details.", ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC );
-        resultCode = resultFailure;
-        goto failure;
-    }
-
-    resultCode = resultSuccess;
-
-    finally:
-    zval_dtor( &maxEnabledLevel );
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
-
-static
-void shutdownPhpPart( const ConfigSnapshot* config )
-{
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
-
-    ResultCode resultCode;
-
-    if ( config->bootstrapPhpPartFile == NULL )
-    {
-        // For now we don't consider option not being set as a failure
-        GetConfigManagerOptionMetadataResult getMetaRes;
-        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
-        resultCode = resultSuccess;
-        goto finally;
-    }
-
-    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetVoid(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_SHUTDOWN_FUNC )
-            , logLevel_debug
-            , /* argsCount */ 0
-            , /* args */ NULL ) );
-
-    resultCode = resultSuccess;
-
-    finally:
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
-    return;
-
-    failure:
-    goto finally;
-}
-
 void elasticApmRequestInit()
 {
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
+    TimePoint requestInitStartTime;
+    getCurrentTime( &requestInitStartTime );
+
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
+
+    ELASTICAPM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
 
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
@@ -289,7 +201,7 @@ void elasticApmRequestInit()
 
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( bootstrapPhpPart( config ) );
+    ELASTICAPM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
     readSystemMetrics( &tracer->startSystemMetricsReading );
 
@@ -305,12 +217,6 @@ void elasticApmRequestInit()
 
     failure:
     goto finally;
-}
-
-static
-void appendMetadata( const ConfigSnapshot* config, TextOutputStream* serializedEventsTxtOutStream )
-{
-    streamPrintf( serializedEventsTxtOutStream, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
 }
 
 static
@@ -333,15 +239,52 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
             , timePointToEpochMicroseconds( currentTime ) );
 }
 
+static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
+{
+    ResultCode resultCode;
+    TimePoint currentTime;
+    enum { serializedEventsBufferSize = 1000 * 1000 };
+    char* serializedEventsBuffer = NULL;
+
+    if ( isEmptyStringView( tracer->requestScoped.lastMetadataFromPhpPart ) )
+    {
+        ELASTICAPM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
+        resultCode = resultFailure;
+        goto failure;
+    }
+
+    getCurrentTime( &currentTime );
+
+    ELASTICAPM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
+    TextOutputStream serializedEventsTxtOutStream =
+            makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
+    serializedEventsTxtOutStream.autoTermZero = false;
+
+    streamStringView( tracer->requestScoped.lastMetadataFromPhpPart, &serializedEventsTxtOutStream );
+    streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" ), &serializedEventsTxtOutStream );
+    serializedEventsTxtOutStream.autoTermZero = true;
+    appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
+
+    sendEventsToApmServer( config, textOutputStreamContentAsStringView( &serializedEventsTxtOutStream ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
+
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
 void elasticApmRequestShutdown()
 {
     ResultCode resultCode;
-    enum
-    {
-        serializedEventsBufferSize = 1000 * 1000
-    };
-    char* serializedEventsBuffer = NULL;
-    TimePoint currentTime;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
@@ -351,31 +294,21 @@ void elasticApmRequestShutdown()
     {
         resultCode = resultFailure;
         ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
-        goto finally;
+        goto failure;
     }
 
-    shutdownPhpPart( config );
+    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
+    shutdownTracerPhpPart( config );
 
-    getCurrentTime( &currentTime );
-
-    ELASTICAPM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
-    TextOutputStream serializedEventsTxtOutStream =
-            makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
-    serializedEventsTxtOutStream.autoTermZero = false;
-
-    appendMetadata( config, &serializedEventsTxtOutStream );
-
-    appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
-
-    sendEventsToApmServer( config, serializedEventsBuffer );
+    sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
 
+    destructRequestScoped( &tracer->requestScoped );
+
     resultCode = resultSuccess;
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestShutdown( &tracer->memTracker );
 
     ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );

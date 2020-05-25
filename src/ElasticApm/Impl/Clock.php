@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\LazySingletonInstanceTrait;
+use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
@@ -14,7 +14,7 @@ use Elastic\Apm\Impl\Util\TimeUtil;
  */
 final class Clock implements ClockInterface
 {
-    use LazySingletonInstanceTrait;
+    use SingletonInstanceTrait;
 
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float

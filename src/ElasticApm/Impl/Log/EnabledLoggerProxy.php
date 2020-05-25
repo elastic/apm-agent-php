@@ -32,10 +32,10 @@ final class EnabledLoggerProxy
     }
 
     /**
-     * @param string       $message
-     * @param array<mixed> $statementCtx
+     * @param string               $message
+     * @param array<string, mixed> $statementCtx
      */
-    public function log(string $message, array $statementCtx): bool
+    public function log(string $message, array $statementCtx = []): bool
     {
         $this->loggerData->backend->log(
             $this->statementLevel,

@@ -302,14 +302,19 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_internal_function )
  */
 PHP_FUNCTION( elasticapm_send_to_server )
 {
+    char* serializedMetadata = NULL;
+    size_t serializedMetadataLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 1, /* max_num_args: */ 1 )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
+    Z_PARAM_STRING( serializedMetadata, serializedMetadataLength )
     Z_PARAM_STRING( serializedEvents, serializedEventsLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmSendToServer( serializedEvents  ) != resultSuccess ) RETURN_FALSE
+    if ( elasticApmSendToServer( makeStringView( serializedMetadata, serializedMetadataLength )
+                                 , makeStringView( serializedEvents, serializedEventsLength ) ) != resultSuccess )
+    RETURN_FALSE
     RETURN_TRUE
 }
 /* }}} */

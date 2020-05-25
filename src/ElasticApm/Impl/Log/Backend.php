@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
+use Elastic\Apm\Impl\Util\DbgUtil;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -11,16 +13,16 @@ namespace Elastic\Apm\Impl\Log;
  */
 final class Backend
 {
-    /** @var SinkInterface */
-    private $logSink;
-
     /** @var int */
     private $maxEnabledLevel;
 
-    public function __construct(?SinkInterface $logSink)
+    /** @var SinkInterface */
+    private $logSink;
+
+    public function __construct(int $maxEnabledLevel, ?SinkInterface $logSink)
     {
+        $this->maxEnabledLevel = $maxEnabledLevel;
         $this->logSink = $logSink ?? new DefaultSink();
-        $this->maxEnabledLevel = Level::TRACE;
     }
 
     public function maxEnabledLevel(): int
@@ -29,13 +31,42 @@ final class Backend
     }
 
     /**
-     * @param int          $statementLevel
-     * @param string       $message
-     * @param array<mixed> $statementCtx
-     * @param int          $srcCodeLine
-     * @param string       $srcCodeFunc
-     * @param LoggerData   $loggerData
-     * @param int          $numberOfStackFramesToSkip
+     * @param array<string, mixed> $statementCtx
+     * @param LoggerData           $loggerData
+     *
+     * @return  array<array<string, mixed>>
+     */
+    private static function buildContextsStack(array $statementCtx, LoggerData $loggerData): array
+    {
+        $result = [];
+
+        $result[] = [
+            'namespace' => $loggerData->namespace,
+            'class'     => DbgUtil::fqToShortClassName($loggerData->fqClassName),
+        ];
+
+        /** @var LoggerData $currentLoggerData */
+        for (
+            $currentLoggerData = $loggerData;
+            !is_null($currentLoggerData);
+            $currentLoggerData = $currentLoggerData->inheritedData
+        ) {
+            $result[] = $currentLoggerData->context;
+        }
+
+        $result[] = $statementCtx;
+
+        return array_reverse($result);
+    }
+
+    /**
+     * @param int                  $statementLevel
+     * @param string               $message
+     * @param array<string, mixed> $statementCtx
+     * @param int                  $srcCodeLine
+     * @param string               $srcCodeFunc
+     * @param LoggerData           $loggerData
+     * @param int                  $numberOfStackFramesToSkip
      */
     public function log(
         int $statementLevel,
@@ -49,16 +80,12 @@ final class Backend
         $this->logSink->consume(
             $statementLevel,
             $message,
-            $statementCtx,
+            self::buildContextsStack($statementCtx, $loggerData),
             $loggerData->category,
-            $loggerData->sourceCodeFile,
+            $loggerData->srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc,
-            $numberOfStackFramesToSkip + 1,
-            array_merge(
-                $loggerData->attachedCtx,
-                ['namespace' => $loggerData->namespace, 'class' => $loggerData->className]
-            )
+            $numberOfStackFramesToSkip + 1
         );
     }
 }

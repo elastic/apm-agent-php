@@ -23,12 +23,14 @@ if (PHP_ELASTICAPM != 'no') {
             "MemoryTracker.c" + " " +
             "php_error.c" + " " +
             "platform.c" + " " +
+            "RequestScoped.c" + " " +
             "supportability.c" + " " +
             "SystemMetrics.c" + " " +
             "time_util.c" + " " +
             "Tracer.c" + " " +
+            "tracer_PHP_part.c" + " " +
             "util.c" + " " +
-            "util_for_php.c" + " " +
+            "util_for_PHP.c" + " " +
             "";
 
         EXTENSION('elasticapm', ELASTICAPM_PHP_EXT_SOURCES, null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');

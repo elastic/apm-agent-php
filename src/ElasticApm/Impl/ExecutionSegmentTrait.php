@@ -11,6 +11,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
@@ -22,16 +23,14 @@ trait ExecutionSegmentTrait
 {
     /** @var Tracer */
     protected $tracer;
-
+    /** @var bool */
+    protected $isDiscarded = false;
     /** @var float */
     private $durationOnBegin;
-
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
-
     /** @var Logger */
     private $logger;
-
     /** @var bool */
     private $isEnded = false;
 
@@ -55,15 +54,15 @@ trait ExecutionSegmentTrait
         $this->id = IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
-        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
+        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
     }
 
-    protected function createLogger(string $namespace, string $className, string $sourceCodeFile): Logger
+    protected function createLogger(string $namespace, string $className, string $srcCodeFile): Logger
     {
         $logger = $this->tracer
-            ->loggerFactory()->loggerForClass(LogCategory::PUBLIC_API, $namespace, $className, $sourceCodeFile);
-        $logger->addKeyValueToAttachedContext('Id', $this->getId());
-        $logger->addKeyValueToAttachedContext('TraceId', $this->getId());
+            ->loggerFactory()->loggerForClass(LogCategory::PUBLIC_API, $namespace, $className, $srcCodeFile);
+        $logger->addContext('Id', $this->getId());
+        $logger->addContext('TraceId', $this->getId());
         return $logger;
     }
 
@@ -86,7 +85,12 @@ trait ExecutionSegmentTrait
 
     protected function endExecutionSegment(?float $duration = null): bool
     {
-        if ($this->isEnded) {
+        if ($this->isDiscarded) {
+            $this->isEnded = true;
+            return false;
+        }
+
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
             return false;
         }
 
@@ -101,14 +105,35 @@ trait ExecutionSegmentTrait
             $this->duration = $duration;
         }
 
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(DbgUtil::fqToShortClassName(get_class()) . ' ended', []);
+
         $this->isEnded = true;
         return true;
     }
 
-    /** @inheritDoc */
     public function hasEnded(): bool
     {
         return $this->isEnded;
+    }
+
+    protected function checkIfAlreadyEnded(string $calledMethodName): bool
+    {
+        if (!$this->isEnded) {
+            return false;
+        }
+
+        if ($this->isDiscarded) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            $calledMethodName . '() has been called on already ended ' . DbgUtil::fqToShortClassName(get_class()),
+            ['stackTrace' => DbgUtil::formatCurrentStackTrace(/* numberOfStackFramesToSkip */ 1)]
+        );
+
+        return true;
     }
 
     public function isNoop(): bool
@@ -123,16 +148,28 @@ trait ExecutionSegmentTrait
 
     public function setName(string $name): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         $this->name = $this->tracer->limitKeywordString($name);
     }
 
     public function setType(string $type): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         $this->type = $this->tracer->limitKeywordString($type);
     }
 
     public function setLabel(string $key, $value): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         if (!ExecutionSegmentData::doesValueHaveSupportedLabelType($value)) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
@@ -145,5 +182,20 @@ trait ExecutionSegmentTrait
         $this->labels[$this->tracer->limitKeywordString($key)] = is_string($value)
             ? $this->tracer->limitKeywordString($value)
             : $value;
+    }
+
+    protected function discardExecutionSegment(): void
+    {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
+        $this->isDiscarded = true;
+        $this->end();
+    }
+
+    public function discard(): void
+    {
+        $this->discardExecutionSegment();
     }
 }

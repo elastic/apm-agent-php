@@ -89,12 +89,14 @@ if test "$PHP_ELASTICAPM" != "no"; then
     MemoryTracker.c \
     php_error.c \
     platform.c \
+    RequestScoped.c \
     supportability.c \
     SystemMetrics.c \
     time_util.c \
     Tracer.c \
+    tracer_PHP_part.c \
     util.c \
-    util_for_php.c \
+    util_for_PHP.c \
   "
 
   PHP_NEW_EXTENSION(elasticapm, $ELASTICAPM_PHP_EXT_SOURCES, $ext_shared)

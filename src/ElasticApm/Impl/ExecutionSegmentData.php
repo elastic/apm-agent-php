@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
 
@@ -139,5 +140,10 @@ abstract class ExecutionSegmentData extends EventData implements ExecutionSegmen
         $builder->add('ID', $data->getId());
         $builder->add('name', $data->getName());
         return $builder->build();
+    }
+
+    public function __toString(): string
+    {
+        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class()));
     }
 }

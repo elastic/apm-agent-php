@@ -21,8 +21,8 @@ final class AllOptionsMetadata
     public static function build(): array
     {
         return [
-            'enabled'      => new BoolOptionMetadata(/* defaultValue: */ true),
-            'service_name' => new StringOptionMetadata(/* defaultValue: */ 'Unnamed PHP service'),
+            OptionNames::ENABLED      => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::SERVICE_NAME => new NullableStringOptionMetadata(),
         ];
     }
 }

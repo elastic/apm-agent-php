@@ -16,9 +16,21 @@
 
 Duration makeDuration( Int64 value, DurationUnits units )
 {
-    // TODO: Sergey Kleyman: Implement: makeDuration
+    switch (units)
+    {
+        case durationUnits_milliseconds:
+            return (Duration){ .valueInMilliseconds = value };
 
-    return (Duration){ .valueInMilliseconds = value };
+        case durationUnits_seconds:
+            return (Duration){ .valueInMilliseconds = value * 1000 * 1000 };
+
+        case durationUnits_minutes:
+            return (Duration){ .valueInMilliseconds = value * 1000 * 1000 * 60 };
+
+        default:
+            ELASTICAPM_ASSERT( false, "Unknown duration units (as int): %d", units );
+            return (Duration){ .valueInMilliseconds = value };
+    }
 }
 
 ResultCode parseDuration( StringView valueAsString, DurationUnits defaultUnits, /* out */ Duration* result )

@@ -15,18 +15,18 @@ final class GlobalTracerHolder
 {
     use StaticClassTrait;
 
-    /** @var TracerInterface */
-    private static $singletonInstance;
+    /** @var TracerInterface|null */
+    private static $singletonInstance = null;
 
     public static function isSet(): bool
     {
-        return isset(self::$singletonInstance);
+        return !is_null(self::$singletonInstance);
     }
 
     public static function get(): TracerInterface
     {
-        if (!isset(self::$singletonInstance)) {
-            self::reset();
+        if (is_null(self::$singletonInstance)) {
+            self::$singletonInstance = TracerBuilder::startNew()->build();
         }
         return self::$singletonInstance;
     }
@@ -36,8 +36,8 @@ final class GlobalTracerHolder
         self::$singletonInstance = $newInstance;
     }
 
-    public static function reset(): void
+    public static function unset(): void
     {
-        self::$singletonInstance = TracerBuilder::startNew()->build();
+        self::$singletonInstance = null;
     }
 }

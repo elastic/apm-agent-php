@@ -47,6 +47,10 @@ final class Transaction extends TransactionData implements TransactionInterface
 
     public function addStartedSpan(): void
     {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
         ++$this->startedSpansCount;
     }
 
@@ -57,6 +61,10 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
+            return NoopSpan::singletonInstance();
+        }
+
         return new Span(
             $this /* <- containingTransaction*/,
             null /* <- parentSpan */,
@@ -75,6 +83,10 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
+            return NoopSpan::singletonInstance();
+        }
+
         $this->currentSpan = new Span(
             $this /* <- containingTransaction */,
             $this->currentSpan /* <- parentSpan */,
@@ -106,7 +118,7 @@ final class Transaction extends TransactionData implements TransactionInterface
 
     public function getCurrentSpan(): SpanInterface
     {
-        return $this->currentSpan ?? NoopSpan::instance();
+        return $this->currentSpan ?? NoopSpan::singletonInstance();
     }
 
     public function popCurrentSpan(): void
@@ -122,9 +134,6 @@ final class Transaction extends TransactionData implements TransactionInterface
             return;
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Transaction ended', []);
-
         $this->getTracer()->getEventSink()->consumeTransactionData($this);
 
         if ($this->getTracer()->getCurrentTransaction() === $this) {
@@ -132,8 +141,14 @@ final class Transaction extends TransactionData implements TransactionInterface
         }
     }
 
-    public function __toString(): string
+    public function discard(): void
     {
-        return self::dataToString($this, 'Transaction');
+        while (!is_null($this->currentSpan)) {
+            if (!$this->currentSpan->hasEnded()) {
+                $this->currentSpan->discard();
+            }
+            $this->popCurrentSpan();
+        }
+        $this->discardExecutionSegment();
     }
 }
