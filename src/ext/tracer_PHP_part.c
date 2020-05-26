@@ -20,8 +20,7 @@
 #define ELASTICAPM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
 #define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "bootstrap"
 #define ELASTICAPM_PHP_PART_SHUTDOWN_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "shutdown"
-#define ELASTICAPM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "interceptedCallPreHook"
-#define ELASTICAPM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
+#define ELASTICAPM_PHP_PART_INTERCEPTED_CALL_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "interceptedCall"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
@@ -112,7 +111,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     goto finally;
 }
 
-ResultCode tracerPhpPartInterceptedCallPreHook( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* preHookRetVal )
+void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
 {
     ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "funcToInterceptId: %u", funcToInterceptId );
 
@@ -120,69 +119,27 @@ ResultCode tracerPhpPartInterceptedCallPreHook( uint32_t funcToInterceptId, zend
 
     zval funcToInterceptIdAsZval;
     ZVAL_UNDEF( &funcToInterceptIdAsZval );
-    zval preHookRetValLocal;
-    ZVAL_UNDEF( &preHookRetValLocal );
 
     enum
     {
         maxInterceptedCallArgsCount = 100
     };
-    zval preHookArgs[maxInterceptedCallArgsCount + 1];
+    zval phpPartArgs[maxInterceptedCallArgsCount + 1];
 
-    // The first argument to PHP part's interceptedCallPreHook() is $funcToInterceptId
+    // The first argument to PHP part's interceptedCall() is $funcToInterceptId
     ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
-    preHookArgs[ 0 ] = funcToInterceptIdAsZval;
+    phpPartArgs[ 0 ] = funcToInterceptIdAsZval;
 
     uint32_t interceptedCallArgsCount;
-    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( preHookArgs[ 1 ] ), &interceptedCallArgsCount );
+    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 1 ] ), &interceptedCallArgsCount );
     ELASTICAPM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC )
+                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_FUNC )
                     , logLevel_debug
                     , interceptedCallArgsCount + 1
-                    , preHookArgs
-                    , &preHookRetValLocal ) );
-    ELASTICAPM_LOG_TRACE( "Successfully finished pre-hook call. Return value type: %u", Z_TYPE( preHookRetValLocal ) );
-
-    resultCode = resultSuccess;
-    *preHookRetVal = preHookRetValLocal;
-
-    finally:
-    zval_dtor( &funcToInterceptIdAsZval );
-
-    ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
-                                                 , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    return resultCode;
-
-    failure:
-    zval_dtor( &preHookRetValLocal );
-    goto finally;
-}
-
-ResultCode tracerPhpPartInterceptedCallPostHook( uint32_t funcToInterceptId, zval preHookRetVal, zval originalCallRetVal )
-{
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "funcToInterceptId: %u", funcToInterceptId );
-
-    ResultCode resultCode;
-
-    zval funcToInterceptIdAsZval;
-    ZVAL_UNDEF( &funcToInterceptIdAsZval );
-
-    if ( Z_TYPE( preHookRetVal ) == IS_NULL )
-    {
-        resultCode = resultSuccess;
-        goto finally;
-    }
-
-    // The first argument to PHP part's interceptedCallPreHook() is $funcToInterceptId
-    ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
-    zval postHookArgs[] = { funcToInterceptIdAsZval, preHookRetVal, originalCallRetVal };
-    ELASTICAPM_CALL_IF_FAILED_GOTO(
-            callPhpFunctionRetVoid(
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
-                    , logLevel_debug
-                    , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
-                    , postHookArgs ) );
+                    , phpPartArgs
+                    , /* out */ return_value ) );
+    ELASTICAPM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( return_value ) );
 
     resultCode = resultSuccess;
 
@@ -191,7 +148,8 @@ ResultCode tracerPhpPartInterceptedCallPostHook( uint32_t funcToInterceptId, zva
 
     ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    return resultCode;
+    ELASTICAPM_UNUSED(resultCode);
+    return;
 
     failure:
     goto finally;

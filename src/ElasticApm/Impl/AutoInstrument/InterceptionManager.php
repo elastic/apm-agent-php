@@ -9,6 +9,7 @@ use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Throwable;
 
 /**
@@ -36,51 +37,115 @@ final class InterceptionManager
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return InterceptedCallTrackerInterface|null
+     * @return mixed
+     * @throws Throwable
      */
-    public function interceptedCallPreHook(
+    public function interceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
+    {
+        $localLogger = $this->logger->inherit()->addContext('funcToInterceptId', $funcToInterceptId);
+
+        $callTracker = $this->interceptedCallPreHook($localLogger, $funcToInterceptId, ...$interceptedCallArgs);
+
+        $hasExitedByException = false;
+        try {
+            /**
+             * elasticapm_* functions are provided by the elasticapm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            $returnValueOrThrown = \elasticapm_call_intercepted_original();
+        } catch (Throwable $throwable) {
+            $hasExitedByException = true;
+            $returnValueOrThrown = $throwable;
+        }
+
+        if (!is_null($callTracker)) {
+            $this->interceptedCallPostHook($localLogger, $callTracker, $hasExitedByException, $returnValueOrThrown);
+        }
+
+        if ($hasExitedByException) {
+            throw $returnValueOrThrown;
+        }
+
+        return $returnValueOrThrown;
+    }
+
+    /**
+     * @param Logger $localLogger
+     * @param int    $funcToInterceptId
+     * @param mixed  ...$interceptedCallArgs
+     *
+     * @return mixed
+     */
+    private function interceptedCallPreHook(
+        Logger $localLogger,
         int $funcToInterceptId,
         ...$interceptedCallArgs
     ): ?InterceptedCallTrackerInterface {
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['funcToInterceptId' => $funcToInterceptId]);
+        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered');
 
         try {
             /** @var InterceptedCallTrackerInterface $callTracker */
             $callTracker = $this->interceptedCallTrackerFactories[$funcToInterceptId]();
-            $callTracker->preHook(...$interceptedCallArgs);
-            return $callTracker;
         } catch (Throwable $throwable) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Call tracker code before the original call has let a Throwable to escape',
-                ['throwable' => $throwable, 'funcToInterceptId' => $funcToInterceptId]
+                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                . ' factory has let a Throwable to escape - returning null',
+                ['throwable' => $throwable]
             );
+
+            ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting (with null return value)');
             return null;
         }
+
+        try {
+            $callTracker->preHook(...$interceptedCallArgs);
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                . 'preHook() has let a Throwable to escape',
+                ['throwable' => $throwable]
+            );
+
+            ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - returning null');
+            return null;
+        }
+
+        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting - returning non-null');
+        return $callTracker;
     }
 
     /**
-     * @param int                             $funcToInterceptId
+     * @param Logger                          $localLogger
      * @param InterceptedCallTrackerInterface $callTracker
+     * @param bool                            $hasExitedByException
      * @param mixed|Throwable                 $returnValueOrThrown      Return value of the intercepted call
      *                                                                  or the object thrown by the intercepted call
      */
-    public function interceptedCallPostHook(
-        int $funcToInterceptId,
+    private function interceptedCallPostHook(
+        Logger $localLogger,
         InterceptedCallTrackerInterface $callTracker,
+        bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['funcToInterceptId' => $funcToInterceptId]);
+        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered');
 
         try {
-            $callTracker->postHook(false /* hasExitedByException */, $returnValueOrThrown);
+            $callTracker->postHook($hasExitedByException, $returnValueOrThrown);
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Call tracker code after the original call has let a Throwable to escape',
-                ['throwable' => $throwable, 'funcToInterceptId' => $funcToInterceptId]
+                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                . 'postHook() has let a Throwable to escape',
+                ['throwable' => $throwable]
             );
         }
     }
