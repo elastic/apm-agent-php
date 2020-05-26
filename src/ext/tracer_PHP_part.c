@@ -168,18 +168,21 @@ ResultCode tracerPhpPartInterceptedCallPostHook( uint32_t funcToInterceptId, zva
     zval funcToInterceptIdAsZval;
     ZVAL_UNDEF( &funcToInterceptIdAsZval );
 
-    if ( Z_TYPE( preHookRetVal ) != IS_NULL )
+    if ( Z_TYPE( preHookRetVal ) == IS_NULL )
     {
-        // The first argument to PHP part's interceptedCallPreHook() is $funcToInterceptId
-        ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
-        zval postHookArgs[] = { funcToInterceptIdAsZval, preHookRetVal, originalCallRetVal };
-        ELASTICAPM_CALL_IF_FAILED_GOTO(
-                callPhpFunctionRetVoid(
-                        ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
-                        , logLevel_debug
-                        , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
-                        , postHookArgs ) );
+        resultCode = resultSuccess;
+        goto finally;
     }
+
+    // The first argument to PHP part's interceptedCallPreHook() is $funcToInterceptId
+    ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
+    zval postHookArgs[] = { funcToInterceptIdAsZval, preHookRetVal, originalCallRetVal };
+    ELASTICAPM_CALL_IF_FAILED_GOTO(
+            callPhpFunctionRetVoid(
+                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
+                    , logLevel_debug
+                    , ELASTICAPM_STATIC_ARRAY_SIZE( postHookArgs )
+                    , postHookArgs ) );
 
     resultCode = resultSuccess;
 

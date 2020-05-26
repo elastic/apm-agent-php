@@ -6,10 +6,12 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\SpanInterface;
 use Throwable;
 
 /**
@@ -19,8 +21,6 @@ use Throwable;
  */
 final class CurlAutoInstrumentation
 {
-    use AutoInstrumentationTrait;
-
     public static function register(RegistrationContextInterface $ctx): void
     {
         self::curlExec($ctx);
@@ -30,33 +30,43 @@ final class CurlAutoInstrumentation
     {
         $ctx->interceptCallsToFunction(
             'curl_exec',
-            function (...$interceptedCallArgs): callable {
-                /** @var resource|null */
-                $curlHandle = count($interceptedCallArgs) != 0 && is_resource($interceptedCallArgs[0])
-                    ? $interceptedCallArgs[0]
-                    : null;
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
 
-                $span = ElasticApm::beginCurrentSpan(
-                    'curl_exec', // TODO: Sergey Kleyman: fetch HTTP method + path for span name
-                    Constants::SPAN_TYPE_EXTERNAL,
-                    Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP
-                );
+                    /** @var resource|null */
+                    private $curlHandle;
 
-                /**
-                 * @param bool            $hasExitedByException
-                 * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
-                 */
-                return function (bool $hasExitedByException, $returnValueOrThrown) use ($span, $curlHandle): void {
-                    if (!$hasExitedByException) {
-                        if (!is_null($curlHandle)) {
-                            $info = curl_getinfo($curlHandle);
-                            if (!is_null($httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null))) {
-                                // TODO: Sergey Kleyman: use the corresponding property in Intake API
-                                $span->setLabel('HTTP status', $httpCode);
+                    /** @var SpanInterface */
+                    private $span;
+
+                    public function preHook(...$interceptedCallArgs): void
+                    {
+                        $this->curlHandle = count($interceptedCallArgs) != 0 && is_resource($interceptedCallArgs[0])
+                            ? $interceptedCallArgs[0]
+                            : null;
+
+                        $this->span = ElasticApm::beginCurrentSpan(
+                            'curl_exec',
+                            Constants::SPAN_TYPE_EXTERNAL,
+                            Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP
+                        );
+                    }
+
+                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
+                    {
+                        if (!$hasExitedByException) {
+                            if (!is_null($this->curlHandle)) {
+                                $info = curl_getinfo($this->curlHandle);
+                                if (
+                                    !is_null($httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null))
+                                ) {
+                                    $this->span->setLabel('HTTP status', $httpCode);
+                                }
                             }
                         }
+
+                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
                     }
-                    self::endSpan($span, $hasExitedByException, $returnValueOrThrown);
                 };
             }
         );

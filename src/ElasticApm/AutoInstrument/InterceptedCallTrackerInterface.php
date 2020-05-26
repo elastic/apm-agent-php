@@ -13,11 +13,11 @@ interface InterceptedCallTrackerInterface
      *
      * @return void
      */
-    public function onInterceptedCallBegin(...$interceptedCallArgs): void;
+    public function preHook(...$interceptedCallArgs): void;
 
     /**
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
      */
-    public function onInterceptedCallEnd(bool $hasExitedByException, $returnValueOrThrown): void;
+    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void;
 }
