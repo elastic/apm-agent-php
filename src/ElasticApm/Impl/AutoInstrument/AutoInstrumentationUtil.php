@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\SpanInterface;
 use Throwable;
@@ -26,6 +27,7 @@ final class AutoInstrumentationUtil
      */
     public static function endSpan(SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown): void
     {
+        $span->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
         $span->setLabel('hasExitedByException', $hasExitedByException);
         $span->end();
     }

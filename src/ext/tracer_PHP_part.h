@@ -18,6 +18,4 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config );
 
-ResultCode tracerPhpPartInterceptedCallPreHook( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* preHookRetVal );
-
-ResultCode tracerPhpPartInterceptedCallPostHook( uint32_t funcToInterceptId, zval preHookRetVal, zval originalCallRetVal );
+void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value );

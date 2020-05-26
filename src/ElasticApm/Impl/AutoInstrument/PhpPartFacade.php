@@ -118,70 +118,26 @@ final class PhpPartFacade
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return InterceptedCallTrackerInterface|null
+     * @return mixed
      * @throws Throwable
      */
-    public static function interceptedCallPreHook(
-        int $funcToInterceptId,
-        ...$interceptedCallArgs
-    ): ?InterceptedCallTrackerInterface {
+    public static function interceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
+    {
         if (is_null(self::singletonInstance()->interceptionManager)) {
-            return null;
+            /**
+             * elasticapm_* functions are provided by the elasticapm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            return \elasticapm_call_intercepted_original();
         }
-        try {
-            return self::singletonInstance()->interceptionManager->interceptedCallPreHook(
-                $funcToInterceptId,
-                ...$interceptedCallArgs
-            );
-        } catch (Throwable $throwable) {
-            BootstrapStageLogger::logCriticalThrowable(
-                $throwable,
-                'Intercepted call pre-hook let a throwable escape',
-                __LINE__,
-                __FUNCTION__
-            );
-            throw $throwable;
-        }
+
+        return self::singletonInstance()->interceptionManager->interceptedCall(
+            $funcToInterceptId,
+            ...$interceptedCallArgs
+        );
     }
-
-    /**
-     * Called by elasticapm extension
-     *
-     * @noinspection PhpUnused
-     *
-     * @param int             $funcToInterceptId
-     * @param InterceptedCallTrackerInterface $callTracker
-     * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call
-     *                                             or the object thrown by the intercepted call
-     *
-     * @throws Throwable
-     */
-    public static function interceptedCallPostHook(
-        int $funcToInterceptId,
-        InterceptedCallTrackerInterface $callTracker,
-        $returnValueOrThrown
-    ): void {
-        if (is_null(self::singletonInstance()->interceptionManager)) {
-            return;
-        }
-
-        try {
-            self::singletonInstance()->interceptionManager->interceptedCallPostHook(
-                $funcToInterceptId,
-                $callTracker,
-                $returnValueOrThrown
-            );
-        } catch (Throwable $throwable) {
-            BootstrapStageLogger::logCriticalThrowable(
-                $throwable,
-                'Intercepted call post-hook let a throwable escape',
-                __LINE__,
-                __FUNCTION__
-            );
-            throw $throwable;
-        }
-    }
-
     /**
      * Called by elasticapm extension
      *

@@ -19,7 +19,39 @@ final class PdoAutoInstrumentation
 {
     public static function register(RegistrationContextInterface $ctx): void
     {
+        self::pdoConstruct($ctx);
         self::pdoExec($ctx);
+    }
+
+    public static function pdoConstruct(RegistrationContextInterface $ctx): void
+    {
+        $ctx->interceptCallsToMethod(
+            'PDO',
+            '__construct',
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
+
+                    /** @var SpanInterface */
+                    private $span;
+
+                    public function preHook(...$interceptedCallArgs): void
+                    {
+                        $this->span = ElasticApm::beginCurrentSpan(
+                            'PDO::__construct('
+                            . (count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : '')
+                            . ')',
+                            Constants::SPAN_TYPE_DB,
+                            Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE
+                        );
+                    }
+
+                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
+                    {
+                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                    }
+                };
+            }
+        );
     }
 
     public static function pdoExec(RegistrationContextInterface $ctx): void

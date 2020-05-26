@@ -25,7 +25,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
 ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* funcToInterceptId );
 
-//ResultCode elasticApmCallInterceptedOriginal( uint32_t funcToInterceptId, uint32_t originalArgsCount, zval* originalArgs );
+void elasticApmCallInterceptedOriginal( zval* return_value );
 
 void resetCallInterceptionOnRequestShutdown();
 
