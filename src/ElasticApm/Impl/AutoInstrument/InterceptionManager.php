@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedFunctionCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedMethodCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Throwable;
 
@@ -19,8 +21,8 @@ use Throwable;
  */
 final class InterceptionManager
 {
-    /** @var callable[] */
-    private $interceptedCallTrackerFactories;
+    /** @var InterceptedCallRegistration[] */
+    private $interceptedCallRegistrations;
 
     /** @var Logger */
     private $logger;
@@ -34,17 +36,23 @@ final class InterceptionManager
     }
 
     /**
-     * @param int   $funcToInterceptId
-     * @param mixed ...$interceptedCallArgs
+     * @param int         $funcToInterceptId
+     * @param object|null $thisObj
+     * @param mixed       ...$interceptedCallArgs
      *
      * @return mixed
      * @throws Throwable
      */
-    public function interceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
+    public function interceptedCall(int $funcToInterceptId, ?object $thisObj, ...$interceptedCallArgs)
     {
         $localLogger = $this->logger->inherit()->addContext('funcToInterceptId', $funcToInterceptId);
 
-        $callTracker = $this->interceptedCallPreHook($localLogger, $funcToInterceptId, ...$interceptedCallArgs);
+        $callTracker = $this->interceptedCallPreHook(
+            $localLogger,
+            $funcToInterceptId,
+            $thisObj,
+            ...$interceptedCallArgs
+        );
 
         $hasExitedByException = false;
         try {
@@ -72,48 +80,70 @@ final class InterceptionManager
     }
 
     /**
-     * @param Logger $localLogger
-     * @param int    $funcToInterceptId
-     * @param mixed  ...$interceptedCallArgs
+     * @param Logger      $localLogger
+     * @param int         $funcToInterceptId
+     * @param object|null $thisObj
+     * @param mixed       ...$interceptedCallArgs
      *
-     * @return mixed
+     * @return InterceptedMethodCallTrackerInterface|InterceptedFunctionCallTrackerInterface|null
      */
     private function interceptedCallPreHook(
         Logger $localLogger,
         int $funcToInterceptId,
+        ?object $thisObj,
         ...$interceptedCallArgs
-    ): ?InterceptedCallTrackerInterface {
+    ) {
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
 
+        $registration = $this->interceptedCallRegistrations[$funcToInterceptId];
+        if ($registration->isMethod) {
+            $localLogger->addContext('interceptedCallClass', $registration->className);
+            $localLogger->addContext('interceptedCallMethod', $registration->methodName);
+        } else {
+            $localLogger->addContext('interceptedCallFunction', $registration->functionName);
+        }
+
         try {
-            /** @var InterceptedCallTrackerInterface $callTracker */
-            $callTracker = $this->interceptedCallTrackerFactories[$funcToInterceptId]();
+            /** @var InterceptedMethodCallTrackerInterface|InterceptedFunctionCallTrackerInterface $callTracker */
+            $callTracker = ($registration->factory)();
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                DbgUtil::fqToShortClassName(InterceptedMethodCallTrackerInterface::class)
                 . ' factory has let a Throwable to escape - returning null',
                 ['throwable' => $throwable]
             );
-
-            ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Exiting (with null return value)');
             return null;
         }
 
         try {
-            $callTracker->preHook(...$interceptedCallArgs);
+            if ($registration->isMethod) {
+                ($assertProxy = Assert::ifEnabled())
+                && $assertProxy->that(!is_null($thisObj))
+                && $assertProxy->info('!is_null($thisObj)', ['registration' => $registration]);
+
+                $callTracker->preHook($thisObj, ...$interceptedCallArgs);
+            } else {
+                ($assertProxy = Assert::ifEnabled())
+                && $assertProxy->that(is_null($thisObj))
+                && $assertProxy->info(
+                    'is_null($thisObj)',
+                    [
+                        'registration' => $registration,
+                        'thisObjType'  => DbgUtil::getType($thisObj),
+                    ]
+                );
+
+                $callTracker->preHook(...$interceptedCallArgs);
+            }
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
-                . 'preHook() has let a Throwable to escape',
+                DbgUtil::fqToShortClassName(InterceptedMethodCallTrackerInterface::class)
+                . 'preHook() has let a Throwable to escape - returning null',
                 ['throwable' => $throwable]
             );
-
-            ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Exiting - returning null');
             return null;
         }
 
@@ -123,15 +153,16 @@ final class InterceptionManager
     }
 
     /**
-     * @param Logger                          $localLogger
-     * @param InterceptedCallTrackerInterface $callTracker
-     * @param bool                            $hasExitedByException
-     * @param mixed|Throwable                 $returnValueOrThrown      Return value of the intercepted call
-     *                                                                  or the object thrown by the intercepted call
+     * @param Logger                                                                        $localLogger
+     * @param InterceptedMethodCallTrackerInterface|InterceptedFunctionCallTrackerInterface $callTracker
+     * @param bool                                                                          $hasExitedByException
+     * @param mixed|Throwable                                                               $returnValueOrThrown
+     *                          Return value of the intercepted call
+     *                          or the object thrown by the intercepted call
      */
     private function interceptedCallPostHook(
         Logger $localLogger,
-        InterceptedCallTrackerInterface $callTracker,
+        $callTracker,
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
@@ -143,63 +174,24 @@ final class InterceptionManager
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                DbgUtil::fqToShortClassName(InterceptedMethodCallTrackerInterface::class)
                 . 'postHook() has let a Throwable to escape',
                 ['throwable' => $throwable]
             );
         }
     }
 
-    // /**
-    //  * Called by elasticapm extension
-    //  *
-    //  * @noinspection PhpUnused
-    //  *
-    //  * @param int   $funcToInterceptId
-    //  * @param mixed ...$interceptedCallArgs
-    //  *
-    //  * @return mixed
-    //  * @throws Throwable
-    //  */
-    // public static function wrapInterceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
-    // {
-    //     $callTracker = self::onInterceptedCallBegin($funcToInterceptId, ...$interceptedCallArgs);
-    //     if (is_null($callTracker)) {
-    //         /**
-    //          * elasticapm_* functions are provided by the elasticapm extension
-    //          *
-    //          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-    //          * @phpstan-ignore-next-line
-    //          */
-    //         return \elasticapm_call_intercepted_original($funcToInterceptId, ...$interceptedCallArgs);
-    //     }
-    //
-    //     try {
-    //         /**
-    //          * elasticapm_* functions are provided by the elasticapm extension
-    //          *
-    //          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-    //          * @phpstan-ignore-next-line
-    //          */
-    //         return $callTracker->onCallNormalEnd(
-    //             \elasticapm_call_intercepted_original($funcToInterceptId, func_num_args(), func_get_args())
-    //         );
-    //     } catch (Throwable $throwable) {
-    //         throw $callTracker->onCallEndByException($throwable);
-    //     }
-    // }
-
     private function loadPlugins(): void
     {
         $registerCtx = new class implements RegistrationContextInterface {
 
-            /** @var callable[] */
-            public $onInterceptedCallBeginCallbacks;
+            /** @var InterceptedCallRegistration[] */
+            public $interceptedCallRegistrations;
 
             public function interceptCallsToMethod(
                 string $className,
                 string $methodName,
-                callable $onInterceptedCallBegin
+                callable $interceptedMethodCallTrackerFactory
             ): void {
                 /**
                  * elasticapm_* functions are provided by the elasticapm extension
@@ -209,13 +201,17 @@ final class InterceptionManager
                  */
                 $funcToInterceptId = \elasticapm_intercept_calls_to_internal_method($className, $methodName);
                 if ($funcToInterceptId >= 0) {
-                    $this->onInterceptedCallBeginCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
+                    $this->interceptedCallRegistrations[$funcToInterceptId] = InterceptedCallRegistration::forMethod(
+                        $className,
+                        $methodName,
+                        $interceptedMethodCallTrackerFactory
+                    );
                 }
             }
 
             public function interceptCallsToFunction(
                 string $functionName,
-                callable $onInterceptedCallBegin
+                callable $interceptedFunctionCallTrackerFactory
             ): void {
                 /**
                  * elasticapm_* functions are provided by the elasticapm extension
@@ -225,14 +221,17 @@ final class InterceptionManager
                  */
                 $funcToInterceptId = \elasticapm_intercept_calls_to_internal_function($functionName);
                 if ($funcToInterceptId >= 0) {
-                    $this->onInterceptedCallBeginCallbacks[$funcToInterceptId] = $onInterceptedCallBegin;
+                    $this->interceptedCallRegistrations[$funcToInterceptId] = InterceptedCallRegistration::forFunction(
+                        $functionName,
+                        $interceptedFunctionCallTrackerFactory
+                    );
                 }
             }
         };
 
         $this->loadPluginsImpl($registerCtx);
 
-        $this->interceptedCallTrackerFactories = $registerCtx->onInterceptedCallBeginCallbacks;
+        $this->interceptedCallRegistrations = $registerCtx->interceptedCallRegistrations;
     }
 
     private function loadPluginsImpl(RegistrationContextInterface $registerCtx): void

@@ -124,19 +124,29 @@ void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data
     {
         maxInterceptedCallArgsCount = 100
     };
-    zval phpPartArgs[maxInterceptedCallArgsCount + 1];
+    zval phpPartArgs[maxInterceptedCallArgsCount + 2];
 
     // The first argument to PHP part's interceptedCall() is $funcToInterceptId
     ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
     phpPartArgs[ 0 ] = funcToInterceptIdAsZval;
 
+    // The second argument to PHP part's interceptedCall() is $thisObj
+    if (Z_TYPE(execute_data->This) == IS_UNDEF)
+    {
+        ZVAL_NULL( &phpPartArgs[ 1 ] );
+    }
+    else
+    {
+        phpPartArgs[ 1 ] = execute_data->This;
+    }
+
     uint32_t interceptedCallArgsCount;
-    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 1 ] ), &interceptedCallArgsCount );
+    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
     ELASTICAPM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
                     ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_FUNC )
                     , logLevel_debug
-                    , interceptedCallArgsCount + 1
+                    , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ return_value ) );
     ELASTICAPM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( return_value ) );

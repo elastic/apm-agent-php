@@ -6,7 +6,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedFunctionCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedMethodCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
@@ -30,8 +31,8 @@ final class CurlAutoInstrumentation
     {
         $ctx->interceptCallsToFunction(
             'curl_exec',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
+            function (): InterceptedFunctionCallTrackerInterface {
+                return new class implements InterceptedFunctionCallTrackerInterface {
 
                     /** @var resource|null */
                     private $curlHandle;
