@@ -11,24 +11,24 @@ interface RegistrationContextInterface
     /**
      * @param string   $className
      * @param string   $methodName
-     * @param callable $interceptedCallTrackerFactory
+     * @param callable $interceptedMethodCallTrackerFactory
      *
-     * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
+     * @phpstan-param callable(): InterceptedMethodCallTrackerInterface $interceptedMethodCallTrackerFactory
      */
     public function interceptCallsToMethod(
         string $className,
         string $methodName,
-        callable $interceptedCallTrackerFactory
+        callable $interceptedMethodCallTrackerFactory
     ): void;
 
     /**
      * @param string   $functionName
-     * @param callable $interceptedCallTrackerFactory
+     * @param callable $interceptedFunctionCallTrackerFactory
      *
-     * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
+     * @phpstan-param callable(): InterceptedFunctionCallTrackerInterface $interceptedFunctionCallTrackerFactory
      */
     public function interceptCallsToFunction(
         string $functionName,
-        callable $interceptedCallTrackerFactory
+        callable $interceptedFunctionCallTrackerFactory
     ): void;
 }

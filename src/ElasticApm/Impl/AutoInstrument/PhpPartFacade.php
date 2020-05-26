@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\Assert;
@@ -115,13 +114,14 @@ final class PhpPartFacade
      *
      * @noinspection PhpUnused
      *
-     * @param int   $funcToInterceptId
-     * @param mixed ...$interceptedCallArgs
+     * @param int         $funcToInterceptId
+     * @param object|null $thisObj
+     * @param mixed       ...$interceptedCallArgs
      *
      * @return mixed
      * @throws Throwable
      */
-    public static function interceptedCall(int $funcToInterceptId, ...$interceptedCallArgs)
+    public static function interceptedCall(int $funcToInterceptId, ?object $thisObj, ...$interceptedCallArgs)
     {
         if (is_null(self::singletonInstance()->interceptionManager)) {
             /**
@@ -135,9 +135,11 @@ final class PhpPartFacade
 
         return self::singletonInstance()->interceptionManager->interceptedCall(
             $funcToInterceptId,
+            $thisObj,
             ...$interceptedCallArgs
         );
     }
+
     /**
      * Called by elasticapm extension
      *
