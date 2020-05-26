@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 use RuntimeException;
@@ -120,13 +118,13 @@ final class PhpPartFacade
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return callable|null
+     * @return InterceptedCallTrackerInterface|null
      * @throws Throwable
      */
     public static function interceptedCallPreHook(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?callable {
+    ): ?InterceptedCallTrackerInterface {
         if (is_null(self::singletonInstance()->interceptionManager)) {
             return null;
         }
@@ -152,7 +150,7 @@ final class PhpPartFacade
      * @noinspection PhpUnused
      *
      * @param int             $funcToInterceptId
-     * @param callable        $onInterceptedCallEnd
+     * @param InterceptedCallTrackerInterface $callTracker
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call
      *                                             or the object thrown by the intercepted call
      *
@@ -160,7 +158,7 @@ final class PhpPartFacade
      */
     public static function interceptedCallPostHook(
         int $funcToInterceptId,
-        callable $onInterceptedCallEnd,
+        InterceptedCallTrackerInterface $callTracker,
         $returnValueOrThrown
     ): void {
         if (is_null(self::singletonInstance()->interceptionManager)) {
@@ -170,7 +168,7 @@ final class PhpPartFacade
         try {
             self::singletonInstance()->interceptionManager->interceptedCallPostHook(
                 $funcToInterceptId,
-                $onInterceptedCallEnd,
+                $callTracker,
                 $returnValueOrThrown
             );
         } catch (Throwable $throwable) {

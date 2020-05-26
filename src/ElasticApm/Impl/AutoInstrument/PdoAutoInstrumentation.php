@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
-use Throwable;
+use Elastic\Apm\SpanInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -16,8 +17,6 @@ use Throwable;
  */
 final class PdoAutoInstrumentation
 {
-    use AutoInstrumentationTrait;
-
     public static function register(RegistrationContextInterface $ctx): void
     {
         self::pdoExec($ctx);
@@ -28,26 +27,29 @@ final class PdoAutoInstrumentation
         $ctx->interceptCallsToMethod(
             'PDO',
             'exec',
-            function (...$interceptedCallArgs): callable {
-                $span = ElasticApm::beginCurrentSpan(
-                // TODO: Sergey Kleyman: Implement constructing span name from SQL statement
-                    count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO::exec',
-                    Constants::SPAN_TYPE_DB,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE
-                );
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
 
-                /**
-                 * @param bool            $hasExitedByException
-                 * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
-                 */
-                return function (bool $hasExitedByException, $returnValueOrThrown) use ($span): void {
-                    if (!$hasExitedByException) {
-                        // TODO: Sergey Kleyman: use the corresponding property in Intake API
-                        // https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L106
-                        $span->setLabel('rows_affected', (int)$returnValueOrThrown);
+                    /** @var SpanInterface */
+                    private $span;
+
+                    public function preHook(...$interceptedCallArgs): void
+                    {
+                        $this->span = ElasticApm::beginCurrentSpan(
+                            count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO::exec',
+                            Constants::SPAN_TYPE_DB,
+                            Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE
+                        );
                     }
 
-                    self::endSpan($span, $hasExitedByException, $returnValueOrThrown);
+                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
+                    {
+                        if (!$hasExitedByException) {
+                            $this->span->setLabel('rows_affected', (int)$returnValueOrThrown);
+                        }
+
+                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                    }
                 };
             }
         );

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
@@ -18,7 +19,7 @@ use Throwable;
 final class InterceptionManager
 {
     /** @var callable[] */
-    private $onInterceptedCallBeginCallbacks;
+    private $interceptedCallTrackerFactories;
 
     /** @var Logger */
     private $logger;
@@ -35,33 +36,53 @@ final class InterceptionManager
      * @param int   $funcToInterceptId
      * @param mixed ...$interceptedCallArgs
      *
-     * @return callable|null
+     * @return InterceptedCallTrackerInterface|null
      */
     public function interceptedCallPreHook(
         int $funcToInterceptId,
         ...$interceptedCallArgs
-    ): ?callable {
+    ): ?InterceptedCallTrackerInterface {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['funcToInterceptId' => $funcToInterceptId]);
 
-        return $this->onInterceptedCallBeginCallbacks[$funcToInterceptId](...$interceptedCallArgs);
+        try {
+            /** @var InterceptedCallTrackerInterface $callTracker */
+            $callTracker = $this->interceptedCallTrackerFactories[$funcToInterceptId]();
+            $callTracker->preHook(...$interceptedCallArgs);
+            return $callTracker;
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Call tracker code before the original call has let a Throwable to escape',
+                ['throwable' => $throwable, 'funcToInterceptId' => $funcToInterceptId]
+            );
+            return null;
+        }
     }
 
     /**
-     * @param int             $funcToInterceptId
-     * @param callable        $onInterceptedCallEnd
-     * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call
-     *                                             or the object thrown by the intercepted call
+     * @param int                             $funcToInterceptId
+     * @param InterceptedCallTrackerInterface $callTracker
+     * @param mixed|Throwable                 $returnValueOrThrown      Return value of the intercepted call
+     *                                                                  or the object thrown by the intercepted call
      */
     public function interceptedCallPostHook(
         int $funcToInterceptId,
-        callable $onInterceptedCallEnd,
+        InterceptedCallTrackerInterface $callTracker,
         $returnValueOrThrown
     ): void {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['funcToInterceptId' => $funcToInterceptId]);
 
-        $onInterceptedCallEnd(false /* hasExitedByException */, $returnValueOrThrown);
+        try {
+            $callTracker->postHook(false /* hasExitedByException */, $returnValueOrThrown);
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Call tracker code after the original call has let a Throwable to escape',
+                ['throwable' => $throwable, 'funcToInterceptId' => $funcToInterceptId]
+            );
+        }
     }
 
     // /**
@@ -146,7 +167,7 @@ final class InterceptionManager
 
         $this->loadPluginsImpl($registerCtx);
 
-        $this->onInterceptedCallBeginCallbacks = $registerCtx->onInterceptedCallBeginCallbacks;
+        $this->interceptedCallTrackerFactories = $registerCtx->onInterceptedCallBeginCallbacks;
     }
 
     private function loadPluginsImpl(RegistrationContextInterface $registerCtx): void

@@ -15,7 +15,7 @@ use Throwable;
  *
  * @internal
  */
-trait AutoInstrumentationTrait
+final class AutoInstrumentationUtil
 {
     use StaticClassTrait;
 
@@ -24,8 +24,9 @@ trait AutoInstrumentationTrait
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
      */
-    protected static function endSpan(SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown): void
+    public static function endSpan(SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown): void
     {
+        $span->setLabel('hasExitedByException', $hasExitedByException);
         $span->end();
     }
 }
