@@ -1,7 +1,7 @@
 [[intro]]
 == Introduction
 
-The Elastic APM PHP Agent automatically measures the performance of your application and tracks errors.
+The Elastic APM PHP Agent measures the performance of your application and tracks errors.
 It is an extension that must be installed in your PHP environment.
 
 // [float]
