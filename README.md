@@ -50,7 +50,7 @@ You can configure the Elastic APM agent using the following ini settings for PHP
 ```ini
 elasticapm.host = localhost:8200
 elasticapm.service_name = "Unknown PHP service"
-elasticapm.log = 
+elasticapm.log =
 elasticapm.log_level= 0
 ```
 
@@ -58,7 +58,7 @@ By default, the extension is enabled. You can disable it by setting `elasticapm.
 
 You can enable the logging of the PHP agent adding a file path in `elasticapm.log`.
 You can also specify the log level using the `elasticapm.log_level` key. The
-default value is `0` that means log everything (trace). 
+default value is `0` that means log everything (trace).
 
 The log levels are:
 ```
@@ -92,7 +92,7 @@ APM instance. You just need to configure the `elasticapm.host` and `elasticapm.s
 The `host` and `secret_token` are available in the APM section of Elastic Cloud
 (see the image below):
 
-![Elastic Cloud APM configuration](docs/elastic_cloud_apm_config.png)
+![Elastic Cloud APM configuration](docs/images/elastic_cloud_apm_config.png)
 
 You can set the host and the secret token using the following PHP code:
 
