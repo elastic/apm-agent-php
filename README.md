@@ -27,10 +27,13 @@ docker run --rm -ti -v $(pwd):/app test-php make install
 
 ## Documentation
 
-To build the documentation for this project you must first clone the [`elastic/docs` repository](https://github.com/elastic/docs/). Then run the following command:
+To build the documentation for this project you must first clone the [`elastic/docs` repository](https://github.com/elastic/docs/). Then run the following commands:
 
 ```bash
-# GIT_HOME="/<fullPathTYourRepos>"
+# Set the location of your repositories
+export GIT_HOME="/<fullPathTYourRepos>"
+
+# Build the PHP documentation
 $GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --chunk 1 --open
 ```
 
