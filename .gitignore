@@ -31,3 +31,5 @@ vendor/
 phpunit.xml
 .phpunit.result.cache
 
+# Built documentation
+html_docs
