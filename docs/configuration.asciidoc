@@ -1,0 +1,118 @@
+[[configuration]]
+== Configuration
+
+By default, the Elastic APM extension is enabled.
+It can be disabled by setting `elasticapm.enabled=false`.
+
+Additional configuration is possible with the following `ini` settings:
+
+[source,php]
+----
+elasticapm.host = localhost:8200
+elasticapm.service_name = "Unknown PHP service"
+elasticapm.log =
+elasticapm.log_level= 0
+----
+
+The agent can also be configured at runtime with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.host', 'myhost:8200');
+ini_set('elasticapm.service_name', 'test');
+ini_set('elasticapm.log', '/tmp/elasticapm.log');
+ini_set('elasticapm.log_level', '4');
+----
+
+[float]
+[[configure-ess]]
+=== {ess} on {ecloud}
+
+The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
+configuring the `elasticapm.host` and `elasticapm.secret_token` found in the APM section of {ecloud}:
+
+[role="screenshot"]
+image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
+
+Configure in `elasticapm.ini`:
+
+[source,php]
+----
+elasticapm.host=HOST_URL
+elasticapm.secret_token=TOKEN
+----
+
+Or, with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.host', 'HOST_URL');
+ini_set('elasticapm.secret_token', 'TOKEN');
+----
+
+[float]
+[[configure-logging]]
+=== Logging
+
+Enable PHP Agent logging by adding a file path in `elasticapm.log`.
+Specify the log level with the `elasticapm.log_level` key.
+Available log levels are:
+
+[source,yml]
+----
+0 trace
+1 debug
+2 info
+3 warning
+4 error
+5 fatal
+----
+
+The default value of 0 (trace) logs everything.
+Logging at level `4`, for example, will ignore all level `0`, `1`, `2`, and `3` logs.
+
+[[configuration-reference]]
+=== Configuration reference
+
+[float]
+[[config-enabled]]
+==== `enabled`
+
+By default, the Elastic APM extension is enabled.
+It can be disabled by setting `elasticapm.enabled=false`.
+
+[float]
+[[config-host]]
+==== `host`
+
+`elasticapm.host`
+
+[float]
+[[config-service-name]]
+==== `secret_token`
+
+`elasticapm.secret_token`
+
+[float]
+[[config-service-name]]
+==== `service_name`
+
+`elasticapm.service_name`
+
+[float]
+[[config-service-version]]
+==== `service_version`
+
+`elasticapm.service_version`
+
+[float]
+[[config-log]]
+==== `log`
+
+`elasticapm.log`
+
+[float]
+[[config-log-level]]
+==== `log_level`
+
+`elasticapm.log_level`
