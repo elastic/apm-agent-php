@@ -1,0 +1,24 @@
+[[setup]]
+== Set up the Agent
+
+Set up the Agent by compiling and installing this library as a PHP extension.
+It is currently only available for a unix-lke operating system.
+
+Execute the following commands to install:
+
+[source,console]
+----
+cd src/ext
+phpize
+./configure --enable-elasticapm
+make clean
+make
+sudo make install
+----
+
+Enable the extension by adding the following to your `php.ini` file:
+
+[source,php]
+----
+extension=elasticapm.so
+----
