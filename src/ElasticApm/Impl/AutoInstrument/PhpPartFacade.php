@@ -114,14 +114,14 @@ final class PhpPartFacade
      *
      * @noinspection PhpUnused
      *
-     * @param int         $funcToInterceptId
+     * @param int         $interceptRegistrationId
      * @param object|null $thisObj
      * @param mixed       ...$interceptedCallArgs
      *
      * @return mixed
      * @throws Throwable
      */
-    public static function interceptedCall(int $funcToInterceptId, ?object $thisObj, ...$interceptedCallArgs)
+    public static function interceptedCall(int $interceptRegistrationId, ?object $thisObj, ...$interceptedCallArgs)
     {
         if (is_null(self::singletonInstance()->interceptionManager)) {
             /**
@@ -134,7 +134,7 @@ final class PhpPartFacade
         }
 
         return self::singletonInstance()->interceptionManager->interceptedCall(
-            $funcToInterceptId,
+            $interceptRegistrationId,
             $thisObj,
             ...$interceptedCallArgs
         );

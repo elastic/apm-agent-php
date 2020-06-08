@@ -15,7 +15,7 @@
 #include "util_for_PHP.h"
 #include "basic_macros.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_C_TO_PHP
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_C_TO_PHP
 
 #define ELASTICAPM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
 #define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "bootstrap"
@@ -111,14 +111,14 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     goto finally;
 }
 
-void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
+void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "funcToInterceptId: %u", funcToInterceptId );
+    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     ResultCode resultCode;
 
-    zval funcToInterceptIdAsZval;
-    ZVAL_UNDEF( &funcToInterceptIdAsZval );
+    zval interceptRegistrationIdAsZval;
+    ZVAL_UNDEF( &interceptRegistrationIdAsZval );
 
     enum
     {
@@ -126,9 +126,9 @@ void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data
     };
     zval phpPartArgs[maxInterceptedCallArgsCount + 2];
 
-    // The first argument to PHP part's interceptedCall() is $funcToInterceptId
-    ZVAL_LONG( &funcToInterceptIdAsZval, funcToInterceptId )
-    phpPartArgs[ 0 ] = funcToInterceptIdAsZval;
+    // The first argument to PHP part's interceptedCall() is $interceptRegistrationId
+    ZVAL_LONG( &interceptRegistrationIdAsZval, interceptRegistrationId )
+    phpPartArgs[ 0 ] = interceptRegistrationIdAsZval;
 
     // The second argument to PHP part's interceptedCall() is $thisObj
     if (Z_TYPE(execute_data->This) == IS_UNDEF)
@@ -154,7 +154,7 @@ void tracerPhpPartInterceptedCall( uint32_t funcToInterceptId, zend_execute_data
     resultCode = resultSuccess;
 
     finally:
-    zval_dtor( &funcToInterceptIdAsZval );
+    zval_dtor( &interceptRegistrationIdAsZval );
 
     ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );

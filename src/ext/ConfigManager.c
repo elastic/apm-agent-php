@@ -25,7 +25,7 @@
 #include "elasticapm_alloc.h"
 #include "time_util.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_CONFIG
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_CONFIG
 
 enum ParsedOptionValueType
 {
@@ -326,7 +326,7 @@ ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* ou
     ELASTICAPM_FOR_EACH_INDEX( i, optMeta->additionalData.enumData.enumElementsCount )
     {
         StringView currentEnumName = stringToStringView( optMeta->additionalData.enumData.names[ i ] );
-        if ( !isStringViewPrefixIgnoringCase( currentEnumName, rawValueStrView ) ) continue;
+        if ( ! isStringViewPrefixIgnoringCase( currentEnumName, rawValueStrView ) ) continue;
 
         // If match is exact (i.e., not just prefix) then we return immediately
         if ( currentEnumName.length == rawValueStrView.length )

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedMethodCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
@@ -29,17 +29,17 @@ final class PdoAutoInstrumentation
         $ctx->interceptCallsToMethod(
             'PDO',
             '__construct',
-            function (): InterceptedMethodCallTrackerInterface {
-                return new class implements InterceptedMethodCallTrackerInterface {
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
+                    use InterceptedCallTrackerTrait;
 
                     /** @var SpanInterface */
                     private $span;
 
-                    /** @var SpanInterface */
-                    private $thisObj;
-
-                    public function preHook($thisObj, ...$interceptedCallArgs): void
+                    public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void
                     {
+                        self::assertInterceptedCallThisIsNotNull($interceptedCallThis, ...$interceptedCallArgs);
+
                         $this->span = ElasticApm::beginCurrentSpan(
                             'PDO::__construct('
                             . (count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : '')
@@ -47,15 +47,11 @@ final class PdoAutoInstrumentation
                             Constants::SPAN_TYPE_DB,
                             Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE
                         );
-
-                        $this->thisObj = $thisObj;
-                        $this->span->setLabel('thisObj type in preHook', DbgUtil::getType($this->thisObj));
                     }
 
                     public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
                     {
-                        $this->span->setLabel('thisObj type in postHook', DbgUtil::getType($this->thisObj));
-                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
                     }
                 };
             }
@@ -67,8 +63,9 @@ final class PdoAutoInstrumentation
         $ctx->interceptCallsToMethod(
             'PDO',
             'exec',
-            function (): InterceptedMethodCallTrackerInterface {
-                return new class implements InterceptedMethodCallTrackerInterface {
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
+                    use InterceptedCallTrackerTrait;
 
                     /** @var SpanInterface */
                     private $span;
@@ -88,7 +85,7 @@ final class PdoAutoInstrumentation
                             $this->span->setLabel('rows_affected', (int)$returnValueOrThrown);
                         }
 
-                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
                     }
                 };
             }

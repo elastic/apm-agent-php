@@ -18,7 +18,7 @@
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_API
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_EXT_API
 
 bool elasticApmIsEnabled()
 {
@@ -66,21 +66,21 @@ static zend_execute_data* g_interceptedCallZendExecuteData = NULL;
 static zif_handler g_interceptedCallOriginalHandler = NULL;
 
 static
-void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value )
+void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "funcToInterceptId: %u", funcToInterceptId );
+    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     ELASTICAPM_ASSERT(g_interceptedCallZendExecuteData == NULL, "");
     ELASTICAPM_ASSERT(g_interceptedCallOriginalHandler == NULL, "");
     g_interceptedCallZendExecuteData = execute_data;
-    g_interceptedCallOriginalHandler = g_functionsToInterceptData[ funcToInterceptId ].originalHandler;
+    g_interceptedCallOriginalHandler = g_functionsToInterceptData[ interceptRegistrationId ].originalHandler;
 
-    tracerPhpPartInterceptedCall( funcToInterceptId, execute_data, return_value );
+    tracerPhpPartInterceptedCall( interceptRegistrationId, execute_data, return_value );
 
     g_interceptedCallZendExecuteData = NULL;
     g_interceptedCallOriginalHandler = NULL;
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "funcToInterceptId: %u", funcToInterceptId );
+    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 }
 
 void resetCallInterceptionOnRequestShutdown()
@@ -98,7 +98,7 @@ void resetCallInterceptionOnRequestShutdown()
     g_nextFreeFunctionToInterceptId = 0;
 }
 
-bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* funcToInterceptId )
+bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* interceptRegistrationId )
 {
     if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
     {
@@ -108,16 +108,16 @@ bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* funcToIn
         return false;
     }
 
-    *funcToInterceptId = g_nextFreeFunctionToInterceptId ++;
-    g_functionsToInterceptData[ *funcToInterceptId ].funcEntry = funcEntry;
-    g_functionsToInterceptData[ *funcToInterceptId ].originalHandler = funcEntry->internal_function.handler;
-    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *funcToInterceptId ];
+    *interceptRegistrationId = g_nextFreeFunctionToInterceptId ++;
+    g_functionsToInterceptData[ *interceptRegistrationId ].funcEntry = funcEntry;
+    g_functionsToInterceptData[ *interceptRegistrationId ].originalHandler = funcEntry->internal_function.handler;
+    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *interceptRegistrationId ];
 
     return true;
 }
 
 
-ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* funcToInterceptId )
+ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* interceptRegistrationId )
 {
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
 
@@ -145,7 +145,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
         goto failure;
     }
 
-    if ( ! addToFunctionsToInterceptData( funcEntry, funcToInterceptId ) )
+    if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
     {
         resultCode = resultFailure;
         goto failure;
@@ -162,7 +162,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     goto finally;
 }
 
-ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* funcToInterceptId )
+ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* interceptRegistrationId )
 {
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
 
@@ -177,7 +177,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
         goto failure;
     }
 
-    if ( ! addToFunctionsToInterceptData( funcEntry, funcToInterceptId ) )
+    if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
     {
         resultCode = resultFailure;
         goto failure;
@@ -212,17 +212,9 @@ ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView ser
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
-
-    if ( ! tracer->isInited )
-    {
-        resultCode = resultFailure;
-        ELASTICAPM_LOG_ERROR( "Extension is not initialized" );
-        goto failure;
-    }
 
     ELASTICAPM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
-    sendEventsToApmServer( config, serializedEvents );
+    sendEventsToApmServer( getTracerCurrentConfigSnapshot( tracer ), serializedEvents );
 
     resultCode = resultSuccess;
 

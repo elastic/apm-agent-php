@@ -6,14 +6,12 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedFunctionCallTrackerInterface;
-use Elastic\Apm\AutoInstrument\InterceptedMethodCallTrackerInterface;
+use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\SpanInterface;
-use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -31,8 +29,9 @@ final class CurlAutoInstrumentation
     {
         $ctx->interceptCallsToFunction(
             'curl_exec',
-            function (): InterceptedFunctionCallTrackerInterface {
-                return new class implements InterceptedFunctionCallTrackerInterface {
+            function (): InterceptedCallTrackerInterface {
+                return new class implements InterceptedCallTrackerInterface {
+                    use InterceptedCallTrackerTrait;
 
                     /** @var resource|null */
                     private $curlHandle;
@@ -40,8 +39,10 @@ final class CurlAutoInstrumentation
                     /** @var SpanInterface */
                     private $span;
 
-                    public function preHook(...$interceptedCallArgs): void
+                    public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void
                     {
+                        self::assertInterceptedCallThisIsNull($interceptedCallThis, ...$interceptedCallArgs);
+
                         $this->curlHandle = count($interceptedCallArgs) != 0 && is_resource($interceptedCallArgs[0])
                             ? $interceptedCallArgs[0]
                             : null;
@@ -58,15 +59,14 @@ final class CurlAutoInstrumentation
                         if (!$hasExitedByException) {
                             if (!is_null($this->curlHandle)) {
                                 $info = curl_getinfo($this->curlHandle);
-                                if (
-                                    !is_null($httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null))
-                                ) {
+                                $httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null);
+                                if (!is_null($httpCode)) {
                                     $this->span->setLabel('HTTP status', $httpCode);
                                 }
                             }
                         }
 
-                        AutoInstrumentationUtil::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
                     }
                 };
             }

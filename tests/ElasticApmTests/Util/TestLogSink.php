@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util;
 
+use DateTime;
+use DateTimeZone;
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
 use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
+use Elastic\Apm\Tests\ComponentTests\Util\TestOsUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -16,11 +21,11 @@ use Elastic\Apm\Impl\Util\TextUtil;
 final class TestLogSink extends SinkBase
 {
     /** @var string */
-    private $prefix;
+    private $dbgProcessName;
 
-    public function __construct(string $prefix)
+    public function __construct(string $dbgProcessName)
     {
-        $this->prefix = $prefix;
+        $this->dbgProcessName = $dbgProcessName;
     }
 
     protected function consumePreformatted(
@@ -31,25 +36,32 @@ final class TestLogSink extends SinkBase
         string $srcCodeFunc,
         string $messageWithContext
     ): void {
-        $formattedRecord = $this->prefix;
-        $formattedRecord .= '[' . self::levelToString($statementLevel) . ']';
+        $formattedRecord = '[' . self::levelToString($statementLevel) . ']';
         $formattedRecord .= ' [' . $category . ']';
         $formattedRecord .= ' [' . basename($srcCodeFile) . ':' . $srcCodeLine . ']';
         $formattedRecord .= ' [' . $srcCodeFunc . ']';
         $formattedRecord .= ' ' . $messageWithContext;
-        self::consumeFormatted($statementLevel, $formattedRecord);
+        $this->consumeFormatted($statementLevel, $formattedRecord);
     }
 
-    private static function consumeFormatted(int $statementLevel, string $formattedRecord): void
+    private function consumeFormatted(int $statementLevel, string $formattedRecord): void
     {
         if ($statementLevel <= Level::INFO) {
             print($formattedRecord . PHP_EOL);
         }
 
-        syslog(
-            self::levelToSyslog($statementLevel),
-            TextUtil::prefixEachLine($formattedRecord, 'Elastic APM PHP tests | ')
+        $recordText = TextUtil::prefixEachLine(
+            $formattedRecord,
+            'Elastic APM PHP tests  [PID: ' . getmypid() . '] ' . $this->dbgProcessName . ' | '
         );
+
+        if (TestOsUtil::isWindows()) {
+            if (OutputDebugString::isEnabled()) {
+                OutputDebugString::write($recordText . PHP_EOL);
+            }
+        } else {
+            syslog(self::levelToSyslog($statementLevel), $recordText);
+        }
     }
 
     private static function levelToString(int $level): string

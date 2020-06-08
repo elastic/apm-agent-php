@@ -13,7 +13,9 @@
 #include <stdlib.h>
 #include "basic_macros.h"
 #include "unit_test_util.h"
-#include "log.h"
+#include "mock_log_custom_sink.h"
+
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_C_EXT_UNIT_TESTS
 
 /**
  * productionCodePeMalloc is used in "elasticapm_alloc.h"

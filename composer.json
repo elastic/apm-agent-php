@@ -12,10 +12,10 @@
     "require": {
         "php": "^7.2",
         "ext-json": "*",
-        "ext-pdo": "*",
         "psr/log": "^1.0"
     },
     "require-dev": {
+        "ext-pdo": "*",
         "guzzlehttp/guzzle": "^6.5.3",
         "jchook/phpunit-assert-throws": "^1.0",
         "justinrainbow/json-schema": "^5.2.9",

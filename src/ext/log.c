@@ -23,7 +23,7 @@
 #include "TextOutputStream.h"
 #include "Tracer.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_LOG
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_LOG
 
 String logLevelNames[numberOfLogLevels] =
         {
@@ -288,28 +288,6 @@ StringView buildCommonPrefix(
 }
 
 static
-StringView buildCommonSuffix( char* buffer, size_t bufferSize )
-{
-    // 2020-05-08 08:18:54.154244+02:00 [DEBUG]    [Configuration] [ConfigManager.c:1127] [ensureConfigManagerHasLatestConfig] Message [TransactionId: xyz] [namespace: Impl\AutoInstrument] [PID: 12345]
-    //                                                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-    TextOutputStream txtOutStream = makeTextOutputStream( buffer, bufferSize );
-    // We don't need terminating '\0' after the prefix because we return it as StringView
-    txtOutStream.autoTermZero = false;
-    TextOutputStreamState txtOutStreamStateOnEntryStart;
-    if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
-    {
-        return ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
-    }
-
-    appendSeparator( &txtOutStream );
-    appendProcessThreadIds( &txtOutStream );
-
-    textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
-    return textOutputStreamContentAsStringView( &txtOutStream );
-}
-
-static
 StringView findEndOfLineSequence( StringView text )
 {
     // The order in endOfLineSequences is important because we need to check longer sequences first
@@ -342,7 +320,6 @@ StringView insertPrefixAtEachNewLine(
         Logger* logger
         , StringView sinkSpecificPrefix
         , StringView commonPrefix
-        , StringView commonSuffix
         , StringView oldMessage
         , size_t maxSizeForNewMessage
 )
@@ -366,9 +343,7 @@ StringView insertPrefixAtEachNewLine(
         StringView eolSeq = findEndOfLineSequence( oldMessageLeft );
         if ( isEmptyStringView( eolSeq ) ) break;
 
-        streamStringView( makeStringViewFromBeginEnd( oldMessageLeft.begin, eolSeq.begin ), &txtOutStream );
-        streamStringView( commonSuffix, &txtOutStream );
-        streamStringView( makeStringViewFromBeginEnd( eolSeq.begin, stringViewEnd( eolSeq ) ), &txtOutStream );
+        streamStringView( makeStringViewFromBeginEnd( oldMessageLeft.begin, stringViewEnd( eolSeq ) ), &txtOutStream );
         streamStringView( sinkSpecificPrefix, &txtOutStream );
         streamStringView( commonPrefix, &txtOutStream );
         streamIndent( /* nestingDepth */ 1, &txtOutStream );
@@ -391,7 +366,6 @@ String concatPrefixAndMsg(
         , StringView sinkSpecificPrefix
         , StringView sinkSpecificEndOfLine
         , StringView commonPrefix
-        , StringView commonSuffix
         , bool prefixNewLines
         , String msgFmt
         , va_list msgArgs
@@ -415,27 +389,25 @@ String concatPrefixAndMsg(
     {
         StringView messagePart = textOutputStreamViewFrom( &txtOutStream, messagePartBegin );
         size_t maxSizeForNewMessage = textOutputStreamGetFreeSpaceSize( &txtOutStream ) + messagePart.length - sinkSpecificEndOfLine.length;
-        StringView newMessagePart = insertPrefixAtEachNewLine( logger, sinkSpecificPrefix, commonPrefix, commonSuffix, messagePart, maxSizeForNewMessage );
+        StringView newMessagePart = insertPrefixAtEachNewLine( logger, sinkSpecificPrefix, commonPrefix, messagePart, maxSizeForNewMessage );
         if ( ! isEmptyStringView( newMessagePart ) )
         {
             textOutputStreamGoBack( &txtOutStream, messagePart.length );
             streamStringView( newMessagePart, &txtOutStream );
         }
     }
-    streamStringView( commonSuffix, &txtOutStream );
     streamStringView( sinkSpecificEndOfLine, &txtOutStream );
     return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
 }
 
 static
-void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPrefix, StringView commonSuffix, String msgFmt, va_list msgArgs )
+void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
     String fullText = concatPrefixAndMsg(
             logger
             , /* sinkSpecificPrefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
             , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
-            , commonSuffix
             , /* prefixNewLines: */ true
             , msgFmt
             , msgArgs );
@@ -445,11 +417,28 @@ void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPr
     if ( statementLevel <= logLevel_info ) fflush( stderr );
 }
 
+static
+StringView buildPrefixForSinkMixedWithOtherProcesses( char* buffer, size_t bufferSize )
+{
+    TextOutputStream txtOutStream = makeTextOutputStream( buffer, bufferSize );
+    txtOutStream.autoTermZero = false;
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
+        return ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
+
+    streamStringView(ELASTICAPM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer " ), &txtOutStream);
+    appendProcessThreadIds( &txtOutStream );
+    streamStringView(ELASTICAPM_STRING_LITERAL_TO_VIEW( " " ), &txtOutStream);
+
+    textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
+    return textOutputStreamContentAsStringView( &txtOutStream );
+}
+
+#ifndef PHP_WIN32 // syslog is not supported on Windows
 //////////////////////////////////////////////////////////////////////////////
 //
 // syslog
 //
-#ifndef PHP_WIN32 // syslog is not supported on Windows
 static
 int logLevelToSyslog( LogLevel level )
 {
@@ -480,37 +469,38 @@ int logLevelToSyslog( LogLevel level )
 }
 
 static
-void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, StringView commonSuffix, String msgFmt, va_list msgArgs )
+void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
+    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer | " )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
             , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
-            , commonSuffix
             , /* prefixNewLines: */ false
             , msgFmt
             , msgArgs );
 
     syslog( logLevelToSyslog( level ), "%s", fullText );
 }
-#endif // #ifndef PHP_WIN32 // syslog is not supported on Windows
 //
 // syslog
 //
 //////////////////////////////////////////////////////////////////////////////
+#endif // #ifndef PHP_WIN32 // syslog is not supported on Windows
 
 #ifdef PHP_WIN32
-
 static
-void writeToWinSysDebug( Logger* logger, StringView commonPrefix, StringView commonSuffix, String msgFmt, va_list msgArgs )
+void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
+    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer | " )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
             , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
-            , commonSuffix
             , /* prefixNewLines: */ true
             , msgFmt
             , msgArgs );
@@ -594,14 +584,15 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, StringView com
 void ELASTICAPM_LOG_CUSTOM_SINK_FUNC( String fullText );
 
 static
-void buildFullTextAndWriteToCustomSink( Logger* logger, StringView commonPrefix, StringView commonSuffix, String msgFmt, va_list msgArgs )
+void buildFullTextAndWriteToCustomSink( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
+    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+
     String fullText = concatPrefixAndMsg(
             logger
-            , /* prefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
-            , /* end-of-line: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
-            , commonSuffix
             , /* prefixNewLines: */ false
             , msgFmt
             , msgArgs );
@@ -658,20 +649,17 @@ void vLogWithLogger(
     enum
     {
         commonPrefixBufferSize = 200 + ELASTICAPM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE,
-        commonSuffixBufferSize = 200 + ELASTICAPM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE
     };
     char commonPrefixBuffer[commonPrefixBufferSize];
-    char commonSuffixBuffer[commonSuffixBufferSize];
 
     StringView commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
-    StringView commonSuffix = buildCommonSuffix( commonSuffixBuffer, commonSuffixBufferSize );
 
     if ( isForced || logger->config.levelPerSinkType[ logSink_stderr ] >= statementLevel )
     {
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
-        writeToStderr( logger, statementLevel, commonPrefix, commonSuffix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        writeToStderr( logger, statementLevel, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
         fflush( stderr );
                 va_end( msgPrintfFmtArgsCopy );
     }
@@ -682,7 +670,7 @@ void vLogWithLogger(
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
-        writeToSyslog( logger, statementLevel, commonPrefix, commonSuffix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        writeToSyslog( logger, statementLevel, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
         va_end( msgPrintfFmtArgsCopy );
     }
     #endif
@@ -693,7 +681,7 @@ void vLogWithLogger(
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
-        writeToWinSysDebug( logger, commonPrefix, commonSuffix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        writeToWinSysDebug( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
         va_end( msgPrintfFmtArgsCopy );
     }
             #endif

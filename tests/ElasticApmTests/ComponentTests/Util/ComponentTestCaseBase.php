@@ -19,9 +19,15 @@ class ComponentTestCaseBase extends TestCaseBase
     /** @var TestEnvBase */
     private $testEnv;
 
-    public function __construct()
+    public static function init(): void
     {
         AmbientContext::init(/* dbgProcessName */ 'Component tests');
+    }
+
+    public function __construct()
+    {
+        self::init();
+
         parent::__construct();
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,

@@ -31,7 +31,7 @@
 #include "elasticapm_API.h"
 #include "tracer_PHP_part.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_LIFECYCLE
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_LIFECYCLE
 
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
@@ -92,6 +92,13 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
     ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
 
+    if ( ! tracer->isInited )
+    {
+        resultCode = resultFailure;
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
+        goto failure;
+    }
+
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
     ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
@@ -100,6 +107,7 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
     if ( ! config->enabled )
     {
+        resultCode = resultSuccess;
         ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
@@ -141,6 +149,7 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
 
     if ( ! config->enabled )
     {
+        resultCode = resultSuccess;
         ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
@@ -177,29 +186,28 @@ void elasticApmRequestInit()
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
-
-    ELASTICAPM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
-
-    if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( ! tracer->isInited )
     {
         resultCode = resultFailure;
         ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
-        goto finally;
+        goto failure;
     }
 
-    if ( ! getTracerCurrentConfigSnapshot( tracer )->enabled )
+    if ( ! config->enabled )
     {
         resultCode = resultSuccess;
         ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
+    ELASTICAPM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
+
+    if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
+
     ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
-
-    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
     ELASTICAPM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
@@ -294,6 +302,13 @@ void elasticApmRequestShutdown()
     {
         resultCode = resultFailure;
         ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
+        goto failure;
+    }
+
+    if ( ! config->enabled )
+    {
+        resultCode = resultSuccess;
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto failure;
     }
 

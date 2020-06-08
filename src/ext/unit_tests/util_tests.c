@@ -31,7 +31,7 @@ void areStringViewsEqual_test( void** testFixtureState )
 }
 
 static
-void isStringViewPrefixIgnoringCase_test( void** testFixtureState )
+void areStringsEqualIgnoringCase_test( void** testFixtureState )
 {
     ELASTICAPM_UNUSED( testFixtureState );
 
@@ -65,7 +65,7 @@ int run_util_tests()
     const struct CMUnitTest tests [] =
     {
         ELASTICAPM_CMOCKA_UNIT_TEST( areStringViewsEqual_test ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( isStringViewPrefixIgnoringCase_test ),
+        ELASTICAPM_CMOCKA_UNIT_TEST( areStringsEqualIgnoringCase_test ),
         ELASTICAPM_CMOCKA_UNIT_TEST( calcAlignedSize_test ),
     };
 

@@ -12,7 +12,7 @@
 #include "time_util.h"
 #include <inttypes.h> // PRIu64
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_UTIL
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_UTIL
 
 Duration makeDuration( Int64 value, DurationUnits units )
 {

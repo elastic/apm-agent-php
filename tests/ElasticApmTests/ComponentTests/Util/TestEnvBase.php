@@ -29,6 +29,8 @@ abstract class TestEnvBase
     public const HEADER_NAME_PREFIX = 'ELASTIC_APM_PHP_TESTS_';
     public const TEST_ENV_ID_HEADER_NAME = self::HEADER_NAME_PREFIX . 'TEST_ENV_ID';
 
+    public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
+
     /** @var array<string, string> */
     protected $envVarsForToInstrumentedApp = [];
 
@@ -94,7 +96,11 @@ abstract class TestEnvBase
             return;
         }
 
-        $mockApmServerPort = $this->findFreePortToListen();
+        $mockApmServerPort
+            = AmbientContext::config()->mockApmServerPort() === AllComponentTestsOptionsMetadata::INT_OPTION_NOT_SET
+                ? $this->findFreePortToListen()
+                : AmbientContext::config()->mockApmServerPort();
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Starting ' . DbgUtil::fqToShortClassName(MockApmServer::class) . '...',
@@ -263,7 +269,7 @@ abstract class TestEnvBase
         $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
         $hasPassed = (new PollingCheck(
             __FUNCTION__ . ' passes',
-            10 * 1000 * 1000 /* maxWaitTimeInMicroseconds - 10 seconds */,
+            self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 1000 * 1000 /* maxWaitTimeInMicroseconds */,
             AmbientContext::loggerFactory()
         ))->run(
             function () use (
