@@ -31,13 +31,12 @@ final class AmbientContext
 
     private function __construct(string $dbgProcessName)
     {
-        $logPrefix = $dbgProcessName . ' [PID: ' . getmypid() . '] ';
         $allOptsMeta = AllComponentTestsOptionsMetadata::build();
         $this->envVarConfigSource = new EnvVarsRawSnapshotSource(self::ENV_VAR_NAME_PREFIX, array_keys($allOptsMeta));
-        $parser = new Parser($allOptsMeta, self::createLoggerFactory(LogLevel::ERROR, $logPrefix));
+        $parser = new Parser($allOptsMeta, self::createLoggerFactory(LogLevel::ERROR, $dbgProcessName));
         $this->config = new ConfigSnapshot($parser->parse($this->envVarConfigSource->currentSnapshot()));
 
-        $this->loggerFactory = self::createLoggerFactory($this->config->logLevel(), $logPrefix);
+        $this->loggerFactory = self::createLoggerFactory($this->config->logLevel(), $dbgProcessName);
     }
 
     public static function init(string $dbgProcessName): void
@@ -79,8 +78,8 @@ final class AmbientContext
         return self::$singletonInstance->loggerFactory;
     }
 
-    private static function createLoggerFactory(int $logLevel, string $logPrefix): LoggerFactory
+    private static function createLoggerFactory(int $logLevel, string $dbgProcessName): LoggerFactory
     {
-        return new LoggerFactory(new LogBackend($logLevel, new TestLogSink($logPrefix)));
+        return new LoggerFactory(new LogBackend($logLevel, new TestLogSink($dbgProcessName)));
     }
 }

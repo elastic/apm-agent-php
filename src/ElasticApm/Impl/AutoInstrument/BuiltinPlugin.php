@@ -19,4 +19,9 @@ final class BuiltinPlugin implements PluginInterface
         PdoAutoInstrumentation::register($ctx);
         CurlAutoInstrumentation::register($ctx);
     }
+
+    public function getDescription(): string
+    {
+        return 'BUILT-IN';
+    }
 }

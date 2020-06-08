@@ -8,6 +8,7 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
+use Elastic\Apm\TransactionDataInterface;
 
 final class TransactionTest extends ComponentTestCaseBase
 {
@@ -16,8 +17,7 @@ final class TransactionTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             [__CLASS__, 'appCodeForTransactionWithoutSpans'],
             function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $tx = $dataFromAgent->singleTransaction();
+                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 $this->assertEmpty($tx->getLabels());
                 $this->assertGreaterThanOrEqual(200, $tx->getDuration());
             }
@@ -29,7 +29,7 @@ final class TransactionTest extends ComponentTestCaseBase
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
     }
 
-    public function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): void
+    public function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionDataInterface
     {
         $this->assertEmpty($dataFromAgent->idToSpan());
 
@@ -37,6 +37,7 @@ final class TransactionTest extends ComponentTestCaseBase
         $this->assertSame(0, $tx->getStartedSpansCount());
         $this->assertSame(0, $tx->getDroppedSpansCount());
         $this->assertNull($tx->getParentId());
+        return $tx;
     }
 
     public function testTransactionWithoutSpansCustomProperties(): void
@@ -45,8 +46,7 @@ final class TransactionTest extends ComponentTestCaseBase
             (new TestProperties([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties']))
                 ->withTransactionName('custom TX name')->withTransactionType('custom TX type'),
             function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $tx = $dataFromAgent->singleTransaction();
+                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 $this->assertCount(5, $tx->getLabels());
                 $this->assertSame('string_label_value', $tx->getLabels()['string_label_key']);
                 $this->assertTrue($tx->getLabels()['bool_label_key']);

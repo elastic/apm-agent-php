@@ -14,12 +14,12 @@
 #include "basic_macros.h"
 
 static
-void internalFunctionCallInterceptingImpl( uint32_t funcToInterceptId, zend_execute_data* execute_data, zval* return_value );
+void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value );
 
 static void
 numberedInterceptingCallback( uint32_t index, zend_execute_data* execute_data, zval* return_value )
 {
-    internalFunctionCallInterceptingImpl( /* funcToInterceptId: */ index, execute_data, return_value );
+    internalFunctionCallInterceptingImpl( /* interceptRegistrationId: */ index, execute_data, return_value );
 }
 
 #define ELASTICAPM_NUMBERED_INTERCEPTING_CALLBACK_NAME( n ) ELASTICAPM_PP_CONCAT( elasticApmNumberedInterceptingCallback_, n )

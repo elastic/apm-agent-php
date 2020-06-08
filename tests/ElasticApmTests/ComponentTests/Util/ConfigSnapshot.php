@@ -26,6 +26,9 @@ final class ConfigSnapshot
     private $logLevel;
 
     /** @var int */
+    private $mockApmServerPort;
+
+    /** @var int */
     private $spawnedProcessesCleanerPort;
 
     /** @var string */
@@ -54,6 +57,11 @@ final class ConfigSnapshot
     public function logLevel(): int
     {
         return $this->logLevel;
+    }
+
+    public function mockApmServerPort(): int
+    {
+        return $this->mockApmServerPort;
     }
 
     public function spawnedProcessesCleanerPort(): int

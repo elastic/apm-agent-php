@@ -22,7 +22,7 @@
 #include "ConfigManager.h"
 #include "elasticapm_assert.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_EXT_INFRA
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_EXT_INFRA
 
 ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
 
@@ -231,7 +231,7 @@ ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_method_arginfo, /
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ className, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ methodName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_internal_method( string $className, string $methodName ): int // <- funcToInterceptId
+/* {{{ elasticapm_intercept_calls_to_internal_method( string $className, string $methodName ): int // <- interceptRegistrationId
  */
 PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
 {
@@ -239,39 +239,39 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
     size_t classNameLength = 0;
     char* methodName = NULL;
     size_t methodNameLength = 0;
-    uint32_t funcToInterceptId;
+    uint32_t interceptRegistrationId;
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
     Z_PARAM_STRING( className, classNameLength )
     Z_PARAM_STRING( methodName, methodNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmInterceptCallsToInternalMethod( className, methodName, &funcToInterceptId ) != resultSuccess )
+    if ( elasticApmInterceptCallsToInternalMethod( className, methodName, &interceptRegistrationId ) != resultSuccess )
         RETURN_LONG( -1 )
 
-    RETURN_LONG( funcToInterceptId )
+    RETURN_LONG( interceptRegistrationId )
 }
 /* }}} */
 
 ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_function_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 1 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ functionName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- funcToInterceptId
+/* {{{ elasticapm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- interceptRegistrationId
  */
 PHP_FUNCTION( elasticapm_intercept_calls_to_internal_function )
 {
     char* functionName = NULL;
     size_t functionNameLength = 0;
-    uint32_t funcToInterceptId;
+    uint32_t interceptRegistrationId;
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 1, /* max_num_args: */ 1 )
     Z_PARAM_STRING( functionName, functionNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmInterceptCallsToInternalFunction( functionName, &funcToInterceptId ) != resultSuccess )
+    if ( elasticApmInterceptCallsToInternalFunction( functionName, &interceptRegistrationId ) != resultSuccess )
         RETURN_LONG( -1 )
 
-    RETURN_LONG( funcToInterceptId )
+    RETURN_LONG( interceptRegistrationId )
 }
 /* }}} */
 

@@ -42,7 +42,8 @@ final class PhpUnitExtension implements
 
     public function __construct()
     {
-        AmbientContext::init(/* dbgProcessName */ 'Component tests');
+        ComponentTestCaseBase::init();
+
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,
             __NAMESPACE__,

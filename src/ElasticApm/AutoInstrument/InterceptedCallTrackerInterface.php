@@ -6,15 +6,15 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\AutoInstrument;
 
-interface InterceptedMethodCallTrackerInterface
+interface InterceptedCallTrackerInterface
 {
     /**
-     * @param mixed $thisObj
-     * @param mixed ...$interceptedCallArgs Intercepted call arguments
+     * @param object|null $interceptedCallThis
+     * @param mixed       ...$interceptedCallArgs Intercepted call arguments
      *
      * @return void
      */
-    public function preHook($thisObj, ...$interceptedCallArgs): void;
+    public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void;
 
     /**
      * @param bool            $hasExitedByException

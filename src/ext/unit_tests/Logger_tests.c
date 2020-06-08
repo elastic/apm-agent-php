@@ -15,12 +15,23 @@
 #include "mock_clock.h"
 #include "mock_log_custom_sink.h"
 
-static inline bool isWhiteSpace( char c )
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_C_EXT_UNIT_TESTS
+
+static bool isWhiteSpace( char c )
 {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-static inline StringView trimStringView( StringView src )
+static bool hasNonWhiteSpace( StringView strView )
+{
+    ELASTICAPM_FOR_EACH_INDEX( i, strView.length )
+    {
+        if ( ! isWhiteSpace( strView.begin[ i ] ) ) return true;
+    }
+    return false;
+}
+
+static StringView trimStringView( StringView src )
 {
     size_t beginIndex = 0;
     size_t endIndex = src.length;
@@ -43,8 +54,7 @@ static void trim_StringView_test( void** testFixtureState )
     ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( " \n\r\t" ) ), "" );
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-static inline size_t findCharIndexInStringView( char needle, StringView haystack )
+static size_t findCharIndexInStringView( char needle, StringView haystack )
 {
     ELASTICAPM_FOR_EACH_INDEX( i, haystack.length )
     {
@@ -54,64 +64,82 @@ static inline size_t findCharIndexInStringView( char needle, StringView haystack
     return haystack.length;
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-static inline StringView getLogLinePart( size_t partIndex, StringView logLine )
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+static
+StringView getLogLinePart( size_t partIndex, StringView logLine )
 {
     StringView logLineRemainder = logLine;
     size_t currentPartIndex = 0;
+    bool isInsideDelimitedPart = false;
     while ( true )
     {
-        size_t nextPartSeparatorIndex = findCharIndexInStringView( '|', logLineRemainder );
+        size_t nextDelimiterPos = isInsideDelimitedPart
+                ? findCharIndexInStringView( ']', logLineRemainder )
+                : findCharIndexInStringView( '[', logLineRemainder );
+
+        if ( ! isInsideDelimitedPart && ! hasNonWhiteSpace( makeStringView( logLineRemainder.begin, nextDelimiterPos ) ) )
+        {
+            if( nextDelimiterPos >= logLineRemainder.length - 1 ) return makeEmptyStringView();
+            isInsideDelimitedPart = ! isInsideDelimitedPart;
+            logLineRemainder = stringViewSkipFirstNChars( logLineRemainder, nextDelimiterPos + 1 );
+            continue;
+        }
+
         if ( currentPartIndex == partIndex )
-            return trimStringView( makeStringView( logLineRemainder.begin, nextPartSeparatorIndex ) );
+            return trimStringView( makeStringView( logLineRemainder.begin, nextDelimiterPos ) );
 
-        ELASTICAPM_CMOCKA_ASSERT( nextPartSeparatorIndex < logLineRemainder.length );
+        if( nextDelimiterPos >= logLineRemainder.length - 1 ) return makeEmptyStringView();
 
-        logLineRemainder = stringViewSkipFirstNChars( logLineRemainder, nextPartSeparatorIndex + 1 );
+        isInsideDelimitedPart = ! isInsideDelimitedPart;
         ++currentPartIndex;
+        logLineRemainder = stringViewSkipFirstNChars( logLineRemainder, nextDelimiterPos + 1 );
     }
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-static inline StringView getTimestampPart( StringView logLine )
-{
-    return getLogLinePart( 0, logLine );
-}
-
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-//                                    ^^^^^
-static inline StringView getLevelPart( StringView logLine )
-{
-    return getLogLinePart( 1, logLine );
-}
-
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484:12345 | lifecycle.c:406      | elasticApmRequestInit          | Message
-//                                               ^^^^^^^^^^^
-static inline StringView getProcessThreadIdsPart( StringView logLine )
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+static StringView getTimestampPart( StringView logLine )
 {
     return getLogLinePart( 2, logLine );
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-//                                                       ^^^^^^^^^^^^^^^
-static inline StringView getFileNameLineNumberPart( StringView logLine )
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                      ^^^^^
+static StringView getLevelPart( StringView logLine )
 {
     return getLogLinePart( 3, logLine );
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-//                                                                              ^^^^^^^^^^^^^^^^^^^^^
-static inline StringView getFunctionNamePart( StringView logLine )
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                        ^^^^^^^^^^
+static StringView getProcessThreadIdsPart( StringView logLine )
 {
-    return getLogLinePart( 4, logLine );
+    StringView part = getLogLinePart( 1, logLine );
+    StringView pidPrefix = ELASTICAPM_STRING_LITERAL_TO_VIEW( "PID: " );
+    ELASTICAPM_CMOCKA_ASSERT( isStringViewPrefixIgnoringCase(part, pidPrefix ) );
+
+    return stringViewSkipFirstNChars( part, pidPrefix.length );
 }
 
-// 2020-03-08 19:37:30.683211+02:00 | TRACE    | 10484 | lifecycle.c:406      | elasticApmRequestInit          | Message
-//                                                                                                               ^^^^^^^
-static inline StringView getMessagePart( StringView logLine )
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                       ^^^^^^^^^^^^^^^^^^^
+static StringView getFileNameLineNumberPart( StringView logLine )
 {
     return getLogLinePart( 5, logLine );
+}
+
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                                             ^^^^^^^^^^^^^^^
+static StringView getFunctionNamePart( StringView logLine )
+{
+    return getLogLinePart( 6, logLine );
+}
+
+// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+static StringView getMessagePart( StringView logLine )
+{
+    return getLogLinePart( 7, logLine );
 }
 
 static

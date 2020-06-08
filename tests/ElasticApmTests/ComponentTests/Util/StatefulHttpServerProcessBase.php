@@ -13,6 +13,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Factory;
 use React\EventLoop\LoopInterface;
 use React\Http\Server as HttpServer;
+use React\Promise\Promise;
 use React\Socket\Server as ServerSocket;
 use RuntimeException;
 use Throwable;
@@ -62,7 +63,12 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         $this->port = intval($portAsString);
     }
 
-    abstract protected function processRequest(ServerRequestInterface $request): ResponseInterface;
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface|Promise
+     */
+    abstract protected function processRequest(ServerRequestInterface $request);
 
     protected function runImpl(): void
     {
@@ -76,6 +82,11 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         $serverSocket = new ServerSocket($port, $loop);
 
         $httpServer = new HttpServer(
+            /**
+             * @param ServerRequestInterface $request
+             *
+             * @return ResponseInterface|Promise
+             */
             function (ServerRequestInterface $request) {
                 return $this->processRequestWrapper($request);
             }
@@ -103,7 +114,12 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         return true;
     }
 
-    private function processRequestWrapper(ServerRequestInterface $request): ResponseInterface
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface|Promise
+     */
+    private function processRequestWrapper(ServerRequestInterface $request)
     {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -114,11 +130,18 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         try {
             $response = $this->processRequestWrapperImpl($request);
 
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Sending response ...',
-                ['status code' => $response->getStatusCode(), 'reason phrase' => $response->getReasonPhrase()]
-            );
+            if ($response instanceof ResponseInterface) {
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Sending response ...',
+                    ['statusCode' => $response->getStatusCode(), 'reasonPhrase' => $response->getReasonPhrase()]
+                );
+            } else {
+                assert($response instanceof Promise);
+
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Promise returned - response will be returned later...');
+            }
 
             return $response;
         } catch (Throwable $throwable) {
@@ -131,7 +154,12 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         }
     }
 
-    private function processRequestWrapperImpl(ServerRequestInterface $request): ResponseInterface
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface|Promise
+     */
+    private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
         if ($this->shouldHaveTestEnvId($request)) {
             $verifyTestEnvIdResponse = self::verifyTestEnvIdEx(

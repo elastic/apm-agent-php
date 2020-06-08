@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Clock;
-use Elastic\Apm\Impl\ClockInterface;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 final class Stopwatch
