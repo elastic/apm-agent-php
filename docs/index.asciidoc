@@ -17,7 +17,7 @@ include::./supported-technologies.asciidoc[]
 
 include::./configuration.asciidoc[]
 
-include::./api.asciidoc[]
+include::./public-api.asciidoc[]
 
 // include::./metrics.asciidoc[]
 

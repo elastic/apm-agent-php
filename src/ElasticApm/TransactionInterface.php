@@ -68,6 +68,11 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
         ?float $timestamp = null
     );
 
+    /**
+     * Returns the current span.
+     *
+     * @return SpanInterface The current span
+     */
     public function getCurrentSpan(): SpanInterface;
 
     public function __toString(): string;
