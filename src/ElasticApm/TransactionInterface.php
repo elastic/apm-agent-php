@@ -52,6 +52,11 @@ interface TransactionInterface extends ExecutionSegmentInterface
         ?string $action = null
     );
 
+    /**
+     * Returns the current span.
+     *
+     * @return SpanInterface The current span
+     */
     public function getCurrentSpan(): SpanInterface;
 
     /**
