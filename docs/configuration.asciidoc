@@ -1,0 +1,134 @@
+[[configuration]]
+== Configuration
+
+You can utilize configuration options to adapt the Elastic APM agent to your needs.
+One way to do this is to configure settings in an `elasticapm.ini` file:
+
+[source,php]
+----
+elasticapm.host = localhost:8200
+elasticapm.service_name = "Unknown PHP service"
+elasticapm.log =
+elasticapm.log_level= 0
+----
+
+The agent can also be configured at runtime with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.host', 'myhost:8200');
+ini_set('elasticapm.service_name', 'test');
+ini_set('elasticapm.log', '/tmp/elasticapm.log');
+ini_set('elasticapm.log_level', '4');
+----
+
+[float]
+[[configure-ess]]
+=== {ess} on {ecloud}
+
+The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
+configuring the `elasticapm.host` and `elasticapm.secret_token` found in the APM section of {ecloud}:
+
+[role="screenshot"]
+image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
+
+Configure in `elasticapm.ini`:
+
+[source,php]
+----
+elasticapm.host=HOST_URL
+elasticapm.secret_token=TOKEN
+----
+
+Or, with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.host', 'HOST_URL');
+ini_set('elasticapm.secret_token', 'TOKEN');
+----
+
+[float]
+[[configure-logging]]
+=== Logging
+
+Enable PHP Agent logging by adding a file path in <<config-log,`elasticapm.log`>>.
+Specify the log level with the <<config-log-level,`elasticapm.log_level`>> key.
+
+The default value of `0` (trace) logs everything.
+
+[[configuration-reference]]
+=== Configuration reference
+
+[float]
+[[config-enabled]]
+==== `enabled`
+
+By default, the Elastic APM extension is enabled.
+It can be disabled by setting `elasticapm.enabled=false`.
+
+[float]
+[[config-host]]
+==== `host`
+
+`elasticapm.host`
+
+The URL for your APM Server.
+
+[float]
+[[config-secret-token]]
+==== `secret_token`
+
+`elasticapm.secret_token`
+
+Used to ensure that only your agents can send data to your APM server.
+Both the agents and the APM server have to be configured with the same secret token.
+Use this setting if the APM Server requires a token, like in {ess}.
+
+[float]
+[[config-service-name]]
+==== `service_name`
+
+`elasticapm.service_name`
+
+Groups all of the errors and transactions of your service together.
+This is the primary filter in the APM app.
+
+[float]
+[[config-service-version]]
+==== `service_version`
+
+`elasticapm.service_version`
+
+The version of the currently deployed service. If you don’t version your deployments,
+the recommended value for this field is the commit identifier of the deployed revision, e.g.,
+the output of git rev-parse HEAD.
+
+[float]
+[[config-log]]
+==== `log`
+
+`elasticapm.log`
+
+Filepath of log events.
+
+[float]
+[[config-log-level]]
+==== `log_level`
+
+`elasticapm.log_level`
+
+The logging level for the agent. Available log levels are:
+
+[source,yml]
+----
+0 trace
+1 debug
+2 info
+3 warning
+4 error
+5 fatal
+----
+
+The default value of `0` (trace) logs everything.
+Logging at level `4`, for example, will ignore all level `0`, `1`, `2`, and `3` logs.
