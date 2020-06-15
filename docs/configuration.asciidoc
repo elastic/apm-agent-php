@@ -1,0 +1,160 @@
+[[configuration]]
+== Configuration
+
+You can utilize configuration options to adapt the Elastic APM agent to your needs.
+One way to do this is to configure settings in an `elasticapm.ini` file:
+
+[source,ini]
+----
+elasticapm.server_url = http://localhost:8200
+elasticapm.service_name = "Unknown PHP service"
+elasticapm.log_level = 0
+----
+
+The agent can also be configured at runtime with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.server_url', 'http://localhost:8200');
+ini_set('elasticapm.service_name', 'My_Test_Service');
+ini_set('elasticapm.log_level', 'DEBUG');
+----
+
+[float]
+[[configure-ess]]
+=== {ess} on {ecloud}
+
+The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
+configuring the `elasticapm.server_url` and `elasticapm.secret_token` found in the APM section of {ecloud}:
+
+[role="screenshot"]
+image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
+
+Configure in `elasticapm.ini`:
+
+[source,ini]
+----
+elasticapm.server_url = APM_SERVER_URL
+elasticapm.secret_token = TOKEN
+elasticapm.service_name = SERVICE_NAME
+----
+
+Or, with the following PHP code:
+
+[source,php]
+----
+ini_set('elasticapm.server_url', 'APM_SERVER_URL');
+ini_set('elasticapm.secret_token', 'TOKEN');
+----
+
+[float]
+[[configure-logging]]
+=== Logging
+
+Available log levels are:
+
+[source,text]
+----
+OFF
+CRITICAL
+ERROR
+WARNING
+NOTICE
+INFO
+DEBUG
+TRACE
+----
+where `OFF` level is used only for configuration
+so there cannot be log records with level `OFF`.
+
+For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR` and `CRITICAL`
+will be emitted.
+
+The agent supports logging to the following sinks: syslog and stderr.
+You can control level of logging either for individual sinks using
+`elasticapm.log_level_syslog` and `elasticapm.log_level_stderr` keys
+or using fallback setting `elasticapm.log_level`
+which has effect for the sink when sink specific option is not set explicitly.
+For example, the following configuration:
+[source,ini]
+----
+elasticapm.log_level=NOTICE
+----
+sets log level to `NOTICE` for all the sinks,
+while the following configuration:
+[source,ini]
+----
+elasticapm.log_level=NOTICE
+elasticapm.log_level_syslog=TRACE
+----
+sets log level to `NOTICE` for all the sinks except for `syslog` whose log level is set to `TRACE`.
+
+[[configuration-reference]]
+=== Configuration reference
+
+[float]
+[[config-enabled]]
+==== `enabled`
+
+By default, the Elastic APM extension is enabled.
+It can be disabled by setting `elasticapm.enabled=false`.
+
+[float]
+[[config-server-url]]
+==== `server_url`
+
+`elasticapm.server_url`
+
+The URL for your APM Server.
+
+[float]
+[[config-secret-token]]
+==== `secret_token`
+
+`elasticapm.secret_token`
+
+Used to ensure that only your agents can send data to your APM server.
+Both the agents and the APM server have to be configured with the same secret token.
+Use this setting if the APM Server requires a token, like in {ess}.
+
+[float]
+[[config-service-name]]
+==== `service_name`
+
+`elasticapm.service_name`
+
+Groups all of the errors and transactions of your service together.
+This is the primary filter in the APM app.
+
+[float]
+[[config-service-version]]
+==== `service_version`
+
+`elasticapm.service_version`
+
+The version of the currently deployed service. If you don’t version your deployments,
+the recommended value for this field is the commit identifier of the deployed revision, e.g.,
+the output of git rev-parse HEAD.
+
+[float]
+[[config-log-level]]
+==== `log_level`
+
+`elasticapm.log_level`
+
+Fallback configuration setting to control the logging level for the agent.
+This setting has effect for the sink when sink specific option is not set explicitly.
+See <<configure-logging>> for details.
+
+This setting doesn't have a default value.
+
+[float]
+[[config-log-level-syslog]]
+==== `log_level_syslog`
+
+`elasticapm.log_level_syslog`
+
+The logging level for `syslog` logging sink.
+See <<configure-logging>> for details.
+
+This setting doesn't have a default value.

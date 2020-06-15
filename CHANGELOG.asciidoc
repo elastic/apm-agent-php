@@ -1,0 +1,22 @@
+////
+[[release-notes-x.x.x]]
+==== x.x.x - YYYY/MM/DD
+
+[float]
+===== Breaking changes
+
+[float]
+===== Features
+* Cool new feature: {pull}2526[#2526]
+
+[float]
+===== Bug fixes
+////
+
+[[release-notes-alpha]]
+=== PHP Agent version alpha/preview
+
+[[release-notes-alpha-1]]
+==== Alpha1 release
+
+// Using the template above, release notes go here.
