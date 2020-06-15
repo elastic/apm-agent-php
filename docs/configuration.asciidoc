@@ -4,22 +4,20 @@
 You can utilize configuration options to adapt the Elastic APM agent to your needs.
 One way to do this is to configure settings in an `elasticapm.ini` file:
 
-[source,php]
+[source,ini]
 ----
-elasticapm.host = localhost:8200
+elasticapm.server_url = http://localhost:8200
 elasticapm.service_name = "Unknown PHP service"
-elasticapm.log =
-elasticapm.log_level= 0
+elasticapm.log_level = 0
 ----
 
 The agent can also be configured at runtime with the following PHP code:
 
 [source,php]
 ----
-ini_set('elasticapm.host', 'myhost:8200');
-ini_set('elasticapm.service_name', 'test');
-ini_set('elasticapm.log', '/tmp/elasticapm.log');
-ini_set('elasticapm.log_level', '4');
+ini_set('elasticapm.server_url', 'http://localhost:8200');
+ini_set('elasticapm.service_name', 'My_Test_Service');
+ini_set('elasticapm.log_level', 'DEBUG');
 ----
 
 [float]
@@ -27,24 +25,25 @@ ini_set('elasticapm.log_level', '4');
 === {ess} on {ecloud}
 
 The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
-configuring the `elasticapm.host` and `elasticapm.secret_token` found in the APM section of {ecloud}:
+configuring the `elasticapm.server_url` and `elasticapm.secret_token` found in the APM section of {ecloud}:
 
 [role="screenshot"]
 image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
 
 Configure in `elasticapm.ini`:
 
-[source,php]
+[source,ini]
 ----
-elasticapm.host=HOST_URL
-elasticapm.secret_token=TOKEN
+elasticapm.server_url = APM_SERVER_URL
+elasticapm.secret_token = TOKEN
+elasticapm.service_name = SERVICE_NAME
 ----
 
 Or, with the following PHP code:
 
 [source,php]
 ----
-ini_set('elasticapm.host', 'HOST_URL');
+ini_set('elasticapm.server_url', 'APM_SERVER_URL');
 ini_set('elasticapm.secret_token', 'TOKEN');
 ----
 
@@ -52,10 +51,43 @@ ini_set('elasticapm.secret_token', 'TOKEN');
 [[configure-logging]]
 === Logging
 
-Enable PHP Agent logging by adding a file path in <<config-log,`elasticapm.log`>>.
-Specify the log level with the <<config-log-level,`elasticapm.log_level`>> key.
+Available log levels are:
 
-The default value of `0` (trace) logs everything.
+[source,text]
+----
+OFF
+CRITICAL
+ERROR
+WARNING
+NOTICE
+INFO
+DEBUG
+TRACE
+----
+where `OFF` level is used only for configuration
+so there cannot be log records with level `OFF`.
+
+For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR` and `CRITICAL`
+will be emitted.
+
+The agent supports logging to the following sinks: syslog and stderr.
+You can control level of logging either for individual sinks using
+`elasticapm.log_level_syslog` and `elasticapm.log_level_stderr` keys
+or using fallback setting `elasticapm.log_level`
+which has effect for the sink when sink specific option is not set explicitly.
+For example, the following configuration:
+[source,ini]
+----
+elasticapm.log_level=NOTICE
+----
+sets log level to `NOTICE` for all the sinks,
+while the following configuration:
+[source,ini]
+----
+elasticapm.log_level=NOTICE
+elasticapm.log_level_syslog=TRACE
+----
+sets log level to `NOTICE` for all the sinks except for `syslog` whose log level is set to `TRACE`.
 
 [[configuration-reference]]
 === Configuration reference
@@ -68,10 +100,10 @@ By default, the Elastic APM extension is enabled.
 It can be disabled by setting `elasticapm.enabled=false`.
 
 [float]
-[[config-host]]
-==== `host`
+[[config-server-url]]
+==== `server_url`
 
-`elasticapm.host`
+`elasticapm.server_url`
 
 The URL for your APM Server.
 
@@ -105,30 +137,24 @@ the recommended value for this field is the commit identifier of the deployed re
 the output of git rev-parse HEAD.
 
 [float]
-[[config-log]]
-==== `log`
-
-`elasticapm.log`
-
-Filepath of log events.
-
-[float]
 [[config-log-level]]
 ==== `log_level`
 
 `elasticapm.log_level`
 
-The logging level for the agent. Available log levels are:
+Fallback configuration setting to control the logging level for the agent.
+This setting has effect for the sink when sink specific option is not set explicitly.
+See <<configure-logging>> for details.
 
-[source,yml]
-----
-0 trace
-1 debug
-2 info
-3 warning
-4 error
-5 fatal
-----
+This setting doesn't have a default value.
 
-The default value of `0` (trace) logs everything.
-Logging at level `4`, for example, will ignore all level `0`, `1`, `2`, and `3` logs.
+[float]
+[[config-log-level-syslog]]
+==== `log_level_syslog`
+
+`elasticapm.log_level_syslog`
+
+The logging level for `syslog` logging sink.
+See <<configure-logging>> for details.
+
+This setting doesn't have a default value.

@@ -21,4 +21,5 @@ Enable the extension by adding the following to your `elasticapm.ini` file:
 [source,php]
 ----
 extension=elasticapm.so
+elasticapm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
 ----
