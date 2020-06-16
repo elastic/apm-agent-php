@@ -40,6 +40,9 @@ final class ExamplePublicApiElasticApm
                 }
             );
         }
+
+        // Lost label because there is no current transaction
+        ElasticApm::getCurrentTransaction()->setLabel(self::LOST_LABEL, null);
     }
 
     private function processCheckoutRequestImpl(string $shopId, TransactionInterface $tx): void
@@ -51,9 +54,6 @@ final class ExamplePublicApiElasticApm
 
         // Lost label because there is no current span
         ElasticApm::getCurrentSpan()->setLabel(self::LOST_LABEL, 123.456);
-
-        // Lost label because there is no current transaction
-        ElasticApm::getCurrentTransaction()->setLabel(self::LOST_LABEL, null);
     }
 
     private function getShoppingCartItems(): void
@@ -78,7 +78,7 @@ final class ExamplePublicApiElasticApm
             $this->dbSelect($dataId);
         }
 
-        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabel('shop-id'));
+        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabels()['shop-id']);
     }
 
     private function redisFetch(string $dataId): void
@@ -96,7 +96,7 @@ final class ExamplePublicApiElasticApm
     private function processData(string $dataId): void
     {
         ElasticApm::getCurrentSpan()->setLabel('data-id', $dataId);
-        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabel('shop-id'));
+        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabels()['shop-id']);
     }
 
     private function dbSelect(string $dataId): void

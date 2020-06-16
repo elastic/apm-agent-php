@@ -11,40 +11,41 @@
 
 #pragma once
 
+#include <stdbool.h>
+#include "basic_types.h"
+
 enum ResultCode
 {
     resultSuccess,
     resultOutOfMemory,
+    resultInvalidFormat,
     resultFailure
 };
 typedef enum ResultCode ResultCode;
 
-#define ALLOC_IF_FAILED_GOTO( type, outPtr ) \
-    do { \
-        void* eMallocIfFiledGotoTmpPtr = emalloc( sizeof( type ) ); \
-        if ( eMallocIfFiledGotoTmpPtr == NULL ) \
-        { \
-            resultCode = resultOutOfMemory; \
-            goto failure; \
-        } \
-        (outPtr) = (type*)(eMallocIfFiledGotoTmpPtr); \
-    } while( false )
+static inline String resultCodeToString( ResultCode resultCode )
+{
+    switch ( resultCode )
+    {
+        case resultSuccess:
+            return "resultSuccess";
 
-#define ALLOC_ARRAY_IF_FAILED_GOTO( type, arrayNumberOfElements, outPtr ) \
-    do { \
-        void* eMallocIfFailedGotoTmpPtr = emalloc( sizeof( type ) * (arrayNumberOfElements) ); \
-        if ( eMallocIfFailedGotoTmpPtr == NULL ) \
-        { \
-            resultCode = resultOutOfMemory; \
-            goto failure; \
-        } \
-        (outPtr) = (type*)(eMallocIfFailedGotoTmpPtr); \
-    } while( false )
+        case resultOutOfMemory:
+            return "resultOutOfMemory";
 
-#define ALLOC_STRING_IF_FAILED_GOTO( stringLength, outPtr ) ALLOC_ARRAY_IF_FAILED_GOTO( char, stringLength + 1, outPtr )
+        case resultInvalidFormat:
+            return "resultInvalidFormat";
 
-#define CALL_IF_FAILED_GOTO( expr ) \
+        case resultFailure:
+            return "resultFailure";
+
+        default:
+            return "UNKNOWN";
+    }
+}
+
+#define ELASTICAPM_CALL_IF_FAILED_GOTO( expr ) \
     do { \
         resultCode = (expr); \
         if ( resultCode != resultSuccess ) goto failure; \
-    } while( false )
+    } while ( 0 )

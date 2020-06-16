@@ -13,14 +13,22 @@ if (PHP_ELASTICAPM != 'no') {
 	    && CHECK_LIB("normaliz.lib", "elasticapm", PHP_ELASTICAPM)
     ) {
         ELASTICAPM_PHP_EXT_SOURCES =
+            "ConfigManager.c" + " " +
             "elasticapm.c" + " " +
+            "elasticapm_API.c" + " " +
             "elasticapm_assert.c" + " " +
+            "internal_checks.c" + " " +
             "lifecycle.c" + " " +
             "log.c" + " " +
+            "MemoryTracker.c" + " " +
             "php_error.c" + " " +
+            "platform.c" + " " +
             "supportability.c" + " " +
             "SystemMetrics.c" + " " +
-            "utils.c" + " " +
+            "time_util.c" + " " +
+            "Tracer.c" + " " +
+            "util.c" + " " +
+            "util_for_php.c" + " " +
             "";
 
         EXTENSION('elasticapm', ELASTICAPM_PHP_EXT_SOURCES, null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');

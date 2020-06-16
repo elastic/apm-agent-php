@@ -12,11 +12,11 @@
 #pragma once
 
 #include <php.h>
-#include <Zend/zend.h>
-#include <Zend/zend_API.h>
-#include <Zend/zend_modules.h>
+#include <zend.h>
+#include <zend_API.h>
+#include <zend_modules.h>
 
-#include "GlobalState.h"
+#include "Tracer.h"
 #include "elasticapm_version.h"
 
 extern zend_module_entry elasticapm_module_entry;
@@ -26,20 +26,10 @@ ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
 ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
-    GlobalState state;
+    Tracer globalTracer;
 ZEND_END_MODULE_GLOBALS(elasticapm)
 
 ZEND_EXTERN_MODULE_GLOBALS(elasticapm)
 
-static inline GlobalState* getGlobalState()
-{
-    return &(ZEND_MODULE_GLOBALS_ACCESSOR(elasticapm, state));
-}
-
-static inline const Config* getCurrentConfig()
-{
-    return &( getGlobalState()->config);
-}
-
-void registerElasticApmIniEntries( int module_number);
-void unregisterElasticApmIniEntries( int module_number);
+ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );
+void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );

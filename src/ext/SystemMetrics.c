@@ -10,15 +10,14 @@
  */
 
 #include "SystemMetrics.h"
-
 #ifndef PHP_WIN32
 #   include <stdlib.h>
 #   include <stdio.h>
 #   include <sys/sysinfo.h>
 #endif
-
 #include <php.h>
 
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_SYS_METRICS
 
 #ifdef PHP_WIN32
 

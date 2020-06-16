@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util;
 
-use Elastic\Apm\ExecutionSegmentInterface;
-use Elastic\Apm\Impl\TracerBuilder;
+use Closure;
+use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Impl\TracerInterface;
+use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use Elastic\Apm\SpanInterface;
-use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\TransactionDataInterface;
 use Jchook\AssertThrows\AssertThrows;
+use PHPUnit\Framework\Constraint\IsEqual;
+use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\TestCase;
 
 class TestCaseBase extends TestCase
@@ -19,82 +24,111 @@ class TestCaseBase extends TestCase
     // Adds the assertThrows method
     use AssertThrows;
 
-    /** @var float Timestamp for February 20, 2020 18:04:47.987 */
-    private const PAST_TIMESTAMP = 1582221887987;
+    /** @var MockEventSink */
+    protected $mockEventSink;
+
+    /** @var TracerInterface */
+    protected $tracer;
+
+    public function setUp(): void
+    {
+        $this->setUpTestEnv();
+    }
+
+    protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
+    {
+        $builder = TracerBuilder::startNew();
+        if ($shouldCreateMockEventSink) {
+            $this->mockEventSink = new MockEventSink();
+            $builder->withEventSink($this->mockEventSink);
+        }
+        if (!is_null($tracerBuildCallback)) {
+            $tracerBuildCallback($builder);
+        }
+        $this->tracer = $builder->build();
+        GlobalTracerHolder::set($this->tracer);
+    }
 
     public function tearDown(): void
     {
         GlobalTracerHolder::reset();
     }
 
-    public function assertValidId(string $id, int $expectedSizeInBytes): void
-    {
-        $this->assertSame($expectedSizeInBytes * 2, strlen($id));
-
-        foreach (str_split($id) as $idChar) {
-            $this->assertTrue(ctype_xdigit($idChar));
-        }
-    }
-
-    public function assertValidExecutionSegment(ExecutionSegmentInterface $executionSegment): void
-    {
-        $this->assertValidId($executionSegment->getId(), IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
-        $this->assertValidId($executionSegment->getTraceId(), IdGenerator::TRACE_ID_SIZE_IN_BYTES);
-
-        $this->assertNotNull($executionSegment->getType());
-
-        $this->assertGreaterThanOrEqual(0, $executionSegment->getDuration());
-
-        $this->assertGreaterThan(self::PAST_TIMESTAMP, $executionSegment->getTimestamp());
-    }
-
-    public function assertValidTransaction(TransactionInterface $transaction): void
-    {
-        $this->assertValidExecutionSegment($transaction);
-    }
-
-    public function assertValidSpan(SpanInterface $span): void
-    {
-        $this->assertValidExecutionSegment($span);
-
-        $this->assertNotNull($span->getName());
-
-        $this->assertNotNull($span->getStart());
-        $this->assertGreaterThanOrEqual(0, $span->getStart());
-    }
-
-    public function assertEqualTimestamps(float $expected, float $actual): void
+    public function assertEqualTimestamp(float $expected, float $actual): void
     {
         $this->assertEqualsWithDelta($expected, $actual, 1);
     }
 
-    /**
-     * @param TransactionInterface    $transaction
-     * @param iterable<SpanInterface> $spans
-     */
-    public function assertValidTransactionAndItsSpans(TransactionInterface $transaction, iterable $spans): void
+    public function assertLessThanOrEqualTimestamp(float $lhs, float $rhs): void
     {
-        $this->assertValidTransaction($transaction);
+        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
+    }
 
-        /** @var SpanInterface $span */
+    public function assertLessThanOrEqualDuration(float $lhs, float $rhs): void
+    {
+        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
+    }
+
+    public static function getEndTimestamp(ExecutionSegmentDataInterface $timedEvent): float
+    {
+        return $timedEvent->getTimestamp() + TimeUtil::millisecondsToMicroseconds($timedEvent->getDuration());
+    }
+
+    /**
+     * @param mixed $timestamp
+     * @param mixed $outerTimedEvent
+     */
+    public function assertTimestampNested($timestamp, $outerTimedEvent): void
+    {
+        $this->assertLessThanOrEqualTimestamp($outerTimedEvent->getTimestamp(), $timestamp);
+        $this->assertLessThanOrEqualTimestamp($timestamp, self::getEndTimestamp($outerTimedEvent));
+    }
+
+    /**
+     * @param mixed $nestedTimedEvent
+     * @param mixed $outerTimedEvent
+     */
+    public function assertTimedEventIsNested($nestedTimedEvent, $outerTimedEvent): void
+    {
+        $this->assertTimestampNested($nestedTimedEvent->getTimestamp(), $outerTimedEvent);
+        $this->assertTimestampNested(self::getEndTimestamp($nestedTimedEvent), $outerTimedEvent);
+    }
+
+    /**
+     * @param TransactionDataInterface    $transaction
+     * @param iterable<SpanDataInterface> $spans
+     */
+    public function assertValidTransactionAndItsSpans(TransactionDataInterface $transaction, iterable $spans): void
+    {
+        ValidationUtil::assertValidTransactionData($transaction);
+
+        /** @var SpanDataInterface $span */
         foreach ($spans as $span) {
-            $this->assertValidSpan($span);
+            ValidationUtil::assertValidSpanData($span);
             $this->assertSame($transaction->getId(), $span->getTransactionId());
             $this->assertSame($transaction->getTraceId(), $span->getTraceId());
 
-            $this->assertTrue($span->getStart() + $span->getDuration() <= $transaction->getDuration());
+            $this->assertTimedEventIsNested($span, $transaction);
 
-            $this->assertEqualTimestamps(
+            $this->assertLessThanOrEqualDuration($span->getStart() + $span->getDuration(), $transaction->getDuration());
+            $this->assertEqualTimestamp(
                 $transaction->getTimestamp() + TimeUtil::millisecondsToMicroseconds((float)($span->getStart())),
                 $span->getTimestamp()
             );
         }
     }
 
-    protected function setUpElasticApmWithMockReporter(): MockReporter
-    {
-        $mockReporter = new MockReporter($this);
-        GlobalTracerHolder::set(TracerBuilder::startNew()->withReporter($mockReporter)->build());
-        return $mockReporter;
+    public static function assertTransactionEquals(
+        TransactionDataInterface $expected,
+        TransactionDataInterface $actual
+    ): void {
+        self::assertEquals(TransactionData::convertToData($expected), TransactionData::convertToData($actual));
+    }
+
+    public static function assertSpanEquals(
+        SpanDataInterface $expected,
+        SpanDataInterface $actual
+    ): void {
+        self::assertEquals(SpanData::convertToData($expected), SpanData::convertToData($actual));
     }
 }
