@@ -274,7 +274,7 @@ $transactionType = $transaction->getType();
 [[api-transaction-interface-set-label]]
 ==== `TransactionInterface::setLabel`
 Sets a label by a key.
-Labels is a flat mapping of user-defined string keys and string, number or boolean values.
+Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
 NOTE: The labels are indexed in Elasticsearch so that they are searchable and aggregatable.
 Take special care when using user provided data, like URL parameters,
@@ -415,7 +415,7 @@ $spanType = $span->getType();
 ==== `SpanInterface::setSubtype`
 Sets the sub-type of the span.
 Span sub-type is a further sub-division of the type.
-For example `mysql`, `postgresql` or `elasticsearch` for type `db`, `http` for type `external`, etc.
+For example, `mysql`, `postgresql`, or `elasticsearch` for the type `db`, `http` for the type `external`, etc.
 
 Span sub-type is optional and can be set to `null`.
 Span sub-type default value is `null`.
@@ -468,7 +468,7 @@ $spanAction = $span->getAction();
 [[api-span-interface-set-label]]
 ==== `SpanInterface::setLabel`
 Sets a label by a key.
-Labels is a flat mapping of user-defined string keys and string, number or boolean values.
+Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
 NOTE: The labels are indexed in Elasticsearch so that they are searchable and aggregatable.
 Take special care when using user provided data, like URL parameters,
@@ -532,8 +532,8 @@ $transactionId = $span->getTransactionId();
 [[api-span-interface-get-parent-id]]
 ==== `SpanInterface::getParentId`
 Gets ID of the parent transaction or span.
-If this span is the root span of the correlated transaction then its parent is the correlated transaction
-otherwise its parent is the parent span.
+If this span is the root span of the correlated transaction then its parent is the correlated transaction,
+otherwise, its parent is the parent span.
 See <<api-transaction-interface-get-id>> and <<api-span-interface-get-id>>.
 
 If this span represents a noop, this method returns an unspecified dummy ID.
@@ -551,7 +551,7 @@ Begins a new span with this span as the new span's parent.
 
 NOTE: You must call <<api-span-interface-end>> when the span has ended.
 
-The best practice is to use `try`-`finally` block.
+The best practice is to use a `try`-`finally` block.
 For example:
 
 [source,php]
@@ -577,7 +577,7 @@ when the span has ended.
 This API
 
 * Begins a new span with this span as the new span's parent
-* Executes the provided `callable` as the new span and
+* Executes the provided `callable` as the new span
 * Ends the new span
 * Returns the value returned by the provided `callable`
 
