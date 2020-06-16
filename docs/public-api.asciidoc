@@ -52,7 +52,7 @@ See <<api-transaction-interface>> on how to customize a transaction.
 ==== `ElasticApm::captureCurrentTransaction`
 This is a convenience API that ensures <<api-transaction-interface-end>> is called
 when the transaction has ended.
-This API
+This API:
 
 * Begins a new transaction
 * Sets the new transaction as the current transaction
