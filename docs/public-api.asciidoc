@@ -81,7 +81,6 @@ See <<api-transaction-interface>> on how to customize a transaction.
 [[api-elasticapm-class-get-current-transaction]]
 ==== `ElasticApm::getCurrentTransaction`
 Returns the current transaction.
-See <<api-transaction-interface>> on how to customize a transaction.
 
 [source,php]
 ----
