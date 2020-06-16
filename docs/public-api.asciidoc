@@ -56,7 +56,7 @@ This API:
 
 * Begins a new transaction
 * Sets the new transaction as the current transaction
-* Executes the provided `callable` as the new transaction and
+* Executes the provided `callable` as the new transaction
 * Ends the new transaction
 * Returns the value returned by the provided `callable`
 
