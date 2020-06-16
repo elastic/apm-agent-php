@@ -25,7 +25,7 @@ the agent begins a new transaction automatically
 whenever your application receives an incoming HTTP request
 so you only need to use this method to create custom transactions.
 
-NOTE: It is important to call <<api-transaction-interface-end>> when the transaction has ended.
+NOTE: You must call <<api-transaction-interface-end>> when the transaction has ended.
 
 The best practice is to use `try`-`finally` block.
 For example:
