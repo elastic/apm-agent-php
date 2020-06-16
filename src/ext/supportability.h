@@ -11,7 +11,34 @@
 
 #pragma once
 
-#include "Zend/zend_modules.h"
+#include "basic_types.h" // String
+#include "TextOutputStream.h" // String
 
-void elasticapmModuleInfo( zend_module_entry* zend_module);
-void displaySecretIniValue( zend_ini_entry *iniEntry, int type);
+struct StructuredTextPrinter;
+typedef struct StructuredTextPrinter StructuredTextPrinter;
+
+struct StructuredTextPrinter
+{
+    void (* printSectionHeading ) ( StructuredTextPrinter* structTxtPrinter, String heading );
+    void (* printTableBegin ) ( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns );
+    void (* printTableHeader ) ( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columnHeaders[] );
+    void (* printTableRow ) ( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columns[] );
+    void (* printTableEnd ) ( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns );
+};
+typedef struct StructuredTextPrinter StructuredTextPrinter;
+
+struct StructuredTextToOutputStreamPrinter
+{
+    // base must be the first field so StructuredTextToOutputStreamPrinter* can be cast from/to StructuredTextPrinter*
+    StructuredTextPrinter base;
+    TextOutputStream* txtOutStream;
+    StringView prefix;
+};
+typedef struct StructuredTextToOutputStreamPrinter StructuredTextToOutputStreamPrinter;
+
+void initStructuredTextToOutputStreamPrinter(
+        /* in */ TextOutputStream* txtOutStream
+        , StringView prefix
+        , /* out */ StructuredTextToOutputStreamPrinter* structuredTextToOutputStreamPrinter );
+
+void printSupportabilityInfo( StructuredTextPrinter* structTxtPrinter );

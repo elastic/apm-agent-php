@@ -16,10 +16,11 @@
     },
     "require-dev": {
         "jchook/phpunit-assert-throws": "^1.0",
+        "justinrainbow/json-schema": "^5.2.9",
         "monolog/monolog": "^2.0",
-        "phpstan/phpstan": "^0.12.9",
+        "phpstan/phpstan": "^0.12.19",
         "phpunit/phpunit": "^8.0",
-        "squizlabs/php_codesniffer": "^3.5.4"
+        "squizlabs/php_codesniffer": "^3.5.5"
     },
     "suggest": {
         "ext-curl": "*",
@@ -61,6 +62,9 @@
         ],
         "test": [
             "phpunit"
+        ],
+        "test_only": [
+            "phpunit --filter"
         ],
         "static_check_and_test": [
             "composer run-script static_check",

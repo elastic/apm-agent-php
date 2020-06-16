@@ -16,7 +16,7 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-class NoopTransaction extends NoopExecutionSegment implements TransactionInterface
+final class NoopTransaction extends NoopExecutionSegment implements TransactionInterface
 {
     use NoopObjectTrait;
 
@@ -27,22 +27,12 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
     }
 
     /** @inheritDoc */
-    public function getName(): ?string
-    {
-        return null;
-    }
-
-    /** @inheritDoc */
-    public function setName(?string $name): void
-    {
-    }
-
-    /** @inheritDoc */
     public function beginCurrentSpan(
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ): SpanInterface {
         return NoopSpan::instance();
     }
@@ -53,7 +43,8 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
         string $type,
         Closure $callback,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ) {
         return $callback(NoopSpan::instance());
     }
@@ -62,5 +53,20 @@ class NoopTransaction extends NoopExecutionSegment implements TransactionInterfa
     public function getCurrentSpan(): SpanInterface
     {
         return NoopSpan::instance();
+    }
+
+    public function __toString(): string
+    {
+        return 'NO-OP Transaction';
+    }
+
+    public function getStartedSpansCount(): int
+    {
+        return 0;
+    }
+
+    public function getDroppedSpansCount(): int
+    {
+        return 0;
     }
 }

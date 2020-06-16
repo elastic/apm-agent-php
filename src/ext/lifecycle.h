@@ -14,10 +14,10 @@
 #include "ResultCode.h"
 
 
-ResultCode elasticApmModuleInit( int type, int moduleNumber );
+void elasticApmModuleInit( int type, int moduleNumber );
 
-ResultCode elasticApmModuleShutdown( int type, int moduleNumber );
+void elasticApmModuleShutdown( int type, int moduleNumber );
 
-ResultCode elasticApmRequestInit();
+void elasticApmRequestInit();
 
-ResultCode elasticApmRequestShutdown();
+void elasticApmRequestShutdown();

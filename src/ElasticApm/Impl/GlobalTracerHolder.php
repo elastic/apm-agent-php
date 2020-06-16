@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\TracerInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -18,6 +17,11 @@ final class GlobalTracerHolder
 
     /** @var TracerInterface */
     private static $singletonInstance;
+
+    public static function isSet(): bool
+    {
+        return isset(self::$singletonInstance);
+    }
 
     public static function get(): TracerInterface
     {

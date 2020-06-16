@@ -17,6 +17,9 @@ junit.xml
 # Visual Studio Code
 .vscode/
 
+# Generated files
+_GENERATED/
+
 # Composer
 composer.lock
 composer.phar
@@ -33,3 +36,4 @@ phpunit.xml
 
 # Built documentation
 html_docs
+

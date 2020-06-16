@@ -9,14 +9,19 @@
    +----------------------------------------------------------------------+
  */
 
-#ifndef ELASTICAPM_BASIC_TYPES_H
-#define ELASTICAPM_BASIC_TYPES_H
+#pragma once
 
 #include <stdint.h>
+#include <sys/types.h>
+#include <string.h>
 
 typedef unsigned int UInt;
 typedef uint8_t UInt8;
 typedef int8_t Int8;
+typedef uint16_t UInt16;
+typedef int16_t Int16;
+typedef uint32_t UInt32;
+typedef int32_t Int32;
 typedef uint64_t UInt64;
 typedef int64_t Int64;
 
@@ -24,5 +29,3 @@ typedef UInt8 Byte;
 
 typedef const char* String;
 typedef char* MutableString;
-
-#endif /* #ifndef ELASTICAPM_BASIC_TYPES_H */

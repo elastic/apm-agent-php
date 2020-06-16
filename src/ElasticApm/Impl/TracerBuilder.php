@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
-use Elastic\Apm\TracerInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -22,11 +21,13 @@ final class TracerBuilder
     /** @var bool */
     private $isEnabled = true;
 
-    /** @var ClockInterface|null */
-    private $clock;
+    /** @var TracerDependencies */
+    private $tracerDependencies;
 
-    /** @var ReporterInterface|null */
-    private $reporter;
+    private function __construct()
+    {
+        $this->tracerDependencies = new TracerDependencies();
+    }
 
     public static function startNew(): self
     {
@@ -41,13 +42,19 @@ final class TracerBuilder
 
     public function withClock(ClockInterface $clock): self
     {
-        $this->clock = $clock;
+        $this->tracerDependencies->clock = $clock;
         return $this;
     }
 
-    public function withReporter(ReporterInterface $reporter): self
+    public function withEventSink(EventSinkInterface $eventSink): self
     {
-        $this->reporter = $reporter;
+        $this->tracerDependencies->eventSink = $eventSink;
+        return $this;
+    }
+
+    public function withLogSink(Log\SinkInterface $logSink): self
+    {
+        $this->tracerDependencies->logSink = $logSink;
         return $this;
     }
 
@@ -57,9 +64,6 @@ final class TracerBuilder
             return NoopTracer::instance();
         }
 
-        return new Tracer(
-            $this->clock ?? Clock::instance(),
-            $this->reporter ?? NoopReporter::instance()
-        );
+        return new Tracer($this->tracerDependencies);
     }
 }
