@@ -89,6 +89,8 @@ use Elastic\Apm\ElasticApm;
 $transaction = ElasticApm::getCurrentTransaction();
 ----
 
+See <<api-transaction-interface>> on how to customize a transaction.
+
 [float]
 [[api-transaction-interface]]
 === TransactionInterface
