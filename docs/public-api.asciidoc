@@ -371,7 +371,7 @@ $spanType = $span->getType();
 ==== `SpanInterface::setSubtype`
 Sets the sub-type of the span.
 Span sub-type is a further sub-division of the type.
-For example `mysql`, `postgresql` or `elasticsearch` for type `db`, `http` for type `external`, etc.
+For example, `mysql`, `postgresql`, or `elasticsearch` for the type `db`, `http` for the type `external`, etc.
 
 The length of this string is limited to 1024.
 
