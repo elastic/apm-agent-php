@@ -123,7 +123,7 @@ then the transaction itself is set as the new span's parent.
 
 NOTE: It is important to call <<api-span-interface-end>> when the span has ended.
 
-The best practice is to use `try`-`finally` block.
+The best practice is to use a `try`-`finally` block.
 For example:
 
 [source,php]
