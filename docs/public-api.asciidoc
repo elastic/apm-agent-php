@@ -537,7 +537,7 @@ when the span has ended.
 This API
 
 * Begins a new span with this span as the new span's parent
-* Executes the provided `callable` as the new span and
+* Executes the provided `callable` as the new span
 * Ends the new span
 * Returns the value returned by the provided `callable`
 
