@@ -492,8 +492,8 @@ $transactionId = $span->getTransactionId();
 [[api-span-interface-get-parent-id]]
 ==== `SpanInterface::getParentId`
 Gets ID of the parent transaction or span.
-If this span is the root span of the correlated transaction then its parent is the correlated transaction
-otherwise its parent is the parent span.
+If this span is the root span of the correlated transaction then its parent is the correlated transaction,
+otherwise, its parent is the parent span.
 See <<api-transaction-interface-get-id>> and <<api-span-interface-get-id>>.
 
 If this span represents a noop, this method returns an unspecified dummy ID.
