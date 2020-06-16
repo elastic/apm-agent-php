@@ -64,8 +64,8 @@ INFO
 DEBUG
 TRACE
 ----
-where `OFF` level is used only for configuration
-so there cannot be log records with level `OFF`.
+`OFF` is only used to disable agent logging.
+There cannot be log records with level `OFF`.
 
 For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR` and `CRITICAL`
 will be emitted.
