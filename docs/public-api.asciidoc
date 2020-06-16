@@ -226,7 +226,7 @@ $transactionType = $transaction->getType();
 [[api-transaction-interface-set-label]]
 ==== `TransactionInterface::setLabel`
 Sets a label by a key.
-Labels is a flat mapping of user-defined string keys and string, number or boolean values.
+Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
 NOTE: The labels are indexed in Elasticsearch so that they are searchable and aggregatable.
 Take special care when using user provided data, like URL parameters,
