@@ -152,7 +152,7 @@ This API
     sets the new span as the current span for this transaction.
     If this transaction's doesn't have a current span
     then the transaction itself is set as the new span's parent.
-* Executes the provided `callable` as the new span and
+* Executes the provided `callable` as the new span
 * Ends the new transaction
 * Returns the value returned by the provided `callable`
 
