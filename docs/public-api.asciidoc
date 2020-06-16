@@ -27,7 +27,7 @@ so you only need to use this method to create custom transactions.
 
 NOTE: You must call <<api-transaction-interface-end>> when the transaction has ended.
 
-The best practice is to use `try`-`finally` block.
+The best practice is to use a `try`-`finally` block.
 For example:
 
 [source,php]
