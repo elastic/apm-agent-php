@@ -21,7 +21,7 @@ final class ElasticApm
     public const VERSION = '0.1-preview';
 
     /**
-     * Begins a new transaction and sets as the current transaction.
+     * Begins a new transaction and sets it as the current transaction.
      *
      * @param string     $name      New transaction's name
      * @param string     $type      New transaction's type
@@ -80,7 +80,9 @@ final class ElasticApm
     }
 
     /**
-     * Begins a new span with the current execution segment as the new span's parent and
+     * Begins a new span with the current execution segment
+     * (which is the current span if there is one or the current transaction otherwise)
+     * as the new span's parent and
      * sets as the new span as the current span for this transaction.
      *
      * @param string      $name      New span's name
