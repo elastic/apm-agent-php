@@ -43,8 +43,6 @@ $GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --ch
 
 ## Authors
 
-- [Enrico Zimuel](https://www.zimuel.it)
-- [Philip Krauss](https://github.com/philkra)
 - [Sergey Kleyman](https://github.com/SergeyKleyman)
 
 ## Copyright
