@@ -43,10 +43,9 @@ $GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --ch
 
 ## Authors
 
-- [Enrico Zimuel](https://www.zimuel.it)
-- [Philip Krauss](https://github.com/philkra)
+- [Sergey Kleyman](https://github.com/SergeyKleyman)
 
 ## Copyright
 
-Copyright 2019 Elasticsearch BV.
+Copyright 2019-2020 Elasticsearch BV.
 Licensed under the [Apache License, Version 2.0](LICENSE).
