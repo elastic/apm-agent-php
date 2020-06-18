@@ -9,10 +9,14 @@
    +----------------------------------------------------------------------+
  */
 
+#include "php_error.h"
+
 #include <zend_errors.h>
 
-const char * get_php_error_name(int code) {
-    switch (code) {
+const char* get_php_error_name( int code )
+{
+    switch ( code )
+    {
         case E_ERROR:
             return "E_ERROR";
         case E_WARNING:
@@ -43,6 +47,7 @@ const char * get_php_error_name(int code) {
             return "E_DEPRECATED";
         case E_USER_DEPRECATED:
             return "E_USER_DEPRECATED";
-     }
-     return "UNDEFINED";
- }
+        default:
+            return "UNDEFINED";
+    }
+}

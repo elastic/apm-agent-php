@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 
@@ -12,25 +13,9 @@ use Elastic\Apm\SpanInterface;
  *
  * @internal
  */
-final class Span extends ExecutionSegment implements SpanInterface
+final class Span extends SpanData implements SpanInterface
 {
-    /** @var string */
-    private $transactionId;
-
-    /** @var string */
-    private $parentId;
-
-    /** @var float */
-    private $start;
-
-    /** @var string */
-    private $name;
-
-    /** @var string|null */
-    private $subtype;
-
-    /** @var string|null */
-    private $action;
+    use ExecutionSegmentTrait;
 
     /** @var Transaction */
     private $containingTransaction;
@@ -38,17 +23,26 @@ final class Span extends ExecutionSegment implements SpanInterface
     /** @var Span|null */
     private $parentSpan;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct(
         Transaction $containingTransaction,
         ?Span $parentSpan,
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ) {
-        parent::__construct($containingTransaction->getTracer(), $containingTransaction->getTraceId(), $type);
+        $this->constructExecutionSegmentTrait(
+            $containingTransaction->getTracer(),
+            $containingTransaction->getTraceId(),
+            $name,
+            $type,
+            $timestamp
+        );
 
-        $this->setName($name);
         $this->setSubtype($subtype);
         $this->setAction($action);
 
@@ -59,6 +53,13 @@ final class Span extends ExecutionSegment implements SpanInterface
         $this->parentId = $parentSpan === null ? $containingTransaction->getId() : $parentSpan->getId();
 
         $this->start = TimeUtil::calcDuration($containingTransaction->getTimestamp(), $this->getTimestamp());
+
+        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
+
+        $containingTransaction->addStartedSpan();
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
     }
 
     /** @inheritDoc */
@@ -66,9 +67,18 @@ final class Span extends ExecutionSegment implements SpanInterface
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ): SpanInterface {
-        return new Span($this->containingTransaction, /* parentSpan: */ $this, $name, $type, $subtype, $action);
+        return new Span(
+            $this->containingTransaction,
+            /* parentSpan: */ $this,
+            $name,
+            $type,
+            $subtype,
+            $action,
+            $timestamp
+        );
     }
 
     /** @inheritDoc */
@@ -78,7 +88,10 @@ final class Span extends ExecutionSegment implements SpanInterface
             return;
         }
 
-        $this->getTracer()->getReporter()->reportSpan($this);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Span ended', []);
+
+        $this->getTracer()->getEventSink()->consumeSpanData($this);
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
             $this->containingTransaction->popCurrentSpan();
@@ -86,62 +99,24 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function getTransactionId(): string
+    public function setAction(?string $action): void
     {
-        return $this->transactionId;
-    }
-
-    /** @inheritDoc */
-    public function getParentId(): string
-    {
-        return $this->parentId;
-    }
-
-    /** @inheritDoc */
-    public function getStart(): float
-    {
-        return $this->start;
-    }
-
-    /** @inheritDoc */
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    /** @inheritDoc */
-    public function setName(string $name): void
-    {
-        $this->name = $name;
-    }
-
-    /** @inheritDoc */
-    public function getSubtype(): ?string
-    {
-        return $this->subtype;
+        $this->action = $this->tracer->limitNullableKeywordString($action);
     }
 
     /** @inheritDoc */
     public function setSubtype(?string $subtype): void
     {
-        $this->subtype = $subtype;
+        $this->subtype = $this->tracer->limitNullableKeywordString($subtype);
     }
 
-    /** @inheritDoc */
-    public function getAction(): ?string
-    {
-        return $this->action;
-    }
-
-    /** @inheritDoc */
-    public function setAction(?string $action): void
-    {
-        $this->action = $action;
-    }
-
-    /** @inheritDoc */
     public function getParentSpan(): ?Span
     {
         return $this->parentSpan;
+    }
+
+    public function __toString(): string
+    {
+        return self::dataToString($this, 'Span');
     }
 }

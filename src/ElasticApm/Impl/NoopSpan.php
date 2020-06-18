@@ -12,12 +12,9 @@ use Elastic\Apm\SpanInterface;
  *
  * @internal
  */
-class NoopSpan extends NoopExecutionSegment implements SpanInterface
+final class NoopSpan extends NoopExecutionSegment implements SpanInterface
 {
     use NoopObjectTrait;
-
-    /** @var string */
-    public const NAME = 'NO-OP span';
 
     /** @inheritDoc */
     public function getTransactionId(): string
@@ -32,20 +29,9 @@ class NoopSpan extends NoopExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function getStart(): ?float
+    public function getStart(): float
     {
         return 0.0;
-    }
-
-    /** @inheritDoc */
-    public function getName(): string
-    {
-        return self::NAME;
-    }
-
-    /** @inheritDoc */
-    public function setName(string $name): void
-    {
     }
 
     /** @inheritDoc */
@@ -68,5 +54,10 @@ class NoopSpan extends NoopExecutionSegment implements SpanInterface
     /** @inheritDoc */
     public function setAction(?string $action): void
     {
+    }
+
+    public function __toString(): string
+    {
+        return 'NO-OP Span';
     }
 }

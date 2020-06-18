@@ -6,10 +6,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util;
 
-use Exception;
+use RuntimeException;
 use Throwable;
 
-class NotFoundException extends Exception
+class NotFoundException extends RuntimeException
 {
     public function __construct(string $message, int $code = 0, Throwable $previous = null)
     {

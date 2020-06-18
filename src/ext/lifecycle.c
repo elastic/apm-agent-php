@@ -10,664 +10,379 @@
  */
 
 #include "lifecycle.h"
-
-#include <inttypes.h>
-#include <stdbool.h>
-#include <php.h>
-#include <Zend/zend.h>
-#include <Zend/zend_API.h>
-#include <Zend/zend_compile.h>
-#include <Zend/zend_exceptions.h>
-
-#if defined(PHP_WIN32) && !defined(CURL_STATICLIB)
+#if defined(PHP_WIN32) && ! defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
 #endif
-
 #include <curl/curl.h>
-
+#include <inttypes.h> // PRIu64
+#include <stdbool.h>
+#include <php.h>
+#include <zend_compile.h>
+#include <zend_exceptions.h>
 #include "php_elasticapm.h"
 #include "log.h"
-#include "constants.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
-#include "utils.h"
+#include "util_for_php.h"
 #include "elasticapm_assert.h"
+#include "MemoryTracker.h"
+#include "supportability.h"
+#include "elasticapm_alloc.h"
+#include "elasticapm_API.h"
+
+#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_CURRENT_LOG_CATEGORY_LIFECYCLE
 
 static const char JSON_METADATA[] =
-        "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"apm-agent-php\"}}}}\n";
-static const char JSON_TRANSACTION[] =
-        "{\"transaction\":{\"name\":\"%s\",\"id\":\"%s\",\"trace_id\":\"%s\",\"type\":\"%s\",\"duration\": %.3f, \"timestamp\":%"PRIu64", \"result\": \"0\", \"context\": null, \"spans\": null, \"sampled\": null, \"span_count\": {\"started\": 0}}}\n";
+        "{\"metadata\":{\"process\":{\"pid\":%d},\"service\":{\"name\":\"%s\",\"language\":{\"name\":\"php\"},\"agent\":{\"version\":\"%s\",\"name\":\"php\"}}}}\n";
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
-static const char JSON_EXCEPTION[] =
-        "{\"error\":{\"timestamp\":%"PRIu64",\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\":%ld,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"filename\":\"%s\",\"lineno\":%ld}]}}}\n";
-static const char JSON_ERROR[] =
-        "{\"error\":{\"timestamp\":%"PRIu64",\"id\":\"%s\",\"parent_id\":\"%s\",\"trace_id\":\"%s\",\"exception\":{\"code\": %d,\"message\":\"%s\",\"type\":\"%s\",\"stacktrace\":[{\"filename\":\"%s\",\"lineno\": %d}]},\"log\":{\"level\":\"%s\",\"logger_name\":\"PHP\",\"message\":\"%s\"}}}\n";
 
-// Log response
-static size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* unusedUserDataParam )
+static
+String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoBuffer )
 {
-    // https://curl.haxx.se/libcurl/c/CURLOPT_WRITEFUNCTION.html
-    // size (unusedSizeParam) is always 1
-    UNUSED_PARAMETER( unusedSizeParam );
-    UNUSED_PARAMETER( unusedUserDataParam );
-    log_debug( "APM Server's response body [length: %"PRIu64"]: %.*s", (UInt64)dataSize, dataSize, (const char*)data );
-    return dataSize;
+    TextOutputStream txtOutStream = makeTextOutputStream( supportInfoBuffer, supportInfoBufferSize );
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
+    {
+        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+    }
+
+    StructuredTextToOutputStreamPrinter structTxtToOutStreamPrinter;
+    initStructuredTextToOutputStreamPrinter(
+            /* in */ &txtOutStream
+                     , /* prefix */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+                     , /* out */ &structTxtToOutStreamPrinter );
+
+    printSupportabilityInfo( (StructuredTextPrinter*) &structTxtToOutStreamPrinter );
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
 }
 
-static ResultCode ensureAllocatedAndAppend( MutableString* pBuffer, size_t maxLength, String strToAppend )
-{
-    ASSERT_VALID_PTR( pBuffer );
-
-    ResultCode resultCode;
-    size_t bufferUsedLength;
-    MutableString buffer = *pBuffer;
-
-    if ( buffer == NULL )
-    {
-        ALLOC_STRING_IF_FAILED_GOTO( maxLength, buffer );
-        buffer[ 0 ] = '\0';
-        bufferUsedLength = 0;
-    }
-    else
-    {
-        bufferUsedLength = strnlen( buffer, maxLength );
-    }
-
-    strncat( buffer + bufferUsedLength, strToAppend, maxLength - bufferUsedLength );
-
-    resultCode = resultSuccess;
-    if ( *pBuffer == NULL ) *pBuffer = buffer;
-
-    finally:
-    return resultCode;
-
-    failure:
-    if ( *pBuffer == NULL ) EFREE_AND_SET_TO_NULL( buffer );
-    goto finally;
-}
-
-static void elasticApmThrowExceptionHook( zval* exception )
+void logSupportabilityInfo( LogLevel logLevel )
 {
     ResultCode resultCode;
-    zval* code;
-    zval* message;
-    zval* file;
-    zval* line;
-    zval rv;
-    zend_class_entry* default_ce;
-    zend_string* className;
-    const char* errorId = NULL;
-    char* jsonBuffer = NULL;
-    static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
-    uint64_t timestamp;
-    GlobalState* const globalState = getGlobalState();
-    Transaction* const currentTransaction = globalState->currentTransaction;
-
-    if ( currentTransaction == NULL )
+    enum
     {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
-        goto finally;
-    }
+        supportInfoBufferSize = 100 * 1000 + 1
+    };
+    char* supportInfoBuffer = NULL;
 
-    default_ce = Z_OBJCE_P( exception );
+    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
+    String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
 
-    className = Z_OBJ_HANDLER_P( exception, get_class_name )( Z_OBJ_P( exception ) );
-    code = zend_read_property( default_ce, exception, "code", sizeof( "code" ) - 1, 0, &rv );
-    message = zend_read_property( default_ce, exception, "message", sizeof( "message" ) - 1, 0, &rv );
-    file = zend_read_property( default_ce, exception, "file", sizeof( "file" ) - 1, 0, &rv );
-    line = zend_read_property( default_ce, exception, "line", sizeof( "line" ) - 1, 0, &rv );
+    ELASTICAPM_LOG_WITH_LEVEL( logLevel, "Supportability info:\n%s", supportabilityInfo );
 
-    CALL_IF_FAILED_GOTO( genRandomIdHexString( ERROR_ID_SIZE_IN_BYTES, &errorId ) );
-
-    timestamp = getCurrentTimeEpochMicroseconds();
-
-    ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
-    snprintf( jsonBuffer
-             , jsonBufferMaxLength + 1
-             , JSON_EXCEPTION
-             , timestamp
-             , errorId
-             , currentTransaction->id
-             , currentTransaction->traceId
-             , (long)Z_LVAL_P( code )
-             , Z_STRVAL_P( message )
-             , ZSTR_VAL( className )
-             , Z_STRVAL_P( file )
-             , (long)Z_LVAL_P( line ) );
-
-    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->exceptions, 100 * 1024, jsonBuffer ) );
+    // resultCode = resultSuccess;
 
     finally:
-    EFREE_AND_SET_TO_NULL( jsonBuffer );
-    EFREE_AND_SET_TO_NULL( errorId );
-
-    if ( globalState->originalZendThrowExceptionHook != NULL ) globalState->originalZendThrowExceptionHook( exception );
-
-    UNUSED_LOCAL_VAR( resultCode );
+    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( supportInfoBufferSize, supportInfoBuffer );
+    ELASTICAPM_UNUSED( resultCode );
     return;
 
     failure:
     goto finally;
 }
 
-static void elasticApmErrorCallback( int type, const char* error_filename, const uint32_t error_lineno, const char* format, va_list args )
+void elasticApmModuleInit( int type, int moduleNumber )
 {
     ResultCode resultCode;
-    va_list args_copy;
-    char* msg = NULL;
-    const char* errorId = NULL;
-    GlobalState* const globalState = getGlobalState();
-    Transaction* const currentTransaction = globalState->currentTransaction;
-    static const UInt jsonBufferMaxLength = 10 * 1024; // 10 KB
-    char* jsonBuffer = NULL;
-    const uint64_t timestamp = getCurrentTimeEpochMicroseconds();
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* config = NULL;
 
-    if ( currentTransaction == NULL )
+    ELASTICAPM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
+
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
+
+    ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    logSupportabilityInfo( logLevel_debug );
+    config = getTracerCurrentConfigSnapshot( tracer );
+
+    if ( ! config->enabled )
     {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
-
-    va_copy( args_copy, args );
-    vspprintf( &msg, 0, format, args_copy );
-    va_end( args_copy );
-
-    CALL_IF_FAILED_GOTO( genRandomIdHexString( ERROR_ID_SIZE_IN_BYTES, &errorId ) );
-
-    ALLOC_STRING_IF_FAILED_GOTO( jsonBufferMaxLength, jsonBuffer );
-    snprintf( jsonBuffer
-             , jsonBufferMaxLength + 1
-             , JSON_ERROR
-             , timestamp
-             , errorId
-             , currentTransaction->id
-             , currentTransaction->traceId
-             , type
-             , msg
-             , get_php_error_name( type )
-             , error_filename
-             , error_lineno
-             , get_php_error_name( type )
-             , msg
-    );
-
-#ifdef PHP_WIN32
-    replaceChar( jsonBuffer, '\\', '/' );
-#endif
-    CALL_IF_FAILED_GOTO( ensureAllocatedAndAppend( &currentTransaction->errors, 100 * 1024, jsonBuffer ) );
-
-    finally:
-    EFREE_AND_SET_TO_NULL( jsonBuffer );
-    EFREE_AND_SET_TO_NULL( errorId );
-    EFREE_AND_SET_TO_NULL( msg );
-
-    if ( globalState->originalZendErrorCallback != NULL ) globalState->originalZendErrorCallback( type, error_filename, error_lineno, format, args );
-
-    UNUSED_LOCAL_VAR( resultCode );
-    return;
-
-    failure:
-    goto finally;
-}
-
-ResultCode elasticApmModuleInit( int type, int moduleNumber )
-{
-    ResultCode resultCode;
-    GlobalState* const globalState = getGlobalState();
-    const Config* config = NULL;
-
-    LOG_FUNCTION_ENTRY();
-
-    CALL_IF_FAILED_GOTO( initGlobalState( globalState ) );
-
-    registerElasticApmIniEntries( moduleNumber );
-    globalState->iniEntriesRegistered = true;
-    config = getCurrentConfig();
-
-    if ( !config->enabled )
-    {
-        LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
-        goto finally;
-    }
-
-    globalState->originalZendErrorCallback = zend_error_cb;
-    zend_error_cb = elasticApmErrorCallback;
-    globalState->originalZendErrorCallbackSet = true;
-
-    globalState->originalZendThrowExceptionHook = zend_throw_exception_hook;
-    zend_throw_exception_hook = elasticApmThrowExceptionHook;
-    globalState->originalZendThrowExceptionHookSet = true;
 
     CURLcode result = curl_global_init( CURL_GLOBAL_ALL );
     if ( result != CURLE_OK )
     {
         resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "curl_global_init failed" );
+        ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "curl_global_init failed" );
         goto finally;
     }
-    globalState->curlInited = true;
+    tracer->curlInited = true;
 
     resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
-    return resultCode;
+
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
+    return;
 
     failure:
-    elasticApmModuleShutdown( type, moduleNumber );
+    moveTracerToFailedState( tracer );
     goto finally;
 }
 
-ResultCode elasticApmModuleShutdown( int type, int moduleNumber )
+void elasticApmModuleShutdown( int type, int moduleNumber )
 {
-    UNUSED_PARAMETER( type );
-    LOG_FUNCTION_ENTRY();
+    ELASTICAPM_UNUSED( type );
 
-    GlobalState* const globalState = getGlobalState();
+    ResultCode resultCode;
 
-    if ( globalState->curlInited )
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
+
+    if ( ! config->enabled )
+    {
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        goto finally;
+    }
+
+    if ( tracer->curlInited )
     {
         curl_global_cleanup();
-        globalState->curlInited = false;
+        tracer->curlInited = false;
     }
 
-    if ( globalState->originalZendThrowExceptionHookSet )
-    {
-        zend_throw_exception_hook = globalState->originalZendThrowExceptionHook;
-        globalState->originalZendThrowExceptionHook = NULL;
-        globalState->originalZendThrowExceptionHookSet = false;
-    }
-    if ( globalState->originalZendErrorCallbackSet )
-    {
-        zend_error_cb = globalState->originalZendErrorCallback;
-        globalState->originalZendErrorCallback = NULL;
-        globalState->originalZendErrorCallbackSet = false;
-    }
+    unregisterElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
-    if ( globalState->iniEntriesRegistered )
-    {
-        unregisterElasticApmIniEntries( moduleNumber );
-        globalState->iniEntriesRegistered = false;
-    }
+    resultCode = resultSuccess;
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
 
-    cleanupGlobalState( getGlobalState() );
-    // from this point global state should not be used anymore
+    finally:
+    destructTracer( tracer );
 
-    LOG_FUNCTION_EXIT();
-    return resultSuccess;
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
 }
 
-ResultCode elasticApmRequestInit()
+#define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "\\Elastic\\Apm\\Impl\\AutoInstrument\\"
+#define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "bootstrapTracerPhpPart"
+#define ELASTICAPM_PHP_PART_SHUTDOWN_FUNC ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC_NAMESPACE "shutdownTracerPhpPart"
+
+static
+ResultCode bootstrapPhpPart( const ConfigSnapshot* config )
 {
-    zval retval;
-    zval function_name;
-    
+    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
+                                             , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
+
+    ResultCode resultCode;
+    bool bootstrapTracerPhpPartRetVal;
+    zval maxEnabledLevel;
+    ZVAL_UNDEF( &maxEnabledLevel );
+
+    if ( config->bootstrapPhpPartFile == NULL )
+    {
+        // For now we don't consider option not being set as a failure
+        GetConfigManagerOptionMetadataResult getMetaRes;
+        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
+        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        resultCode = resultSuccess;
+        goto finally;
+    }
+
+    ELASTICAPM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
+
+    ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel )
+    zval bootstrapTracerPhpPartArgs[] = { maxEnabledLevel };
+    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
+            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC )
+            , logLevel_debug
+            , /* argsCount */ ELASTICAPM_STATIC_ARRAY_SIZE( bootstrapTracerPhpPartArgs )
+            , /* args */ bootstrapTracerPhpPartArgs
+            , &bootstrapTracerPhpPartRetVal ) );
+    if ( ! bootstrapTracerPhpPartRetVal )
+    {
+        ELASTICAPM_LOG_CRITICAL( "%s failed (returned false). See log for more details.", ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC );
+        resultCode = resultFailure;
+        goto failure;
+    }
+
+    resultCode = resultSuccess;
+
+    finally:
+    zval_dtor( &maxEnabledLevel );
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+
+static
+void shutdownPhpPart( const ConfigSnapshot* config )
+{
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+
+    if ( config->bootstrapPhpPartFile == NULL )
+    {
+        // For now we don't consider option not being set as a failure
+        GetConfigManagerOptionMetadataResult getMetaRes;
+        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
+        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        resultCode = resultSuccess;
+        goto finally;
+    }
+
+    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetVoid(
+            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_SHUTDOWN_FUNC )
+            , logLevel_debug
+            , /* argsCount */ 0
+            , /* args */ NULL ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
+void elasticApmRequestInit()
+{
 #if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+
     ResultCode resultCode;
-    GlobalState* const globalState = getGlobalState();
+    Tracer* const tracer = getGlobalTracer();
 
-    LOG_FUNCTION_ENTRY();
+    if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
-    if ( !globalState->config.enabled )
+    if ( ! tracer->isInited )
     {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        resultCode = resultFailure;
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
         goto finally;
     }
 
-    if ( isNullOrEmtpyStr(globalState->config.autoloadFile) ) {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because autoload file is not found" );
-        goto finally;
-    }
-    // Include the autoload file
-    elasticApmExecutePhpFile(globalState->config.autoloadFile);
-
-    const char function_name_str[] = "ElasticApm\\AutoloadedFromExtension::callFromExtension";
-    ZVAL_STRINGL(&function_name, function_name_str, sizeof( function_name_str ) - 1);
-  
-    // call_user_function(function_table, object, function_name, retval_ptr, param_count, params)
-    if (SUCCESS == call_user_function(EG(function_table), NULL, &function_name, &retval, 0, NULL TSRMLS_CC))
-    {
-        zval_dtor(&retval);
-    }
-
-    zval_dtor(&function_name);
-
-    CALL_IF_FAILED_GOTO( newTransaction( &globalState->currentTransaction ) );
-
-    readSystemMetrics( &globalState->startSystemMetricsReading );
-
-    resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
-
-    finally:
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
-static const size_t serializedEventsMaxLength = 1000 * 1000; // one million
-
-static void appendSerializedEvent( const char* serializedEvent, char* serializedEventsBuffer )
-{
-    size_t bufferUsedLength = strnlen( serializedEventsBuffer, serializedEventsMaxLength );
-    strncat( serializedEventsBuffer + bufferUsedLength, serializedEvent, serializedEventsMaxLength - bufferUsedLength );
-}
-
-static void appendMetadata( const Config* config, char* serializedEventsBuffer )
-{
-    char* jsonBuffer = emalloc( sizeof( char ) * 1024 );
-    sprintf( jsonBuffer, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
-    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
-    EFREE_AND_SET_TO_NULL( jsonBuffer );
-}
-
-struct RequestData
-{
-    String clientAddress;
-    String httpHost;
-    String httpMethod;
-    String scriptFilePath;
-    String urlPath;
-};
-typedef struct RequestData RequestData;
-
-static ResultCode getRequestDataStrField( const zend_array* serverHttpGlobals, StringView key, String* pField )
-{
-    ResultCode resultCode;
-
-    ASSERT_VALID_PTR( pField );
-
-    *pField = NULL;
-
-    const zval* fieldZval = findInZarrayByStrKey( serverHttpGlobals, key );
-    if ( fieldZval == NULL )
+    if ( ! getTracerCurrentConfigSnapshot( tracer )->enabled )
     {
         resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "array does not contain the key - setting pField to NULL" );
+        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
-    if ( Z_TYPE_P( fieldZval ) != IS_STRING )
-    {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "array contains the key but the value's type is not string - setting pField to NULL" );
-        goto failure;
-    }
+    ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    logSupportabilityInfo( logLevel_trace );
 
-    *pField = Z_STRVAL_P( fieldZval );
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+
+    ELASTICAPM_CALL_IF_FAILED_GOTO( bootstrapPhpPart( config ) );
+
+    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
 
     finally:
-    return resultCode;
+
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
+    return;
 
     failure:
     goto finally;
-
 }
 
-static ResultCode getRequestData( RequestData* requestData )
+static
+void appendMetadata( const ConfigSnapshot* config, TextOutputStream* serializedEventsTxtOutStream )
 {
-    ResultCode resultCode;
-    const zval* serverHttpGlobalsZval = NULL;
-    zend_array* serverHttpGlobals = NULL;
-
-    LOG_FUNCTION_ENTRY();
-
-    memset( requestData, 0, sizeof( *requestData ) );
-
-    if ( ! zend_is_auto_global_str( ZEND_STRL( "_SERVER" ) ) )
-    {
-        resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "zend_is_auto_global_str( ZEND_STRL( \"_SERVER\" ) ) failed" );
-        goto failure;
-    }
-
-    serverHttpGlobalsZval = &PG( http_globals )[ TRACK_VARS_SERVER ];
-    if ( serverHttpGlobalsZval == NULL )
-    {
-        resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobalsZval is NULL" );
-        goto failure;
-    }
-
-    if ( ! isZarray( serverHttpGlobalsZval ) )
-    {
-        resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobalsZval is not array" );
-        goto failure;
-    }
-
-    serverHttpGlobals = Z_ARRVAL_P( serverHttpGlobalsZval );
-    if ( serverHttpGlobals == NULL )
-    {
-        resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "serverHttpGlobals is NULL" );
-        goto failure;
-    }
-
-    // https://www.php.net/manual/en/reserved.variables.server.php
-    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REMOTE_ADDR" ), &requestData->clientAddress ) );
-    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "HTTP_HOST" ), &requestData->httpHost ) );
-    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REQUEST_METHOD" ), &requestData->httpMethod ) );
-    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "SCRIPT_FILENAME" ), &requestData->scriptFilePath ) );
-    CALL_IF_FAILED_GOTO( getRequestDataStrField( serverHttpGlobals, STRING_LITERAL_TO_VIEW( "REQUEST_URI" ), &requestData->urlPath ) );
-
-    resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
-
-    finally:
-    return resultCode;
-
-    failure:
-    goto finally;
+    streamPrintf( serializedEventsTxtOutStream, JSON_METADATA, getpid(), config->serviceName, PHP_ELASTICAPM_VERSION );
 }
 
-static ResultCode appendTransaction( const Transaction* transaction, const TimePoint* currentTime, char* serializedEventsBuffer )
-{
-    ResultCode resultCode;
-    char txType[8];
-    char* jsonBuffer = NULL;
-    char* txName = NULL;
-    RequestData requestData;
-
-    LOG_FUNCTION_ENTRY();
-
-    CALL_IF_FAILED_GOTO( getRequestData( &requestData ) );
-
-    ALLOC_STRING_IF_FAILED_GOTO( 1024, txName );
-
-    // if HTTP method and URL exist then it is a HTTP request
-    if ( isNullOrEmtpyStr( requestData.httpMethod ) || isNullOrEmtpyStr( requestData.urlPath ) )
-    {
-        sprintf( txType, "%s", "script" );
-        sprintf( txName, "%s", isNullOrEmtpyStr( requestData.scriptFilePath ) ? "Unknown" : requestData.scriptFilePath );
-#ifdef PHP_WIN32
-        replaceChar( txName, '\\', '/' );
-#endif
-    }
-    else
-    {
-        sprintf( txType, "%s", "request" );
-        sprintf( txName, "%s %s", requestData.httpMethod, requestData.urlPath );
-    }
-
-    ALLOC_STRING_IF_FAILED_GOTO( 10 * 1024, jsonBuffer );
-    sprintf( jsonBuffer
-             , JSON_TRANSACTION
-             , txName
-             , transaction->id
-             , transaction->traceId
-             , txType
-             , durationMicrosecondsToMilliseconds( durationMicroseconds( &transaction->startTime, currentTime ) )
-             , timePointToEpochMicroseconds( &transaction->startTime )
-    );
-
-    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
-    resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
-
-    finally:
-    EFREE_AND_SET_TO_NULL( jsonBuffer );
-    EFREE_AND_SET_TO_NULL( txName );
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
-static void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, char* serializedEventsBuffer )
+static
+void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, TextOutputStream* serializedEventsTxtOutStream )
 {
     SystemMetricsReading endSystemMetricsReading;
     readSystemMetrics( &endSystemMetricsReading );
     SystemMetrics system_metrics;
     getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
 
-    char* jsonBuffer = emalloc( sizeof( char ) * 1024 );
-    sprintf( jsonBuffer
-             , JSON_METRICSET
-             , system_metrics.machineCpu          // system.cpu.total.norm.pct
-             , system_metrics.processCpu          // system.process.cpu.total.norm.pct
-             , system_metrics.machineMemoryFree  // system.memory.actual.free
-             , system_metrics.machineMemoryTotal // system.memory.total
-             , system_metrics.processMemorySize  // system.process.memory.size
-             , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
-             , timePointToEpochMicroseconds( currentTime ) );
-    appendSerializedEvent( jsonBuffer, serializedEventsBuffer );
-    EFREE_AND_SET_TO_NULL( jsonBuffer );
+    streamPrintf(
+            serializedEventsTxtOutStream
+            , JSON_METRICSET
+            , system_metrics.machineCpu // system.cpu.total.norm.pct
+            , system_metrics.processCpu // system.process.cpu.total.norm.pct
+            , system_metrics.machineMemoryFree  // system.memory.actual.free
+            , system_metrics.machineMemoryTotal // system.memory.total
+            , system_metrics.processMemorySize  // system.process.memory.size
+            , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
+            , timePointToEpochMicroseconds( currentTime ) );
 }
 
-static void sendEventsToApmServer( CURL* curl, const Config* config, const char* serializedEventsBuffer )
-{
-    CURLcode result;
-    char* auth = NULL;
-    char* userAgent = NULL;
-    char* url = NULL;
-    struct curl_slist* chunk = NULL;
-    FILE* logFile = NULL;
-
-    /* Initialize the log file */
-    if ( !isNullOrEmtpyStr( config->logFile ) )
-    {
-        logFile = fopen( config->logFile, "a" );
-        if ( logFile == NULL )
-        {
-            // TODO: manage the error
-        }
-        log_set_fp( logFile );
-        log_set_quiet( 1 );
-        log_set_level( config->logLevel );
-
-        // TODO: check how to set lock and level
-        //log_set_lock(1);
-    }
-
-    curl_easy_setopt( curl, CURLOPT_POST, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, serializedEventsBuffer );
-    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    log_debug( "Request serializedEventsBuffer [length: %"PRIu64"]: %s", (UInt64)strnlen( serializedEventsBuffer, serializedEventsMaxLength ), serializedEventsBuffer );
-
-    // Authorization with secret token if present
-    if ( !isNullOrEmtpyStr( config->secretToken ) )
-    {
-        auth = emalloc( sizeof( char ) * 256 );
-        sprintf( auth, "Authorization: Bearer %s", config->secretToken );
-        chunk = curl_slist_append( chunk, auth );
-    }
-    chunk = curl_slist_append( chunk, "Content-Type: application/x-ndjson" );
-    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, chunk );
-
-    // User agent
-    userAgent = emalloc( sizeof( char ) * 100 );
-    sprintf( userAgent, "elasticapm-php/%s", PHP_ELASTICAPM_VERSION );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, userAgent );
-
-    url = emalloc( sizeof( char ) * 256 );
-    sprintf( url, "%s/intake/v2/events", config->serverUrl );
-    curl_easy_setopt( curl, CURLOPT_URL, url );
-
-    result = curl_easy_perform( curl );
-    if ( result != CURLE_OK )
-    {
-        log_error( "%s %s", config->serverUrl, curl_easy_strerror( result ) );
-    }
-    else
-    {
-        long response_code;
-        curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &response_code );
-        log_debug( "Response HTTP code: %ld", response_code );
-    }
-
-    EFREE_AND_SET_TO_NULL( url );
-    EFREE_AND_SET_TO_NULL( userAgent );
-    EFREE_AND_SET_TO_NULL( auth );
-
-    if ( logFile != NULL ) fclose( logFile );
-}
-
-ResultCode elasticApmRequestShutdown()
+void elasticApmRequestShutdown()
 {
     ResultCode resultCode;
-    CURL* curl = NULL;
+    enum
+    {
+        serializedEventsBufferSize = 1000 * 1000
+    };
     char* serializedEventsBuffer = NULL;
     TimePoint currentTime;
-    GlobalState* const globalState = getGlobalState();
-    const Config* const config = &( globalState->config );
-    Transaction* const currentTransaction = globalState->currentTransaction;
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
-    LOG_FUNCTION_ENTRY();
+    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
 
-    if ( currentTransaction == NULL )
+    if ( ! tracer->isInited )
     {
-        resultCode = resultSuccess;
-        LOG_FUNCTION_EXIT_MSG( "Because there is no current transaction" );
+        resultCode = resultFailure;
+        ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
         goto finally;
     }
 
+    shutdownPhpPart( config );
+
     getCurrentTime( &currentTime );
 
-    /* get a curl handle */
-    curl = curl_easy_init();
-    if ( curl == NULL )
-    {
-        resultCode = resultFailure;
-        LOG_FUNCTION_EXIT_MSG( "Because curl_easy_init() returned NULL" );
-        goto failure;
-    }
+    ELASTICAPM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
+    TextOutputStream serializedEventsTxtOutStream =
+            makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
+    serializedEventsTxtOutStream.autoTermZero = false;
 
-    ALLOC_STRING_IF_FAILED_GOTO( serializedEventsMaxLength, serializedEventsBuffer ); // max length 10^6
-    serializedEventsBuffer[ 0 ] = '\0';
+    appendMetadata( config, &serializedEventsTxtOutStream );
 
-    appendMetadata( config, serializedEventsBuffer );
+    appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
 
-    // We ignore appendTransaction ResultCode because we want to send the rest of the events even without the transaction
-    appendTransaction( currentTransaction, &currentTime, serializedEventsBuffer );
+    sendEventsToApmServer( config, serializedEventsBuffer );
 
-//    appendMetrics( &globalState->startSystemMetricsReading, &currentTime, serializedEventsBuffer );
-//
-//    if ( !isNullOrEmtpyStr( currentTransaction->errors ) ) appendSerializedEvent( currentTransaction->errors, serializedEventsBuffer );
-//    if ( !isNullOrEmtpyStr( currentTransaction->exceptions ) ) appendSerializedEvent( currentTransaction->exceptions, serializedEventsBuffer );
-//
-//    sendEventsToApmServer( curl, config, serializedEventsBuffer );
+    resetCallInterceptionOnRequestShutdown();
 
     resultCode = resultSuccess;
-    LOG_FUNCTION_EXIT();
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
-    if ( curl != NULL ) curl_easy_cleanup( curl );
-    EFREE_AND_SET_TO_NULL( serializedEventsBuffer );
-    deleteTransactionAndSetToNull( &globalState->currentTransaction );
-    return resultCode;
+    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
+    if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestShutdown( &tracer->memTracker );
+
+    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTICAPM_UNUSED( resultCode );
+    return;
 
     failure:
     goto finally;

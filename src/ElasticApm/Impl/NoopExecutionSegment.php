@@ -24,6 +24,9 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     public const TRACE_ID = '00000000000000000000000000000000';
 
     /** @var string */
+    public const NAME = 'NO-OP';
+
+    /** @var string */
     public const TYPE = 'noop';
 
     /** @inheritDoc */
@@ -42,6 +45,17 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     public function getId(): string
     {
         return self::ID;
+    }
+
+    /** @inheritDoc */
+    public function getName(): string
+    {
+        return self::NAME;
+    }
+
+    /** @inheritDoc */
+    public function setName(string $name): void
+    {
     }
 
     /** @inheritDoc */
@@ -66,7 +80,8 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         string $name,
         string $type,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ): SpanInterface {
         return NoopSpan::instance();
     }
@@ -77,7 +92,8 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         string $type,
         Closure $callback,
         ?string $subtype = null,
-        ?string $action = null
+        ?string $action = null,
+        ?float $timestamp = null
     ) {
         return $callback(NoopSpan::instance());
     }
@@ -88,13 +104,19 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     }
 
     /** @inheritDoc */
+    public function hasEnded(): bool
+    {
+        return true;
+    }
+
+    /** @inheritDoc */
     public function setLabel(string $key, $value): void
     {
     }
 
     /** @inheritDoc */
-    public function getLabel(string $key, $default = null)
+    public function getLabels(): array
     {
-        return $default;
+        return [];
     }
 }

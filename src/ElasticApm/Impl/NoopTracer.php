@@ -8,7 +8,6 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\TracerInterface;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -16,30 +15,30 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-class NoopTracer implements TracerInterface
+final class NoopTracer implements TracerInterface
 {
     use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function beginTransaction(?string $name, string $type): TransactionInterface
+    public function beginTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
         return NoopTransaction::instance();
     }
 
     /** @inheritDoc */
-    public function beginCurrentTransaction(?string $name, string $type): TransactionInterface
+    public function beginCurrentTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
         return NoopTransaction::instance();
     }
 
     /** @inheritDoc */
-    public function captureTransaction(?string $name, string $type, Closure $callback)
+    public function captureTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
         return $callback(NoopTransaction::instance());
     }
 
     /** @inheritDoc */
-    public function captureCurrentTransaction(?string $name, string $type, Closure $callback)
+    public function captureCurrentTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
         return $callback(NoopTransaction::instance());
     }
@@ -48,5 +47,10 @@ class NoopTracer implements TracerInterface
     public function getCurrentTransaction(): TransactionInterface
     {
         return NoopTransaction::instance();
+    }
+
+    public function __toString(): string
+    {
+        return 'NO-OP Tracer';
     }
 }

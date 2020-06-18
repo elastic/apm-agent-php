@@ -7,26 +7,30 @@ namespace Elastic\Apm\Tests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
-use Elastic\Apm\Impl\NoopReporter;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use Elastic\Apm\Tests\Util\MockReporter;
 
 class NoopEventsTest extends Util\TestCaseBase
 {
+    public function setUp(): void
+    {
+        $this->setUpTestEnv(
+            function (TracerBuilder $builder): void {
+                $builder->withEnabled(false);
+            }
+        );
+    }
+
     public function testDisabledTracer(): void
     {
         // Arrange
-        $mockReporter = new MockReporter($this);
-        $tracer = TracerBuilder::startNew()->withEnabled(false)->withReporter($mockReporter)->build();
-        $this->assertTrue($tracer->isNoop());
+        $this->assertTrue($this->tracer->isNoop());
 
         // Act
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $this->assertNoopTransaction($tx);
 
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
@@ -36,7 +40,7 @@ class NoopEventsTest extends Util\TestCaseBase
         $tx->end();
 
         $counter = 123;
-        $tracer->captureTransaction(
+        $this->tracer->captureTransaction(
             'test_TX_name',
             'test_TX_type',
             function (TransactionInterface $transaction) use (&$counter): void {
@@ -56,7 +60,7 @@ class NoopEventsTest extends Util\TestCaseBase
         );
         $this->assertSame(125, $counter);
 
-        $tracer->captureCurrentTransaction(
+        $this->tracer->captureCurrentTransaction(
             'test_TX_name',
             'test_TX_type',
             function (TransactionInterface $transaction) use (&$counter): void {
@@ -79,21 +83,18 @@ class NoopEventsTest extends Util\TestCaseBase
         // Assert
         $this->assertNoopTransaction($tx);
         $this->assertNoopSpan($span);
-        $this->assertSame(0, count($mockReporter->getSpans()));
-        $this->assertSame(0, count($mockReporter->getTransactions()));
+        $this->assertSame(0, count($this->mockEventSink->getSpans()));
+        $this->assertSame(0, count($this->mockEventSink->getTransactions()));
     }
+
     public function testDisabledTracerUsingElasticApmFacade(): void
     {
-        // Arrange
-        $mockReporter = new MockReporter($this);
-        GlobalTracerHolder::set(TracerBuilder::startNew()->withEnabled(false)->withReporter($mockReporter)->build());
-
         // Act
         $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
         $this->assertNoopTransaction($tx);
 
-        $span =
-            ElasticApm::beginCurrentSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
+        $span
+            = ElasticApm::beginCurrentSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
         $this->assertNoopSpan($span);
 
         $span->end();
@@ -123,23 +124,8 @@ class NoopEventsTest extends Util\TestCaseBase
         // Assert
         $this->assertNoopTransaction($tx);
         $this->assertNoopSpan($span);
-        $this->assertSame(0, count($mockReporter->getSpans()));
-        $this->assertSame(0, count($mockReporter->getTransactions()));
-    }
-
-    public function testNoopReporter(): void
-    {
-        // Arrange
-        $noopReporter = NoopReporter::instance();
-        $tracer = TracerBuilder::startNew()->withReporter($noopReporter)->build();
-
-        // Act & Assert
-        $this->assertFalse($tracer->isNoop());
-        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
-        $this->assertFalse($tx->isNoop());
-        $tx->end();
-        $this->assertFalse($tx->isNoop());
-        $this->assertFalse($tracer->isNoop());
+        $this->assertSame(0, count($this->mockEventSink->getSpans()));
+        $this->assertSame(0, count($this->mockEventSink->getTransactions()));
     }
 
     private function assertNoopExecutionSegment(ExecutionSegmentInterface $execSegment): void
@@ -161,9 +147,9 @@ class NoopEventsTest extends Util\TestCaseBase
 
         $this->assertNull($transaction->getParentId());
 
-        $this->assertNull($transaction->getName());
+        $this->assertSame(NoopTransaction::NAME, $transaction->getName());
         $transaction->setName('test_TX_name');
-        $this->assertNull($transaction->getName());
+        $this->assertSame(NoopTransaction::NAME, $transaction->getName());
     }
 
     private function assertNoopSpan(SpanInterface $span): void

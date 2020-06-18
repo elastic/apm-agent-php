@@ -33,7 +33,7 @@ final class IdGenerator
     {
         $result = '';
         for ($i = 0; $i < count($binaryId); ++$i) {
-            $result .= sprintf('%02X', $binaryId[$i]);
+            $result .= sprintf('%02x', $binaryId[$i]);
         }
         return $result;
     }
