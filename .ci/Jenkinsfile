@@ -101,11 +101,12 @@ pipeline {
         expression { return env.ONLY_DOCS == "false" }
       }
       steps {
-        withGithubNotify(context: 'Package') {
-          deleteDir()
-          unstash 'source'
-          echo 'TBD'
-        }
+        // TODO: This should be uncommented out when the implementation is in place
+        //withGithubNotify(context: 'Package') {
+        //  deleteDir()
+        //  unstash 'source'
+        echo 'TBD'
+        //}
       }
     }
     stage('Testing') {
@@ -114,7 +115,8 @@ pipeline {
         expression { return env.ONLY_DOCS == "false" }
       }
       matrix {
-        agent { label 'linux && immutable' }
+        // TODO: This should be uncommented out when the implementation is in place
+        // agent { label 'linux && immutable' }
         options { skipDefaultCheckout() }
         axes {
           axis {
@@ -129,8 +131,9 @@ pipeline {
         stages {
           stage('Install') {
             steps {
-              deleteDir()
-              unstash 'source'
+              // TODO: This should be uncommented out when the implementation is in place
+              // deleteDir()
+              // unstash 'source'
               dir("${BASE_DIR}"){
                 echo 'TBD'
               }
@@ -138,8 +141,9 @@ pipeline {
           }
           stage('Test') {
             steps {
-              deleteDir()
-              unstash 'source'
+              // TODO: This should be uncommented out when the implementation is in place
+              // deleteDir()
+              // unstash 'source'
               dir("${BASE_DIR}"){
                 sh 'scripts/test-framework.sh ${PHP_VERSION} ${FRAMEWORK}'
               }
