@@ -3,14 +3,21 @@
 The official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
 This agent is a PHP extension that must be installed in your PHP environment.
 
+## Note
+
+**This project is still in development. Please do not use in a production environment!**
+
 ## Usage
 
 See the [documentation](docs) for setup and configuration details.
 
+## Contributing
+
+See the [contributing documentation](CONTRIBUTING.md)
+
 ### Local development
 
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
-
 
 ```bash
 docker build --tag test-php .
@@ -37,15 +44,6 @@ export GIT_HOME="/<fullPathTYourRepos>"
 $GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --chunk 1 --open
 ```
 
-## Note
+## License
 
-**This project is still in development. Please do not use in a production environment!**
-
-## Authors
-
-- [Sergey Kleyman](https://github.com/SergeyKleyman)
-
-## Copyright
-
-Copyright 2019-2020 Elasticsearch BV.
-Licensed under the [Apache License, Version 2.0](LICENSE).
+Elastic APM PHP Agent is licensed under [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
