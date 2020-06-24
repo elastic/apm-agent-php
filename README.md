@@ -13,7 +13,7 @@ See the [documentation](docs) for setup and configuration details.
 
 ## Contributing
 
-See the [contributing documentation](CONTRIBUTING.md)
+See [contributing documentation](CONTRIBUTING.md).
 
 ### Local development
 
