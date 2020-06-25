@@ -14,14 +14,14 @@
 #include <php.h>
 #include <ext/standard/info.h>
 #include <SAPI.h>
-#include "php_elasticapm.h"
+#include "php_elastic_apm.h"
 #include "log.h"
 #include "ConfigManager.h"
 #include "util_for_PHP.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "MemoryTracker.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_SUPPORT
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_SUPPORT
 
 static const String redacted = "***";
 
@@ -33,7 +33,7 @@ String redactIfSecret( String value, bool isSecret )
 
 void php_info_printSectionHeading( StructuredTextPrinter* structTxtPrinter, String heading )
 {
-    ELASTICAPM_UNUSED( structTxtPrinter );
+    ELASTIC_APM_UNUSED( structTxtPrinter );
 
     php_info_print_table_start();
     php_info_print_table_header( 1, heading );
@@ -42,8 +42,8 @@ void php_info_printSectionHeading( StructuredTextPrinter* structTxtPrinter, Stri
 
 void php_info_printTableBegin( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
 {
-    ELASTICAPM_UNUSED( structTxtPrinter );
-    ELASTICAPM_UNUSED( numberOfColumns );
+    ELASTIC_APM_UNUSED( structTxtPrinter );
+    ELASTIC_APM_UNUSED( numberOfColumns );
 
     php_info_print_table_start();
 }
@@ -56,7 +56,7 @@ void php_info_printTableCells(
         , void (* variadicPrintCellsFunc )( int numberOfColumns, ... )
 )
 {
-    ELASTICAPM_UNUSED( structTxtPrinter );
+    ELASTIC_APM_UNUSED( structTxtPrinter );
 
     switch ( numberOfColumns )
     {
@@ -97,7 +97,7 @@ void php_info_printTableHeader( StructuredTextPrinter* structTxtPrinter, size_t 
 
 void php_info_printTableRow( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns, String columns[] )
 {
-    ELASTICAPM_UNUSED( structTxtPrinter );
+    ELASTIC_APM_UNUSED( structTxtPrinter );
 
     php_info_printTableCells(
             structTxtPrinter
@@ -108,8 +108,8 @@ void php_info_printTableRow( StructuredTextPrinter* structTxtPrinter, size_t num
 
 void php_info_printTableEnd( StructuredTextPrinter* structTxtPrinter, size_t numberOfColumns )
 {
-    ELASTICAPM_UNUSED( structTxtPrinter );
-    ELASTICAPM_UNUSED( numberOfColumns );
+    ELASTIC_APM_UNUSED( structTxtPrinter );
+    ELASTIC_APM_UNUSED( numberOfColumns );
 
     php_info_print_table_end();
 }
@@ -129,15 +129,15 @@ void printConfigurationInfo( StructuredTextPrinter* structTxtPrinter )
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
     structTxtPrinter->printSectionHeading( structTxtPrinter, "Configuration" );
     String columnHeaders[] = { "Option", "Parsed value", "Raw value", "Source" };
-    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    enum { numberOfColumns = ELASTIC_APM_STATIC_ARRAY_SIZE( columnHeaders ) };
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
         GetConfigManagerOptionValueByIdResult getValRes;
-        char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        getValRes.txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        getValRes.txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         getValRes.txtOutStream.shouldEncloseUserString = ( sapi_module.phpinfo_as_text != 0 );
 
         getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
@@ -149,7 +149,7 @@ void printConfigurationInfo( StructuredTextPrinter* structTxtPrinter )
                         , redactIfSecret( getValRes.rawValue, getMetaRes.isSecret )
                         , getValRes.rawValueSourceDescription == NULL ? "Default" : getValRes.rawValueSourceDescription
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
@@ -166,10 +166,10 @@ void printIniEntries( StructuredTextPrinter* structTxtPrinter )
                     , "Interpreted raw value used for the current config"
                     , "Current value"
             };
-    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    enum { numberOfColumns = ELASTIC_APM_STATIC_ARRAY_SIZE( columnHeaders ) };
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
         String originalRawValue = NULL;
@@ -183,8 +183,8 @@ void printIniEntries( StructuredTextPrinter* structTxtPrinter )
                 /* out */ &originalRawValue,
                 /* out */ &interpretedRawValue );
 
-        char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         bool currentValueExists;
         String columns[ numberOfColumns ] =
                 {
@@ -193,7 +193,7 @@ void printIniEntries( StructuredTextPrinter* structTxtPrinter )
                         , interpretedRawValue
                         , redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), getMetaRes.isSecret )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
@@ -205,11 +205,11 @@ void printEnvVars( StructuredTextPrinter* structTxtPrinter )
     structTxtPrinter->printSectionHeading( structTxtPrinter, "Environment variables" );
 
     String columnHeaders[] = { "Name", "Value used for the current config", "Current value" };
-    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    enum { numberOfColumns = ELASTIC_APM_STATIC_ARRAY_SIZE( columnHeaders ) };
 
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
         String originalRawValue = NULL;
@@ -229,7 +229,7 @@ void printEnvVars( StructuredTextPrinter* structTxtPrinter )
                         , originalRawValue
                         , redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), getMetaRes.isSecret )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
@@ -239,11 +239,11 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
 {
     structTxtPrinter->printSectionHeading( structTxtPrinter, "Misc. self diagnostics" );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     String columnHeaders[] = { "What", "Current", "Default" };
-    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    enum { numberOfColumns = ELASTIC_APM_STATIC_ARRAY_SIZE( columnHeaders ) };
 
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
@@ -253,9 +253,9 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
                 {
                         "Assert level"
                         , streamAssertLevel( getGlobalAssertLevel(), &txtOutStream )
-                        , streamAssertLevel( ELASTICAPM_ASSERT_DEFAULT_LEVEL, &txtOutStream )
+                        , streamAssertLevel( ELASTIC_APM_ASSERT_DEFAULT_LEVEL, &txtOutStream )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     {
@@ -264,9 +264,9 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
                 {
                         "Memory tracking level"
                         , streamMemoryTrackingLevel( getGlobalMemoryTracker()->level, &txtOutStream )
-                        , streamMemoryTrackingLevel( ELASTICAPM_MEMORY_TRACKING_DEFAULT_LEVEL, &txtOutStream )
+                        , streamMemoryTrackingLevel( ELASTIC_APM_MEMORY_TRACKING_DEFAULT_LEVEL, &txtOutStream )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     {
@@ -275,9 +275,9 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
                 {
                         "Abort on memory leak"
                         , boolToString( getGlobalMemoryTracker()->abortOnMemoryLeak )
-                        , boolToString( ELASTICAPM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK )
+                        , boolToString( ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     {
@@ -286,9 +286,9 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
                 {
                         "Internal checks level"
                         , streamInternalChecksLevel( getGlobalInternalChecksLevel(), &txtOutStream )
-                        , streamInternalChecksLevel( ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL, &txtOutStream )
+                        , streamInternalChecksLevel( ELASTIC_APM_INTERNAL_CHECKS_DEFAULT_LEVEL, &txtOutStream )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     {
@@ -302,17 +302,17 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
                         , "No"
                         #endif
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     {
         textOutputStreamRewind( &txtOutStream );
         String columns[ numberOfColumns - 1 ] =
                 {
-                        "ELASTICAPM_IS_DEBUG_BUILD_01"
-                        , streamInt( (int)(ELASTICAPM_IS_DEBUG_BUILD_01), &txtOutStream )
+                        "ELASTIC_APM_IS_DEBUG_BUILD_01"
+                        , streamInt( (int)(ELASTIC_APM_IS_DEBUG_BUILD_01), &txtOutStream )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
 
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
@@ -321,19 +321,19 @@ void printMiscSelfDiagnostics( StructuredTextPrinter* structTxtPrinter )
 static
 void printEffectiveLogLevels( StructuredTextPrinter* structTxtPrinter )
 {
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     const Logger* const logger = &( getGlobalTracer()->logger );
 
     structTxtPrinter->printSectionHeading( structTxtPrinter, "Effective log levels" );
 
     String columnHeaders[] = { "Sink", "Current", "Default" };
-    enum { numberOfColumns = ELASTICAPM_STATIC_ARRAY_SIZE( columnHeaders ) };
+    enum { numberOfColumns = ELASTIC_APM_STATIC_ARRAY_SIZE( columnHeaders ) };
 
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     structTxtPrinter->printTableHeader( structTxtPrinter, numberOfColumns, columnHeaders );
 
-    ELASTICAPM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
+    ELASTIC_APM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
     {
         String columns[ numberOfColumns ] =
                 {
@@ -341,7 +341,7 @@ void printEffectiveLogLevels( StructuredTextPrinter* structTxtPrinter )
                         , streamLogLevel( logger->config.levelPerSinkType[ logSinkType ], &txtOutStream )
                         , streamLogLevel( defaultLogLevelPerSinkType[ logSinkType ], &txtOutStream )
                 };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
         textOutputStreamRewind( &txtOutStream );
     }
 
@@ -351,7 +351,7 @@ void printEffectiveLogLevels( StructuredTextPrinter* structTxtPrinter )
                     , streamLogLevel( logger->maxEnabledLevel, &txtOutStream )
                     , streamLogLevel( calcMaxEnabledLogLevel( defaultLogLevelPerSinkType ), &txtOutStream )
             };
-    structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
 
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
@@ -363,14 +363,14 @@ void printMiscInfo( StructuredTextPrinter* structTxtPrinter )
 
     enum { numberOfColumns = 2 };
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
-    String columns[numberOfColumns] = { "Version", PHP_ELASTICAPM_VERSION };
-    structTxtPrinter->printTableRow( structTxtPrinter, ELASTICAPM_STATIC_ARRAY_SIZE( columns ), columns );
+    String columns[numberOfColumns] = { "Version", PHP_ELASTIC_APM_VERSION };
+    structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
 void printSupportabilityInfo( StructuredTextPrinter* structTxtPrinter )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
     printMiscInfo( structTxtPrinter );
 
@@ -382,12 +382,12 @@ void printSupportabilityInfo( StructuredTextPrinter* structTxtPrinter )
     printMiscSelfDiagnostics( structTxtPrinter );
     printEffectiveLogLevels( structTxtPrinter );
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
 
-void elasticapmModuleInfo( zend_module_entry* zend_module )
+void elasticApmModuleInfo( zend_module_entry* zend_module )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
     StructuredTextPrinter structTxtPrinter;
     init_php_info_StructuredTextPrinter( &structTxtPrinter );
@@ -397,7 +397,7 @@ void elasticapmModuleInfo( zend_module_entry* zend_module )
     structTxtPrinter.printSectionHeading( &structTxtPrinter, "INI entries (displayed by default PHP mechanism)" );
     DISPLAY_INI_ENTRIES();
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
 
 static
@@ -408,7 +408,7 @@ const zend_string* iniEntryValue( zend_ini_entry* iniEntry, int type )
 
 void displaySecretIniValue( zend_ini_entry* iniEntry, int type )
 {
-    const String noValue = ELASTICAPM_CFG_OPT_HAS_NO_VALUE;
+    const String noValue = ELASTIC_APM_CFG_OPT_HAS_NO_VALUE;
     const String valueToPrint = isNullOrEmtpyZstring( iniEntryValue( iniEntry, type ) ) ? noValue : redacted;
 
     php_printf( sapi_module.phpinfo_as_text ? "%s" : "<i>%s</i>", valueToPrint );
@@ -424,7 +424,7 @@ void printSectionHeadingToTextOutputStream( StructuredTextPrinter* structTxtPrin
     streamPrintf( structTxtToOutStreamPrinter->txtOutStream, "%s\n", heading );
 }
 
-#define ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH 25
+#define ELASTIC_APM_MIN_TABLE_CELL_MIN_WIDTH 25
 
 // Section A
 //      +---------------------------------+---------------------------------+---------------------------------+
@@ -456,9 +456,9 @@ void printTableHorizontalBorder( size_t numberOfColumns, StructuredTextToOutputS
     beginTableLineToTextOutputStream( structTxtToOutStreamPrinter );
 
     streamChar( '+', structTxtToOutStreamPrinter->txtOutStream );
-    ELASTICAPM_REPEAT_N_TIMES( numberOfColumns )
+    ELASTIC_APM_REPEAT_N_TIMES( numberOfColumns )
     {
-        ELASTICAPM_REPEAT_N_TIMES( ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH + 2 )
+        ELASTIC_APM_REPEAT_N_TIMES( ELASTIC_APM_MIN_TABLE_CELL_MIN_WIDTH + 2 )
         {
             streamChar( '-', structTxtToOutStreamPrinter->txtOutStream );
         }
@@ -481,11 +481,11 @@ void printTableRowToTextOutputStream( StructuredTextPrinter* structTxtPrinter, s
 
     beginTableLineToTextOutputStream( structTxtToOutStreamPrinter );
     streamString( "|", structTxtToOutStreamPrinter->txtOutStream );
-    ELASTICAPM_FOR_EACH_INDEX( i, numberOfColumns )
+    ELASTIC_APM_FOR_EACH_INDEX( i, numberOfColumns )
     {
         streamString( " ", structTxtToOutStreamPrinter->txtOutStream );
         streamPrintf( structTxtToOutStreamPrinter->txtOutStream
-                      , "%-" ELASTICAPM_PP_STRINGIZE( ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH ) "s"
+                      , "%-" ELASTIC_APM_PP_STRINGIZE( ELASTIC_APM_MIN_TABLE_CELL_MIN_WIDTH ) "s"
                       , columns[ i ] );
         streamString( " |", structTxtToOutStreamPrinter->txtOutStream );
     }
@@ -508,7 +508,7 @@ void printTableEndToTextOutputStream( StructuredTextPrinter* structTxtPrinter, s
 {
     printTableHorizontalBorder( numberOfColumns, (StructuredTextToOutputStreamPrinter*)structTxtPrinter );
 }
-#undef ELASTICAPM_MIN_TABLE_CELL_MIN_WIDTH
+#undef ELASTIC_APM_MIN_TABLE_CELL_MIN_WIDTH
 
 void initStructuredTextToOutputStreamPrinter(
         /* in */ TextOutputStream* txtOutStream

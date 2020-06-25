@@ -10,7 +10,7 @@
  */
 
 #include "mock_assert.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include <stdarg.h>
 
 static ProductionCodeAssertFailed g_prodCodeAssertFailed = vElasticApmAssertFailed;
@@ -31,7 +31,7 @@ void productionCodeAssertFailed(
 
 void setProductionCodeAssertFailed( ProductionCodeAssertFailed prodCodeAssertFailed )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( prodCodeAssertFailed );
+    ELASTIC_APM_ASSERT_VALID_PTR( prodCodeAssertFailed );
 
     g_prodCodeAssertFailed = prodCodeAssertFailed;
 }
@@ -46,11 +46,11 @@ void productionCodeAssertFailedCountingMock(
         , va_list msgPrintfFmtArgs
 )
 {
-    ELASTICAPM_UNUSED( filePath );
-    ELASTICAPM_UNUSED( lineNumber );
-    ELASTICAPM_UNUSED( funcName );
-    ELASTICAPM_UNUSED( msgPrintfFmt );
-    ELASTICAPM_UNUSED( msgPrintfFmtArgs );
+    ELASTIC_APM_UNUSED( filePath );
+    ELASTIC_APM_UNUSED( lineNumber );
+    ELASTIC_APM_UNUSED( funcName );
+    ELASTIC_APM_UNUSED( msgPrintfFmt );
+    ELASTIC_APM_UNUSED( msgPrintfFmtArgs );
 
     ++g_productionCodeAssertFailedCount;
 }

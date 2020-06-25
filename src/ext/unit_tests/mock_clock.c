@@ -14,7 +14,7 @@
 #include <time.h>
 
 #include "unit_test_util.h"
-#include "elasticapm_clock.h"
+#include "elastic_apm_clock.h"
 
 
 #ifdef PHP_WIN32
@@ -83,7 +83,7 @@ static long g_mockedCurrentTimeSecondsAheadUtc = 0;
 void revertToRealCurrentTime()
 {
     g_isCurrentTimeMocked = false;
-    ELASTICAPM_ZERO_STRUCT( &g_mockedCurrentTime );
+    ELASTIC_APM_ZERO_STRUCT( &g_mockedCurrentTime );
     g_mockedCurrentTimeMicroseconds = 0;
     g_mockedCurrentTimeSecondsAheadUtc = 0;
 }
@@ -98,14 +98,14 @@ void setMockCurrentTime(
         UInt32 microseconds,
         long secondsAheadUtc )
 {
-    ELASTICAPM_ASSERT_GE_UINT64( years, 1900 );
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 1, months, 12 );
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 1, days, 31 );
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, hours, 23 );
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, minutes, 59 );
+    ELASTIC_APM_ASSERT_GE_UINT64( years, 1900 );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 1, months, 12 );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 1, days, 31 );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, hours, 23 );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, minutes, 59 );
     // seconds after the minute - [0, 60] including leap second
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, seconds, 60 );
-    ELASTICAPM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( 0, microseconds, 1000*1000 );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( 0, seconds, 60 );
+    ELASTIC_APM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( 0, microseconds, 1000*1000 );
 
     g_isCurrentTimeMocked = true;
     // tm_year is years since 1900
@@ -123,8 +123,8 @@ void setMockCurrentTime(
 
 //////////////////////////////////////////////////////////////////////////////
 //
-// getSystemClockCurrentTimeAsUtc and convertUtcToLocalTime are declared in "elasticapm_clock.h"
-// because ELASTICAPM_MOCK_CLOCK is defined in unit tests' CMakeLists.txt
+// getSystemClockCurrentTimeAsUtc and convertUtcToLocalTime are declared in "elastic_apm_clock.h"
+// because ELASTIC_APM_MOCK_CLOCK is defined in unit tests' CMakeLists.txt
 //
 
 /**
@@ -134,7 +134,7 @@ int getSystemClockCurrentTimeAsUtc( struct timeval* systemClockTime )
 {
     if ( ! g_isCurrentTimeMocked ) return gettimeofday( systemClockTime, /* timezoneInfo: */ NULL );
 
-    ELASTICAPM_ZERO_STRUCT( systemClockTime );
+    ELASTIC_APM_ZERO_STRUCT( systemClockTime );
     systemClockTime->tv_usec = g_mockedCurrentTimeMicroseconds;
     return 0;
 }
@@ -149,7 +149,7 @@ bool convertUtcToLocalTime( time_t input, struct tm* output, long* secondsAheadU
 }
 
 //
-// getSystemClockCurrentTimeAsUtc and convertUtcToLocalTime is used in "elasticapm_clock.h"
-// because ELASTICAPM_MOCK_CLOCK is defined in unit tests' CMakeLists.txt
+// getSystemClockCurrentTimeAsUtc and convertUtcToLocalTime is used in "elastic_apm_clock.h"
+// because ELASTIC_APM_MOCK_CLOCK is defined in unit tests' CMakeLists.txt
 //
 //////////////////////////////////////////////////////////////////////////////

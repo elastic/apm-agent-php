@@ -16,14 +16,14 @@
 #ifndef PHP_WIN32
 #   include <syslog.h>
 #endif
-#include "elasticapm_clock.h"
+#include "elastic_apm_clock.h"
 #include "util.h"
-#include "elasticapm_alloc.h"
+#include "elastic_apm_alloc.h"
 #include "platform.h"
 #include "TextOutputStream.h"
 #include "Tracer.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_LOG
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LOG
 
 String logLevelNames[numberOfLogLevels] =
         {
@@ -118,7 +118,7 @@ static void appendTimestamp( TextOutputStream* txtOutStream )
 {
     // 2020-02-15 21:51:32.123456+02:00
 
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     LocalTime timestamp = { 0 };
     getCurrentLocalTime( &timestamp );
@@ -142,27 +142,27 @@ static const char logLinePartsSeparator[] = " ";
 
 static void appendSeparator( TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
-    streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( logLinePartsSeparator ), txtOutStream );
+    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( logLinePartsSeparator ), txtOutStream );
 }
 
-#define ELASTICAPM_LOG_FMT_PAD_START ""
+#define ELASTIC_APM_LOG_FMT_PAD_START ""
 
-#define ELASTICAPM_LOG_FMT_NUMBER_PAD_START( minWidth ) \
-    "%" ELASTICAPM_LOG_FMT_PAD_START ELASTICAPM_PP_STRINGIZE( minWidth ) "d"
+#define ELASTIC_APM_LOG_FMT_NUMBER_PAD_START( minWidth ) \
+    "%" ELASTIC_APM_LOG_FMT_PAD_START ELASTIC_APM_PP_STRINGIZE( minWidth ) "d"
 
 static
 void streamPadding( Int64 paddingLength, TextOutputStream* txtOutStream )
 {
     if ( paddingLength <= 0 ) return;
-    ELASTICAPM_REPEAT_N_TIMES( ((size_t)paddingLength) ) streamChar( ' ', txtOutStream );
+    ELASTIC_APM_REPEAT_N_TIMES( ((size_t)paddingLength) ) streamChar( ' ', txtOutStream );
 }
 
 static
 void appendLevel( LogLevel level, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     const char* posBeforeWrite = textOutputStreamGetFreeSpaceBegin( txtOutStream );
     streamChar( '[', txtOutStream );
@@ -186,18 +186,18 @@ void appendLevel( LogLevel level, TextOutputStream* txtOutStream )
 static
 void appendCategory( StringView category, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     streamChar( '[', txtOutStream );
     streamStringView( category, txtOutStream );
     streamChar( ']', txtOutStream );
 }
 
-#ifndef ELASTICAPM_HAS_THREADS_01
+#ifndef ELASTIC_APM_HAS_THREADS_01
 #   ifdef ZTS
-#       define ELASTICAPM_HAS_THREADS_01 1
+#       define ELASTIC_APM_HAS_THREADS_01 1
 #   else
-#       define ELASTICAPM_HAS_THREADS_01 0
+#       define ELASTIC_APM_HAS_THREADS_01 0
 #   endif
 #endif
 
@@ -205,21 +205,21 @@ static void appendProcessThreadIds( TextOutputStream* txtOutStream )
 {
     // [PID: 12345] [TID: 67890]
 
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     pid_t processId = getCurrentProcessId();
 
-    streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW("[PID: "), txtOutStream );
+    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW("[PID: "), txtOutStream );
     streamPrintf( txtOutStream, "%u", processId );
     streamChar( ']', txtOutStream );
 
-#   if ( ELASTICAPM_HAS_THREADS_01 != 0 )
+#   if ( ELASTIC_APM_HAS_THREADS_01 != 0 )
 
     appendSeparator( txtOutStream );
 
     pid_t threadId = getCurrentThreadId();
 
-    streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW("[TID: "), txtOutStream );
+    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW("[TID: "), txtOutStream );
     streamPrintf( txtOutStream, "%u", threadId );
     streamChar( ']', txtOutStream );
 
@@ -231,7 +231,7 @@ void appendFileNameLineNumberPart( StringView filePath, UInt lineNumber, TextOut
 {
     // lifecycle.c:482
 
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     streamChar( '[', txtOutStream );
     streamStringView( extractLastPartOfFilePathStringView( filePath ), txtOutStream );
@@ -242,7 +242,7 @@ void appendFileNameLineNumberPart( StringView filePath, UInt lineNumber, TextOut
 
 static void appendFunctionName( StringView funcName, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
 
     streamChar( '[', txtOutStream );
     streamStringView( funcName, txtOutStream );
@@ -269,7 +269,7 @@ StringView buildCommonPrefix(
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
+        return ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
     }
 
     appendTimestamp( &txtOutStream );
@@ -293,14 +293,14 @@ StringView findEndOfLineSequence( StringView text )
     // The order in endOfLineSequences is important because we need to check longer sequences first
     StringView endOfLineSequences[] =
             {
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( "\r\n" )
-                    , ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" )
-                    , ELASTICAPM_STRING_LITERAL_TO_VIEW( "\r" )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\r\n" )
+                    , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
+                    , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\r" )
             };
 
-    ELASTICAPM_FOR_EACH_INDEX( textPos, text.length )
+    ELASTIC_APM_FOR_EACH_INDEX( textPos, text.length )
     {
-        ELASTICAPM_FOR_EACH_INDEX( eolSeqIndex, ELASTICAPM_STATIC_ARRAY_SIZE( endOfLineSequences ) )
+        ELASTIC_APM_FOR_EACH_INDEX( eolSeqIndex, ELASTIC_APM_STATIC_ARRAY_SIZE( endOfLineSequences ) )
         {
             if ( text.length - textPos < endOfLineSequences[ eolSeqIndex ].length ) continue;
 
@@ -324,8 +324,8 @@ StringView insertPrefixAtEachNewLine(
         , size_t maxSizeForNewMessage
 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( logger->auxMessageBuffer );
-    ELASTICAPM_ASSERT_LE_UINT64( maxSizeForNewMessage, loggerMessageBufferSize );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger->auxMessageBuffer );
+    ELASTIC_APM_ASSERT_LE_UINT64( maxSizeForNewMessage, loggerMessageBufferSize );
 
     TextOutputStream txtOutStream = makeTextOutputStream( logger->auxMessageBuffer, maxSizeForNewMessage );
     // We don't need terminating '\0' after the prefix because we return it as StringView
@@ -333,7 +333,7 @@ StringView insertPrefixAtEachNewLine(
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
+        return ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
     }
 
     const char* oldMessageEnd = stringViewEnd( oldMessage );
@@ -371,14 +371,14 @@ String concatPrefixAndMsg(
         , va_list msgArgs
 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( logger );
-    ELASTICAPM_ASSERT_VALID_PTR( logger->messageBuffer );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger->messageBuffer );
 
     TextOutputStream txtOutStream = makeTextOutputStream( logger->messageBuffer, loggerMessageBufferSize );
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
     }
 
     streamStringView( sinkSpecificPrefix, &txtOutStream );
@@ -405,8 +405,8 @@ void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPr
 {
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
-            , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" )
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
             , /* prefixNewLines: */ true
             , msgFmt
@@ -424,11 +424,11 @@ StringView buildPrefixForSinkMixedWithOtherProcesses( char* buffer, size_t buffe
     txtOutStream.autoTermZero = false;
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
+        return ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
 
-    streamStringView(ELASTICAPM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer " ), &txtOutStream);
+    streamStringView(ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer " ), &txtOutStream);
     appendProcessThreadIds( &txtOutStream );
-    streamStringView(ELASTICAPM_STRING_LITERAL_TO_VIEW( " " ), &txtOutStream);
+    streamStringView(ELASTIC_APM_STRING_LITERAL_TO_VIEW( " " ), &txtOutStream);
 
     textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
     return textOutputStreamContentAsStringView( &txtOutStream );
@@ -471,12 +471,12 @@ int logLevelToSyslog( LogLevel level )
 static
 void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
-    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    char sinkSpecificPrefixBuffer[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
-            , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
             , /* prefixNewLines: */ false
             , msgFmt
@@ -494,12 +494,12 @@ void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, Str
 static
 void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
-    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    char sinkSpecificPrefixBuffer[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
-            , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
             , /* prefixNewLines: */ true
             , msgFmt
@@ -571,36 +571,36 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt,
 //    openAndAppendToFile(
 //            logger
 //            , concatPrefixAndMsg( logger
-//                                  , /* sinkPrefix: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
-//                                  , /* end-of-line: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+//                                  , /* sinkPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
+//                                  , /* end-of-line: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
 //                                  , prefix
 //                                  , msgFmt
 //                                  , msgArgs ) );
 //}
 
-#ifdef ELASTICAPM_LOG_CUSTOM_SINK_FUNC
+#ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
 
 // Declare to avoid warnings
-void ELASTICAPM_LOG_CUSTOM_SINK_FUNC( String fullText );
+void ELASTIC_APM_LOG_CUSTOM_SINK_FUNC( String fullText );
 
 static
 void buildFullTextAndWriteToCustomSink( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
-    char sinkSpecificPrefixBuffer[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    char sinkSpecificPrefixBuffer[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTICAPM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
-            , /* sinkSpecificEndOfLine: */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
             , /* prefixNewLines: */ false
             , msgFmt
             , msgArgs );
 
-    ELASTICAPM_LOG_CUSTOM_SINK_FUNC( fullText );
+    ELASTIC_APM_LOG_CUSTOM_SINK_FUNC( fullText );
 }
 
-#endif // #ifdef ELASTICAPM_LOG_CUSTOM_SINK_FUNC
+#endif // #ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
 
 void logWithLogger(
         Logger* logger
@@ -642,13 +642,13 @@ void vLogWithLogger(
 {
     if ( logger->reentrancyDepth + 1 > maxLoggerReentrancyDepth ) return;
     ++ logger->reentrancyDepth;
-    ELASTICAPM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
+    ELASTIC_APM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
 
-    ELASTICAPM_ASSERT_VALID_PTR( logger );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger );
 
     enum
     {
-        commonPrefixBufferSize = 200 + ELASTICAPM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE,
+        commonPrefixBufferSize = 200 + ELASTIC_APM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE,
     };
     char commonPrefixBuffer[commonPrefixBufferSize];
 
@@ -696,14 +696,14 @@ void vLogWithLogger(
 //        va_end( msgPrintfFmtArgsCopy );
 //    }
 
-#ifdef ELASTICAPM_LOG_CUSTOM_SINK_FUNC
+#ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
         buildFullTextAndWriteToCustomSink( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
         va_end( msgPrintfFmtArgsCopy );
 #endif
 
-    ELASTICAPM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
+    ELASTIC_APM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
     -- logger->reentrancyDepth;
 }
 
@@ -711,7 +711,7 @@ static
 LogLevel findMaxLevel( const LogLevel* levelsArray, size_t levelsArraySize, LogLevel minLevel )
 {
     int max = minLevel;
-    ELASTICAPM_FOR_EACH_INDEX( i, levelsArraySize ) if ( levelsArray[ i ] > max ) max = levelsArray[ i ];
+    ELASTIC_APM_FOR_EACH_INDEX( i, levelsArraySize ) if ( levelsArray[ i ] > max ) max = levelsArray[ i ];
     return max;
 }
 
@@ -723,7 +723,7 @@ LogLevel calcMaxEnabledLogLevel( LogLevel levelPerSinkType[numberOfLogSinkTypes]
 static
 void setLoggerConfigToDefaults( LoggerConfig* config )
 {
-    ELASTICAPM_FOR_EACH_INDEX( sinkTypeIndex, numberOfLogSinkTypes )config->levelPerSinkType[ sinkTypeIndex ] = defaultLogLevelPerSinkType[ sinkTypeIndex ];
+    ELASTIC_APM_FOR_EACH_INDEX( sinkTypeIndex, numberOfLogSinkTypes )config->levelPerSinkType[ sinkTypeIndex ] = defaultLogLevelPerSinkType[ sinkTypeIndex ];
 
     config->file = NULL;
 }
@@ -742,7 +742,7 @@ static void deriveLoggerConfig( const LoggerConfig* newConfig, LogLevel generalL
 
     setLoggerConfigToDefaults( &defaultConfig );
 
-    ELASTICAPM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
+    ELASTIC_APM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
     {
         derivedNewConfig->levelPerSinkType[ logSinkType ] = deriveLevelForSink(
                 newConfig->levelPerSinkType[ logSinkType ], generalLevel, defaultConfig.levelPerSinkType[ logSinkType ] );
@@ -751,7 +751,7 @@ static void deriveLoggerConfig( const LoggerConfig* newConfig, LogLevel generalL
 
 static bool areEqualLoggerConfigs( const LoggerConfig* config1, const LoggerConfig* config2 )
 {
-    ELASTICAPM_FOR_EACH_LOG_SINK_TYPE( logSinkType )if ( config1->levelPerSinkType[ logSinkType ] != config2->levelPerSinkType[ logSinkType ] ) return false;
+    ELASTIC_APM_FOR_EACH_LOG_SINK_TYPE( logSinkType )if ( config1->levelPerSinkType[ logSinkType ] != config2->levelPerSinkType[ logSinkType ] ) return false;
 
     if ( ! areEqualNullableStrings( config1->file, config2->file ) ) return false;
 
@@ -760,15 +760,15 @@ static bool areEqualLoggerConfigs( const LoggerConfig* config1, const LoggerConf
 
 static void logConfigChangeInLevel( String dbgLevelDesc, LogLevel oldLevel, LogLevel newLevel )
 {
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     if ( oldLevel == newLevel )
-        ELASTICAPM_LOG_DEBUG( "%s did not change. Its value is still %s."
+        ELASTIC_APM_LOG_DEBUG( "%s did not change. Its value is still %s."
                               , dbgLevelDesc
                               , streamLogLevel( oldLevel, &txtOutStream ) );
     else
-        ELASTICAPM_LOG_DEBUG( "%s changed from %s to %s."
+        ELASTIC_APM_LOG_DEBUG( "%s changed from %s to %s."
                               , dbgLevelDesc
                               , streamLogLevel( oldLevel, &txtOutStream )
                               , streamLogLevel( newLevel, &txtOutStream ) );
@@ -806,10 +806,10 @@ static void logConfigChange(
         const LoggerConfig* oldConfig, LogLevel oldMaxEnabledLevel, const LoggerConfig* newConfig, LogLevel newMaxEnabledLevel
 )
 {
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    ELASTICAPM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
+    ELASTIC_APM_FOR_EACH_LOG_SINK_TYPE( logSinkType )
     {
         textOutputStreamRewind( &txtOutStream );
         logConfigChangeInLevel( streamPrintf( &txtOutStream, "Log level for sink %s", logSinkTypeName[ logSinkType ] )
@@ -822,10 +822,10 @@ static void logConfigChange(
 
     textOutputStreamRewind( &txtOutStream );
     if ( areEqualNullableStrings( oldConfig->file, newConfig->file ) )
-        ELASTICAPM_LOG_DEBUG( "Path for file logging sink did not change. Its value is still %s."
+        ELASTIC_APM_LOG_DEBUG( "Path for file logging sink did not change. Its value is still %s."
                               , streamUserString( newConfig->file, &txtOutStream ) );
     else
-        ELASTICAPM_LOG_DEBUG( "Path for file logging sink changed from %s to %s."
+        ELASTIC_APM_LOG_DEBUG( "Path for file logging sink changed from %s to %s."
                               , streamUserString( oldConfig->file, &txtOutStream )
                               , streamUserString( newConfig->file, &txtOutStream ) );
 }
@@ -837,7 +837,7 @@ void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel 
 
     if ( areEqualLoggerConfigs( &logger->config, &derivedNewConfig ) )
     {
-        ELASTICAPM_LOG_DEBUG( "Logger configuration did not change" );
+        ELASTIC_APM_LOG_DEBUG( "Logger configuration did not change" );
         return;
     }
 
@@ -850,7 +850,7 @@ void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel 
 
 ResultCode constructLogger( Logger* logger )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( logger );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger );
 
     ResultCode resultCode;
 
@@ -860,8 +860,8 @@ ResultCode constructLogger( Logger* logger )
     logger->auxMessageBuffer = NULL;
     logger->fileFailed = false;
 
-    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( loggerMessageBufferSize, logger->messageBuffer );
-    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( loggerMessageBufferSize, logger->auxMessageBuffer );
+    ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( loggerMessageBufferSize, logger->messageBuffer );
+    ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( loggerMessageBufferSize, logger->auxMessageBuffer );
 
     resultCode = resultSuccess;
 
@@ -875,10 +875,10 @@ ResultCode constructLogger( Logger* logger )
 
 void destructLogger( Logger* logger )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( logger );
+    ELASTIC_APM_ASSERT_VALID_PTR( logger );
 
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
 }
 
 Logger* getGlobalLogger()

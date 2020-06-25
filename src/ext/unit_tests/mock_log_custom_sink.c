@@ -11,7 +11,7 @@
 
 #include "mock_log_custom_sink.h"
 #include "unit_test_util.h"
-#include "elasticapm_alloc.h"
+#include "elastic_apm_alloc.h"
 
 void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink )
 {
@@ -37,21 +37,21 @@ void assertValidMockLogCustomSink( const MockLogCustomSink* mockLogCustomSink )
 {
     if ( ! mockLogCustomSink->isInited )
     {
-        ELASTICAPM_CMOCKA_ASSERT( ! mockLogCustomSink->isEnabled );
+        ELASTIC_APM_CMOCKA_ASSERT( ! mockLogCustomSink->isEnabled );
     }
 
     if ( mockLogCustomSink->isEnabled )
     {
-        ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
+        ELASTIC_APM_ASSERT_VALID_DYNAMIC_ARRAY( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
     }
 }
 
 void initMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( ! mockLogCustomSink->isInited );
+    ELASTIC_APM_CMOCKA_ASSERT( ! mockLogCustomSink->isInited );
 
-    ELASTICAPM_ZERO_STRUCT( mockLogCustomSink );
+    ELASTIC_APM_ZERO_STRUCT( mockLogCustomSink );
     mockLogCustomSink->isInited = true;
 
     assertValidMockLogCustomSink( mockLogCustomSink );
@@ -60,7 +60,7 @@ void initMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 void enableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isInited );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isInited );
 
     mockLogCustomSink->isEnabled = true;
 
@@ -70,10 +70,10 @@ void enableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 void disableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
 
     clearMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_DESTRUCT_DYNAMIC_ARRAY( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
+    ELASTIC_APM_DESTRUCT_DYNAMIC_ARRAY( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
     mockLogCustomSink->isEnabled = false;
 
     assertValidMockLogCustomSink( mockLogCustomSink );
@@ -82,7 +82,7 @@ void disableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 void uninitMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( ! mockLogCustomSink->isEnabled );
+    ELASTIC_APM_CMOCKA_ASSERT( ! mockLogCustomSink->isEnabled );
 
     mockLogCustomSink->isInited = false;
 
@@ -92,30 +92,30 @@ void uninitMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 size_t numberOfStatementsInMockLogCustomSink( const MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
 
-    return ELASTICAPM_GET_DYNAMIC_ARRAY_SIZE( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
+    return ELASTIC_APM_GET_DYNAMIC_ARRAY_SIZE( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
 }
 
 String getStatementInMockLogCustomSinkContent( const MockLogCustomSink* mockLogCustomSink, size_t index )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
 
     MockLogCustomSinkStatement* statement;
-    ELASTICAPM_GET_DYNAMIC_ARRAY_ELEMENT_AT( MockLogCustomSinkStatement, &mockLogCustomSink->statements, index, statement );
+    ELASTIC_APM_GET_DYNAMIC_ARRAY_ELEMENT_AT( MockLogCustomSinkStatement, &mockLogCustomSink->statements, index, statement );
     return statement->text;
 }
 
 void clearMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
 {
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
 
-    ELASTICAPM_FOR_EACH_DYNAMIC_ARRAY_ELEMENT( MockLogCustomSinkStatement, statement, &mockLogCustomSink->statements )
-        ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( strlen( statement->text ) + 1, statement->text );
+    ELASTIC_APM_FOR_EACH_DYNAMIC_ARRAY_ELEMENT( MockLogCustomSinkStatement, statement, &mockLogCustomSink->statements )
+        ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( strlen( statement->text ) + 1, statement->text );
 
-    ELASTICAPM_REMOVE_ALL_DYNAMIC_ARRAY_ELEMENTS( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
+    ELASTIC_APM_REMOVE_ALL_DYNAMIC_ARRAY_ELEMENTS( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
 
     assertValidMockLogCustomSink( mockLogCustomSink );
 }
@@ -129,7 +129,7 @@ MockLogCustomSink* getGlobalMockLogCustomSink()
 }
 
 /// writeToMockLogCustomSink is used in "log.c"
-/// via ELASTICAPM_LOG_CUSTOM_SINK_FUNC defined in unit tests' CMakeLists.txt
+/// via ELASTIC_APM_LOG_CUSTOM_SINK_FUNC defined in unit tests' CMakeLists.txt
 void writeToMockLogCustomSink( String text )
 {
     ResultCode resultCode;
@@ -137,14 +137,14 @@ void writeToMockLogCustomSink( String text )
     String textDup = NULL;
 
     assertValidMockLogCustomSink( mockLogCustomSink );
-    ELASTICAPM_CMOCKA_ASSERT( mockLogCustomSink->isInited );
+    ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isInited );
 
     // When MockLogCustomSink is init-ed but not yet enabled it just discards all log statements it receives.
     if ( ! mockLogCustomSink->isEnabled ) return;
 
-    ELASTICAPM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( text, textDup );
+    ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( text, textDup );
 
-    ELASTICAPM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO(
+    ELASTIC_APM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO(
             MockLogCustomSinkStatement,
             &mockLogCustomSink->statements,
             &((MockLogCustomSinkStatement){ .text = textDup }) );
@@ -152,12 +152,12 @@ void writeToMockLogCustomSink( String text )
     resultCode = resultSuccess;
 
     finally:
-    ELASTICAPM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( resultCode );
+    ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( resultCode );
     return;
 
     failure:
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( strlen( textDup ) + 1, textDup );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( strlen( textDup ) + 1, textDup );
     goto finally;
 
 }
-ELASTICAPM_SUPPRESS_UNUSED( writeToMockLogCustomSink );
+ELASTIC_APM_SUPPRESS_UNUSED( writeToMockLogCustomSink );

@@ -10,6 +10,6 @@ parameters:
 
     ignoreErrors:
         #
-        # elasticapm_* functions are provided by the extension
+        # elastic_apm_* functions are provided by the extension
         #
-        - '#^Function elasticapm_[a-z_]* not found\.$#'
+        - '#^Function elastic_apm_[a-z_]* not found\.$#'

@@ -20,12 +20,12 @@ final class DefaultSink extends SinkBase
         string $messageWithContext
     ): void {
         /**
-         * elasticapm_* functions are provided by the elasticapm extension
+         * elastic_apm_* functions are provided by the elastic_apm extension
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        \elasticapm_log(
+        \elastic_apm_log(
             0 /* $isForced */,
             $statementLevel,
             $category,

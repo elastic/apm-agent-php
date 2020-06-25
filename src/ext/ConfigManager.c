@@ -10,22 +10,22 @@
  */
 
 #include "ConfigManager.h"
-#ifdef ELASTICAPM_MOCK_STDLIB
+#ifdef ELASTIC_APM_MOCK_STDLIB
 #   include "mock_stdlib.h"
 #else
 #   include <stdlib.h>
 #endif
-#ifndef ELASTICAPM_MOCK_PHP_DEPS
+#ifndef ELASTIC_APM_MOCK_PHP_DEPS
 #   include <zend_ini.h>
 #endif
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "log.h"
 #include "util.h"
 #include "TextOutputStream.h"
-#include "elasticapm_alloc.h"
+#include "elastic_apm_alloc.h"
 #include "time_util.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_CONFIG
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_CONFIG
 
 enum ParsedOptionValueType
 {
@@ -40,8 +40,8 @@ enum ParsedOptionValueType
 };
 typedef enum ParsedOptionValueType ParsedOptionValueType;
 
-#define ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE_TYPE( valueType ) \
-    ELASTICAPM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( parsedOptionValueType_undefined + 1, valueType, end_parsedOptionValueType )
+#define ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE_TYPE( valueType ) \
+    ELASTIC_APM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( parsedOptionValueType_undefined + 1, valueType, end_parsedOptionValueType )
 /**/
 
 struct ParsedOptionValue
@@ -57,8 +57,8 @@ struct ParsedOptionValue
 };
 typedef struct ParsedOptionValue ParsedOptionValue;
 
-#define ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedOptionValue ) \
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE_TYPE( (parsedOptionValue).type )
+#define ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedOptionValue ) \
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE_TYPE( (parsedOptionValue).type )
 
 struct EnumOptionAdditionalMetadata
 {
@@ -160,8 +160,8 @@ struct ConfigManager
     ConfigManagerCurrentState current;
 };
 
-#define ELASTICAPM_ASSERT_VALID_OPTION_ID( optId ) \
-    ELASTICAPM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( 0, optId, numberOfOptions )
+#define ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId ) \
+    ELASTIC_APM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( 0, optId, numberOfOptions )
 
 String interpretStringIniRawValue( String rawValue )
 {
@@ -190,12 +190,12 @@ String interpretEmptyIniRawValueAsOff( String rawValue )
 
 static ResultCode parseStringValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
-    ELASTICAPM_ASSERT_VALID_PTR( rawValue );
-    ELASTICAPM_ASSERT_VALID_PTR( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
-    ELASTICAPM_ASSERT_PTR_IS_NULL( parsedValue->u.stringValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
+    ELASTIC_APM_ASSERT_PTR_IS_NULL( parsedValue->u.stringValue );
 
     parsedValue->u.stringValue = rawValue;
     parsedValue->type = optMeta->defaultValue.type;
@@ -204,21 +204,21 @@ static ResultCode parseStringValue( const OptionMetadata* optMeta, String rawVal
 
 static String streamParsedString( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
 
     return streamUserString( parsedValue.u.stringValue, txtOutStream );
 }
 
 static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
-    ELASTICAPM_ASSERT_VALID_PTR( return_value );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_string );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     if ( parsedValue.u.stringValue == NULL ) RETURN_NULL()
     RETURN_STRING( parsedValue.u.stringValue )
@@ -226,16 +226,16 @@ static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOption
 
 static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
-    ELASTICAPM_ASSERT_VALID_PTR( rawValue );
-    ELASTICAPM_ASSERT_VALID_PTR( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
 
     enum { valuesCount = 4 };
     String trueValues[ valuesCount ] = { "true", "1", "yes", "on" };
     String falseValues[ valuesCount ] = { "false", "0", "no", "off" };
-    ELASTICAPM_FOR_EACH_INDEX( i, valuesCount )
+    ELASTIC_APM_FOR_EACH_INDEX( i, valuesCount )
     {
         if ( areStringsEqualIgnoringCase( rawValue, trueValues[ i ] ) )
         {
@@ -256,32 +256,32 @@ static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue
 
 static String streamParsedBool( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
 
     return streamBool( parsedValue.u.boolValue, txtOutStream );
 }
 
 static void parsedBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
-    ELASTICAPM_ASSERT_VALID_PTR( return_value );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_BOOL( parsedValue.u.boolValue )
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
-    ELASTICAPM_ASSERT_VALID_PTR( rawValue );
-    ELASTICAPM_ASSERT_VALID_PTR( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
 
     ResultCode parseResultCode = parseDuration( stringToStringView( rawValue )
                                                 , optMeta->additionalData.durationData.defaultUnits
@@ -292,21 +292,21 @@ static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawV
 
 static String streamParsedDuration( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
 
     return streamDuration( parsedValue.u.durationValue, txtOutStream );
 }
 
 static void parsedDurationValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
-    ELASTICAPM_ASSERT_VALID_PTR( return_value );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_duration );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_DOUBLE( durationToMilliseconds( parsedValue.u.durationValue ) )
 }
@@ -314,16 +314,16 @@ static void parsedDurationValueToZval( const OptionMetadata* optMeta, ParsedOpti
 static
 ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
-    ELASTICAPM_ASSERT_VALID_PTR( rawValue );
-    ELASTICAPM_ASSERT_VALID_PTR( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
 
     int foundMatch = -1;
     StringView rawValueStrView = stringToStringView( rawValue );
 
-    ELASTICAPM_FOR_EACH_INDEX( i, optMeta->additionalData.enumData.enumElementsCount )
+    ELASTIC_APM_FOR_EACH_INDEX( i, optMeta->additionalData.enumData.enumElementsCount )
     {
         StringView currentEnumName = stringToStringView( optMeta->additionalData.enumData.names[ i ] );
         if ( ! isStringViewPrefixIgnoringCase( currentEnumName, rawValueStrView ) ) continue;
@@ -341,7 +341,7 @@ ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* ou
             // then it's ambiguous and we return failure
             if ( foundMatch != -1 )
             {
-                ELASTICAPM_LOG_ERROR(
+                ELASTIC_APM_LOG_ERROR(
                         "Failed to parse enum configuration option - raw value matches more than one enum as a prefix."
                         " Option name: `%s'."
                         " Raw value: `%s'."
@@ -366,21 +366,21 @@ ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* ou
 
 static void parsedEnumValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
-    ELASTICAPM_ASSERT_VALID_PTR( return_value );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_LONG( (long)( parsedValue.u.intValue ) )
 }
 
 static String streamParsedLogLevel( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optMeta );
-    ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
-    ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
-    ELASTICAPM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
 
     return streamLogLevel( (LogLevel) parsedValue.u.intValue, txtOutStream );
 }
@@ -488,94 +488,94 @@ static void initOptionMetadataForId( OptionMetadata* optsMeta
                                      , OptionId expectedOptId
                                      , OptionMetadata optionMetadata )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optsMeta );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( actualOptId );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( expectedOptId );
-    ELASTICAPM_ASSERT_EQ_UINT64( actualOptId, expectedOptId );
+    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( actualOptId );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( expectedOptId );
+    ELASTIC_APM_ASSERT_EQ_UINT64( actualOptId, expectedOptId );
 
-    ELASTICAPM_FOR_EACH_INDEX( i, actualOptId )
-        ELASTICAPM_ASSERT( ! areStringsEqualIgnoringCase( optsMeta[ i ].name, optionMetadata.name )
+    ELASTIC_APM_FOR_EACH_INDEX( i, actualOptId )
+        ELASTIC_APM_ASSERT( ! areStringsEqualIgnoringCase( optsMeta[ i ].name, optionMetadata.name )
         , "i: %u, optionMetadata.name: %s", (unsigned int)i, optionMetadata.name );
 
     optsMeta[ actualOptId ] = optionMetadata;
 }
 
-#define ELASTICAPM_FREE_AND_RESET_FIELD_FUNC_NAME( fieldName ) freeAndReset_ConfigSnapshot_##fieldName##_field
-#define ELASTICAPM_SET_FIELD_FUNC_NAME( fieldName ) set_ConfigSnapshot_##fieldName##_field
-#define ELASTICAPM_GET_FIELD_FUNC_NAME( fieldName ) get_ConfigSnapshot_##fieldName##_field
+#define ELASTIC_APM_FREE_AND_RESET_FIELD_FUNC_NAME( fieldName ) freeAndReset_ConfigSnapshot_##fieldName##_field
+#define ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) set_ConfigSnapshot_##fieldName##_field
+#define ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) get_ConfigSnapshot_##fieldName##_field
 
-#define ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( unionFieldForType, fieldName ) \
-    static void ELASTICAPM_SET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, ConfigSnapshot* dst ) \
+#define ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( unionFieldForType, fieldName ) \
+    static void ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, ConfigSnapshot* dst ) \
     { \
-        ELASTICAPM_ASSERT_VALID_PTR( optMeta ); \
-        ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue ); \
-        ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedValue.type ); \
-        ELASTICAPM_ASSERT_VALID_PTR( dst ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( optMeta ); \
+        ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue ); \
+        ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedValue.type ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( dst ); \
         \
         dst->fieldName = parsedValue.u.unionFieldForType; \
     } \
     \
-    static ParsedOptionValue ELASTICAPM_GET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, const ConfigSnapshot* src ) \
+    static ParsedOptionValue ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, const ConfigSnapshot* src ) \
     { \
-        ELASTICAPM_ASSERT_VALID_PTR( optMeta ); \
-        ELASTICAPM_ASSERT_VALID_PTR( src ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( optMeta ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( src ); \
         \
         return (ParsedOptionValue){ .type = optMeta->defaultValue.type, .u.unionFieldForType = src->fieldName }; \
     }
 
-#define ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( EnumType, fieldName ) \
-    static void ELASTICAPM_SET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, ParsedOptionValue parsedValue,  ConfigSnapshot* dst ) \
+#define ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( EnumType, fieldName ) \
+    static void ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, ParsedOptionValue parsedValue,  ConfigSnapshot* dst ) \
     { \
-        ELASTICAPM_ASSERT_VALID_PTR( optMeta ); \
-        ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int ); \
-        ELASTICAPM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue ); \
-        ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedValue.type ); \
-        ELASTICAPM_ASSERT_VALID_PTR( dst ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( optMeta ); \
+        ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int ); \
+        ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue ); \
+        ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedValue.type ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( dst ); \
         \
         dst->fieldName = (EnumType)( parsedValue.u.intValue ); \
     } \
     \
-    static ParsedOptionValue ELASTICAPM_GET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, const ConfigSnapshot* src ) \
+    static ParsedOptionValue ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) ( const OptionMetadata* optMeta, const ConfigSnapshot* src ) \
     { \
-        ELASTICAPM_ASSERT_VALID_PTR( optMeta ); \
-        ELASTICAPM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int ); \
-        ELASTICAPM_ASSERT_VALID_PTR( src ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( optMeta ); \
+        ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int ); \
+        ELASTIC_APM_ASSERT_VALID_PTR( src ); \
         \
         return (ParsedOptionValue){ .type = optMeta->defaultValue.type, .u.intValue = (int)( src->fieldName ) }; \
     }
 
 #   ifdef PHP_WIN32
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, allowAbortDialog )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, allowAbortDialog )
 #   endif
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
-#   if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
+#   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevel )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelFile )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelStderr )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevel )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelFile )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelStderr )
 #   ifndef PHP_WIN32
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelSyslog )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelSyslog )
 #   endif
 #   ifdef PHP_WIN32
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   endif
-#   if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
-ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
+#   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
+ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverConnectTimeout )
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
-ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverConnectTimeout )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 
-#undef ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS
-#undef ELASTICAPM_DEFINE_ENUM_FIELD_ACCESS_FUNCS
+#undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
+#undef ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS
 
-#define ELASTICAPM_INIT_METADATA_EX( buildFunc, fieldName, isSecret, optName, defaultValue, ... ) \
+#define ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, isSecret, optName, defaultValue, ... ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -585,24 +585,24 @@ ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
         ( \
             isSecret \
             , optName \
-            , ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
+            , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
             , defaultValue \
-            , ELASTICAPM_SET_FIELD_FUNC_NAME( fieldName ) \
-            , ELASTICAPM_GET_FIELD_FUNC_NAME( fieldName ) \
+            , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
+            , ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) \
             , ##__VA_ARGS__ \
         ) \
     )
 
-#define ELASTICAPM_INIT_METADATA( buildFunc, fieldName, optName, defaultValue ) \
-    ELASTICAPM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ false, optName, defaultValue )
+#define ELASTIC_APM_INIT_METADATA( buildFunc, fieldName, optName, defaultValue ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ false, optName, defaultValue )
 
-#define ELASTICAPM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits ) \
-    ELASTICAPM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, /* isSecret */ false, optName, defaultValue, defaultUnits )
+#define ELASTIC_APM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, /* isSecret */ false, optName, defaultValue, defaultUnits )
 
-#define ELASTICAPM_INIT_SECRET_METADATA( buildFunc, fieldName, optName, defaultValue ) \
-    ELASTICAPM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ true, optName, defaultValue )
+#define ELASTIC_APM_INIT_SECRET_METADATA( buildFunc, fieldName, optName, defaultValue ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ true, optName, defaultValue )
 
-#define ELASTICAPM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
+#define ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -612,147 +612,147 @@ ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
         ( \
             /* isSecret */ false \
             , optName \
-            , ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
+            , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
             , defaultValue \
             , interpretIniRawValue \
-            , ELASTICAPM_SET_FIELD_FUNC_NAME( fieldName ) \
-            , ELASTICAPM_GET_FIELD_FUNC_NAME( fieldName ) \
+            , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
+            , ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) \
             , &streamParsedLogLevel \
             , (EnumOptionAdditionalMetadata) \
             { \
                 .names = (enumNamesArray), \
-                .enumElementsCount = ELASTICAPM_STATIC_ARRAY_SIZE( (enumNamesArray) ), \
+                .enumElementsCount = ELASTIC_APM_STATIC_ARRAY_SIZE( (enumNamesArray) ), \
                 .isUniquePrefixEnough = (isUniquePrefixEnoughArg) \
             } \
         ) \
     )
 
-#define ELASTICAPM_INIT_LOG_LEVEL_METADATA( fieldName, optName ) \
-    ELASTICAPM_ENUM_INIT_METADATA( fieldName, optName, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
+#define ELASTIC_APM_INIT_LOG_LEVEL_METADATA( fieldName, optName ) \
+    ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
 
 static void initOptionsMetadata( OptionMetadata* optsMeta )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
 
     size_t i = 0;
 
     //
-    // The order of calls to ELASTICAPM_INIT_METADATA below should be the same as in OptionId
+    // The order of calls to ELASTIC_APM_INIT_METADATA below should be the same as in OptionId
     //
 
     #ifdef PHP_WIN32
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             allowAbortDialog,
-            ELASTICAPM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG,
+            ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG,
             /* defaultValue: */ false );
     #endif
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             abortOnMemoryLeak,
-            ELASTICAPM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK,
-            /* defaultValue: */ ELASTICAPM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK );
+            ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK,
+            /* defaultValue: */ ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK );
 
-    #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
-    ELASTICAPM_ENUM_INIT_METADATA(
+    #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
+    ELASTIC_APM_ENUM_INIT_METADATA(
             /* fieldName: */ assertLevel,
-            /* optName: */ ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL,
+            /* optName: */ ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL,
             /* defaultValue: */ assertLevel_not_set,
             &interpretEmptyIniRawValueAsOff,
             assertLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             bootstrapPhpPartFile,
-            ELASTICAPM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE,
+            ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE,
             /* defaultValue: */ NULL );
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             enabled,
-            ELASTICAPM_CFG_OPT_NAME_ENABLED,
+            ELASTIC_APM_CFG_OPT_NAME_ENABLED,
             /* defaultValue: */ true );
 
-    ELASTICAPM_ENUM_INIT_METADATA(
+    ELASTIC_APM_ENUM_INIT_METADATA(
             /* fieldName: */ internalChecksLevel,
-            /* optName: */ ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL,
+            /* optName: */ ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL,
             /* defaultValue: */ internalChecksLevel_not_set,
             &interpretEmptyIniRawValueAsOff,
             internalChecksLevelNames,
             /* isUniquePrefixEnough: */ true );
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             logFile,
-            ELASTICAPM_CFG_OPT_NAME_LOG_FILE,
+            ELASTIC_APM_CFG_OPT_NAME_LOG_FILE,
             /* defaultValue: */ NULL );
 
-    ELASTICAPM_INIT_LOG_LEVEL_METADATA(
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
             logLevel,
-            ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL );
-    ELASTICAPM_INIT_LOG_LEVEL_METADATA(
+            ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL );
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
             logLevelFile,
-            ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_FILE );
-    ELASTICAPM_INIT_LOG_LEVEL_METADATA(
+            ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_FILE );
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
             logLevelStderr,
-            ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_STDERR );
+            ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_STDERR );
     #ifndef PHP_WIN32
-    ELASTICAPM_INIT_LOG_LEVEL_METADATA(
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
             logLevelSyslog,
-            ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG );
+            ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG );
     #endif
     #ifdef PHP_WIN32
-    ELASTICAPM_INIT_LOG_LEVEL_METADATA(
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
             logLevelWinSysDebug,
-            ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG );
+            ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG );
     #endif
 
-    #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
-    ELASTICAPM_ENUM_INIT_METADATA(
+    #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
+    ELASTIC_APM_ENUM_INIT_METADATA(
             /* fieldName: */ memoryTrackingLevel,
-            /* optName: */ ELASTICAPM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL,
+            /* optName: */ ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL,
             /* defaultValue: */ memoryTrackingLevel_not_set,
             &interpretEmptyIniRawValueAsOff,
             memoryTrackingLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
 
-    ELASTICAPM_INIT_SECRET_METADATA(
+    ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,
             secretToken,
-            ELASTICAPM_CFG_OPT_NAME_SECRET_TOKEN,
+            ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN,
             /* defaultValue: */ NULL );
 
-    ELASTICAPM_INIT_DURATION_METADATA(
+    ELASTIC_APM_INIT_DURATION_METADATA(
             serverConnectTimeout
-            , ELASTICAPM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT
+            , ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT
             , /* defaultValue: */ makeDuration( 5, durationUnits_seconds )
             , /* defaultUnits */ durationUnits_seconds );
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             serverUrl,
-            ELASTICAPM_CFG_OPT_NAME_SERVER_URL,
+            ELASTIC_APM_CFG_OPT_NAME_SERVER_URL,
             /* defaultValue: */ "http://localhost:8200" );
 
-    ELASTICAPM_INIT_METADATA(
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             serviceName,
-            ELASTICAPM_CFG_OPT_NAME_SERVICE_NAME,
+            ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME,
             /* defaultValue: */ "Unknown PHP service" );
 
-    ELASTICAPM_ASSERT_EQ_UINT64( i, numberOfOptions );
+    ELASTIC_APM_ASSERT_EQ_UINT64( i, numberOfOptions );
 }
 
-#undef ELASTICAPM_SET_FIELD_FUNC_NAME
-#undef ELASTICAPM_GET_FIELD_FUNC_NAME
-#undef ELASTICAPM_FREE_AND_RESET_FIELD_FUNC_NAME
+#undef ELASTIC_APM_SET_FIELD_FUNC_NAME
+#undef ELASTIC_APM_GET_FIELD_FUNC_NAME
+#undef ELASTIC_APM_FREE_AND_RESET_FIELD_FUNC_NAME
 
-#undef ELASTICAPM_INIT_METADATA
-#undef ELASTICAPM_INIT_LOG_LEVEL_METADATA
+#undef ELASTIC_APM_INIT_METADATA
+#undef ELASTIC_APM_INIT_LOG_LEVEL_METADATA
 
 static
 void parseCombinedRawConfigSnapshot(
@@ -760,32 +760,32 @@ void parseCombinedRawConfigSnapshot(
         const CombinedRawConfigSnapshot* combinedRawCfgSnapshot,
         ConfigSnapshot* cfgSnapshot )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optsMeta );
-    ELASTICAPM_ASSERT_VALID_PTR( combinedRawCfgSnapshot );
-    ELASTICAPM_ASSERT_VALID_PTR( cfgSnapshot );
+    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( combinedRawCfgSnapshot );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgSnapshot );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
-        char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         const OptionMetadata* const optMeta = &( optsMeta[ optId ] );
         const String originalRawValue = combinedRawCfgSnapshot->original[ optId ];
         const String interpretedRawValue = combinedRawCfgSnapshot->interpreted[ optId ];
         const String sourceDescription = combinedRawCfgSnapshot->sourceDescriptions[ optId ];
         ParsedOptionValue parsedOptValue;
-        ELASTICAPM_ZERO_STRUCT( &parsedOptValue );
+        ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
 
         if ( interpretedRawValue == NULL )
         {
             parsedOptValue = optMeta->defaultValue;
-            ELASTICAPM_LOG_DEBUG(
+            ELASTIC_APM_LOG_DEBUG(
                     "Configuration option `%s' is not set - using default value (%s)",
                     optMeta->name,
                     optMeta->streamParsedValue( optMeta, parsedOptValue, &txtOutStream ) );
         }
         else if ( optMeta->parseRawValue( optMeta, interpretedRawValue, &parsedOptValue ) == resultSuccess )
         {
-            ELASTICAPM_LOG_DEBUG(
+            ELASTIC_APM_LOG_DEBUG(
                     "Successfully parsed configuration option `%s' - "
                     "parsed value: %s (raw value: `%s', interpreted as: `%s', source: %s)",
                     optMeta->name,
@@ -797,7 +797,7 @@ void parseCombinedRawConfigSnapshot(
         else
         {
             parsedOptValue = optMeta->defaultValue;
-            ELASTICAPM_LOG_ERROR(
+            ELASTIC_APM_LOG_ERROR(
                     "Failed to parse configuration option `%s' - "
                     "using default value (%s). Failed to parse raw value: `%s', interpreted as: `%s', source: %s.",
                     optMeta->name,
@@ -813,15 +813,15 @@ void parseCombinedRawConfigSnapshot(
 
 static ResultCode constructEnvVarNameForOption( String optName, String* envVarName )
 {
-    ELASTICAPM_ASSERT_VALID_STRING( optName );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( envVarName );
+    ELASTIC_APM_ASSERT_VALID_STRING( optName );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( envVarName );
 
     ResultCode resultCode;
-    StringView envVarNamePrefix = ELASTICAPM_STRING_LITERAL_TO_VIEW( "ELASTIC_APM_" );
+    StringView envVarNamePrefix = ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ELASTIC_APM_" );
     MutableString envVarNameBuffer = NULL;
     const size_t envVarNameBufferSize = envVarNamePrefix.length + strlen( optName ) + 1;
 
-    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( envVarNameBufferSize, envVarNameBuffer );
+    ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( envVarNameBufferSize, envVarNameBuffer );
     strcpy( envVarNameBuffer, envVarNamePrefix.begin );
     copyStringAsUpperCase( optName, /* out */ envVarNameBuffer + envVarNamePrefix.length );
 
@@ -832,27 +832,27 @@ static ResultCode constructEnvVarNameForOption( String optName, String* envVarNa
     return resultCode;
 
     failure:
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
     goto finally;
 }
 
 static void destructEnvVarNames( /* in,out */ String envVarNames[] )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( envVarNames );
+    ELASTIC_APM_ASSERT_VALID_PTR( envVarNames );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
-        ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( strlen( envVarNames[ optId ] ) + 1, envVarNames[ optId ] );
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
+        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( envVarNames[ optId ] ) + 1, envVarNames[ optId ] );
 }
 
 static ResultCode constructEnvVarNames( OptionMetadata* optsMeta, /* out */ String envVarNames[] )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( optsMeta );
-    ELASTICAPM_ASSERT_VALID_PTR( envVarNames );
+    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( envVarNames );
 
     ResultCode resultCode;
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
-        ELASTICAPM_CALL_IF_FAILED_GOTO( constructEnvVarNameForOption( optsMeta[ optId ].name, &envVarNames[ optId ] ) );
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( constructEnvVarNameForOption( optsMeta[ optId ].name, &envVarNames[ optId ] ) );
 
     resultCode = resultSuccess;
 
@@ -864,19 +864,19 @@ static ResultCode constructEnvVarNames( OptionMetadata* optsMeta, /* out */ Stri
     goto finally;
 }
 
-#ifdef ELASTICAPM_GETENV_FUNC
+#ifdef ELASTIC_APM_GETENV_FUNC
 // Declare to avoid warnings
-char* ELASTICAPM_MOCK_GETENV_FUNC( const char* name );
+char* ELASTIC_APM_MOCK_GETENV_FUNC( const char* name );
 #else
-#define ELASTICAPM_GETENV_FUNC getenv
+#define ELASTIC_APM_GETENV_FUNC getenv
 #endif
 
 String readRawOptionValueFromEnvVars( const ConfigManager* cfgManager, OptionId optId )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
 
-    return ELASTICAPM_GETENV_FUNC( cfgManager->meta.envVarNames[ optId ] );
+    return ELASTIC_APM_GETENV_FUNC( cfgManager->meta.envVarNames[ optId ] );
 }
 
 static
@@ -886,10 +886,10 @@ ResultCode getRawOptionValueFromEnvVars(
         String* originalRawValue,
         String* interpretedRawValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
 
     ResultCode resultCode;
     String returnedRawValue;
@@ -897,7 +897,7 @@ ResultCode getRawOptionValueFromEnvVars(
 
     returnedRawValue = readRawOptionValueFromEnvVars( cfgManager, optId );
     if ( returnedRawValue != NULL )
-        ELASTICAPM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
+        ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
 
     resultCode = resultSuccess;
     *originalRawValue = rawValue;
@@ -907,7 +907,7 @@ ResultCode getRawOptionValueFromEnvVars(
     return resultCode;
 
     failure:
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
     goto finally;
 }
 
@@ -916,8 +916,8 @@ String readRawOptionValueFromIni(
         OptionId optId,
         bool* exists )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
     zend_bool existsZendBool = 0;
@@ -937,10 +937,10 @@ ResultCode getRawOptionValueFromIni(
         String* originalRawValue,
         String* interpretedRawValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
 
     ResultCode resultCode;
     bool exists = 0;
@@ -951,7 +951,7 @@ ResultCode getRawOptionValueFromIni(
     returnedRawValue = readRawOptionValueFromIni( cfgManager,optId, &exists );
 
     if ( exists && ( returnedRawValue != NULL ) )
-        ELASTICAPM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
+        ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
 
     resultCode = resultSuccess;
     *originalRawValue = rawValue;
@@ -961,65 +961,65 @@ ResultCode getRawOptionValueFromIni(
     return resultCode;
 
     failure:
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
     goto finally;
 }
 
 static void initRawConfigSources( RawConfigSnapshotSource rawCfgSources[ numberOfRawConfigSources ] )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( rawCfgSources );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawCfgSources );
 
     size_t i = 0;
 
-    ELASTICAPM_ASSERT_EQ_UINT64( i, rawConfigSourceId_iniFile );
+    ELASTIC_APM_ASSERT_EQ_UINT64( i, rawConfigSourceId_iniFile );
     rawCfgSources[ i++ ] = (RawConfigSnapshotSource)
     {
         .description = "INI file",
         .getOptionValue = &getRawOptionValueFromIni
     };
 
-    ELASTICAPM_ASSERT_EQ_UINT64( i, rawConfigSourceId_envVars );
+    ELASTIC_APM_ASSERT_EQ_UINT64( i, rawConfigSourceId_envVars );
     rawCfgSources[ i++ ] = (RawConfigSnapshotSource)
     {
         .description = "Environment variables",
         .getOptionValue = &getRawOptionValueFromEnvVars
     };
 
-    ELASTICAPM_ASSERT_EQ_UINT64( i, numberOfRawConfigSources );
+    ELASTIC_APM_ASSERT_EQ_UINT64( i, numberOfRawConfigSources );
 }
 
 static
 void deleteConfigRawDataAndSetToNull( /* in,out */ ConfigRawData** pRawData )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( pRawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( pRawData );
 
     ConfigRawData* rawData = *pRawData;
     if ( rawData == NULL ) return;
-    ELASTICAPM_ASSERT_VALID_PTR( rawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawData );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
-        ELASTICAPM_FOR_EACH_INDEX( rawSourceIndex, numberOfRawConfigSources )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
+        ELASTIC_APM_FOR_EACH_INDEX( rawSourceIndex, numberOfRawConfigSources )
         {
             const char** pOriginalRawValue = &( rawData->fromSources[ rawSourceIndex ].original[ optId ] );
-            ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL(strlen( *pOriginalRawValue ) + 1, *pOriginalRawValue );
+            ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL(strlen( *pOriginalRawValue ) + 1, *pOriginalRawValue );
         }
 
-    ELASTICAPM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigRawData, *pRawData );
+    ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigRawData, *pRawData );
 }
 
 static
 ResultCode fetchConfigRawDataFromAllSources( const ConfigManager* cfgManager, /* out */ ConfigRawData* newRawData )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( newRawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
 
     ResultCode resultCode;
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
-        ELASTICAPM_FOR_EACH_INDEX( rawCfgSourceIndex, numberOfRawConfigSources )
+        ELASTIC_APM_FOR_EACH_INDEX( rawCfgSourceIndex, numberOfRawConfigSources )
         {
-            ELASTICAPM_CALL_IF_FAILED_GOTO( cfgManager->meta.rawCfgSources[ rawCfgSourceIndex ].getOptionValue(
+            ELASTIC_APM_CALL_IF_FAILED_GOTO( cfgManager->meta.rawCfgSources[ rawCfgSourceIndex ].getOptionValue(
                     cfgManager,
                     optId,
                     &newRawData->fromSources[ rawCfgSourceIndex ].original[ optId ],
@@ -1039,12 +1039,12 @@ ResultCode fetchConfigRawDataFromAllSources( const ConfigManager* cfgManager, /*
 static
 void combineConfigRawData( const ConfigManager* cfgManager, /* in,out */ ConfigRawData* newRawData )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( newRawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
-        ELASTICAPM_FOR_EACH_INDEX( rawCfgSourceIndex, numberOfRawConfigSources )
+        ELASTIC_APM_FOR_EACH_INDEX( rawCfgSourceIndex, numberOfRawConfigSources )
         {
             if ( newRawData->fromSources[ rawCfgSourceIndex ].interpreted[ optId ] == NULL ) continue;
 
@@ -1059,16 +1059,16 @@ void combineConfigRawData( const ConfigManager* cfgManager, /* in,out */ ConfigR
 static
 ResultCode fetchConfigRawData( const ConfigManager* cfgManager, /* out */ ConfigRawData** pNewRawData )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewRawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewRawData );
 
     ResultCode resultCode;
     ConfigRawData* newRawData = NULL;
 
-    ELASTICAPM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigRawData, newRawData );
-    ELASTICAPM_ZERO_STRUCT( newRawData );
+    ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigRawData, newRawData );
+    ELASTIC_APM_ZERO_STRUCT( newRawData );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( fetchConfigRawDataFromAllSources( cfgManager, /* out */ newRawData ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( fetchConfigRawDataFromAllSources( cfgManager, /* out */ newRawData ) );
     combineConfigRawData( cfgManager, /* in,out */ newRawData );
 
     resultCode = resultSuccess;
@@ -1085,10 +1085,10 @@ ResultCode fetchConfigRawData( const ConfigManager* cfgManager, /* out */ Config
 static
 bool areEqualCombinedRawConfigSnapshots( const CombinedRawConfigSnapshot* snapshot1, const CombinedRawConfigSnapshot* snapshot2 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( snapshot1 );
-    ELASTICAPM_ASSERT_VALID_PTR( snapshot2 );
+    ELASTIC_APM_ASSERT_VALID_PTR( snapshot1 );
+    ELASTIC_APM_ASSERT_VALID_PTR( snapshot2 );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
         if ( ( ! areEqualNullableStrings( snapshot1->original[ optId ], snapshot2->original[ optId ] ) ) ||
                 ( ! areEqualNullableStrings( snapshot1->interpreted[ optId ], snapshot2->interpreted[ optId ] ) ) ||
                 ( ! areEqualNullableStrings( snapshot1->sourceDescriptions[ optId ], snapshot2->sourceDescriptions[ optId ] ) ) )
@@ -1100,33 +1100,33 @@ bool areEqualCombinedRawConfigSnapshots( const CombinedRawConfigSnapshot* snapsh
 static
 void logConfigChange( const ConfigManager* cfgManager, const ConfigRawData* newRawData )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( newRawData );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
 
     // TODO: Sergey Kleyman: Implement: logConfigChange
 }
 
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
     return &cfgManager->current.snapshot;
 }
 
 ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* didConfigChange )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( didConfigChange );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( didConfigChange );
 
     ResultCode resultCode;
     ConfigRawData* newRawData = NULL;
     ConfigSnapshot newCfgSnapshot = { 0 };
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( fetchConfigRawData( cfgManager, &newRawData ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( fetchConfigRawData( cfgManager, &newRawData ) );
 
     if ( cfgManager->current.rawData != NULL &&
             areEqualCombinedRawConfigSnapshots( &cfgManager->current.rawData->combined, &newRawData->combined ) )
     {
-        ELASTICAPM_LOG_DEBUG( "Current configuration is already the latest" );
+        ELASTIC_APM_LOG_DEBUG( "Current configuration is already the latest" );
         resultCode = resultSuccess;
         *didConfigChange = false;
         goto finally;
@@ -1153,11 +1153,11 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
 static
 void destructConfigManagerCurrentState( /* in,out */ ConfigManagerCurrentState* cfgManagerCurrent )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManagerCurrent );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerCurrent );
 
     deleteConfigRawDataAndSetToNull( /* in,out */ &cfgManagerCurrent->rawData );
 
-    ELASTICAPM_ZERO_STRUCT( cfgManagerCurrent );
+    ELASTIC_APM_ZERO_STRUCT( cfgManagerCurrent );
 }
 
 static
@@ -1165,10 +1165,10 @@ void initConfigManagerCurrentState(
         const ConfigMetadata* cfgManagerMeta,
         /* out */ ConfigManagerCurrentState* cfgManagerCurrent )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManagerMeta );
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManagerCurrent );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerCurrent );
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         const OptionMetadata* const optMeta = &( cfgManagerMeta->optionsMeta[ optId ] );
         optMeta->setField( optMeta, optMeta->defaultValue, &cfgManagerCurrent->snapshot );
@@ -1178,22 +1178,22 @@ void initConfigManagerCurrentState(
 static
 void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManagerMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );
 
     destructEnvVarNames( /* in,out */ cfgManagerMeta->envVarNames );
 
-    ELASTICAPM_ZERO_STRUCT( cfgManagerMeta );
+    ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
 static
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManagerMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );
 
     ResultCode resultCode;
 
     initOptionsMetadata( cfgManagerMeta->optionsMeta );
-    ELASTICAPM_CALL_IF_FAILED_GOTO( constructEnvVarNames( cfgManagerMeta->optionsMeta, /* out */ cfgManagerMeta->envVarNames ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructEnvVarNames( cfgManagerMeta->optionsMeta, /* out */ cfgManagerMeta->envVarNames ) );
     initRawConfigSources( cfgManagerMeta->rawCfgSources );
 
     resultCode = resultSuccess;
@@ -1212,11 +1212,11 @@ ResultCode getConfigManagerOptionValueByName(
         , GetConfigManagerOptionValueByNameResult* result
 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( result );
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( result );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
 
     const OptionMetadata* optMeta = NULL;
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         if ( areStringsEqualIgnoringCase( cfgManager->meta.optionsMeta[ optId ].name, optionName ) )
         {
@@ -1238,8 +1238,8 @@ void getConfigManagerOptionMetadata(
         , GetConfigManagerOptionMetadataResult* result
 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_PTR( result );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( result );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
     result->isSecret = optMeta->isSecret;
@@ -1254,10 +1254,10 @@ void getConfigManagerOptionValueById(
         , GetConfigManagerOptionValueByIdResult* result
 )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
-    ELASTICAPM_ASSERT_VALID_PTR( result );
-    ELASTICAPM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_VALID_PTR( result );
+    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
     result->streamedParsedValue = optMeta->streamParsedValue(
@@ -1281,11 +1281,11 @@ void getConfigManagerRawData(
         /* out */ String* originalRawValue,
         /* out */ String* interpretedRawValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
-    ELASTICAPM_ASSERT_VALID_OPTION_ID( optId );
-    ELASTICAPM_ASSERT_LT_UINT64( rawCfgSourceId, numberOfRawConfigSources );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId );
+    ELASTIC_APM_ASSERT_LT_UINT64( rawCfgSourceId, numberOfRawConfigSources );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( originalRawValue );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( interpretedRawValue );
 
     *originalRawValue = cfgManager->current.rawData->fromSources[ rawCfgSourceId ].original[ optId ];
     *interpretedRawValue = cfgManager->current.rawData->fromSources[ rawCfgSourceId ].interpreted[ optId ];
@@ -1293,31 +1293,31 @@ void getConfigManagerRawData(
 
 void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( pCfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( pCfgManager );
 
     ConfigManager* const cfgManager = *pCfgManager;
     if ( cfgManager == NULL ) return;
-    ELASTICAPM_ASSERT_VALID_PTR( cfgManager );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
 
     destructConfigManagerCurrentState( /* in,out */ &cfgManager->current );
     destructConfigManagerMetadata( /* in,out */ &cfgManager->meta );
 
-    ELASTICAPM_ZERO_STRUCT( cfgManager );
+    ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
-    ELASTICAPM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
+    ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
 }
 
 ResultCode newConfigManager( ConfigManager** pNewCfgManager )
 {
-    ELASTICAPM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewCfgManager );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewCfgManager );
 
     ResultCode resultCode;
     ConfigManager* cfgManager = NULL;
 
-    ELASTICAPM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
-    ELASTICAPM_ZERO_STRUCT( cfgManager );
+    ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
+    ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );
     initConfigManagerCurrentState( &cfgManager->meta, /* out */ &cfgManager->current );
 
     resultCode = resultSuccess;

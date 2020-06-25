@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "elasticapm_is_debug_build.h"
+#include "elastic_apm_is_debug_build.h"
 #include "basic_types.h" // String
 
 enum InternalChecksLevel
@@ -30,11 +30,11 @@ typedef enum InternalChecksLevel InternalChecksLevel;
 
 extern const char* internalChecksLevelNames[ numberOfInternalChecksLevels ];
 
-#ifndef ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL
-#   if ( ELASTICAPM_IS_DEBUG_BUILD_01 != 0 )
-#       define ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL internalChecksLevel_all
+#ifndef ELASTIC_APM_INTERNAL_CHECKS_DEFAULT_LEVEL
+#   if ( ELASTIC_APM_IS_DEBUG_BUILD_01 != 0 )
+#       define ELASTIC_APM_INTERNAL_CHECKS_DEFAULT_LEVEL internalChecksLevel_all
 #   else
-#       define ELASTICAPM_INTERNAL_CHECKS_DEFAULT_LEVEL internalChecksLevel_off
+#       define ELASTIC_APM_INTERNAL_CHECKS_DEFAULT_LEVEL internalChecksLevel_off
 #   endif
 #endif
 

@@ -21,8 +21,8 @@
 #include "basic_macros.h"
 #include "basic_util.h"
 #include "ResultCode.h"
-#include "elasticapm_assert.h"
-#include "elasticapm_clock.h"
+#include "elastic_apm_assert.h"
+#include "elastic_apm_clock.h"
 
 static inline
 bool isEmtpyString( String str )
@@ -39,7 +39,7 @@ bool isNullOrEmtpyString( String str )
 static inline
 void replaceCharInString( MutableString str, char originalChar, char replacementChar )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( str );
+    ELASTIC_APM_ASSERT_VALID_PTR( str );
 
     for ( size_t i = 0 ; str[ i ] != '\0' ; ++i )
         if ( str[ i ] == originalChar ) str[ i ] = replacementChar;
@@ -48,7 +48,7 @@ void replaceCharInString( MutableString str, char originalChar, char replacement
 static inline
 void replaceCharInStringView( StringView strView, char originalChar, char replacementChar )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
 
     for ( size_t i = 0 ; i != strView.length ; ++i )
         if ( strView.begin[ i ] == originalChar ) ((char*)(strView.begin))[ i ] = replacementChar;
@@ -57,7 +57,7 @@ void replaceCharInStringView( StringView strView, char originalChar, char replac
 static inline
 StringView stringToStringView( String str )
 {
-    ELASTICAPM_ASSERT_VALID_STRING( str );
+    ELASTIC_APM_ASSERT_VALID_STRING( str );
 
     return (StringView) { .begin = str, .length = strlen( str ) };
 }
@@ -65,14 +65,14 @@ StringView stringToStringView( String str )
 static inline
 StringView stringViewSkipFirstNChars( StringView strView, size_t numberOfCharsToSkip )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
 
     return (StringView) { .begin = strView.begin + numberOfCharsToSkip, .length = strView.length - numberOfCharsToSkip };
 }
 
 static inline char charToUpperCase( char c )
 {
-    if ( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( 'a', c, 'z' ) )
+    if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( 'a', c, 'z' ) )
     {
         return (char) ( (char) ( c - 'a' ) + 'A' );
     }
@@ -95,12 +95,12 @@ static inline bool areCharsEqualIgnoringCase( char c1, char c2 )
 static inline
 bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( str );
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( prefix );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( str );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( prefix );
 
     if ( prefix.length > str.length ) return false;
 
-    ELASTICAPM_FOR_EACH_INDEX( i, prefix.length )
+    ELASTIC_APM_FOR_EACH_INDEX( i, prefix.length )
         if ( ! areCharsEqualIgnoringCase( str.begin[ i ], prefix.begin[ i ] ) )
             return false;
 
@@ -110,8 +110,8 @@ bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
 static inline
 bool areStringsEqualIgnoringCase( String str1, String str2 )
 {
-    ELASTICAPM_ASSERT_VALID_STRING( str1 );
-    ELASTICAPM_ASSERT_VALID_STRING( str2 );
+    ELASTIC_APM_ASSERT_VALID_STRING( str1 );
+    ELASTIC_APM_ASSERT_VALID_STRING( str2 );
 
     for ( const char *p1 = str1, *p2 = str2; areCharsEqualIgnoringCase( *p1, *p2 ) ; ++p1, ++p2 )
         if ( *p1 == '\0' ) return true;
@@ -122,12 +122,12 @@ bool areStringsEqualIgnoringCase( String str1, String str2 )
 static inline
 bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strVw1 );
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strVw2 );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw1 );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw2 );
 
     if ( strVw1.length != strVw2.length ) return false;
 
-    ELASTICAPM_FOR_EACH_INDEX( i, strVw1.length )
+    ELASTIC_APM_FOR_EACH_INDEX( i, strVw1.length )
         if ( strVw1.begin[ i ] != strVw2.begin[ i ] )
             return false;
 
@@ -136,8 +136,8 @@ bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
 
 void genRandomIdAsHexString( UInt8 idSizeBytes, char* idAsHexStringBuffer, size_t idAsHexStringBufferSize );
 
-#define ELASTICAPM_GEN_RANDOM_ID_AS_HEX_STRING( idSizeBytes, idAsHexStringBuffer ) \
-    genRandomIdAsHexString( (idSizeBytes), (idAsHexStringBuffer), ELASTICAPM_STATIC_ARRAY_SIZE( (idAsHexStringBuffer) ) )
+#define ELASTIC_APM_GEN_RANDOM_ID_AS_HEX_STRING( idSizeBytes, idAsHexStringBuffer ) \
+    genRandomIdAsHexString( (idSizeBytes), (idAsHexStringBuffer), ELASTIC_APM_STATIC_ARRAY_SIZE( (idAsHexStringBuffer) ) )
 
 static inline
 bool areEqualNullableStrings( String str1, String str2 )
@@ -173,7 +173,7 @@ String escapeNonPrintableChar( char c, char buffer[ escapeNonPrintableCharBuffer
         default:
             // According to https://en.wikipedia.org/wiki/ASCII#Printable_characters
             // Codes 20 (hex) to 7E (hex), known as the printable characters
-            if ( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( '\x20', c, '\x7E' ) )
+            if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( '\x20', c, '\x7E' ) )
             {
                 buffer[ 0 ] = c;
                 buffer[ 1 ] = '\0';
@@ -200,7 +200,7 @@ bool isLocalOsFilePathSeparator( char c )
 static inline
 int findLastPathSeparatorPosition( StringView filePath )
 {
-    ELASTICAPM_FOR_EACH_BACKWARDS( i, filePath.length )
+    ELASTIC_APM_FOR_EACH_BACKWARDS( i, filePath.length )
         if ( isLocalOsFilePathSeparator( filePath.begin[ i ] ) ) return (int)i;
 
     return -1;
@@ -213,7 +213,7 @@ StringView extractLastPartOfFilePathStringView( StringView filePath )
     // some\file\path\Logger.c
     // ^^^^^^^^^^^^^^^
 
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( filePath );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( filePath );
 
     int lastPathSeparatorPosition = findLastPathSeparatorPosition( filePath );
     if ( lastPathSeparatorPosition == -1 ) return filePath;

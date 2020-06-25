@@ -44,10 +44,10 @@ enum { maxCaptureStackTraceDepth = 100 };
 
 #ifdef PHP_WIN32
 size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferSize );
-#define ELASTICAPM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
+#define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
     captureStackTraceWindows( (addressesBuffer), (addressesBufferSize) )
 #else
-#define ELASTICAPM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
+#define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
     backtrace( (addressesBuffer), (addressesBufferSize) )
 #endif
 

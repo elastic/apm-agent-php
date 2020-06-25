@@ -11,47 +11,47 @@
 
 #include "RequestScoped.h"
 #include "basic_macros.h"
-#include "elasticapm_assert.h"
-#include "elasticapm_alloc.h"
+#include "elastic_apm_assert.h"
+#include "elastic_apm_alloc.h"
 
 ResultCode constructRequestScoped( RequestScoped* requestScoped )
 {
-    ELASTICAPM_ZERO_STRUCT( requestScoped );
+    ELASTIC_APM_ZERO_STRUCT( requestScoped );
 
-    ELASTICAPM_ASSERT_VALID_PTR( requestScoped );
+    ELASTIC_APM_ASSERT_VALID_PTR( requestScoped );
 
     return resultSuccess;
 }
 
 void destructRequestScoped( RequestScoped* requestScoped )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( requestScoped );
+    ELASTIC_APM_ASSERT_VALID_PTR( requestScoped );
 
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( requestScoped->lastMetadataFromPhpPart.length + 1, requestScoped->lastMetadataFromPhpPart.begin );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( requestScoped->lastMetadataFromPhpPart.length + 1, requestScoped->lastMetadataFromPhpPart.begin );
     requestScoped->lastMetadataFromPhpPart = makeEmptyStringView();
 
-    ELASTICAPM_ZERO_STRUCT( requestScoped );
+    ELASTIC_APM_ZERO_STRUCT( requestScoped );
 }
 
 ResultCode saveMetadataFromPhpPart( RequestScoped* requestScoped, StringView metadataFromPhpPart )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( requestScoped );
+    ELASTIC_APM_ASSERT_VALID_PTR( requestScoped );
 
     ResultCode resultCode;
     StringView metadataCopy = makeEmptyStringView();
 
-    ELASTICAPM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( metadataFromPhpPart.begin, metadataCopy.begin );
+    ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( metadataFromPhpPart.begin, metadataCopy.begin );
     metadataCopy.length = metadataFromPhpPart.length;
 
     resultCode = resultSuccess;
 
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( requestScoped->lastMetadataFromPhpPart.length + 1, requestScoped->lastMetadataFromPhpPart.begin );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( requestScoped->lastMetadataFromPhpPart.length + 1, requestScoped->lastMetadataFromPhpPart.begin );
     requestScoped->lastMetadataFromPhpPart = metadataCopy;
 
     finally:
     return resultCode;
 
     failure:
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( metadataCopy.length + 1, metadataCopy.begin );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( metadataCopy.length + 1, metadataCopy.begin );
     goto finally;
 }

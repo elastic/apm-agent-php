@@ -34,8 +34,8 @@ final class PhpPartFacade
 
     private function __construct(float $requestInitStartTime)
     {
-        if (!extension_loaded('elasticapm')) {
-            throw new RuntimeException('elasticapm extension is not loaded');
+        if (!extension_loaded('elastic_apm')) {
+            throw new RuntimeException('elastic_apm extension is not loaded');
         }
 
         $tracer = self::buildTracer();
@@ -53,7 +53,7 @@ final class PhpPartFacade
     }
 
     /**
-     * Called by elasticapm extension
+     * Called by elastic_apm extension
      *
      * @noinspection PhpUnused
      *
@@ -110,7 +110,7 @@ final class PhpPartFacade
     }
 
     /**
-     * Called by elasticapm extension
+     * Called by elastic_apm extension
      *
      * @noinspection PhpUnused
      *
@@ -125,12 +125,12 @@ final class PhpPartFacade
     {
         if (is_null(self::singletonInstance()->interceptionManager)) {
             /**
-             * elasticapm_* functions are provided by the elasticapm extension
+             * elastic_apm_* functions are provided by the elastic_apm extension
              *
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            return \elasticapm_call_intercepted_original();
+            return \elastic_apm_call_intercepted_original();
         }
 
         return self::singletonInstance()->interceptionManager->interceptedCall(
@@ -141,7 +141,7 @@ final class PhpPartFacade
     }
 
     /**
-     * Called by elasticapm extension
+     * Called by elastic_apm extension
      *
      * @noinspection PhpUnused
      */

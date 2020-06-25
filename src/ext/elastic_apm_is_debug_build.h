@@ -11,4 +11,10 @@
 
 #pragma once
 
-#define PHP_ELASTICAPM_VERSION "0.1-preview"
+#ifndef ELASTIC_APM_IS_DEBUG_BUILD_01
+#   ifdef NDEBUG
+#       define ELASTIC_APM_IS_DEBUG_BUILD_01 0
+#   else
+#       define ELASTIC_APM_IS_DEBUG_BUILD_01 1
+#   endif
+#endif

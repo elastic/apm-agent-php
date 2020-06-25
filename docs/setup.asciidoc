@@ -10,16 +10,16 @@ Execute the following commands to install:
 ----
 cd src/ext
 phpize
-./configure --enable-elasticapm
+./configure --enable-elastic_apm
 make clean
 make
 sudo make install
 ----
 
-Enable the extension by adding the following to your `elasticapm.ini` file:
+Enable the extension by adding the following to your `elastic_apm.ini` file:
 
 [source,php]
 ----
-extension=elasticapm.so
-elasticapm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
+extension=elastic_apm.so
+elastic_apm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
 ----

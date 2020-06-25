@@ -12,23 +12,23 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
-#include "php_elasticapm.h"
+#include "php_elastic_apm.h"
 // external libraries
 #include <php_ini.h>
 #include <zend_types.h>
 #include "lifecycle.h"
 #include "supportability_zend.h"
-#include "elasticapm_API.h"
+#include "elastic_apm_API.h"
 #include "ConfigManager.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_EXT_INFRA
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
-ZEND_DECLARE_MODULE_GLOBALS( elasticapm )
+ZEND_DECLARE_MODULE_GLOBALS( elastic_apm )
 
 Tracer* getGlobalTracer()
 {
-    return &( ZEND_MODULE_GLOBALS_ACCESSOR( elasticapm, globalTracer ) );
+    return &( ZEND_MODULE_GLOBALS_ACCESSOR( elastic_apm, globalTracer ) );
 }
 
 #ifndef ZEND_PARSE_PARAMETERS_NONE
@@ -45,7 +45,7 @@ static inline ResultCode zendToResultCode( ZEND_RESULT_CODE zendResultCode )
 
 /* {{{ PHP_RINIT_FUNCTION
  */
-PHP_RINIT_FUNCTION(elasticapm)
+PHP_RINIT_FUNCTION(elastic_apm)
 {
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
@@ -56,7 +56,7 @@ PHP_RINIT_FUNCTION(elasticapm)
 
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
-PHP_RSHUTDOWN_FUNCTION(elasticapm)
+PHP_RSHUTDOWN_FUNCTION(elastic_apm)
 {
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
@@ -67,61 +67,61 @@ PHP_RSHUTDOWN_FUNCTION(elasticapm)
 
 /* {{{ PHP_MINFO_FUNCTION
  */
-PHP_MINFO_FUNCTION(elasticapm)
+PHP_MINFO_FUNCTION(elastic_apm)
 {
-    elasticapmModuleInfo( zend_module );
+    elasticApmModuleInfo( zend_module );
 }
 /* }}} */
 
-#define ELASTICAPM_INI_ENTRY_IMPL( optName, isReloadableFlag ) \
+#define ELASTIC_APM_INI_ENTRY_IMPL( optName, isReloadableFlag ) \
     PHP_INI_ENTRY( \
-        "elasticapm." optName \
+        "elastic_apm." optName \
         , /* default value: */ NULL \
         , isReloadableFlag \
         , /* on_modify (validator): */ NULL )
 
-#define ELASTICAPM_INI_ENTRY( optName ) ELASTICAPM_INI_ENTRY_IMPL( optName, PHP_INI_ALL )
+#define ELASTIC_APM_INI_ENTRY( optName ) ELASTIC_APM_INI_ENTRY_IMPL( optName, PHP_INI_ALL )
 
-#define ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( optName ) ELASTICAPM_INI_ENTRY_IMPL( optName, PHP_INI_PERDIR )
+#define ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( optName ) ELASTIC_APM_INI_ENTRY_IMPL( optName, PHP_INI_PERDIR )
 
 PHP_INI_BEGIN()
     #ifdef PHP_WIN32
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG )
     #endif
-    ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK )
-    #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL )
+    ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK )
+    #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
-    ELASTICAPM_NOT_RELOADABLE_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_ENABLED )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_FILE )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_FILE )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_STDERR )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
+    ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_FILE )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_FILE )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_STDERR )
     #ifndef PHP_WIN32
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG )
     #endif
     #ifdef PHP_WIN32
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG )
     #endif
-    #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
+    #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
     #endif
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SECRET_TOKEN )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVER_URL )
-    ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_SERVICE_NAME )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_URL )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME )
 PHP_INI_END()
 
-#undef ELASTICAPM_INI_ENTRY_IMPL
-#undef ELASTICAPM_INI_ENTRY
-#undef ELASTICAPM_NOT_RELOADABLE_INI_ENTRY
-#undef ELASTICAPM_SECRET_INI_ENTRY
+#undef ELASTIC_APM_INI_ENTRY_IMPL
+#undef ELASTIC_APM_INI_ENTRY
+#undef ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY
+#undef ELASTIC_APM_SECRET_INI_ENTRY
 
 ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( iniEntriesRegistrationState );
+    ELASTIC_APM_ASSERT_VALID_PTR( iniEntriesRegistrationState );
 
     ResultCode resultCode;
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
@@ -129,12 +129,12 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
     resultCode = zendToResultCode( (ZEND_RESULT_CODE)REGISTER_INI_ENTRIES() );
     if ( resultCode != resultSuccess )
     {
-        ELASTICAPM_LOG_ERROR( "REGISTER_INI_ENTRIES(...) failed. resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+        ELASTIC_APM_LOG_ERROR( "REGISTER_INI_ENTRIES(...) failed. resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
         goto failure;
     }
     iniEntriesRegistrationState->entriesRegistered = true;
 
-    ELASTICAPM_FOR_EACH_OPTION_ID( optId )
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
@@ -144,7 +144,7 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
                                                   , displaySecretIniValue );
         if ( resultCode != resultSuccess )
         {
-            ELASTICAPM_LOG_ERROR( "REGISTER_INI_DISPLAYER(...) failed. resultCode: %s (%d). iniName: %.*s."
+            ELASTIC_APM_LOG_ERROR( "REGISTER_INI_DISPLAYER(...) failed. resultCode: %s (%d). iniName: %.*s."
                                   , resultCodeToString( resultCode ), resultCode
                                   , (int) getMetaRes.iniName.length, getMetaRes.iniName.begin );
             goto failure;
@@ -170,23 +170,23 @@ void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationSt
     }
 }
 
-PHP_MINIT_FUNCTION(elasticapm)
+PHP_MINIT_FUNCTION(elastic_apm)
 {
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_NOT_SET", logLevel_not_set, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_OFF", logLevel_off, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_CRITICAL", logLevel_critical, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_ERROR", logLevel_error, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_WARNING", logLevel_warning, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_NOTICE", logLevel_notice, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_INFO", logLevel_info, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_DEBUG", logLevel_debug, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_LOG_LEVEL_TRACE", logLevel_trace, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_NOT_SET", logLevel_not_set, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_OFF", logLevel_off, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_CRITICAL", logLevel_critical, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_ERROR", logLevel_error, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_WARNING", logLevel_warning, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_NOTICE", logLevel_notice, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_INFO", logLevel_info, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_DEBUG", logLevel_debug, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_TRACE", logLevel_trace, CONST_CS|CONST_PERSISTENT );
 
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_NOT_SET", assertLevel_not_set, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_OFF", assertLevel_off, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_O_1", assertLevel_O_1, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_O_N", assertLevel_O_n, CONST_CS|CONST_PERSISTENT );
-    REGISTER_LONG_CONSTANT( "ELASTICAPM_ASSERT_LEVEL_ALL", assertLevel_all, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_ASSERT_LEVEL_NOT_SET", assertLevel_not_set, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_ASSERT_LEVEL_OFF", assertLevel_off, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_ASSERT_LEVEL_O_1", assertLevel_O_1, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_ASSERT_LEVEL_O_N", assertLevel_O_n, CONST_CS|CONST_PERSISTENT );
+    REGISTER_LONG_CONSTANT( "ELASTIC_APM_ASSERT_LEVEL_ALL", assertLevel_all, CONST_CS|CONST_PERSISTENT );
 
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
@@ -194,7 +194,7 @@ PHP_MINIT_FUNCTION(elasticapm)
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(elasticapm)
+PHP_MSHUTDOWN_FUNCTION(elastic_apm)
 {
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
@@ -202,9 +202,9 @@ PHP_MSHUTDOWN_FUNCTION(elasticapm)
     return SUCCESS;
 }
 
-/* {{{ bool elasticapm_is_enabled()
+/* {{{ bool elastic_apm_is_enabled()
  */
-PHP_FUNCTION( elasticapm_is_enabled )
+PHP_FUNCTION( elastic_apm_is_enabled )
 {
     ZEND_PARSE_PARAMETERS_NONE();
 
@@ -212,9 +212,9 @@ PHP_FUNCTION( elasticapm_is_enabled )
 }
 /* }}} */
 
-/* {{{ elasticapm_get_config_option_by_name( string $optionName ): mixed
+/* {{{ elastic_apm_get_config_option_by_name( string $optionName ): mixed
  */
-PHP_FUNCTION( elasticapm_get_config_option_by_name )
+PHP_FUNCTION( elastic_apm_get_config_option_by_name )
 {
     char* optionName = NULL;
     size_t optionNameLength = 0;
@@ -227,13 +227,13 @@ PHP_FUNCTION( elasticapm_get_config_option_by_name )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_intercept_calls_to_internal_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ className, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ methodName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_internal_method( string $className, string $methodName ): int // <- interceptRegistrationId
+/* {{{ elastic_apm_intercept_calls_to_internal_method( string $className, string $methodName ): int // <- interceptRegistrationId
  */
-PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
+PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
 {
     char* className = NULL;
     size_t classNameLength = 0;
@@ -253,12 +253,12 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_internal_method )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_intercept_calls_to_internal_function_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 1 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_intercept_calls_to_internal_function_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 1 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ functionName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- interceptRegistrationId
+/* {{{ elastic_apm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- interceptRegistrationId
  */
-PHP_FUNCTION( elasticapm_intercept_calls_to_internal_function )
+PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
 {
     char* functionName = NULL;
     size_t functionNameLength = 0;
@@ -275,13 +275,13 @@ PHP_FUNCTION( elasticapm_intercept_calls_to_internal_function )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_call_intercepted_original_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_call_intercepted_original_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgsCount, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgs, IS_ARRAY, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
-/* {{{ elasticapm_call_intercepted_original(): mixed
+/* {{{ elastic_apm_call_intercepted_original(): mixed
  */
-PHP_FUNCTION( elasticapm_call_intercepted_original )
+PHP_FUNCTION( elastic_apm_call_intercepted_original )
 {
     zend_long wrapperArgsCount = 0;
     zval* wrapperArgs = NULL;
@@ -290,9 +290,9 @@ PHP_FUNCTION( elasticapm_call_intercepted_original )
 }
 /* }}} */
 
-/* {{{ elasticapm_send_to_server( string $serializedEvents ): bool
+/* {{{ elastic_apm_send_to_server( string $serializedEvents ): bool
  */
-PHP_FUNCTION( elasticapm_send_to_server )
+PHP_FUNCTION( elastic_apm_send_to_server )
 {
     char* serializedMetadata = NULL;
     size_t serializedMetadataLength = 0;
@@ -311,7 +311,7 @@ PHP_FUNCTION( elasticapm_send_to_server )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_log_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 7 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_log_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 7 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, isForced, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, level, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, category, IS_STRING, /* allow_null: */ 0 )
@@ -321,7 +321,7 @@ ZEND_BEGIN_ARG_INFO_EX( elasticapm_log_arginfo, /* _unused: */ 0, /* return_refe
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, message, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 
-/* {{{ elasticapm_log(
+/* {{{ elastic_apm_log(
  *      int $isForced,
  *      int $level,
  *      string $category,
@@ -331,7 +331,7 @@ ZEND_END_ARG_INFO()
  *      string $message
  *  ): void
  */
-PHP_FUNCTION( elasticapm_log )
+PHP_FUNCTION( elastic_apm_log )
 {
     zend_long isForced = 0;
     zend_long level = 0;
@@ -370,42 +370,42 @@ PHP_FUNCTION( elasticapm_log )
 
 /* {{{ arginfo
  */
-ZEND_BEGIN_ARG_INFO(elasticapm_no_paramters_arginfo, 0)
+ZEND_BEGIN_ARG_INFO(elastic_apm_no_paramters_arginfo, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX( elasticapm_string_paramter_arginfo, 0, 0, 1 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_string_paramter_arginfo, 0, 0, 1 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, optionName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 /* }}} */
 
-/* {{{ elasticapm_functions[]
+/* {{{ elastic_apm_functions[]
  */
-static const zend_function_entry elasticapm_functions[] =
+static const zend_function_entry elastic_apm_functions[] =
 {
-    PHP_FE( elasticapm_is_enabled, elasticapm_no_paramters_arginfo )
-    PHP_FE( elasticapm_get_config_option_by_name, elasticapm_string_paramter_arginfo )
-    PHP_FE( elasticapm_intercept_calls_to_internal_method, elasticapm_intercept_calls_to_internal_method_arginfo )
-    PHP_FE( elasticapm_intercept_calls_to_internal_function, elasticapm_intercept_calls_to_internal_function_arginfo )
-    PHP_FE( elasticapm_call_intercepted_original, elasticapm_call_intercepted_original_arginfo )
-    PHP_FE( elasticapm_send_to_server, elasticapm_string_paramter_arginfo )
-    PHP_FE( elasticapm_log, elasticapm_log_arginfo )
+    PHP_FE( elastic_apm_is_enabled, elastic_apm_no_paramters_arginfo )
+    PHP_FE( elastic_apm_get_config_option_by_name, elastic_apm_string_paramter_arginfo )
+    PHP_FE( elastic_apm_intercept_calls_to_internal_method, elastic_apm_intercept_calls_to_internal_method_arginfo )
+    PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
+    PHP_FE( elastic_apm_call_intercepted_original, elastic_apm_call_intercepted_original_arginfo )
+    PHP_FE( elastic_apm_send_to_server, elastic_apm_string_paramter_arginfo )
+    PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
     PHP_FE_END
 };
 /* }}} */
 
-/* {{{ elasticapm_module_entry
+/* {{{ elastic_apm_module_entry
  */
-zend_module_entry elasticapm_module_entry = {
+zend_module_entry elastic_apm_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"elasticapm",					/* Extension name */
-	elasticapm_functions,			/* zend_function_entry */
-	PHP_MINIT(elasticapm),		    /* PHP_MINIT - Module initialization */
-	PHP_MSHUTDOWN(elasticapm),		/* PHP_MSHUTDOWN - Module shutdown */
-	PHP_RINIT(elasticapm),			/* PHP_RINIT - Request initialization */
-	PHP_RSHUTDOWN(elasticapm),		/* PHP_RSHUTDOWN - Request shutdown */
-	PHP_MINFO(elasticapm),			/* PHP_MINFO - Module info */
-	PHP_ELASTICAPM_VERSION,		    /* Version */
-	PHP_MODULE_GLOBALS(elasticapm), /* PHP_MODULE_GLOBALS */
+	"elastic_apm",					/* Extension name */
+	elastic_apm_functions,			/* zend_function_entry */
+	PHP_MINIT(elastic_apm),		    /* PHP_MINIT - Module initialization */
+	PHP_MSHUTDOWN(elastic_apm),		/* PHP_MSHUTDOWN - Module shutdown */
+	PHP_RINIT(elastic_apm),			/* PHP_RINIT - Request initialization */
+	PHP_RSHUTDOWN(elastic_apm),		/* PHP_RSHUTDOWN - Request shutdown */
+	PHP_MINFO(elastic_apm),			/* PHP_MINFO - Module info */
+	PHP_ELASTIC_APM_VERSION,		    /* Version */
+	PHP_MODULE_GLOBALS(elastic_apm), /* PHP_MODULE_GLOBALS */
 	NULL, 					        /* PHP_GINIT */
 	NULL,		                    /* PHP_GSHUTDOWN */
 	NULL,
@@ -413,9 +413,9 @@ zend_module_entry elasticapm_module_entry = {
 };
 /* }}} */
 
-#ifdef COMPILE_DL_ELASTICAPM
+#ifdef COMPILE_DL_ELASTIC_APM
 #   ifdef ZTS
 ZEND_TSRMLS_CACHE_DEFINE()
 #   endif
-ZEND_GET_MODULE(elasticapm)
+ZEND_GET_MODULE(elastic_apm)
 #endif

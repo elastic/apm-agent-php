@@ -15,5 +15,5 @@
 
 int perTestDefaultSetup( void** testFixtureState );
 int perTestDefaultTeardown( void** testFixtureState );
-ELASTICAPM_SUPPRESS_UNUSED( perTestDefaultSetup );
-ELASTICAPM_SUPPRESS_UNUSED( perTestDefaultTeardown );
+ELASTIC_APM_SUPPRESS_UNUSED( perTestDefaultSetup );
+ELASTIC_APM_SUPPRESS_UNUSED( perTestDefaultTeardown );

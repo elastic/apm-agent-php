@@ -17,19 +17,19 @@
 #include <zend_modules.h>
 
 #include "Tracer.h"
-#include "elasticapm_version.h"
+#include "elastic_apm_version.h"
 
-extern zend_module_entry elasticapm_module_entry;
+extern zend_module_entry elastic_apm_module_entry;
 
-#if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
+#if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
-ZEND_BEGIN_MODULE_GLOBALS(elasticapm)
+ZEND_BEGIN_MODULE_GLOBALS(elastic_apm)
     Tracer globalTracer;
-ZEND_END_MODULE_GLOBALS(elasticapm)
+ZEND_END_MODULE_GLOBALS(elastic_apm)
 
-ZEND_EXTERN_MODULE_GLOBALS(elasticapm)
+ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)
 
 ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );
 void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );

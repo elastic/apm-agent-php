@@ -18,6 +18,6 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/junit.xml
 
 CMD phpize \
-    && ./configure --enable-elasticapm \
+    && ./configure --enable-elastic_apm \
     && make clean \
     && make

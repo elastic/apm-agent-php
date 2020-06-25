@@ -26,7 +26,7 @@
 #   include <execinfo.h>
 #endif
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_PLATFORM
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
 pid_t getCurrentProcessId()
 {
@@ -57,7 +57,7 @@ pid_t getCurrentThreadId()
 #ifdef PHP_WIN32
 void writeToWindowsSystemDebugger( String msg )
 {
-    ELASTICAPM_ASSERT_VALID_STRING( msg );
+    ELASTIC_APM_ASSERT_VALID_STRING( msg );
 
     OutputDebugStringA( msg );
 }
@@ -66,7 +66,7 @@ void writeToWindowsSystemDebugger( String msg )
 #ifdef PHP_WIN32
 bool getTimeZoneShiftOnWindows( long* secondsAheadUtc )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( secondsAheadUtc );
+    ELASTIC_APM_ASSERT_VALID_PTR( secondsAheadUtc );
 
     TIME_ZONE_INFORMATION timeZoneInformation = { 0 };
 
@@ -88,14 +88,14 @@ String streamErrNo( int errnoValue, TextOutputStream* txtOutStream )
 {
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
     const size_t freeSpaceSize = textOutputStreamGetFreeSpaceSize( txtOutStream );
     if ( freeSpaceSize == 0 ) return textOutputStreamEndEntryAsOverflowed( &txtOutStreamStateOnEntryStart, txtOutStream );
 
     // +1 to detect overflow and +1 for terminating '\0'
     const size_t freeSizePlus = freeSpaceSize + 2;
-    ELASTICAPM_ASSERT_VALID_OBJ( assertValidEndPtrIntoTextOutputStream( txtOutStreamStateOnEntryStart.freeSpaceBegin + freeSizePlus, txtOutStream ) );
+    ELASTIC_APM_ASSERT_VALID_OBJ( assertValidEndPtrIntoTextOutputStream( txtOutStreamStateOnEntryStart.freeSpaceBegin + freeSizePlus, txtOutStream ) );
 
     // Write terminating zero to detect if anything was written to the buffer
     // by the function converting errno to string
@@ -129,8 +129,8 @@ String streamErrNo( int errnoValue, TextOutputStream* txtOutStream )
 size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferSize )
 {
     // TODO: Sergey Kleyman: Implement: captureStackTraceWindows
-    ELASTICAPM_UNUSED( addressesBuffer );
-    ELASTICAPM_UNUSED( addressesBufferSize );
+    ELASTIC_APM_UNUSED( addressesBuffer );
+    ELASTIC_APM_UNUSED( addressesBufferSize );
     return 0;
 }
 
@@ -141,9 +141,9 @@ String streamStackTraceWindows(
         TextOutputStream* txtOutStream )
 {
     // TODO: Sergey Kleyman: Implement: streamStackTraceWindows
-    ELASTICAPM_UNUSED( addresses );
-    ELASTICAPM_UNUSED( addressesCount );
-    ELASTICAPM_UNUSED( linePrefix );
+    ELASTIC_APM_UNUSED( addresses );
+    ELASTIC_APM_UNUSED( addressesCount );
+    ELASTIC_APM_UNUSED( linePrefix );
     return streamString( "", txtOutStream );
 }
 
@@ -157,18 +157,18 @@ String streamStackTraceLinux(
 {
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
     char** addressesAsSymbols = backtrace_symbols( addresses, addressesCount );
     if ( addressesAsSymbols == NULL )
     {
         streamPrintf( txtOutStream, "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
-        ELASTICAPM_FOR_EACH_INDEX( i, addressesCount )
+        ELASTIC_APM_FOR_EACH_INDEX( i, addressesCount )
             streamPrintf( txtOutStream, "%s%p\n", linePrefix, addresses[ i ] );
     }
     else
     {
-        ELASTICAPM_FOR_EACH_INDEX( i, addressesCount )
+        ELASTIC_APM_FOR_EACH_INDEX( i, addressesCount )
             streamPrintf( txtOutStream, "%s%s\n", linePrefix, addressesAsSymbols[ i ] );
 
         free( addressesAsSymbols );
@@ -185,7 +185,7 @@ String streamStackTrace(
         String linePrefix,
         TextOutputStream* txtOutStream )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( addresses );
+    ELASTIC_APM_ASSERT_VALID_PTR( addresses );
 
     if ( addressesCount == 0 ) return streamString( "<stack is empty>", txtOutStream );
 

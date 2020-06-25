@@ -73,12 +73,12 @@ final class InterceptionManager
         $hasExitedByException = false;
         try {
             /**
-             * elasticapm_* functions are provided by the elasticapm extension
+             * elastic_apm_* functions are provided by the elastic_apm extension
              *
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            $returnValueOrThrown = \elasticapm_call_intercepted_original();
+            $returnValueOrThrown = \elastic_apm_call_intercepted_original();
         } catch (Throwable $throwable) {
             $hasExitedByException = true;
             $returnValueOrThrown = $throwable;

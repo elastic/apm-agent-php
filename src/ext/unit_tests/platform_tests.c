@@ -18,35 +18,35 @@
 static
 void stream_errno( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    memset( txtOutStreamBuf, 'x', ELASTICAPM_STATIC_ARRAY_SIZE( txtOutStreamBuf ) );
+    memset( txtOutStreamBuf, 'x', ELASTIC_APM_STATIC_ARRAY_SIZE( txtOutStreamBuf ) );
 
     const String EACCES_str = streamErrNo( EACCES, &txtOutStream );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EACCES_str, "denied" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EACCES_str, "denied" );
     const String EACCES_str2 = streamErrNo( EACCES, &txtOutStream );
     assert_string_equal( EACCES_str, EACCES_str2 );
 
     const String EBADF_str = streamErrNo( EBADF, &txtOutStream );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "Bad" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "file" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "descriptor" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "Bad" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "file" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( EBADF_str, "descriptor" );
 
     textOutputStreamRewind( &txtOutStream );
-    memset( txtOutStreamBuf, 'x', ELASTICAPM_STATIC_ARRAY_SIZE( txtOutStreamBuf ) );
+    memset( txtOutStreamBuf, 'x', ELASTIC_APM_STATIC_ARRAY_SIZE( txtOutStreamBuf ) );
 
     const String ENOENT_str = streamErrNo( ENOENT, &txtOutStream );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "No" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "file" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "directory" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "No" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "file" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "directory" );
 
     const String non_existing_errno_str = streamErrNo( 999, &txtOutStream );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "Unknown" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "Unknown" );
     #ifndef PHP_WIN32
-    ELASTICAPM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "999" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "999" );
     #endif
 }
 
@@ -59,7 +59,7 @@ String streamErrNoUnderTest( TextOutputStream* txtOutStream )
 static
 void stream_errno_overflow( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     testStreamXyzOverflow( streamErrNoUnderTest );
 }
@@ -68,14 +68,14 @@ void stream_errno_overflow( void** testFixtureState )
 // static
 void capturing_stack_trace( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     #ifndef PHP_WIN32
     void* addressesBuffer[ maxCaptureStackTraceDepth ];
-    size_t addressesCount = ELASTICAPM_CAPTURE_STACK_TRACE( &(addressesBuffer[ 0 ]), ELASTICAPM_STATIC_ARRAY_SIZE( addressesBuffer ) );
+    size_t addressesCount = ELASTIC_APM_CAPTURE_STACK_TRACE( &(addressesBuffer[ 0 ]), ELASTIC_APM_STATIC_ARRAY_SIZE( addressesBuffer ) );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE * 10 ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE * 10 ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     String stackTraceAsString = streamStackTrace( &(addressesBuffer[ 0 ]), addressesCount, /* linePrefix: */ "\t", &txtOutStream );
 
     assert_ptr_not_equal( strstr( stackTraceAsString, __FUNCTION__ ), NULL );
@@ -86,9 +86,9 @@ int run_platform_tests()
 {
     const struct CMUnitTest tests [] =
     {
-        ELASTICAPM_CMOCKA_UNIT_TEST( stream_errno ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( stream_errno_overflow ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( capturing_stack_trace ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno_overflow ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( capturing_stack_trace ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

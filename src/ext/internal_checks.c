@@ -24,7 +24,7 @@ const char* internalChecksLevelNames[ numberOfInternalChecksLevels ] =
 String streamInternalChecksLevel( InternalChecksLevel level, TextOutputStream* txtOutStream )
 {
     if ( level == internalChecksLevel_not_set )
-        return streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
+        return streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
 
     if ( level >= numberOfInternalChecksLevels )
         return streamInt( level, txtOutStream );

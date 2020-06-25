@@ -1,19 +1,19 @@
 --TEST--
 Boolean configuration option value 'no' (in this case using ini file) should be interpreted as false and it should be case insensitive
 --SKIPIF--
-<?php if ( ! extension_loaded( 'elasticapm' ) ) die( 'skip'.'Extension elasticapm must be installed' ); ?>
+<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=OFF
 --INI--
-elasticapm.enabled=No
+elastic_apm.enabled=No
 --FILE--
 <?php
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertEqual("ini_get('elasticapm.enabled')", ini_get('elasticapm.enabled'), false);
+elasticApmAssertEqual("ini_get('elastic_apm.enabled')", ini_get('elastic_apm.enabled'), false);
 
-elasticApmAssertSame("elasticapm_is_enabled()", elasticapm_is_enabled(), false);
+elasticApmAssertSame("elastic_apm_is_enabled()", elastic_apm_is_enabled(), false);
 
 echo 'Test completed'
 ?>

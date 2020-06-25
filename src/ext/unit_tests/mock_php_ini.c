@@ -11,7 +11,7 @@
 
 #include "mock_php_ini.h"
 #include "mock_php.h"
-#include "basic_macros.h" // ELASTICAPM_UNUSED
+#include "basic_macros.h" // ELASTIC_APM_UNUSED
 #include "unit_test_util.h"
 
 static bool g_isMockPhpIniInited = false;
@@ -19,20 +19,20 @@ static bool g_isMockPhpIniInited = false;
 
 void initMockPhpIni()
 {
-    ELASTICAPM_CMOCKA_ASSERT( ! g_isMockPhpIniInited );
+    ELASTIC_APM_CMOCKA_ASSERT( ! g_isMockPhpIniInited );
     g_isMockPhpIniInited = true;
 }
 
 void uninitMockPhpIni()
 {
-    ELASTICAPM_CMOCKA_ASSERT( g_isMockPhpIniInited );
+    ELASTIC_APM_CMOCKA_ASSERT( g_isMockPhpIniInited );
     g_isMockPhpIniInited = false;
 }
 
 char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* exists )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( name );
-    ELASTICAPM_UNUSED( orig );
+    ELASTIC_APM_ASSERT_VALID_PTR( name );
+    ELASTIC_APM_UNUSED( orig );
 
 //    assertValidStringToStringMap();
 //
@@ -45,7 +45,7 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
 //
 //    return (char*)entry->value;
 
-    ELASTICAPM_UNUSED( name_length );
+    ELASTIC_APM_UNUSED( name_length );
 
     *exists = 0;
     return NULL;

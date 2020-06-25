@@ -15,7 +15,7 @@
 #include <stdbool.h>
 
 #ifdef PHP_WIN32
-#   ifdef ELASTICAPM_MOCK_CLOCK
+#   ifdef ELASTIC_APM_MOCK_CLOCK
 
 struct timeval
 {
@@ -68,7 +68,7 @@ bool convertUtcToLocalTimeDefaultImpl( time_t input, struct tm* output, long* se
     return true;
 }
 
-#ifdef ELASTICAPM_MOCK_CLOCK
+#ifdef ELASTIC_APM_MOCK_CLOCK
 
 /**
  * @return 0 for success, or -1 for failure (in which case errno is set appropriately)
