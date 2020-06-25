@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "elasticapm_clock.h"
+#include "elastic_apm_clock.h"
 #include "basic_types.h"
 #include "StringView.h"
 #include "ResultCode.h"
@@ -32,9 +32,9 @@ static inline void getCurrentTime( TimePoint* result )
 
 static inline UInt64 timePointToEpochMicroseconds( const TimePoint* timePoint )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( timePoint );
+    ELASTIC_APM_ASSERT_VALID_PTR( timePoint );
 
-    return timePoint->systemClockTime.tv_sec * (UInt64) ( ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_SECOND ) + timePoint->systemClockTime.tv_usec;
+    return timePoint->systemClockTime.tv_sec * (UInt64) ( ELASTIC_APM_NUMBER_OF_MICROSECONDS_IN_SECOND ) + timePoint->systemClockTime.tv_usec;
 }
 
 static inline UInt64 getCurrentTimeEpochMicroseconds()
@@ -47,8 +47,8 @@ static inline UInt64 getCurrentTimeEpochMicroseconds()
 static inline
 Int64 durationMicroseconds( const TimePoint* start, const TimePoint* end )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( start );
-    ELASTICAPM_ASSERT_VALID_PTR( end );
+    ELASTIC_APM_ASSERT_VALID_PTR( start );
+    ELASTIC_APM_ASSERT_VALID_PTR( end );
 
     return timePointToEpochMicroseconds( end ) - timePointToEpochMicroseconds( start );
 }
@@ -57,7 +57,7 @@ Int64 durationMicroseconds( const TimePoint* start, const TimePoint* end )
 static inline
 double durationMicrosecondsToMilliseconds( Int64 durationMicros )
 {
-    return ( (double) durationMicros ) / ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
+    return ( (double) durationMicros ) / ELASTIC_APM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
 }
 
 enum DurationUnits

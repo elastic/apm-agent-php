@@ -17,22 +17,22 @@ void gen_numbered_intercepting_callbacks_src(int numberedInterceptingCallbacksCo
 {
     // See "src/ext/numbered_intercepting_callbacks.h"
 
-    ELASTICAPM_FOR_EACH_INDEX_EX( unsigned int, i, numberedInterceptingCallbacksCount )
+    ELASTIC_APM_FOR_EACH_INDEX_EX( unsigned int, i, numberedInterceptingCallbacksCount )
     {
-        printf("ELASTICAPM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK( %u )""\n", i);
+        printf("ELASTIC_APM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK( %u )""\n", i);
     }
     printf("\n");
     printf("enum { numberedInterceptingCallbacksCount = %u };""\n", numberedInterceptingCallbacksCount);
     printf("static zif_handler g_numberedInterceptingCallback[ numberedInterceptingCallbacksCount ] =\n");
     printf("{\n");
-    ELASTICAPM_FOR_EACH_INDEX_EX( unsigned int, i, numberedInterceptingCallbacksCount )
+    ELASTIC_APM_FOR_EACH_INDEX_EX( unsigned int, i, numberedInterceptingCallbacksCount )
     {
-        printf("\t""[ %u ] = ELASTICAPM_NUMBERED_INTERCEPTING_CALLBACK_NAME( %u )", i, i);
+        printf("\t""[ %u ] = ELASTIC_APM_NUMBERED_INTERCEPTING_CALLBACK_NAME( %u )", i, i);
         if ( i != numberedInterceptingCallbacksCount - 1 ) printf(",");
         printf("\n");
     }
     printf("};\n");
     printf("\n");
-    printf("#undef ELASTICAPM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK""\n");
-    printf("#undef ELASTICAPM_NUMBERED_INTERCEPTING_CALLBACK_NAME""\n");
+    printf("#undef ELASTIC_APM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK""\n");
+    printf("#undef ELASTIC_APM_NUMBERED_INTERCEPTING_CALLBACK_NAME""\n");
 }

@@ -29,11 +29,11 @@ final class BootstrapStageLogger
         /** @noinspection PhpUndefinedConstantInspection */
         self::logLevel(
         /**
-         * ELASTICAPM_* constants are provided by the elasticapm extension
+         * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
          * @phpstan-ignore-next-line
          */
-            ELASTICAPM_LOG_LEVEL_TRACE,
+            ELASTIC_APM_LOG_LEVEL_TRACE,
             $message,
             $srcCodeLine,
             $srcCodeFunc
@@ -48,11 +48,11 @@ final class BootstrapStageLogger
         /** @noinspection PhpUndefinedConstantInspection */
         self::logLevel(
         /**
-         * ELASTICAPM_* constants are provided by the elasticapm extension
+         * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
          * @phpstan-ignore-next-line
          */
-            ELASTICAPM_LOG_LEVEL_DEBUG,
+            ELASTIC_APM_LOG_LEVEL_DEBUG,
             $message,
             $srcCodeLine,
             $srcCodeFunc
@@ -67,11 +67,11 @@ final class BootstrapStageLogger
         /** @noinspection PhpUndefinedConstantInspection */
         self::logLevel(
         /**
-         * ELASTICAPM_* constants are provided by the elasticapm extension
+         * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
          * @phpstan-ignore-next-line
          */
-            ELASTICAPM_LOG_LEVEL_CRITICAL,
+            ELASTIC_APM_LOG_LEVEL_CRITICAL,
             $message,
             $srcCodeLine,
             $srcCodeFunc
@@ -104,12 +104,12 @@ final class BootstrapStageLogger
         }
 
         /**
-         * elasticapm_* functions are provided by the elasticapm extension
+         * elastic_apm_* functions are provided by the elastic_apm extension
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        \elasticapm_log(
+        \elastic_apm_log(
             0 /* $isForced */,
             $statementLevel,
             'Bootstrap' /* category */,

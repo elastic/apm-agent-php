@@ -49,14 +49,14 @@ class EventSender implements EventSinkInterface
             $serializedEvents .= '}';
         }
 
-        if (extension_loaded('elasticapm')) {
+        if (extension_loaded('elastic_apm')) {
             /**
-             * elasticapm_* functions are provided by the elasticapm extension
+             * elastic_apm_* functions are provided by the elastic_apm extension
              *
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            \elasticapm_send_to_server($serializedMetadata, $serializedEvents);
+            \elastic_apm_send_to_server($serializedMetadata, $serializedEvents);
         }
     }
 

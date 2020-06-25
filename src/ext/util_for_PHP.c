@@ -11,7 +11,7 @@
 
 #include "util_for_PHP.h"
 #include <php_main.h>
-#include "elasticapm_version.h"
+#include "elastic_apm_version.h"
 #if defined(PHP_WIN32) && ! defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
 #endif
@@ -20,11 +20,11 @@
 #include "time_util.h"
 #include "ConfigManager.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_UTIL
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
 ResultCode loadPhpFile( const char* filename TSRMLS_DC )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
 
     ResultCode resultCode;
     size_t filename_len = strlen( filename );
@@ -37,7 +37,7 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
 
     if ( filename_len == 0 )
     {
-        ELASTICAPM_LOG_ERROR( "filename_len == 0" );
+        ELASTIC_APM_LOG_ERROR( "filename_len == 0" );
         resultCode = resultFailure;
         goto failure;
     }
@@ -45,7 +45,7 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
     ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
     if ( ret != SUCCESS )
     {
-        ELASTICAPM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
+        ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
         resultCode = resultFailure;
         goto failure;
     }
@@ -58,7 +58,7 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
     ZVAL_NULL( &dummy );
     if ( ! zend_hash_add( &EG( included_files ), opened_path, &dummy ) )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_add failed. filename: %s", filename );
+        ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. filename: %s", filename );
         zend_file_handle_dtor( &file_handle );
         resultCode = resultFailure;
         goto failure;
@@ -68,7 +68,7 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
     zend_destroy_file_handle( &file_handle );
     if ( ! new_op_array )
     {
-        ELASTICAPM_LOG_ERROR( "zend_compile_file failed. filename: %s", filename );
+        ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. filename: %s", filename );
         resultCode = resultFailure;
         goto failure;
     }
@@ -93,7 +93,7 @@ ResultCode loadPhpFile( const char* filename TSRMLS_DC )
         opened_path = NULL;
     }
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -105,7 +105,7 @@ void getArgsFromZendExecuteData( zend_execute_data* execute_data, size_t dstArra
     *argsCount = ZEND_CALL_NUM_ARGS( execute_data );
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 0, /* max_num_args: */ ( (int) dstArraySize ) )
     Z_PARAM_OPTIONAL
-    ELASTICAPM_FOR_EACH_INDEX( i, *argsCount )
+    ELASTIC_APM_FOR_EACH_INDEX( i, *argsCount )
     {
         zval* pArgAsZval;
         Z_PARAM_ZVAL( pArgAsZval )
@@ -119,7 +119,7 @@ typedef void (* ConsumeZvalFunc)( void* ctx, const zval* pZval );
 static
 ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], ConsumeZvalFunc consumeRetVal, void* consumeRetValCtx )
 {
-    ELASTICAPM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s', argsCount: %u"
+    ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s', argsCount: %u"
                                                   , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
 
     ResultCode resultCode;
@@ -139,7 +139,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
             , args TSRMLS_CC );
     if ( callUserFunctionRetVal != SUCCESS )
     {
-        ELASTICAPM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."
+        ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."
                 , callUserFunctionRetVal, (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
         resultCode = resultFailure;
         goto failure;
@@ -153,7 +153,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
     zval_dtor( &phpFunctionNameAsZval );
     zval_dtor( &phpFunctionRetVal );
 
-    ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel, "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel, "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -163,8 +163,8 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
 static
 void consumeBoolRetVal( void* ctx, const zval* pZval )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( ctx );
-    ELASTICAPM_ASSERT_VALID_PTR( pZval );
+    ELASTIC_APM_ASSERT_VALID_PTR( ctx );
+    ELASTIC_APM_ASSERT_VALID_PTR( pZval );
 
     if ( Z_TYPE_P( pZval ) == IS_TRUE )
     {
@@ -172,7 +172,7 @@ void consumeBoolRetVal( void* ctx, const zval* pZval )
     }
     else
     {
-        ELASTICAPM_ASSERT( Z_TYPE_P( pZval ) == IS_FALSE, "Z_TYPE_P( pZval ) as int: %d", (int) ( Z_TYPE_P( pZval ) ) );
+        ELASTIC_APM_ASSERT( Z_TYPE_P( pZval ) == IS_FALSE, "Z_TYPE_P( pZval ) as int: %d", (int) ( Z_TYPE_P( pZval ) ) );
         *((bool*)ctx) = false;
     }
 }
@@ -190,8 +190,8 @@ ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, LogLevel logLevel
 static
 void consumeZvalRetVal( void* ctx, const zval* pZval )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( ctx );
-    ELASTICAPM_ASSERT_VALID_PTR( pZval );
+    ELASTIC_APM_ASSERT_VALID_PTR( ctx );
+    ELASTIC_APM_ASSERT_VALID_PTR( pZval );
 
     ZVAL_COPY( ((zval*)ctx), pZval );
 }
@@ -207,16 +207,16 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
 {
     // https://curl.haxx.se/libcurl/c/CURLOPT_WRITEFUNCTION.html
     // size (unusedSizeParam) is always 1
-    ELASTICAPM_UNUSED( unusedSizeParam );
-    ELASTICAPM_UNUSED( unusedUserDataParam );
+    ELASTIC_APM_UNUSED( unusedSizeParam );
+    ELASTIC_APM_UNUSED( unusedUserDataParam );
 
-    ELASTICAPM_LOG_DEBUG( "APM Server's response body [length: %"PRIu64"]: %.*s", (UInt64) dataSize, (int) dataSize, (const char*) data );
+    ELASTIC_APM_LOG_DEBUG( "APM Server's response body [length: %"PRIu64"]: %.*s", (UInt64) dataSize, (int) dataSize, (const char*) data );
     return dataSize;
 }
 
 ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView serializedEvents )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Sending events to APM Server..."
             " serializedEvents [length: %"PRIu64"]:\n%.*s"
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
@@ -246,7 +246,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     curl = curl_easy_init();
     if ( curl == NULL )
     {
-        ELASTICAPM_LOG_ERROR( "curl_easy_init() returned NULL" );
+        ELASTIC_APM_LOG_ERROR( "curl_easy_init() returned NULL" );
         resultCode = resultFailure;
         goto failure;
     }
@@ -262,7 +262,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
         snprintfRetVal = snprintf( auth, authBufferSize, "Authorization: Bearer %s", config->secretToken );
         if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
         {
-            ELASTICAPM_LOG_ERROR( "Failed to build Authorization header. snprintfRetVal: %d", snprintfRetVal );
+            ELASTIC_APM_LOG_ERROR( "Failed to build Authorization header. snprintfRetVal: %d", snprintfRetVal );
             resultCode = resultFailure;
             goto failure;
         }
@@ -271,11 +271,12 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     chunk = curl_slist_append( chunk, "Content-Type: application/x-ndjson" );
     curl_easy_setopt( curl, CURLOPT_HTTPHEADER, chunk );
 
-    // User agent
-    snprintfRetVal = snprintf( userAgent, userAgentBufferSize, "elasticapm-php/%s", PHP_ELASTICAPM_VERSION );
+    // User agent - "elasticapm-<language>/<version>" (no separators between "elastic" and "apm" is on purpose)
+	// For example, "elasticapm-java/1.2.3" or "elasticapm-dotnet/1.2.3"
+    snprintfRetVal = snprintf( userAgent, userAgentBufferSize, "elasticapm-php/%s", PHP_ELASTIC_APM_VERSION );
     if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
     {
-        ELASTICAPM_LOG_ERROR( "Failed to build User-Agent header. snprintfRetVal: %d", snprintfRetVal );
+        ELASTIC_APM_LOG_ERROR( "Failed to build User-Agent header. snprintfRetVal: %d", snprintfRetVal );
         resultCode = resultFailure;
         goto failure;
     }
@@ -284,7 +285,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     snprintfRetVal = snprintf( url, urlBufferSize, "%s/intake/v2/events", config->serverUrl );
     if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
     {
-        ELASTICAPM_LOG_ERROR( "Failed to build full URL to APM Server's intake API. snprintfRetVal: %d", snprintfRetVal );
+        ELASTIC_APM_LOG_ERROR( "Failed to build full URL to APM Server's intake API. snprintfRetVal: %d", snprintfRetVal );
         resultCode = resultFailure;
         goto failure;
     }
@@ -293,21 +294,21 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        ELASTICAPM_LOG_ERROR( "Sending events to APM Server failed. URL: `%s'. Error message: `%s'.", url, curl_easy_strerror( result ) );
+        ELASTIC_APM_LOG_ERROR( "Sending events to APM Server failed. URL: `%s'. Error message: `%s'.", url, curl_easy_strerror( result ) );
         resultCode = resultFailure;
         goto failure;
     }
 
     long responseCode;
     curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &responseCode );
-    ELASTICAPM_LOG_DEBUG( "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
+    ELASTIC_APM_LOG_DEBUG( "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
 
     resultCode = resultSuccess;
 
     finally:
     if ( curl != NULL ) curl_easy_cleanup( curl );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:

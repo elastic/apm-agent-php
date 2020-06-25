@@ -18,7 +18,7 @@
 static
 void dummy( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
 }
 
@@ -26,7 +26,7 @@ int run_config_tests()
 {
     const struct CMUnitTest tests [] =
     {
-        ELASTICAPM_CMOCKA_UNIT_TEST( dummy ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( dummy ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

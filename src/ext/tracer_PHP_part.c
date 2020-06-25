@@ -15,18 +15,18 @@
 #include "util_for_PHP.h"
 #include "basic_macros.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_C_TO_PHP
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
-#define ELASTICAPM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
-#define ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "bootstrap"
-#define ELASTICAPM_PHP_PART_SHUTDOWN_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "shutdown"
-#define ELASTICAPM_PHP_PART_INTERCEPTED_CALL_FUNC ELASTICAPM_PHP_PART_FUNC_PREFIX "interceptedCall"
+#define ELASTIC_APM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
+#define ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "bootstrap"
+#define ELASTIC_APM_PHP_PART_SHUTDOWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "shutdown"
+#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCall"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
                                              , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
 
     ResultCode resultCode;
@@ -41,25 +41,25 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
         // For now we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
         resultCode = resultSuccess;
         goto finally;
     }
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
 
     ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel )
     ZVAL_DOUBLE( &requestInitStartTimeZval, ((double)timePointToEpochMicroseconds( requestInitStartTime )) )
     zval bootstrapTracerPhpPartArgs[] = { maxEnabledLevel, requestInitStartTimeZval };
-    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC )
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC )
             , logLevel_debug
-            , /* argsCount */ ELASTICAPM_STATIC_ARRAY_SIZE( bootstrapTracerPhpPartArgs )
+            , /* argsCount */ ELASTIC_APM_STATIC_ARRAY_SIZE( bootstrapTracerPhpPartArgs )
             , /* args */ bootstrapTracerPhpPartArgs
             , &bootstrapTracerPhpPartRetVal ) );
     if ( ! bootstrapTracerPhpPartRetVal )
     {
-        ELASTICAPM_LOG_CRITICAL( "%s failed (returned false). See log for more details.", ELASTICAPM_PHP_PART_BOOTSTRAP_FUNC );
+        ELASTIC_APM_LOG_CRITICAL( "%s failed (returned false). See log for more details.", ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC );
         resultCode = resultFailure;
         goto failure;
     }
@@ -69,7 +69,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
     finally:
     zval_dtor( &requestInitStartTimeZval );
     zval_dtor( &maxEnabledLevel );
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -78,7 +78,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
 
@@ -87,13 +87,13 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
         // For now we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTICAPM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
         resultCode = resultSuccess;
         goto finally;
     }
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( callPhpFunctionRetVoid(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_SHUTDOWN_FUNC )
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetVoid(
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_SHUTDOWN_FUNC )
             , logLevel_debug
             , /* argsCount */ 0
             , /* args */ NULL ) );
@@ -101,10 +101,10 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     resultCode = resultSuccess;
 
     finally:
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -113,7 +113,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
 
 void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     ResultCode resultCode;
 
@@ -142,23 +142,23 @@ void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execut
 
     uint32_t interceptedCallArgsCount;
     getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
-    ELASTICAPM_CALL_IF_FAILED_GOTO(
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
-                    ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_PHP_PART_INTERCEPTED_CALL_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_FUNC )
                     , logLevel_debug
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ return_value ) );
-    ELASTICAPM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( return_value ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( return_value ) );
 
     resultCode = resultSuccess;
 
     finally:
     zval_dtor( &interceptRegistrationIdAsZval );
 
-    ELASTICAPM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
+    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    ELASTICAPM_UNUSED(resultCode);
+    ELASTIC_APM_UNUSED(resultCode);
     return;
 
     failure:

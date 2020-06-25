@@ -13,7 +13,7 @@
 
 /**
  * mockGetEnv is used in "ConfigManager.c"
- * via ELASTICAPM_GETENV_FUNC defined in unit tests' CMakeLists.txt
+ * via ELASTIC_APM_GETENV_FUNC defined in unit tests' CMakeLists.txt
  *
  * mockGetEnv returns `char*` and not `const char*` on purpose
  * because real <stdlib.h> defines getenv as it's done below

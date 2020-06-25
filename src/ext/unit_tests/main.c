@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "basic_types.h"
-#include "elasticapm_is_debug_build.h"
+#include "elastic_apm_is_debug_build.h"
 #ifdef _WIN32
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
@@ -34,7 +34,7 @@ int run_TextOutputStream_tests();
 int run_platform_tests();
 int run_DynamicArray_tests();
 int run_StringToStringMap_tests();
-#if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+#if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 int run_MemoryTracker_tests();
 #endif
 int run_Logger_tests();
@@ -54,7 +54,7 @@ int main( int argc, char* argv[] )
     failedTestsCount += run_platform_tests();
     failedTestsCount += run_DynamicArray_tests();
     failedTestsCount += run_StringToStringMap_tests();
-        #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+        #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     failedTestsCount += run_MemoryTracker_tests();
         #endif
     failedTestsCount += run_Logger_tests();
@@ -84,7 +84,7 @@ void printInfo()
     ;
     printf( "NDEBUG defined: %s\n", NDEBUG_defined );
 
-    printf( "ELASTICAPM_IS_DEBUG_BUILD_01: %u\n", ELASTICAPM_IS_DEBUG_BUILD_01 );
+    printf( "ELASTIC_APM_IS_DEBUG_BUILD_01: %u\n", ELASTIC_APM_IS_DEBUG_BUILD_01 );
 
     printf( "Environment variable %s: %s\n", cmockaAbortOnFailEnvVarName, getenv( cmockaAbortOnFailEnvVarName ) );
 

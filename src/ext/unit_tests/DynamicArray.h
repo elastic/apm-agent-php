@@ -33,40 +33,40 @@ size_t getDynamicArrayCapacity( const DynamicArray* dynArr, size_t elementTypeSi
 ResultCode changeDynamicArrayCapacity( DynamicArray* dynArr, size_t newCapacity, size_t elementTypeSize );
 void removeAllDynamicArrayElements( DynamicArray* dynArr, size_t elementTypeSize );
 
-#define ELASTICAPM_ASSERT_VALID_DYNAMIC_ARRAY( ElementType, dynArr ) \
-    ELASTICAPM_ASSERT_VALID_OBJ( assertValidDynamicArray( (dynArr), sizeof( ElementType ) ) )
+#define ELASTIC_APM_ASSERT_VALID_DYNAMIC_ARRAY( ElementType, dynArr ) \
+    ELASTIC_APM_ASSERT_VALID_OBJ( assertValidDynamicArray( (dynArr), sizeof( ElementType ) ) )
 
-#define ELASTICAPM_FOR_EACH_DYNAMIC_ARRAY_ELEMENT( ElementType, elementPtrVar, dynArr ) \
+#define ELASTIC_APM_FOR_EACH_DYNAMIC_ARRAY_ELEMENT( ElementType, elementPtrVar, dynArr ) \
     for ( ElementType* elementPtrVar = (ElementType*)((dynArr)->elements), * elementsEnd = ((ElementType*)((dynArr)->elements)) + (dynArr)->size ; \
             (elementPtrVar) != elementsEnd ; \
             ++(elementPtrVar) )
 
-#define ELASTICAPM_MAKE_DYNAMIC_ARRAY( ElementType ) \
+#define ELASTIC_APM_MAKE_DYNAMIC_ARRAY( ElementType ) \
         ((DynamicArray){ .capacity = 0, .size = 0, .elements = NULL })
 
 
-#define ELASTICAPM_DESTRUCT_DYNAMIC_ARRAY( ElementType, dynArr ) \
+#define ELASTIC_APM_DESTRUCT_DYNAMIC_ARRAY( ElementType, dynArr ) \
     destructDynamicArray( (dynArr), sizeof( ElementType ) )
 
-#define ELASTICAPM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO( ElementType, dynArr, elementToAdd ) \
-    ELASTICAPM_CALL_IF_FAILED_GOTO( addToDynamicArrayBack( (dynArr), (elementToAdd), sizeof( ElementType ) ) )
+#define ELASTIC_APM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO( ElementType, dynArr, elementToAdd ) \
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToDynamicArrayBack( (dynArr), (elementToAdd), sizeof( ElementType ) ) )
 
-#define ELASTICAPM_GET_DYNAMIC_ARRAY_SIZE( ElementType, dynArr ) \
+#define ELASTIC_APM_GET_DYNAMIC_ARRAY_SIZE( ElementType, dynArr ) \
     getDynamicArraySize( (dynArr), sizeof( ElementType ) )
 
-#define ELASTICAPM_GET_DYNAMIC_ARRAY_ELEMENT_AT( ElementType, dynArr, index, outPtr ) \
+#define ELASTIC_APM_GET_DYNAMIC_ARRAY_ELEMENT_AT( ElementType, dynArr, index, outPtr ) \
     do { \
         outPtr = (ElementType*)( getDynamicArrayElementAt( (dynArr), (index), sizeof( ElementType ) ) ); \
     } while( 0 )
 
-#define ELASTICAPM_REMOVE_DYNAMIC_ARRAY_ELEMENT_AT( ElementType, dynArr, index ) \
+#define ELASTIC_APM_REMOVE_DYNAMIC_ARRAY_ELEMENT_AT( ElementType, dynArr, index ) \
     removeDynamicArrayElementAt( (dynArr), (index), sizeof( ElementType ) )
 
-#define ELASTICAPM_GET_DYNAMIC_ARRAY_CAPACITY( ElementType, dynArr ) \
+#define ELASTIC_APM_GET_DYNAMIC_ARRAY_CAPACITY( ElementType, dynArr ) \
     getDynamicArrayCapacity( (dynArr), sizeof( ElementType ) )
 
-#define ELASTICAPM_CHANGE_DYNAMIC_ARRAY_CAPACITY_IF_FAILED_GOTO( ElementType, dynArr, newCapacity ) \
-    ELASTICAPM_CALL_IF_FAILED_GOTO( changeDynamicArrayCapacity( (dynArr), (newCapacity), sizeof( ElementType ) ) )
+#define ELASTIC_APM_CHANGE_DYNAMIC_ARRAY_CAPACITY_IF_FAILED_GOTO( ElementType, dynArr, newCapacity ) \
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( changeDynamicArrayCapacity( (dynArr), (newCapacity), sizeof( ElementType ) ) )
 
-#define ELASTICAPM_REMOVE_ALL_DYNAMIC_ARRAY_ELEMENTS( ElementType, dynArr ) \
+#define ELASTIC_APM_REMOVE_ALL_DYNAMIC_ARRAY_ELEMENTS( ElementType, dynArr ) \
     removeAllDynamicArrayElements( (dynArr), sizeof( ElementType ) )

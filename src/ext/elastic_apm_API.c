@@ -9,32 +9,32 @@
    +----------------------------------------------------------------------+
  */
 
-#include "elasticapm_API.h"
+#include "elastic_apm_API.h"
 #include "util.h"
 #include "log.h"
 #include "Tracer.h"
 #include "util_for_PHP.h"
-#include "elasticapm_alloc.h"
+#include "elastic_apm_alloc.h"
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_EXT_API
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
 
 bool elasticApmIsEnabled()
 {
     const bool result = getTracerCurrentConfigSnapshot( getGlobalTracer() )->enabled;
 
-    ELASTICAPM_LOG_TRACE( "Result: %s", boolToString( result ) );
+    ELASTIC_APM_LOG_TRACE( "Result: %s", boolToString( result ) );
     return result;
 }
 
 ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "optionName: `%s'", optionName );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "optionName: `%s'", optionName );
 
-    char txtOutStreamBuf[ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     GetConfigManagerOptionValueByNameResult getOptValueByNameRes;
-    getOptValueByNameRes.txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    getOptValueByNameRes.txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     getOptValueByNameRes.streamedParsedValue = NULL;
     const ResultCode resultCode = getConfigManagerOptionValueByName(
             getGlobalTracer()->configManager
@@ -42,7 +42,7 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
             , &getOptValueByNameRes );
     if ( resultCode == resultSuccess ) *return_value = getOptValueByNameRes.parsedValueAsZval;
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG(
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG(
             "ResultCode: %s. Option's: name: `%s', value: %s"
             , resultCodeToString( resultCode ), optionName, getOptValueByNameRes.streamedParsedValue );
     return resultCode;
@@ -68,10 +68,10 @@ static zif_handler g_interceptedCallOriginalHandler = NULL;
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
-    ELASTICAPM_ASSERT(g_interceptedCallZendExecuteData == NULL, "");
-    ELASTICAPM_ASSERT(g_interceptedCallOriginalHandler == NULL, "");
+    ELASTIC_APM_ASSERT(g_interceptedCallZendExecuteData == NULL, "");
+    ELASTIC_APM_ASSERT(g_interceptedCallOriginalHandler == NULL, "");
     g_interceptedCallZendExecuteData = execute_data;
     g_interceptedCallOriginalHandler = g_functionsToInterceptData[ interceptRegistrationId ].originalHandler;
 
@@ -80,7 +80,7 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
     g_interceptedCallZendExecuteData = NULL;
     g_interceptedCallOriginalHandler = NULL;
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 }
 
 void resetCallInterceptionOnRequestShutdown()
@@ -88,7 +88,7 @@ void resetCallInterceptionOnRequestShutdown()
     // We restore original handlers in the reverse order
     // so that if the same function is registered for interception more than once
     // the original handler will be restored correctly
-    ELASTICAPM_FOR_EACH_BACKWARDS( i, g_nextFreeFunctionToInterceptId )
+    ELASTIC_APM_FOR_EACH_BACKWARDS( i, g_nextFreeFunctionToInterceptId )
     {
         CallToInterceptData* data = &( g_functionsToInterceptData[ i ] );
 
@@ -102,7 +102,7 @@ bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* intercep
 {
     if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
     {
-        ELASTICAPM_LOG_ERROR( "Reached maxFunctionsToIntercept."
+        ELASTIC_APM_LOG_ERROR( "Reached maxFunctionsToIntercept."
                               " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
                               , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
         return false;
@@ -119,7 +119,7 @@ bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* intercep
 
 ResultCode elasticApmInterceptCallsToInternalMethod( String className, String methodName, uint32_t* interceptRegistrationId )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
 
     ResultCode resultCode;
 
@@ -131,7 +131,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
     if ( classEntry == NULL )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
+        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
         resultCode = resultFailure;
         goto failure;
     }
@@ -139,7 +139,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     zend_function* funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
     if ( funcEntry == NULL )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
+        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
                               " className: `%s'; methodName: `%s'", className, methodName );
         resultCode = resultFailure;
         goto failure;
@@ -155,7 +155,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
     finally:
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -164,14 +164,14 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
 ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* interceptRegistrationId )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
 
     ResultCode resultCode;
 
     zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
     if ( funcEntry == NULL )
     {
-        ELASTICAPM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
                               " functionName: `%s'", functionName );
         resultCode = resultFailure;
         goto failure;
@@ -187,7 +187,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
     finally:
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:
@@ -196,30 +196,30 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
 void elasticApmCallInterceptedOriginal( zval* return_value )
 {
-    ELASTICAPM_LOG_TRACE_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
-    ELASTICAPM_ASSERT(g_interceptedCallZendExecuteData != NULL, "");
-    ELASTICAPM_ASSERT(g_interceptedCallOriginalHandler != NULL, "");
+    ELASTIC_APM_ASSERT(g_interceptedCallZendExecuteData != NULL, "");
+    ELASTIC_APM_ASSERT(g_interceptedCallOriginalHandler != NULL, "");
 
     g_interceptedCallOriginalHandler( g_interceptedCallZendExecuteData, return_value );
 
-    ELASTICAPM_LOG_TRACE_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
 
 ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView serializedEvents )
 {
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
     sendEventsToApmServer( getTracerCurrentConfigSnapshot( tracer ), serializedEvents );
 
     resultCode = resultSuccess;
 
     finally:
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
 
     failure:

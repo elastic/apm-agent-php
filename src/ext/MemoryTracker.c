@@ -11,14 +11,14 @@
 
 #include "MemoryTracker.h"
 
-#if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+#if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_MEM_TRACKER
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER
 
 #include <stddef.h>
 #include "util.h"
 #include "TextOutputStream.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "basic_macros.h"
 #include "IntrusiveDoublyLinkedList.h"
 #include "log.h"
@@ -67,18 +67,18 @@ typedef struct DeserializedTrackingData DeserializedTrackingData;
 
 void constructMemoryTracker( MemoryTracker* memTracker )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( memTracker );
+    ELASTIC_APM_ASSERT_VALID_PTR( memTracker );
 
     /// Set initial level to the highest value
     /// because we can only reduce memory tracking level
     /// See also reconfigureMemoryTracker() in .h
     memTracker->level = memoryTrackingLevel_all;
-    memTracker->abortOnMemoryLeak = ELASTICAPM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK;
+    memTracker->abortOnMemoryLeak = ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK;
     memTracker->allocatedPersistent = 0;
     memTracker->allocatedRequestScoped = 0;
     initIntrusiveDoublyLinkedList( &memTracker->allocatedBlocks );
 
-    ELASTICAPM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
+    ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
 }
 
 void memoryTrackerRequestInit( MemoryTracker* memTracker )
@@ -97,7 +97,7 @@ size_t calcSizeBeforeTrackingData( size_t originallyRequestedSize )
 static
 size_t calcStackTraceAddressesSize( size_t stackTraceAddressesCount )
 {
-    return stackTraceAddressesCount * ELASTICAPM_FIELD_SIZEOF( DeserializedTrackingData, stackTraceAddresses[ 0 ] );
+    return stackTraceAddressesCount * ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, stackTraceAddresses[ 0 ] );
 }
 
 size_t memoryTrackerCalcSizeToAlloc(
@@ -110,7 +110,7 @@ size_t memoryTrackerCalcSizeToAlloc(
     return calcSizeBeforeTrackingData( originallyRequestedSize ) +
            sizeof( EmbeddedTrackingDataHeader ) +
            calcStackTraceAddressesSize( stackTraceAddressesCount ) +
-           ELASTICAPM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic );
+           ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic );
 }
 
 static
@@ -137,7 +137,7 @@ void addToTrackedAllocatedBlocks(
         size_t stackTraceAddressesCount )
 {
     EmbeddedTrackingDataHeader* trackingDataHeader = allocatedBlockToTrackingData( allocatedBlock, originallyRequestedSize );
-    ELASTICAPM_ZERO_STRUCT( trackingDataHeader );
+    ELASTIC_APM_ZERO_STRUCT( trackingDataHeader );
 
     addToIntrusiveDoublyLinkedListBack( &memTracker->allocatedBlocks, &trackingDataHeader->intrusiveNode );
 
@@ -155,7 +155,7 @@ void addToTrackedAllocatedBlocks(
         postHeader += calcStackTraceAddressesSize( stackTraceAddressesCount );
     }
 
-    memcpy( postHeader, &suffixMagicExpectedValue, ELASTICAPM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
+    memcpy( postHeader, &suffixMagicExpectedValue, ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
 }
 
 void memoryTrackerAfterAlloc(
@@ -170,9 +170,9 @@ void memoryTrackerAfterAlloc(
         void* const* stackTraceAddresses,
         size_t stackTraceAddressesCount )
 {
-    ELASTICAPM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
-    ELASTICAPM_ASSERT_GE_UINT64( actuallyRequestedSize, originallyRequestedSize );
-    ELASTICAPM_ASSERT_LE_UINT64( stackTraceAddressesCount, maxCaptureStackTraceDepth );
+    ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
+    ELASTIC_APM_ASSERT_GE_UINT64( actuallyRequestedSize, originallyRequestedSize );
+    ELASTIC_APM_ASSERT_LE_UINT64( stackTraceAddressesCount, maxCaptureStackTraceDepth );
 
     UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
     *allocated += originallyRequestedSize;
@@ -188,7 +188,7 @@ void memoryTrackerAfterAlloc(
                 stackTraceAddresses,
                 stackTraceAddressesCount );
 
-    ELASTICAPM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
+    ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
 }
 
 static inline
@@ -197,9 +197,9 @@ const char* allocType( bool isPersistent )
     return isPersistent ? "persistent" : "request scoped";
 }
 
-#define ELASTICAPM_REPORT_MEMORY_CORRUPTION_AND_ABORT( fmt, ... ) \
+#define ELASTIC_APM_REPORT_MEMORY_CORRUPTION_AND_ABORT( fmt, ... ) \
     do { \
-        ELASTICAPM_FORCE_LOG_CRITICAL( "Memory corruption detected! " fmt , ##__VA_ARGS__ ); \
+        ELASTIC_APM_FORCE_LOG_CRITICAL( "Memory corruption detected! " fmt , ##__VA_ARGS__ ); \
         elasticApmAbort(); \
     } while ( 0 )
 
@@ -208,7 +208,7 @@ void verifyMagic( String desc, UInt32 actual, UInt32 expected )
 {
     if ( actual == expected ) return;
 
-    ELASTICAPM_REPORT_MEMORY_CORRUPTION_AND_ABORT(
+    ELASTIC_APM_REPORT_MEMORY_CORRUPTION_AND_ABORT(
             "Magic %s is different from expected. Actual: 0x%08"PRIX32". Expected: 0x%08"PRIX32".",
             desc, actual, expected );
 }
@@ -237,7 +237,7 @@ void removeFromTrackedAllocatedBlocks(
             nodeToIntrusiveDoublyLinkedListIterator( &memTracker->allocatedBlocks, &trackingDataHeader->intrusiveNode ) );
 
     trackingDataHeader->prefixMagic = invalidMagicValue;
-    memcpy( postHeader, &invalidMagicValue, ELASTICAPM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
+    memcpy( postHeader, &invalidMagicValue, ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
 }
 
 void memoryTrackerBeforeFree(
@@ -247,12 +247,12 @@ void memoryTrackerBeforeFree(
         bool isPersistent,
         size_t* possibleActuallyRequestedSize )
 {
-    ELASTICAPM_UNUSED( allocatedBlock );
-    ELASTICAPM_ASSERT_VALID_PTR( possibleActuallyRequestedSize );
+    ELASTIC_APM_UNUSED( allocatedBlock );
+    ELASTIC_APM_ASSERT_VALID_PTR( possibleActuallyRequestedSize );
 
     UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
 
-    ELASTICAPM_ASSERT( *allocated >= originallyRequestedSize
+    ELASTIC_APM_ASSERT( *allocated >= originallyRequestedSize
             , "Attempting to free more %s memory than allocated. Allocated: %"PRIu64". Attempting to free: %"PRIu64
             , allocType( isPersistent ), *allocated, (UInt64)originallyRequestedSize );
 
@@ -281,7 +281,7 @@ void streamMemoryBlockAsString(
     streamString( "`", txtOutStream );
     String memBlockAsString = (String)memBlock;
     char bufferToEscape[ escapeNonPrintableCharBufferSize ];
-    ELASTICAPM_FOR_EACH_INDEX( i, numberOfItemsToStream )
+    ELASTIC_APM_FOR_EACH_INDEX( i, numberOfItemsToStream )
         streamPrintf( txtOutStream, "%s", escapeNonPrintableChar( memBlockAsString[ i ], bufferToEscape ) );
     streamString( "'", txtOutStream );
 }
@@ -293,7 +293,7 @@ void streamMemoryBlockAsBinary(
         TextOutputStream* txtOutStream )
 {
     streamString( "[", txtOutStream );
-    ELASTICAPM_FOR_EACH_INDEX( i, numberOfItemsToStream )
+    ELASTIC_APM_FOR_EACH_INDEX( i, numberOfItemsToStream )
         streamPrintf( txtOutStream, " %02X", (UInt)( memBlock[ i ] ) );
     streamString( " ]", txtOutStream );
 }
@@ -305,11 +305,11 @@ String streamMemBlockContent(
 {
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
     const Byte* memBlock = trackingDataToAllocatedBlock( trackingDataHeader );
     const size_t numberOfItemsToStream =
-            ELASTICAPM_MIN( trackingDataHeader->originallyRequestedSize, maxNumberOfBytesFromLeakedAllocationToReport );
+            ELASTIC_APM_MIN( trackingDataHeader->originallyRequestedSize, maxNumberOfBytesFromLeakedAllocationToReport );
 
     const String itemsName = trackingDataHeader->isString ? "chars" : "bytes, in hex";
     if ( numberOfItemsToStream < trackingDataHeader->originallyRequestedSize )
@@ -333,10 +333,10 @@ String streamAllocCallStackTrace(
 
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
     Byte* postHeader = ((Byte*)trackingDataHeader) + sizeof( EmbeddedTrackingDataHeader );
-    ELASTICAPM_ASSERT_LE_UINT64( trackingDataHeader->stackTraceAddressesCount, maxCaptureStackTraceDepth );
+    ELASTIC_APM_ASSERT_LE_UINT64( trackingDataHeader->stackTraceAddressesCount, maxCaptureStackTraceDepth );
     void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
     memcpy( stackTraceAddresses, postHeader, sizeof( void* ) * trackingDataHeader->stackTraceAddressesCount );
     streamStackTrace(
@@ -356,10 +356,10 @@ void reportAllocation(
 {
     const EmbeddedTrackingDataHeader* trackingDataHeader = fromIntrusiveNodeToTrackingData( intrusiveListNode );
 
-    char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE * 10 ];
-    TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE * 10 ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    ELASTICAPM_FORCE_LOG_CRITICAL(
+    ELASTIC_APM_FORCE_LOG_CRITICAL(
             "Allocation #%"PRIu64" (out of %"PRIu64"):"
             " Source location: %s:%u. Originally requested allocation size: %"PRIu64"."
             " Content: %s.\n"
@@ -371,9 +371,9 @@ void reportAllocation(
             streamAllocCallStackTrace( &txtOutStream, trackingDataHeader ) );
 }
 
-#ifdef ELASTICAPM_ON_MEMORY_LEAK_CUSTOM_FUNC
+#ifdef ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC
 // Declare to avoid warnings
-void ELASTICAPM_ON_MEMORY_LEAK_CUSTOM_FUNC();
+void ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
 #endif
 
 static
@@ -382,32 +382,32 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
     if ( allocated == 0 ) return;
 
     const size_t numberOfAllocations = calcIntrusiveDoublyLinkedListSize( &memTracker->allocatedBlocks );
-    const size_t numberOfAllocationsToReport = ELASTICAPM_MIN( numberOfAllocations, maxNumberOfLeakedAllocationsToReport );
+    const size_t numberOfAllocationsToReport = ELASTIC_APM_MIN( numberOfAllocations, maxNumberOfLeakedAllocationsToReport );
     const IntrusiveDoublyLinkedListNode* allocationsToReport[ maxNumberOfLeakedAllocationsToReport ];
 
     // Copy allocation nodes we are going to report
     // because the code below might do more allocations
     {
         size_t allocationIndex = 0;
-        ELASTICAPM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( allocationsIt, &memTracker->allocatedBlocks )
+        ELASTIC_APM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( allocationsIt, &memTracker->allocatedBlocks )
         {
             allocationsToReport[ allocationIndex++ ] = currentNodeIntrusiveDoublyLinkedList( allocationsIt );
             if ( allocationIndex == numberOfAllocationsToReport ) break;
         }
     }
 
-    ELASTICAPM_FORCE_LOG_CRITICAL(
+    ELASTIC_APM_FORCE_LOG_CRITICAL(
             "Memory leak detected! On %s amount of allocated %s memory should be 0, instead it is %"PRIu64,
             whenDesc, allocType( isPersistent ), allocated );
 
-    ELASTICAPM_FORCE_LOG_CRITICAL(
+    ELASTIC_APM_FORCE_LOG_CRITICAL(
             "Number of allocations not freed: %"PRIu64 ". Following are the first %"PRIu64 " not freed allocation(s)", (UInt64) numberOfAllocations, (UInt64) numberOfAllocationsToReport );
 
-    ELASTICAPM_FOR_EACH_INDEX( allocationIndex, numberOfAllocationsToReport)
+    ELASTIC_APM_FOR_EACH_INDEX( allocationIndex, numberOfAllocationsToReport)
         reportAllocation( allocationsToReport[ allocationIndex ], allocationIndex, numberOfAllocations );
 
-    #ifdef ELASTICAPM_ON_MEMORY_LEAK_CUSTOM_FUNC
-    ELASTICAPM_ON_MEMORY_LEAK_CUSTOM_FUNC();
+    #ifdef ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC
+    ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
     #else
     if ( memTracker->abortOnMemoryLeak ) elasticApmAbort();
     #endif
@@ -438,10 +438,10 @@ void destructMemoryTracker( MemoryTracker* memTracker )
 
 MemoryTrackingLevel internalChecksToMemoryTrackingLevel( InternalChecksLevel internalChecksLevel )
 {
-    ELASTICAPM_STATIC_ASSERT( memoryTrackingLevel_not_set == internalChecksLevel_not_set );
-    ELASTICAPM_STATIC_ASSERT( numberOfMemoryTrackingLevels <= numberOfInternalChecksLevels );
+    ELASTIC_APM_STATIC_ASSERT( memoryTrackingLevel_not_set == internalChecksLevel_not_set );
+    ELASTIC_APM_STATIC_ASSERT( numberOfMemoryTrackingLevels <= numberOfInternalChecksLevels );
 
-    ELASTICAPM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all );
+    ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all );
 
     if ( internalChecksLevel >= internalChecksLevel_all ) return memoryTrackingLevel_all;
     if ( internalChecksLevel < ( memoryTrackingLevel_all - 1 ) ) return (MemoryTrackingLevel)internalChecksLevel;
@@ -451,7 +451,7 @@ MemoryTrackingLevel internalChecksToMemoryTrackingLevel( InternalChecksLevel int
 String streamMemoryTrackingLevel( MemoryTrackingLevel level, TextOutputStream* txtOutStream )
 {
     if ( level == memoryTrackingLevel_not_set )
-        return streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
+        return streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
 
     if ( level >= numberOfMemoryTrackingLevels )
         return streamInt( level, txtOutStream );
@@ -459,4 +459,4 @@ String streamMemoryTrackingLevel( MemoryTrackingLevel level, TextOutputStream* t
     return streamString( memoryTrackingLevelNames[ level ], txtOutStream );
 }
 
-#endif // #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+#endif // #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )

@@ -28,12 +28,12 @@ final class RegistrationContext implements RegistrationContextInterface
         callable $interceptedCallTrackerFactory
     ): void {
         /**
-         * elasticapm_* functions are provided by the elasticapm extension
+         * elastic_apm_* functions are provided by the elastic_apm extension
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $interceptRegistrationId = \elasticapm_intercept_calls_to_internal_method($className, $methodName);
+        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method($className, $methodName);
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(
                 $this->dbgCurrentPluginIndex,
@@ -49,12 +49,12 @@ final class RegistrationContext implements RegistrationContextInterface
         callable $interceptedCallTrackerFactory
     ): void {
         /**
-         * elasticapm_* functions are provided by the elasticapm extension
+         * elastic_apm_* functions are provided by the elastic_apm extension
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $interceptRegistrationId = \elasticapm_intercept_calls_to_internal_function($functionName);
+        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_function($functionName);
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(
                 $this->dbgCurrentPluginIndex,

@@ -24,9 +24,9 @@ abstract class AppCodeHostBase extends CliProcessBase
 
     public function __construct(string $runScriptFile)
     {
-        if (!extension_loaded('elasticapm')) {
+        if (!extension_loaded('elastic_apm')) {
             throw new RuntimeException(
-                'Environment hosting component tests application code should have elasticapm extension loaded.'
+                'Environment hosting component tests application code should have elastic_apm extension loaded.'
             );
         }
 

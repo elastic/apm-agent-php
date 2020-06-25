@@ -17,14 +17,14 @@
 static
 void empty_list( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     IntrusiveDoublyLinkedList list;
     initIntrusiveDoublyLinkedList( &list );
     assertValidIntrusiveDoublyLinkedList( &list );
     IntrusiveDoublyLinkedListIterator iterator = beginIntrusiveDoublyLinkedListIterator( &list );
     assertValidIntrusiveDoublyLinkedListIterator( iterator );
-    ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iterator ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iterator ) );
 }
 
 struct MyTestStruct
@@ -46,19 +46,19 @@ void verifyListContent( const IntrusiveDoublyLinkedList* list, int* expectedElem
     assertValidIntrusiveDoublyLinkedList( list );
 
     size_t expectedElementsIndex = 0;
-    ELASTICAPM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( iterator, list )
+    ELASTIC_APM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( iterator, list )
     {
-        ELASTICAPM_CMOCKA_ASSERT( expectedElementsIndex < expectedNumberOfElements );
+        ELASTIC_APM_CMOCKA_ASSERT( expectedElementsIndex < expectedNumberOfElements );
 
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL(
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL(
                 fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator ) )->payload,
                 expectedElements[ expectedElementsIndex ] );
 
         ++expectedElementsIndex;
     }
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( expectedElementsIndex, expectedNumberOfElements );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedElementsIndex, expectedNumberOfElements );
 
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( calcIntrusiveDoublyLinkedListSize( list ), expectedNumberOfElements );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( calcIntrusiveDoublyLinkedListSize( list ), expectedNumberOfElements );
 }
 
 static
@@ -66,7 +66,7 @@ void multiplyEachListElement( IntrusiveDoublyLinkedList* list, int factor )
 {
     assertValidIntrusiveDoublyLinkedList( list );
 
-    ELASTICAPM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( iterator, list )
+    ELASTIC_APM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( iterator, list )
     {
         MyTestStruct* myTestStruct = (MyTestStruct*) fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator ) );
         myTestStruct->payload *= factor;
@@ -82,7 +82,7 @@ IntrusiveDoublyLinkedListIterator findByPayload( const IntrusiveDoublyLinkedList
             break;
 
     if ( ! isEndIntrusiveDoublyLinkedListIterator( iterator ) )
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator ) )->payload, payloadToFind );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator ) )->payload, payloadToFind );
 
     return iterator;
 }
@@ -90,7 +90,7 @@ IntrusiveDoublyLinkedListIterator findByPayload( const IntrusiveDoublyLinkedList
 static
 void various_operations( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     IntrusiveDoublyLinkedList list;
     initIntrusiveDoublyLinkedList( &list );
@@ -99,49 +99,49 @@ void various_operations( void** testFixtureState )
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct1.intrusiveNode );
     {
         int expectedElements[] = { 1 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
     MyTestStruct myTestStruct2 = { .payload = 2 };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct2.intrusiveNode );
     {
         int expectedElements[] = { 1, 2 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
     MyTestStruct myTestStruct3 = { .payload = 3 };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct3.intrusiveNode );
     {
         int expectedElements[] = { 1, 2, 3 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
     MyTestStruct myTestStruct4 = { .payload = 4 };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct4.intrusiveNode );
     {
         int expectedElements[] = { 1, 2, 3, 4 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
 
     multiplyEachListElement( &list, 5 );
     {
         int expectedElements[] = { 1 *5, 2 *5, 3 *5, 4 *5 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct1.payload, 1 *5 );
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct2.payload, 2 *5 );
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct4.payload, 4 *5 );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct1.payload, 1 *5 );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct2.payload, 2 *5 );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct4.payload, 4 *5 );
 
-    ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 123 ) ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 123 ) ) );
 
     IntrusiveDoublyLinkedListIterator iterator1 = findByPayload( &list, 1 * 5 );
-    ELASTICAPM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator1 ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator1 ) );
     IntrusiveDoublyLinkedListIterator iterator2 = findByPayload( &list, 2 * 5 );
-    ELASTICAPM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator2 ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator2 ) );
     IntrusiveDoublyLinkedListIterator iterator3 = nodeToIntrusiveDoublyLinkedListIterator( &list, &myTestStruct3.intrusiveNode );
-    ELASTICAPM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator3 ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator3 ) );
     IntrusiveDoublyLinkedListIterator iterator4 = findByPayload( &list, 4 * 5 );
-    ELASTICAPM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator4 ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isEndIntrusiveDoublyLinkedListIterator( iterator4 ) );
     IntrusiveDoublyLinkedListIterator iteratorEnd = advanceIntrusiveDoublyLinkedListIterator( iterator4 );
-    ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
 
     // Remove the last element: { 1 *5, 2 *5, 3 *5, 4 *5 } => { 1 *5, 2 *5, 3 *5 }
     //                                              ^^^^
@@ -151,19 +151,19 @@ void various_operations( void** testFixtureState )
         assertInvalidatedIntrusiveDoublyLinkedListIterator( iterator4 );
 
         // Verify that neighbouring node(s) are not affected by remove
-        ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
+        ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
 
         // Verify new expected list's content
         int expectedElements[] = { 1 *5, 2 *5, 3 *5 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
 
         // Verify that removed value should not be found
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 4 *5 ) ) );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 4 *5 ) ) );
 
         // Verify that other fields of the removed struct are not affected
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct4.payload, 4 *5 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct4.payload, 4 *5 );
     }
 
     // Remove an element in the middle: { 1 *5, 2 *5, 3 *5 } => { 1 *5, 3 *5 }
@@ -171,23 +171,23 @@ void various_operations( void** testFixtureState )
     {
         removeCurrentNodeIntrusiveDoublyLinkedList( iterator2 );
 
-        ELASTICAPM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator2 );
+        ELASTIC_APM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator2 );
 
         // Verify that neighbouring node(s) are not affected by remove
-        ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator1 );
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator1 ) )->payload, 1 * 5 );
-        ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
+        ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator1 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator1 ) )->payload, 1 * 5 );
+        ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
 
         // Verify new expected list's content
         int expectedElements[] = { 1 *5, 3 *5 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
 
         // Verify that removed value should not be found
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 2 *5 ) ) );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 2 *5 ) ) );
 
         // Verify that other fields of the removed struct are not affected
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
     }
 
     // Remove the first element: { 1 *5, 3 *5 } => { 3 *5 }
@@ -195,21 +195,21 @@ void various_operations( void** testFixtureState )
     {
         removeCurrentNodeIntrusiveDoublyLinkedList( iterator1 );
 
-        ELASTICAPM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator1 );
+        ELASTIC_APM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator1 );
 
         // Verify that neighbouring node(s) are not affected by remove
-        ELASTICAPM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
+        ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( fromNodeToMyTestStruct( currentNodeIntrusiveDoublyLinkedList( iterator3 ) )->payload, 3 * 5 );
 
         // Verify new expected list's content
         int expectedElements[] = { 3 *5 };
-        verifyListContent( &list, expectedElements, ELASTICAPM_STATIC_ARRAY_SIZE( expectedElements ) );
+        verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
 
         // Verify that removed value should not be found
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 1 *5 ) ) );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 1 *5 ) ) );
 
         // Verify that other fields of the removed struct are not affected
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct1.payload, 1 *5 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct1.payload, 1 *5 );
     }
 
     // Remove the only element: { 3 *5 } => {}
@@ -218,16 +218,16 @@ void various_operations( void** testFixtureState )
         removeCurrentNodeIntrusiveDoublyLinkedList( iterator3 );
 
         // Verify that neighbouring node(s) are not affected by remove
-        ELASTICAPM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
+        ELASTIC_APM_ASSERT_INVALIDATED_INTRUSIVE_LINKED_LIST_ITERATOR( iterator3 );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( iteratorEnd ) );
 
         // Verify new expected list's content
         verifyListContent( &list, NULL, 0 );
 
         // Verify that removed value should not be found
-        ELASTICAPM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 3 *5 ) ) );
+        ELASTIC_APM_CMOCKA_ASSERT( isEndIntrusiveDoublyLinkedListIterator( findByPayload( &list, 3 *5 ) ) );
 
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( myTestStruct3.payload, 3 *5 );
     }
 }
 
@@ -235,8 +235,8 @@ int run_IntrusiveDoublyLinkedList_tests()
 {
     const struct CMUnitTest tests [] =
     {
-            ELASTICAPM_CMOCKA_UNIT_TEST( empty_list ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( various_operations ),
+            ELASTIC_APM_CMOCKA_UNIT_TEST( empty_list ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( various_operations ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

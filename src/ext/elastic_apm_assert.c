@@ -9,13 +9,13 @@
    +----------------------------------------------------------------------+
  */
 
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "log.h"
 #include "ConfigManager.h"
 
-#if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+#if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_ASSERT
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_ASSERT
 
 const char* assertLevelNames[ numberOfAssertLevels ] =
 {
@@ -45,7 +45,7 @@ void vElasticApmAssertFailed(
     vLogWithLogger( getGlobalLogger()
                     , /* isForced: */ true
                     , logLevel_critical
-                    , ELASTICAPM_STRING_LITERAL_TO_VIEW( ELASTICAPM_CURRENT_LOG_CATEGORY )
+                    , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CURRENT_LOG_CATEGORY )
                     , makeStringViewFromString( filePath )
                     , lineNumber
                     , makeStringViewFromString( funcName )
@@ -77,10 +77,10 @@ void elasticApmAssertFailed(
 
 AssertLevel internalChecksToAssertLevel( InternalChecksLevel internalChecksLevel )
 {
-    ELASTICAPM_STATIC_ASSERT( assertLevel_not_set == internalChecksLevel_not_set );
-    ELASTICAPM_STATIC_ASSERT( numberOfAssertLevels <= numberOfInternalChecksLevels );
+    ELASTIC_APM_STATIC_ASSERT( assertLevel_not_set == internalChecksLevel_not_set );
+    ELASTIC_APM_STATIC_ASSERT( numberOfAssertLevels <= numberOfInternalChecksLevels );
 
-    ELASTICAPM_ASSERT( ELASTICAPM_IS_IN_INCLUSIVE_RANGE( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all )
+    ELASTIC_APM_ASSERT( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( internalChecksLevel_not_set, internalChecksLevel, internalChecksLevel_all )
                        , "internalChecksLevel: %d", internalChecksLevel );
 
     if ( internalChecksLevel >= internalChecksLevel_all ) return assertLevel_all;
@@ -91,7 +91,7 @@ AssertLevel internalChecksToAssertLevel( InternalChecksLevel internalChecksLevel
 String streamAssertLevel( AssertLevel level, TextOutputStream* txtOutStream )
 {
     if ( level == assertLevel_not_set )
-        return streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
+        return streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "not_set" ), txtOutStream );
 
     if ( level >= numberOfAssertLevels )
         return streamInt( level, txtOutStream );
@@ -99,4 +99,4 @@ String streamAssertLevel( AssertLevel level, TextOutputStream* txtOutStream )
     return streamString( assertLevelNames[ level ], txtOutStream );
 }
 
-#endif // #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+#endif // #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )

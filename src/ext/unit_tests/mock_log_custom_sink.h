@@ -36,4 +36,4 @@ size_t numberOfStatementsInMockLogCustomSink( const MockLogCustomSink* mockLogCu
 String getStatementInMockLogCustomSinkContent( const MockLogCustomSink* mockLogCustomSink, size_t index );
 void clearMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
 
-#define ELASTICAPM_LOG_CATEGORY_C_EXT_UNIT_TESTS "C-Ext Unit tests"
+#define ELASTIC_APM_LOG_CATEGORY_C_EXT_UNIT_TESTS "C-Ext Unit tests"

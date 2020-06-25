@@ -12,7 +12,7 @@
 #include "time_util.h"
 #include <inttypes.h> // PRIu64
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_UTIL
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
 Duration makeDuration( Int64 value, DurationUnits units )
 {
@@ -28,7 +28,7 @@ Duration makeDuration( Int64 value, DurationUnits units )
             return (Duration){ .valueInMilliseconds = value * 1000 * 1000 * 60 };
 
         default:
-            ELASTICAPM_ASSERT( false, "Unknown duration units (as int): %d", units );
+            ELASTIC_APM_ASSERT( false, "Unknown duration units (as int): %d", units );
             return (Duration){ .valueInMilliseconds = value };
     }
 }

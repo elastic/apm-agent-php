@@ -13,7 +13,7 @@
 
 #include <string.h>
 #include "basic_types.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 
 struct StringView
 {
@@ -28,31 +28,31 @@ bool isValidStringView( StringView strView )
     return ( strView.length == 0 ) || isValidPtr( strView.begin );
 }
 
-#define ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView ) \
-    ELASTICAPM_ASSERT( isValidStringView( (strView) ) \
+#define ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView ) \
+    ELASTIC_APM_ASSERT( isValidStringView( (strView) ) \
                         , "begin: %p, length: %"PRIu64, (strView).begin, (UInt64)((strView).length) )
 
 static inline
 StringView makeStringView( const char* begin, size_t length )
 {
-    ELASTICAPM_ASSERT( ( length == 0 ) || isValidPtr( begin )
+    ELASTIC_APM_ASSERT( ( length == 0 ) || isValidPtr( begin )
             , "begin: %p, length: %"PRIu64, begin, (UInt64)length );
 
     StringView strView = { .begin = begin, .length = length };
 
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
     return strView;
 }
 
 static inline
 StringView makeStringViewFromBeginEnd( const char* begin, const char* end )
 {
-    ELASTICAPM_ASSERT( end == begin || ( isValidPtr( begin ) && isValidPtr( end ) && begin <= end )
+    ELASTIC_APM_ASSERT( end == begin || ( isValidPtr( begin ) && isValidPtr( end ) && begin <= end )
                        , "begin: %p, end: %p", begin, end );
 
     StringView strView = { .begin = begin, .length = end - begin };
 
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
     return strView;
 }
 
@@ -65,7 +65,7 @@ StringView makeEmptyStringView()
 static inline
 bool isEmptyStringView( StringView strView )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
 
     return strView.length == 0;
 }
@@ -73,7 +73,7 @@ bool isEmptyStringView( StringView strView )
 static inline
 const char* stringViewEnd( StringView strView )
 {
-    ELASTICAPM_ASSERT_VALID_STRING_VIEW( strView );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
 
     return strView.begin + strView.length;
 }
@@ -81,19 +81,19 @@ const char* stringViewEnd( StringView strView )
 static inline
 StringView makeStringViewFromLiteralHelper( const char* begin, size_t size )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( begin );
-    ELASTICAPM_ASSERT_GE_UINT64( size, 1 );
-    ELASTICAPM_ASSERT_EQ_CHAR( begin[ size - 1 ], '\0' );
+    ELASTIC_APM_ASSERT_VALID_PTR( begin );
+    ELASTIC_APM_ASSERT_GE_UINT64( size, 1 );
+    ELASTIC_APM_ASSERT_EQ_CHAR( begin[ size - 1 ], '\0' );
 
     return makeStringView( begin, /* length: */ size - 1 );
 }
 
-#define ELASTICAPM_STRING_LITERAL_TO_VIEW( stringLiteral ) ( makeStringViewFromLiteralHelper( (stringLiteral), sizeof( (stringLiteral) ) ) )
+#define ELASTIC_APM_STRING_LITERAL_TO_VIEW( stringLiteral ) ( makeStringViewFromLiteralHelper( (stringLiteral), sizeof( (stringLiteral) ) ) )
 
 static inline
 StringView makeStringViewFromString( String zeroTermStr )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( zeroTermStr );
+    ELASTIC_APM_ASSERT_VALID_PTR( zeroTermStr );
 
     return makeStringView( zeroTermStr, /* length: */ strlen( zeroTermStr ) );
 }

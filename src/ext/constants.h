@@ -12,10 +12,10 @@
 #pragma once
 
 #include "basic_macros.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 
 // +1 for terminating '\0'
-#define ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) ( (idSizeBytes) * 2 +1 )
+#define ELASTIC_APM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( idSizeBytes ) ( (idSizeBytes) * 2 +1 )
 
 enum
 {
@@ -23,23 +23,23 @@ enum
     // https://github.com/elastic/apm-server/blob/6.5/docs/spec/spans/v2_span.json#L11
     // 64 random bits ID
     executionSegmentIdSizeInBytes = 8,
-    executionSegmentIdAsHexStringBufferSize = ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( executionSegmentIdSizeInBytes ),
+    executionSegmentIdAsHexStringBufferSize = ELASTIC_APM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( executionSegmentIdSizeInBytes ),
 
     // https://github.com/elastic/apm-server/blob/6.5/docs/spec/transactions/v2_transaction.json#L16
     // 128 random bits ID
     traceIdSizeInBytes = 16,
-    traceIdAsHexStringBufferSize = ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( traceIdSizeInBytes ),
+    traceIdAsHexStringBufferSize = ELASTIC_APM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( traceIdSizeInBytes ),
 
     // https://github.com/elastic/apm-server/blob/6.5/docs/spec/errors/v2_error.json#L13
     // 128 random bits ID
     errorIdSizeInBytes = 16,
-    errorIdAsHexStringBufferSize = ELASTICAPM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( errorIdSizeInBytes ),
+    errorIdAsHexStringBufferSize = ELASTIC_APM_CALC_ID_AS_HEX_STRING_BUFFER_SIZE( errorIdSizeInBytes ),
 
     idMaxSizeInBytes = 100
 };
-ELASTICAPM_STATIC_ASSERT( executionSegmentIdSizeInBytes <= idMaxSizeInBytes );
-ELASTICAPM_STATIC_ASSERT( traceIdSizeInBytes <= idMaxSizeInBytes );
-ELASTICAPM_STATIC_ASSERT( errorIdSizeInBytes <= idMaxSizeInBytes );
+ELASTIC_APM_STATIC_ASSERT( executionSegmentIdSizeInBytes <= idMaxSizeInBytes );
+ELASTIC_APM_STATIC_ASSERT( traceIdSizeInBytes <= idMaxSizeInBytes );
+ELASTIC_APM_STATIC_ASSERT( errorIdSizeInBytes <= idMaxSizeInBytes );
 
-#define ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_SECOND (1000000)
-#define ELASTICAPM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND (1000)
+#define ELASTIC_APM_NUMBER_OF_MICROSECONDS_IN_SECOND (1000000)
+#define ELASTIC_APM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND (1000)

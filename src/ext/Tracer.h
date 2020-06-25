@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include "ConfigManager.h"
 #include "SystemMetrics.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "log.h"
 #include "internal_checks.h"
 #include "MemoryTracker.h"
@@ -28,13 +28,13 @@ typedef struct IniEntriesRegistrationState IniEntriesRegistrationState;
 
 struct Tracer
 {
-        #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+        #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     AssertLevel currentAssertLevel;
         #endif
     InternalChecksLevel currentInternalChecksLevel;
 
     Logger logger;
-        #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+        #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTracker memTracker;
         #endif
     ConfigManager* configManager;

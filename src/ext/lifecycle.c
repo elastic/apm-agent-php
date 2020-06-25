@@ -19,19 +19,19 @@
 #include <php.h>
 #include <zend_compile.h>
 #include <zend_exceptions.h>
-#include "php_elasticapm.h"
+#include "php_elastic_apm.h"
 #include "log.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "util_for_PHP.h"
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "MemoryTracker.h"
 #include "supportability.h"
-#include "elasticapm_alloc.h"
-#include "elasticapm_API.h"
+#include "elastic_apm_alloc.h"
+#include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_LIFECYCLE
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
@@ -43,13 +43,13 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return ELASTICAPM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
     }
 
     StructuredTextToOutputStreamPrinter structTxtToOutStreamPrinter;
     initStructuredTextToOutputStreamPrinter(
             /* in */ &txtOutStream
-                     , /* prefix */ ELASTICAPM_STRING_LITERAL_TO_VIEW( "" )
+                     , /* prefix */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
                      , /* out */ &structTxtToOutStreamPrinter );
 
     printSupportabilityInfo( (StructuredTextPrinter*) &structTxtToOutStreamPrinter );
@@ -66,16 +66,16 @@ void logSupportabilityInfo( LogLevel logLevel )
     };
     char* supportInfoBuffer = NULL;
 
-    ELASTICAPM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
+    ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
     String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
 
-    ELASTICAPM_LOG_WITH_LEVEL( logLevel, "Supportability info:\n%s", supportabilityInfo );
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Supportability info:\n%s", supportabilityInfo );
 
     // resultCode = resultSuccess;
 
     finally:
-    ELASTICAPM_PEFREE_STRING_AND_SET_TO_NULL( supportInfoBufferSize, supportInfoBuffer );
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( supportInfoBufferSize, supportInfoBuffer );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -88,27 +88,27 @@ void elasticApmModuleInit( int type, int moduleNumber )
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     if ( ! tracer->isInited )
     {
         resultCode = resultFailure;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
         goto failure;
     }
 
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_debug );
     config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( ! config->enabled )
     {
         resultCode = resultSuccess;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
@@ -116,19 +116,19 @@ void elasticApmModuleInit( int type, int moduleNumber )
     if ( result != CURLE_OK )
     {
         resultCode = resultFailure;
-        ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "curl_global_init failed" );
+        ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "curl_global_init failed" );
         goto finally;
     }
     tracer->curlInited = true;
 
     resultCode = resultSuccess;
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
 
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -138,11 +138,11 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
 void elasticApmModuleShutdown( int type, int moduleNumber )
 {
-    ELASTICAPM_UNUSED( type );
+    ELASTIC_APM_UNUSED( type );
 
     ResultCode resultCode;
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
@@ -150,7 +150,7 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     if ( ! config->enabled )
     {
         resultCode = resultSuccess;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
@@ -163,26 +163,26 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     unregisterElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
     resultCode = resultSuccess;
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
     destructTracer( tracer );
 
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
 }
 
 void elasticApmRequestInit()
 {
-#if defined(ZTS) && defined(COMPILE_DL_ELASTICAPM)
+#if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -191,25 +191,25 @@ void elasticApmRequestInit()
     if ( ! tracer->isInited )
     {
         resultCode = resultFailure;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
         goto failure;
     }
 
     if ( ! config->enabled )
     {
         resultCode = resultSuccess;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
 
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
-    ELASTICAPM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
     readSystemMetrics( &tracer->startSystemMetricsReading );
 
@@ -217,10 +217,10 @@ void elasticApmRequestInit()
 
     finally:
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -256,20 +256,20 @@ static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
 
     if ( isEmptyStringView( tracer->requestScoped.lastMetadataFromPhpPart ) )
     {
-        ELASTICAPM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
+        ELASTIC_APM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
         resultCode = resultFailure;
         goto failure;
     }
 
     getCurrentTime( &currentTime );
 
-    ELASTICAPM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
+    ELASTIC_APM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
     TextOutputStream serializedEventsTxtOutStream =
             makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
     serializedEventsTxtOutStream.autoTermZero = false;
 
     streamStringView( tracer->requestScoped.lastMetadataFromPhpPart, &serializedEventsTxtOutStream );
-    streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "\n" ), &serializedEventsTxtOutStream );
+    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" ), &serializedEventsTxtOutStream );
     serializedEventsTxtOutStream.autoTermZero = true;
     appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
 
@@ -278,12 +278,12 @@ static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
     resultCode = resultSuccess;
 
     finally:
-    ELASTICAPM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -296,19 +296,19 @@ void elasticApmRequestShutdown()
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     if ( ! tracer->isInited )
     {
         resultCode = resultFailure;
-        ELASTICAPM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
+        ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
         goto failure;
     }
 
     if ( ! config->enabled )
     {
         resultCode = resultSuccess;
-        ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto failure;
     }
 
@@ -326,10 +326,10 @@ void elasticApmRequestShutdown()
     finally:
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestShutdown( &tracer->memTracker );
 
-    ELASTICAPM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTICAPM_UNUSED( resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:

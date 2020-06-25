@@ -15,7 +15,7 @@
 #include "mock_clock.h"
 #include "mock_log_custom_sink.h"
 
-#define ELASTICAPM_CURRENT_LOG_CATEGORY ELASTICAPM_LOG_CATEGORY_C_EXT_UNIT_TESTS
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_EXT_UNIT_TESTS
 
 static bool isWhiteSpace( char c )
 {
@@ -24,7 +24,7 @@ static bool isWhiteSpace( char c )
 
 static bool hasNonWhiteSpace( StringView strView )
 {
-    ELASTICAPM_FOR_EACH_INDEX( i, strView.length )
+    ELASTIC_APM_FOR_EACH_INDEX( i, strView.length )
     {
         if ( ! isWhiteSpace( strView.begin[ i ] ) ) return true;
     }
@@ -43,20 +43,20 @@ static StringView trimStringView( StringView src )
 
 static void trim_StringView_test( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "ABC" ) ), "ABC" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( " ABC" ) ), "ABC" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "ABC\t" ) ), "ABC" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( " AB\tC\r\n" ) ), "AB\tC" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( "" ) ), "" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( " " ) ), "" );
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( " \n\r\t" ) ), "" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " ABC" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC\t" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " AB\tC\r\n" ) ), "AB\tC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" ) ), "" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " " ) ), "" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " \n\r\t" ) ), "" );
 }
 
 static size_t findCharIndexInStringView( char needle, StringView haystack )
 {
-    ELASTICAPM_FOR_EACH_INDEX( i, haystack.length )
+    ELASTIC_APM_FOR_EACH_INDEX( i, haystack.length )
     {
         if ( haystack.begin[ i ] == needle ) return i;
     }
@@ -115,8 +115,8 @@ static StringView getLevelPart( StringView logLine )
 static StringView getProcessThreadIdsPart( StringView logLine )
 {
     StringView part = getLogLinePart( 1, logLine );
-    StringView pidPrefix = ELASTICAPM_STRING_LITERAL_TO_VIEW( "PID: " );
-    ELASTICAPM_CMOCKA_ASSERT( isStringViewPrefixIgnoringCase(part, pidPrefix ) );
+    StringView pidPrefix = ELASTIC_APM_STRING_LITERAL_TO_VIEW( "PID: " );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewPrefixIgnoringCase(part, pidPrefix ) );
 
     return stringViewSkipFirstNChars( part, pidPrefix.length );
 }
@@ -145,7 +145,7 @@ static StringView getMessagePart( StringView logLine )
 static
 StringView getGlobalMockLogCustomSinkOnlyStatementText()
 {
-    ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 1 );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 1 );
     const String logStatementTextAsString = getStatementInMockLogCustomSinkContent( getGlobalMockLogCustomSink(), 0 );
     return makeStringViewFromString( logStatementTextAsString );
 }
@@ -160,40 +160,40 @@ void verify_log_output(
 {
     const StringView logStatementText = getGlobalMockLogCustomSinkOnlyStatementText();
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getTimestampPart( logStatementText ), timestamp );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getTimestampPart( logStatementText ), timestamp );
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getLevelPart( logStatementText ), level );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getLevelPart( logStatementText ), level );
 
     {
-        char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         const char* const ptrBeforeWrite = textOutputStreamGetFreeSpaceBegin( &txtOutStream );
         streamInt( getCurrentProcessId(), &txtOutStream );
         StringView writtenTxt = textOutputStreamViewFrom( &txtOutStream, ptrBeforeWrite );
-        ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getProcessThreadIdsPart( logStatementText ), writtenTxt );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getProcessThreadIdsPart( logStatementText ), writtenTxt );
     }
 
     {
-        char txtOutStreamBuf[ ELASTICAPM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTICAPM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         txtOutStream.autoTermZero = false;
         const char* const ptrBeforeWrite = textOutputStreamGetFreeSpaceBegin( &txtOutStream );
         streamString( extractLastPartOfFilePathString( __FILE__ ), &txtOutStream );
-        streamStringView( ELASTICAPM_STRING_LITERAL_TO_VIEW( ":" ), &txtOutStream );
+        streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( ":" ), &txtOutStream );
         streamInt( (int)logStatementLineNumber, &txtOutStream );
         StringView writtenTxt = textOutputStreamViewFrom( &txtOutStream, ptrBeforeWrite );
-        ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getFileNameLineNumberPart( logStatementText ), writtenTxt );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getFileNameLineNumberPart( logStatementText ), writtenTxt );
     }
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getFunctionNamePart( logStatementText ), funcName );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getFunctionNamePart( logStatementText ), funcName );
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getMessagePart( logStatementText ), msg );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getMessagePart( logStatementText ), msg );
 }
 
 static
 void typical_statement( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     setGlobalLoggerLevelForCustomSink( logLevel_trace );
 
@@ -208,20 +208,20 @@ void typical_statement( void** testFixtureState )
             /* secondsAheadUtc: */ -( 11 * 60 * 60 + 23 * 60 + 30 ) );
 
     clearMockLogCustomSink( getGlobalMockLogCustomSink() );
-    const size_t logStatementLineNumber = __LINE__; ELASTICAPM_LOG_TRACE( "Message and some context: %d, %s", 122333, "444455555" );
+    const size_t logStatementLineNumber = __LINE__; ELASTIC_APM_LOG_TRACE( "Message and some context: %d, %s", 122333, "444455555" );
 
     verify_log_output(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( "2123-07-28 14:37:19.987654-11:24" ),
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( "2123-07-28 14:37:19.987654-11:24" ),
             makeStringViewFromString( logLevelNames[ logLevel_trace ] ),
             logStatementLineNumber,
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( "Message and some context: 122333, 444455555" ) );
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Message and some context: 122333, 444455555" ) );
 }
 
 static
 void empty_message( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     setGlobalLoggerLevelForCustomSink( logLevel_debug );
 
@@ -236,14 +236,14 @@ void empty_message( void** testFixtureState )
             /* secondsAheadUtc: */ ( 25 * 60 * 60 + 51 * 60 + 29 ) );
 
     clearMockLogCustomSink( getGlobalMockLogCustomSink() );
-    const size_t logStatementLineNumber = __LINE__; ELASTICAPM_LOG_DEBUG( "%s", "" );
+    const size_t logStatementLineNumber = __LINE__; ELASTIC_APM_LOG_DEBUG( "%s", "" );
 
     verify_log_output(
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( "2019-11-17 07:23:60.999999+25:51" ),
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( "2019-11-17 07:23:60.999999+25:51" ),
             makeStringViewFromString( logLevelNames[ logLevel_debug ] ),
             logStatementLineNumber,
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
-            ELASTICAPM_STRING_LITERAL_TO_VIEW( "" ) );
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
+            ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" ) );
 }
 
 static
@@ -254,17 +254,17 @@ void statements_filtered_according_to_current_level_helper(
 {
     if ( statementLevel > currentLevel )
     {
-        ELASTICAPM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 0 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 0 );
         return;
     }
 
     const StringView logStatementText = getGlobalMockLogCustomSinkOnlyStatementText();
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL(
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL(
             getMessagePart( logStatementText ),
             makeStringViewFromString( expectedMsg ) );
 
-    ELASTICAPM_CMOCKA_ASSERT_STRING_VIEW_EQUAL(
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL(
             getLevelPart( logStatementText ),
             makeStringViewFromString( logLevelNames[ statementLevel ] ) );
 
@@ -274,36 +274,36 @@ void statements_filtered_according_to_current_level_helper(
 static
 void statements_filtered_according_to_current_level( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     const char* msg = "Dummy message";
 
-    ELASTICAPM_FOR_EACH_INDEX( currentLevelIndex, numberOfLogLevels )
+    ELASTIC_APM_FOR_EACH_INDEX( currentLevelIndex, numberOfLogLevels )
     {
         LogLevel currentLevel = logLevel_off + currentLevelIndex;
 
         setGlobalLoggerLevelForCustomSink( currentLevel );
         clearMockLogCustomSink( getGlobalMockLogCustomSink() );
 
-        ELASTICAPM_LOG_CRITICAL( "%s", msg );
+        ELASTIC_APM_LOG_CRITICAL( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_critical, msg );
-        ELASTICAPM_LOG_ERROR( "%s", msg );
+        ELASTIC_APM_LOG_ERROR( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_error, msg );
-        ELASTICAPM_LOG_WARNING( "%s", msg );
+        ELASTIC_APM_LOG_WARNING( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_warning, msg );
-        ELASTICAPM_LOG_NOTICE( "%s", msg );
+        ELASTIC_APM_LOG_NOTICE( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_notice, msg );
-        ELASTICAPM_LOG_INFO( "%s", msg );
+        ELASTIC_APM_LOG_INFO( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_info, msg );
-        ELASTICAPM_LOG_DEBUG( "%s", msg );
+        ELASTIC_APM_LOG_DEBUG( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_debug, msg );
-        ELASTICAPM_LOG_TRACE( "%s", msg );
+        ELASTIC_APM_LOG_TRACE( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_trace, msg );
 
-        ELASTICAPM_FOR_EACH_INDEX( statementLevelDiff, numberOfLogLevels - 1 )
+        ELASTIC_APM_FOR_EACH_INDEX( statementLevelDiff, numberOfLogLevels - 1 )
         {
             const LogLevel statementLevel = logLevel_off + 1 + statementLevelDiff;
-            ELASTICAPM_LOG_WITH_LEVEL( statementLevel, "%s", msg );
+            ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s", msg );
             statements_filtered_according_to_current_level_helper( currentLevel, statementLevel, msg );
         }
     }
@@ -313,10 +313,10 @@ int run_Logger_tests()
 {
     const struct CMUnitTest tests [] =
     {
-        ELASTICAPM_CMOCKA_UNIT_TEST( trim_StringView_test ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( typical_statement ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( empty_message ),
-        ELASTICAPM_CMOCKA_UNIT_TEST( statements_filtered_according_to_current_level ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( trim_StringView_test ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( typical_statement ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( empty_message ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( statements_filtered_according_to_current_level ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

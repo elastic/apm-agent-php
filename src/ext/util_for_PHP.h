@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <php.h>
 #include <zend.h>
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "basic_types.h"
 #include "ResultCode.h"
 #include "MemoryTracker.h"
@@ -35,7 +35,7 @@ bool isNullOrEmtpyZstring( const zend_string* zStr )
 static inline
 bool isZarray( const zval* zValue )
 {
-    ELASTICAPM_ASSERT_VALID_PTR( zValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( zValue );
 
     return Z_TYPE_P( zValue ) == IS_ARRAY;
 }

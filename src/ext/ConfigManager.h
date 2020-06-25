@@ -12,12 +12,12 @@
 #pragma once
 
 #include <stdbool.h>
-#ifdef ELASTICAPM_MOCK_PHP_DEPS
+#ifdef ELASTIC_APM_MOCK_PHP_DEPS
 #   include "mock_php.h"
 #else
 #   include <php.h>
 #endif
-#include "elasticapm_assert.h"
+#include "elastic_apm_assert.h"
 #include "StringView.h"
 #include "ResultCode.h"
 #include "util.h"
@@ -29,19 +29,19 @@
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
 //      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
 //
-//      2) Add to the list of ELASTICAPM_CFG_OPT_NAME_XYZ-s in ConfigManager.h:
-//          #define ELASTICAPM_CFG_OPT_NAME_MY_NEW_OPTION "my_new_option"
+//      2) Add to the list of ELASTIC_APM_CFG_OPT_NAME_XYZ-s in ConfigManager.h:
+//          #define ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION "my_new_option"
 //
-//      3) Add to PHP_INI_BEGIN() section in elasticapm.c:
-//          ELASTICAPM_INI_ENTRY( ELASTICAPM_CFG_OPT_NAME_MY_NEW_OPTION )
+//      3) Add to PHP_INI_BEGIN() section in elastic_apm.c:
+//          ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION )
 //
 //      4) Add `optionId_myNewOption' to enum OptionId in ConfigManager.h
 //
-//      5) Add to section of ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS in ConfigManager.c:
-//          ELASTICAPM_DEFINE_FIELD_ACCESS_FUNCS( <!!! myNewOption Type !!!>Value, myNewOption )
+//      5) Add to section of ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS in ConfigManager.c:
+//          ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( <!!! myNewOption Type !!!>Value, myNewOption )
 //
-//      6) Add to section of ELASTICAPM_INIT_METADATA in initOptionsMetadata() in ConfigManager.c:
-//          ELASTICAPM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTICAPM_MY_NEW_OPTION_OPTION_NAME, /* defaultValue: */ <!!! myNewOption default value !!!> );
+//      6) Add to section of ELASTIC_APM_INIT_METADATA in initOptionsMetadata() in ConfigManager.c:
+//          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_MY_NEW_OPTION_OPTION_NAME, /* defaultValue: */ <!!! myNewOption default value !!!> );
 
 enum OptionId
 {
@@ -49,7 +49,7 @@ enum OptionId
     optionId_allowAbortDialog,
     #endif
     optionId_abortOnMemoryLeak,
-    #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+    #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
     optionId_bootstrapPhpPartFile,
@@ -65,7 +65,7 @@ enum OptionId
     #ifdef PHP_WIN32
     optionId_logLevelWinSysDebug,
     #endif
-    #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+    #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     optionId_memoryTrackingLevel,
     #endif
     optionId_secretToken,
@@ -77,7 +77,7 @@ enum OptionId
 };
 typedef enum OptionId OptionId;
 
-#define ELASTICAPM_FOR_EACH_OPTION_ID( optIdVar ) ELASTICAPM_FOR_EACH_INDEX_EX( OptionId, optIdVar, numberOfOptions )
+#define ELASTIC_APM_FOR_EACH_OPTION_ID( optIdVar ) ELASTIC_APM_FOR_EACH_INDEX_EX( OptionId, optIdVar, numberOfOptions )
 
 struct ConfigSnapshot
 {
@@ -85,7 +85,7 @@ struct ConfigSnapshot
         #ifdef PHP_WIN32
     bool allowAbortDialog;
         #endif
-        #if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
+        #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     AssertLevel assertLevel;
         #endif
     String bootstrapPhpPartFile;
@@ -101,7 +101,7 @@ struct ConfigSnapshot
         #ifdef PHP_WIN32
     LogLevel logLevelWinSysDebug;
         #endif
-        #if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
+        #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
     String secretToken;
@@ -189,34 +189,34 @@ void getConfigManagerRawData(
 
 const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 
-#define ELASTICAPM_CFG_OPT_HAS_NO_VALUE "no value"
+#define ELASTIC_APM_CFG_OPT_HAS_NO_VALUE "no value"
 
-#define ELASTICAPM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK "abort_on_memory_leak"
+#define ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK "abort_on_memory_leak"
 #   ifdef PHP_WIN32
-#define ELASTICAPM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG "allow_abort_dialog"
+#define ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG "allow_abort_dialog"
 #   endif
-#   if ( ELASTICAPM_ASSERT_ENABLED_01 != 0 )
-#define ELASTICAPM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
+#   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
+#define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
-#define ELASTICAPM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
-#define ELASTICAPM_CFG_OPT_NAME_ENABLED "enabled"
-#define ELASTICAPM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
-#define ELASTICAPM_CFG_OPT_NAME_LOG_FILE "log_file"
-#define ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL "log_level"
-#define ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_FILE "log_level_file"
-#define ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_STDERR "log_level_stderr"
+#define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
+#define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
+#define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_FILE "log_file"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL "log_level"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_FILE "log_level_file"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_STDERR "log_level_stderr"
 #   ifndef PHP_WIN32
-#define ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG "log_level_syslog"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG "log_level_syslog"
 #   endif
 #   ifdef PHP_WIN32
-#define ELASTICAPM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG "log_level_win_sys_debug"
+#define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG "log_level_win_sys_debug"
 #   endif
-#   if ( ELASTICAPM_MEMORY_TRACKING_ENABLED_01 != 0 )
-#define ELASTICAPM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
+#   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
+#define ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
-#define ELASTICAPM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
-#define ELASTICAPM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT "server_connect_timeout"
-#define ELASTICAPM_CFG_OPT_NAME_SERVER_URL "server_url"
-#define ELASTICAPM_CFG_OPT_NAME_SERVICE_NAME "service_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT "server_connect_timeout"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 
-#define ELASTICAPM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elasticapm." optNameStringLiteral )
+#define ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elastic_apm." optNameStringLiteral )

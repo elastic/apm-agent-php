@@ -16,8 +16,8 @@
 #include "basic_macros.h"
 
 /**
- * productionCodeAssertFailed is used in "elasticapm_assert.h"
- * via ELASTICAPM_ASSERT_FAILED_FUNC defined in unit tests' CMakeLists.txt
+ * productionCodeAssertFailed is used in "elastic_apm_assert.h"
+ * via ELASTIC_APM_ASSERT_FAILED_FUNC defined in unit tests' CMakeLists.txt
  */
 void productionCodeAssertFailed(
         const char* filePath /* <- argument #1 */
@@ -25,9 +25,9 @@ void productionCodeAssertFailed(
         , const char* funcName
         , const char* msgPrintfFmt /* <- printf format is argument #4 */
         , /* msgPrintfFmtArgs */ ... /* <- arguments for printf format placeholders start from argument #5 */
-) ELASTICAPM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 4, /* printfFmtArgsPos: */ 5 );
+) ELASTIC_APM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 4, /* printfFmtArgsPos: */ 5 );
 
-ELASTICAPM_SUPPRESS_UNUSED( productionCodeAssertFailed );
+ELASTIC_APM_SUPPRESS_UNUSED( productionCodeAssertFailed );
 
 typedef void (* ProductionCodeAssertFailed )(
         const char* filePath

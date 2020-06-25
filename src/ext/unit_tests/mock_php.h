@@ -42,9 +42,9 @@ struct ZValueStruct
 //////////////////////////////////////////////////////////////////////////////
 //
 // z* types are used in "ConfigManager.h" and "ConfigManager.c"
-// via ELASTICAPM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
+// via ELASTIC_APM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
 //
-#ifdef ELASTICAPM_UNDER_IDE
+#ifdef ELASTIC_APM_UNDER_IDE
 #   pragma clang diagnostic push
 #   pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #   pragma clang diagnostic ignored "-Wunknown-pragmas"
@@ -58,12 +58,12 @@ typedef unsigned char zend_bool;
 
 char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* exists );
 
-#ifdef ELASTICAPM_UNDER_IDE
+#ifdef ELASTIC_APM_UNDER_IDE
 #   pragma clang diagnostic pop
 #endif
 //
 // z* types are used in "ConfigManager.h" and "ConfigManager.c"
-// via ELASTICAPM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
+// via ELASTIC_APM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
 //
 //////////////////////////////////////////////////////////////////////////////
 
@@ -88,9 +88,9 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
 //////////////////////////////////////////////////////////////////////////////
 //
 // RETURN_* macros are used in "ConfigManager.c"
-// via ELASTICAPM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
+// via ELASTIC_APM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
 //
-#ifdef ELASTICAPM_UNDER_IDE
+#ifdef ELASTIC_APM_UNDER_IDE
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wunknown-pragmas"
 #   pragma ide diagnostic ignored "OCUnusedMacroInspection"
@@ -104,11 +104,11 @@ char* zend_ini_string_ex( char* name, size_t name_length, int orig, zend_bool* e
 #define RETURN_STRING( stringValueArg ) { RETVAL_STRING( stringValueArg ); return; }
 #define RETURN_DOUBLE( doubleValueArg ) { RETVAL_DOUBLE( doubleValueArg ); return; }
 
-#ifdef ELASTICAPM_UNDER_IDE
+#ifdef ELASTIC_APM_UNDER_IDE
 #   pragma clang diagnostic pop
 #endif
 //
 // RETURN_* macros are used in "ConfigManager.c"
-// via ELASTICAPM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
+// via ELASTIC_APM_MOCK_PHP_DEPS defined in unit tests' CMakeLists.txt
 //
 //////////////////////////////////////////////////////////////////////////////

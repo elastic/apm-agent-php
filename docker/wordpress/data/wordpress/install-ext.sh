@@ -1,9 +1,9 @@
 #!/bin/sh
 
-cd /var/elasticapm
+cd /var/elastic_apm
 
 phpize
-./configure --enable-elasticapm
+./configure --enable-elastic_apm
 make clean
 make
 make install

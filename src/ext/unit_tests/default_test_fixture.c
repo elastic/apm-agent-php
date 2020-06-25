@@ -20,10 +20,10 @@
 
 int perTestDefaultSetup( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     //
-    // Revert to failed ELASTICAPM_ASSERT invoking abort() in production code ASAP
+    // Revert to failed ELASTIC_APM_ASSERT invoking abort() in production code ASAP
     // so that any failed assert in production code triggers a real abort and causes test to fail
     //
     setProductionCodeAssertFailed( vElasticApmAssertFailed );
@@ -36,7 +36,7 @@ int perTestDefaultSetup( void** testFixtureState )
 
     enableMockLogCustomSink( getGlobalMockLogCustomSink() );
 
-    ELASTICAPM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( ensureAllComponentsHaveLatestConfig( getGlobalTracer() ) );
+    ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( ensureAllComponentsHaveLatestConfig( getGlobalTracer() ) );
 
     #ifdef PHP_WIN32
     // Disable the abort message box
@@ -48,10 +48,10 @@ int perTestDefaultSetup( void** testFixtureState )
 
 int perTestDefaultTeardown( void** testFixtureState )
 {
-    ELASTICAPM_UNUSED( testFixtureState );
+    ELASTIC_APM_UNUSED( testFixtureState );
 
     //
-    // Revert to failed ELASTICAPM_ASSERT invoking abort() in production code ASAP
+    // Revert to failed ELASTIC_APM_ASSERT invoking abort() in production code ASAP
     // so that any failed assert in production code triggers a real abort and causes test to fail
     //
     setProductionCodeAssertFailed( vElasticApmAssertFailed );

@@ -44,7 +44,7 @@ static inline String resultCodeToString( ResultCode resultCode )
     }
 }
 
-#define ELASTICAPM_CALL_IF_FAILED_GOTO( expr ) \
+#define ELASTIC_APM_CALL_IF_FAILED_GOTO( expr ) \
     do { \
         resultCode = (expr); \
         if ( resultCode != resultSuccess ) goto failure; \
