@@ -1,13 +1,20 @@
+| :warning: :construction: **WARNING: This project is still in development. Please do not use in a production environment!** |
+| --- |
+
 # Elastic APM Agent for PHP
 
-The official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
-This agent is a PHP extension that must be installed in your PHP environment.
+This is the official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
 
-## Note
+The PHP agent enables you to trace the execution of operations in your application, sending performance metrics and errors to the Elastic APM server.
 
-**This project is still in development. Please do not use in a production environment!**
+:ballot_box_with_check: We'd love to get information about your setup to help us with prioritizing framework support – please take a minute to fill out [our survey](https://docs.google.com/forms/d/e/1FAIpQLSf8c3BJVMqaeuqpq-t3_Q4NilNcdsrzK1qJ4Qo9JpJslrmYzA/viewform).
+
+If you have any feedback or questions,
+please post them at the [Discuss forum](https://discuss.elastic.co/c/apm).
 
 ## Usage
+
+This agent is a PHP extension that must be installed in your PHP environment.
 
 See the [documentation](docs) for setup and configuration details.
 
