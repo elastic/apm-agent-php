@@ -37,3 +37,6 @@ phpunit.xml
 # Built documentation
 html_docs
 
+# Packaging artifacts
+*.rpm
+*.deb
