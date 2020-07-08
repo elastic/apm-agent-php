@@ -107,7 +107,7 @@ pipeline {
             }
             post {
               always {
-                archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/apm-agent-php.*")
+                archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/apm-agent-php*")
               }
             }
           }
