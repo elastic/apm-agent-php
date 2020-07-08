@@ -7,7 +7,7 @@ build:
 	docker build -t $(IMAGE) .
 
 create-%:
-	docker run --rm -ti \
+	docker run --rm \
 		-v $(PWD):/app \
 		-w /app $(IMAGE) \
 		-s dir \
