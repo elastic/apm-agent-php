@@ -83,12 +83,25 @@ pipeline {
               }
             }
           }
+          stage('Install') {
+            steps {
+              withGithubNotify(context: "Install-${PHP_VERSION}") {
+                dir("${BASE_DIR}"){
+                  sh script: "docker run --rm -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
+                }
+              }
+            }
+          }
           stage('Package') {
+            // Only enable for one version to reuse the install stage output
+            when {
+              beforeAgent true
+              expression { return env.PHP_VERSION == '7.4' }
+            }
             steps {
               withGithubNotify(context: "Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "docker run --rm -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
-                  sh script: "make -C packaging build package", label: 'package'
+                  sh script: "make -C packaging build package", label: 'packaging'
                 }
               }
             }
