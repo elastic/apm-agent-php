@@ -83,30 +83,22 @@ pipeline {
               }
             }
           }
-          stage('Install') {
+          stage('Package') {
             steps {
-              withGithubNotify(context: "Install-${PHP_VERSION}") {
+              withGithubNotify(context: "Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
                   sh script: "docker run --rm -t -v \$(pwd):/app test-php:${PHP_VERSION} make install", label: 'run install'
+                  sh script: "make -C packaging build package", label: 'package'
                 }
+              }
+            }
+            post {
+              always {
+                archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/apm-agent-php.*")
               }
             }
           }
         }
-      }
-    }
-    stage('Package') {
-      when {
-        beforeAgent true
-        expression { return env.ONLY_DOCS == "false" }
-      }
-      steps {
-        // TODO: This should be uncommented out when the implementation is in place
-        //withGithubNotify(context: 'Package') {
-        //  deleteDir()
-        //  unstash 'source'
-        echo 'TBD'
-        //}
       }
     }
     stage('Testing') {

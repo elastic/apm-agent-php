@@ -1,6 +1,6 @@
 IMAGE:=php-packaging
 NAME:=apm-agent-php
-VERSION:=2.10
+VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 
 .PHONY: build
 build:
@@ -8,7 +8,7 @@ build:
 
 create-%:
 	docker run --rm -ti \
-		-v $(PWD)/..:/app \
+		-v $(PWD):/app \
 		-w /app $(IMAGE) \
 		-s dir \
 		-t $* \
