@@ -5,11 +5,11 @@ OUTPUT:=build/packages
 
 .PHONY: build
 build:
-	docker build -t $(IMAGE) .
+	@docker build -t $(IMAGE) .
 
 create-%:
-	mkdir -p $(PWD)/$(OUTPUT)
-	docker run --rm \
+	@mkdir -p $(PWD)/$(OUTPUT)
+	@docker run --rm \
 		-v $(PWD):/app \
 		-w /app $(IMAGE) \
 		--input-type dir \
@@ -40,20 +40,20 @@ tar: create-tar
 
 .PHONY: version
 version:
-	docker run --rm -ti $(IMAGE) --version
+	@docker run --rm -ti $(IMAGE) --version
 
 .PHONY: package
 package: rpm deb tar
 
 .PHONY: rpm-info
 rpm-info:
-	docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $(OUTPUT)/$(NAME)-$(VERSION)-1.x86_64.rpm
-	docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $(OUTPUT)/$(NAME)-$(VERSION)-1.x86_64.rpm
+	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
+	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
 
 .PHONY: deb-info
 deb-info:
-	docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $(OUTPUT)/$(NAME)_$(VERSION)-amd64.deb
-	docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $(OUTPUT)/$(NAME)_$(VERSION)-amd64.deb
+	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
+	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
 
 .PHONY: rpm-install
 rpm-install:
