@@ -38,5 +38,4 @@ phpunit.xml
 html_docs
 
 # Packaging artifacts
-*.rpm
-*.deb
+build/packages
