@@ -101,7 +101,8 @@ pipeline {
             steps {
               withGithubNotify(context: "Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "make -C packaging build package", label: 'packaging'
+                  sh script: "make -C packaging package", label: 'package'
+                  sh script: "make -C packaging info || true", label: 'package info'
                 }
               }
             }

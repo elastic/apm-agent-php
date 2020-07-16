@@ -7,7 +7,7 @@ OUTPUT:=build/packages
 build:
 	@docker build -t $(IMAGE) .
 
-create-%:
+create-%: build
 	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
 		-v $(PWD):/app \
@@ -44,6 +44,9 @@ version:
 
 .PHONY: package
 package: rpm deb tar
+
+.PHONY: info
+info: rpm-info deb-info
 
 .PHONY: rpm-info
 rpm-info:
