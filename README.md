@@ -53,6 +53,12 @@ make -C packaging deb
 
 ## To create all the packages that are supported
 make -C packaging package
+
+## To list the metadata info of the above generated packages
+make -C packaging info
+
+## To test the installation in debian
+make -C packaging deb-install
 ```
 
 _NOTE_: current implementation requires to use `make -C packaging <target>` since the workspace
