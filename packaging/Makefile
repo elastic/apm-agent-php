@@ -47,7 +47,7 @@ tar: create-tar
 
 .PHONY: version
 version:
-	@docker run --rm -ti $(IMAGE) --version
+	@docker run --rm $(IMAGE) --version
 
 .PHONY: package
 package: rpm deb tar
@@ -57,13 +57,13 @@ info: rpm-info deb-info
 
 .PHONY: rpm-info
 rpm-info:
-	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
-	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
+	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
+	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
 
 .PHONY: deb-info
 deb-info:
-	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
-	@docker run --rm -ti -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
+	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
+	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
 
 .PHONY: rpm-install
 rpm-install:
