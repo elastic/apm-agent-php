@@ -96,6 +96,7 @@ pipeline {
             steps {
               withGithubNotify(context: "Composer-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
+                  sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app -w /app test-php:${PHP_VERSION} composer install", label: 'run composer install'
                   sh script: "docker run --rm -u \$(id -u):\$(id -g) -t -v \$(pwd):/app -w /app test-php:${PHP_VERSION} composer static_check_and_run_component_tests_standalone_envs", label: 'run composer'
                 }
               }
