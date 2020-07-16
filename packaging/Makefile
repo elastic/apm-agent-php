@@ -37,6 +37,7 @@ create-%: build
 
 .PHONY: rpm
 rpm: create-rpm
+	## TODO: fpm replaces - with _ in the version
 
 .PHONY: deb
 deb: create-deb
