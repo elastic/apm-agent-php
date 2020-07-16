@@ -4,9 +4,6 @@ VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 |
 OUTPUT:=build/packages
 
 GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
-BUILD_NUMBER ?= 0
-RELEASE_TAG ?= SNAPSHOT.$(shell date '+%Y%m%d').$(BUILD_NUMBER)
-RELEASE_EPOCH ?= $(shell date '+%s')
 
 .PHONY: build
 build:
@@ -21,14 +18,12 @@ create-%: build
 		--input-type dir \
 		--output-type $* \
 		--name $(NAME) \
-		--iteration "$(RELEASE_TAG)" \
-		--epoch "$(RELEASE_EPOCH)" \
 		--version $(VERSION) \
 		--architecture all \
-		--url 'TBD' \
-		--maintainer 'elastic' \
-		--license 'TBD' \
-		--vendor 'elastic' \
+		--url 'https://github.com/elastic/apm-agent-php' \
+		--maintainer 'APM Team <info@elastic.co>', \
+		--license 'ASL 2.0' \
+		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package $(OUTPUT) \
 		--chdir /app \
