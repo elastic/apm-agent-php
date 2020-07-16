@@ -21,7 +21,7 @@ create-%: build
 		--version $(VERSION) \
 		--architecture all \
 		--url 'https://github.com/elastic/apm-agent-php' \
-		--maintainer 'APM Team <info@elastic.co>', \
+		--maintainer 'APM Team <info@elastic.co>' \
 		--license 'ASL 2.0' \
 		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
