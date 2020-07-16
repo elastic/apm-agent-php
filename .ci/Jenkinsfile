@@ -96,13 +96,14 @@ pipeline {
             // Only enable for one version to reuse the install stage output
             when {
               beforeAgent true
-              expression { return env.PHP_VERSION == '7.4' }
+              expression { return env.PHP_VERSION == '7.2' }
             }
             steps {
               withGithubNotify(context: "Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "make -C packaging package", label: 'package'
-                  sh script: "make -C packaging info || true", label: 'package info'
+                  sh script: 'make -C packaging package', label: 'package'
+                  sh script: 'make -C packaging info', label: 'package info'
+                  sh script: 'make -C packaging deb-install', label: 'package deb-install'
                 }
               }
             }
