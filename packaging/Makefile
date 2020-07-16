@@ -3,6 +3,11 @@ NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 OUTPUT:=build/packages
 
+GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
+BUILD_NUMBER ?= 0
+RELEASE_TAG ?= SNAPSHOT.$(shell date '+%Y%m%d').$(BUILD_NUMBER)
+RELEASE_EPOCH ?= $(shell date '+%s')
+
 .PHONY: build
 build:
 	@docker build -t $(IMAGE) .
@@ -16,6 +21,8 @@ create-%: build
 		--input-type dir \
 		--output-type $* \
 		--name $(NAME) \
+		--iteration "$(RELEASE_TAG)" \
+		--epoch "$(RELEASE_EPOCH)" \
 		--version $(VERSION) \
 		--architecture all \
 		--url 'TBD' \
@@ -23,6 +30,7 @@ create-%: build
 		--description 'TBD' \
 		--license 'TBD' \
 		--vendor 'elastic' \
+		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package $(OUTPUT) \
 		--chdir /app \
 		src/ext/modules/=/usr/share/php/extensions \
@@ -57,13 +65,17 @@ info: rpm-info deb-info
 
 .PHONY: rpm-info
 rpm-info:
-	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
-	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $(OUTPUT)/$(NAME)-$(VERSION)-1.noarch.rpm
+	@cd $(PWD) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: deb-info
 deb-info:
-	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
-	@docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $(OUTPUT)/$(NAME)_$(VERSION)_all.deb
+	@cd $(PWD) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: rpm-install
 rpm-install:
