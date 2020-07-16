@@ -8,6 +8,7 @@ build:
 	@docker build -t $(IMAGE) .
 
 create-%: build
+	@echo 'Creating package ...'
 	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
 		-v $(PWD):/app \
@@ -28,6 +29,11 @@ create-%: build
 		README.md=/usr/share/doc/apm-agent-php/docs/README.md \
 		src/ElasticApm=/usr/share/php/apm-agent-php \
 		src/bootstrap_php_part.php=/usr/share/php/apm-agent-php/bootstrap_php_part.php
+	@echo 'Creating sha512sum ...'
+	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/*.$*) ;\
+	sha512sum $$BINARY > $$BINARY.sha512 ;\
+	sed -i.bck "s#$(PWD)/$(OUTPUT)/##g" $$BINARY.sha512 ;\
+	rm $(PWD)/$(OUTPUT)/*.bck
 
 .PHONY: rpm
 rpm: create-rpm
