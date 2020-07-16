@@ -6,6 +6,7 @@ namespace Elastic\Apm\Tests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Tests\ComponentTests\Util\TestOsUtil;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -20,10 +21,14 @@ final class OutputDebugString
     private static $isEnabled;
 
     /**
-     * @noinspection PhpUndefinedClassInspection
+     * @noinspection RedundantSuppression, PhpFullyQualifiedNameUsageInspection, PhpUndefinedClassInspection
      * @phpstan-ignore-next-line
      */
-    /** @var \FFI */
+    /** @var \FFI
+     */
+    /**
+     * @phpstan-ignore-next-line
+     */
     private static $ffi;
 
     public static function isEnabled(): bool
@@ -45,11 +50,11 @@ final class OutputDebugString
         if (!isset(self::$ffi)) {
             try {
                 /**
-                 * @noinspection PhpUndefinedClassInspection
+                 * @noinspection RedundantSuppression, PhpFullyQualifiedNameUsageInspection, PhpUndefinedClassInspection
                  * @phpstan-ignore-next-line
                  */
                 self::$ffi = \FFI::cdef('void OutputDebugStringA( const char* test );', 'Kernel32.dll');
-            } catch (\Throwable $throwable) {
+            } catch (Throwable $throwable) {
                 return false;
             }
         }
@@ -60,7 +65,7 @@ final class OutputDebugString
     public static function write(string $text): void
     {
         /**
-         * @noinspection PhpUndefinedMethodInspection
+         * @noinspection RedundantSuppression, PhpUndefinedMethodInspection
          * @phpstan-ignore-next-line
          */
         self::$ffi->OutputDebugStringA($text);
