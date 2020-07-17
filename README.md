@@ -39,6 +39,31 @@ docker run --rm -ti -v $(pwd):/app test-php make test
 docker run --rm -ti -v $(pwd):/app test-php make install
 ```
 
+To generate the packages then you can use the `packaging/Dockerfile`.
+
+```bash
+## To build the docker image that will be used later on for packaging the project
+make -C packaging build
+
+## To create the rpm package
+make -C packaging rpm
+
+## To create the deb package
+make -C packaging deb
+
+## To create all the packages that are supported
+make -C packaging package
+
+## To list the metadata info of the above generated packages
+make -C packaging info
+
+## To test the installation in debian
+make -C packaging deb-install
+```
+
+_NOTE_: current implementation requires to use `make -C packaging <target>` since the workspace
+        is mounted as a volume.
+
 ## Documentation
 
 To build the documentation for this project you must first clone the [`elastic/docs` repository](https://github.com/elastic/docs/). Then run the following commands:
