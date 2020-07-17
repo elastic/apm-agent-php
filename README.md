@@ -27,17 +27,23 @@ See [contributing documentation](CONTRIBUTING.md).
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
 
 ```bash
-docker build --tag test-php .
+## To prepare the build docker container
+PHP_VERSION=7.2 make -f .ci/Makefile prepare
 
 ## To compile the library
-docker run --rm -ti -v $(pwd):/app test-php
+PHP_VERSION=7.2 make -f .ci/Makefile build
 
-## To test the Library
-docker run --rm -ti -v $(pwd):/app test-php make test
+## To test the library
+PHP_VERSION=7.2 make -f .ci/Makefile test
 
 ## To install the library
-docker run --rm -ti -v $(pwd):/app test-php make install
+PHP_VERSION=7.2 make -f .ci/Makefile install
+
+## To install with composer
+PHP_VERSION=7.2 make -f .ci/Makefile composer
 ```
+
+_NOTE_: `PHP_VERSION` can be set to a different PHP version.
 
 ## Documentation
 
