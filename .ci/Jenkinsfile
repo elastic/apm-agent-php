@@ -62,7 +62,7 @@ pipeline {
                 dir("${BASE_DIR}"){
                   // When running in the CI with multiple parallel stages
                   // the access could be considered as a DDOS attack.
-                  retryWithSleep(retries: 3, seconds: 5, backoff: true)
+                  retryWithSleep(retries: 3, seconds: 5, backoff: true) {
                     sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile prepare", label: 'prepare docker image'
                   }
                   sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile build", label: 'build'
