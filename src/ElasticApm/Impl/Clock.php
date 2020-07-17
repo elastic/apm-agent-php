@@ -34,6 +34,16 @@ final class Clock implements ClockInterface
     {
         // hrtime(/* get_as_number */ true):
         //      the nanoseconds are returned as integer (64bit platforms) or float (32bit platforms)
+        /**
+         * hrtime is available from PHP 7.3.0 (https://www.php.net/manual/en/function.hrtime.php) and we support 7.2.*
+         * so we suppress static analysis warning
+         * but at runtime we call hrtime only if it exists
+         *
+         * @see getMonotonicClockCurrentTime
+         *
+         * @noinspection PhpElementIsNotAvailableInCurrentPhpVersionInspection
+         * @phpstan-ignore-next-line
+         */
         return round(TimeUtil::nanosecondsToMicroseconds((float)(hrtime(/* get_as_number */ true))));
     }
 }
