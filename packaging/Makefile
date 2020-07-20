@@ -37,12 +37,15 @@ create-%: build
 	sed -i.bck "s#$(PWD)/$(OUTPUT)/##g" $$BINARY.sha512 ;\
 	rm $(PWD)/$(OUTPUT)/*.bck
 
-.PHONY: rpm
-rpm: create-rpm
-	## TODO: fpm replaces - with _ in the version
+.PHONY: apk
+apk: create-apk
 
 .PHONY: deb
 deb: create-deb
+
+.PHONY: rpm
+rpm: create-rpm
+	## TODO: fpm replaces - with _ in the version
 
 .PHONY: tar
 tar: create-tar
@@ -52,17 +55,16 @@ version:
 	@docker run --rm $(IMAGE) --version
 
 .PHONY: package
-package: rpm deb tar
+package: apk deb rpm tar
 
 .PHONY: info
-info: rpm-info deb-info
+info: rpm-info deb-info apk-info
 
-.PHONY: rpm-info
-rpm-info:
+.PHONY: apk-info
+apk-info:
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
+	BINARY=$$(ls -1 $(OUTPUT)/*.apk) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
 
 .PHONY: deb-info
 deb-info:
@@ -71,9 +73,12 @@ deb-info:
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
-.PHONY: rpm-install
-rpm-install:
-	echo 'TBD'
+.PHONY: rpm-info
+rpm-info:
+	@cd $(PWD) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: deb-install
 deb-install:
@@ -81,3 +86,8 @@ deb-install:
 	docker build -t deb-install . ;\
 	cd -
 	@docker run --rm -v $(PWD):/src -w /src deb-install
+
+.PHONY: rpm-install
+rpm-install:
+	echo 'TBD'
+
