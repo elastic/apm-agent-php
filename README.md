@@ -41,6 +41,9 @@ PHP_VERSION=7.2 make -f .ci/Makefile install
 
 ## To install with composer
 PHP_VERSION=7.2 make -f .ci/Makefile composer
+
+## Help goal will provide further details
+make -f .ci/Makefile help
 ```
 
 _NOTE_: `PHP_VERSION` can be set to a different PHP version.
@@ -66,6 +69,9 @@ make -C packaging info
 
 ## To test the installation in debian
 make -C packaging deb-install
+
+## Help goal will provide further details
+make -C packaging help
 ```
 
 _NOTE_: current implementation requires to use `make -C packaging <target>` since the workspace
