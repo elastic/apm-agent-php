@@ -57,12 +57,17 @@ Once your changes are ready to submit for review:
     We ask this of all contributors in order to assure our users of the origin and continuing existence of the code.
     You only need to sign the CLA once.
 
-2. Test your changes
+2. Build and package your changes
+
+    Run the build and package goals to make sure that nothing is broken.
+    See [development](#development) for details.
+
+3. Test your changes
 
     Run the test suite to make sure that nothing is broken.
     See [testing](#testing) for details.
 
-3. Rebase your changes
+4. Rebase your changes
 
     Update your local repository with the most recent code from the main repo,
     and rebase your branch on top of the latest master branch.
@@ -73,7 +78,7 @@ Once your changes are ready to submit for review:
     This makes them easier to review.
     As a final step before merging, we will either ask you to squash all commits yourself or we'll do it for you.
 
-4. Submit a pull request
+5. Submit a pull request
 
     Push your local changes to your forked copy of the repository and [submit a pull request](https://help.github.com/articles/using-pull-requests).
     In the pull request,
@@ -82,11 +87,15 @@ Once your changes are ready to submit for review:
     Also mention the number of the issue where the discussion has taken place,
     eg "Closes #123".
 
-5. Be patient
+6. Be patient
 
     We might not be able to review your code as fast as we would like to,
     but we'll do our best to dedicate it the attention it deserves.
     Your effort is much appreciated!
+
+### Development
+
+See [development documentation](DEVELOPMENT.md).
 
 ### Testing
 
