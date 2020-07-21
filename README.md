@@ -1,6 +1,8 @@
 | :warning: :construction: **WARNING: This project is still in development. Please do not use in a production environment!** |
 | --- |
 
+[![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmaster)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/)
+
 # Elastic APM Agent for PHP
 
 This is the official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
