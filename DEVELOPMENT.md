@@ -1,6 +1,8 @@
 # Local development
 
-## Using the docker approach
+## Build/package
+
+### Using the docker approach
 
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
 
@@ -26,14 +28,10 @@ make -f .ci/Makefile help
 
 _NOTE_: `PHP_VERSION` can be set to a different PHP version.
 
-# Package generation
+To generate the packages then you can use the `packaging/Dockerfile`, see the below commands:
 
-| :warning: :construction: **WARNING: This stage is still in development!** |
+| :warning: :construction: **WARNING: The packaging stage is still in development!** |
 | --- |
-
-## Using the docker approach
-
-To generate the packages then you can use the `packaging/Dockerfile`.
 
 ```bash
 ## To build the docker image that will be used later on for packaging the project
@@ -61,7 +59,7 @@ make -C packaging help
 _NOTE_: current implementation requires to use `make -C packaging <target>` since the workspace
         is mounted as a volume.
 
-# Documentation
+## Documentation
 
 To build the documentation for this project you must first clone the [`elastic/docs` repository](https://github.com/elastic/docs/). Then run the following commands:
 
