@@ -4,14 +4,19 @@ PHP_VERSION ?= 7.2
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
 
+.PHONY: help
+.DEFAULT_GOAL := help
+help: ## Display this help text
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
 .PHONY: prepare
-prepare:
+prepare:  ## Build docker image for building and testing the project
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION} .
 
 .PHONY: build
-build: prepare
+build: prepare  ## Build the project
 	# docker as the current user
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
@@ -19,7 +24,7 @@ build: prepare
 		$(IMAGE):${PHP_VERSION}
 
 .PHONY: test
-test: prepare
+test: prepare  ## Test the project
 	# docker as the current user
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
@@ -28,7 +33,7 @@ test: prepare
 		make test
 
 .PHONY: install
-install: prepare
+install: prepare  ## Install the agent
 	# docker as root to install the extension
 	docker run --rm -t \
 		-v $(PWD):/app \
@@ -36,7 +41,7 @@ install: prepare
 		make install
 
 .PHONY: composer
-composer: prepare
+composer: prepare  ## Run composer
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
