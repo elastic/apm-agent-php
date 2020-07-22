@@ -5,7 +5,7 @@ set -x
 dpkg -i build/packages/*.deb
 
 ## Verify if the elastic php agent is enabled
-if ! php -m | grep 'elastic' ; then
+if ! php -m | grep -q 'elastic' ; then
     echo 'Extension has not been installed.'
     exit 1
 fi

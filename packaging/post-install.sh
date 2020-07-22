@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-###########
-# GLOBALS #
-###########
+################################################################################
+############################ GLOBAL VARIABLES ##################################
+################################################################################
 PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 EXTENSION_FILE_PATH="${PHP_AGENT_DIR}/extensions/elastic_apm.so"
 BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
@@ -12,10 +12,16 @@ BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
 ################################################################################
 
 ################################################################################
-#### Function php_ini_path #####################################################
-function php_ini_path() {
+#### Function php_command ######################################################
+function php_command() {
     PHP_BIN=$(command -v php)
-    ${PHP_BIN} -d memory_limit=128M -i \
+    ${PHP_BIN} -d memory_limit=128M "$@"
+}
+
+################################################################################
+#### Function php_ini_file_path ################################################
+function php_ini_file_path() {
+    php_command -i \
         | grep 'Configuration File (php.ini) Path =>' \
         | sed -e 's#Configuration File (php.ini) Path =>##g' \
         | head -n 1 \
@@ -23,9 +29,14 @@ function php_ini_path() {
 }
 
 ################################################################################
+#### Function is_extension_installed ###########################################
+function is_extension_installed() {
+    php_command -m | grep -q 'elastic'
+}
+
+################################################################################
 #### Function add_extension_configuration_to_file ##############################
 function add_extension_configuration_to_file() {
-    echo '  Extension configuration has just been added for the Elastic PHP agent.'
     tee -a "$@" <<EOF
 ; THIS IS AN AUTO-GENERATED FILE by the Elastic PHP agent post-install.sh script
 extension=${EXTENSION_FILE_PATH}
@@ -38,14 +49,22 @@ EOF
 ############################### MAIN ###########################################
 ################################################################################
 echo 'Installing Elastic PHP agent'
-PHP_INI_FILE="$(php_ini_path)/php.ini"
-if [ -e "${PHP_INI_FILE}" ] ; then
-    if grep -q "${EXTENSION_FILE_PATH}" "${PHP_INI_FILE}" ; then
+PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
+if [ -e "${PHP_INI_FILE_PATH}" ] ; then
+    if grep -q "${EXTENSION_FILE_PATH}" "${PHP_INI_FILE_PATH}" ; then
         echo '  extension configuration already exists for the Elastic PHP agent.'
         echo '  skipping ... '
     else
-        add_extension_configuration_to_file "${PHP_INI_FILE}"
+        add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
     fi
 else
-    add_extension_configuration_to_file "${PHP_INI_FILE}"
+    add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+fi
+
+if is_extension_installed ; then
+    echo 'Extension enabled successfully for Elastic PHP agent'
+else
+    echo 'Failed enabling Elastic PHP agent extension'
+    echo 'Set up the Agent manually as explained in:'
+    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
 fi
