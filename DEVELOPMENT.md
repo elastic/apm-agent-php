@@ -34,8 +34,8 @@ To generate the packages then you can use the `packaging/Dockerfile`, see the be
 | --- |
 
 ```bash
-## To build the docker image that will be used later on for packaging the project
-make -C packaging build
+## To prepare the docker image that will be used later on for packaging the project
+make -C packaging prepare
 
 ## To create the rpm package
 make -C packaging rpm

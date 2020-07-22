@@ -11,11 +11,11 @@ GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 help: ## Display this help text
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: build
-build: ## Build docker image for the packaging
+.PHONY: prepare
+prepare: ## Build docker image for the packaging
 	@docker build -t $(IMAGE) .
 
-create-%: build  ## Create the specific package
+create-%: prepare  ## Create the specific package
 	@echo 'Creating package ...'
 	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
