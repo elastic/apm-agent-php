@@ -78,7 +78,10 @@ deb-info:  ## Show the deb package metadata
 
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
-	echo 'TBD'
+	@cd $(PWD)/packaging/test/centos/7.2 ;\
+	docker build -t rpm-install . ;\
+	cd -
+	docker run --rm -v $(PWD):/src -w /src rpm-install
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
