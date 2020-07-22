@@ -2,7 +2,7 @@ IMAGE:=php-packaging
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 OUTPUT:=build/packages
-
+PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 
 .PHONY: help
@@ -32,10 +32,12 @@ create-%: build  ## Create the specific package
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package $(OUTPUT) \
 		--chdir /app \
-		src/ext/modules/=/usr/share/php/extensions \
-		README.md=/usr/share/doc/apm-agent-php/docs/README.md \
-		src/ElasticApm=/usr/share/php/apm-agent-php \
-		src/bootstrap_php_part.php=/usr/share/php/apm-agent-php/bootstrap_php_part.php
+		--after-install=packaging/post-install.sh \
+		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
+		src/ext/modules/=$(PHP_AGENT_DIR)/extensions \
+		README.md=$(PHP_AGENT_DIR)/docs/README.md \
+		src/ElasticApm=$(PHP_AGENT_DIR)/src \
+		src/bootstrap_php_part.php=$(PHP_AGENT_DIR)/src/bootstrap_php_part.php
 	@echo 'Creating sha512sum ...'
 	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/*.$*) ;\
 	sha512sum $$BINARY > $$BINARY.sha512 ;\
