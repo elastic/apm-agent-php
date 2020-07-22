@@ -3,6 +3,7 @@ NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 OUTPUT:=build/packages
 PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
+PHP_VERSION?=7.2
 GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 
 .PHONY: help
@@ -85,6 +86,6 @@ rpm-install:  ## Install the rpm installer to run some smoke tests
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
-	docker build -t deb-install . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
 	cd -
 	@docker run --rm -v $(PWD):/src -w /src deb-install
