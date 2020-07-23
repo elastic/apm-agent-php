@@ -2,7 +2,7 @@
 set -xe
 
 ## Install rpm package and configure the agent accordingly
-rpm -ivh build/packages/*.rpm
+rpm -ivh build/packages/**/*.rpm
 
 ## Verify if the elastic php agent is enabled
 if ! php -m | grep -q 'elastic' ; then
