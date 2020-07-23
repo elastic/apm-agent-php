@@ -47,7 +47,6 @@ create-%: prepare  ## Create the specific package
 
 .PHONY: rpm
 rpm: create-rpm  ## Create the rpm installer
-	## TODO: fpm replaces - with _ in the version
 
 .PHONY: deb
 deb: create-deb  ## Create the deb installer
@@ -81,8 +80,8 @@ deb-info:  ## Show the deb package metadata
 
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
-	@cd $(PWD)/packaging/test/centos/$(PHP_VERSION) ;\
-	docker build -t rpm-install . ;\
+	@cd $(PWD)/packaging/test/centos ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
 	cd -
 	docker run --rm -v $(PWD):/src -w /src rpm-install
 
