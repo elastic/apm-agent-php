@@ -31,7 +31,7 @@ create-%: prepare  ## Create the specific package
 		--license 'ASL 2.0' \
 		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
-		--package $(OUTPUT) \
+		--package $(OUTPUT)/$(PHP_VERSION) \
 		--chdir /app \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
