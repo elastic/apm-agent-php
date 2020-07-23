@@ -116,7 +116,7 @@ pipeline {
               always {
                 dir("${BASE_DIR}"){
                   junit(allowEmptyResults: true, keepLongStdio: true, testResults: "**/log_as_junit.xml")
-                  archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/*")
+                  archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/${PHP_VERSION}/*")
                 }
               }
             }
