@@ -108,4 +108,10 @@ deb-install:  ## Install the deb installer to run some smoke tests
 
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
-	echo 'TBD'
+	@cd $(PWD)/packaging/test/centos ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
+	cd -
+	docker run --rm -v $(PWD):/src -w /src rpm-install
+
+.PHONY: install
+install: deb-install rpm-install  ## Install all the distributions
