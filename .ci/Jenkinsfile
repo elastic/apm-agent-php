@@ -108,7 +108,7 @@ pipeline {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging package", label: 'package'
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging info", label: 'package info'
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging deb-install", label: 'package deb-install'
+                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
               }
             }
