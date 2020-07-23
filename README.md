@@ -1,6 +1,8 @@
 | :warning: :construction: **WARNING: This project is still in development. Please do not use in a production environment!** |
 | --- |
 
+[![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmaster)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/)
+
 # Elastic APM Agent for PHP
 
 This is the official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
@@ -21,67 +23,6 @@ See the [documentation](docs) for setup and configuration details.
 ## Contributing
 
 See [contributing documentation](CONTRIBUTING.md).
-
-### Local development
-
-If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
-
-```bash
-## To prepare the build docker container
-PHP_VERSION=7.2 make -f .ci/Makefile prepare
-
-## To compile the library
-PHP_VERSION=7.2 make -f .ci/Makefile build
-
-## To test the library
-PHP_VERSION=7.2 make -f .ci/Makefile test
-
-## To install the library
-PHP_VERSION=7.2 make -f .ci/Makefile install
-
-## To install with composer
-PHP_VERSION=7.2 make -f .ci/Makefile composer
-```
-
-_NOTE_: `PHP_VERSION` can be set to a different PHP version.
-
-
-To generate the packages then you can use the `packaging/Dockerfile`.
-
-```bash
-## To build the docker image that will be used later on for packaging the project
-make -C packaging build
-
-## To create the rpm package
-make -C packaging rpm
-
-## To create the deb package
-make -C packaging deb
-
-## To create all the packages that are supported
-make -C packaging package
-
-## To list the metadata info of the above generated packages
-make -C packaging info
-
-## To test the installation in debian
-make -C packaging deb-install
-```
-
-_NOTE_: current implementation requires to use `make -C packaging <target>` since the workspace
-        is mounted as a volume.
-
-## Documentation
-
-To build the documentation for this project you must first clone the [`elastic/docs` repository](https://github.com/elastic/docs/). Then run the following commands:
-
-```bash
-# Set the location of your repositories
-export GIT_HOME="/<fullPathTYourRepos>"
-
-# Build the PHP documentation
-$GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --chunk 1 --open
-```
 
 ## License
 
