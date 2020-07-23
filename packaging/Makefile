@@ -6,7 +6,7 @@ PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
 GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 
-export FPM_FLAGS=""
+export FPM_FLAGS=
 
 .PHONY: help
 .DEFAULT_GOAL := help
@@ -18,7 +18,7 @@ prepare: ## Build docker image for the packaging
 	@docker build -t $(IMAGE) .
 
 create-%: prepare  ## Create the specific package
-	@echo 'Creating package ...'
+	@echo "Creating package $* ..."
 	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
 		-v $(PWD):/app \
@@ -34,8 +34,7 @@ create-%: prepare  ## Create the specific package
 		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package $(OUTPUT) \
-		--chdir /app \
-		$(FPM_FLAGS) \
+		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
 		src/ext/modules/=$(PHP_AGENT_DIR)/extensions \
@@ -111,7 +110,7 @@ rpm-install:  ## Install the rpm installer to run some smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src rpm-install
+	@docker run --rm -v $(PWD):/src -w /src rpm-install
 
 .PHONY: install
 install: deb-install rpm-install  ## Install all the distributions
