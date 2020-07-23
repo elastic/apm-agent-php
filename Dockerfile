@@ -1,5 +1,5 @@
 ARG PHP_VERSION=7.2
-FROM wordpress:php${PHP_VERSION}-fpm
+FROM php:${PHP_VERSION}-fpm
 
 RUN apt-get -qq update \
  && apt-get -qq install -y \
