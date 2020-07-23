@@ -92,3 +92,6 @@ deb-install:  ## Install the deb installer to run some smoke tests
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
 	cd -
 	@docker run --rm -v $(PWD):/src -w /src deb-install
+
+.PHONY: install
+install: deb-install rpm-install  ## Install all the distributions
