@@ -6,6 +6,8 @@ PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
 GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 
+export FPM_FLAGS=""
+
 .PHONY: help
 .DEFAULT_GOAL := help
 help: ## Display this help text
@@ -33,6 +35,7 @@ create-%: prepare  ## Create the specific package
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package $(OUTPUT) \
 		--chdir /app \
+		$(FPM_FLAGS) \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
 		src/ext/modules/=$(PHP_AGENT_DIR)/extensions \
@@ -46,6 +49,7 @@ create-%: prepare  ## Create the specific package
 	rm $(PWD)/$(OUTPUT)/*.bck
 
 .PHONY: apk
+apk: FPM_FLAGS="--depends=bash"
 apk: create-apk  ## Create the apk installer
 
 .PHONY: deb
@@ -87,6 +91,13 @@ rpm-info:  ## Show the rpm package metadata
 	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
+
+.PHONY: apk-install
+apk-install:  ## Install the apk installer to run some smoke tests
+	@cd $(PWD)/packaging/test/alpine ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t apk-install . ;\
+	cd -
+	@docker run --rm -v $(PWD):/src -w /src apk-install
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
