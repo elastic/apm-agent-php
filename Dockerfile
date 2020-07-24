@@ -1,5 +1,5 @@
 ARG PHP_VERSION=7.2
-FROM wordpress:php${PHP_VERSION}-fpm
+FROM php:${PHP_VERSION}-fpm
 
 RUN apt-get -qq update \
  && apt-get -qq install -y \
@@ -8,7 +8,8 @@ RUN apt-get -qq update \
     curl \
     libcurl4-openssl-dev \
     procps \
-	--no-install-recommends \
+    unzip \
+    --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
