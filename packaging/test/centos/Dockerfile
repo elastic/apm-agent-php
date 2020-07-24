@@ -11,6 +11,8 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
 
 RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/bin/composer
 
+# To support tar and rpm packages
+ENV TYPE=rpm
 COPY entrypoint.sh /bin
 WORKDIR /src
 

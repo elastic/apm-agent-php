@@ -89,21 +89,21 @@ rpm-install:  ## Install the rpm installer to run some smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src rpm-install
+	docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm rpm-install
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src deb-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb deb-install
 
 .PHONY: tar-install
 tar-install:  ## Install the tar installer to run some smoke tests
-	@cd $(PWD)/packaging/test/tar ;\
+	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t tar-install . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src tar-install
+	docker run --rm -v $(PWD):/src -w /src -e TYPE=tar tar-install
 
 .PHONY: install
 install: deb-install rpm-install tar-install ## Install all the distributions
