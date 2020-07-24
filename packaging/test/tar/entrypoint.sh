@@ -2,7 +2,7 @@
 set -x
 
 ## Install tar package and configure the agent accordingly
-tar -xf build/packages/*.tar -C /
+tar -xf build/packages/**/*.tar -C /
 # shellcheck disable=SC1091
 source .scripts/after_install
 

@@ -81,7 +81,7 @@ deb-info:  ## Show the deb package metadata
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: rpm-install
