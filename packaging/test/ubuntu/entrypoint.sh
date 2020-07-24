@@ -2,7 +2,7 @@
 set -x
 
 ## Install debian package and configure the agent accordingly
-dpkg -i build/packages/*.deb
+dpkg -i build/packages/**/*.deb
 
 ## Verify if the elastic php agent is enabled
 if ! php -m | grep -q 'elastic' ; then
