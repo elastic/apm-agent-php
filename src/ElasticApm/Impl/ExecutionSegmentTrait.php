@@ -152,7 +152,7 @@ trait ExecutionSegmentTrait
             return;
         }
 
-        $this->name = $this->tracer->limitKeywordString($name);
+        $this->name = Tracer::limitKeywordString($name);
     }
 
     public function setType(string $type): void
@@ -161,7 +161,7 @@ trait ExecutionSegmentTrait
             return;
         }
 
-        $this->type = $this->tracer->limitKeywordString($type);
+        $this->type = Tracer::limitKeywordString($type);
     }
 
     public function setLabel(string $key, $value): void
@@ -179,8 +179,8 @@ trait ExecutionSegmentTrait
             return;
         }
 
-        $this->labels[$this->tracer->limitKeywordString($key)] = is_string($value)
-            ? $this->tracer->limitKeywordString($value)
+        $this->labels[Tracer::limitKeywordString($key)] = is_string($value)
+            ? Tracer::limitKeywordString($value)
             : $value;
     }
 

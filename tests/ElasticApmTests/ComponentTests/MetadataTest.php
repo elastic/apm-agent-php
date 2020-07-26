@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests;
 
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
@@ -36,7 +37,7 @@ final class MetadataTest extends ComponentTestCaseBase
         );
     }
 
-    public function testInvalidServiceName(): void
+    public function testInvalidServiceNameChars(): void
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceName(
@@ -44,6 +45,27 @@ final class MetadataTest extends ComponentTestCaseBase
             ),
             function (DataFromAgent $dataFromAgent): void {
                 TestEnvBase::verifyServiceName('1CUSTOM -_- sErvIcE -_- NaMe9', $dataFromAgent);
+            }
+        );
+    }
+
+    public function testInvalidServiceNameTooLong(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceName(
+                '[' . str_repeat('A', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2)
+                . ','
+                . ';'
+                . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . ']' . '_tail'
+            ),
+            function (DataFromAgent $dataFromAgent): void {
+                TestEnvBase::verifyServiceName(
+                    '_' . str_repeat('A', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2)
+                    . '_'
+                    . '_'
+                    . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . '_',
+                    $dataFromAgent
+                );
             }
         );
     }

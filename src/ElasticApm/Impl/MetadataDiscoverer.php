@@ -39,8 +39,10 @@ final class MetadataDiscoverer
             return self::DEFAULT_SERVICE_NAME;
         }
 
-        $adaptedName = preg_replace('/[^a-zA-Z0-9 _\-]/', '_', $configuredName);
-        return $adaptedName ?? MetadataDiscoverer::DEFAULT_SERVICE_NAME;
+        $charsAdaptedName = preg_replace('/[^a-zA-Z0-9 _\-]/', '_', $configuredName);
+        return is_null($charsAdaptedName)
+            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            : Tracer::limitKeywordString($charsAdaptedName);
     }
 
     public static function discoverServiceData(ConfigSnapshot $config): ServiceDataInterface
