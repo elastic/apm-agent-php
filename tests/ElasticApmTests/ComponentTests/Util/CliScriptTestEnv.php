@@ -44,7 +44,7 @@ final class CliScriptTestEnv extends TestEnvBase
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"'
             . ' "--' . CliScriptAppCodeHost::CLASS_CMD_OPT_NAME . '=' . $testProperties->appCodeClass . '"'
             . ' "--' . CliScriptAppCodeHost::METHOD_CMD_OPT_NAME . '=' . $testProperties->appCodeMethod . '"',
-            $this->buildEnvVars()
+            $this->buildEnvVars($this->buildAdditionalEnvVars($testProperties))
         );
     }
 

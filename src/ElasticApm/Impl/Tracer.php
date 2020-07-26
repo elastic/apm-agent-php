@@ -1,17 +1,21 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
+use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
+use Elastic\Apm\Impl\Config\Parser as ConfigParser;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\ServerComm\EventSender;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -33,7 +37,10 @@ final class Tracer implements TracerInterface
     /** @var EventSinkInterface */
     private $eventSink;
 
-    /** @var Log\Backend */
+    /** @var ConfigSnapshot */
+    private $config;
+
+    /** @var LogBackend */
     private $logBackend;
 
     /** @var LoggerFactory */
@@ -55,6 +62,8 @@ final class Tracer implements TracerInterface
         $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
         $this->eventSink = $providedDependencies->eventSink ?? new EventSender();
 
+        $this->config = $this->getConfig();
+
         $this->logBackend = new LogBackend(LogLevel::TRACE, $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
         $this->logger = $this->loggerFactory
@@ -63,9 +72,34 @@ final class Tracer implements TracerInterface
         $this->currentTransaction = null;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Tracer created', ['providedDependencies' => $providedDependencies]);
+        && $loggerProxy->log(
+            'Tracer created',
+            [
+                'providedDependencies' => $providedDependencies,
+                'this'                 => $this,
+            ]
+        );
 
-        $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata());
+        $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata($this->config));
+    }
+
+    private function getConfig(): ConfigSnapshot
+    {
+        $allOptsMeta = AllOptionsMetadata::build();
+        $optionNames = array_keys($allOptsMeta);
+        $rawSnapshotSource
+            = $this->providedDependencies->configRawSnapshotSource
+              ?? new CompositeRawSnapshotSource(
+                  [
+                      new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX, $optionNames),
+                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optionNames),
+                  ]
+              );
+
+        $parsingLoggerFactory
+            = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
+        $parser = new ConfigParser($allOptsMeta, $parsingLoggerFactory);
+        return new ConfigSnapshot($parser->parse($rawSnapshotSource->currentSnapshot()));
     }
 
     /** @inheritDoc */
@@ -173,6 +207,7 @@ final class Tracer implements TracerInterface
     {
         $builder = new ObjectToStringBuilder();
         $builder->add('providedDependencies', $this->providedDependencies);
+        $builder->add('config', $this->config);
         return $builder->build();
     }
 }

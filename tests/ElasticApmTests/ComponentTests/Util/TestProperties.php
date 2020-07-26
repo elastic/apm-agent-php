@@ -30,6 +30,9 @@ final class TestProperties
     /** @var string|null */
     public $transactionType = null;
 
+    /** @var ?string */
+    public $configuredServiceName = null;
+
     public function __construct(callable $appCodeClassMethod)
     {
         assert(is_array($appCodeClassMethod));
@@ -67,9 +70,15 @@ final class TestProperties
         return $this;
     }
 
-    public function buildUri(): string
+    /**
+     * @param string|null $configuredServiceName
+     *
+     * @return $this
+     */
+    public function withConfiguredServiceName(?string $configuredServiceName): self
     {
-        return $this->uriPath;
+        $this->configuredServiceName = $configuredServiceName;
+        return $this;
     }
 
     public function __toString(): string

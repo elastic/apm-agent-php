@@ -31,7 +31,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
         )->addContext('this', $this);
     }
 
-    protected function ensureAppCodeHostServerStarted(): void
+    protected function ensureAppCodeHostServerStarted(TestProperties $testProperties): void
     {
         if (isset($this->appCodeHostServerPort)) {
             return;
@@ -48,7 +48,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
             self::appCodePhpCmd()
             . " -S localhost:$appCodeHostServerPort"
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"',
-            $this->buildEnvVars()
+            $this->buildEnvVars($this->buildAdditionalEnvVars($testProperties))
         );
         $this->checkHttpServerStatus(
             $appCodeHostServerPort,
