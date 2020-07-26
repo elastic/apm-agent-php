@@ -10,6 +10,7 @@ use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestCaseBase;
@@ -180,13 +181,18 @@ abstract class TestEnvBase
     {
         $result = [];
 
-        if (!is_null($testProperties->configuredServiceName)) {
-            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
-                EnvVarsRawSnapshotSource::DEFAULT_PREFIX,
-                OptionNames::SERVICE_NAME
-            );
-            $result[$envVarName] = $testProperties->configuredServiceName;
-        }
+        $addEnvVarIfOptionIsConfigured = function (string $optName, ?string $configuredValue) use (&$result): void {
+            if (is_null($configuredValue)) {
+                return;
+            }
+
+            $envVarName
+                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
+            $result[$envVarName] = $configuredValue;
+        };
+
+        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
+        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Finished', ['result' => $result]);
@@ -379,12 +385,22 @@ abstract class TestEnvBase
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
+
+        $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
+        self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
     }
 
-    public static function verifyServiceName(string $expectedServiceName, DataFromAgent $dataFromAgent): void
+    public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expectedServiceName, $metadata->service()->name());
+            TestCase::assertSame($expected, $metadata->service()->name());
+        }
+    }
+
+    public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service()->version());
         }
     }
 

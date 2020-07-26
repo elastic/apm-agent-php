@@ -23,6 +23,7 @@ final class AllOptionsMetadata
         return [
             OptionNames::ENABLED      => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::SERVICE_NAME => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_VERSION => new NullableStringOptionMetadata(),
         ];
     }
 }
