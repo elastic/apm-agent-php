@@ -53,10 +53,10 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceName(
-                '[' . str_repeat('A', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2)
+                '[' . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
                 . ','
                 . ';'
-                . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . ']' . '_tail'
+                . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']' . '_tail'
             ),
             function (DataFromAgent $dataFromAgent): void {
                 TestEnvBase::verifyServiceName(
@@ -66,6 +66,41 @@ final class MetadataTest extends ComponentTestCaseBase
                     . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . '_',
                     $dataFromAgent
                 );
+            }
+        );
+    }
+
+    public function testDefaultServiceVersion(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty'])),
+            function (DataFromAgent $dataFromAgent): void {
+                TestEnvBase::verifyServiceVersion(null, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testCustomServiceVersion(): void
+    {
+        $expected = 'v1.5.4-alpha@CI#.!?.';
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceVersion($expected),
+            function (DataFromAgent $dataFromAgent) use ($expected): void {
+                TestEnvBase::verifyServiceVersion($expected, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testInvalidServiceVersionTooLong(): void
+    {
+        $validPart = '[' . str_repeat('V', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+                     . ','
+                     . ';'
+                     . str_repeat('W', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']';
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceVersion($validPart . '_tail'),
+            function (DataFromAgent $dataFromAgent) use ($validPart): void {
+                TestEnvBase::verifyServiceVersion($validPart, $dataFromAgent);
             }
         );
     }

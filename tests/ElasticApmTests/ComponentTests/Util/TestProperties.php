@@ -33,6 +33,9 @@ final class TestProperties
     /** @var ?string */
     public $configuredServiceName = null;
 
+    /** @var ?string */
+    public $configuredServiceVersion = null;
+
     public function __construct(callable $appCodeClassMethod)
     {
         assert(is_array($appCodeClassMethod));
@@ -81,12 +84,25 @@ final class TestProperties
         return $this;
     }
 
+    /**
+     * @param string|null $configuredServiceVersion
+     *
+     * @return $this
+     */
+    public function withConfiguredServiceVersion(?string $configuredServiceVersion): self
+    {
+        $this->configuredServiceVersion = $configuredServiceVersion;
+        return $this;
+    }
+
     public function __toString(): string
     {
         $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
         $builder->add('appCodeClass', $this->appCodeClass);
         $builder->add('appCodeMethod', $this->appCodeMethod);
         $builder->add('httpMethod', $this->httpMethod);
+        $builder->add('configuredServiceName', $this->configuredServiceName);
+        $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
         return $builder->build();
     }
 }

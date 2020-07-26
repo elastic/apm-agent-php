@@ -22,6 +22,9 @@ final class Snapshot
     /** @var string|null */
     private $serviceName;
 
+    /** @var string|null */
+    private $serviceVersion;
+
     /**
      * Snapshot constructor.
      *
@@ -42,11 +45,17 @@ final class Snapshot
         return $this->serviceName;
     }
 
+    public function serviceVersion(): ?string
+    {
+        return $this->serviceVersion;
+    }
+
     public function __toString(): string
     {
         $builder = new ObjectToStringBuilder();
         $builder->add('enabled', $this->enabled);
         $builder->add('serviceName', $this->serviceName);
+        $builder->add('serviceVersion', $this->serviceVersion);
         return $builder->build();
     }
 }

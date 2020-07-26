@@ -55,7 +55,10 @@ final class MetadataDiscoverer
                 $result->name = is_null($config->serviceName())
                     ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
                     : MetadataDiscoverer::adaptServiceName($config->serviceName());
-                // $result->version = ???;
+
+                if (!is_null($config->serviceVersion())) {
+                    $result->version = Tracer::limitKeywordString($config->serviceVersion());
+                }
 
                 $result->agent = new NameVersionData(MetadataDiscoverer::AGENT_NAME, ElasticApm::VERSION);
                 $result->language = new NameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
