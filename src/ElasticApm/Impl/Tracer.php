@@ -165,12 +165,12 @@ final class Tracer implements TracerInterface
         $this->currentTransaction = null;
     }
 
-    public function limitKeywordString(string $keywordString): string
+    public static function limitKeywordString(string $keywordString): string
     {
         return TextUtil::ensureMaxLength($keywordString, Constants::KEYWORD_STRING_MAX_LENGTH);
     }
 
-    public function limitNullableKeywordString(?string $keywordString): ?string
+    public static function limitNullableKeywordString(?string $keywordString): ?string
     {
         if (is_null($keywordString)) {
             return null;
