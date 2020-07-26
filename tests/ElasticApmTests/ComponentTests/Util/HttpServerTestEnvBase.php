@@ -35,12 +35,11 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
         $this->ensureMockApmServerStarted();
-        $this->ensureAppCodeHostServerStarted();
+        $this->ensureAppCodeHostServerStarted($testProperties);
 
-        $uri = $testProperties->buildUri();
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Sending HTTP request `' . $testProperties->httpMethod . " $$uri'"
+            'Sending HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
@@ -48,7 +47,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         $response = BuiltinHttpServerAppCodeHost::sendRequest(
             $this->appCodeHostServerPort,
             $testProperties->httpMethod,
-            $uri,
+            $testProperties->uriPath,
             [
                 self::TEST_ENV_ID_HEADER_NAME => $this->testEnvId(),
                 BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
@@ -65,12 +64,12 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Successfully sent HTTP request `' . $testProperties->httpMethod . " $$uri'"
+            'Successfully sent HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
     }
 
-    abstract protected function ensureAppCodeHostServerStarted(): void;
+    abstract protected function ensureAppCodeHostServerStarted(TestProperties $testProperties): void;
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
@@ -80,7 +79,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
         if (is_null($testProperties->transactionName)) {
             TestCase::assertSame(
-                $testProperties->httpMethod . ' ' . $testProperties->buildUri(),
+                $testProperties->httpMethod . ' ' . $testProperties->uriPath,
                 $rootTransaction->getName()
             );
         }
