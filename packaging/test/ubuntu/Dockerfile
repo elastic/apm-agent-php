@@ -11,6 +11,7 @@ RUN apt-get -qq update \
  && apt-get -qq install -y procps --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
+ENV TYPE=deb
 COPY entrypoint.sh /bin
 WORKDIR /src
 

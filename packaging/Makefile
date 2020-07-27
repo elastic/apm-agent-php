@@ -62,7 +62,7 @@ version:  ## Show the fpm version
 package: rpm deb tar  ## Create all the installers
 
 .PHONY: info
-info: rpm-info deb-info  ## Show the package metadata for all the installers
+info: rpm-info deb-info tar-info  ## Show the package metadata for all the installers
 
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
@@ -78,19 +78,32 @@ deb-info:  ## Show the deb package metadata
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
+.PHONY: tar-info
+tar-info:  ## Show the tar package metadata
+	@cd $(PWD) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.tar) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
+
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src rpm-install
+	docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm rpm-install
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src deb-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb deb-install
+
+.PHONY: tar-install
+tar-install:  ## Install the tar installer to run some smoke tests
+	@cd $(PWD)/packaging/test/ubuntu ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t tar-install . ;\
+	cd -
+	docker run --rm -v $(PWD):/src -w /src -e TYPE=tar tar-install
 
 .PHONY: install
-install: deb-install rpm-install  ## Install all the distributions
+install: deb-install rpm-install tar-install ## Install all the distributions
