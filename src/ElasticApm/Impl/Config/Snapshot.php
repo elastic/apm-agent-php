@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
+use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
@@ -20,6 +21,9 @@ final class Snapshot
 
     /** @var string|null */
     private $serviceName;
+
+    /** @var string|null */
+    private $serviceVersion;
 
     /**
      * Snapshot constructor.
@@ -39,5 +43,19 @@ final class Snapshot
     public function serviceName(): ?string
     {
         return $this->serviceName;
+    }
+
+    public function serviceVersion(): ?string
+    {
+        return $this->serviceVersion;
+    }
+
+    public function __toString(): string
+    {
+        $builder = new ObjectToStringBuilder();
+        $builder->add('enabled', $this->enabled);
+        $builder->add('serviceName', $this->serviceName);
+        $builder->add('serviceVersion', $this->serviceVersion);
+        return $builder->build();
     }
 }

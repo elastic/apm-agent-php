@@ -30,6 +30,12 @@ final class TestProperties
     /** @var string|null */
     public $transactionType = null;
 
+    /** @var ?string */
+    public $configuredServiceName = null;
+
+    /** @var ?string */
+    public $configuredServiceVersion = null;
+
     public function __construct(callable $appCodeClassMethod)
     {
         assert(is_array($appCodeClassMethod));
@@ -67,9 +73,26 @@ final class TestProperties
         return $this;
     }
 
-    public function buildUri(): string
+    /**
+     * @param string|null $configuredServiceName
+     *
+     * @return $this
+     */
+    public function withConfiguredServiceName(?string $configuredServiceName): self
     {
-        return $this->uriPath;
+        $this->configuredServiceName = $configuredServiceName;
+        return $this;
+    }
+
+    /**
+     * @param string|null $configuredServiceVersion
+     *
+     * @return $this
+     */
+    public function withConfiguredServiceVersion(?string $configuredServiceVersion): self
+    {
+        $this->configuredServiceVersion = $configuredServiceVersion;
+        return $this;
     }
 
     public function __toString(): string
@@ -78,6 +101,8 @@ final class TestProperties
         $builder->add('appCodeClass', $this->appCodeClass);
         $builder->add('appCodeMethod', $this->appCodeMethod);
         $builder->add('httpMethod', $this->httpMethod);
+        $builder->add('configuredServiceName', $this->configuredServiceName);
+        $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
         return $builder->build();
     }
 }

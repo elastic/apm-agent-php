@@ -19,7 +19,7 @@ prepare: ## Build docker image for the packaging
 
 create-%: prepare  ## Create the specific package
 	@echo "Creating package $* ..."
-	@mkdir -p $(PWD)/$(OUTPUT)
+	@mkdir -p $(PWD)/$(OUTPUT)/$(PHP_VERSION)
 	@docker run --rm \
 		-v $(PWD):/app \
 		-w /app $(IMAGE) \
@@ -33,7 +33,7 @@ create-%: prepare  ## Create the specific package
 		--license 'ASL 2.0' \
 		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
-		--package $(OUTPUT) \
+		--package $(OUTPUT)/$(PHP_VERSION) \
 		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
@@ -42,10 +42,10 @@ create-%: prepare  ## Create the specific package
 		src/ElasticApm=$(PHP_AGENT_DIR)/src \
 		src/bootstrap_php_part.php=$(PHP_AGENT_DIR)/src/bootstrap_php_part.php
 	@echo 'Creating sha512sum ...'
-	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/*.$*) ;\
+	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/$(PHP_VERSION)/*.$*) ;\
 	sha512sum $$BINARY > $$BINARY.sha512 ;\
-	sed -i.bck "s#$(PWD)/$(OUTPUT)/##g" $$BINARY.sha512 ;\
-	rm $(PWD)/$(OUTPUT)/*.bck
+	sed -i.bck "s#$(PWD)/$(OUTPUT)/$(PHP_VERSION)/##g" $$BINARY.sha512 ;\
+	rm $(PWD)/$(OUTPUT)/$(PHP_VERSION)/*.bck
 
 .PHONY: apk
 apk: FPM_FLAGS="--depends=bash"
@@ -68,28 +68,34 @@ version:  ## Show the fpm version
 .PHONY: package
 package: apk deb rpm tar  ## Create all the installers
 
-.PHONY: info  ## Show the package metadata for all the installers
-info: apk-info deb-info rpm-info
+.PHONY: info
+info: apk-info deb-info rpm-info tar-info  ## Show the package metadata for all the installers
 
 .PHONY: apk-info
 apk-info:  ## Show the apk package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.apk) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.apk) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
 
 .PHONY: deb-info
 deb-info:  ## Show the deb package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.deb) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.rpm) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
+
+.PHONY: tar-info
+tar-info:  ## Show the tar package metadata
+	@cd $(PWD) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.tar) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: apk-install
 apk-install:  ## Install the apk installer to run some smoke tests
@@ -103,14 +109,21 @@ deb-install:  ## Install the deb installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src deb-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb deb-install
+
+.PHONY: tar-install
+tar-install:  ## Install the tar installer to run some smoke tests
+	@cd $(PWD)/packaging/test/ubuntu ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t tar-install . ;\
+	cd -
+	docker run --rm -v $(PWD):/src -w /src -e TYPE=tar tar-install
 
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src rpm-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm pm-install
 
 .PHONY: install
-install: deb-install rpm-install  ## Install all the distributions
+install: deb-install rpm-install tar-install  ## Install all the distributions

@@ -9,8 +9,9 @@ use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
@@ -172,10 +173,41 @@ abstract class TestEnvBase
     }
 
     /**
+     * @param TestProperties $testProperties
+     *
      * @return array<string, string>
      */
-    protected function buildEnvVars(): array
+    protected function buildAdditionalEnvVars(TestProperties $testProperties): array
     {
+        $result = [];
+
+        $addEnvVarIfOptionIsConfigured = function (string $optName, ?string $configuredValue) use (&$result): void {
+            if (is_null($configuredValue)) {
+                return;
+            }
+
+            $envVarName
+                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
+            $result[$envVarName] = $configuredValue;
+        };
+
+        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
+        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Finished', ['result' => $result]);
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, string> $additionalEnvVars
+     *
+     * @return array<string, string>
+     */
+    protected function buildEnvVars(array $additionalEnvVars = []): array
+    {
+        /** @var array<string, string> */
         $result = getenv();
 
         if (!is_null($this->mockApmServerPort)) {
@@ -200,7 +232,7 @@ abstract class TestEnvBase
         )]
             = $this->testEnvId();
 
-        return $result;
+        return array_merge($result, $additionalEnvVars);
     }
 
     /**
@@ -335,6 +367,7 @@ abstract class TestEnvBase
 
     protected function verifyDataAgainstRequest(TestProperties $testProperties): void
     {
+        $this->verifyMetadata($testProperties);
         $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
         $this->verifyRootTransactionName($testProperties, $rootTransaction);
         $this->verifyRootTransactionType($testProperties, $rootTransaction);
@@ -343,6 +376,32 @@ abstract class TestEnvBase
             $this->dataFromAgent->idToTransaction(),
             $this->dataFromAgent->idToSpan()
         );
+    }
+
+    protected function verifyMetadata(TestProperties $testProperties): void
+    {
+        /** @noinspection PhpStrictTypeCheckingInspection */
+        $expectedServiceName = is_null($testProperties->configuredServiceName)
+            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
+        self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
+
+        $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
+        self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+    }
+
+    public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service()->name());
+        }
+    }
+
+    public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service()->version());
+        }
     }
 
     protected function verifyRootTransactionName(

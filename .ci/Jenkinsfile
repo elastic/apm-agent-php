@@ -115,7 +115,8 @@ pipeline {
             post {
               always {
                 dir("${BASE_DIR}"){
-                  archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/*")
+                  junit(allowEmptyResults: true, keepLongStdio: true, testResults: "**/log_as_junit.xml")
+                  archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/${PHP_VERSION}/*")
                 }
               }
             }
