@@ -4,7 +4,7 @@ VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 |
 OUTPUT:=build/packages
 PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
-GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
+GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 
 export FPM_FLAGS=
 
@@ -100,30 +100,30 @@ tar-info:  ## Show the tar package metadata
 .PHONY: apk-install
 apk-install:  ## Install the apk installer to run some smoke tests
 	@cd $(PWD)/packaging/test/alpine ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t apk-install . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src apk-install
+	@docker run --rm -v $(PWD):/src -w /src $@
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t deb-install . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb deb-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb $@
 
 .PHONY: tar-install
 tar-install:  ## Install the tar installer to run some smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t tar-install . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src -e TYPE=tar tar-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar $@
 
 .PHONY: rpm-install
 rpm-install:  ## Install the rpm installer to run some smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t rpm-install . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm pm-install
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm $@
 
 .PHONY: install
 install: deb-install rpm-install tar-install  ## Install all the distributions
