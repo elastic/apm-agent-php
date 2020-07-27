@@ -113,6 +113,8 @@ final class DbgUtil
             } else {
                 $result .= ', ';
             }
+            $result .= self::formatValue($key);
+            $result .= ' => ';
             $result .= self::formatValue($value);
         }
         $result .= '}';

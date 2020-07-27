@@ -38,6 +38,9 @@ abstract class AppCodeHostBase extends CliProcessBase
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Done', ['Environment variables' => getenv()]);
     }
 
     protected function registerWithSpawnedProcessesCleaner(): void
