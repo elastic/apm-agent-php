@@ -38,7 +38,6 @@ function is_extension_installed() {
 ################################################################################
 #### Function add_extension_configuration_to_file ##############################
 function add_extension_configuration_to_file() {
-    cp -fa "$1" "${1}${BACKUP_EXTENSION}"
     tee -a "$1" <<EOF
 ; THIS IS AN AUTO-GENERATED FILE by the Elastic PHP agent post-install.sh script
 extension=${EXTENSION_FILE_PATH}
@@ -57,6 +56,7 @@ if [ -e "${PHP_INI_FILE_PATH}" ] ; then
         echo '  extension configuration already exists for the Elastic PHP agent.'
         echo '  skipping ... '
     else
+        cp -fa "${PHP_INI_FILE_PATH}" "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}"
         add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
     fi
 else
