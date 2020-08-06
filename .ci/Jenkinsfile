@@ -115,18 +115,22 @@ pipeline {
             post {
               always {
                 dir("${BASE_DIR}"){
-                  junit(allowEmptyResults: true, keepLongStdio: true, testResults: "**/log_as_junit.xml")
                   archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/${PHP_VERSION}/*")
                 }
               }
             }
           }
-          stage('Package Install') {
+          stage('Package Test') {
             steps {
-              withGithubNotify(context: "Package-Install-${PHP_VERSION}") {
+              withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
+              }
+            }
+            post {
+              always {
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
               }
             }
           }
