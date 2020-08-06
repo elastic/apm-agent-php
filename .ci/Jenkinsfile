@@ -94,9 +94,9 @@ pipeline {
               }
             }
           }
-          stage('Component Tests') {
+          stage('PHPUnit Tests') {
             steps {
-              withGithubNotify(context: "Component-Tests-${PHP_VERSION}", tab: 'tests') {
+              withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile composer", label: 'composer'
                 }
