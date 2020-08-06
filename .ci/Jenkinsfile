@@ -44,6 +44,7 @@ pipeline {
         beforeAgent true
         expression { return env.ONLY_DOCS == "false" }
       }
+      failFast false
       matrix {
         agent { label 'linux && immutable' }
         options { skipDefaultCheckout() }
