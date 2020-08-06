@@ -73,7 +73,7 @@ pipeline {
           }
           stage('PHPT Tests') {
             steps {
-              withGithubNotify(context: "PHP-Tests-${PHP_VERSION}", tab: 'tests') {
+              withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile test", label: 'test'
                 }
