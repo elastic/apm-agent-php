@@ -70,9 +70,9 @@ pipeline {
               }
             }
           }
-          stage('Test') {
+          stage('PHP Tests') {
             steps {
-              withGithubNotify(context: "Test-${PHP_VERSION}", tab: 'tests') {
+              withGithubNotify(context: "PHP-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile test", label: 'test'
                 }
@@ -93,22 +93,21 @@ pipeline {
               }
             }
           }
-          stage('Composer') {
+          stage('Component Tests') {
             steps {
-              withGithubNotify(context: "Composer-${PHP_VERSION}") {
+              withGithubNotify(context: "Component-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile composer", label: 'composer'
                 }
               }
             }
           }
-          stage('Package') {
+          stage('Package Generation') {
             steps {
-              withGithubNotify(context: "Package-${PHP_VERSION}") {
+              withGithubNotify(context: "Package-${PHP_VERSION}", tab: 'artifacts') {
                 dir("${BASE_DIR}"){
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging package", label: 'package'
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging info", label: 'package info'
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
               }
             }
@@ -117,6 +116,15 @@ pipeline {
                 dir("${BASE_DIR}"){
                   junit(allowEmptyResults: true, keepLongStdio: true, testResults: "**/log_as_junit.xml")
                   archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/${PHP_VERSION}/*")
+                }
+              }
+            }
+          }
+          stage('Package Install') {
+            steps {
+              withGithubNotify(context: "Package-Install-${PHP_VERSION}") {
+                dir("${BASE_DIR}"){
+                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
               }
             }
