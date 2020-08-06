@@ -71,7 +71,7 @@ pipeline {
               }
             }
           }
-          stage('PHP Tests') {
+          stage('PHPT Tests') {
             steps {
               withGithubNotify(context: "PHP-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
