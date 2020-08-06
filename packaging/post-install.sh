@@ -6,6 +6,7 @@
 PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 EXTENSION_FILE_PATH="${PHP_AGENT_DIR}/extensions/elastic_apm.so"
 BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
+BACKUP_EXTENSION=".agent.bck"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################
@@ -37,7 +38,7 @@ function is_extension_installed() {
 ################################################################################
 #### Function add_extension_configuration_to_file ##############################
 function add_extension_configuration_to_file() {
-    tee -a "$@" <<EOF
+    tee -a "$1" <<EOF
 ; THIS IS AN AUTO-GENERATED FILE by the Elastic PHP agent post-install.sh script
 extension=${EXTENSION_FILE_PATH}
 elastic_apm.bootstrap_php_part_file=${BOOTSTRAP_FILE_PATH}
@@ -55,6 +56,7 @@ if [ -e "${PHP_INI_FILE_PATH}" ] ; then
         echo '  extension configuration already exists for the Elastic PHP agent.'
         echo '  skipping ... '
     else
+        cp -fa "${PHP_INI_FILE_PATH}" "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}"
         add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
     fi
 else
@@ -65,6 +67,10 @@ if is_extension_installed ; then
     echo 'Extension enabled successfully for Elastic PHP agent'
 else
     echo 'Failed enabling Elastic PHP agent extension'
+    if [ -e "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}" ] ; then
+        echo "Reverted changes in the file ${PHP_INI_FILE_PATH}"
+        mv -f "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}" "${PHP_INI_FILE_PATH}"
+    fi
     echo 'Set up the Agent manually as explained in:'
     echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
 fi
