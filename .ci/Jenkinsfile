@@ -127,7 +127,9 @@ pipeline {
     stage('Testing') {
       when {
         beforeAgent true
-        expression { return env.ONLY_DOCS == "false" }
+        // TODO: && false in place to disable this particular section for the time being.
+        //       as agreed to avoid any misleading until this particular section has been implemented.
+        expression { return env.ONLY_DOCS == "false" && false }
       }
       matrix {
         // TODO: This should be uncommented out when the implementation is in place
