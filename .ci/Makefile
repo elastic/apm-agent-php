@@ -11,7 +11,7 @@ help: ## Display this help text
 
 .PHONY: prepare
 prepare:  ## Build docker image for building and testing the project
-	docker build \
+	@docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION} .
 
@@ -40,16 +40,17 @@ install: prepare  ## Install the agent
 		$(IMAGE):${PHP_VERSION} \
 		make install
 
+.PHONY: interactive
+interactive: prepare  ## Run an interactive docker shell
+	@docker run -it --rm \
+		-v $(PWD):/app \
+		$(IMAGE):${PHP_VERSION} \
+		/bin/bash
+
 .PHONY: composer
 composer: prepare  ## Run composer
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION} \
-		sh -c 'make install \
-			&& echo 'extension=elastic_apm.so' > /usr/local/etc/php/php.ini \
-			&& echo 'elastic_apm.bootstrap_php_part_file=/app/src/bootstrap_php_part.php' >> /usr/local/etc/php/php.ini \
-			&& php -m \
-			&& cd /app \
-			&& composer install \
-			&& composer static_check_and_run_component_tests_standalone_envs'
+		sh -c '/app/.ci/composer.sh'

@@ -3,11 +3,12 @@ FROM php:${PHP_VERSION}-fpm
 
 RUN apt-get -qq update \
  && apt-get -qq install -y \
-    build-essential \
     autoconf \
+    build-essential \
     curl \
     libcurl4-openssl-dev \
     procps \
+    rsyslog \
     unzip \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
