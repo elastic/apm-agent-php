@@ -1,10 +1,10 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\AutoInstrument;
+
+use Throwable;
 
 interface InterceptedCallTrackerInterface
 {

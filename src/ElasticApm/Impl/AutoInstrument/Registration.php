@@ -6,8 +6,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
-use Elastic\Apm\Impl\MetadataInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 
 /**
@@ -15,7 +15,7 @@ use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
  *
  * @internal
  */
-final class Registration
+final class Registration implements LoggableInterface
 {
     /** @var int */
     private $dbgPluginIndex;
@@ -50,20 +50,16 @@ final class Registration
         $this->factory = $interceptedCallTrackerFactory;
     }
 
-    public function __toString(): string
+    public function toLog(LogStreamInterface $logStream): void
     {
-        $builder = new ObjectToStringBuilder();
-
-        $builder->add(
-            'plugin',
-            (new ObjectToStringBuilder())
-                ->add('index', $this->dbgPluginIndex)
-                ->add('description', $this->dbgPluginDesc)
-                ->build()
+        $logStream->writeMap(
+            [
+                'plugin' => [
+                    'index' => $this->dbgPluginIndex,
+                    'description' => $this->dbgPluginDesc
+                ],
+                'interceptedCallDescription' => $this->dbgInterceptedCallDesc
+            ]
         );
-
-        $builder->add('interceptedCallDescription', $this->dbgInterceptedCallDesc);
-
-        return $builder->build();
     }
 }

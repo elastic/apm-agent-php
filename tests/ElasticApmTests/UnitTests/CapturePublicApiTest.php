@@ -7,7 +7,7 @@ namespace Elastic\Apm\Tests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\Tests\Util\TestDummyException;
+use Elastic\Apm\Tests\Util\DummyForTestsException;
 use Elastic\Apm\TransactionInterface;
 
 class CapturePublicApiTest extends UnitTestCaseBase
@@ -68,11 +68,11 @@ class CapturePublicApiTest extends UnitTestCaseBase
             'test_TX_name',
             'test_TX_type',
             function () use (&$span) {
-                return ElasticApm::captureCurrentSpan(
+                return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $spanArg) use (&$span) {
-                        $this->assertSame($spanArg, ElasticApm::getCurrentSpan());
+                        $this->assertSame($spanArg, ElasticApm::getCurrentTransaction()->getCurrentSpan());
                         $span = $spanArg;
                         $this->assertSame('test_span_name', $span->getName());
                         $this->assertSame('test_span_type', $span->getType());
@@ -101,7 +101,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
             'test_TX_name',
             'test_TX_type',
             function () use (&$span): TestDummyObject {
-                return ElasticApm::captureCurrentSpan(
+                return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $spanArg) use (&$span): TestDummyObject {
@@ -129,7 +129,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
     {
         $throwingFunc = function (bool $shouldThrow): bool {
             if ($shouldThrow) {
-                throw new TestDummyException("A message");
+                throw new DummyForTestsException("A message");
             }
             return $shouldThrow;
         };
@@ -139,7 +139,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
                 'test_TX_name',
                 'test_TX_type',
                 function () use ($throwingFunc, $shouldThrow): bool {
-                    return ElasticApm::captureCurrentSpan(
+                    return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                         'test_span_name',
                         'test_span_type',
                         function () use ($throwingFunc, $shouldThrow): bool {
@@ -152,7 +152,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
 
         // Act
         $this->assertFalse($captureTx(false));
-        $this->assertThrows(TestDummyException::class, function () use ($captureTx) {
+        $this->assertThrows(DummyForTestsException::class, function () use ($captureTx) {
             $captureTx(/* shouldThrow:*/ true);
         });
 

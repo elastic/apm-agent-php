@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
 
 /**
@@ -54,5 +56,10 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
     /** @inheritDoc */
     public function setAction(?string $action): void
     {
+    }
+
+    public function context(): SpanContextInterface
+    {
+        return NoopSpanContext::singletonInstance();
     }
 }

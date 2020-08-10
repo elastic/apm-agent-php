@@ -16,9 +16,9 @@ final class ExceptionUtil
     public static function buildMessageWithStacktrace(string $msgStart, int $numberOfStackFramesToSkip): string
     {
         $message = $msgStart;
-        $message .= '. Stack trace:';
-        $message .= PHP_EOL;
-        $message .= TextUtil::indent(DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1));
+        // $message .= '. Stack trace:';
+        // $message .= PHP_EOL;
+        // $message .= TextUtil::indent(DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1));
 
         return $message;
     }

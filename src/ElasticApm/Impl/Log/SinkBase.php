@@ -39,10 +39,10 @@ abstract class SinkBase implements SinkInterface
             $messageWithContext .= PHP_EOL;
             $messageWithContext .= TextUtil::indent('Stack trace:');
             $messageWithContext .= PHP_EOL;
-            $messageWithContext .= TextUtil::indent(
-                DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1),
-                /*level: */ 2
-            );
+            // $messageWithContext .= TextUtil::indent(
+            //     DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1),
+            //     /*level: */ 2
+            // );
         }
 
         $this->consumePreformatted(

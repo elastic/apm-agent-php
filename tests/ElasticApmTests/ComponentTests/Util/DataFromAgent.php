@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\Tests\Util\SerializedEventSinkTrait;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\Tests\Util\ValidationUtil;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -33,13 +32,13 @@ final class DataFromAgent
     /** @var IntakeApiRequest[] */
     private $intakeApiRequests = [];
 
-    /** @var MetadataInterface[] */
+    /** @var \Elastic\Apm\Metadata[] */
     private $metadata = [];
 
-    /** @var array<string, TransactionDataInterface> */
+    /** @var array<string, TransactionInterface> */
     private $idToTransaction = [];
 
-    /** @var array<string, SpanDataInterface> */
+    /** @var array<string, SpanInterface> */
     private $idToSpan = [];
 
     public function __construct()
@@ -146,7 +145,7 @@ final class DataFromAgent
         $encodedJson = json_encode($decodedJson, JSON_PRETTY_PRINT);
         if ($encodedJson === false) {
             throw new RuntimeException(
-                'json_encode failed. json_last_error_msg(): ' . json_last_error_msg()
+                'json_encode() failed. json_last_error_msg(): ' . json_last_error_msg()
             );
         }
         return $encodedJson;
@@ -172,7 +171,7 @@ final class DataFromAgent
     ): void {
         ValidationUtil::assertThat(!empty($this->metadata));
 
-        $newTransaction = self::validateAndDeserializeTransactionData(
+        $newTransaction = self::validateAndDeserializeTransaction(
             self::decodedJsonToString($transactionDecodedJson)
         );
 
@@ -199,7 +198,7 @@ final class DataFromAgent
     ): void {
         ValidationUtil::assertThat(!empty($this->metadata));
 
-        $newSpan = self::validateAndDeserializeSpanData(self::decodedJsonToString($spanDecodedJson));
+        $newSpan = self::validateAndDeserializeSpan(self::decodedJsonToString($spanDecodedJson));
 
         TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newSpan->getTimestamp());
         TestCaseBase::assertLessThanOrEqualTimestamp(
@@ -258,7 +257,7 @@ final class DataFromAgent
     }
 
     /**
-     * @return MetadataInterface[]
+     * @return \Elastic\Apm\Metadata[]
      */
     public function metadata(): array
     {
@@ -266,7 +265,7 @@ final class DataFromAgent
     }
 
     /**
-     * @return array<string, TransactionDataInterface>
+     * @return array<string, TransactionInterface>
      */
     public function idToTransaction(): array
     {
@@ -274,16 +273,16 @@ final class DataFromAgent
     }
 
     /**
-     * @return TransactionDataInterface
+     * @return TransactionInterface
      */
-    public function singleTransaction(): TransactionDataInterface
+    public function singleTransaction(): TransactionInterface
     {
         TestCase::assertCount(1, $this->idToTransaction);
         return $this->idToTransaction[array_key_first($this->idToTransaction)];
     }
 
     /**
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanInterface>
      */
     public function idToSpan(): array
     {
@@ -291,15 +290,15 @@ final class DataFromAgent
     }
 
     /**
-     * @return SpanDataInterface
+     * @return SpanInterface
      */
-    public function singleSpan(): SpanDataInterface
+    public function singleSpan(): SpanInterface
     {
         TestCase::assertCount(1, $this->idToSpan);
         return $this->idToSpan[array_key_first($this->idToSpan)];
     }
 
-    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentDataInterface
+    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentInterface
     {
         if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->idToSpan, null))) {
             return $span;
@@ -307,7 +306,7 @@ final class DataFromAgent
         return ArrayUtil::getValueIfKeyExistsElse($id, $this->idToTransaction, null);
     }
 
-    public function executionSegmentById(string $id): ExecutionSegmentDataInterface
+    public function executionSegmentById(string $id): ExecutionSegmentInterface
     {
         $result = $this->executionSegmentByIdOrNull($id);
         TestCaseBase::assertNotNull($result);

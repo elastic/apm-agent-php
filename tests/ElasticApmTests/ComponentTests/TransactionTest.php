@@ -8,7 +8,7 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\TransactionInterface;
 
 final class TransactionTest extends ComponentTestCaseBase
 {
@@ -18,7 +18,7 @@ final class TransactionTest extends ComponentTestCaseBase
             [__CLASS__, 'appCodeForTransactionWithoutSpans'],
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertEmpty($tx->getLabels());
+                $this->assertEmpty($tx->context()->getLabels());
                 $this->assertGreaterThanOrEqual(200, $tx->getDuration());
             }
         );
@@ -47,12 +47,12 @@ final class TransactionTest extends ComponentTestCaseBase
                 ->withTransactionName('custom TX name')->withTransactionType('custom TX type'),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertCount(5, $tx->getLabels());
-                $this->assertSame('string_label_value', $tx->getLabels()['string_label_key']);
-                $this->assertTrue($tx->getLabels()['bool_label_key']);
-                $this->assertSame(-987654321, $tx->getLabels()['int_label_key']);
-                $this->assertSame(1234.56789, $tx->getLabels()['float_label_key']);
-                $this->assertNull($tx->getLabels()['null_label_key']);
+                $this->assertCount(5, $tx->context()->getLabels());
+                $this->assertSame('string_label_value', $tx->context()->getLabels()['string_label_key']);
+                $this->assertTrue($tx->context()->getLabels()['bool_label_key']);
+                $this->assertSame(-987654321, $tx->context()->getLabels()['int_label_key']);
+                $this->assertSame(1234.56789, $tx->context()->getLabels()['float_label_key']);
+                $this->assertNull($tx->context()->getLabels()['null_label_key']);
                 $this->assertEquals(100, $tx->getDuration());
             }
         );
@@ -62,11 +62,11 @@ final class TransactionTest extends ComponentTestCaseBase
     {
         ElasticApm::getCurrentTransaction()->setName('custom TX name');
         ElasticApm::getCurrentTransaction()->setType('custom TX type');
-        ElasticApm::getCurrentTransaction()->setLabel('string_label_key', 'string_label_value');
-        ElasticApm::getCurrentTransaction()->setLabel('bool_label_key', true);
-        ElasticApm::getCurrentTransaction()->setLabel('int_label_key', -987654321);
-        ElasticApm::getCurrentTransaction()->setLabel('float_label_key', 1234.56789);
-        ElasticApm::getCurrentTransaction()->setLabel('null_label_key', null);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('string_label_key', 'string_label_value');
+        ElasticApm::getCurrentTransaction()->context()->setLabel('bool_label_key', true);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('int_label_key', -987654321);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('float_label_key', 1234.56789);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('null_label_key', null);
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
         ElasticApm::getCurrentTransaction()->end(/* milliseconds */ 100);
     }

@@ -27,6 +27,11 @@ final class Assert
         return self::ifEnabledLevel(AssertLevel::O_1);
     }
 
+    public static function ifOnLevelEnabled(): ?EnabledAssertProxy
+    {
+        return self::ifEnabledLevel(AssertLevel::O_N);
+    }
+
     private static function ifEnabledLevel(int $statementLevel): ?EnabledAssertProxy
     {
         return (self::$maxEnabledLevel >= $statementLevel) ? new EnabledAssertProxy() : null;

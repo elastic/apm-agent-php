@@ -1,14 +1,16 @@
+:toc: macro
+:toc-title:
+:toclevels: 4
+
 [[public-api]]
 == Public API
 The public API of the Elastic APM PHP agent lets you
 customize and manually create spans and transactions.
 
-* <<api-elasticapm-class>> - Public API entry point
-* <<api-transaction-interface>>
-* <<api-span-interface>>
+toc::[]
 
 [float]
-[[api-elasticapm-class]]
+[[api-elasticapm]]
 === ElasticApm
 This is the entry point of the public API.
 It allows to start transactions, gives you access to the current transaction, etc.
@@ -16,8 +18,8 @@ It allows to start transactions, gives you access to the current transaction, et
 To use the API, you invoke the static methods on the class `\Elastic\Apm\ElasticApm`.
 
 [float]
-[[api-elasticapm-class-begin-current-transaction]]
-==== `ElasticApm::beginCurrentTransaction`
+[[api-elasticapm-begin-current-transaction]]
+==== Begin a new transaction and set it as the current one
 Begins a new transaction and sets it as the current transaction.
 Use this method to create a custom transaction.
 Note that when automatic instrumentation is used
@@ -25,7 +27,7 @@ the agent begins a new transaction automatically
 whenever your application receives an incoming HTTP request
 so you only need to use this method to create custom transactions.
 
-NOTE: You must call <<api-transaction-interface-end>> when the transaction has ended.
+NOTE: You must call <<api-transaction-end,`end()`>> when the transaction has ended.
 
 The best practice is to use a `try`-`finally` block.
 For example:
@@ -45,12 +47,12 @@ try {
 }
 ----
 
-See <<api-transaction-interface>> on how to customize a transaction.
+See <<api-transaction>> on how to customize a transaction.
 
 [float]
-[[api-elasticapm-class-capture-current-transaction]]
-==== `ElasticApm::captureCurrentTransaction`
-This is a convenience API that ensures <<api-transaction-interface-end>> is called
+[[api-elasticapm-capture-current-transaction]]
+==== Capture a new transaction and set it as the current one
+This is a convenience API that ensures <<api-transaction-end,`end()`>> is called
 when the transaction has ended.
 This API:
 
@@ -75,11 +77,11 @@ ElasticApm::captureCurrentTransaction(
 );
 ----
 
-See <<api-transaction-interface>> on how to customize a transaction.
+See <<api-transaction>> on how to customize a transaction.
 
 [float]
-[[api-elasticapm-class-get-current-transaction]]
-==== `ElasticApm::getCurrentTransaction`
+[[api-elasticapm-get-current-transaction]]
+==== Get the current transaction
 Returns the current transaction.
 
 [source,php]
@@ -89,22 +91,22 @@ use Elastic\Apm\ElasticApm;
 $transaction = ElasticApm::getCurrentTransaction();
 ----
 
-See <<api-transaction-interface>> on how to customize a transaction.
+See <<api-transaction>> on how to customize a transaction.
 
 [float]
-[[api-transaction-interface]]
-=== TransactionInterface
+[[api-transaction]]
+=== Transaction interface
 A transaction describes an event captured by an Elastic APM agent monitoring a service.
-Transactions help combine multiple <<api-span-interface,Spans>> into logical groups,
-and they are the first <<api-span-interface,Span>> of a service.
+Transactions help combine multiple <<api-span,Spans>> into logical groups,
+and they are the first <<api-span,Span>> of a service.
 More information on Transactions and Spans is available
 in the {apm-overview-ref-v}/apm-data-model.html[APM data model] documentation.
 
-See <<api-elasticapm-class-get-current-transaction>> on how to get a reference to the current transaction.
+See <<api-elasticapm-get-current-transaction>> on how to get a reference to the current transaction.
 
 [float]
-[[api-transaction-interface-get-current-span]]
-==== `TransactionInterface::getCurrentSpan`
+[[api-transaction-get-current-span]]
+==== Get the current span
 Returns the current span for this transaction.
 
 Example:
@@ -114,14 +116,14 @@ $span = $transaction->getCurrentSpan();
 ----
 
 [float]
-[[api-transaction-interface-begin-current-span]]
-==== `TransactionInterface::beginCurrentSpan`
+[[api-transaction-begin-current-span]]
+==== Begin a new span and set it as the current one
 Begins a new span with the current span as the new span's parent and
 sets the new span as the current span for this transaction.
 If this transaction's doesn't have the current span
 then the transaction itself is set as the new span's parent.
 
-NOTE: You must call <<api-span-interface-end>> when the span has ended.
+NOTE: You must call <<api-span-end,`end()`>> when the span has ended.
 
 The best practice is to use a `try`-`finally` block.
 For example:
@@ -142,9 +144,9 @@ try {
 ----
 
 [float]
-[[api-transaction-interface-capture-current-span]]
-==== `TransactionInterface::captureCurrentSpan`
-This is a convenience API that ensures <<api-span-interface-end>> is called
+[[api-transaction-capture-current-span]]
+==== Capture a new span and set it as the current one
+This is a convenience API that ensures <<api-span-end,`end()`>> is called
 when the span has ended.
 This API
 
@@ -160,7 +162,7 @@ For example:
 
 [source,php]
 ----
-$parentSpan->captureCurrentSpan(
+$transaction->captureCurrentSpan(
     'span_name',
     'span_type'
     function (SpanInterface $childSpan) {
@@ -172,11 +174,11 @@ $parentSpan->captureCurrentSpan(
 ----
 
 [float]
-[[api-transaction-interface-begin-child-span]]
-==== `TransactionInterface::beginChildSpan`
+[[api-transaction-begin-child-span]]
+==== Begin a new span as transaction's direct child
 Begins a new span with this transaction as the new span's parent.
 
-NOTE: You must call <<api-span-interface-end>> when the span has ended.
+NOTE: You must call <<api-span-end,`end()`>> when the span has ended.
 
 The best practice is to use `try`-`finally` block.
 For example:
@@ -197,9 +199,9 @@ try {
 ----
 
 [float]
-[[api-transaction-interface-capture-child-span]]
-==== `TransactionInterface::captureChildSpan`
-This is a convenience API that ensures <<api-span-interface-end>> is called
+[[api-transaction-capture-child-span]]
+==== Capture a new span as transaction's direct child
+This is a convenience API that ensures <<api-span-end,`end()`>> is called
 when the span has ended.
 This API
 
@@ -224,8 +226,8 @@ $transaction->captureChildSpan(
 ----
 
 [float]
-[[api-transaction-interface-set-name]]
-==== `TransactionInterface::setName`
+[[api-transaction-set-name]]
+==== Set transaction name
 Sets the name of the transaction.
 Transaction name is generic designation of a transaction in the scope of a single service (e.g., `GET /users/:id`).
 
@@ -236,8 +238,8 @@ $transaction->setName('GET /users/:id');
 ----
 
 [float]
-[[api-transaction-interface-get-name]]
-==== `TransactionInterface::getName`
+[[api-transaction-get-name]]
+==== Get transaction name
 Gets the name of the transaction.
 
 Example:
@@ -247,8 +249,8 @@ $transactionName = $transaction->getName();
 ----
 
 [float]
-[[api-transaction-interface-set-type]]
-==== `TransactionInterface::setType`
+[[api-transaction-set-type]]
+==== Set transaction type
 Sets the type of the transaction.
 Transaction type is a keyword of specific relevance in the service's domain.
 For example `request`, `backgroundjob`, etc.
@@ -260,8 +262,8 @@ $transaction->setType('my custom transaction type');
 ----
 
 [float]
-[[api-transaction-interface-get-type]]
-==== `TransactionInterface::getType`
+[[api-transaction-get-type]]
+==== Get transaction type
 Gets the type of the transaction.
 
 Example:
@@ -271,8 +273,8 @@ $transactionType = $transaction->getType();
 ----
 
 [float]
-[[api-transaction-interface-set-label]]
-==== `TransactionInterface::setLabel`
+[[api-transaction-set-label]]
+==== Add a label to transaction
 Sets a label by a key.
 Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
@@ -283,14 +285,14 @@ as a label key because it can lead to {ref}/mapping.html#mapping-limit-settings[
 Example:
 [source,php]
 ----
-$transaction->setLabel('my label with string value', 'some text');
-$transaction->setLabel('my label with int value', 123);
-$transaction->setLabel('my label with float value', 4.56);
+$transaction->context()->setLabel('my label with string value', 'some text');
+$transaction->context()->setLabel('my label with int value', 123);
+$transaction->context()->setLabel('my label with float value', 4.56);
 ----
 
 [float]
-[[api-transaction-interface-get-id]]
-==== `TransactionInterface::getId`
+[[api-transaction-get-id]]
+==== Get transaction ID
 Gets the ID of the transaction.
 Transaction ID is a hex encoded 64 random bits (== 8 bytes == 16 hex digits) ID.
 
@@ -303,8 +305,8 @@ $transactionId = $transaction->getId();
 ----
 
 [float]
-[[api-transaction-interface-get-trace-id]]
-==== `TransactionInterface::getTraceId`
+[[api-transaction-get-trace-id]]
+==== Get transaction trace-ID
 Gets the trace ID of the transaction.
 Trace ID is a hex encoded 128 random bits (== 16 bytes == 32 hex digits) ID of the correlated trace.
 
@@ -321,11 +323,11 @@ $traceId = $transaction->getTraceId();
 ----
 
 [float]
-[[api-transaction-interface-get-parent-id]]
-==== `TransactionInterface::getParentId`
+[[api-transaction-get-parent-id]]
+==== Get transaction parent-ID
 Gets ID of the parent transaction or span.
 
-See <<api-transaction-interface-get-id>> and <<api-span-interface-get-id>>.
+See <<api-transaction-get-id>> and <<api-span-get-id>>.
 
 The root transaction of a trace does not have a parent, so `null` is returned.
 
@@ -338,8 +340,8 @@ $parentId = $transaction->getParentId();
 ----
 
 [float]
-[[api-transaction-interface-end]]
-==== `TransactionInterface::end`
+[[api-transaction-end]]
+==== End transaction
 Ends the transaction and queues it to be reported to the APM Server.
 
 It is illegal to call any mutating methods (i.e., not `getXyz`) on a transaction instance which has already ended.
@@ -352,8 +354,8 @@ $transaction->end();
 ----
 
 [float]
-[[api-span-interface]]
-=== SpanInterface
+[[api-span]]
+=== Span interface
 A span contains information about a specific code path, executed as part of a transaction.
 
 If for example a database query happens within a recorded transaction,
@@ -361,11 +363,11 @@ a span representing this database query may be created.
 In such a case the name of the span will contain information about the query itself,
 and the type will hold information about the database type.
 
-See <<api-transaction-interface-get-current-span>> on how to get the current span.
+See <<api-transaction-get-current-span>> on how to get the current span.
 
 [float]
-[[api-span-interface-set-name]]
-==== `SpanInterface::setName`
+[[api-span-set-name]]
+==== Set span name
 Sets the name of the span.
 Span name is generic designation of a span in the scope of a transaction.
 
@@ -376,8 +378,8 @@ $span->setName('SELECT FROM customer');
 ----
 
 [float]
-[[api-span-interface-get-name]]
-==== `SpanInterface::getName`
+[[api-span-get-name]]
+==== Get span name
 Gets the name of the span.
 
 Example:
@@ -387,8 +389,8 @@ $spanName = $span->getName();
 ----
 
 [float]
-[[api-span-interface-set-type]]
-==== `SpanInterface::setType`
+[[api-span-set-type]]
+==== Set span type
 Sets the type of the span.
 Span type is a keyword of specific relevance in the service's domain.
 For example `db`, `external`, etc.
@@ -400,8 +402,8 @@ $span->setType('my custom span type');
 ----
 
 [float]
-[[api-span-interface-get-type]]
-==== `SpanInterface::getType`
+[[api-span-get-type]]
+==== Get span type
 Gets the type of the span.
 
 Example:
@@ -411,8 +413,8 @@ $spanType = $span->getType();
 ----
 
 [float]
-[[api-span-interface-set-subtype]]
-==== `SpanInterface::setSubtype`
+[[api-span-set-subtype]]
+==== Set span sub-type
 Sets the sub-type of the span.
 Span sub-type is a further sub-division of the type.
 For example, `mysql`, `postgresql`, or `elasticsearch` for the type `db`, `http` for the type `external`, etc.
@@ -427,8 +429,8 @@ $span->setSubtype('my custom span sub-type');
 ----
 
 [float]
-[[api-span-interface-get-subtype]]
-==== `SpanInterface::getSubtype`
+[[api-span-get-subtype]]
+==== Get span sub-type
 Gets the sub-type of the span.
 
 Example:
@@ -438,8 +440,8 @@ $spanSubtype = $span->getSubtype();
 ----
 
 [float]
-[[api-span-interface-set-action]]
-==== `SpanInterface::setAction`
+[[api-span-set-action]]
+==== Set span action
 Sets the action of the span.
 Span action is the specific kind of event within the sub-type represented by the span.
 For example `query` for type/sub-type `db`/`mysql`, `connect` for type/sub-type `db`/`cassandra`, etc.
@@ -454,8 +456,8 @@ $span->setAction('my custom span action');
 ----
 
 [float]
-[[api-span-interface-get-action]]
-==== `SpanInterface::getAction`
+[[api-span-get-action]]
+==== Get span action
 Gets the action of the span.
 
 Example:
@@ -465,8 +467,8 @@ $spanAction = $span->getAction();
 ----
 
 [float]
-[[api-span-interface-set-label]]
-==== `SpanInterface::setLabel`
+[[api-span-set-label]]
+==== Add a label to span
 Sets a label by a key.
 Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
@@ -477,14 +479,14 @@ as a label key because it can lead to {ref}/mapping.html#mapping-limit-settings[
 Example:
 [source,php]
 ----
-$span->setLabel('my label with string value', 'some text');
-$span->setLabel('my label with int value', 123);
-$span->setLabel('my label with float value', 4.56);
+$span->context()->setLabel('my label with string value', 'some text');
+$span->context()->setLabel('my label with int value', 123);
+$span->context()->setLabel('my label with float value', 4.56);
 ----
 
 [float]
-[[api-span-interface-get-id]]
-==== `SpanInterface::getId`
+[[api-span-get-id]]
+==== Get span ID
 Gets the ID of the span.
 Span ID is a hex encoded 64 random bits (== 8 bytes == 16 hex digits) ID.
 
@@ -497,8 +499,8 @@ $spanId = $span->getId();
 ----
 
 [float]
-[[api-span-interface-get-trace-id]]
-==== `SpanInterface::getTraceId`
+[[api-span-get-trace-id]]
+==== Get span trace-ID
 Gets the trace ID of the span.
 Trace ID is a hex encoded 128 random bits (== 16 bytes == 32 hex digits) ID of the correlated trace.
 
@@ -515,10 +517,10 @@ $traceId = $span->getTraceId();
 ----
 
 [float]
-[[api-span-interface-get-transaction-id]]
-==== `SpanInterface::getTransactionId`
+[[api-span-get-transaction-id]]
+==== Get span transaction-ID
 Gets ID of the correlated transaction.
-See <<api-transaction-interface-get-id>>.
+See <<api-transaction-get-id>>.
 
 If this span represents a noop, this method returns an unspecified dummy ID.
 
@@ -529,12 +531,12 @@ $transactionId = $span->getTransactionId();
 ----
 
 [float]
-[[api-span-interface-get-parent-id]]
-==== `SpanInterface::getParentId`
+[[api-span-get-parent-id]]
+==== Get span parent-ID
 Gets ID of the parent transaction or span.
-If this span is the root span of the correlated transaction then its parent is the correlated transaction,
+If this span is a direct child of the correlated transaction then its parent is the correlated transaction,
 otherwise, its parent is the parent span.
-See <<api-transaction-interface-get-id>> and <<api-span-interface-get-id>>.
+See <<api-transaction-get-id>> and <<api-span-get-id>>.
 
 If this span represents a noop, this method returns an unspecified dummy ID.
 
@@ -545,11 +547,11 @@ $parentId = $span->getParentId();
 ----
 
 [float]
-[[api-span-interface-begin-child-span]]
-==== `SpanInterface::beginChildSpan`
+[[api-span-begin-child-span]]
+==== Begin a new span as this span's direct child
 Begins a new span with this span as the new span's parent.
 
-NOTE: You must call <<api-span-interface-end>> when the span has ended.
+NOTE: You must call <<api-span-end,`end()`>> when the span has ended.
 
 The best practice is to use a `try`-`finally` block.
 For example:
@@ -570,9 +572,9 @@ try {
 ----
 
 [float]
-[[api-span-interface-capture-child-span]]
-==== `SpanInterface::captureChildSpan`
-This is a convenience API that ensures <<api-span-interface-end>> is called
+[[api-span-capture-child-span]]
+==== Capture a new span as this span's direct child
+This is a convenience API that ensures <<api-span-end,`end()`>> is called
 when the span has ended.
 This API
 
@@ -597,8 +599,8 @@ $parentSpan->captureChildSpan(
 ----
 
 [float]
-[[api-span-interface-end]]
-==== `SpanInterface::end`
+[[api-span-end]]
+==== End span
 Ends the span and queues it to be reported to the APM Server.
 
 It is illegal to call any mutating methods (i.e., not `getXyz`) on a span instance which has already ended.

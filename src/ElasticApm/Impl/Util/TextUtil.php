@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Elastic\Apm\Impl\Constants;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -220,5 +222,15 @@ final class TextUtil
         }
 
         return strncmp($text, $prefix, $prefixLen) === 0;
+    }
+
+    public static function limitKeywordString(string $keywordString): string
+    {
+        return self::ensureMaxLength($keywordString, Constants::KEYWORD_STRING_MAX_LENGTH);
+    }
+
+    public static function limitNullableKeywordString(?string $keywordString): ?string
+    {
+        return is_null($keywordString) ? null : self::limitKeywordString($keywordString);
     }
 }

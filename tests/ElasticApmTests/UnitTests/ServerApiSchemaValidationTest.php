@@ -5,30 +5,30 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\UnitTests;
 
 use Closure;
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\SerializationUtil;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\Tests\Util\Deserialization\SerializationTestUtil;
-use Elastic\Apm\Tests\Util\Deserialization\ServerApiSchemaValidationException;
-use Elastic\Apm\Tests\Util\Deserialization\ServerApiSchemaValidator;
+use Elastic\Apm\Tests\Util\SerializationTestUtil;
+use Elastic\Apm\Tests\Util\ServerApiSchemaValidationException;
+use Elastic\Apm\Tests\Util\ServerApiSchemaValidator;
 
 class ServerApiSchemaValidationTest extends UnitTestCaseBase
 {
     private function createSerializedTransaction(): string
     {
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
-        $tx->setLabel('test_label_key', 'test_label_value');
+        $tx->context()->setLabel('test_label_key', 'test_label_value');
         $tx->end();
-        return SerializationUtil::serializeTransaction($tx);
+        return SerializationUtil::serializeAsJson($tx);
     }
 
     private function createSerializedSpan(): string
     {
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
-        $span->setLabel('test_label_key', 'test_label_value');
+        $span->context()->setLabel('test_label_key', 'test_label_value');
         $span->end();
         $tx->end();
-        return SerializationUtil::serializeSpan($span);
+        return SerializationUtil::serializeAsJson($span);
     }
 
     /**
@@ -56,7 +56,7 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
             $testImpl,
             self::createSerializedTransaction(),
             function (string $serializedTransaction): void {
-                ServerApiSchemaValidator::validateTransactionData($serializedTransaction);
+                ServerApiSchemaValidator::validateTransaction($serializedTransaction);
             }
         );
     }
@@ -70,7 +70,7 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
             $testImpl,
             self::createSerializedSpan(),
             function (string $serializedSpan): void {
-                ServerApiSchemaValidator::validateSpanData($serializedSpan);
+                ServerApiSchemaValidator::validateSpan($serializedSpan);
             }
         );
     }

@@ -187,7 +187,8 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         if (count($headerValues) != 1) {
             throw new RuntimeException(
                 "Header `$headerName\' should not have more than one value."
-                . ' Instead found: ' . DbgUtil::formatArray($headerValues)
+                // . ' Instead found: ' . DbgUtil::formatArray($headerValues)
+                . ' Instead found: ' . count($headerValues) . ' values'
             );
         }
         return $headerValues[0];

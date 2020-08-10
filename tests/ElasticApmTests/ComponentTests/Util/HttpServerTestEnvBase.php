@@ -8,7 +8,7 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Tests\Util\TestLogCategory;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -73,7 +73,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionInterface $rootTransaction
     ): void {
         parent::verifyRootTransactionName($testProperties, $rootTransaction);
 
@@ -87,7 +87,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function verifyRootTransactionType(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionInterface $rootTransaction
     ): void {
         parent::verifyRootTransactionType($testProperties, $rootTransaction);
 

@@ -22,6 +22,13 @@ final class RegistrationContext implements RegistrationContextInterface
     /** @var string */
     public $dbgCurrentPluginDesc;
 
+    /**
+     * @param string   $className
+     * @param string   $methodName
+     * @param callable $interceptedCallTrackerFactory
+     *
+     * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
+     */
     public function interceptCallsToMethod(
         string $className,
         string $methodName,
@@ -44,6 +51,12 @@ final class RegistrationContext implements RegistrationContextInterface
         }
     }
 
+    /**
+     * @param string   $functionName
+     * @param callable $interceptedCallTrackerFactory
+     *
+     * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
+     */
     public function interceptCallsToFunction(
         string $functionName,
         callable $interceptedCallTrackerFactory

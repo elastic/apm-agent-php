@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\Util;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\ExecutionSegmentContextInterface;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\ExecutionSegmentData;
-use Elastic\Apm\Impl\MetadataDiscoverer;
-use Elastic\Apm\Impl\MetadataInterface;
-use Elastic\Apm\Impl\NameVersionDataInterface;
-use Elastic\Apm\Impl\ProcessDataInterface;
-use Elastic\Apm\Impl\ServiceDataInterface;
+use Elastic\Apm\Impl\ExecutionSegmentContext;
+use Elastic\Apm\Impl\MetadataDiscovery;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\Metadata;
+use Elastic\Apm\NameVersionData;
+use Elastic\Apm\ProcessData;
+use Elastic\Apm\ServiceData;
+use Elastic\Apm\SpanContextInterface;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionContextInterface;
+use Elastic\Apm\TransactionInterface;
 use Throwable;
 
 final class ValidationUtil
@@ -182,7 +185,7 @@ final class ValidationUtil
     {
         foreach ($labels as $key => $value) {
             self::assertThat(is_string($key));
-            self::assertThat(ExecutionSegmentData::doesValueHaveSupportedLabelType($value));
+            self::assertThat(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::assertValidKeywordString($value);
             }
@@ -190,15 +193,30 @@ final class ValidationUtil
         return $labels;
     }
 
-    public static function assertValidExecutionSegmentData(ExecutionSegmentDataInterface $executionSegmentData): void
+    public static function assertValidExecutionSegmentContext(ExecutionSegmentContextInterface $execSegmentCtx): void
     {
-        self::assertValidDuration($executionSegmentData->getDuration());
-        self::assertValidExecutionSegmentId($executionSegmentData->getId());
-        self::assertValidLabels($executionSegmentData->getLabels());
-        self::assertValidKeywordString($executionSegmentData->getName());
-        self::assertValidTimestamp($executionSegmentData->getTimestamp());
-        self::assertValidTraceId($executionSegmentData->getTraceId());
-        self::assertValidKeywordString($executionSegmentData->getType());
+        self::assertValidLabels($execSegmentCtx->getLabels());
+    }
+
+    public static function assertValidSpanContext(SpanContextInterface $spanContext): void
+    {
+        self::assertValidExecutionSegmentContext($spanContext);
+    }
+
+    public static function assertValidTransactionContext(TransactionContextInterface $transactionContext): void
+    {
+        self::assertValidExecutionSegmentContext($transactionContext);
+    }
+
+    public static function assertValidExecutionSegment(ExecutionSegmentInterface $executionSegment): void
+    {
+        self::assertThat($executionSegment->hasEnded());
+        self::assertValidDuration($executionSegment->getDuration());
+        self::assertValidExecutionSegmentId($executionSegment->getId());
+        self::assertValidKeywordString($executionSegment->getName());
+        self::assertValidTimestamp($executionSegment->getTimestamp());
+        self::assertValidTraceId($executionSegment->getTraceId());
+        self::assertValidKeywordString($executionSegment->getType());
     }
 
     /**
@@ -229,12 +247,15 @@ final class ValidationUtil
         return $startedSpansCount;
     }
 
-    public static function assertValidTransactionData(TransactionDataInterface $transaction): void
+    public static function assertValidTransaction(TransactionInterface $transaction): void
     {
-        self::assertValidExecutionSegmentData($transaction);
+        self::assertValidExecutionSegment($transaction);
+        self::assertValidTransactionContext($transaction->context());
         if (!is_null($transaction->getParentId())) {
             self::assertValidExecutionSegmentId($transaction->getParentId());
         }
+        self::assertValidTransactionDroppedSpansCount($transaction->getDroppedSpansCount());
+        self::assertValidTransactionStartedSpansCount($transaction->getStartedSpansCount());
     }
 
     /**
@@ -247,10 +268,11 @@ final class ValidationUtil
         return self::assertValidDuration($start);
     }
 
-    public static function assertValidSpanData(SpanDataInterface $span): void
+    public static function assertValidSpan(SpanInterface $span): void
     {
-        self::assertValidExecutionSegmentData($span);
+        self::assertValidExecutionSegment($span);
         self::assertValidNullableKeywordString($span->getAction());
+        self::assertValidSpanContext($span->context());
         self::assertValidExecutionSegmentId($span->getParentId());
         self::assertValidSpanStart($span->getStart());
         self::assertValidNullableKeywordString($span->getSubtype());
@@ -270,9 +292,9 @@ final class ValidationUtil
         return $pid;
     }
 
-    public static function assertValidProcessData(ProcessDataInterface $processData): void
+    public static function assertValidProcessData(ProcessData $processData): void
     {
-        self::assertValidProcessId($processData->pid());
+        self::assertValidProcessId($processData->getPid());
     }
 
     /**
@@ -287,39 +309,36 @@ final class ValidationUtil
         return $value;
     }
 
-    public static function assertValidNameVersionData(?NameVersionDataInterface $nameVersionData): void
+    public static function assertValidNameVersionData(?NameVersionData $nameVersionData): void
     {
         if (is_null($nameVersionData)) {
             return;
         }
-        self::assertValidNullableKeywordString($nameVersionData->name());
-        self::assertValidNullableKeywordString($nameVersionData->version());
+        self::assertValidNullableKeywordString($nameVersionData->getName());
+        self::assertValidNullableKeywordString($nameVersionData->getVersion());
     }
 
-    public static function assertValidServiceData(ServiceDataInterface $serviceData): void
+    public static function assertValidServiceData(ServiceData $serviceData): void
     {
-        self::assertValidServiceName($serviceData->name());
-        self::assertValidNullableKeywordString($serviceData->version());
-        self::assertValidNullableKeywordString($serviceData->environment());
+        self::assertValidServiceName($serviceData->getName());
+        self::assertValidNullableKeywordString($serviceData->getVersion());
+        self::assertValidNullableKeywordString($serviceData->getEnvironment());
 
         self::assertValidNameVersionData($serviceData->agent());
-        assert(!is_null($serviceData->agent()));
-        self::assertThat($serviceData->agent()->name() === MetadataDiscoverer::AGENT_NAME);
-        self::assertThat($serviceData->agent()->version() === ElasticApm::VERSION);
+        self::assertThat($serviceData->agent()->getName() === ServiceData::DEFAULT_AGENT_NAME);
+        self::assertThat($serviceData->agent()->getVersion() === ElasticApm::VERSION);
 
         self::assertValidNameVersionData($serviceData->framework());
 
         self::assertValidNameVersionData($serviceData->language());
-        assert(!is_null($serviceData->language()));
-        self::assertThat($serviceData->language()->name() === MetadataDiscoverer::LANGUAGE_NAME);
+        self::assertThat($serviceData->language()->getName() === ServiceData::DEFAULT_LANGUAGE_NAME);
 
         self::assertValidNameVersionData($serviceData->runtime());
-        assert(!is_null($serviceData->runtime()));
-        self::assertThat($serviceData->runtime()->name() === MetadataDiscoverer::LANGUAGE_NAME);
-        self::assertThat($serviceData->runtime()->version() === $serviceData->language()->version());
+        self::assertThat($serviceData->runtime()->getName() === $serviceData->language()->getName());
+        self::assertThat($serviceData->runtime()->getVersion() === $serviceData->language()->getVersion());
     }
 
-    public static function assertValidMetadata(MetadataInterface $metadata): void
+    public static function assertValidMetadata(Metadata $metadata): void
     {
         self::assertValidServiceData($metadata->service());
         self::assertValidProcessData($metadata->process());

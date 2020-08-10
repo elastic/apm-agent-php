@@ -5,12 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\Impl\Config\AllOptionsMetadata;
-use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
-use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
-use Elastic\Apm\Impl\Config\Parser as ConfigParser;
-use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -80,7 +74,7 @@ final class Tracer implements TracerInterface
             ]
         );
 
-        $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata($this->config));
+        $this->eventSink->setMetadata(MetadataDiscovery::discover());
     }
 
     private function getConfig(): ConfigSnapshot
@@ -165,19 +159,13 @@ final class Tracer implements TracerInterface
         $this->currentTransaction = null;
     }
 
-    public static function limitKeywordString(string $keywordString): string
-    {
-        return TextUtil::ensureMaxLength($keywordString, Constants::KEYWORD_STRING_MAX_LENGTH);
-    }
-
-    public static function limitNullableKeywordString(?string $keywordString): ?string
-    {
-        if (is_null($keywordString)) {
-            return null;
-        }
-        return self::limitKeywordString($keywordString);
-    }
-
+    /**
+     * This function is not static on purpose - limit for non-keyword string comes from runtime configuration
+     *
+     * @param string $nonKeywordString
+     *
+     * @return string
+     */
     public function limitNonKeywordString(string $nonKeywordString): string
     {
         return TextUtil::ensureMaxLength($nonKeywordString, Constants::NON_KEYWORD_STRING_MAX_LENGTH);

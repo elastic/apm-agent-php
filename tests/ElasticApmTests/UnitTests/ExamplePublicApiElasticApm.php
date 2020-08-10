@@ -42,25 +42,25 @@ final class ExamplePublicApiElasticApm
         }
 
         // Lost label because there is no current transaction
-        ElasticApm::getCurrentTransaction()->setLabel(self::LOST_LABEL, null);
+        ElasticApm::getCurrentTransaction()->context()->setLabel(self::LOST_LABEL, null);
     }
 
     private function processCheckoutRequestImpl(string $shopId, TransactionInterface $tx): void
     {
-        $tx->setLabel('shop-id', $shopId);
+        $tx->context()->setLabel('shop-id', $shopId);
 
         $this->getShoppingCartItems();
         $this->chargePayment();
 
         // Lost label because there is no current span
-        ElasticApm::getCurrentSpan()->setLabel(self::LOST_LABEL, 123.456);
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel(self::LOST_LABEL, 123.456);
     }
 
     private function getShoppingCartItems(): void
     {
         ElasticApm::getCurrentTransaction();
 
-        $span = ElasticApm::beginCurrentSpan('Get shopping cart items', 'business');
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('Get shopping cart items', 'business');
 
         $this->fetchData('shopping-cart-items');
 
@@ -70,7 +70,7 @@ final class ExamplePublicApiElasticApm
     private function fetchData(string $dataId): void
     {
         $isDataInCache = $this->checkIfDataInCache($dataId);
-        ElasticApm::getCurrentSpan()->setLabel('is-data-in-cache', $isDataInCache);
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel('is-data-in-cache', $isDataInCache);
 
         if ($isDataInCache) {
             $this->redisFetch($dataId);
@@ -78,16 +78,19 @@ final class ExamplePublicApiElasticApm
             $this->dbSelect($dataId);
         }
 
-        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabels()['shop-id']);
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel(
+            'shop-id',
+            ElasticApm::getCurrentTransaction()->context()->getLabels()['shop-id']
+        );
     }
 
     private function redisFetch(string $dataId): void
     {
-        $span = ElasticApm::beginCurrentSpan('Fetch from Redis', 'db', 'redis', 'query');
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('Fetch from Redis', 'db', 'redis', 'query');
 
         // ...
 
-        ElasticApm::getCurrentSpan()->setLabel('redis-response-id', 'abc');
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel('redis-response-id', 'abc');
         $this->processData($dataId);
 
         $span->end();
@@ -95,19 +98,22 @@ final class ExamplePublicApiElasticApm
 
     private function processData(string $dataId): void
     {
-        ElasticApm::getCurrentSpan()->setLabel('data-id', $dataId);
-        ElasticApm::getCurrentSpan()->setLabel('shop-id', ElasticApm::getCurrentTransaction()->getLabels()['shop-id']);
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel('data-id', $dataId);
+        ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel(
+            'shop-id',
+            ElasticApm::getCurrentTransaction()->context()->getLabels()['shop-id']
+        );
     }
 
     private function dbSelect(string $dataId): void
     {
-        ElasticApm::captureCurrentSpan(
+        ElasticApm::getCurrentTransaction()->captureCurrentSpan(
             'DB query',
             'db',
             function () use ($dataId): void {
                 // ...
 
-                ElasticApm::getCurrentSpan()->setLabel('db-row-count', 123);
+                ElasticApm::getCurrentTransaction()->getCurrentSpan()->context()->setLabel('db-row-count', 123);
                 $this->processData($dataId);
 
                 $this->addDataToCache($dataId);
@@ -119,7 +125,7 @@ final class ExamplePublicApiElasticApm
 
     private function chargePayment(): void
     {
-        $span = ElasticApm::beginCurrentSpan('Charge payment', 'business');
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('Charge payment', 'business');
 
         $this->fetchData('payment-method-details');
 

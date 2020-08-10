@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\SerializationUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
 
 /**
@@ -13,18 +15,34 @@ use Elastic\Apm\SpanInterface;
  *
  * @internal
  */
-final class Span extends SpanData implements SpanInterface
+final class Span extends ExecutionSegment implements SpanInterface
 {
-    use ExecutionSegmentTrait;
+    /** @var string|null */
+    private $action = null;
 
     /** @var Transaction */
     private $containingTransaction;
 
-    /** @var Span|null */
-    private $parentSpan;
+    /** @var SpanContext|null */
+    private $context = null;
 
     /** @var Logger */
     private $logger;
+
+    /** @var string */
+    private $parentId;
+
+    /** @var Span|null */
+    private $parentSpan;
+
+    /** @var float */
+    private $start;
+
+    /** @var string|null */
+    private $subtype = null;
+
+    /** @var string */
+    private $transactionId;
 
     public function __construct(
         Transaction $containingTransaction,
@@ -35,8 +53,8 @@ final class Span extends SpanData implements SpanInterface
         ?string $action = null,
         ?float $timestamp = null
     ) {
-        $this->constructExecutionSegmentTrait(
-            $containingTransaction->getTracer(),
+        parent::__construct(
+            $containingTransaction->tracer,
             $containingTransaction->getTraceId(),
             $name,
             $type,
@@ -62,6 +80,66 @@ final class Span extends SpanData implements SpanInterface
         && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
     }
 
+    public function getStart(): float
+    {
+        return $this->start;
+    }
+
+    public function getParentSpan(): ?Span
+    {
+        return $this->parentSpan;
+    }
+
+    public function getParentId(): string
+    {
+        return $this->parentId;
+    }
+
+    public function getTransactionId(): string
+    {
+        return $this->transactionId;
+    }
+
+    public function setAction(?string $action): void
+    {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
+        $this->action = Util\TextUtil::limitNullableKeywordString($action);
+    }
+
+    public function getAction(): ?string
+    {
+        return $this->action;
+    }
+
+    public function setSubtype(?string $subtype): void
+    {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
+        $this->subtype = Util\TextUtil::limitNullableKeywordString($subtype);
+    }
+
+    public function getSubtype(): ?string
+    {
+        return $this->subtype;
+    }
+
+    public function context(): SpanContextInterface
+    {
+        if (is_null($this->context)) {
+            if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+                return NoopSpanContext::singletonInstance();
+            }
+            $this->context = new SpanContext($this->tracer->loggerFactory());
+        }
+
+        return $this->context;
+    }
+
     /** @inheritDoc */
     public function beginChildSpan(
         string $name,
@@ -85,42 +163,40 @@ final class Span extends SpanData implements SpanInterface
         );
     }
 
-    /** @inheritDoc */
     public function end(?float $duration = null): void
     {
-        if (!$this->endExecutionSegment($duration)) {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
             return;
         }
 
-        $this->getTracer()->getEventSink()->consumeSpanData($this);
+        parent::end($duration);
+
+        $this->tracer->getEventSink()->consumeSpan($this);
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
             $this->containingTransaction->popCurrentSpan();
         }
     }
 
-    /** @inheritDoc */
-    public function setAction(?string $action): void
+    /**
+     * @return array<string, mixed>
+     *
+     * Called by json_encode
+     *
+     * @noinspection PhpUnused
+     */
+    public function jsonSerialize(): array
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
-            return;
-        }
-
-        $this->action = $this->tracer->limitNullableKeywordString($action);
-    }
-
-    /** @inheritDoc */
-    public function setSubtype(?string $subtype): void
-    {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
-            return;
-        }
-
-        $this->subtype = $this->tracer->limitNullableKeywordString($subtype);
-    }
-
-    public function getParentSpan(): ?Span
-    {
-        return $this->parentSpan;
+        return SerializationUtil::buildJsonSerializeResultWithBase(
+            parent::jsonSerialize(),
+            [
+                'action'         => $this->action,
+                'context'        => SerializationUtil::nullIfEmpty($this->context),
+                'parent_id'      => $this->parentId,
+                'start'          => $this->start,
+                'subtype'        => $this->subtype,
+                'transaction_id' => $this->transactionId,
+            ]
+        );
     }
 }

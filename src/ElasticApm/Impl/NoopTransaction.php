@@ -1,7 +1,5 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
@@ -9,6 +7,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -55,11 +54,6 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
         return NoopSpan::singletonInstance();
     }
 
-    public function __toString(): string
-    {
-        return 'NO-OP Transaction';
-    }
-
     public function getStartedSpansCount(): int
     {
         return 0;
@@ -68,5 +62,10 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
     public function getDroppedSpansCount(): int
     {
         return 0;
+    }
+
+    public function context(): TransactionContextInterface
+    {
+        return NoopTransactionContext::singletonInstance();
     }
 }

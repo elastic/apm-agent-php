@@ -1,17 +1,25 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm;
 
 use Closure;
 
-interface TransactionInterface extends ExecutionSegmentInterface, TransactionDataInterface
+interface TransactionInterface extends ExecutionSegmentInterface
 {
     /**
-     * Begins a new span with the current execution segment as the new span's parent and
+     * Hex encoded 64 random bits ID of the parent transaction or span.
+     * Only a root transaction of a trace does not have a parent ID, otherwise it needs to be set.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L19
+     */
+    public function getParentId(): ?string;
+
+    /**
+     * Begins a new span with the current execution segment
+     * (which is the current span if there is one or the current transaction otherwise)
+     * as the new span's parent and
      * sets as the new span as the current span for this transaction.
      *
      * @param string      $name      New span's name.
@@ -74,6 +82,22 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
      * @return SpanInterface The current span
      */
     public function getCurrentSpan(): SpanInterface;
+
+    /**
+     * Number of correlated spans that are recorded.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L27
+     */
+    public function getStartedSpansCount(): int;
+
+    /**
+     * Number of spans that have been dropped by the agent recording the transaction.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L32
+     */
+    public function getDroppedSpansCount(): int;
+
+    public function context(): TransactionContextInterface;
 
     public function __toString(): string;
 }

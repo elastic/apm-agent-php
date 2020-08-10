@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Throwable;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -61,6 +63,28 @@ class ObjectToStringBuilder
         return $this;
     }
 
+
+    /**
+     * @param mixed $value
+     *
+     * @return string
+     */
+    private static function valueToString($value): string
+    {
+        if (is_array($value)) {
+            return 'array<' . count($value) . '>';
+        }
+
+        try {
+            return strval($value);
+        } catch (Throwable $throwable) {
+            if (is_object($value)) {
+                return 'Value of ' . get_class($value);
+            }
+            return 'Value of ' . gettype($value);
+        }
+    }
+
     /**
      * @param array<string, string> $keyValueAsStringPairs
      *
@@ -75,7 +99,8 @@ class ObjectToStringBuilder
         $result .= '{';
         $isFirst = true;
         foreach ($this->keyValuePairs as $key => $value) {
-            $valueAsString = DbgUtil::formatValue($value);
+            // $valueAsString = DbgUtil::formatValue($value);
+            $valueAsString = self::valueToString($value);
             $keyValueAsStringPairs[$key] = $valueAsString;
             if (!$this->shouldFormatOnlyHorizontally && TextUtil::containsNewLine($valueAsString)) {
                 return null;

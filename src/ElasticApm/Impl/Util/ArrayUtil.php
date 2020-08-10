@@ -54,4 +54,21 @@ final class ArrayUtil
 
         return $array[$key];
     }
+
+    /**
+     * @param array<mixed> $array
+     *
+     * @return bool
+     */
+    public static function isList(array $array): bool
+    {
+        $expectedKey = 0;
+        foreach ($array as $key => $_) {
+            if (!is_integer($key) || $key !== $expectedKey) {
+                return false;
+            }
+            ++$expectedKey;
+        }
+        return true;
+    }
 }

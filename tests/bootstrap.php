@@ -17,5 +17,7 @@ if (!file_exists(dirname(__DIR__) . '/composer.lock')) {
 require __DIR__ . '/../vendor/autoload.php';
 
 require __DIR__ . '/polyfills/load.php';
+require __DIR__ . '/dummyFuncForTestsWithoutNamespace.php';
+require __DIR__ . '/ElasticApmTests/dummyFuncForTestsWithNamespace.php';
 
 TestsRootDir::$fullPath = __DIR__;

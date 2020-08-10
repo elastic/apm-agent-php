@@ -11,5 +11,5 @@ namespace Elastic\Apm\Impl\Log;
  */
 interface LoggableInterface
 {
-    public function toLog(StreamInterface $stream): void;
+    public function toLog(LogStreamInterface $logStream): void;
 }

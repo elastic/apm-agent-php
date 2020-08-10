@@ -94,8 +94,12 @@ class NoopEventsTest extends UnitTestCaseBase
         $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
         $this->assertNoopTransaction($tx);
 
-        $span
-            = ElasticApm::beginCurrentSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+            'test_span_name',
+            'test_span_type',
+            'test_span_subtype',
+            'test_span_action'
+        );
         $this->assertNoopSpan($span);
 
         $span->end();
@@ -109,7 +113,7 @@ class NoopEventsTest extends UnitTestCaseBase
                 $this->assertNoopTransaction($transaction);
                 $this->assertSame(125, $counter);
                 ++$counter;
-                ElasticApm::captureCurrentSpan(
+                ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $span) use (&$counter): void {

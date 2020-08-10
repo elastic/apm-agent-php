@@ -15,7 +15,7 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\TransactionInterface;
 use GuzzleHttp\Exception\ConnectException;
 use PHPUnit\Exception as PhpUnitException;
 use PHPUnit\Framework\TestCase;
@@ -406,7 +406,7 @@ abstract class TestEnvBase
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionInterface $rootTransaction
     ): void {
         if (!is_null($testProperties->transactionName)) {
             TestCase::assertSame($testProperties->transactionName, $rootTransaction->getName());
@@ -415,7 +415,7 @@ abstract class TestEnvBase
 
     protected function verifyRootTransactionType(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionInterface $rootTransaction
     ): void {
         if (!is_null($testProperties->transactionType)) {
             TestCase::assertSame($testProperties->transactionType, $rootTransaction->getType());

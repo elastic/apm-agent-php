@@ -6,13 +6,12 @@ namespace Elastic\Apm\Tests\Util;
 
 use Ds\Queue;
 use Ds\Set;
-use Elastic\Apm\ExecutionSegmentDataInterface;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use Elastic\Apm\TransactionInterface;
 use Jchook\AssertThrows\AssertThrows;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -22,6 +21,28 @@ class TestCaseBase extends TestCase
 {
     // Adds the assertThrows method
     use AssertThrows;
+
+    /**
+     * @param int                 $expectedCount
+     * @param array<mixed, mixed> $array
+     */
+    public static function assertIsArrayWithCount(int $expectedCount, $array): void
+    {
+        self::assertIsArray($array);
+        self::assertCount($expectedCount, $array);
+    }
+
+    /**
+     * @param array<mixed, mixed> $array
+     * @param string|int          $key
+     *
+     * @return mixed
+     */
+    public static function assertAndGetValueByKey(array $array, $key)
+    {
+        UnitTestCaseBase::assertArrayHasKey($key, $array);
+        return $array[$key];
+    }
 
     public static function assertEqualTimestamp(float $expected, float $actual): void
     {
@@ -38,7 +59,7 @@ class TestCaseBase extends TestCase
         self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
     }
 
-    public static function calcEndTime(ExecutionSegmentDataInterface $timedEvent): float
+    public static function calcEndTime(ExecutionSegmentInterface $timedEvent): float
     {
         return $timedEvent->getTimestamp() + TimeUtil::millisecondsToMicroseconds($timedEvent->getDuration());
     }
@@ -64,14 +85,14 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param TransactionDataInterface         $transaction
-     * @param array<string, SpanDataInterface> $idToSpan
+     * @param TransactionInterface         $transaction
+     * @param array<string, SpanInterface> $idToSpan
      */
     public static function assertValidTransactionAndItsSpans(
-        TransactionDataInterface $transaction,
+        TransactionInterface $transaction,
         array $idToSpan
     ): void {
-        ValidationUtil::assertValidTransactionData($transaction);
+        ValidationUtil::assertValidTransaction($transaction);
         self::assertCount($transaction->getStartedSpansCount(), $idToSpan);
 
         $spanIdToParentId = [];
@@ -80,9 +101,9 @@ class TestCaseBase extends TestCase
         }
         self::assertGraphIsTree($transaction->getId(), $spanIdToParentId);
 
-        /** @var SpanDataInterface $span */
+        /** @var SpanInterface $span */
         foreach ($idToSpan as $span) {
-            ValidationUtil::assertValidSpanData($span);
+            ValidationUtil::assertValidSpan($span);
             self::assertSame($transaction->getId(), $span->getTransactionId());
             self::assertSame($transaction->getTraceId(), $span->getTraceId());
 
@@ -127,16 +148,16 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, SpanDataInterface> $idToSpan
+     * @param array<string, SpanInterface> $idToSpan
      *
-     * @return array<string, array<string, SpanDataInterface>>
+     * @return array<string, array<string, SpanInterface>>
      */
     public static function groupSpansByTransactionId(array $idToSpan): array
     {
-        /** @var array<string, array<string, SpanDataInterface>> */
+        /** @var array<string, array<string, SpanInterface>> */
         $transactionIdToSpans = [];
 
-        /** @var SpanDataInterface $span */
+        /** @var SpanInterface $span */
         foreach ($idToSpan as $spanId => $span) {
             if (!array_key_exists($span->getTransactionId(), $transactionIdToSpans)) {
                 $transactionIdToSpans[$span->getTransactionId()] = [];
@@ -148,11 +169,11 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
+     * @param array<string, TransactionInterface> $idToTransaction
      */
-    public static function findRootTransaction(array $idToTransaction): TransactionDataInterface
+    public static function findRootTransaction(array $idToTransaction): TransactionInterface
     {
-        /** @var TransactionDataInterface|null */
+        /** @var TransactionInterface|null */
         $rootTransaction = null;
         foreach ($idToTransaction as $transactionId => $transaction) {
             if (is_null($transaction->getParentId())) {
@@ -165,8 +186,8 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
-     * @param array<string, SpanDataInterface>        $idToSpan
+     * @param array<string, TransactionInterface> $idToTransaction
+     * @param array<string, SpanInterface>        $idToSpan
      */
     private static function assertTransactionsGraphIsTree(array $idToTransaction, array $idToSpan): void
     {
@@ -190,8 +211,8 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
-     * @param array<string, SpanDataInterface>        $idToSpan
+     * @param array<string, TransactionInterface> $idToTransaction
+     * @param array<string, SpanInterface>        $idToSpan
      */
     public static function assertValidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
@@ -209,7 +230,7 @@ class TestCaseBase extends TestCase
             if (is_null($transaction->getParentId())) {
                 continue;
             }
-            /** @var ExecutionSegmentDataInterface|null $parentExecSegment */
+            /** @var ExecutionSegmentInterface|null $parentExecSegment */
             $parentExecSegment = ArrayUtil::getValueIfKeyExistsElse($transaction->getParentId(), $idToSpan, null);
             if (is_null($parentExecSegment)) {
                 self::assertTrue(
@@ -247,16 +268,22 @@ class TestCaseBase extends TestCase
     }
 
     public static function assertTransactionEquals(
-        TransactionDataInterface $expected,
-        TransactionDataInterface $actual
+        TransactionInterface $expected,
+        TransactionInterface $actual
     ): void {
-        self::assertEquals(TransactionData::convertToData($expected), TransactionData::convertToData($actual));
+        self::assertEquals(
+            ProdObjToTestDtoConverter::convertTransaction($expected),
+            ProdObjToTestDtoConverter::convertTransaction($actual)
+        );
     }
 
     public static function assertSpanEquals(
-        SpanDataInterface $expected,
-        SpanDataInterface $actual
+        SpanInterface $expected,
+        SpanInterface $actual
     ): void {
-        self::assertEquals(SpanData::convertToData($expected), SpanData::convertToData($actual));
+        self::assertEquals(
+            ProdObjToTestDtoConverter::convertSpan($expected),
+            ProdObjToTestDtoConverter::convertSpan($actual)
+        );
     }
 }

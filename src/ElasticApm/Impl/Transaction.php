@@ -1,7 +1,5 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
@@ -9,7 +7,9 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\SerializationUtil;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -17,19 +17,29 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-final class Transaction extends TransactionData implements TransactionInterface
+final class Transaction extends ExecutionSegment implements TransactionInterface
 {
-    use ExecutionSegmentTrait;
+    /** @var TransactionContext|null */
+    private $context = null;
 
     /** @var Span|null */
     private $currentSpan = null;
 
+    /** @var int */
+    protected $droppedSpansCount = 0;
+
     /** @var Logger */
     private $logger;
 
+    /** @var string|null */
+    private $parentId = null;
+
+    /** @var int */
+    private $startedSpansCount = 0;
+
     public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
     {
-        $this->constructExecutionSegmentTrait(
+        parent::__construct(
             $tracer,
             IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES),
             $name,
@@ -45,6 +55,23 @@ final class Transaction extends TransactionData implements TransactionInterface
         && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId]);
     }
 
+    public function getParentId(): ?string
+    {
+        return $this->parentId;
+    }
+
+    public function context(): TransactionContextInterface
+    {
+        if (is_null($this->context)) {
+            if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+                return NoopTransactionContext::singletonInstance();
+            }
+            $this->context = new TransactionContext($this->tracer->loggerFactory());
+        }
+
+        return $this->context;
+    }
+
     public function addStartedSpan(): void
     {
         if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
@@ -52,6 +79,16 @@ final class Transaction extends TransactionData implements TransactionInterface
         }
 
         ++$this->startedSpansCount;
+    }
+
+    public function getDroppedSpansCount(): int
+    {
+        return $this->droppedSpansCount;
+    }
+
+    public function getStartedSpansCount(): int
+    {
+        return $this->startedSpansCount;
     }
 
     public function beginChildSpan(
@@ -99,7 +136,6 @@ final class Transaction extends TransactionData implements TransactionInterface
         return $this->currentSpan;
     }
 
-    /** @inheritDoc */
     public function captureCurrentSpan(
         string $name,
         string $type,
@@ -128,19 +164,6 @@ final class Transaction extends TransactionData implements TransactionInterface
         }
     }
 
-    public function end(?float $duration = null): void
-    {
-        if (!$this->endExecutionSegment($duration)) {
-            return;
-        }
-
-        $this->getTracer()->getEventSink()->consumeTransactionData($this);
-
-        if ($this->getTracer()->getCurrentTransaction() === $this) {
-            $this->getTracer()->resetCurrentTransaction();
-        }
-    }
-
     public function discard(): void
     {
         while (!is_null($this->currentSpan)) {
@@ -149,6 +172,45 @@ final class Transaction extends TransactionData implements TransactionInterface
             }
             $this->popCurrentSpan();
         }
-        $this->discardExecutionSegment();
+
+        parent::discard();
+    }
+
+    public function end(?float $duration = null): void
+    {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
+        parent::end($duration);
+
+        $this->tracer->getEventSink()->consumeTransaction($this);
+
+        if ($this->tracer->getCurrentTransaction() === $this) {
+            $this->tracer->resetCurrentTransaction();
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * Called by json_encode
+     * @noinspection PhpUnused
+     */
+    public function jsonSerialize(): array
+    {
+        $spanCountSubObject = ['started' => $this->getStartedSpansCount()];
+        if ($this->getDroppedSpansCount() != 0) {
+            $spanCountSubObject['dropped'] = $this->getDroppedSpansCount();
+        }
+
+        return SerializationUtil::buildJsonSerializeResultWithBase(
+            parent::jsonSerialize(),
+            [
+                'context'    => SerializationUtil::nullIfEmpty($this->context),
+                'parent_id'  => $this->parentId,
+                'span_count' => $spanCountSubObject,
+            ]
+        );
     }
 }

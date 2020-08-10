@@ -6,39 +6,39 @@ namespace Elastic\Apm\Tests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\EventSinkInterface;
-use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetadataInterface;
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
+use Elastic\Apm\Impl\Util\SerializationUtil;
+use Elastic\Apm\Metadata;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\Tests\Util\ProdObjToTestDtoConverter;
+use Elastic\Apm\Tests\Util\SerializedEventSinkTrait;
 use Elastic\Apm\Tests\Util\ValidationUtil;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 
 class MockEventSink implements EventSinkInterface
 {
     use SerializedEventSinkTrait;
 
-    /** @var MetadataInterface[] */
+    /** @var Metadata[] */
     private $metadata = [];
 
-    /** @var array<string, TransactionDataInterface> */
+    /** @var array<string, TransactionInterface> */
     private $idToTransaction = [];
 
-    /** @var array<string, SpanDataInterface> */
+    /** @var array<string, SpanInterface> */
     private $idToSpan = [];
 
     /**
-     * @param object $data
+     * @param object $inputProdObj
      * @param Closure(object): void $assertValid
      * @param Closure(object): string $serialize
      * @param Closure(string): object $validateAndDeserialize
      * @param Closure(object, object): void $assertEquals
      *
+     * @return object
+     *
      * @template        T of object
-     * @phpstan-param   T $data
+     * @phpstan-param   T $inputProdObj
      * @phpstan-param   Closure(T): void $assertValid
      * @phpstan-param   Closure(T): string $serialize
      * @phpstan-param   Closure(string): T $validateAndDeserialize
@@ -46,72 +46,73 @@ class MockEventSink implements EventSinkInterface
      * @phpstan-return  T
      */
     private function passThroughSerialization(
-        object $data,
+        object $inputProdObj,
         Closure $assertValid,
         Closure $serialize,
         Closure $validateAndDeserialize,
         Closure $assertEquals
     ): object {
-        $assertValid($data);
-        $serializedData = $serialize($data);
-        $deserializedData = $validateAndDeserialize($serializedData);
-        $assertValid($deserializedData);
-        $assertEquals($data, $deserializedData);
-        return $deserializedData;
+        $assertValid($inputProdObj);
+        $serializedAsJson = $serialize($inputProdObj);
+        $deserializedAsDto = $validateAndDeserialize($serializedAsJson);
+        $assertValid($deserializedAsDto);
+        $assertEquals($inputProdObj, $deserializedAsDto);
+        return $deserializedAsDto;
     }
 
-    /** @inheritDoc */
-    public function setMetadata(MetadataInterface $metadata): void
+    public function setMetadata(Metadata $metadata): void
     {
         $this->metadata[] = self::passThroughSerialization(
             $metadata,
             /* assertValid: */
-            function (MetadataInterface $data): void {
-                ValidationUtil::assertValidMetadata($data);
-                self::additionalMetadataValidation($data);
+            function (Metadata $metadataToValidate): void {
+                ValidationUtil::assertValidMetadata($metadataToValidate);
+                self::additionalMetadataValidation($metadataToValidate);
             },
             /* serialize: */
-            function (MetadataInterface $data): string {
-                return SerializationUtil::serializeMetadata($data);
+            function (Metadata $metadataToSerialize): string {
+                return SerializationUtil::serializeAsJson($metadataToSerialize);
             },
             /* validateAndDeserialize: */
-            function (string $serializedMetadata): MetadataInterface {
+            function (string $serializedMetadata): Metadata {
                 return self::validateAndDeserializeMetadata($serializedMetadata);
             },
             /* assertEquals: */
-            function ($data, $deserializedData): void {
-                ValidationUtil::assertThat(Metadata::convertToData($data) == $deserializedData);
+            function ($inputMetadata, $deserializedMetadata): void {
+                ValidationUtil::assertThat($inputMetadata == $deserializedMetadata);
             }
         );
     }
 
-    public static function additionalMetadataValidation(MetadataInterface $metadata): void
+    public static function additionalMetadataValidation(Metadata $metadata): void
     {
-        TestCase::assertSame(getmypid(), $metadata->process()->pid());
+        TestCase::assertSame(getmypid(), $metadata->process()->getPid());
         TestCase::assertNotNull($metadata->service()->language());
-        TestCase::assertSame(PHP_VERSION, $metadata->service()->language()->version());
+        TestCase::assertSame(PHP_VERSION, $metadata->service()->language()->getVersion());
     }
 
-    public function consumeTransactionData(TransactionDataInterface $transactionData): void
+    public function consumeTransaction(TransactionInterface $transaction): void
     {
-        /** @var TransactionDataInterface $newTransaction */
+        /** @var TransactionInterface $newTransaction */
         $newTransaction = self::passThroughSerialization(
-            $transactionData,
+            $transaction,
             /* assertValid: */
-            function (TransactionDataInterface $data): void {
-                ValidationUtil::assertValidTransactionData($data);
+            function (TransactionInterface $transactionToValidate): void {
+                ValidationUtil::assertValidTransaction($transactionToValidate);
             },
             /* serialize: */
-            function (TransactionDataInterface $data): string {
-                return SerializationUtil::serializeTransaction($data);
+            function (TransactionInterface $transactionToSerialize): string {
+                return SerializationUtil::serializeAsJson($transactionToSerialize);
             },
             /* validateAndDeserialize: */
-            function (string $serializedTransactionData): TransactionDataInterface {
-                return self::validateAndDeserializeTransactionData($serializedTransactionData);
+            function (string $serializedTransaction): TransactionInterface {
+                return self::validateAndDeserializeTransaction($serializedTransaction);
             },
             /* assertEquals: */
-            function ($data, $deserializedData): void {
-                ValidationUtil::assertThat(TransactionData::convertToData($data) == $deserializedData);
+            function ($inputTransaction, $deserializedTransaction): void {
+                ValidationUtil::assertThat(
+                    ProdObjToTestDtoConverter::convertTransaction($inputTransaction) == $deserializedTransaction
+                );
             }
         );
         TestCase::assertArrayNotHasKey($newTransaction->getId(), $this->idToTransaction);
@@ -119,7 +120,7 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return array<string, TransactionDataInterface>
+     * @return array<string, TransactionInterface>
      */
     public function getIdToTransaction(): array
     {
@@ -127,34 +128,34 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return TransactionDataInterface
+     * @return TransactionInterface
      */
-    public function getSingleTransaction(): TransactionDataInterface
+    public function getSingleTransaction(): TransactionInterface
     {
         TestCase::assertCount(1, $this->idToTransaction);
         return $this->idToTransaction[array_key_first($this->idToTransaction)];
     }
 
-    public function consumeSpanData(SpanDataInterface $spanData): void
+    public function consumeSpan(SpanInterface $span): void
     {
-        /** @var SpanDataInterface $newSpan */
+        /** @var SpanInterface $newSpan */
         $newSpan = self::passThroughSerialization(
-            $spanData,
+            $span,
             /* assertValid: */
-            function (SpanDataInterface $data): void {
-                ValidationUtil::assertValidSpanData($data);
+            function (SpanInterface $spanToValidate): void {
+                ValidationUtil::assertValidSpan($spanToValidate);
             },
             /* serialize: */
-            function (SpanDataInterface $data): string {
-                return SerializationUtil::serializeSpan($data);
+            function (SpanInterface $spanToSerialize): string {
+                return SerializationUtil::serializeAsJson($spanToSerialize);
             },
             /* validateAndDeserialize: */
-            function (string $serializedSpanData): SpanDataInterface {
-                return self::validateAndDeserializeSpanData($serializedSpanData);
+            function (string $serializedSpan): SpanInterface {
+                return self::validateAndDeserializeSpan($serializedSpan);
             },
             /* assertEquals: */
             function ($data, $deserializedData): void {
-                ValidationUtil::assertThat(SpanData::convertToData($data) == $deserializedData);
+                ValidationUtil::assertThat(ProdObjToTestDtoConverter::convertSpan($data) == $deserializedData);
             }
         );
         TestCase::assertArrayNotHasKey($newSpan->getId(), $this->idToSpan);
@@ -162,7 +163,7 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanInterface>
      */
     public function getIdToSpan(): array
     {
@@ -170,9 +171,9 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return SpanDataInterface
+     * @return SpanInterface
      */
-    public function getSingleSpan(): SpanDataInterface
+    public function getSingleSpan(): SpanInterface
     {
         TestCase::assertCount(1, $this->idToSpan);
         return $this->idToSpan[array_key_first($this->idToSpan)];
@@ -181,10 +182,10 @@ class MockEventSink implements EventSinkInterface
     /**
      * @param string $name
      *
-     * @return SpanDataInterface
+     * @return SpanInterface
      * @throws NotFoundException
      */
-    public function getSpanByName(string $name): SpanDataInterface
+    public function getSpanByName(string $name): SpanInterface
     {
         foreach ($this->idToSpan as $id => $span) {
             if ($span->getName() === $name) {
@@ -195,11 +196,11 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @param TransactionDataInterface $transaction
+     * @param TransactionInterface $transaction
      *
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanInterface>
      */
-    public function getSpansForTransaction(TransactionDataInterface $transaction): array
+    public function getSpansForTransaction(TransactionInterface $transaction): array
     {
         $idToSpanFromTransaction = [];
 

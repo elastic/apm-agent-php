@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\Metadata;
+use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -14,9 +15,9 @@ use Elastic\Apm\TransactionDataInterface;
  */
 interface EventSinkInterface
 {
-    public function setMetadata(MetadataInterface $metadata): void;
+    public function setMetadata(Metadata $metadata): void;
 
-    public function consumeTransactionData(TransactionDataInterface $transactionData): void;
+    public function consumeTransaction(TransactionInterface $transaction): void;
 
-    public function consumeSpanData(SpanDataInterface $spanSpanData): void;
+    public function consumeSpan(SpanInterface $span): void;
 }
