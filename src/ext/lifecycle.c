@@ -315,7 +315,7 @@ void elasticApmRequestShutdown()
     // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
     shutdownTracerPhpPart( config );
 
-    sendMetrics( tracer, config );
+    // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
 
