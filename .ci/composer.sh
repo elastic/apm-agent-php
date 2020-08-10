@@ -11,7 +11,7 @@ composer install
 
 set +x
 /usr/sbin/rsyslogd || true
-if composer run_component_tests_standalone_envs ; then
+if ! composer run_component_tests_standalone_envs ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
     cat /var/log/syslog
     exit 1
