@@ -112,7 +112,7 @@ abstract class TestEnvBase
             "php"
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . 'runMockApmServer.php"'
             . ' --' . StatefulHttpServerProcessBase::PORT_CMD_OPT_NAME . '=' . $mockApmServerPort,
-            $this->buildEnvVars()
+            $this->buildEnvVars($this->envVarsForNonAppCodeProcess())
         );
         $this->checkHttpServerStatus(
             $mockApmServerPort,
@@ -145,7 +145,7 @@ abstract class TestEnvBase
             . ' "' . __DIR__ . '/runSpawnedProcessesCleaner.php"'
             . ' --' . StatefulHttpServerProcessBase::PORT_CMD_OPT_NAME . '=' . $spawnedProcessesCleanerPort
             . ' --' . SpawnedProcessesCleaner::PARENT_PID_CMD_OPT_NAME . '=' . getmypid(),
-            $this->buildEnvVars()
+            $this->buildEnvVars($this->envVarsForNonAppCodeProcess())
         );
         $this->checkHttpServerStatus(
             $spawnedProcessesCleanerPort,
@@ -234,6 +234,24 @@ abstract class TestEnvBase
             = $this->testEnvId();
 
         return array_merge($result, $additionalEnvVars);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function envVarsForNonAppCodeProcess(): array
+    {
+        $result = [];
+
+        $addNonAppCodeProcessEnvVar = function (string $optName, string $optVal) use (&$result): void {
+            $envVarName
+                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
+            $result[$envVarName] = $optVal;
+        };
+
+        $addNonAppCodeProcessEnvVar(OptionNames::ENABLED, 'false');
+
+        return $result;
     }
 
     /**
