@@ -9,7 +9,7 @@ use Elastic\Apm\ExecutionSegmentContextInterface;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
-use Elastic\Apm\Impl\MetadataDiscovery;
+use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StaticClassTrait;

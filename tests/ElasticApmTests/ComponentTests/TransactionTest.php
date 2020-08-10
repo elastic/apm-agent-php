@@ -29,7 +29,7 @@ final class TransactionTest extends ComponentTestCaseBase
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
     }
 
-    private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionDataInterface
+    private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionInterface
     {
         $this->assertEmpty($dataFromAgent->idToSpan());
 

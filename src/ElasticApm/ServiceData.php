@@ -42,10 +42,10 @@ class ServiceData implements JsonSerializable
 
     public function __construct()
     {
-        $this->agent = new NameVersionData();
+        $this->agent = new NameVersionData(ServiceData::DEFAULT_AGENT_NAME, ElasticApm::VERSION);
         $this->framework = new NameVersionData();
-        $this->language = new NameVersionData();
-        $this->runtime = new NameVersionData();
+        $this->language = new NameVersionData(ServiceData::DEFAULT_LANGUAGE_NAME, PHP_VERSION);
+        $this->runtime = new NameVersionData(ServiceData::DEFAULT_LANGUAGE_NAME, PHP_VERSION);
     }
 
     /**

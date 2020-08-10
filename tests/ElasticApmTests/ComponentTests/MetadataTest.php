@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\ServiceData;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
@@ -22,7 +22,7 @@ final class MetadataTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             (new TestProperties([__CLASS__, 'appCodeEmpty'])),
             function (DataFromAgent $dataFromAgent): void {
-                TestEnvBase::verifyServiceName(MetadataDiscoverer::DEFAULT_SERVICE_NAME, $dataFromAgent);
+                TestEnvBase::verifyServiceName(ServiceData::DEFAULT_SERVICE_NAME, $dataFromAgent);
             }
         );
     }

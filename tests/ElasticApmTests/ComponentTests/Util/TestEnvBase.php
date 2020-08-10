@@ -10,9 +10,10 @@ use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\ServiceData;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionInterface;
@@ -99,8 +100,8 @@ abstract class TestEnvBase
 
         $mockApmServerPort
             = AmbientContext::config()->mockApmServerPort() === AllComponentTestsOptionsMetadata::INT_OPTION_NOT_SET
-                ? $this->findFreePortToListen()
-                : AmbientContext::config()->mockApmServerPort();
+            ? $this->findFreePortToListen()
+            : AmbientContext::config()->mockApmServerPort();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -382,25 +383,25 @@ abstract class TestEnvBase
     {
         /** @noinspection PhpStrictTypeCheckingInspection */
         $expectedServiceName = is_null($testProperties->configuredServiceName)
-            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            ? ServiceData::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
-        $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
+        $expectedServiceVersion = TextUtil::limitNullableKeywordString($testProperties->configuredServiceVersion);
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expected, $metadata->service()->name());
+            TestCase::assertSame($expected, $metadata->service()->getName());
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expected, $metadata->service()->version());
+            TestCase::assertSame($expected, $metadata->service()->getVersion());
         }
     }
 

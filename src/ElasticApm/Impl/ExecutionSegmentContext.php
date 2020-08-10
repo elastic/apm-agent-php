@@ -10,6 +10,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\SerializationUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use JsonSerializable;
 
 /**
@@ -69,8 +70,8 @@ abstract class ExecutionSegmentContext implements ExecutionSegmentContextInterfa
             return;
         }
 
-        $this->labels[Util\TextUtil::limitKeywordString($key)] = is_string($value)
-            ? Util\TextUtil::limitKeywordString($value)
+        $this->labels[TextUtil::limitKeywordString($key)] = is_string($value)
+            ? TextUtil::limitKeywordString($value)
             : $value;
     }
 

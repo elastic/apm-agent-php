@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
+use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
+use Elastic\Apm\Impl\Config\Parser as ConfigParser;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -74,7 +80,7 @@ final class Tracer implements TracerInterface
             ]
         );
 
-        $this->eventSink->setMetadata(MetadataDiscovery::discover());
+        $this->eventSink->setMetadata(MetadataDiscoverer::discover($this->config));
     }
 
     private function getConfig(): ConfigSnapshot
