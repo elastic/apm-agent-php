@@ -19,7 +19,7 @@ PHP_API=$(php -i | grep -i 'PHP API' | cut -d">" -f2 | tr -d ' ')
 mv /app/src/ext/modules/elastic_apm.so /app/src/ext/modules/elastic_apm-"${PHP_API}".so
 
 ## Remove la files 
-find /app/src/ext/modules -name \*.la -print0 --null | xargs rm -f
+find /app/src/ext/modules -name "*.la" -print0 | xargs -0 rm -f
 
 ## Restore previous so files.
 if ls "${GENERATED}"/*.so 1> /dev/null 2>&1; then
