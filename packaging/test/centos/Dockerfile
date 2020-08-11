@@ -9,6 +9,13 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
     && yum install -y php php-mbstring php-mysql php-xml
 
+
+## sh: git: command not found
+# the zip extension and unzip command are both missing, skipping.
+RUN yum update -y \
+    && yum install -y git unzip \
+    && yum clean all
+
 RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/bin/composer
 
 # To support tar and rpm packages
