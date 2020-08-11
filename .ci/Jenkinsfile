@@ -108,6 +108,10 @@ pipeline {
       }
     }
     stage('Package Generation') {
+      when {
+        beforeAgent true
+        expression { return env.ONLY_DOCS == "false" }
+      }
       options { skipDefaultCheckout() }
       steps {
         withGithubNotify(context: "Package", tab: 'artifacts') {
