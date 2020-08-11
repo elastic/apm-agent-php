@@ -66,6 +66,7 @@ function get_extension_file() {
 ############################### MAIN ###########################################
 ################################################################################
 echo 'Installing Elastic PHP agent'
+EXTENSION_FILE_PATH=$(get_extension_file)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 if [ -e "${PHP_INI_FILE_PATH}" ] ; then
     if [ -e "${EXTENSION_FILE_PATH}" ] ; then
