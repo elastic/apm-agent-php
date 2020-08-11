@@ -4,7 +4,7 @@
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
 PHP_AGENT_DIR=/opt/elastic/apm-agent-php
-EXTENSION_FILE_PATH="${PHP_AGENT_DIR}/extensions/elastic_apm.so"
+EXTENSION_DIR="${PHP_AGENT_DIR}/extensions"
 BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
 BACKUP_EXTENSION=".agent.bck"
 
@@ -30,6 +30,15 @@ function php_ini_file_path() {
 }
 
 ################################################################################
+#### Function php_api ##########################################################
+function php_api() {
+    php_command -i \
+        | grep 'PHP API' \
+        | sed -e 's#.* =>##g' \
+        | awk '{print $1}'
+}
+
+################################################################################
 #### Function is_extension_installed ###########################################
 function is_extension_installed() {
     php_command -m | grep -q 'elastic'
@@ -47,17 +56,28 @@ EOF
 }
 
 ################################################################################
+#### Function get_extension_file ###############################################
+function get_extension_file() {
+    PHP_API=$(php_api)
+    echo "${EXTENSION_DIR}/elastic_apm-${PHP_API}.so"
+}
+
+################################################################################
 ############################### MAIN ###########################################
 ################################################################################
 echo 'Installing Elastic PHP agent'
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 if [ -e "${PHP_INI_FILE_PATH}" ] ; then
-    if grep -q "${EXTENSION_FILE_PATH}" "${PHP_INI_FILE_PATH}" ; then
-        echo '  extension configuration already exists for the Elastic PHP agent.'
-        echo '  skipping ... '
+    if [ -e "${EXTENSION_FILE_PATH}" ] ; then
+        if grep -q "${EXTENSION_FILE_PATH}" "${PHP_INI_FILE_PATH}" ; then
+            echo '  extension configuration already exists for the Elastic PHP agent.'
+            echo '  skipping ... '
+        else
+            cp -fa "${PHP_INI_FILE_PATH}" "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}"
+            add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+        fi
     else
-        cp -fa "${PHP_INI_FILE_PATH}" "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}"
-        add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+        echo 'Failed. Elastic PHP agent extension not supported for the current PHP API version.'
     fi
 else
     add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
