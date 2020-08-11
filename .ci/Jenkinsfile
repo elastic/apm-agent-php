@@ -89,7 +89,7 @@ pipeline {
             steps {
               withGithubNotify(context: "Generate-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate", label: 'install'
+                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate", label: 'generate'
                   stash includes: 'src/ext/modules/*.so', name: "generate-${PHP_VERSION}"
                 }
               }
@@ -156,8 +156,8 @@ pipeline {
               withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
                 deleteDir()
                 unstash 'source'
-                unstash 'package'
                 dir("${BASE_DIR}"){
+                  unstash 'package'
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
               }
