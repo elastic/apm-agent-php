@@ -13,7 +13,7 @@ make clean
 make
 
 ## Fetch PHP api version to be added to the so file that has been generated
-PHP_API=$(php -i | grep -i 'PHP API' | cut -d">" -f2 | tr -d ' ')
+PHP_API=$(php -i | grep -i 'PHP API' | sed -e 's#.* =>##g' | awk '{print $1}')
 
 ## Rename so file with the PHP api
 mv /app/src/ext/modules/elastic_apm.so /app/src/ext/modules/elastic_apm-"${PHP_API}".so
