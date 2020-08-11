@@ -2,10 +2,14 @@
 
 set -exo pipefail
 
+HYPHEN="-"
+MODULES_DIR=/app/src/ext/modules
+NAME=elastic_apm
 ## Prepare context where to copy the previous generated so files
 GENERATED=$(mktemp -d /tmp/dir-XXXX)
-if ls /app/src/ext/modules/*.so 1> /dev/null 2>&1; then
-  cp -rf /app/src/ext/modules/*.so "${GENERATED}" || true
+SEARCH="${MODULES_DIR}/*${HYPHEN}*.so"
+if ls "${SEARCH}" 1> /dev/null 2>&1; then
+  cp -f "${SEARCH}" "${GENERATED}" || true
 fi
 
 ## Generate so file
@@ -16,12 +20,12 @@ make
 PHP_API=$(php -i | grep -i 'PHP API' | sed -e 's#.* =>##g' | awk '{print $1}')
 
 ## Rename so file with the PHP api
-mv /app/src/ext/modules/elastic_apm.so /app/src/ext/modules/elastic_apm-"${PHP_API}".so
+mv "${MODULES_DIR}/${NAME}.so" "${MODULES_DIR}/${NAME}${HYPHEN}${PHP_API}.so"
 
 ## Remove la files 
-find /app/src/ext/modules -name "*.la" -print0 | xargs -0 rm -f
+find "${MODULES_DIR}" -name "*.la" -print0 | xargs -0 rm -f
 
 ## Restore previous so files.
-if ls "${GENERATED}"/*.so 1> /dev/null 2>&1; then
-  cp "${GENERATED}"/*.so /app/src/ext/modules/
+if ls "${SEARCH}" 1> /dev/null 2>&1; then
+  cp -f "${SEARCH}" ${MODULES_DIR}/
 fi

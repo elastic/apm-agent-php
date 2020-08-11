@@ -9,7 +9,6 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
     && yum install -y php php-mbstring php-mysql php-xml
 
-
 ## sh: git: command not found
 # the zip extension and unzip command are both missing, skipping.
 RUN yum update -y \
