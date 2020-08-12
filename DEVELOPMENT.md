@@ -17,7 +17,7 @@ PHP_VERSION=7.2 make -f .ci/Makefile build
 PHP_VERSION=7.2 make -f .ci/Makefile test
 
 ## To generate the agent extension with the existing PHP API
-PHP_VERSION=7.2 make -f .ci/Makefile generate
+PHP_VERSION=7.2 make -f .ci/Makefile generate-for-package
 
 ## To install with composer
 PHP_VERSION=7.2 make -f .ci/Makefile composer

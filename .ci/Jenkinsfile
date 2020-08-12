@@ -85,12 +85,12 @@ pipeline {
               }
             }
           }
-          stage('Generate') {
+          stage('Generate for package') {
             steps {
-              withGithubNotify(context: "Generate-${PHP_VERSION}") {
+              withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate", label: 'generate'
-                  stash includes: 'src/ext/modules/*.so', name: "generate-${PHP_VERSION}"
+                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                  stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}"
                 }
               }
             }
@@ -118,9 +118,9 @@ pipeline {
           deleteDir()
           unstash 'source'
           dir("${BASE_DIR}"){
-            unstash 'generate-7.2'
-            unstash 'generate-7.3'
-            unstash 'generate-7.4'
+            unstash 'generate-for-package-7.2'
+            unstash 'generate-for-package-7.3'
+            unstash 'generate-for-package-7.4'
             sh script: "make -C packaging package", label: 'package'
             sh script: "make -C packaging info", label: 'package info'
             stash includes: 'build/packages/*', name: 'package'

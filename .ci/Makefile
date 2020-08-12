@@ -33,7 +33,7 @@ test: prepare  ## Test the project
 		make test
 
 .PHONY: generate
-generate: prepare  ## Generate the agent extension
+generate-for-package: prepare  ## Generate the agent extension for the package
 	# docker as root to install the extension
 	docker run --rm -t \
 		-v $(PWD):/app \
