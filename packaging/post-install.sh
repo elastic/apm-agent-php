@@ -68,6 +68,14 @@ function manual_extension_agent_setup() {
 }
 
 ################################################################################
+#### Function agent_extension_not_supported ####################################
+function agent_extension_not_supported() {
+    PHP_API=$(php_api)
+    echo 'Failed. Elastic PHP agent extension not supported for the current PHP API version.'
+    echo "    PHP API => ${PHP_API}"
+}
+
+################################################################################
 #### Function get_extension_file ###############################################
 function get_extension_file() {
     PHP_API=$(php_api)
@@ -86,16 +94,20 @@ if [ -e "${PHP_INI_FILE_PATH}" ] ; then
             echo '  extension configuration already exists for the Elastic PHP agent.'
             echo '  skipping ... '
         else
+            echo "${PHP_INI_FILE_PATH} has been configured with the Elastic PHP agent setup."
             cp -fa "${PHP_INI_FILE_PATH}" "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}"
             add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
         fi
     else
-        PHP_API=$(php_api)
-        echo 'Failed. Elastic PHP agent extension not supported for the current PHP API version.'
-        echo "    PHP API => ${PHP_API}"
+        agent_extension_not_supported
     fi
 else
-    add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+    if [ -e "${EXTENSION_FILE_PATH}" ] ; then
+        echo "${PHP_INI_FILE_PATH} has been created with the Elastic PHP agent setup."
+        add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+    else
+        agent_extension_not_supported
+    fi
 fi
 
 if is_extension_enabled ; then
