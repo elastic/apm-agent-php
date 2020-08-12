@@ -22,6 +22,9 @@ PHP_VERSION=7.2 make -f .ci/Makefile generate-for-package
 ## To install with composer
 PHP_VERSION=7.2 make -f .ci/Makefile composer
 
+## To release given the GITHUB_TOKEN and TAG_NAME
+GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile release
+
 ## Help goal will provide further details
 make -f .ci/Makefile help
 ```

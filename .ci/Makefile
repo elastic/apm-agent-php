@@ -53,3 +53,21 @@ composer: prepare  ## Run composer
 			&& cd /app \
 			&& composer install \
 			&& composer static_check_and_run_component_tests_standalone_envs'
+
+.PHONY: release
+release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
+ifndef GITHUB_TOKEN
+	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
+	exit 1
+endif
+ifndef TAG_NAME
+	@echo "Please set TAG_NAME in the environment to perform a release"
+	exit 1
+endif
+	@docker run --rm -t \
+		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
+		--env TAG_NAME=$(TAG_NAME) \
+		--volume "$(PWD)":/app \
+		--workdir /app \
+		golang:1.14.7 \
+		/app/.ci/release.sh
