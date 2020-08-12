@@ -39,8 +39,8 @@ function php_api() {
 }
 
 ################################################################################
-#### Function is_extension_installed ###########################################
-function is_extension_installed() {
+#### Function is_extension_enabled #############################################
+function is_extension_enabled() {
     php_command -m | grep -q 'elastic'
 }
 
@@ -53,6 +53,18 @@ extension=${EXTENSION_FILE_PATH}
 elastic_apm.bootstrap_php_part_file=${BOOTSTRAP_FILE_PATH}
 ; END OF AUTO-GENERATED
 EOF
+}
+
+################################################################################
+#### Function manual_extension_agent_setup #####################################
+function manual_extension_agent_setup() {
+    echo 'Set up the Agent manually as explained in:'
+    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    if [ -e "${EXTENSION_FILE_PATH}" ] ; then
+        echo 'Enable the extension by adding the following to your php.ini file:'
+        echo "extension=${EXTENSION_FILE_PATH}"
+        echo "elastic_apm.bootstrap_php_part_file=${BOOTSTRAP_FILE_PATH}"
+    fi
 }
 
 ################################################################################
@@ -78,20 +90,21 @@ if [ -e "${PHP_INI_FILE_PATH}" ] ; then
             add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
         fi
     else
+        PHP_API=$(php_api)
         echo 'Failed. Elastic PHP agent extension not supported for the current PHP API version.'
+        echo "    PHP API => ${PHP_API}"
     fi
 else
     add_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
 fi
 
-if is_extension_installed ; then
+if is_extension_enabled ; then
     echo 'Extension enabled successfully for Elastic PHP agent'
 else
-    echo 'Failed enabling Elastic PHP agent extension'
+    echo 'Failed. Elastic PHP agent extension is not enabled'
     if [ -e "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}" ] ; then
         echo "Reverted changes in the file ${PHP_INI_FILE_PATH}"
         mv -f "${PHP_INI_FILE_PATH}${BACKUP_EXTENSION}" "${PHP_INI_FILE_PATH}"
     fi
-    echo 'Set up the Agent manually as explained in:'
-    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    manual_extension_agent_setup
 fi
