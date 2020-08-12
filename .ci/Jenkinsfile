@@ -226,6 +226,59 @@ pipeline {
         }
       }
     }
+    stage('Release') {
+      options {
+        skipDefaultCheckout()
+        timeout(time: 12, unit: 'HOURS')
+      }
+      when {
+        beforeAgent true
+        tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+      }
+      stages {
+        stage('Notify') {
+          options { skipDefaultCheckout() }
+          steps {
+            emailext subject: "[${env.REPO}] Release ready to be pushed", to: "${NOTIFY_TO}",
+                              body: "Please go to ${env.BUILD_URL}input to approve or reject within 12 hours.\n Changes: ${env.TAG_NAME}"
+            script {
+              def should_continue = input(message: "You are about to release version ${env.TAG_NAME}",
+                                          parameters: [ [$class: 'ChoiceParameterDefinition',
+                                                          name: 'Do you wish to release it?',
+                                                          choices: ['Yes', 'No']] ])
+              env.RELEASE = should_continue.equals('Yes')
+            }
+          }
+        }
+        stage('Release CI') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
+          options { skipDefaultCheckout() }
+          steps {
+            deleteDir()
+            unstash 'source'
+            dir("${BASE_DIR}") {
+              unstash 'package'
+              withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
+                sh script: 'make -f .ci/Makefile release', label: 'release'
+              }
+            }
+          }
+          post {
+            success {
+              emailext subject: "[${env.REPO}] Release published", to: "${env.NOTIFY_TO}", body: "Great news, the release has been done successfully."
+            }
+            always {
+              script {
+                currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+              }
+            }
+          }
+        }
+      }
+    }
   }
   post {
     cleanup {
