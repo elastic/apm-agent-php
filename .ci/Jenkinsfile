@@ -85,11 +85,12 @@ pipeline {
               }
             }
           }
-          stage('Install') {
+          stage('Generate for package') {
             steps {
-              withGithubNotify(context: "Install-${PHP_VERSION}") {
+              withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile install", label: 'install'
+                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                  stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}"
                 }
               }
             }
@@ -103,27 +104,60 @@ pipeline {
               }
             }
           }
-          stage('Package Generation') {
-            steps {
-              withGithubNotify(context: "Package-${PHP_VERSION}", tab: 'artifacts') {
-                dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging package", label: 'package'
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging info", label: 'package info'
-                }
-              }
-            }
-            post {
-              always {
-                dir("${BASE_DIR}"){
-                  archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/${PHP_VERSION}/*")
-                }
-              }
-            }
+        }
+      }
+    }
+    stage('Package Generation') {
+      when {
+        beforeAgent true
+        expression { return env.ONLY_DOCS == "false" }
+      }
+      options { skipDefaultCheckout() }
+      steps {
+        withGithubNotify(context: "Package", tab: 'artifacts') {
+          deleteDir()
+          unstash 'source'
+          dir("${BASE_DIR}"){
+            unstash 'generate-for-package-7.2'
+            unstash 'generate-for-package-7.3'
+            unstash 'generate-for-package-7.4'
+            sh script: "make -C packaging package", label: 'package'
+            sh script: "make -C packaging info", label: 'package info'
+            stash includes: 'build/packages/*', name: 'package'
           }
+        }
+      }
+      post {
+        always {
+          dir("${BASE_DIR}"){
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/*")
+          }
+        }
+      }
+    }
+    stage('Package-Test') {
+      when {
+        beforeAgent true
+        expression { return env.ONLY_DOCS == "false" }
+      }
+      failFast false
+      matrix {
+        agent { label 'linux && immutable' }
+        options { skipDefaultCheckout() }
+        axes {
+          axis {
+            name 'PHP_VERSION'
+            values '7.2', '7.3', '7.4'
+          }
+        }
+        stages {
           stage('Package Test') {
             steps {
               withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
+                deleteDir()
+                unstash 'source'
                 dir("${BASE_DIR}"){
+                  unstash 'package'
                   sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
                 }
               }

@@ -3,10 +3,10 @@ set -xe
 
 if [ "${TYPE}" == "rpm" ] ; then
     ## Install rpm package and configure the agent accordingly
-    rpm -ivh build/packages/**/*.rpm
+    rpm -ivh build/packages/*.rpm
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf build/packages/**/*.tar -C /
+    tar -xf build/packages/*.tar -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 fi

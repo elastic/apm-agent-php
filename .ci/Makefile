@@ -32,13 +32,13 @@ test: prepare  ## Test the project
 		$(IMAGE):${PHP_VERSION} \
 		make test
 
-.PHONY: install
-install: prepare  ## Install the agent
+.PHONY: generate-for-package
+generate-for-package: prepare  ## Generate the agent extension for the package
 	# docker as root to install the extension
 	docker run --rm -t \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION} \
-		make install
+		/app/.ci/generate-for-package.sh
 
 .PHONY: composer
 composer: prepare  ## Run composer

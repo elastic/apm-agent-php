@@ -11,13 +11,17 @@ GIT_SHA ?= $(shell git rev-parse HEAD || echo "unknown")
 help: ## Display this help text
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: clean
+clean: ## Clean the generated packages
+	rm -f $(PWD)/$(OUTPUT)/*.*
+
 .PHONY: prepare
 prepare: ## Build docker image for the packaging
 	@docker build -t $(IMAGE) .
 
 create-%: prepare  ## Create the specific package
 	@echo 'Creating package ...'
-	@mkdir -p $(PWD)/$(OUTPUT)/$(PHP_VERSION)
+	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
 		-v $(PWD):/app \
 		-w /app $(IMAGE) \
@@ -31,7 +35,7 @@ create-%: prepare  ## Create the specific package
 		--license 'ASL 2.0' \
 		--vendor 'Elasticsearch, Inc.' \
 		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
-		--package $(OUTPUT)/$(PHP_VERSION) \
+		--package $(OUTPUT) \
 		--chdir /app \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
@@ -40,10 +44,10 @@ create-%: prepare  ## Create the specific package
 		src/ElasticApm=$(PHP_AGENT_DIR)/src \
 		src/bootstrap_php_part.php=$(PHP_AGENT_DIR)/src/bootstrap_php_part.php
 	@echo 'Creating sha512sum ...'
-	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/$(PHP_VERSION)/*.$*) ;\
+	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/*.$*) ;\
 	sha512sum $$BINARY > $$BINARY.sha512 ;\
-	sed -i.bck "s#$(PWD)/$(OUTPUT)/$(PHP_VERSION)/##g" $$BINARY.sha512 ;\
-	rm $(PWD)/$(OUTPUT)/$(PHP_VERSION)/*.bck
+	sed -i.bck "s#$(PWD)/$(OUTPUT)/##g" $$BINARY.sha512 ;\
+	rm $(PWD)/$(OUTPUT)/*.bck
 
 .PHONY: rpm
 rpm: create-rpm  ## Create the rpm installer
@@ -67,21 +71,21 @@ info: rpm-info deb-info tar-info  ## Show the package metadata for all the insta
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.rpm) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: deb-info
 deb-info:  ## Show the deb package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.deb) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	@cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(PHP_VERSION)/*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: rpm-install
