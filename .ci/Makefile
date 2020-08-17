@@ -12,7 +12,7 @@ help: ## Display this help text
 .PHONY: prepare
 prepare:  ## Build docker image for building and testing the project
 	docker build \
-		--build-arg PHP_VERSION=${PHP_VERSION} \
+		--build-arg PHP_VERSION=${PHP_VERSION} ${DOCKER_BUILD_FLAG} \
 		--tag $(IMAGE):${PHP_VERSION} .
 
 .PHONY: build
