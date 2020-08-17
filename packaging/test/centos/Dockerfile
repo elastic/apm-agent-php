@@ -12,7 +12,7 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
 ## sh: git: command not found
 # the zip extension and unzip command are both missing, skipping.
 RUN yum update -y \
-    && yum install -y git unzip \
+    && yum install -y autoconf git unzip \
     && yum clean all
 
 FROM composer:1.10 as composer

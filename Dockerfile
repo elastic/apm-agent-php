@@ -3,6 +3,7 @@ FROM php:${PHP_VERSION}-fpm
 
 RUN apt-get -qq update \
  && apt-get -qq install -y \
+    autoconf \
     build-essential \
     autoconf \
     curl \
