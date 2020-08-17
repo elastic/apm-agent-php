@@ -5,7 +5,6 @@ RUN apt-get -qq update \
  && apt-get -qq install -y \
     autoconf \
     build-essential \
-    autoconf \
     curl \
     libcurl4-openssl-dev \
     procps \
@@ -13,8 +12,9 @@ RUN apt-get -qq update \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
-FROM composer:1.10 as composer
-COPY --from=composer /usr/bin/composer /usr/bin/
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+ && php composer-setup.php --install-dir=/usr/bin --filename=composer --version=1.10.10 \
+ && php -r "unlink('composer-setup.php');"
 
 WORKDIR /app/src/ext
 

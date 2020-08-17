@@ -5,7 +5,6 @@ source /usr/local/bin/bash_standard_lib.sh
 
 DOCKER_IMAGES="alpine:3.11
 centos:centos7
-composer:1.10
 php:7.2-fpm
 php:7.3-fpm
 php:7.4-fpm

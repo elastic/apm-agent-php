@@ -12,11 +12,12 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
 ## sh: git: command not found
 # the zip extension and unzip command are both missing, skipping.
 RUN yum update -y \
-    && yum install -y autoconf git unzip \
+    && yum install -y git unzip \
     && yum clean all
 
-FROM composer:1.10 as composer
-COPY --from=composer /usr/bin/composer /usr/bin/
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+ && php composer-setup.php --install-dir=/usr/bin --filename=composer --version=1.10.10 \
+ && php -r "unlink('composer-setup.php');"
 
 # To support tar and rpm packages
 ENV TYPE=rpm
