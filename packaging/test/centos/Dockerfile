@@ -15,7 +15,8 @@ RUN yum update -y \
     && yum install -y git unzip \
     && yum clean all
 
-RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/bin/composer
+FROM composer:1.10 as composer
+COPY --from=composer /usr/bin/composer /usr/bin/
 
 # To support tar and rpm packages
 ENV TYPE=rpm
