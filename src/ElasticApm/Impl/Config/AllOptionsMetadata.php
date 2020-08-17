@@ -21,8 +21,9 @@ final class AllOptionsMetadata
     public static function build(): array
     {
         return [
-            OptionNames::ENABLED      => new BoolOptionMetadata(/* defaultValue: */ true),
-            OptionNames::SERVICE_NAME => new NullableStringOptionMetadata(),
+            OptionNames::ENABLED         => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::ENVIRONMENT     => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_NAME    => new NullableStringOptionMetadata(),
             OptionNames::SERVICE_VERSION => new NullableStringOptionMetadata(),
         ];
     }

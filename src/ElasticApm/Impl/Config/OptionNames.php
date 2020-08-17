@@ -16,6 +16,7 @@ final class OptionNames
     use StaticClassTrait;
 
     public const ENABLED = 'enabled';
+    public const ENVIRONMENT = 'environment';
     public const SERVER_URL = 'server_url';
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_VERSION = 'service_version';

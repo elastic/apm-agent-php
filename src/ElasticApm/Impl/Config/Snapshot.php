@@ -20,6 +20,9 @@ final class Snapshot
     private $enabled;
 
     /** @var string|null */
+    private $environment;
+
+    /** @var string|null */
     private $serviceName;
 
     /** @var string|null */
@@ -40,6 +43,11 @@ final class Snapshot
         return $this->enabled;
     }
 
+    public function environment(): ?string
+    {
+        return $this->environment;
+    }
+
     public function serviceName(): ?string
     {
         return $this->serviceName;
@@ -54,6 +62,7 @@ final class Snapshot
     {
         $builder = new ObjectToStringBuilder();
         $builder->add('enabled', $this->enabled);
+        $builder->add('environment', $this->environment);
         $builder->add('serviceName', $this->serviceName);
         $builder->add('serviceVersion', $this->serviceVersion);
         return $builder->build();

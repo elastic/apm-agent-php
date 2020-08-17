@@ -191,6 +191,7 @@ abstract class TestEnvBase
             $result[$envVarName] = $configuredValue;
         };
 
+        $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $testProperties->configuredEnvironment);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
 
@@ -380,7 +381,9 @@ abstract class TestEnvBase
 
     protected function verifyMetadata(TestProperties $testProperties): void
     {
-        /** @noinspection PhpStrictTypeCheckingInspection */
+        $expectedEnvironment = Tracer::limitNullableKeywordString($testProperties->configuredEnvironment);
+        self::verifyEnvironment($expectedEnvironment, $this->dataFromAgent);
+
         $expectedServiceName = is_null($testProperties->configuredServiceName)
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
@@ -388,6 +391,13 @@ abstract class TestEnvBase
 
         $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+    }
+
+    public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service()->environment());
+        }
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
