@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <phpunit
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    beStrictAboutOutputDuringTests= "false"
     bootstrap="tests/bootstrap.php"
     colors="true"
+    failOnRisky="true"
+    stopOnDefect="true"
     verbose= "true"
-    beStrictAboutTestsThatDoNotTestAnything="true"
-    beStrictAboutOutputDuringTests= "true"
 >
     <testsuites>
         <testsuite name="Tests">

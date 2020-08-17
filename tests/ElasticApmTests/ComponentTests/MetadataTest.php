@@ -13,8 +13,44 @@ use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 
 final class MetadataTest extends ComponentTestCaseBase
 {
-    public static function appCodeEmpty(): void
+    private static function generateDummyMaxKeywordString(): string
     {
+        return '[' . str_repeat('V', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+               . ','
+               . ';'
+               . str_repeat('W', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']';
+    }
+
+    public function testDefaultEnvironment(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty'])),
+            function (DataFromAgent $dataFromAgent): void {
+                TestEnvBase::verifyEnvironment(null, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testCustomEnvironment(): void
+    {
+        $expected = 'custom service environment 9.8 @CI#!?';
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredEnvironment($expected),
+            function (DataFromAgent $dataFromAgent) use ($expected): void {
+                TestEnvBase::verifyEnvironment($expected, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testInvalidEnvironmentTooLong(): void
+    {
+        $validPart = self::generateDummyMaxKeywordString();
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredEnvironment($validPart . '_tail'),
+            function (DataFromAgent $dataFromAgent) use ($validPart): void {
+                TestEnvBase::verifyEnvironment($validPart, $dataFromAgent);
+            }
+        );
     }
 
     public function testDefaultServiceName(): void
@@ -93,10 +129,7 @@ final class MetadataTest extends ComponentTestCaseBase
 
     public function testInvalidServiceVersionTooLong(): void
     {
-        $validPart = '[' . str_repeat('V', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
-                     . ','
-                     . ';'
-                     . str_repeat('W', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']';
+        $validPart = self::generateDummyMaxKeywordString();
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceVersion($validPart . '_tail'),
             function (DataFromAgent $dataFromAgent) use ($validPart): void {
