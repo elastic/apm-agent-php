@@ -92,4 +92,8 @@ class ComponentTestCaseBase extends TestCaseBase
 
         throw new RuntimeException('This point in the code should not be reached');
     }
+
+    public static function appCodeEmpty(): void
+    {
+    }
 }

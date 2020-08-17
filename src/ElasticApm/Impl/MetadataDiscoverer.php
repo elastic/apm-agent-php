@@ -52,6 +52,10 @@ final class MetadataDiscoverer
             {
                 $result = new ServiceData();
 
+                if (!is_null($config->environment())) {
+                    $result->environment = Tracer::limitKeywordString($config->environment());
+                }
+
                 $result->name = is_null($config->serviceName())
                     ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
                     : MetadataDiscoverer::adaptServiceName($config->serviceName());
