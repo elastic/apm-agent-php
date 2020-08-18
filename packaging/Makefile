@@ -130,4 +130,4 @@ rpm-install:  ## Install the rpm installer to run some smoke tests
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm $@
 
 .PHONY: install
-install: deb-install rpm-install tar-install  ## Install all the distributions
+install: apk-install deb-install rpm-install tar-install  ## Install all the distributions

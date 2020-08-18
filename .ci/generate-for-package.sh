@@ -12,6 +12,11 @@ if ls "${SEARCH}" 1> /dev/null 2>&1; then
   cp -f "${SEARCH}" "${GENERATED}" || true
 fi
 
+## If alpine then add another suffix
+if grep -q -i alpine /etc/os-release; then
+  SUFFIX=${HYPHEN}alpine
+fi
+
 ## Generate so file
 make clean
 make
@@ -20,7 +25,7 @@ make
 PHP_API=$(php -i | grep -i 'PHP API' | sed -e 's#.* =>##g' | awk '{print $1}')
 
 ## Rename so file with the PHP api
-mv "${MODULES_DIR}/${NAME}.so" "${MODULES_DIR}/${NAME}${HYPHEN}${PHP_API}.so"
+mv "${MODULES_DIR}/${NAME}.so" "${MODULES_DIR}/${NAME}${HYPHEN}${PHP_API}${SUFFIX}.so"
 
 ## Remove la files 
 find "${MODULES_DIR}" -name "*.la" -print0 | xargs -0 rm -f

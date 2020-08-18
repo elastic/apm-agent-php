@@ -53,6 +53,10 @@ pipeline {
             name 'PHP_VERSION'
             values '7.2', '7.3', '7.4'
           }
+          axis {
+            name 'DOCKERFILE'
+            values 'Dockerfile', 'Dockerfile.alpine'
+          }
         }
         stages {
           stage('Build') {
@@ -64,9 +68,9 @@ pipeline {
                   // When running in the CI with multiple parallel stages
                   // the access could be considered as a DDOS attack.
                   retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-                    sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
                   }
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile build", label: 'build'
+                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
                 }
               }
             }
@@ -75,7 +79,7 @@ pipeline {
             steps {
               withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile test", label: 'test'
+                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test", label: 'test'
                 }
               }
             }
@@ -89,8 +93,8 @@ pipeline {
             steps {
               withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-                  stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}"
+                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                  stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
                 }
               }
             }
@@ -99,7 +103,7 @@ pipeline {
             steps {
               withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
                 dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile composer", label: 'composer'
+                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer", label: 'composer'
                 }
               }
             }
@@ -118,9 +122,12 @@ pipeline {
           deleteDir()
           unstash 'source'
           dir("${BASE_DIR}"){
-            unstash 'generate-for-package-7.2'
-            unstash 'generate-for-package-7.3'
-            unstash 'generate-for-package-7.4'
+            unstash 'generate-for-package-7.2-Dockerfile'
+            unstash 'generate-for-package-7.3-Dockerfile'
+            unstash 'generate-for-package-7.4-Dockerfile'
+            unstash 'generate-for-package-7.2-Dockerfile.alpine'
+            unstash 'generate-for-package-7.3-Dockerfile.alpine'
+            unstash 'generate-for-package-7.4-Dockerfile.alpine'
             sh script: "make -C packaging package", label: 'package'
             sh script: "make -C packaging info", label: 'package info'
             stash includes: 'build/packages/*', name: 'package'
