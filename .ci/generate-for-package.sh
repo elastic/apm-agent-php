@@ -6,7 +6,7 @@ HYPHEN="-"
 MODULES_DIR=/app/src/ext/modules
 NAME=elastic_apm
 ## Prepare context where to copy the previous generated so files
-GENERATED=$(mktemp -d /tmp/dir-XXXX)
+GENERATED=$(mktemp -d /tmp/dirXXXXXX)
 SEARCH="${MODULES_DIR}/*${HYPHEN}*.so"
 if ls "${SEARCH}" 1> /dev/null 2>&1; then
   cp -f "${SEARCH}" "${GENERATED}" || true
