@@ -3,13 +3,9 @@ FROM php:${PHP_VERSION}-fpm-alpine
 
 RUN apk update \
   && apk add \
-    autoconf \
     bash \
-    build-base \
     curl \
-    curl-dev \
     git \
-    libexecinfo-dev \
     procps \
     unzip
 

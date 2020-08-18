@@ -9,7 +9,6 @@ RUN apk update \
     curl \
     curl-dev \
     git \
-    libexecinfo-dev \
     procps \
     unzip
 

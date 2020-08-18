@@ -23,7 +23,6 @@
 #else
 #   include <unistd.h>
 #   include <sys/syscall.h>
-#   include <execinfo.h>
 #endif
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
@@ -159,6 +158,8 @@ String streamStackTraceLinux(
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
         return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
+#ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+
     char** addressesAsSymbols = backtrace_symbols( addresses, addressesCount );
     if ( addressesAsSymbols == NULL )
     {
@@ -173,6 +174,12 @@ String streamStackTraceLinux(
 
         free( addressesAsSymbols );
     }
+
+#else
+
+    streamPrintf( txtOutStream, "Could not obtain stack trace because execinfo/backtrace is not supported on this platform" );
+
+#endif
 
     return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
 }
