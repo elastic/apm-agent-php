@@ -3,10 +3,10 @@ set -xe
 
 if [ "${TYPE}" == "deb" ] ; then
     ## Install debian package and configure the agent accordingly
-    dpkg -i build/packages/**/*.deb
+    dpkg -i build/packages/*.deb
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf build/packages/**/*.tar -C /
+    tar -xf build/packages/*.tar -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 fi

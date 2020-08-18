@@ -31,6 +31,9 @@ final class TestProperties
     public $transactionType = null;
 
     /** @var ?string */
+    public $configuredEnvironment = null;
+
+    /** @var ?string */
     public $configuredServiceName = null;
 
     /** @var ?string */
@@ -73,22 +76,18 @@ final class TestProperties
         return $this;
     }
 
-    /**
-     * @param string|null $configuredServiceName
-     *
-     * @return $this
-     */
+    public function withConfiguredEnvironment(?string $configuredEnvironment): self
+    {
+        $this->configuredEnvironment = $configuredEnvironment;
+        return $this;
+    }
+
     public function withConfiguredServiceName(?string $configuredServiceName): self
     {
         $this->configuredServiceName = $configuredServiceName;
         return $this;
     }
 
-    /**
-     * @param string|null $configuredServiceVersion
-     *
-     * @return $this
-     */
     public function withConfiguredServiceVersion(?string $configuredServiceVersion): self
     {
         $this->configuredServiceVersion = $configuredServiceVersion;
