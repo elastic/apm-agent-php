@@ -106,7 +106,7 @@ apk-install:  ## Install the apk installer to run some smoke tests
 	@cd $(PWD)/packaging/test/alpine ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src $@
+	docker run --rm -v $(PWD):/src -w /src $@
 
 .PHONY: deb-install
 deb-install:  ## Install the deb installer to run some smoke tests
