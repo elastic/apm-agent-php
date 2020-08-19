@@ -3,7 +3,8 @@ PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
 SUFFIX := 
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
-    SUFFIX := alpine
+    ## This is only required to tag the docker images used for building/testing this project
+    SUFFIX := -alpine
 endif
 
 CURRENT_UID := $(shell id -u)
