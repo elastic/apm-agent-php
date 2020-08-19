@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+######### Let's support alpine installations
+PATH=${PATH}:/usr/local/bin
+
 ################################################################################
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
@@ -79,7 +82,11 @@ function agent_extension_not_supported() {
 #### Function get_extension_file ###############################################
 function get_extension_file() {
     PHP_API=$(php_api)
-    echo "${EXTENSION_DIR}/elastic_apm-${PHP_API}.so"
+    ## If alpine then add another suffix
+    if grep -q -i alpine /etc/os-release; then
+        SUFFIX=-alpine
+    fi
+    echo "${EXTENSION_DIR}/elastic_apm-${PHP_API}${SUFFIX}.so"
 }
 
 ################################################################################

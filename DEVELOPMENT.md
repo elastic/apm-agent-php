@@ -25,11 +25,17 @@ PHP_VERSION=7.2 make -f .ci/Makefile composer
 ## To release given the GITHUB_TOKEN and TAG_NAME
 GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile release
 
+## To generate the agent extension with the existing PHP API for alpine
+PHP_VERSION=7.2 DOCKERFILE=Dockerfile.alpine make -f .ci/Makefile generate-for-package
+
 ## Help goal will provide further details
 make -f .ci/Makefile help
 ```
 
-_NOTE_: `PHP_VERSION` can be set to a different PHP version.
+_NOTE_: 
+
+* `PHP_VERSION` can be set to a different PHP version.
+* Alpine specific binaries can be generated if using `DOCKERFILE=Dockerfile.alpine`
 
 To generate the packages then you can use the `packaging/Dockerfile`, see the below commands:
 
