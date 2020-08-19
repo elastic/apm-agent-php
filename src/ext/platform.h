@@ -11,11 +11,16 @@
 
 #pragma once
 
+#ifdef __GLIBC__
+#   define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#endif
+
 #include <stdbool.h>
-#ifndef PHP_WIN32
+#ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
 #   include <execinfo.h> // backtrace
 #endif
 #include "basic_types.h"
+#include "basic_macros.h"
 #include "TextOutputStream.h"
 #include "ResultCode.h"
 
@@ -47,8 +52,13 @@ size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferS
 #define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
     captureStackTraceWindows( (addressesBuffer), (addressesBufferSize) )
 #else
-#define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
-    backtrace( (addressesBuffer), (addressesBufferSize) )
+#   ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#       define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
+            backtrace( (addressesBuffer), (addressesBufferSize) )
+#   else
+#       define ELASTIC_APM_CAPTURE_STACK_TRACE( addressesBuffer, addressesBufferSize ) \
+            0
+#   endif
 #endif
 
 String streamStackTrace( void* const* addresses, size_t addressesCount, String linePrefix, TextOutputStream* txtOutStream );

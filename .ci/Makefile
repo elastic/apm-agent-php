@@ -1,5 +1,11 @@
 IMAGE := test-php
 PHP_VERSION ?= 7.2
+DOCKERFILE ?= Dockerfile
+SUFFIX := 
+ifeq ($(DOCKERFILE), Dockerfile.alpine)
+    ## This is only required to tag the docker images used for building/testing this project
+    SUFFIX := -alpine
+endif
 
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
@@ -13,7 +19,8 @@ help: ## Display this help text
 prepare:  ## Build docker image for building and testing the project
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
-		--tag $(IMAGE):${PHP_VERSION} .
+		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
+		-f ${DOCKERFILE} .
 
 .PHONY: build
 build: prepare  ## Build the project
@@ -21,7 +28,7 @@ build: prepare  ## Build the project
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(PWD):/app \
-		$(IMAGE):${PHP_VERSION}
+		$(IMAGE):${PHP_VERSION}$(SUFFIX)
 
 .PHONY: test
 test: prepare  ## Test the project
@@ -29,7 +36,7 @@ test: prepare  ## Test the project
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(PWD):/app \
-		$(IMAGE):${PHP_VERSION} \
+		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		make test
 
 .PHONY: generate-for-package
@@ -37,7 +44,7 @@ generate-for-package: prepare  ## Generate the agent extension for the package
 	# docker as root to install the extension
 	docker run --rm -t \
 		-v $(PWD):/app \
-		$(IMAGE):${PHP_VERSION} \
+		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/generate-for-package.sh
 
 .PHONY: composer
@@ -45,7 +52,7 @@ composer: prepare  ## Run composer
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
-		$(IMAGE):${PHP_VERSION} \
+		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c 'make install \
 			&& echo 'extension=elastic_apm.so' > /usr/local/etc/php/php.ini \
 			&& echo 'elastic_apm.bootstrap_php_part_file=/app/src/bootstrap_php_part.php' >> /usr/local/etc/php/php.ini \
