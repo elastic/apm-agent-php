@@ -68,6 +68,11 @@ final class MetadataDiscoverer
                 $result->language = new NameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
                 $result->runtime = $result->language;
 
+                if (!is_null($config->serviceNodeName())) {
+                    $result->node = new ServiceNodeData();
+                    $result->node->setConfiguredName($config->serviceNodeName());
+                }
+
                 return $result;
             }
         })->discoverImpl($config);

@@ -13,6 +13,7 @@ use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\NameVersionDataInterface;
 use Elastic\Apm\Impl\ProcessDataInterface;
 use Elastic\Apm\Impl\ServiceDataInterface;
+use Elastic\Apm\Impl\ServiceNodeData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -296,6 +297,14 @@ final class ValidationUtil
         self::assertValidNullableKeywordString($nameVersionData->version());
     }
 
+    public static function assertValidServiceNodeData(?ServiceNodeData $serviceNodeData): void
+    {
+        if (is_null($serviceNodeData)) {
+            return;
+        }
+        self::assertValidNullableKeywordString($serviceNodeData->getConfiguredName());
+    }
+
     public static function assertValidServiceData(ServiceDataInterface $serviceData): void
     {
         self::assertValidServiceName($serviceData->name());
@@ -312,6 +321,8 @@ final class ValidationUtil
         self::assertValidNameVersionData($serviceData->language());
         assert(!is_null($serviceData->language()));
         self::assertThat($serviceData->language()->name() === MetadataDiscoverer::LANGUAGE_NAME);
+
+        self::assertValidServiceNodeData($serviceData->node());
 
         self::assertValidNameVersionData($serviceData->runtime());
         assert(!is_null($serviceData->runtime()));

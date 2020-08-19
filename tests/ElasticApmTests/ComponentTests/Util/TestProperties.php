@@ -37,6 +37,9 @@ final class TestProperties
     public $configuredServiceName = null;
 
     /** @var ?string */
+    public $configuredServiceNodeName = null;
+
+    /** @var ?string */
     public $configuredServiceVersion = null;
 
     public function __construct(callable $appCodeClassMethod)
@@ -85,6 +88,12 @@ final class TestProperties
     public function withConfiguredServiceName(?string $configuredServiceName): self
     {
         $this->configuredServiceName = $configuredServiceName;
+        return $this;
+    }
+
+    public function withConfiguredServiceNodeName(?string $configuredServiceNodeName): self
+    {
+        $this->configuredServiceNodeName = $configuredServiceNodeName;
         return $this;
     }
 

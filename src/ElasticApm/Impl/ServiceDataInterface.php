@@ -72,4 +72,6 @@ interface ServiceDataInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L69
      */
     public function runtime(): ?NameVersionDataInterface;
+
+    public function node(): ?ServiceNodeData;
 }
