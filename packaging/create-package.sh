@@ -18,6 +18,16 @@ fi
 BUILD_SRC_EXT_DIR=build/src
 mkdir -p ${BUILD_SRC_EXT_DIR}
 cp -rf src/ext ${BUILD_SRC_EXT_DIR}
+if [ -e ${BUILD_SRC_EXT_DIR}/ext/.gitignore ] ; then
+	while IFS= read -r line
+	do
+		if [ -n "$line" ]; then
+			if case $line in "#"*) false;; *) true;; esac; then
+				rm -rf "${BUILD_SRC_EXT_DIR}/ext/${line}" || true
+			fi
+		fi
+	done < "${BUILD_SRC_EXT_DIR}/ext/.gitignore"
+fi
 
 ## Create package
 fpm --input-type dir \
@@ -34,7 +44,7 @@ fpm --input-type dir \
 		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
-		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR}/src \
+		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
 		README.md=${PHP_AGENT_DIR}/docs/README.md \
 		src/ElasticApm=${PHP_AGENT_DIR}/src \
