@@ -87,6 +87,7 @@ final class Tracer implements TracerInterface
     {
         $allOptsMeta = AllOptionsMetadata::build();
         $optionNames = array_keys($allOptsMeta);
+
         $rawSnapshotSource
             = $this->providedDependencies->configRawSnapshotSource
               ?? new CompositeRawSnapshotSource(

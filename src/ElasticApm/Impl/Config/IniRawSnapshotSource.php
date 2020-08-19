@@ -41,6 +41,8 @@ final class IniRawSnapshotSource implements RawSnapshotSourceInterface
         foreach ($this->optionToIniName as $optName => $iniName) {
             if (!is_null($inValue = ArrayUtil::getValueIfKeyExistsElse($iniName, $allOpts, null))) {
                 $optNameToIniValue[$optName] = self::iniValueToString($inValue);
+            } else {
+                var_dump($optName, $iniName);
             }
         }
 

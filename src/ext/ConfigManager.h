@@ -68,10 +68,13 @@ enum OptionId
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     optionId_memoryTrackingLevel,
     #endif
+    optionId_environment,
     optionId_secretToken,
     optionId_serverConnectTimeout,
     optionId_serverUrl,
     optionId_serviceName,
+    optionId_serviceNodeName,
+    optionId_serviceVersion,
 
     numberOfOptions
 };
@@ -104,10 +107,13 @@ struct ConfigSnapshot
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
+    String environment;
     String secretToken;
     Duration serverConnectTimeout;
     String serverUrl;
     String serviceName;
+    String serviceNodeName;
+    String serviceVersion;
 };
 typedef struct ConfigSnapshot ConfigSnapshot;
 
@@ -218,5 +224,8 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT "server_connect_timeout"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
 
 #define ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elastic_apm." optNameStringLiteral )

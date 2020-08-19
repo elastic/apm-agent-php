@@ -567,10 +567,13 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverConnectTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
 
 #undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
 #undef ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS
@@ -743,6 +746,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             serviceName,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME,
             /* defaultValue: */ "Unknown PHP service" );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            serviceNodeName,
+            ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME,
+            /* defaultValue: */ "Unknown PHP service node name" );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            serviceVersion,
+            ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ "Unknown PHP service version" );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            environment,
+            ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
+            /* defaultValue: */ "Unknown environment" );
 
     ELASTIC_APM_ASSERT_EQ_UINT64( i, numberOfOptions );
 }
