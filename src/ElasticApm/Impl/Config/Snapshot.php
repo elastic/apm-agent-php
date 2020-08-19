@@ -26,6 +26,9 @@ final class Snapshot
     private $serviceName;
 
     /** @var string|null */
+    private $serviceNodeName;
+
+    /** @var string|null */
     private $serviceVersion;
 
     /**
@@ -53,6 +56,11 @@ final class Snapshot
         return $this->serviceName;
     }
 
+    public function serviceNodeName(): ?string
+    {
+        return $this->serviceNodeName;
+    }
+
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
@@ -64,6 +72,7 @@ final class Snapshot
         $builder->add('enabled', $this->enabled);
         $builder->add('environment', $this->environment);
         $builder->add('serviceName', $this->serviceName);
+        $builder->add('serviceNodeName', $this->serviceNodeName);
         $builder->add('serviceVersion', $this->serviceVersion);
         return $builder->build();
     }

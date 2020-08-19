@@ -34,6 +34,9 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
     /** @var NameVersionData|null */
     protected $language = null;
 
+    /** @var ServiceNodeData|null */
+    protected $node = null;
+
     /** @var NameVersionData|null */
     protected $runtime = null;
 
@@ -73,6 +76,11 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
         return $this->language;
     }
 
+    public function node(): ?ServiceNodeData
+    {
+        return $this->node;
+    }
+
     /** @inheritDoc */
     public function runtime(): ?NameVersionDataInterface
     {
@@ -102,6 +110,7 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
         $builder->add('framework', NameVersionData::dataToString($data->framework()));
         $builder->add('language', NameVersionData::dataToString($data->language()));
         $builder->add('runtime', NameVersionData::dataToString($data->runtime()));
+        $builder->add('node', NameVersionData::dataToString($data->runtime()));
         return $builder->build();
     }
 

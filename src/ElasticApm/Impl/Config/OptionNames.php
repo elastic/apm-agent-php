@@ -19,5 +19,6 @@ final class OptionNames
     public const ENVIRONMENT = 'environment';
     public const SERVER_URL = 'server_url';
     public const SERVICE_NAME = 'service_name';
+    public const SERVICE_NODE_NAME = 'service_node_name';
     public const SERVICE_VERSION = 'service_version';
 }
