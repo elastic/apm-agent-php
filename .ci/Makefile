@@ -6,7 +6,6 @@ ifeq ($(DOCKERFILE), Dockerfile.alpine)
     SUFFIX := alpine
 endif
 
-
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
 

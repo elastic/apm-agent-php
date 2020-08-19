@@ -26,30 +26,13 @@ create-%: prepare  ## Create the specific package
 	@mkdir -p $(PWD)/$(OUTPUT)
 	@docker run --rm \
 		-v $(PWD):/app \
-		-w /app $(IMAGE) \
-		--input-type dir \
-		--output-type $* \
-		--name $(NAME) \
-		--version $(VERSION) \
-		--architecture all \
-		--url 'https://github.com/elastic/apm-agent-php' \
-		--maintainer 'APM Team <info@elastic.co>' \
-		--license 'ASL 2.0' \
-		--vendor 'Elasticsearch, Inc.' \
-		--description "PHP agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
-		--package $(OUTPUT) \
-		--chdir /app ${FPM_FLAGS} \
-		--after-install=packaging/post-install.sh \
-		packaging/post-install.sh=$(PHP_AGENT_DIR)/bin/post-install.sh \
-		src/ext/modules/=$(PHP_AGENT_DIR)/extensions \
-		README.md=$(PHP_AGENT_DIR)/docs/README.md \
-		src/ElasticApm=$(PHP_AGENT_DIR)/src \
-		src/bootstrap_php_part.php=$(PHP_AGENT_DIR)/src/bootstrap_php_part.php
-	@echo 'Creating sha512sum ...'
-	@BINARY=$$(ls -1 $(PWD)/$(OUTPUT)/*.$*) ;\
-	sha512sum $$BINARY > $$BINARY.sha512 ;\
-	sed -i.bck "s#$(PWD)/$(OUTPUT)/##g" $$BINARY.sha512 ;\
-	rm $(PWD)/$(OUTPUT)/*.bck
+		-e TYPE=$* \
+		-e NAME=$(NAME) \
+		-e VERSION=$(VERSION) \
+		-e OUTPUT=$(OUTPUT) \
+		-e FPM_FLAGS=${FPM_FLAGS} \
+		-e PHP_AGENT_DIR=${PHP_AGENT_DIR} \
+		-w /app $(IMAGE)
 
 .PHONY: apk
 apk: FPM_FLAGS="--depends=bash"

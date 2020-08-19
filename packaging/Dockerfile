@@ -13,5 +13,6 @@ ADD fpm_apm.patch /tmp
 RUN (cd /usr/local/bundle/gems/fpm-${FPM_VERSION}/ ; patch -p 1 < /tmp/fpm_apm.patch ) \
     && rm -f /tmp/fpm_apk.patch
 
-ENTRYPOINT ["fpm"]
+COPY create-package.sh /bin
 WORKDIR /src
+ENTRYPOINT ["/bin/create-package.sh"]
