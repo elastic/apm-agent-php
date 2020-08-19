@@ -16,17 +16,20 @@ fi
 
 ## src/ext files to be archived in the package
 BUILD_SRC_EXT_DIR=build/src
+IGNORE_FILE=${BUILD_SRC_EXT_DIR}/ext/.gitignore
 mkdir -p ${BUILD_SRC_EXT_DIR}
 cp -rf src/ext ${BUILD_SRC_EXT_DIR}
-if [ -e ${BUILD_SRC_EXT_DIR}/ext/.gitignore ] ; then
+if [ -e ${IGNORE_FILE} ] ; then
 	while IFS= read -r line
 	do
 		if [ -n "$line" ]; then
 			if case $line in "#"*) false;; *) true;; esac; then
-				rm -rf "${BUILD_SRC_EXT_DIR}/ext/${line}" || true
+				# shellcheck disable=SC2086
+				rm -rf ${BUILD_SRC_EXT_DIR}/ext/${line} || true
 			fi
 		fi
-	done < "${BUILD_SRC_EXT_DIR}/ext/.gitignore"
+	done < "${IGNORE_FILE}"
+	rm ${IGNORE_FILE} || true
 fi
 
 ## Create package
