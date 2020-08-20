@@ -1,2 +1,12 @@
 [[supported-technologies]]
 == Supported technologies
+
+If the agent doesn't support your favorite technology yet,
+you can vote for it by participating in https://docs.google.com/forms/d/e/1FAIpQLSf8c3BJVMqaeuqpq-t3_Q4NilNcdsrzK1qJ4Qo9JpJslrmYzA/viewform[our survey].
+We will use the results to add support for the most requested technologies.
+
+[float]
+[[supported-php-versions]]
+=== PHP versions
+
+The agent supports PHP versions 7.2-7.4.
