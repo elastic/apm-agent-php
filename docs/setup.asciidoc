@@ -4,6 +4,8 @@
 Set up the Agent by compiling and installing this library as a PHP extension.
 It is currently only available for a unix-lke operating system.
 
+NOTE: The agent supports PHP versions 7.2-7.4.
+
 Execute the following commands to install:
 
 [source,bash]
