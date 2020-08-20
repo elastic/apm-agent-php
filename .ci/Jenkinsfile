@@ -11,7 +11,6 @@ pipeline {
     JOB_GCS_BUCKET = credentials('gcs-bucket')
   }
   options {
-    timeout(time: 1, unit: 'HOURS')
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
     timestamps()
     ansiColor('xterm')
@@ -24,87 +23,118 @@ pipeline {
     issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?tests(?:\\W+please)?.*')
   }
   stages {
-    stage('Checkout') {
-      options { skipDefaultCheckout() }
-      steps {
-        pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
-        deleteDir()
-        gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
-        stash allowEmpty: true, name: 'source', useDefaultExcludes: false
-        script {
-          dir("${BASE_DIR}"){
-            // Skip all the stages except docs for PR's with asciidoc and md changes only
-            env.ONLY_DOCS = isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md|png)' ], shouldMatchAll: true)
+    stage('Initializing'){
+      options {
+        skipDefaultCheckout()
+        timeout(time: 1, unit: 'HOURS')
+      }
+      stages {
+        stage('Checkout') {
+          steps {
+            pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
+            deleteDir()
+            gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
+            stash allowEmpty: true, name: 'source', useDefaultExcludes: false
+            script {
+              dir("${BASE_DIR}"){
+                // Skip all the stages except docs for PR's with asciidoc and md changes only
+                env.ONLY_DOCS = isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md|png)' ], shouldMatchAll: true)
+              }
+            }
           }
         }
-      }
-    }
-    stage('BuildAndTest') {
-      when {
-        beforeAgent true
-        expression { return env.ONLY_DOCS == "false" }
-      }
-      failFast false
-      matrix {
-        agent { label 'linux && immutable' }
-        options { skipDefaultCheckout() }
-        axes {
-          axis {
-            name 'PHP_VERSION'
-            values '7.2', '7.3', '7.4'
+        stage('BuildAndTest') {
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
           }
-          axis {
-            name 'DOCKERFILE'
-            values 'Dockerfile', 'Dockerfile.alpine'
-          }
-        }
-        stages {
-          stage('Build') {
-            steps {
-              withGithubNotify(context: "Build-${PHP_VERSION}") {
-                deleteDir()
-                unstash 'source'
-                dir("${BASE_DIR}"){
-                  // When running in the CI with multiple parallel stages
-                  // the access could be considered as a DDOS attack.
-                  retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
+          failFast false
+          matrix {
+            agent { label 'linux && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+              axis {
+                name 'DOCKERFILE'
+                values 'Dockerfile', 'Dockerfile.alpine'
+              }
+            }
+            stages {
+              stage('Build') {
+                steps {
+                  withGithubNotify(context: "Build-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      // When running in the CI with multiple parallel stages
+                      // the access could be considered as a DDOS attack.
+                      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                      }
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
+                    }
                   }
-                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
+                }
+              }
+              stage('PHPT Tests') {
+                steps {
+                  withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test", label: 'test'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+                  }
+                }
+              }
+              stage('Generate for package') {
+                steps {
+                  withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                      stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
+                    }
+                  }
+                }
+              }
+              stage('PHPUnit Tests') {
+                steps {
+                  withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer", label: 'composer'
+                    }
+                  }
                 }
               }
             }
           }
-          stage('PHPT Tests') {
-            steps {
-              withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
-                dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test", label: 'test'
-                }
-              }
-            }
-            post {
-              always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
-              }
-            }
+        }
+        stage('Package Generation') {
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
           }
-          stage('Generate for package') {
-            steps {
-              withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
-                dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-                  stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
-                }
-              }
-            }
-          }
-          stage('PHPUnit Tests') {
-            steps {
-              withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
-                dir("${BASE_DIR}"){
-                  sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer", label: 'composer'
-                }
+          options { skipDefaultCheckout() }
+          steps {
+            withGithubNotify(context: "Package", tab: 'artifacts') {
+              deleteDir()
+              unstash 'source'
+              dir("${BASE_DIR}"){
+                unstash 'generate-for-package-7.2-Dockerfile'
+                unstash 'generate-for-package-7.3-Dockerfile'
+                unstash 'generate-for-package-7.4-Dockerfile'
+                unstash 'generate-for-package-7.2-Dockerfile.alpine'
+                unstash 'generate-for-package-7.3-Dockerfile.alpine'
+                unstash 'generate-for-package-7.4-Dockerfile.alpine'
+                sh script: "make -C packaging package", label: 'package'
+                sh script: "make -C packaging info", label: 'package info'
+                stash includes: 'build/packages/*', name: 'package'
               }
             }
             post {
@@ -114,126 +144,148 @@ pipeline {
             }
           }
         }
-      }
-    }
-    stage('Package Generation') {
-      when {
-        beforeAgent true
-        expression { return env.ONLY_DOCS == "false" }
-      }
-      options { skipDefaultCheckout() }
-      steps {
-        withGithubNotify(context: "Package", tab: 'artifacts') {
-          deleteDir()
-          unstash 'source'
-          dir("${BASE_DIR}"){
-            unstash 'generate-for-package-7.2-Dockerfile'
-            unstash 'generate-for-package-7.3-Dockerfile'
-            unstash 'generate-for-package-7.4-Dockerfile'
-            unstash 'generate-for-package-7.2-Dockerfile.alpine'
-            unstash 'generate-for-package-7.3-Dockerfile.alpine'
-            unstash 'generate-for-package-7.4-Dockerfile.alpine'
-            sh script: "make -C packaging package", label: 'package'
-            sh script: "make -C packaging info", label: 'package info'
-            stash includes: 'build/packages/*', name: 'package'
+        stage('Package-Test') {
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
+          }
+          failFast false
+          matrix {
+            agent { label 'linux && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+            }
+            stages {
+              stage('Package Test') {
+                steps {
+                  withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      unstash 'package'
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
+              }
+            }
           }
         }
-      }
-      post {
-        always {
-          dir("${BASE_DIR}"){
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "build/packages/*")
+        stage('Testing') {
+          when {
+            beforeAgent true
+            // TODO: && false in place to disable this particular section for the time being.
+            //       as agreed to avoid any misleading until this particular section has been implemented.
+            expression { return env.ONLY_DOCS == "false" && false }
           }
-        }
-      }
-    }
-    stage('Package-Test') {
-      when {
-        beforeAgent true
-        expression { return env.ONLY_DOCS == "false" }
-      }
-      failFast false
-      matrix {
-        agent { label 'linux && immutable' }
-        options { skipDefaultCheckout() }
-        axes {
-          axis {
-            name 'PHP_VERSION'
-            values '7.2', '7.3', '7.4'
-          }
-        }
-        stages {
-          stage('Package Test') {
-            steps {
-              withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
-                deleteDir()
-                unstash 'source'
-                dir("${BASE_DIR}"){
-                  unstash 'package'
-                  sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
+          matrix {
+            // TODO: This should be uncommented out when the implementation is in place
+            // agent { label 'linux && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+              axis {
+                name 'FRAMEWORK'
+                values 'nginx', 'apache', 'redis', 'memcached', 'mysql'
+              }
+            }
+            stages {
+              stage('Install') {
+                steps {
+                  // TODO: This should be uncommented out when the implementation is in place
+                  // deleteDir()
+                  // unstash 'source'
+                  dir("${BASE_DIR}"){
+                    echo 'TBD'
+                  }
+                }
+              }
+              stage('Test') {
+                steps {
+                  // TODO: This should be uncommented out when the implementation is in place
+                  // deleteDir()
+                  // unstash 'source'
+                  dir("${BASE_DIR}"){
+                    sh 'scripts/test-framework.sh ${PHP_VERSION} ${FRAMEWORK}'
+                  }
+                }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+                  }
                 }
               }
             }
             post {
               always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                echo 'STORE docker logs'
               }
             }
           }
         }
       }
     }
-    stage('Testing') {
+    stage('Release') {
+      options {
+        skipDefaultCheckout()
+        timeout(time: 12, unit: 'HOURS')
+      }
       when {
         beforeAgent true
-        // TODO: && false in place to disable this particular section for the time being.
-        //       as agreed to avoid any misleading until this particular section has been implemented.
-        expression { return env.ONLY_DOCS == "false" && false }
+        tag pattern: 'v\\d+.*', comparator: 'REGEXP'
       }
-      matrix {
-        // TODO: This should be uncommented out when the implementation is in place
-        // agent { label 'linux && immutable' }
-        options { skipDefaultCheckout() }
-        axes {
-          axis {
-            name 'PHP_VERSION'
-            values '7.2', '7.3', '7.4'
-          }
-          axis {
-            name 'FRAMEWORK'
-            values 'nginx', 'apache', 'redis', 'memcached', 'mysql'
-          }
-        }
-        stages {
-          stage('Install') {
-            steps {
-              // TODO: This should be uncommented out when the implementation is in place
-              // deleteDir()
-              // unstash 'source'
-              dir("${BASE_DIR}"){
-                echo 'TBD'
-              }
-            }
-          }
-          stage('Test') {
-            steps {
-              // TODO: This should be uncommented out when the implementation is in place
-              // deleteDir()
-              // unstash 'source'
-              dir("${BASE_DIR}"){
-                sh 'scripts/test-framework.sh ${PHP_VERSION} ${FRAMEWORK}'
-              }
-            }
-            post {
-              always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
-              }
+      stages {
+        stage('Notify') {
+          options { skipDefaultCheckout() }
+          steps {
+            emailext subject: "[${env.REPO}] Release ready to be pushed", to: "${NOTIFY_TO}",
+                              body: "Please go to ${env.BUILD_URL}input to approve or reject within 12 hours.\n Changes: ${env.TAG_NAME}"
+            script {
+              def should_continue = input(message: "You are about to release version ${env.TAG_NAME}",
+                                          parameters: [ [$class: 'ChoiceParameterDefinition',
+                                                          name: 'Do you wish to release it?',
+                                                          choices: ['Yes', 'No']] ])
+              env.RELEASE = should_continue.equals('Yes')
             }
           }
         }
-        post {
-          always {
-            echo 'STORE docker logs'
+        stage('Release CI') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
+          options { skipDefaultCheckout() }
+          steps {
+            deleteDir()
+            unstash 'source'
+            dir("${BASE_DIR}") {
+              unstash 'package'
+              withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
+                sh script: 'make -f .ci/Makefile release', label: 'release'
+              }
+            }
+          }
+          post {
+            success {
+              emailext subject: "[${env.REPO}] Release published", to: "${env.NOTIFY_TO}", body: "Great news, the release has been done successfully."
+            }
+            always {
+              script {
+                currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+              }
+            }
           }
         }
       }
