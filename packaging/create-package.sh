@@ -14,6 +14,24 @@ elif [ "${TYPE}" = 'deb' ] || [ "${TYPE}" = 'rpm' ] ; then
 	find ${BUILD_EXT_DIR} -type f -name '*-alpine.so' -delete
 fi
 
+## src/ext files to be archived in the package
+BUILD_SRC_EXT_DIR=build/src
+IGNORE_FILE=${BUILD_SRC_EXT_DIR}/ext/.gitignore
+mkdir -p ${BUILD_SRC_EXT_DIR}
+cp -rf src/ext ${BUILD_SRC_EXT_DIR}
+if [ -e ${IGNORE_FILE} ] ; then
+	while IFS= read -r line
+	do
+		if [ -n "$line" ]; then
+			if case $line in "#"*) false;; *) true;; esac; then
+				# shellcheck disable=SC2086
+				rm -rf ${BUILD_SRC_EXT_DIR}/ext/${line} || true
+			fi
+		fi
+	done < "${IGNORE_FILE}"
+	rm ${IGNORE_FILE} || true
+fi
+
 ## Create package
 fpm --input-type dir \
 		--output-type "${TYPE}" \
@@ -29,6 +47,7 @@ fpm --input-type dir \
 		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
+		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
 		README.md=${PHP_AGENT_DIR}/docs/README.md \
 		src/ElasticApm=${PHP_AGENT_DIR}/src \
