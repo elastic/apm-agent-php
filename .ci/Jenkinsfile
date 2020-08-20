@@ -107,6 +107,11 @@ pipeline {
                 }
               }
             }
+            post {
+              always {
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+              }
+            }
           }
         }
       }
