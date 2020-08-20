@@ -111,6 +111,11 @@ pipeline {
                     }
                   }
                 }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
               }
             }
           }
@@ -135,11 +140,6 @@ pipeline {
                 sh script: "make -C packaging package", label: 'package'
                 sh script: "make -C packaging info", label: 'package info'
                 stash includes: 'build/packages/*', name: 'package'
-              }
-            }
-            post {
-              always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
               }
             }
           }
