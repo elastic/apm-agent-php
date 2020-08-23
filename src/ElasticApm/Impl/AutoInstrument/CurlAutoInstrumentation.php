@@ -59,9 +59,15 @@ final class CurlAutoInstrumentation
                         if (!$hasExitedByException) {
                             if (!is_null($this->curlHandle)) {
                                 $info = curl_getinfo($this->curlHandle);
-                                $httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null);
-                                if (!is_null($httpCode)) {
+
+                                if (
+                                    !is_null($httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null))
+                                ) {
                                     $this->span->setLabel('HTTP status', $httpCode);
+                                }
+
+                                if (!is_null($url = ArrayUtil::getValueIfKeyExistsElse('url', $info, null))) {
+                                    $this->span->setLabel('URL', $url);
                                 }
                             }
                         }
