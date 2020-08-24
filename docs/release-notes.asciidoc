@@ -3,6 +3,6 @@
 [[release-notes]]
 == Release notes
 
-* <<release-notes-alpha>>
+* <<release-notes-alpha>> (Coming soon)
 
 include::../CHANGELOG.asciidoc[]

@@ -19,4 +19,6 @@
 [[release-notes-alpha-1]]
 ==== Alpha1 release
 
+_Coming soon_
+
 // Using the template above, release notes go here.
