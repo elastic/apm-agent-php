@@ -79,6 +79,10 @@ final class ServiceDataDeserializer extends EventDataDeserializer
                         $result->language = NameVersionDataDeserializer::deserialize($value);
                         return true;
 
+                    case 'node':
+                        $result->node = ServiceNodeDataDeserializer::deserialize($value);
+                        return true;
+
                     case 'runtime':
                         $result->runtime = NameVersionDataDeserializer::deserialize($value);
                         return true;

@@ -106,6 +106,38 @@ final class MetadataTest extends ComponentTestCaseBase
         );
     }
 
+    public function testDefaultServiceNodeName(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty'])),
+            function (DataFromAgent $dataFromAgent): void {
+                TestEnvBase::verifyServiceNodeConfiguredName(null, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testCustomServiceNodeName(): void
+    {
+        $expected = 'custom service node name 9.8 @CI#!?';
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceNodeName($expected),
+            function (DataFromAgent $dataFromAgent) use ($expected): void {
+                TestEnvBase::verifyServiceNodeConfiguredName($expected, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testInvalidServiceNodeNameTooLong(): void
+    {
+        $validPart = self::generateDummyMaxKeywordString();
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+            (new TestProperties([__CLASS__, 'appCodeEmpty']))->withConfiguredServiceNodeName($validPart . '_tail'),
+            function (DataFromAgent $dataFromAgent) use ($validPart): void {
+                TestEnvBase::verifyServiceNodeConfiguredName($validPart, $dataFromAgent);
+            }
+        );
+    }
+
     public function testDefaultServiceVersion(): void
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(

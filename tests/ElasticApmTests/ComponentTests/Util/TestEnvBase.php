@@ -99,8 +99,8 @@ abstract class TestEnvBase
 
         $mockApmServerPort
             = AmbientContext::config()->mockApmServerPort() === AllComponentTestsOptionsMetadata::INT_OPTION_NOT_SET
-                ? $this->findFreePortToListen()
-                : AmbientContext::config()->mockApmServerPort();
+            ? $this->findFreePortToListen()
+            : AmbientContext::config()->mockApmServerPort();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -193,6 +193,7 @@ abstract class TestEnvBase
 
         $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $testProperties->configuredEnvironment);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
+        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NODE_NAME, $testProperties->configuredServiceNodeName);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
@@ -389,6 +390,10 @@ abstract class TestEnvBase
             : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
+        $expectedServiceNodeConfiguredName
+            = Tracer::limitNullableKeywordString($testProperties->configuredServiceNodeName);
+        self::verifyServiceNodeConfiguredName($expectedServiceNodeConfiguredName, $this->dataFromAgent);
+
         $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
     }
@@ -404,6 +409,18 @@ abstract class TestEnvBase
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->name());
+        }
+    }
+
+    public static function verifyServiceNodeConfiguredName(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            if (is_null($expected)) {
+                TestCase::assertNull($metadata->service()->node());
+            } else {
+                TestCase::assertNotNull($metadata->service()->node());
+                TestCase::assertSame($expected, $metadata->service()->node()->getConfiguredName());
+            }
         }
     }
 

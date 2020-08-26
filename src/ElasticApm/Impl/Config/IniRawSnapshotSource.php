@@ -35,29 +35,18 @@ final class IniRawSnapshotSource implements RawSnapshotSourceInterface
         /** @var array<string, string> */
         $optNameToIniValue = [];
 
-        /** @var array<string, mixed> */
-        $allOpts = ini_get_all(/* extension: */ null, /* details */ false);
+        $pathToLoadedIniFile = php_ini_loaded_file();
+        /** @var array<string, string> */
+        $allOpts = $pathToLoadedIniFile === false
+            ? []
+            : parse_ini_file($pathToLoadedIniFile, /* process_sections: */ false, INI_SCANNER_RAW);
 
         foreach ($this->optionToIniName as $optName => $iniName) {
-            if (!is_null($inValue = ArrayUtil::getValueIfKeyExistsElse($iniName, $allOpts, null))) {
-                $optNameToIniValue[$optName] = self::iniValueToString($inValue);
+            if (array_key_exists($iniName, $allOpts)) {
+                $optNameToIniValue[$optName] = $allOpts[$iniName];
             }
         }
 
         return new RawSnapshotFromArray($optNameToIniValue);
-    }
-
-    /**
-     * @param mixed $iniValue
-     *
-     * @return string
-     */
-    private static function iniValueToString($iniValue): string
-    {
-        if (is_bool($iniValue)) {
-            return $iniValue ? 'true' : 'false';
-        }
-
-        return strval($iniValue);
     }
 }
