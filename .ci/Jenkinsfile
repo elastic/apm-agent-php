@@ -244,6 +244,7 @@ pipeline {
         }
       }
     }
+    // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
     stage('Release') {
       options {
         skipDefaultCheckout()
@@ -251,7 +252,10 @@ pipeline {
       }
       when {
         beforeAgent true
-        tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+        allOf {
+          tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+          expression { env.JENKINS_URL.contains('internal-ci') }
+        }
       }
       stages {
         stage('Notify') {
@@ -268,7 +272,7 @@ pipeline {
             }
           }
         }
-        stage('Release CI') {
+        stage('Signing CI') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -279,6 +283,34 @@ pipeline {
             unstash 'source'
             dir("${BASE_DIR}") {
               unstash 'package'
+              // TODO: what bucket and credentials
+              googleStorageUpload(bucket: "gs://${JOB_GCS_BUCKET}/<WHERE>",
+                  credentialsId: "${JOB_GCS_CREDENTIALS}",
+                  pathPrefix: "build/packages/",
+                  pattern: "build/packages/**/*",
+                  sharedPublicly: false,
+                  showInline: true)
+              // TODO: call the artifacts-signer job and wait for
+              build(wait: true, propagate: false, job: '<TBD>', parameters: [string(name: 'URL', value: '<TBD>')])
+              googleStorageDownload bucketUri: "gs://${JOB_GCS_BUCKET}/<WHERE_SIGNED_ARTIFACTS>/*.*", credentialsId: 'beats-ci-gcs-plugin', localDirectory: 'build/packages/'
+              stash includes: 'build/packages/*', name: 'signed-package'
+            }
+          }
+        }
+        stage('Release CI') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
+          // TODO:
+          //   - review workers in internal-ci
+          //   - review credentials -> NOTIFY_TO migth be required to be changed.
+          options { skipDefaultCheckout() }
+          steps {
+            deleteDir()
+            unstash 'source'
+            dir("${BASE_DIR}") {
+              unstash 'signed-package'
               withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
                 sh script: 'make -f .ci/Makefile release', label: 'release'
               }
@@ -300,7 +332,9 @@ pipeline {
   }
   post {
     cleanup {
-      notifyBuildResult()
+      whenFalse(env.JENKINS_URL.contains('internal-ci')) {
+        notifyBuildResult()
+      }
     }
   }
 }
