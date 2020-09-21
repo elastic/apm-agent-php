@@ -59,7 +59,7 @@ composer: prepare  ## Run composer
 			&& php -m \
 			&& cd /app \
 			&& composer install \
-			&& composer static_check_and_run_component_tests_standalone_envs'
+			&& composer static_check_and_run_tests'
 
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
