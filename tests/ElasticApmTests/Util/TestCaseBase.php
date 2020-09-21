@@ -23,6 +23,16 @@ class TestCaseBase extends TestCase
     // Adds the assertThrows method
     use AssertThrows;
 
+    /**
+     * @param mixed        $name
+     * @param array<mixed> $data
+     * @param mixed        $dataName
+     */
+    public function __construct($name = null, array $data = [], $dataName = '')
+    {
+        parent::__construct($name, $data, $dataName);
+    }
+
     public static function assertEqualTimestamp(float $expected, float $actual): void
     {
         self::assertEqualsWithDelta($expected, $actual, 1);

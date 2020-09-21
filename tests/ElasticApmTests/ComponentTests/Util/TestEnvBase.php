@@ -32,12 +32,6 @@ abstract class TestEnvBase
 
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
-    /** @var array<string, string> */
-    protected $envVarsForToInstrumentedApp = [];
-
-    /** @var array<string, string> */
-    protected $iniEntriesForToInstrumentedApp = [];
-
     /** @var int|null */
     protected $spawnedProcessesCleanerPort = null;
 
@@ -65,28 +59,6 @@ abstract class TestEnvBase
     public function testEnvId(): string
     {
         return PhpUnitExtension::$testEnvId;
-    }
-
-    /**
-     * @param array<string, string> $envVars
-     *
-     * @return $this
-     */
-    public function withEnvVarsForInstrumentedApp(array $envVars): TestEnvBase
-    {
-        $this->envVarsForToInstrumentedApp = $envVars;
-        return $this;
-    }
-
-    /**
-     * @param array<string, string> $iniEntries
-     *
-     * @return $this
-     */
-    public function withIniForInstrumentedApp(array $iniEntries): TestEnvBase
-    {
-        $this->iniEntriesForToInstrumentedApp = $iniEntries;
-        return $this;
     }
 
     protected function ensureMockApmServerStarted(): void
@@ -173,41 +145,15 @@ abstract class TestEnvBase
     }
 
     /**
-     * @param TestProperties $testProperties
-     *
-     * @return array<string, string>
-     */
-    protected function buildAdditionalEnvVars(TestProperties $testProperties): array
-    {
-        $result = [];
-
-        $addEnvVarIfOptionIsConfigured = function (string $optName, ?string $configuredValue) use (&$result): void {
-            if (is_null($configuredValue)) {
-                return;
-            }
-
-            $envVarName
-                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
-            $result[$envVarName] = $configuredValue;
-        };
-
-        $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $testProperties->configuredEnvironment);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
-
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Finished', ['result' => $result]);
-
-        return $result;
-    }
-
-    /**
      * @param array<string, string> $additionalEnvVars
      *
      * @return array<string, string>
      */
     protected function buildEnvVars(array $additionalEnvVars = []): array
     {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['additionalEnvVars' => $additionalEnvVars]);
+
         /** @var array<string, string> */
         $result = getenv();
 
@@ -233,7 +179,12 @@ abstract class TestEnvBase
         )]
             = $this->testEnvId();
 
-        return array_merge($result, $additionalEnvVars);
+        $result = array_merge($result, $additionalEnvVars);
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting', ['result' => $result]);
+
+        return $result;
     }
 
     /**
@@ -248,10 +199,14 @@ abstract class TestEnvBase
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
-        $this->dataFromAgent->clearAdded();
-        $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
-        $this->sendRequestToInstrumentedApp($testProperties);
-        $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
+        try {
+            $this->dataFromAgent->clearAdded();
+            $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
+            $this->sendRequestToInstrumentedApp($testProperties);
+            $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
+        } finally {
+            $testProperties->tearDown();
+        }
     }
 
     abstract protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void;
@@ -460,11 +415,6 @@ abstract class TestEnvBase
             );
         }
         return $newIntakeApiRequests;
-    }
-
-    protected static function appCodePhpCmd(): string
-    {
-        return AmbientContext::config()->appCodePhpCmd() ?? 'php';
     }
 
     public function __toString(): string

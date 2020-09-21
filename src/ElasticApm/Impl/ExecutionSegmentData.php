@@ -144,6 +144,6 @@ abstract class ExecutionSegmentData extends EventData implements ExecutionSegmen
 
     public function __toString(): string
     {
-        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class()));
+        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class($this)));
     }
 }

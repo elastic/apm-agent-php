@@ -127,6 +127,6 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
 
     public function __toString(): string
     {
-        return DbgUtil::fqToShortClassName(get_class());
+        return DbgUtil::fqToShortClassName(get_class($this));
     }
 }

@@ -32,7 +32,8 @@ final class AllComponentTestsOptionsMetadata
     {
         return [
             AppCodeHostKindOptionMetadata::NAME              => new AppCodeHostKindOptionMetadata(),
-            'app_code_php_cmd'                               => new NullableStringOptionMetadata(),
+            'app_code_php_exe'                               => new NullableStringOptionMetadata(),
+            'app_code_php_ini'                               => new NullableStringOptionMetadata(),
             'log_level'                                      => new LogLevelOptionMetadata(Level::TRACE),
             'mock_apm_server_port'                           => new IntOptionMetadata(self::INT_OPTION_NOT_SET),
             self::SPAWNED_PROCESSES_CLEANER_PORT_OPTION_NAME => new IntOptionMetadata(self::INT_OPTION_NOT_SET),
