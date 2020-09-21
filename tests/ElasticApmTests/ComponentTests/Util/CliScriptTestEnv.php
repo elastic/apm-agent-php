@@ -32,7 +32,7 @@ final class CliScriptTestEnv extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
-        $this->ensureMockApmServerStarted();
+        $this->ensureMockApmServerRunning();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(

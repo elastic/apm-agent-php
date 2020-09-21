@@ -34,8 +34,8 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
-        $this->ensureMockApmServerStarted();
-        $this->ensureAppCodeHostServerStarted($testProperties);
+        $this->ensureMockApmServerRunning();
+        $this->ensureAppCodeHostServerRunning($testProperties);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -69,7 +69,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         );
     }
 
-    abstract protected function ensureAppCodeHostServerStarted(TestProperties $testProperties): void;
+    abstract protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void;
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,

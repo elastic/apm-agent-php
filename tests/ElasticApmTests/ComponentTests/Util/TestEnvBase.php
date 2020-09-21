@@ -19,6 +19,7 @@ use Elastic\Apm\TransactionDataInterface;
 use GuzzleHttp\Exception\ConnectException;
 use PHPUnit\Exception as PhpUnitException;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Throwable;
 
 abstract class TestEnvBase
@@ -63,9 +64,9 @@ abstract class TestEnvBase
         return PhpUnitExtension::$testEnvId;
     }
 
-    protected function ensureMockApmServerStarted(): void
+    protected function ensureMockApmServerRunning(): void
     {
-        $this->ensureSpawnedProcessesCleanerStarted();
+        $this->ensureSpawnedProcessesCleanerRunning();
 
         if (!is_null($this->mockApmServerPort)) {
             return;
@@ -87,7 +88,7 @@ abstract class TestEnvBase
             . ' --' . StatefulHttpServerProcessBase::PORT_CMD_OPT_NAME . '=' . $mockApmServerPort,
             $this->buildEnvVars()
         );
-        $this->checkHttpServerStatus(
+        $this->ensureHttpServerRunning(
             $mockApmServerPort,
             /* dbgServerDesc */ DbgUtil::fqToShortClassName(MockApmServer::class)
         );
@@ -100,7 +101,7 @@ abstract class TestEnvBase
         return mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
     }
 
-    private function ensureSpawnedProcessesCleanerStarted(): void
+    private function ensureSpawnedProcessesCleanerRunning(): void
     {
         if (!is_null($this->spawnedProcessesCleanerPort)) {
             return;
@@ -120,16 +121,16 @@ abstract class TestEnvBase
             . ' --' . SpawnedProcessesCleaner::PARENT_PID_CMD_OPT_NAME . '=' . getmypid(),
             $this->buildEnvVars()
         );
-        $this->checkHttpServerStatus(
+        $this->ensureHttpServerRunning(
             $spawnedProcessesCleanerPort,
             /* dbgServerDesc */ DbgUtil::fqToShortClassName(SpawnedProcessesCleaner::class)
         );
         $this->spawnedProcessesCleanerPort = $spawnedProcessesCleanerPort;
     }
 
-    protected function checkHttpServerStatus(int $port, string $dbgServerDesc): void
+    protected function ensureHttpServerRunning(int $port, string $dbgServerDesc): void
     {
-        (new PollingCheck(
+        $checkRetVal = (new PollingCheck(
             $dbgServerDesc . ' started',
             10 * 1000 * 1000 /* maxWaitTimeInMicroseconds - 10 seconds */,
             AmbientContext::loggerFactory()
@@ -144,6 +145,12 @@ abstract class TestEnvBase
                 return true;
             }
         );
+
+        if ($checkRetVal) {
+            return;
+        }
+
+        throw new RuntimeException("HTTP Server is not running. dbgServerDesc: $dbgServerDesc. port: $port.");
     }
 
     /**
