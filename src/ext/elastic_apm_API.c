@@ -17,6 +17,7 @@
 #include "elastic_apm_alloc.h"
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
+#include "backend_comm.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
 

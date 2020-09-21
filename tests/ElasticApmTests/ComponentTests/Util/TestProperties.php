@@ -34,7 +34,13 @@ final class TestProperties
     public $configSetter;
 
     /** @var ?string */
+    public $configuredApiKey = null;
+
+    /** @var ?string */
     public $configuredEnvironment = null;
+
+    /** @var ?string */
+    public $configuredSecretToken = null;
 
     /** @var ?string */
     public $configuredServiceName = null;
@@ -99,7 +105,9 @@ final class TestProperties
         $builder->add('appCodeMethod', $this->appCodeMethod);
         $builder->add('httpMethod', $this->httpMethod);
         $builder->add('configSetter', $this->configSetter);
+        $builder->add('configuredApiKey', $this->configuredApiKey);
         $builder->add('configuredEnvironment', $this->configuredEnvironment);
+        $builder->add('configuredSecretToken', $this->configuredSecretToken);
         $builder->add('configuredServiceName', $this->configuredServiceName);
         $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
         return $builder->build();

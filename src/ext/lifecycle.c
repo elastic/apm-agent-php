@@ -30,6 +30,7 @@
 #include "elastic_apm_alloc.h"
 #include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
+#include "backend_comm.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -315,7 +316,7 @@ void elasticApmRequestShutdown()
     // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
     shutdownTracerPhpPart( config );
 
-    sendMetrics( tracer, config );
+    // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
 

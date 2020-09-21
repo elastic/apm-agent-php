@@ -32,6 +32,8 @@ abstract class TestEnvBase
 
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
+    private const AUTH_HTTP_HEADER_NAME = 'Authorization';
+
     /** @var int|null */
     protected $spawnedProcessesCleanerPort = null;
 
@@ -323,15 +325,54 @@ abstract class TestEnvBase
 
     protected function verifyDataAgainstRequest(TestProperties $testProperties): void
     {
+        $this->verifyHttpRequestHeaders($testProperties);
+
         $this->verifyMetadata($testProperties);
-        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
+
+        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction);
         $this->verifyRootTransactionName($testProperties, $rootTransaction);
         $this->verifyRootTransactionType($testProperties, $rootTransaction);
 
         TestCaseBase::assertValidTransactionsAndSpans(
-            $this->dataFromAgent->idToTransaction(),
-            $this->dataFromAgent->idToSpan()
+            $this->dataFromAgent->idToTransaction,
+            $this->dataFromAgent->idToSpan
         );
+    }
+
+    protected function verifyHttpRequestHeaders(TestProperties $testProperties): void
+    {
+        $this->verifyAuthHttpRequestHeaders(
+            $testProperties->configuredApiKey /* <- expectedApiKey */,
+            /* expectedSecretToken: */
+            is_null($testProperties->configuredApiKey)
+                ? $testProperties->configuredSecretToken
+                : null,
+            $this->dataFromAgent
+        );
+    }
+
+    public static function verifyAuthHttpRequestHeaders(
+        ?string $expectedApiKey,
+        ?string $expectedSecretToken,
+        DataFromAgent $dataFromAgent
+    ): void {
+        if (!is_null($expectedApiKey)) {
+            TestCase::assertNull($expectedSecretToken);
+        }
+
+        $expectedAuthHeaderValue = is_null($expectedApiKey)
+            ? ( is_null($expectedSecretToken) ? null : "Bearer $expectedSecretToken")
+            : "ApiKey $expectedApiKey";
+
+        foreach ($dataFromAgent->intakeApiRequests as $intakeApiRequest) {
+            if (is_null($expectedAuthHeaderValue)) {
+                TestCase::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $intakeApiRequest->headers);
+            } else {
+                $actualAuthHeaderValue = $intakeApiRequest->headers[self::AUTH_HTTP_HEADER_NAME];
+                TestCase::assertCount(1, $actualAuthHeaderValue);
+                TestCase::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
+            }
+        }
     }
 
     protected function verifyMetadata(TestProperties $testProperties): void
@@ -350,21 +391,21 @@ abstract class TestEnvBase
 
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->environment());
         }
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->name());
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->version());
         }
     }

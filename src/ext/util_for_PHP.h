@@ -16,9 +16,9 @@
 #include <zend.h>
 #include "elastic_apm_assert.h"
 #include "basic_types.h"
-#include "ResultCode.h"
+#include "log.h"
 #include "MemoryTracker.h"
-#include "ConfigManager.h"
+#include "ResultCode.h"
 
 static inline
 bool isEmtpyZstring( const zend_string* zStr )
@@ -52,5 +52,3 @@ ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, LogLevel logLevel
 ResultCode callPhpFunctionRetZval( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], zval* retVal );
 
 void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );
-
-ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView serializedEvents );

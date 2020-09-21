@@ -31,7 +31,7 @@ final class TransactionTest extends ComponentTestCaseBase
 
     private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionDataInterface
     {
-        $this->assertEmpty($dataFromAgent->idToSpan());
+        $this->assertEmpty($dataFromAgent->idToSpan);
 
         $tx = $dataFromAgent->singleTransaction();
         $this->assertSame(0, $tx->getStartedSpansCount());

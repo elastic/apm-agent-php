@@ -43,7 +43,9 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
             $result[$envVarName] = $configuredValue;
         };
 
+        $addEnvVarIfOptionIsConfigured(OptionNames::API_KEY, $this->parent->configuredApiKey);
         $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $this->parent->configuredEnvironment);
+        $addEnvVarIfOptionIsConfigured(OptionNames::SECRET_TOKEN, $this->parent->configuredSecretToken);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $this->parent->configuredServiceName);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $this->parent->configuredServiceVersion);
 
