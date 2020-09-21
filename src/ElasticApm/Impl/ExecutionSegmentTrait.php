@@ -106,7 +106,7 @@ trait ExecutionSegmentTrait
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(DbgUtil::fqToShortClassName(get_class()) . ' ended', []);
+        && $loggerProxy->log(DbgUtil::fqToShortClassName(get_class($this)) . ' ended', []);
 
         $this->isEnded = true;
         return true;
@@ -129,7 +129,7 @@ trait ExecutionSegmentTrait
 
         ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            $calledMethodName . '() has been called on already ended ' . DbgUtil::fqToShortClassName(get_class()),
+            $calledMethodName . '() has been called on already ended ' . DbgUtil::fqToShortClassName(get_class($this)),
             ['stackTrace' => DbgUtil::formatCurrentStackTrace(/* numberOfStackFramesToSkip */ 1)]
         );
 

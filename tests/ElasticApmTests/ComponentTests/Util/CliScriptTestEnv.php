@@ -37,14 +37,14 @@ final class CliScriptTestEnv extends TestEnvBase
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Running ' . DbgUtil::fqToShortClassName(CliScriptAppCodeHost::class) . '...',
-            ['request' => $testProperties]
+            ['testProperties' => $testProperties]
         );
         TestProcessUtil::runProcessAndWaitUntilExit(
-            self::appCodePhpCmd()
+            $testProperties->configSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"'
             . ' "--' . CliScriptAppCodeHost::CLASS_CMD_OPT_NAME . '=' . $testProperties->appCodeClass . '"'
             . ' "--' . CliScriptAppCodeHost::METHOD_CMD_OPT_NAME . '=' . $testProperties->appCodeMethod . '"',
-            $this->buildEnvVars($this->buildAdditionalEnvVars($testProperties))
+            $this->buildEnvVars($testProperties->configSetter->additionalEnvVars())
         );
     }
 

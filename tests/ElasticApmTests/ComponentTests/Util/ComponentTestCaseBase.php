@@ -24,11 +24,17 @@ class ComponentTestCaseBase extends TestCaseBase
         AmbientContext::init(/* dbgProcessName */ 'Component tests');
     }
 
-    public function __construct()
+    /**
+     * @param mixed        $name
+     * @param array<mixed> $data
+     * @param mixed        $dataName
+     */
+    public function __construct($name = null, array $data = [], $dataName = '')
     {
+        parent::__construct($name, $data, $dataName);
+
         self::init();
 
-        parent::__construct();
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,
             __NAMESPACE__,
@@ -95,5 +101,16 @@ class ComponentTestCaseBase extends TestCaseBase
 
     public static function appCodeEmpty(): void
     {
+    }
+
+    /**
+     * @return array<array<ConfigSetterBase>>
+     */
+    public function configSetterTestDataProvider(): iterable
+    {
+        return [
+            // [new ConfigSetterIni()],
+            [new ConfigSetterEnvVars()]
+        ];
     }
 }
