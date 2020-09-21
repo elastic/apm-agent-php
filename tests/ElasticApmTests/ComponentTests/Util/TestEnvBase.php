@@ -16,6 +16,7 @@ use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionDataInterface;
+use Exception;
 use GuzzleHttp\Exception\ConnectException;
 use PHPUnit\Exception as PhpUnitException;
 use PHPUnit\Framework\TestCase;
@@ -261,7 +262,7 @@ abstract class TestEnvBase
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
-        /** @var PhpUnitException|null */
+        /** @var Exception|null */
         $lastException = null;
         $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
         $hasPassed = (new PollingCheck(
@@ -290,9 +291,13 @@ abstract class TestEnvBase
                 try {
                     $this->verifyDataAgainstRequest($testProperties);
                     $verifyFunc($this->dataFromAgent);
-                } catch (PhpUnitException $ex) {
-                    $lastException = $ex;
-                    return false;
+                } catch (Exception $ex) {
+                    if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
+                        $lastException = $ex;
+                        return false;
+                    }
+
+                    throw $ex;
                 }
                 return true;
             }
