@@ -143,6 +143,13 @@ pipeline {
               }
             }
           }
+          post {
+            always {
+              dir("${BASE_DIR}"){
+                archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/packages/*')
+              }
+            }
+          }
         }
         stage('Package-Test') {
           when {
