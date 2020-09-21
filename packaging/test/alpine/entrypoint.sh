@@ -12,4 +12,4 @@ fi
 
 ## Validate the installation works as expected with composer
 composer install
-composer run-script run_component_tests_standalone_envs
+composer run-script run_component_tests

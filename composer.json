@@ -73,28 +73,21 @@
             "composer run-script static_check",
             "composer run-script run_unit_tests"
         ],
-        "run_component_tests": [
+        "run_component_tests_configured": [
             "phpunit -c phpunit_component_tests.xml"
         ],
-        "run_component_tests_filter": [
+        "run_component_tests_configured_filter": [
             "phpunit -c phpunit_component_tests.xml --filter"
         ],
-        "run_component_tests_standalone_envs": [
-            "ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_script phpunit -c phpunit_component_tests.xml",
-            "ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server phpunit -c phpunit_component_tests.xml"
+        "run_component_tests": [
+            "@putenv ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_script",
+            "composer run-script run_component_tests_configured",
+            "@putenv ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server",
+            "composer run-script run_component_tests_configured"
         ],
-        "static_check_and_run_component_tests_standalone_envs": [
-            "composer run-script static_check",
-            "composer run-script run_unit_tests",
-            "composer run-script run_component_tests_standalone_envs"
-        ],
-        "run_component_tests_all_envs": [
-            "composer run-script run_component_tests_standalone_envs"
-        ],
-        "static_check_and_run_all_tests_all_envs": [
-            "composer run-script static_check",
-            "composer run-script run_unit_tests",
-            "composer run-script run_component_tests_all_envs"
+        "static_check_and_run_tests": [
+            "composer run-script static_check_and_run_unit_tests",
+            "composer run-script run_component_tests"
         ]
     }
 }

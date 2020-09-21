@@ -107,6 +107,6 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
 
     public function __toString(): string
     {
-        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class()));
+        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class($this)));
     }
 }
