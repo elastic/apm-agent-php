@@ -23,31 +23,6 @@ final class MetadataTest extends ComponentTestCaseBase
                . str_repeat('W', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']';
     }
 
-    /**
-     * @param ConfigSetterBase|null $configSetter
-     * @param string|null           $configured
-     * @param Closure               $setConfigFunc
-     * @param Closure               $verifyFunc
-     *
-     * @return void
-     *
-     * @phpstan-param Closure(ConfigSetterBase, string): void $setConfigFunc
-     * @phpstan-param Closure(DataFromAgent): void $verifyFunc
-     */
-    private function configTestImpl(
-        ?ConfigSetterBase $configSetter,
-        ?string $configured,
-        Closure $setConfigFunc,
-        Closure $verifyFunc
-    ): void {
-        $testProperties = new TestProperties([__CLASS__, 'appCodeEmpty']);
-        if (!is_null($configSetter)) {
-            self::assertNotNull($configured);
-            $setConfigFunc($testProperties->withConfig($configSetter), $configured);
-        }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx($testProperties, $verifyFunc);
-    }
-
     private function environmentConfigTestImpl(
         ?ConfigSetterBase $configSetter,
         ?string $configured,

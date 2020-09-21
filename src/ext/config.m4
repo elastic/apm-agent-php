@@ -79,6 +79,7 @@ if test "$PHP_ELASTIC_APM" != "no"; then
   AC_DEFINE(HAVE_ELASTIC_APM, 1, [ Have elastic_apm support ])
 
   ELASTIC_APM_PHP_EXT_SOURCES="\
+    backend_comm.c \
     ConfigManager.c \
     elastic_apm.c \
     elastic_apm_API.c \

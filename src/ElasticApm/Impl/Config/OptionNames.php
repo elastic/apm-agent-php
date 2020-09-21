@@ -15,9 +15,11 @@ final class OptionNames
 {
     use StaticClassTrait;
 
+    public const API_KEY = 'api_key';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
     public const SERVER_URL = 'server_url';
+    public const SECRET_TOKEN = 'secret_token';
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_VERSION = 'service_version';
 }

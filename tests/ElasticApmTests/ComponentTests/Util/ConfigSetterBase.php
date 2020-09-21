@@ -30,9 +30,21 @@ abstract class ConfigSetterBase
         return $this->parent;
     }
 
+    public function apiKey(?string $configuredApiKey): self
+    {
+        $this->parent->configuredApiKey = $configuredApiKey;
+        return $this;
+    }
+
     public function environment(?string $configuredEnvironment): self
     {
         $this->parent->configuredEnvironment = $configuredEnvironment;
+        return $this;
+    }
+
+    public function secretToken(?string $configuredSecretToken): self
+    {
+        $this->parent->configuredSecretToken = $configuredSecretToken;
         return $this;
     }
 
