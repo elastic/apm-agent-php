@@ -260,7 +260,7 @@ pipeline {
         stage('Notify') {
           options { skipDefaultCheckout() }
           steps {
-            slackSend(channel: '#observablt-robots', color: 'warning',
+            slackSend(channel: '#apm-agent-php', color: 'warning',
                   message: "[${env.REPO}] Release *${env.TAG_NAME}* ready to be pushed\n Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}",
                   tokenCredentialId: 'jenkins-slack-integration-token')
             script {
@@ -320,7 +320,7 @@ pipeline {
           }
           post {
             success {
-              slackSend(channel: '#observablt-robots', color: 'warning',
+              slackSend(channel: '#apm-agent-php', color: 'warning',
                   message: "[${env.REPO}] Release *${env.TAG_NAME}* published. (<${env.RUN_DISPLAY_URL}|Open>)",
                   tokenCredentialId: 'jenkins-slack-integration-token')
             }
