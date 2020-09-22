@@ -3,7 +3,7 @@
 @Library('apm@current') _
 
 pipeline {
-  agent { label 'linux && immutable' }
+  agent { label 'linux && docker && ubuntu-18.04 && immutable' }
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
@@ -49,7 +49,7 @@ pipeline {
           }
           failFast false
           matrix {
-            agent { label 'linux && immutable' }
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
             options { skipDefaultCheckout() }
             axes {
               axis {
@@ -157,7 +157,7 @@ pipeline {
           }
           failFast false
           matrix {
-            agent { label 'linux && immutable' }
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
             options { skipDefaultCheckout() }
             axes {
               axis {
@@ -195,7 +195,7 @@ pipeline {
           }
           matrix {
             // TODO: This should be uncommented out when the implementation is in place
-            // agent { label 'linux && immutable' }
+            // agent { label 'linux && docker && ubuntu-18.04 && immutable' }
             options { skipDefaultCheckout() }
             axes {
               axis {
