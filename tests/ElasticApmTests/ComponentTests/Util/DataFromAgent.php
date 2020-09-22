@@ -31,16 +31,16 @@ final class DataFromAgent
     private $intakeApiRequestIndexStartOffset = 0;
 
     /** @var IntakeApiRequest[] */
-    private $intakeApiRequests = [];
+    public $intakeApiRequests = [];
 
     /** @var MetadataInterface[] */
-    private $metadata = [];
+    public $metadata = [];
 
     /** @var array<string, TransactionDataInterface> */
-    private $idToTransaction = [];
+    public $idToTransaction = [];
 
     /** @var array<string, SpanDataInterface> */
-    private $idToSpan = [];
+    public $idToSpan = [];
 
     public function __construct()
     {
@@ -258,36 +258,12 @@ final class DataFromAgent
     }
 
     /**
-     * @return MetadataInterface[]
-     */
-    public function metadata(): array
-    {
-        return $this->metadata;
-    }
-
-    /**
-     * @return array<string, TransactionDataInterface>
-     */
-    public function idToTransaction(): array
-    {
-        return $this->idToTransaction;
-    }
-
-    /**
      * @return TransactionDataInterface
      */
     public function singleTransaction(): TransactionDataInterface
     {
         TestCase::assertCount(1, $this->idToTransaction);
         return $this->idToTransaction[array_key_first($this->idToTransaction)];
-    }
-
-    /**
-     * @return array<string, SpanDataInterface>
-     */
-    public function idToSpan(): array
-    {
-        return $this->idToSpan;
     }
 
     /**

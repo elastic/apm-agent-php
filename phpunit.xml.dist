@@ -7,6 +7,11 @@
     colors="true"
     failOnRisky="true"
     stopOnDefect="true"
+    stopOnError="true"
+    stopOnFailure="true"
+    stopOnIncomplete="true"
+    stopOnRisky="true"
+    stopOnWarning="true"
     verbose= "true"
 >
     <testsuites>

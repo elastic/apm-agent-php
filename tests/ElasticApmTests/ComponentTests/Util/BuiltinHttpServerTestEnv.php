@@ -31,7 +31,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
         )->addContext('this', $this);
     }
 
-    protected function ensureAppCodeHostServerStarted(TestProperties $testProperties): void
+    protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
     {
         if (isset($this->appCodeHostServerPort)) {
             return;
@@ -45,12 +45,12 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
             ['appCodeHostServerPort' => $appCodeHostServerPort]
         );
         TestProcessUtil::startBackgroundProcess(
-            self::appCodePhpCmd()
+            $testProperties->configSetter->appCodePhpCmd()
             . " -S localhost:$appCodeHostServerPort"
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"',
-            $this->buildEnvVars($this->buildAdditionalEnvVars($testProperties))
+            $this->buildEnvVars($testProperties->configSetter->additionalEnvVars())
         );
-        $this->checkHttpServerStatus(
+        $this->ensureHttpServerRunning(
             $appCodeHostServerPort,
             /* dbgServerDesc */ DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class)
         );

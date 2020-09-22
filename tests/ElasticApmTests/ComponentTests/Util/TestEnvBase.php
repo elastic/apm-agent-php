@@ -16,9 +16,11 @@ use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionDataInterface;
+use Exception;
 use GuzzleHttp\Exception\ConnectException;
 use PHPUnit\Exception as PhpUnitException;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Throwable;
 
 abstract class TestEnvBase
@@ -32,11 +34,7 @@ abstract class TestEnvBase
 
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
-    /** @var array<string, string> */
-    protected $envVarsForToInstrumentedApp = [];
-
-    /** @var array<string, string> */
-    protected $iniEntriesForToInstrumentedApp = [];
+    private const AUTH_HTTP_HEADER_NAME = 'Authorization';
 
     /** @var int|null */
     protected $spawnedProcessesCleanerPort = null;
@@ -67,31 +65,9 @@ abstract class TestEnvBase
         return PhpUnitExtension::$testEnvId;
     }
 
-    /**
-     * @param array<string, string> $envVars
-     *
-     * @return $this
-     */
-    public function withEnvVarsForInstrumentedApp(array $envVars): TestEnvBase
+    protected function ensureMockApmServerRunning(): void
     {
-        $this->envVarsForToInstrumentedApp = $envVars;
-        return $this;
-    }
-
-    /**
-     * @param array<string, string> $iniEntries
-     *
-     * @return $this
-     */
-    public function withIniForInstrumentedApp(array $iniEntries): TestEnvBase
-    {
-        $this->iniEntriesForToInstrumentedApp = $iniEntries;
-        return $this;
-    }
-
-    protected function ensureMockApmServerStarted(): void
-    {
-        $this->ensureSpawnedProcessesCleanerStarted();
+        $this->ensureSpawnedProcessesCleanerRunning();
 
         if (!is_null($this->mockApmServerPort)) {
             return;
@@ -113,7 +89,7 @@ abstract class TestEnvBase
             . ' --' . StatefulHttpServerProcessBase::PORT_CMD_OPT_NAME . '=' . $mockApmServerPort,
             $this->buildEnvVars()
         );
-        $this->checkHttpServerStatus(
+        $this->ensureHttpServerRunning(
             $mockApmServerPort,
             /* dbgServerDesc */ DbgUtil::fqToShortClassName(MockApmServer::class)
         );
@@ -126,7 +102,7 @@ abstract class TestEnvBase
         return mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
     }
 
-    private function ensureSpawnedProcessesCleanerStarted(): void
+    private function ensureSpawnedProcessesCleanerRunning(): void
     {
         if (!is_null($this->spawnedProcessesCleanerPort)) {
             return;
@@ -146,16 +122,16 @@ abstract class TestEnvBase
             . ' --' . SpawnedProcessesCleaner::PARENT_PID_CMD_OPT_NAME . '=' . getmypid(),
             $this->buildEnvVars()
         );
-        $this->checkHttpServerStatus(
+        $this->ensureHttpServerRunning(
             $spawnedProcessesCleanerPort,
             /* dbgServerDesc */ DbgUtil::fqToShortClassName(SpawnedProcessesCleaner::class)
         );
         $this->spawnedProcessesCleanerPort = $spawnedProcessesCleanerPort;
     }
 
-    protected function checkHttpServerStatus(int $port, string $dbgServerDesc): void
+    protected function ensureHttpServerRunning(int $port, string $dbgServerDesc): void
     {
-        (new PollingCheck(
+        $checkRetVal = (new PollingCheck(
             $dbgServerDesc . ' started',
             10 * 1000 * 1000 /* maxWaitTimeInMicroseconds - 10 seconds */,
             AmbientContext::loggerFactory()
@@ -170,35 +146,12 @@ abstract class TestEnvBase
                 return true;
             }
         );
-    }
 
-    /**
-     * @param TestProperties $testProperties
-     *
-     * @return array<string, string>
-     */
-    protected function buildAdditionalEnvVars(TestProperties $testProperties): array
-    {
-        $result = [];
+        if ($checkRetVal) {
+            return;
+        }
 
-        $addEnvVarIfOptionIsConfigured = function (string $optName, ?string $configuredValue) use (&$result): void {
-            if (is_null($configuredValue)) {
-                return;
-            }
-
-            $envVarName
-                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
-            $result[$envVarName] = $configuredValue;
-        };
-
-        $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $testProperties->configuredEnvironment);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $testProperties->configuredServiceName);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $testProperties->configuredServiceVersion);
-
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Finished', ['result' => $result]);
-
-        return $result;
+        throw new RuntimeException("HTTP Server is not running. dbgServerDesc: $dbgServerDesc. port: $port.");
     }
 
     /**
@@ -208,6 +161,9 @@ abstract class TestEnvBase
      */
     protected function buildEnvVars(array $additionalEnvVars = []): array
     {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['additionalEnvVars' => $additionalEnvVars]);
+
         /** @var array<string, string> */
         $result = getenv();
 
@@ -233,7 +189,12 @@ abstract class TestEnvBase
         )]
             = $this->testEnvId();
 
-        return array_merge($result, $additionalEnvVars);
+        $result = array_merge($result, $additionalEnvVars);
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting', ['result' => $result]);
+
+        return $result;
     }
 
     /**
@@ -248,10 +209,14 @@ abstract class TestEnvBase
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
-        $this->dataFromAgent->clearAdded();
-        $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
-        $this->sendRequestToInstrumentedApp($testProperties);
-        $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
+        try {
+            $this->dataFromAgent->clearAdded();
+            $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
+            $this->sendRequestToInstrumentedApp($testProperties);
+            $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
+        } finally {
+            $testProperties->tearDown();
+        }
     }
 
     abstract protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void;
@@ -297,7 +262,7 @@ abstract class TestEnvBase
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
-        /** @var PhpUnitException|null */
+        /** @var Exception|null */
         $lastException = null;
         $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
         $hasPassed = (new PollingCheck(
@@ -326,9 +291,13 @@ abstract class TestEnvBase
                 try {
                     $this->verifyDataAgainstRequest($testProperties);
                     $verifyFunc($this->dataFromAgent);
-                } catch (PhpUnitException $ex) {
-                    $lastException = $ex;
-                    return false;
+                } catch (Exception $ex) {
+                    if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
+                        $lastException = $ex;
+                        return false;
+                    }
+
+                    throw $ex;
                 }
                 return true;
             }
@@ -368,15 +337,54 @@ abstract class TestEnvBase
 
     protected function verifyDataAgainstRequest(TestProperties $testProperties): void
     {
+        $this->verifyHttpRequestHeaders($testProperties);
+
         $this->verifyMetadata($testProperties);
-        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
+
+        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction);
         $this->verifyRootTransactionName($testProperties, $rootTransaction);
         $this->verifyRootTransactionType($testProperties, $rootTransaction);
 
         TestCaseBase::assertValidTransactionsAndSpans(
-            $this->dataFromAgent->idToTransaction(),
-            $this->dataFromAgent->idToSpan()
+            $this->dataFromAgent->idToTransaction,
+            $this->dataFromAgent->idToSpan
         );
+    }
+
+    protected function verifyHttpRequestHeaders(TestProperties $testProperties): void
+    {
+        $this->verifyAuthHttpRequestHeaders(
+            $testProperties->configuredApiKey /* <- expectedApiKey */,
+            /* expectedSecretToken: */
+            is_null($testProperties->configuredApiKey)
+                ? $testProperties->configuredSecretToken
+                : null,
+            $this->dataFromAgent
+        );
+    }
+
+    public static function verifyAuthHttpRequestHeaders(
+        ?string $expectedApiKey,
+        ?string $expectedSecretToken,
+        DataFromAgent $dataFromAgent
+    ): void {
+        if (!is_null($expectedApiKey)) {
+            TestCase::assertNull($expectedSecretToken);
+        }
+
+        $expectedAuthHeaderValue = is_null($expectedApiKey)
+            ? ( is_null($expectedSecretToken) ? null : "Bearer $expectedSecretToken")
+            : "ApiKey $expectedApiKey";
+
+        foreach ($dataFromAgent->intakeApiRequests as $intakeApiRequest) {
+            if (is_null($expectedAuthHeaderValue)) {
+                TestCase::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $intakeApiRequest->headers);
+            } else {
+                $actualAuthHeaderValue = $intakeApiRequest->headers[self::AUTH_HTTP_HEADER_NAME];
+                TestCase::assertCount(1, $actualAuthHeaderValue);
+                TestCase::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
+            }
+        }
     }
 
     protected function verifyMetadata(TestProperties $testProperties): void
@@ -395,21 +403,21 @@ abstract class TestEnvBase
 
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->environment());
         }
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->name());
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->metadata as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->version());
         }
     }
@@ -460,11 +468,6 @@ abstract class TestEnvBase
             );
         }
         return $newIntakeApiRequests;
-    }
-
-    protected static function appCodePhpCmd(): string
-    {
-        return AmbientContext::config()->appCodePhpCmd() ?? 'php';
     }
 
     public function __toString(): string

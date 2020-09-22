@@ -49,6 +49,7 @@ enum OptionId
     optionId_allowAbortDialog,
     #endif
     optionId_abortOnMemoryLeak,
+    optionId_apiKey,
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
@@ -88,6 +89,7 @@ struct ConfigSnapshot
         #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     AssertLevel assertLevel;
         #endif
+    String apiKey;
     String bootstrapPhpPartFile;
     bool enabled;
     InternalChecksLevel internalChecksLevel;
@@ -195,6 +197,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   ifdef PHP_WIN32
 #define ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG "allow_abort_dialog"
 #   endif
+#define ELASTIC_APM_CFG_OPT_NAME_API_KEY "api_key"
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif

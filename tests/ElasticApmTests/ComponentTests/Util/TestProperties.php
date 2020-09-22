@@ -24,14 +24,23 @@ final class TestProperties
     /** @var int */
     public $expectedStatusCode = HttpConsts::STATUS_OK;
 
-    /** @var string|null */
+    /** @var ?string */
     public $transactionName = null;
 
-    /** @var string|null */
+    /** @var ?string */
     public $transactionType = null;
+
+    /** @var ConfigSetterBase */
+    public $configSetter;
+
+    /** @var ?string */
+    public $configuredApiKey = null;
 
     /** @var ?string */
     public $configuredEnvironment = null;
+
+    /** @var ?string */
+    public $configuredSecretToken = null;
 
     /** @var ?string */
     public $configuredServiceName = null;
@@ -44,6 +53,7 @@ final class TestProperties
         assert(is_array($appCodeClassMethod));
         $this->appCodeClass = $appCodeClassMethod[0];
         $this->appCodeMethod = $appCodeClassMethod[1];
+        $this->configSetter = new ConfigSetterNoop();
     }
 
     public function withHttpMethod(string $httpMethod): self
@@ -76,22 +86,16 @@ final class TestProperties
         return $this;
     }
 
-    public function withConfiguredEnvironment(?string $configuredEnvironment): self
+    public function withConfig(ConfigSetterBase $configSetter): ConfigSetterBase
     {
-        $this->configuredEnvironment = $configuredEnvironment;
-        return $this;
+        $this->configSetter = $configSetter;
+        $configSetter->setParent($this);
+        return $configSetter;
     }
 
-    public function withConfiguredServiceName(?string $configuredServiceName): self
+    public function tearDown(): void
     {
-        $this->configuredServiceName = $configuredServiceName;
-        return $this;
-    }
-
-    public function withConfiguredServiceVersion(?string $configuredServiceVersion): self
-    {
-        $this->configuredServiceVersion = $configuredServiceVersion;
-        return $this;
+        $this->configSetter->tearDown();
     }
 
     public function __toString(): string
@@ -100,6 +104,10 @@ final class TestProperties
         $builder->add('appCodeClass', $this->appCodeClass);
         $builder->add('appCodeMethod', $this->appCodeMethod);
         $builder->add('httpMethod', $this->httpMethod);
+        $builder->add('configSetter', $this->configSetter);
+        $builder->add('configuredApiKey', $this->configuredApiKey);
+        $builder->add('configuredEnvironment', $this->configuredEnvironment);
+        $builder->add('configuredSecretToken', $this->configuredSecretToken);
         $builder->add('configuredServiceName', $this->configuredServiceName);
         $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
         return $builder->build();

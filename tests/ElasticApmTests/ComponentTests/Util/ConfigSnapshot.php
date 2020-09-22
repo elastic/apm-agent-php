@@ -20,7 +20,10 @@ final class ConfigSnapshot
     private $appCodeHostKind;
 
     /** @var string|null */
-    private $appCodePhpCmd;
+    private $appCodePhpExe;
+
+    /** @var string|null */
+    private $appCodePhpIni;
 
     /** @var int */
     private $logLevel;
@@ -49,9 +52,14 @@ final class ConfigSnapshot
         return $this->appCodeHostKind;
     }
 
-    public function appCodePhpCmd(): ?string
+    public function appCodePhpExe(): ?string
     {
-        return $this->appCodePhpCmd;
+        return $this->appCodePhpExe;
+    }
+
+    public function appCodePhpIni(): ?string
+    {
+        return $this->appCodePhpIni;
     }
 
     public function logLevel(): int

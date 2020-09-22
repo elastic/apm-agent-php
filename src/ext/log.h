@@ -189,15 +189,16 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
     return streamString( logLevelNames[ level ], txtOutStream );
 }
 
-#define ELASTIC_APM_LOG_CATEGORY_EXT_INFRA "Ext-Infra"
-#define ELASTIC_APM_LOG_CATEGORY_CONFIG "Configuration"
-#define ELASTIC_APM_LOG_CATEGORY_EXT_API "Ext-API"
 #define ELASTIC_APM_LOG_CATEGORY_ASSERT "Assert"
+#define ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM "Backend-Comm"
+#define ELASTIC_APM_LOG_CATEGORY_CONFIG "Configuration"
+#define ELASTIC_APM_LOG_CATEGORY_C_TO_PHP "C-to-PHP"
+#define ELASTIC_APM_LOG_CATEGORY_EXT_API "Ext-API"
+#define ELASTIC_APM_LOG_CATEGORY_EXT_INFRA "Ext-Infra"
 #define ELASTIC_APM_LOG_CATEGORY_LIFECYCLE "Lifecycle"
 #define ELASTIC_APM_LOG_CATEGORY_LOG "Log"
-#define ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER "MemoryTracker"
+#define ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER "Memory-Tracker"
 #define ELASTIC_APM_LOG_CATEGORY_PLATFORM "Platform"
-#define ELASTIC_APM_LOG_CATEGORY_C_TO_PHP "C-to-PHP"
 #define ELASTIC_APM_LOG_CATEGORY_SUPPORT "Supportability"
-#define ELASTIC_APM_LOG_CATEGORY_SYS_METRICS "SystemMetrics"
+#define ELASTIC_APM_LOG_CATEGORY_SYS_METRICS "System-Metrics"
 #define ELASTIC_APM_LOG_CATEGORY_UTIL "Util"
