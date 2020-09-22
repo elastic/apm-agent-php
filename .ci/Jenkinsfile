@@ -252,9 +252,14 @@ pipeline {
       when {
         beforeAgent true
         allOf {
-          tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+          // TODO: to test the release process
+          //tag pattern: 'v\\d+.*', comparator: 'REGEXP'
           expression { isInternalCI() }
         }
+      }
+      environment {
+        // For testing purposes only
+        TAG_NAME = 'test'
       }
       stages {
         stage('Notify') {
