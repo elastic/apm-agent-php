@@ -253,7 +253,7 @@ pipeline {
         beforeAgent true
         allOf {
           tag pattern: 'v\\d+.*', comparator: 'REGEXP'
-          expression { env.JENKINS_URL.contains('internal-ci') }
+          expression { isInternalCI() }
         }
       }
       stages {
