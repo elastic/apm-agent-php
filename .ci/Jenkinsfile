@@ -7,7 +7,6 @@ pipeline {
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
-    NOTIFY_TO = credentials('notify-to')
     JOB_GCS_BUCKET = credentials('gcs-bucket')
   }
   options {
@@ -261,8 +260,9 @@ pipeline {
         stage('Notify') {
           options { skipDefaultCheckout() }
           steps {
-            emailext subject: "[${env.REPO}] Release ready to be pushed", to: "${NOTIFY_TO}",
-                              body: "Please go to ${env.BUILD_URL}input to approve or reject within 12 hours.\n Changes: ${env.TAG_NAME}"
+            slackSend(channel: '#observablt-robots', color: 'warning',
+                  message: "[${env.REPO}] Release ready to be pushed\n Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}",
+                  tokenCredentialId: 'jenkins-slack-integration-token')
             script {
               def should_continue = input(message: "You are about to release version ${env.TAG_NAME}",
                                           parameters: [ [$class: 'ChoiceParameterDefinition',
@@ -332,9 +332,7 @@ pipeline {
   }
   post {
     cleanup {
-      whenFalse(env.JENKINS_URL.contains('internal-ci')) {
-        notifyBuildResult()
-      }
+      notifyBuildResult()
     }
   }
 }
