@@ -47,19 +47,20 @@ generate-for-package: prepare  ## Generate the agent extension for the package
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/generate-for-package.sh
 
+.PHONY: interactive
+interactive: prepare  ## Run an interactive docker shell
+	docker run -it --rm \
+		-v $(PWD):/app \
+		$(IMAGE):${PHP_VERSION} \
+		/bin/bash
+
 .PHONY: composer
 composer: prepare  ## Run composer
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		sh -c 'make install \
-			&& echo 'extension=elastic_apm.so' > /usr/local/etc/php/php.ini \
-			&& echo 'elastic_apm.bootstrap_php_part_file=/app/src/bootstrap_php_part.php' >> /usr/local/etc/php/php.ini \
-			&& php -m \
-			&& cd /app \
-			&& composer install \
-			&& composer static_check_and_run_tests'
+		sh -c '/app/.ci/composer.sh'
 
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME

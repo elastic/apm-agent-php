@@ -8,6 +8,7 @@ RUN apt-get -qq update \
     curl \
     libcurl4-openssl-dev \
     procps \
+    rsyslog \
     unzip \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
