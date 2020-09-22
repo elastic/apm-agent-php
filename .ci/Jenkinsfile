@@ -340,7 +340,11 @@ pipeline {
   }
   post {
     cleanup {
-      notifyBuildResult()
+      // Reporting disables in the `internal-ci` since credentials are not in place
+      // OTOH it avoids duplicated notifications
+      whenFalse(isInternalCI()){
+        notifyBuildResult()
+      }
     }
   }
 }
