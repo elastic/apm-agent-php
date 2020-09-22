@@ -8,6 +8,7 @@ pipeline {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
     JOB_GCS_BUCKET = credentials('gcs-bucket')
+    SLACK_CHANNEL = '#apm-agent-php'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -260,7 +261,7 @@ pipeline {
         stage('Notify') {
           options { skipDefaultCheckout() }
           steps {
-            slackSend(channel: '#apm-agent-php', color: 'warning',
+            slackSend(channel: env.SLACK_CHANNEL, color: 'warning',
                   message: "[${env.REPO}] Release *${env.TAG_NAME}* ready to be pushed\n Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}",
                   tokenCredentialId: 'jenkins-slack-integration-token')
             script {
@@ -277,6 +278,10 @@ pipeline {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
           }
+          environment {
+            BUCKET_PATH = "gs://internal-ci-artifacts/${env.REPO}/${env.TAG_NAME}"
+            BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
+          }
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -284,8 +289,8 @@ pipeline {
             dir("${BASE_DIR}") {
               unstash 'package'
               // TODO: what bucket and credentials
-              googleStorageUpload(bucket: "gs://internal-ci-artifacts/${env.REPO}/${env.TAG_NAME}",
-                  credentialsId: 'internal-ci-gcs-plugin',
+              googleStorageUpload(bucket: env.BUCKET_PATH,
+                  credentialsId: env.BUCKET_CREDENTIALS,
                   pathPrefix: 'build/packages/',
                   pattern: 'build/packages/**/*',
                   sharedPublicly: false,
@@ -293,8 +298,8 @@ pipeline {
               echo "TODO: call the artifacts-signer job and wait for"
               //build(wait: true, propagate: false, job: '<TBD>', parameters: [string(name: 'URL', value: '<TBD>')])
               dir('test') {
-                googleStorageDownload(bucketUri: "gs://internal-ci-artifacts/${env.REPO}/${env.TAG_NAME}",
-                    credentialsId: 'internal-ci-gcs-plugin',
+                googleStorageDownload(bucketUri: env.BUCKET_PATH,
+                    credentialsId: env.BUCKET_CREDENTIALS,
                     localDirectory: 'build/packages/')
                 stash includes: 'build/packages/*', name: 'signed-package'
               }
@@ -320,7 +325,7 @@ pipeline {
           }
           post {
             success {
-              slackSend(channel: '#apm-agent-php', color: 'warning',
+              slackSend(channel: env.SLACK_CHANNEL, color: 'good',
                   message: "[${env.REPO}] Release *${env.TAG_NAME}* published. (<${env.RUN_DISPLAY_URL}|Open>)",
                   tokenCredentialId: 'jenkins-slack-integration-token')
             }
