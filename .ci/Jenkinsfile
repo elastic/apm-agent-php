@@ -262,7 +262,6 @@ pipeline {
         // For testing purposes only
         TAG_NAME = 'test'
       }
-      agent { label 'linux && docker && ubuntu-18.04 && immutable' }
       stages {
         stage('Notify') {
           options { skipDefaultCheckout() }
