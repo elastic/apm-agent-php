@@ -270,13 +270,7 @@ pipeline {
             slackSend(channel: env.SLACK_CHANNEL, color: 'warning',
                   message: "[${env.REPO}] Release *${env.TAG_NAME}* ready to be pushed\n Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}",
                   tokenCredentialId: 'jenkins-slack-integration-token')
-            script {
-              def should_continue = input(message: "You are about to release version ${env.TAG_NAME}",
-                                          parameters: [ [$class: 'ChoiceParameterDefinition',
-                                                          name: 'Do you wish to release it?',
-                                                          choices: ['Yes', 'No']] ])
-              env.RELEASE = should_continue.equals('Yes')
-            }
+            setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
         stage('Signing CI') {
@@ -353,5 +347,15 @@ pipeline {
         notifyBuildResult()
       }
     }
+  }
+}
+
+// TODO: create an input step to avoid this try/catch and return true/false
+def askAndWait(message) {
+  try {
+    input(message: message, ok: 'Yes')
+    return true
+  } catch(err) {
+    return false
   }
 }
