@@ -304,7 +304,7 @@ pipeline {
               echo "TODO: call the artifacts-signer job and wait for"
               //build(wait: true, propagate: false, job: '<TBD>', parameters: [string(name: 'URL', value: '<TBD>')])
               dir('test') {
-                googleStorageDownload(bucketUri: env.BUCKET_PATH,
+                googleStorageDownload(bucketUri: "${env.BUCKET_PATH}/*",
                     credentialsId: env.BUCKET_CREDENTIALS,
                     localDirectory: 'build/packages/')
                 stash includes: 'build/packages/*', name: 'signed-package'
