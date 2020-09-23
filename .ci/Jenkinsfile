@@ -285,7 +285,8 @@ pipeline {
             expression { return env.RELEASE == 'true' }
           }
           environment {
-            BUCKET_PATH = "gs://internal-ci-artifacts/${env.REPO}/${env.TAG_NAME}"
+            BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
+            BUCKET_PATH = "gs://internal-ci-artifacts/${BUCKET_SUBFOLDER}"
             BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
           }
           options { skipDefaultCheckout() }
@@ -294,20 +295,19 @@ pipeline {
             unstash 'source'
             dir("${BASE_DIR}") {
               unstash 'package'
-              // TODO: what bucket and credentials
               googleStorageUpload(bucket: env.BUCKET_PATH,
                   credentialsId: env.BUCKET_CREDENTIALS,
                   pathPrefix: 'build/packages/',
                   pattern: 'build/packages/**/*',
                   sharedPublicly: false,
                   showInline: true)
-              echo "TODO: call the artifacts-signer job and wait for"
-              //build(wait: true, propagate: false, job: '<TBD>', parameters: [string(name: 'URL', value: '<TBD>')])
-              dir('test') {
+              echo "build(wait: true, propagate: true, job: '<TBD>', parameters: [string(name: 'URL', value: ${env.BUCKET_PATH})])"
+              dir('signed') {
                 googleStorageDownload(bucketUri: "${env.BUCKET_PATH}/*",
                     credentialsId: env.BUCKET_CREDENTIALS,
-                    localDirectory: 'build/packages/')
-                stash includes: 'build/packages/*', name: 'signed-package'
+                    localDirectory: 'build/packages/',
+                    pathPrefix: "${BUCKET_SUBFOLDER}")
+                stash allowEmpty: false, name: 'signed-package', useDefaultExcludes: false
               }
             }
           }
