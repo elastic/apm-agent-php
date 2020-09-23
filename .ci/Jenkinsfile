@@ -8,6 +8,7 @@ pipeline {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
     SLACK_CHANNEL = '#oblt-robots'
+    NOTIFY_TO = 'build-apm@elastic.co'
     ONLY_DOCS = "false"
   }
   options {
@@ -265,10 +266,14 @@ pipeline {
       stages {
         stage('Notify') {
           options { skipDefaultCheckout() }
+          environment {
+            SUBJECT = "[${env.REPO}] Release ready to be pushed"
+            BODY = "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}"
+          }
           steps {
-            slackSend(channel: env.SLACK_CHANNEL, color: 'warning',
-                  message: "[${env.REPO}] Release *${env.TAG_NAME}* ready to be pushed\n Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}",
-                  tokenCredentialId: 'jenkins-slack-integration-token')
+            slackSend(channel: env.SLACK_CHANNEL, color: 'warning', message: "${env.SUBJECT}.\n ${env.BODY}",
+                      tokenCredentialId: 'jenkins-slack-integration-token')
+            emailext(subject: env.SUBJECT, to: "${env.NOTIFY_TO}", body: env.BODY)
             setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
@@ -311,6 +316,10 @@ pipeline {
             expression { return env.RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
+          environment {
+            SUBJECT = "[${env.REPO}] Release *${env.TAG_NAME}* published"
+            BODY = "(<${env.RUN_DISPLAY_URL}|Open>)"
+          }
           steps {
             deleteDir()
             unstash 'source'
@@ -324,9 +333,9 @@ pipeline {
           }
           post {
             success {
-              slackSend(channel: env.SLACK_CHANNEL, color: 'good',
-                  message: "[${env.REPO}] Release *${env.TAG_NAME}* published. (<${env.RUN_DISPLAY_URL}|Open>)",
-                  tokenCredentialId: 'jenkins-slack-integration-token')
+              slackSend(channel: env.SLACK_CHANNEL, color: 'good', message: "${env.SUBJECT}. ${env.BODY}",
+                        tokenCredentialId: 'jenkins-slack-integration-token')
+              emailext(subject: env.SUBJECT, to: "${env.NOTIFY_TO}", body: env.BODY)
             }
             always {
               script {
