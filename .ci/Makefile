@@ -41,9 +41,10 @@ test: prepare  ## Test the project
 
 .PHONY: generate-for-package
 generate-for-package: prepare  ## Generate the agent extension for the package
-	# docker as root to install the extension
+	# docker as the current user
 	docker run --rm -t \
 		-v $(PWD):/app \
+		-u $(CURRENT_UID):$(CURRENT_GID) \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/generate-for-package.sh
 
