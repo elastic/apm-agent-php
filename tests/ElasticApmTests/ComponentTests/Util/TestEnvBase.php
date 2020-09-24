@@ -41,16 +41,22 @@ abstract class TestEnvBase
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
+
     /** @var int|null */
     protected $resourcesCleanerPort = null;
+
     /** @var string|null */
     protected $resourcesCleanerServerId = null;
+
     /** @var string|null */
     protected $mockApmServerId = null;
+
     /** @var Logger */
     private $logger;
+
     /** @var DataFromAgent */
     private $dataFromAgent;
+
     /** @var int|null */
     private $mockApmServerPort = null;
 
