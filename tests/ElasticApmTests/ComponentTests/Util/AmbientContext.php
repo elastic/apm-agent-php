@@ -9,14 +9,11 @@ use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\Tests\Util\TestLogSink;
 use RuntimeException;
 
 final class AmbientContext
 {
-    public const ENV_VAR_NAME_PREFIX = 'ELASTIC_APM_TESTS_';
-
     /** @var self */
     private static $singletonInstance;
 
@@ -32,7 +29,8 @@ final class AmbientContext
     private function __construct(string $dbgProcessName)
     {
         $allOptsMeta = AllComponentTestsOptionsMetadata::build();
-        $this->envVarConfigSource = new EnvVarsRawSnapshotSource(self::ENV_VAR_NAME_PREFIX, array_keys($allOptsMeta));
+        $this->envVarConfigSource
+            = new EnvVarsRawSnapshotSource(TestConfigUtil::ENV_VAR_NAME_PREFIX, array_keys($allOptsMeta));
         $parser = new Parser($allOptsMeta, self::createLoggerFactory(LogLevel::ERROR, $dbgProcessName));
         $this->config = new ConfigSnapshot($parser->parse($this->envVarConfigSource->currentSnapshot()));
 
@@ -45,11 +43,8 @@ final class AmbientContext
             self::$singletonInstance = new AmbientContext($dbgProcessName);
         }
 
-        if (AmbientContext::config()->appCodeHostKind() === AppCodeHostKind::NOT_SET) {
-            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
-                AmbientContext::ENV_VAR_NAME_PREFIX,
-                AppCodeHostKindOptionMetadata::NAME
-            );
+        if (self::config()->appCodeHostKind() === AppCodeHostKind::NOT_SET) {
+            $envVarName = TestConfigUtil::envVarNameForTestsOption(AppCodeHostKindOptionMetadata::NAME);
             throw new RuntimeException(
                 'Required configuration option ' . AppCodeHostKindOptionMetadata::NAME
                 . " (environment variable $envVarName)" . ' is not set'

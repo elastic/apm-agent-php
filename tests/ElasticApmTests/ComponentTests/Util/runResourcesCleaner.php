@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../bootstrap.php';
 
-use Elastic\Apm\Tests\ComponentTests\Util\SpawnedProcessesCleaner;
+use Elastic\Apm\Tests\ComponentTests\Util\ResourcesCleaner;
 
 /** @noinspection PhpUnhandledExceptionInspection */
-SpawnedProcessesCleaner::run(__FILE__);
+ResourcesCleaner::run(__FILE__);

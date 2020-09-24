@@ -9,9 +9,6 @@ use Elastic\Apm\Tests\Util\TestLogCategory;
 
 final class CliScriptAppCodeHost extends AppCodeHostBase
 {
-    public const CLASS_CMD_OPT_NAME = 'class';
-    public const METHOD_CMD_OPT_NAME = 'method';
-
     /** @var Logger */
     private $logger;
 
@@ -27,30 +24,18 @@ final class CliScriptAppCodeHost extends AppCodeHostBase
         )->addContext('this', $this);
     }
 
-    protected function parseArgs(): void
+    protected function processConfig(): void
     {
-        $longOpts = [];
+        parent::processConfig();
 
-        // --class=MyClass - required value
-        $longOpts[] = self::CLASS_CMD_OPT_NAME . ':';
-
-        // --method=myMethod - required value
-        $longOpts[] = self::METHOD_CMD_OPT_NAME . ':';
-
-        $parsedCliOptions = getopt(/* shortOpts */ '', $longOpts);
-
-        $this->appCodeClass = $this->checkRequiredCliOption(self::CLASS_CMD_OPT_NAME, $parsedCliOptions);
-        $this->appCodeMethod = $this->checkRequiredCliOption(self::METHOD_CMD_OPT_NAME, $parsedCliOptions);
+        $this->appCodeClass = self::getRequiredTestOption(AllComponentTestsOptionsMetadata::APP_CODE_CLASS_OPTION_NAME);
+        $this->appCodeMethod = self::getRequiredTestOption(
+            AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
+        );
     }
 
     protected function runImpl(): void
     {
         $this->callAppCode();
-    }
-
-    protected function cliHelpOptions(): string
-    {
-        return ' --' . self::CLASS_CMD_OPT_NAME . /** @lang text */ '=<class name>'
-               . ' --' . self::METHOD_CMD_OPT_NAME . /** @lang text */ '=<method name>';
     }
 }

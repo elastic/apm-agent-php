@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Tests\Util\TestLogCategory;
@@ -23,6 +22,7 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
             __FILE__
         );
     }
+
     public function appCodePhpCmd(): string
     {
         return self::buildAppCodePhpCmd(AmbientContext::config()->appCodePhpIni());
@@ -38,9 +38,7 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
                 return;
             }
 
-            $envVarName
-                = EnvVarsRawSnapshotSource::optionNameToEnvVarName(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optName);
-            $result[$envVarName] = $configuredValue;
+            $result[TestConfigUtil::envVarNameForOption($optName)] = $configuredValue;
         };
 
         $addEnvVarIfOptionIsConfigured(OptionNames::API_KEY, $this->parent->configuredApiKey);

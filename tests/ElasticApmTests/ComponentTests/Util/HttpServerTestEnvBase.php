@@ -17,8 +17,11 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     /** @var Logger */
     private $logger;
 
-    /** @var int */
-    protected $appCodeHostServerPort;
+    /** @var string|null */
+    protected $appCodeHostServerId = null;
+
+    /** @var int|null */
+    protected $appCodeHostServerPort = null;
 
     public function __construct()
     {
@@ -44,12 +47,13 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         );
 
         /** @noinspection PhpUnhandledExceptionInspection */
-        $response = BuiltinHttpServerAppCodeHost::sendRequest(
+        /** @phpstan-ignore-next-line - Call to static method ... on trait */
+        $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
+            $this->appCodeHostServerId,
             $testProperties->httpMethod,
             $testProperties->uriPath,
             [
-                self::TEST_ENV_ID_HEADER_NAME => $this->testEnvId(),
                 BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
                 BuiltinHttpServerAppCodeHost::METHOD_HEADER_NAME => $testProperties->appCodeMethod,
             ]

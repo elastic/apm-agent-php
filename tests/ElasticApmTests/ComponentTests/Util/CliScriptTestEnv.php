@@ -41,10 +41,18 @@ final class CliScriptTestEnv extends TestEnvBase
         );
         TestProcessUtil::runProcessAndWaitUntilExit(
             $testProperties->configSetter->appCodePhpCmd()
-            . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"'
-            . ' "--' . CliScriptAppCodeHost::CLASS_CMD_OPT_NAME . '=' . $testProperties->appCodeClass . '"'
-            . ' "--' . CliScriptAppCodeHost::METHOD_CMD_OPT_NAME . '=' . $testProperties->appCodeMethod . '"',
-            $this->buildEnvVars($testProperties->configSetter->additionalEnvVars())
+            . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
+            $this->buildEnvVars(
+                $testProperties->configSetter->additionalEnvVars() +
+                [
+                    TestConfigUtil::envVarNameForTestsOption(
+                        AllComponentTestsOptionsMetadata::APP_CODE_CLASS_OPTION_NAME
+                    ) => $testProperties->appCodeClass,
+                    TestConfigUtil::envVarNameForTestsOption(
+                        AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
+                    ) => $testProperties->appCodeMethod,
+                ]
+            )
         );
     }
 

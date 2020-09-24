@@ -16,8 +16,14 @@ final class ConfigSnapshot
 {
     use SnapshotTrait;
 
+    /** @var string|null */
+    private $appCodeClass;
+
     /** @var int */
     private $appCodeHostKind;
+
+    /** @var string|null */
+    private $appCodeMethod;
 
     /** @var string|null */
     private $appCodePhpExe;
@@ -29,13 +35,19 @@ final class ConfigSnapshot
     private $logLevel;
 
     /** @var int */
-    private $mockApmServerPort;
-
-    /** @var int */
-    private $spawnedProcessesCleanerPort;
+    private $resourcesCleanerPort;
 
     /** @var string */
-    private $testEnvId;
+    private $resourcesCleanerServerId;
+
+    /** @var int */
+    private $rootProcessId;
+
+    /** @var int */
+    private $thisServerPort;
+
+    /** @var string */
+    private $thisServerId;
 
     /**
      * Snapshot constructor.
@@ -47,9 +59,19 @@ final class ConfigSnapshot
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
     }
 
+    public function appCodeClass(): ?string
+    {
+        return $this->appCodeClass;
+    }
+
     public function appCodeHostKind(): int
     {
         return $this->appCodeHostKind;
+    }
+
+    public function appCodeMethod(): ?string
+    {
+        return $this->appCodeMethod;
     }
 
     public function appCodePhpExe(): ?string
@@ -67,18 +89,28 @@ final class ConfigSnapshot
         return $this->logLevel;
     }
 
-    public function mockApmServerPort(): int
+    public function resourcesCleanerPort(): int
     {
-        return $this->mockApmServerPort;
+        return $this->resourcesCleanerPort;
     }
 
-    public function spawnedProcessesCleanerPort(): int
+    public function resourcesCleanerServerId(): string
     {
-        return $this->spawnedProcessesCleanerPort;
+        return $this->resourcesCleanerServerId;
     }
 
-    public function testEnvId(): string
+    public function rootProcessId(): int
     {
-        return $this->testEnvId;
+        return $this->rootProcessId;
+    }
+
+    public function thisServerId(): string
+    {
+        return $this->thisServerId;
+    }
+
+    public function thisServerPort(): int
+    {
+        return $this->thisServerPort;
     }
 }
