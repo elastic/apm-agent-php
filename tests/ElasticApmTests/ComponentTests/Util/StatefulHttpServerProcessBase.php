@@ -108,8 +108,9 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     {
     }
 
-    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
-    {
+    protected function shouldRequestHaveServerId(
+        /** @noinspection PhpUnusedParameterInspection */ ServerRequestInterface $request
+    ): bool {
         return true;
     }
 
