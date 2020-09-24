@@ -39,6 +39,8 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     {
         $this->ensureMockApmServerRunning();
         $this->ensureAppCodeHostServerRunning($testProperties);
+        TestCase::assertNotNull($this->appCodeHostServerPort);
+        TestCase::assertNotNull($this->appCodeHostServerId);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -46,8 +48,6 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
-        /** @noinspection PhpUnhandledExceptionInspection */
-        /** @phpstan-ignore-next-line - Call to static method ... on trait */
         $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
             $this->appCodeHostServerId,
