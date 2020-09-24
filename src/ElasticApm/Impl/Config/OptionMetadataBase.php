@@ -15,7 +15,10 @@ namespace Elastic\Apm\Impl\Config;
  */
 abstract class OptionMetadataBase implements OptionMetadataInterface
 {
-    /** @var mixed */
+    /**
+     * @var mixed
+     * @phpstan-var T
+     */
     private $defaultValue;
 
     /**
