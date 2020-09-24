@@ -48,14 +48,16 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         return $_SERVER['REQUEST_URI'] === TestEnvBase::STATUS_CHECK_URI;
     }
 
-    protected function shouldRegisterWithSpawnedProcessesCleaner(): bool
+    protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
     {
-        // We should register with SpawnedProcessesCleaner only on the status-check request
+        // We should register with ResourcesCleaner only on the status-check request
         return self::isStatusCheck();
     }
 
-    protected function parseArgs(): void
+    protected function processConfig(): void
     {
+        parent::processConfig();
+
         if (!self::isStatusCheck()) {
             $this->appCodeClass = self::getRequestHeader(self::CLASS_HEADER_NAME);
             $this->appCodeMethod = self::getRequestHeader(self::METHOD_HEADER_NAME);
@@ -64,7 +66,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function runImpl(): void
     {
-        $response = self::verifyTestEnvIdEx([__CLASS__, 'getRequestHeader']);
+        $response = self::verifyServerIdEx([__CLASS__, 'getRequestHeader']);
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
             self::sendResponse($response);
             return;

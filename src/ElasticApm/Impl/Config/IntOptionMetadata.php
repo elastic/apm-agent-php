@@ -15,10 +15,21 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
  */
 final class IntOptionMetadata extends OptionMetadataBase
 {
-    /** @inheritDoc */
     public function __construct(int $defaultValue)
     {
         parent::__construct($defaultValue);
+    }
+
+    public static function parseValue(string $rawValue): int
+    {
+        if (is_numeric($rawValue)) {
+            $valueAsInt = intval($rawValue);
+            if (strval($valueAsInt) === $rawValue) {
+                return $valueAsInt;
+            }
+        }
+
+        throw new ParseException("Not a valid int value. Raw option value: `$rawValue'");
     }
 
     /**
@@ -30,13 +41,6 @@ final class IntOptionMetadata extends OptionMetadataBase
      */
     public function parse(string $rawValue)
     {
-        if (is_numeric($rawValue)) {
-            $valueAsInt = intval($rawValue);
-            if (strval($valueAsInt) === $rawValue) {
-                return $valueAsInt;
-            }
-        }
-
-        throw new ParseException("Not a valid int value. Raw option value: `$rawValue'");
+        return self::parseValue($rawValue);
     }
 }

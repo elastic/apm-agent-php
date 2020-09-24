@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -38,26 +37,15 @@ abstract class CliProcessBase
         );
     }
 
-    private function verifyConfig(): void
+    protected function processConfig(): void
     {
-        if (empty(AmbientContext::config()->testEnvId())) {
-            self::throwRequiredConfigOptionIsSet(AllComponentTestsOptionsMetadata::TEST_ENV_ID_OPTION_NAME);
-        }
-
-        if (
-            $this->shouldRegisterWithSpawnedProcessesCleaner()
-            && AmbientContext::config()->spawnedProcessesCleanerPort()
-               === AllComponentTestsOptionsMetadata::INT_OPTION_NOT_SET
-        ) {
-            self::throwRequiredConfigOptionIsSet(
-                AllComponentTestsOptionsMetadata::SPAWNED_PROCESSES_CLEANER_PORT_OPTION_NAME
+        if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
+            self::getRequiredTestOption(AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_PORT_OPTION_NAME);
+            self::getRequiredTestOption(
+                AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_SERVER_ID_OPTION_NAME
             );
         }
     }
-
-    abstract protected function parseArgs(): void;
-
-    abstract protected function cliHelpOptions(): string;
 
     abstract protected function runImpl(): void;
 
@@ -66,11 +54,10 @@ abstract class CliProcessBase
         try {
             AmbientContext::init(/* dbgProcessName */ DbgUtil::fqToShortClassName(get_called_class()));
             $thisObj = new static($runScriptFile); // @phpstan-ignore-line
-            $thisObj->parseArgs();
-            $thisObj->verifyConfig();
+            $thisObj->processConfig();
 
-            if ($thisObj->shouldRegisterWithSpawnedProcessesCleaner()) {
-                $thisObj->registerWithSpawnedProcessesCleaner();
+            if ($thisObj->shouldRegisterThisProcessWithResourcesCleaner()) {
+                $thisObj->registerWithResourcesCleaner();
             }
 
             $thisObj->runImpl();
@@ -92,62 +79,54 @@ abstract class CliProcessBase
         }
     }
 
-    private static function throwRequiredConfigOptionIsSet(string $optName): void
+    /**
+     * @param string $optName
+     *
+     * @return mixed
+     */
+    protected static function getRequiredTestOption(string $optName)
     {
-        $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(AmbientContext::ENV_VAR_NAME_PREFIX, $optName);
-        throw new RuntimeException(
-            'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set'
-        );
+        $optValue = AmbientContext::config()->getOptionValueByName($optName);
+        if (is_null($optValue)) {
+            $envVarName = TestConfigUtil::envVarNameForTestsOption($optName);
+            throw new RuntimeException(
+                'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set'
+            );
+        }
+
+        return $optValue;
     }
 
-    protected function shouldRegisterWithSpawnedProcessesCleaner(): bool
+    protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
     {
         return true;
     }
 
-    protected function registerWithSpawnedProcessesCleaner(): void
+    protected function registerWithResourcesCleaner(): void
     {
-        assert(
-            AmbientContext::config()->spawnedProcessesCleanerPort()
-            !== AllComponentTestsOptionsMetadata::INT_OPTION_NOT_SET
-        );
-
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Registering with ' . DbgUtil::fqToShortClassName(SpawnedProcessesCleaner::class) . '...'
+            'Registering with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . '...'
         );
 
-        SpawnedProcessesCleaner::sendRequestToRegisterProcess(
-            AmbientContext::config()->spawnedProcessesCleanerPort(),
-            AmbientContext::config()->testEnvId(),
-            getmypid()
+        $response = TestHttpClientUtil::sendHttpRequest(
+            AmbientContext::config()->resourcesCleanerPort(),
+            AmbientContext::config()->resourcesCleanerServerId(),
+            HttpConsts::METHOD_POST,
+            ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH,
+            [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Successfully registered with ' . DbgUtil::fqToShortClassName(SpawnedProcessesCleaner::class)
-        );
-    }
-
-    /**
-     * @param string               $cliOptName
-     * @param array<string, mixed> $parsedCliOptions
-     *
-     * @return string
-     */
-    protected function checkRequiredCliOption(string $cliOptName, array $parsedCliOptions): string
-    {
-        $cliOptValue = ArrayUtil::getValueIfKeyExistsElse($cliOptName, $parsedCliOptions, null);
-        if (is_null($cliOptValue)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                "Invalid command line: required --$cliOptName is missing."
-                . ' Expected command line format:' . PHP_EOL
-                . $this->runScriptFile . ' ' . $this->cliHelpOptions()
+        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+            throw new RuntimeException(
+                'Failed to register with '
+                . DbgUtil::fqToShortClassName(ResourcesCleaner::class)
             );
-            exit(1);
         }
-        return $cliOptValue;
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Successfully registered with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class)
+        );
     }
 
     public function __toString(): string
@@ -159,9 +138,6 @@ abstract class CliProcessBase
 
     protected function toStringAddProperties(ObjectToStringBuilder $builder): void
     {
-        $builder->add('testEnvId', AmbientContext::config()->testEnvId());
-        if ($this->shouldRegisterWithSpawnedProcessesCleaner()) {
-            $builder->add('spawnedProcessesCleanerPort', AmbientContext::config()->spawnedProcessesCleanerPort());
-        }
+        $builder->add('config', AmbientContext::config());
     }
 }

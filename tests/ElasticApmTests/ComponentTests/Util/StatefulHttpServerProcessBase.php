@@ -8,6 +8,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestLogCategory;
+use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Factory;
@@ -22,16 +23,14 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
 {
     use HttpServerProcessTrait;
 
-    public const PORT_CMD_OPT_NAME = 'port';
+    /** @var Logger */
+    private $logger;
 
     /** @var string */
     protected $runScriptFile;
 
     /** @var int */
     protected $port;
-
-    /** @var Logger */
-    private $logger;
 
     public function __construct(string $runScriptFile)
     {
@@ -45,22 +44,17 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         )->addContext('this', $this);
     }
 
-    protected function cliHelpOptions(): string
+    protected function processConfig(): void
     {
-        return ' --' . self::PORT_CMD_OPT_NAME . /** @lang text */ '=<port number>';
-    }
+        parent::processConfig();
 
-    protected function parseArgs(): void
-    {
-        $longOpts = [];
+        $this->port = intval(
+            self::getRequiredTestOption(
+                AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
+            )
+        );
 
-        // --port=12345 - required value
-        $longOpts[] = self::PORT_CMD_OPT_NAME . ':';
-
-        $parsedCliOptions = getopt(/* shortOpts */ '', $longOpts);
-
-        $portAsString = $this->checkRequiredCliOption(self::PORT_CMD_OPT_NAME, $parsedCliOptions);
-        $this->port = intval($portAsString);
+        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::THIS_SERVER_ID_OPTION_NAME);
     }
 
     /**
@@ -72,7 +66,12 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
 
     protected function runImpl(): void
     {
-        $this->runHttpServer($this->port);
+        try {
+            $this->runHttpServer($this->port);
+        } catch (Exception $ex) {
+            ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
+        }
     }
 
     private function runHttpServer(int $port): void
@@ -109,8 +108,9 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     {
     }
 
-    protected function shouldHaveTestEnvId(ServerRequestInterface $request): bool
-    {
+    protected function shouldRequestHaveServerId(
+        /** @noinspection PhpUnusedParameterInspection */ ServerRequestInterface $request
+    ): bool {
         return true;
     }
 
@@ -161,8 +161,8 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
-        if ($this->shouldHaveTestEnvId($request)) {
-            $verifyTestEnvIdResponse = self::verifyTestEnvIdEx(
+        if ($this->shouldRequestHaveServerId($request)) {
+            $verifyTestEnvIdResponse = self::verifyServerIdEx(
                 function (string $headerName) use ($request): string {
                     return self::getRequestHeader($request, $headerName);
                 }

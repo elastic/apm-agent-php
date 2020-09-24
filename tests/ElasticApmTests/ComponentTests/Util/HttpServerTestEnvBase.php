@@ -17,8 +17,11 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     /** @var Logger */
     private $logger;
 
-    /** @var int */
-    protected $appCodeHostServerPort;
+    /** @var string|null */
+    protected $appCodeHostServerId = null;
+
+    /** @var int|null */
+    protected $appCodeHostServerPort = null;
 
     public function __construct()
     {
@@ -36,6 +39,8 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     {
         $this->ensureMockApmServerRunning();
         $this->ensureAppCodeHostServerRunning($testProperties);
+        TestCase::assertNotNull($this->appCodeHostServerPort);
+        TestCase::assertNotNull($this->appCodeHostServerId);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -43,13 +48,12 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $response = BuiltinHttpServerAppCodeHost::sendRequest(
+        $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
+            $this->appCodeHostServerId,
             $testProperties->httpMethod,
             $testProperties->uriPath,
             [
-                self::TEST_ENV_ID_HEADER_NAME => $this->testEnvId(),
                 BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
                 BuiltinHttpServerAppCodeHost::METHOD_HEADER_NAME => $testProperties->appCodeMethod,
             ]
