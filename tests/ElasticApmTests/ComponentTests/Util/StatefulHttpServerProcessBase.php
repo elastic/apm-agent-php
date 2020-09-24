@@ -101,7 +101,44 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
 
         $this->beforeLoopRun($loop);
 
+        if (!TestOsUtil::isWindows()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Registering to receive OS signals...');
+
+            $stopHttpServerFunc = function (int $signal) use ($loop, $serverSocket) {
+                $this->stopHttpServer($signal, $loop, $serverSocket);
+            };
+            $loop->addSignal(SIGINT, $stopHttpServerFunc);
+            $loop->addSignal(SIGTERM, $stopHttpServerFunc);
+        }
+
         $loop->run();
+    }
+
+    /**
+     * @param int           $signal
+     * @param LoopInterface $loop
+     * @param ServerSocket  $serverSocket
+     */
+    private function stopHttpServer(int $signal, LoopInterface $loop, ServerSocket $serverSocket): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Received OS signal - shutting down this HTTP server...',
+            ['signal' => $signal, 'signalName' => TestOsUtil::signalName($signal)]
+        );
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Closing server socket...');
+        $serverSocket->close();
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Closed server socket');
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Stopping event loop...');
+        $loop->stop();
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Stopped event loop');
     }
 
     protected function beforeLoopRun(LoopInterface $loop): void

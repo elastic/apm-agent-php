@@ -14,6 +14,7 @@
     },
     "require-dev": {
         "ext-pdo": "*",
+        "ext-pcntl": "*",
         "guzzlehttp/guzzle": "^6.5.3",
         "jchook/phpunit-assert-throws": "^1.0",
         "justinrainbow/json-schema": "^5.2.9",

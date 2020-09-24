@@ -28,7 +28,7 @@ use Throwable;
 
 abstract class TestEnvBase
 {
-    private const PORTS_RANGE_BEGIN = 50000;
+    private const PORTS_RANGE_BEGIN = 30000;
     private const PORTS_RANGE_END = 60000;
 
     private const MAX_WAIT_SERVER_START_MICROSECONDS = 10 * 1000 * 1000; // 10 seconds
