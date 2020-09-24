@@ -92,7 +92,7 @@ final class Tracer implements TracerInterface
               ?? new CompositeRawSnapshotSource(
                   [
                       new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX, $optionNames),
-                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_PREFIX, $optionNames),
+                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX, $optionNames),
                   ]
               );
 

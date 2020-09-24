@@ -43,13 +43,13 @@ abstract class AppCodeHostBase extends CliProcessBase
         && $loggerProxy->log('Done', ['Environment variables' => getenv()]);
     }
 
-    protected function registerWithSpawnedProcessesCleaner(): void
+    protected function registerWithResourcesCleaner(): void
     {
         // We don't want any of the infrastructure operations to be recorded as application's APM events
         ElasticApm::pauseRecording();
 
         try {
-            parent::registerWithSpawnedProcessesCleaner();
+            parent::registerWithResourcesCleaner();
         } finally {
             ElasticApm::resumeRecording();
         }

@@ -17,14 +17,13 @@ use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
 use React\Http\Response;
 use React\Promise\Promise;
-use RuntimeException;
 
 final class MockApmServer extends StatefulHttpServerProcessBase
 {
-    private const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
+    public const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
     private const INTAKE_API_URI = '/intake/v2/events';
-    private const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
-    private const FROM_INDEX_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'FROM_INDEX';
+    public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
+    public const FROM_INDEX_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'FROM_INDEX';
     public const INTAKE_API_REQUESTS_JSON_KEY = 'intake_api_requests_received_from_agent';
 
     /** @var int */
@@ -56,29 +55,6 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         )->addContext('this', $this);
     }
 
-    public static function sendRequestToGetAgentIntakeApiRequests(
-        int $port,
-        string $testEnvId,
-        int $fromIndex
-    ): ResponseInterface {
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $response = self::sendRequest(
-            $port,
-            HttpConsts::METHOD_GET,
-            self::MOCK_API_URI_PREFIX . self::GET_INTAKE_API_REQUESTS,
-            [
-                TestEnvBase::TEST_ENV_ID_HEADER_NAME => $testEnvId,
-                self::FROM_INDEX_HEADER_NAME         => strval($fromIndex),
-            ]
-        );
-
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
-            throw new RuntimeException('Received unexpected status code');
-        }
-
-        return $response;
-    }
-
     protected function beforeLoopRun(LoopInterface $loop): void
     {
         $this->reactLoop = $loop;
@@ -102,7 +78,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
     }
 
-    protected function shouldHaveTestEnvId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
     }
