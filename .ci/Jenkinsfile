@@ -297,13 +297,14 @@ pipeline {
                   sharedPublicly: false,
                   showInline: true)
               build(wait: true, propagate: true, job: 'elastic+unified-release+master+sign-artifacts-with-gpg', parameters: [string(name: 'gcs_input_path', value: "${env.BUCKET_PATH}")])
-              dir('signed') {
+              dir("${SIGNED_ARTIFACTS}") {
                 googleStorageDownload(bucketUri: "${env.BUCKET_SIGNED_ARTIFACTS_PATH}/*",
                     credentialsId: env.BUCKET_CREDENTIALS,
                     localDirectory: 'build/packages/',
                     pathPrefix: "${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}")
                 stash allowEmpty: false, name: env.SIGNED_ARTIFACTS, useDefaultExcludes: false
               }
+              archiveArtifacts(allowEmptyArchive: true, artifacts: "${SIGNED_ARTIFACTS}/*")
             }
           }
         }
