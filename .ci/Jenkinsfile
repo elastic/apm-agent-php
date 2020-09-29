@@ -258,6 +258,15 @@ pipeline {
           expression { isInternalCI() }
         }
       }
+      environment {
+        BUCKET_NAME = 'internal-ci-artifacts'
+        BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
+        BUCKET_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER}"
+        BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
+        SIGNED_ARTIFACTS = 'signed-artifacts'
+        BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
+        BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
+      }
       stages {
         stage('Notify') {
           options { skipDefaultCheckout() }
@@ -277,11 +286,6 @@ pipeline {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
           }
-          environment {
-            BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
-            BUCKET_PATH = "gs://internal-ci-artifacts/${BUCKET_SUBFOLDER}"
-            BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
-          }
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -294,13 +298,13 @@ pipeline {
                   pattern: 'build/packages/**/*',
                   sharedPublicly: false,
                   showInline: true)
-              echo "build(wait: true, propagate: true, job: '<TBD>', parameters: [string(name: 'URL', value: ${env.BUCKET_PATH})])"
+              build(wait: true, propagate: true, job: 'elastic+unified-release+master+sign-artifacts-with-gpg', parameters: [string(name: 'gcs_input_path', value: "${env.BUCKET_PATH}")])
               dir('signed') {
-                googleStorageDownload(bucketUri: "${env.BUCKET_PATH}/*",
+                googleStorageDownload(bucketUri: "${env.BUCKET_SIGNED_ARTIFACTS_PATH}/*",
                     credentialsId: env.BUCKET_CREDENTIALS,
                     localDirectory: 'build/packages/',
-                    pathPrefix: "${BUCKET_SUBFOLDER}")
-                stash allowEmpty: false, name: 'signed-package', useDefaultExcludes: false
+                    pathPrefix: "${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}")
+                stash allowEmpty: false, name: env.SIGNED_ARTIFACTS, useDefaultExcludes: false
               }
             }
           }
@@ -319,7 +323,7 @@ pipeline {
             deleteDir()
             unstash 'source'
             dir("${BASE_DIR}") {
-              unstash 'signed-package'
+              unstash "${env.SIGNED_ARTIFACTS}"
               withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
                 echo "SKIPPED: for testing purposes"
                 // sh script: 'make -f .ci/Makefile release', label: 'release'
