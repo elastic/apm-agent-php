@@ -61,6 +61,9 @@ make -C packaging info
 ## To test the installation in debian
 make -C packaging deb-install
 
+## To test the installation for a given release in debian
+RELEASE_VERSION=0.1 make -C packaging deb-install-release
+
 ## Help goal will provide further details
 make -C packaging help
 ```
