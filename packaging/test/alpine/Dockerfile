@@ -18,6 +18,8 @@ RUN php -r "copy('https://raw.githubusercontent.com/composer/getcomposer.org/bae
 
 RUN php -v
 
+ENV VERSION=
+ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
 WORKDIR /src
 

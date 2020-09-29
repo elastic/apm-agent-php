@@ -6,6 +6,7 @@ PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
+GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
 
 export FPM_FLAGS=
 
@@ -129,19 +130,19 @@ install: apk-install deb-install rpm-install tar-install  ## Install all the dis
 
 .PHONY: apk-install-release
 apk-install-release: prepare-apk  ## Install the apk installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e TYPE=release prepare-apk
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release prepare-apk
 
 .PHONY: deb-install-release
 deb-install-release: prepare-deb  ## Install the deb installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e TYPE=release prepare-deb
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release prepare-deb
 
 .PHONY: rpm-install-release
 rpm-install-release: prepare-rpm  ## Install the rpm installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e TYPE=release prepare-rpm
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release prepare-rpm
 
 .PHONY: tar-install-release
 tar-install-release: prepare-tar  ## Install the tar installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e TYPE=release-tar prepare-tar
+	@docker run --rm -v $(PWD):/src -w /src -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e VERSION=$(RELEASE_VERSION) -e TYPE=release-tar prepare-tar
 
 .PHONY: install-release
 install-release: apk-install-release deb-install-release rpm-install-release tar-install-release  ## Install all the distributions for a given release

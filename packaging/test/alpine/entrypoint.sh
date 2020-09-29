@@ -3,8 +3,8 @@ set -x
 
 if [ "${TYPE}" = "release" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.apk
-    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}"
-    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
+    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
     shasum -a 512 -c "${PACKAGE}.sha512"
     apk add --allow-untrusted --verbose --no-cache "${PACKAGE}"
 else

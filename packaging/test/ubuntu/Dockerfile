@@ -15,6 +15,7 @@ RUN apt-get -qq update \
 
 ENV TYPE=deb
 ENV VERSION=
+ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
 WORKDIR /src
 

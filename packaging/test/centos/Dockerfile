@@ -22,6 +22,8 @@ RUN php -r "copy('https://raw.githubusercontent.com/composer/getcomposer.org/bae
 
 # To support tar and rpm packages
 ENV TYPE=rpm
+ENV VERSION=
+ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
 WORKDIR /src
 
