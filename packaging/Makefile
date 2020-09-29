@@ -44,7 +44,6 @@ deb: create-deb  ## Create the deb installer
 
 .PHONY: rpm
 rpm: create-rpm  ## Create the rpm installer
-	## TODO: fpm replaces - with _ in the version
 
 .PHONY: tar
 tar: create-tar  ## Create the tar.gz

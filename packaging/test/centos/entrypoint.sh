@@ -5,7 +5,8 @@ if [ "${TYPE}" == "rpm" ] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release" ] ; then
-    PACKAGE=apm-agent-php-${VERSION}_preview-1.noarch.rpm
+    ## fpm replaces - with _ in the version for rpms.
+    PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
     rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
     wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}"
     wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}.sha512"

@@ -5,7 +5,7 @@ if [ "${TYPE}" == "deb" ] ; then
     ## Install debian package and configure the agent accordingly
     dpkg -i build/packages/*.deb
 elif [ "${TYPE}" == "release" ] ; then
-    PACKAGE=apm-agent-php_${VERSION}-preview_all.deb
+    PACKAGE=apm-agent-php_${VERSION}_all.deb
     wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch
     apt-key add GPG-KEY-elasticsearch
     gpg --import GPG-KEY-elasticsearch
