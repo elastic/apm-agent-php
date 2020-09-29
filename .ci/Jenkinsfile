@@ -271,14 +271,9 @@ pipeline {
       stages {
         stage('Notify') {
           options { skipDefaultCheckout() }
-          environment {
-            SUBJECT = "[${env.REPO}] Release ready to be pushed"
-            BODY = "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}"
-          }
           steps {
-            slackSend(channel: env.SLACK_CHANNEL, color: 'warning', message: "${env.SUBJECT}.\n ${env.BODY}",
-                      tokenCredentialId: 'jenkins-slack-integration-token')
-            emailext(subject: env.SUBJECT, to: "${env.NOTIFY_TO}", body: env.BODY)
+            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release ready to be pushed",
+                         body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
             setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
@@ -316,10 +311,6 @@ pipeline {
             expression { return env.RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
-          environment {
-            SUBJECT = "[${env.REPO}] Release *${env.TAG_NAME}* published"
-            BODY = "(<${env.RUN_DISPLAY_URL}|Open>)"
-          }
           steps {
             deleteDir()
             unstash 'source'
@@ -333,9 +324,7 @@ pipeline {
           }
           post {
             success {
-              slackSend(channel: env.SLACK_CHANNEL, color: 'good', message: "${env.SUBJECT}. ${env.BODY}",
-                        tokenCredentialId: 'jenkins-slack-integration-token')
-              emailext(subject: env.SUBJECT, to: "${env.NOTIFY_TO}", body: env.BODY)
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
             }
             always {
               script {
@@ -343,6 +332,11 @@ pipeline {
               }
             }
           }
+        }
+      }
+      post {
+        failure {
+          notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Release *${env.TAG_NAME}* failed", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
         }
       }
     }
@@ -366,4 +360,10 @@ def askAndWait(message) {
   } catch(err) {
     return false
   }
+}
+
+def notifyStatus(def args = [:]) {
+  slackSend(channel: env.SLACK_CHANNEL, color: args.slackStatus, message: "${args.subject}. ${args.body}",
+            tokenCredentialId: 'jenkins-slack-integration-token')
+  emailext(subject: args.subject, to: "${env.NOTIFY_TO}", body: args.body)
 }
