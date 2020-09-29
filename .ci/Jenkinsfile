@@ -304,7 +304,7 @@ pipeline {
                     pathPrefix: "${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}")
                 stash allowEmpty: false, name: env.SIGNED_ARTIFACTS, useDefaultExcludes: false
               }
-              archiveArtifacts(allowEmptyArchive: true, artifacts: "${SIGNED_ARTIFACTS}/*")
+              archiveArtifacts(allowEmptyArchive: true, artifacts: "${SIGNED_ARTIFACTS}/**/*")
             }
           }
         }
