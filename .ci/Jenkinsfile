@@ -307,6 +307,38 @@ pipeline {
             }
           }
         }
+        stage('Test-Signed-Package') {
+          failFast false
+          matrix {
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+            }
+            stages {
+              stage('Release Test') {
+                steps {
+                  withGithubNotify(context: "Signed-Test-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}") {
+                      unstash "${env.SIGNED_ARTIFACTS}"
+                      sh script: "PHP_VERSION=${PHP_VERSION} -C packaging install", label: 'package install'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
+              }
+            }
+          }
+        }
         stage('Release CI') {
           when {
             beforeAgent true
@@ -327,9 +359,36 @@ pipeline {
             success {
               notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
             }
-            always {
-              script {
-                currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+          }
+        }
+        // TBD: nottify if test failures for the released packages
+        stage('Test-Released-Package') {
+          failFast false
+          matrix {
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+            }
+            stages {
+              stage('Release Test') {
+                steps {
+                  withGithubNotify(context: "Release-Test-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME} -C packaging install-release", label: 'package install-release'
+                    }
+                  }
+                }
+                post {
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
               }
             }
           }
@@ -338,6 +397,11 @@ pipeline {
       post {
         failure {
           notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Release *${env.TAG_NAME}* failed", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
+        }
+        always {
+          script {
+            currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+          }
         }
       }
     }
