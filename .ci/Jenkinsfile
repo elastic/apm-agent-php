@@ -258,6 +258,7 @@ pipeline {
           expression { isInternalCI() }
         }
       }
+      agent { label 'linux && docker && ubuntu-18.04 && immutable' }
       environment {
         BUCKET_NAME = 'internal-ci-artifacts'
         BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
