@@ -7,7 +7,7 @@ pipeline {
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
-    SLACK_CHANNEL = '#observablt-robots'
+    SLACK_CHANNEL = '#apm-agent-php'
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
     ONLY_DOCS = "false"
   }
@@ -255,7 +255,7 @@ pipeline {
       when {
         beforeAgent true
         allOf {
-          //tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+          tag pattern: 'v\\d+.*', comparator: 'REGEXP'
           expression { isInternalCI() }
         }
       }
@@ -268,7 +268,6 @@ pipeline {
         SIGNED_ARTIFACTS = 'signed-artifacts'
         BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
         BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
-        TAG_NAME = 'test-1.2.3'
       }
       stages {
         stage('Notify') {
