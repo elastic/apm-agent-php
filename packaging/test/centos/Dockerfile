@@ -12,7 +12,7 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
 ## sh: git: command not found
 # the zip extension and unzip command are both missing, skipping.
 RUN yum update -y \
-    && yum install -y git unzip \
+    && yum install -y git perl-Digest-SHA unzip wget \
     && yum clean all
 
 RUN php -r "copy('https://raw.githubusercontent.com/composer/getcomposer.org/baecae060ee7602a9908f2259f7460b737839972/web/installer', 'composer-setup.php');" \

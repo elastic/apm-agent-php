@@ -4,6 +4,22 @@ set -xe
 if [ "${TYPE}" == "rpm" ] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
+elif [ "${TYPE}" == "release" ] ; then
+    PACKAGE=apm-agent-php-${VERSION}_preview-1.noarch.rpm
+    rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}"
+    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}.sha512"
+    shasum -a 512 -c "${PACKAGE}.sha512"
+    rpm -ivh "${PACKAGE}"
+elif [ "${TYPE}" == "release-tar" ] ; then
+    PACKAGE=apm-agent-php.tar
+    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}"
+    wget -q "https://github.com/elastic/apm-agent-php/releases/download/v${VERSION}/${PACKAGE}.sha512"
+    shasum -a 512 -c "${PACKAGE}.sha512"
+    ## Install tar package and configure the agent accordingly
+    tar -xf ${PACKAGE} -C /
+    # shellcheck disable=SC1091
+    source /.scripts/after_install
 else
     ## Install tar package and configure the agent accordingly
     tar -xf build/packages/*.tar -C /
