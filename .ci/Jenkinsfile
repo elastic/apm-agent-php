@@ -268,7 +268,7 @@ pipeline {
         SIGNED_ARTIFACTS = 'signed-artifacts'
         BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
         BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
-        TAG_NAME = "test-1.2.3-${env.BUILD_ID}"
+        TAG_NAME = 'test-1.2.3'
       }
       stages {
         stage('Notify') {
