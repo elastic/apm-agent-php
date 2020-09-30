@@ -10,6 +10,7 @@ pipeline {
     SLACK_CHANNEL = '#apm-agent-php'
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
     ONLY_DOCS = "false"
+    SIGNED_ARTIFACTS = 'signed-artifacts'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -21,7 +22,7 @@ pipeline {
     quietPeriod(10)
   }
   triggers {
-    issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?tests(?:\\W+please)?.*')
+    issueCommentTrigger('(?i)(.*(?:jenkins\\W+)?run\\W+(?:the\\W+)?tests.*|^/packaging\\W+.*$)')
   }
   stages {
     stage('Initializing'){
@@ -145,13 +146,6 @@ pipeline {
               }
             }
           }
-          post {
-            always {
-              dir("${BASE_DIR}"){
-                archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/packages/*')
-              }
-            }
-          }
         }
         stage('Package-Test') {
           when {
@@ -244,6 +238,52 @@ pipeline {
             }
           }
         }
+        // This stage happens in the internal-ci instance to be able to sign the artifacts correctly.
+        stage('Sign') {
+          options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            allOf {
+              expression { isInternalCI() }
+              anyOf {
+                tag pattern: 'v\\d+.*', comparator: 'REGEXP'
+                expression { return env.GITHUB_COMMENT?.contains('packaging') }
+                branch 'master'
+              }
+            }
+          }
+          environment {
+            BUCKET_NAME = 'internal-ci-artifacts'
+            BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
+            BUCKET_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER}"
+            BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
+            BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
+            BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
+          }
+          agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+          steps {
+            deleteDir()
+            unstash 'source'
+            dir("${BASE_DIR}") {
+              unstash 'package'
+              googleStorageUpload(bucket: env.BUCKET_PATH,
+                  credentialsId: env.BUCKET_CREDENTIALS,
+                  pathPrefix: 'build/packages/',
+                  pattern: 'build/packages/**/*',
+                  sharedPublicly: true,
+                  showInline: true)
+              build(wait: true, propagate: true, job: 'elastic+unified-release+master+sign-artifacts-with-gpg', parameters: [string(name: 'gcs_input_path', value: "${env.BUCKET_PATH}")])
+              dir("${SIGNED_ARTIFACTS}") {
+                googleStorageDownload(bucketUri: "${env.BUCKET_SIGNED_ARTIFACTS_PATH}/*",
+                    credentialsId: env.BUCKET_CREDENTIALS,
+                    localDirectory: 'build/packages/',
+                    pathPrefix: "${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}")
+                stash allowEmpty: false, name: env.SIGNED_ARTIFACTS, useDefaultExcludes: false
+              }
+              archiveArtifacts(allowEmptyArchive: true, artifacts: "${SIGNED_ARTIFACTS}/**/*")
+            }
+          }
+        }
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
@@ -260,15 +300,6 @@ pipeline {
         }
       }
       agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-      environment {
-        BUCKET_NAME = 'internal-ci-artifacts'
-        BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
-        BUCKET_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER}"
-        BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
-        SIGNED_ARTIFACTS = 'signed-artifacts'
-        BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
-        BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
-      }
       stages {
         stage('Notify') {
           options { skipDefaultCheckout() }
@@ -276,35 +307,6 @@ pipeline {
             notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release ready to be pushed",
                          body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
             setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
-          }
-        }
-        stage('Signing CI') {
-          when {
-            beforeAgent true
-            expression { return env.RELEASE == 'true' }
-          }
-          options { skipDefaultCheckout() }
-          steps {
-            deleteDir()
-            unstash 'source'
-            dir("${BASE_DIR}") {
-              unstash 'package'
-              googleStorageUpload(bucket: env.BUCKET_PATH,
-                  credentialsId: env.BUCKET_CREDENTIALS,
-                  pathPrefix: 'build/packages/',
-                  pattern: 'build/packages/**/*',
-                  sharedPublicly: false,
-                  showInline: true)
-              build(wait: true, propagate: true, job: 'elastic+unified-release+master+sign-artifacts-with-gpg', parameters: [string(name: 'gcs_input_path', value: "${env.BUCKET_PATH}")])
-              dir("${SIGNED_ARTIFACTS}") {
-                googleStorageDownload(bucketUri: "${env.BUCKET_SIGNED_ARTIFACTS_PATH}/*",
-                    credentialsId: env.BUCKET_CREDENTIALS,
-                    localDirectory: 'build/packages/',
-                    pathPrefix: "${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}")
-                stash allowEmpty: false, name: env.SIGNED_ARTIFACTS, useDefaultExcludes: false
-              }
-              archiveArtifacts(allowEmptyArchive: true, artifacts: "${SIGNED_ARTIFACTS}/**/*")
-            }
           }
         }
         stage('Release CI') {
