@@ -254,7 +254,7 @@ pipeline {
           }
           environment {
             BUCKET_NAME = 'internal-ci-artifacts'
-            BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
+            BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME ?: env.BRANCH_NAME}"
             BUCKET_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER}"
             BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
             BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
