@@ -28,6 +28,9 @@ GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile release
 ## To generate the agent extension with the existing PHP API for alpine
 PHP_VERSION=7.2 DOCKERFILE=Dockerfile.alpine make -f .ci/Makefile generate-for-package
 
+## To create a changelog
+make -f .ci/Makefile changelog
+
 ## Help goal will provide further details
 make -f .ci/Makefile help
 ```

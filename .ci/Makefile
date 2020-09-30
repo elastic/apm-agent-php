@@ -63,6 +63,21 @@ composer: prepare  ## Run composer
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/composer.sh'
 
+.PHONY: changelog
+changelog:  ## Generate the changelog
+ifndef GITHUB_TOKEN
+	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
+	exit 1
+endif
+ifndef PREVIOUS_TAG_NAME
+	@echo "Please set PREVIOUS_TAG_NAME in the environment to perform a release"
+	exit 1
+endif
+	@docker run -t --rm \
+		-v "$(PWD)":/usr/local/src \
+		-w /usr/local/src \
+		ferrarimarco/github-changelog-generator --token ${GITHUB_TOKEN} --since-tag ${PREVIOUS_TAG_NAME}
+
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
 ifndef GITHUB_TOKEN
