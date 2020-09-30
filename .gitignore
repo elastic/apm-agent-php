@@ -39,3 +39,6 @@ html_docs
 
 # Packaging artifacts
 build/
+
+# Backup files when using sed
+.bck
