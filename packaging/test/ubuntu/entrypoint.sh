@@ -4,7 +4,7 @@ set -xe
 if [ "${TYPE}" == "deb" ] ; then
     ## Install debian package and configure the agent accordingly
     dpkg -i build/packages/*.deb
-elif [ "${TYPE}" == "release" ] ; then
+elif [ "${TYPE}" == "release-github" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.deb
     wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch
     apt-key add GPG-KEY-elasticsearch
@@ -14,7 +14,7 @@ elif [ "${TYPE}" == "release" ] ; then
     shasum -a 512 -c "${PACKAGE}.sha512"
     dpkg-sig --verify "${PACKAGE}"
     dpkg -i "${PACKAGE}"
-elif [ "${TYPE}" == "release-tar" ] ; then
+elif [ "${TYPE}" == "release-tar-github" ] ; then
     PACKAGE=apm-agent-php.tar
     wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
     wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"

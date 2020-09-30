@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -x
 
-if [ "${TYPE}" = "release" ] ; then
+if [ "${TYPE}" = "release-github" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.apk
     wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
     wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
