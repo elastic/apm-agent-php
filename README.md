@@ -19,7 +19,7 @@ please post them at the [Discuss forum](https://discuss.elastic.co/c/apm).
 
 This agent is a PHP extension that must be installed in your PHP environment.
 
-See the [documentation](docs) for setup and configuration details.
+See the [documentation](https://www.elastic.co/guide/en/apm/agent/php/current/index.html) for setup and configuration details.
 
 ## Contributing
 
