@@ -2,7 +2,7 @@
 | --- |
 
 [![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmaster)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/)
-[![Releases](https://img.shields.io/github/v/release/elastic/apm-agent-php?color=green&include_prereleases&sort=semver&style=plastic)](https://github.com/elastic/apm-agent-php/releases)
+[![Releases](https://img.shields.io/github/v/release/elastic/apm-agent-php?color=blue&include_prereleases&sort=semver)](https://github.com/elastic/apm-agent-php/releases)
 [![Artifacts](https://img.shields.io/badge/artifacts-Latest%20from%20master-yellow)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/lastSuccessfulBuild/artifact)
 
 # Elastic APM Agent for PHP
