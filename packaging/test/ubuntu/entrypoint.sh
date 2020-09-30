@@ -9,15 +9,15 @@ elif [ "${TYPE}" == "release-github" ] ; then
     wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch
     apt-key add GPG-KEY-elasticsearch
     gpg --import GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
     shasum -a 512 -c "${PACKAGE}.sha512"
     dpkg-sig --verify "${PACKAGE}"
     dpkg -i "${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
     shasum -a 512 -c "${PACKAGE}.sha512"
     ## Install tar package and configure the agent accordingly
     tar -xf ${PACKAGE} -C /

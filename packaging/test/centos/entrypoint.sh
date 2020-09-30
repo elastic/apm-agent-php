@@ -8,14 +8,14 @@ elif [ "${TYPE}" == "release-github" ] ; then
     ## fpm replaces - with _ in the version for rpms.
     PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
     rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
     shasum -a 512 -c "${PACKAGE}.sha512"
     rpm -ivh "${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASE_URL}/v${VERSION}/${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
     shasum -a 512 -c "${PACKAGE}.sha512"
     ## Install tar package and configure the agent accordingly
     tar -xf ${PACKAGE} -C /
