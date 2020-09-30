@@ -268,6 +268,7 @@ pipeline {
         SIGNED_ARTIFACTS = 'signed-artifacts'
         BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
         BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
+        RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
       }
       stages {
         stage('Notify') {
@@ -307,6 +308,41 @@ pipeline {
             }
           }
         }
+        stage('Test-Signed-Package') {
+          failFast false
+          matrix {
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+            }
+            stages {
+              stage('Release Test') {
+                steps {
+                  withGithubNotify(context: "Signed-Test-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}") {
+                      unstash "${env.SIGNED_ARTIFACTS}"
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
+                    }
+                  }
+                }
+                post {
+                  unsuccessful {
+                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
+                  }
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
+              }
+            }
+          }
+        }
         stage('Release CI') {
           when {
             beforeAgent true
@@ -325,11 +361,40 @@ pipeline {
           }
           post {
             success {
-              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }
-            always {
-              script {
-                currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+          }
+        }
+        stage('Test-Released-Package') {
+          failFast false
+          matrix {
+            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+            options { skipDefaultCheckout() }
+            axes {
+              axis {
+                name 'PHP_VERSION'
+                values '7.2', '7.3', '7.4'
+              }
+            }
+            stages {
+              stage('Release Test') {
+                steps {
+                  withGithubNotify(context: "Release-Test-${PHP_VERSION}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
+                    }
+                  }
+                }
+                post {
+                  unsuccessful {
+                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published with some test failures in the installers.", body: "Please review the signed and released binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
+                  }
+                  always {
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                  }
+                }
               }
             }
           }
@@ -337,7 +402,12 @@ pipeline {
       }
       post {
         failure {
-          notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Release *${env.TAG_NAME}* failed", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
+          notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Release *${env.TAG_NAME}* failed", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)")
+        }
+        always {
+          script {
+            currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
+          }
         }
       }
     }
