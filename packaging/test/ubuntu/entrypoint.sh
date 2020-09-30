@@ -5,22 +5,24 @@ if [ "${TYPE}" == "deb" ] ; then
     ## Install debian package and configure the agent accordingly
     dpkg -i build/packages/*.deb
 elif [ "${TYPE}" == "release-github" ] ; then
+    mkdir -p build/releases
     PACKAGE=apm-agent-php_${VERSION}_all.deb
     wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch
     apt-key add GPG-KEY-elasticsearch
     gpg --import GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
-    shasum -a 512 -c "${PACKAGE}.sha512"
-    dpkg-sig --verify "${PACKAGE}"
-    dpkg -i "${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}.sha512"
+    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
+    dpkg-sig --verify "build/releases/${PACKAGE}"
+    dpkg -i "build/releases/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
+    mkdir -p build/releases
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
-    shasum -a 512 -c "${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}.sha512"
+    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
     ## Install tar package and configure the agent accordingly
-    tar -xf ${PACKAGE} -C /
+    tar -xf build/releases/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 else

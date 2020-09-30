@@ -5,20 +5,22 @@ if [ "${TYPE}" == "rpm" ] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release-github" ] ; then
+    mkdir -p build/releases
     ## fpm replaces - with _ in the version for rpms.
     PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
     rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
-    shasum -a 512 -c "${PACKAGE}.sha512"
-    rpm -ivh "${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}"
+    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
+    rpm -ivh "build/releases/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
+    mkdir -p build/releases
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512"
-    shasum -a 512 -c "${PACKAGE}.sha512"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
+    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}"
+    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
     ## Install tar package and configure the agent accordingly
-    tar -xf ${PACKAGE} -C /
+    tar -xf build/releases/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 else
