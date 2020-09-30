@@ -383,7 +383,7 @@ pipeline {
                     deleteDir()
                     unstash 'source'
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replace('^v', '')} -C packaging install-release", label: 'package install-release'
+                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} -C packaging install-release", label: 'package install-release'
                     }
                   }
                 }
