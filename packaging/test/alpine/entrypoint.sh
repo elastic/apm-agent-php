@@ -10,7 +10,7 @@ BUILD_RELEASES_FOLDER=build/releases
 #### MAIN ####
 ##############
 if [ "${TYPE}" = "release-github" ] ; then
-    mkdir -p build/releases
+    mkdir -p "${BUILD_RELEASES_FOLDER}"
     PACKAGE=apm-agent-php_${VERSION}_all.apk
     wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
     wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "${BUILD_RELEASES_FOLDER}/${PACKAGE}.sha512"

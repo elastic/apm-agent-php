@@ -9,16 +9,19 @@ BUILD_RELEASES_FOLDER=build/releases
 ###################
 #### FUNCTIONS ####
 ###################
-function downloadWithShasumValidation() {
+function download() {
     package=$1
     folder=$2
     url=$3
     mkdir -p "${folder}"
-    rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch -O "${folder}/GPG-KEY-elasticsearch"
     wget -q "${url}/${package}" -O "${folder}/${package}"
     wget -q "${url}/${package}.sha512" -O "${folder}/${package}.sha512"
-    cd ${folder} || exit
+    wget -q "${url}/${package}.asc" -O "${folder}/${package}.asc"
+    cd "${folder}" || exit
+    gpg --import "GPG-KEY-elasticsearch"
     shasum -a 512 -c "${package}.sha512"
+    gpg --verify "${package}.asc" "${package}"
     cd -
 }
 
@@ -31,11 +34,11 @@ if [ "${TYPE}" == "rpm" ] ; then
 elif [ "${TYPE}" == "release-github" ] ; then
     ## fpm replaces - with _ in the version for rpms.
     PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
-    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
     PACKAGE=apm-agent-php.tar
-    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     ## Install tar package and configure the agent accordingly
     tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
