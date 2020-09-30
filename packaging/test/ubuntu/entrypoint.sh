@@ -1,28 +1,45 @@
 #!/usr/bin/env bash
 set -xe
 
+###################
+#### VARIABLES ####
+###################
+BUILD_RELEASES_FOLDER=build/releases
+
+###################
+#### FUNCTIONS ####
+###################
+function downloadWithShasumValidation() {
+    package=$1
+    folder=$2
+    url=$3
+    mkdir -p "${folder}"
+    wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch -O "${folder}/GPG-KEY-elasticsearch"
+    wget -q "${url}/${package}" -O "${folder}/${package}"
+    wget -q "${url}/${package}.sha512" -O "${folder}/${package}.sha512"
+    cd ${folder} || exit
+    shasum -a 512 -c "${package}.sha512"
+    cd -
+}
+
+##############
+#### MAIN ####
+##############
 if [ "${TYPE}" == "deb" ] ; then
     ## Install debian package and configure the agent accordingly
     dpkg -i build/packages/*.deb
 elif [ "${TYPE}" == "release-github" ] ; then
-    mkdir -p build/releases
     PACKAGE=apm-agent-php_${VERSION}_all.deb
-    wget -q https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    apt-key add GPG-KEY-elasticsearch
-    gpg --import GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}.sha512"
-    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
-    dpkg-sig --verify "build/releases/${PACKAGE}"
-    dpkg -i "build/releases/${PACKAGE}"
+    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    apt-key add "${BUILD_RELEASES_FOLDER}/GPG-KEY-elasticsearch"
+    gpg --import "${BUILD_RELEASES_FOLDER}/GPG-KEY-elasticsearch"
+    dpkg-sig --verify "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
+    dpkg -i "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
-    mkdir -p build/releases
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}.sha512"
-    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
+    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     ## Install tar package and configure the agent accordingly
-    tar -xf build/releases/${PACKAGE} -C /
+    tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 else

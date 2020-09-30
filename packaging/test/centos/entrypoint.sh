@@ -1,26 +1,43 @@
 #!/usr/bin/env bash
 set -xe
 
+###################
+#### VARIABLES ####
+###################
+BUILD_RELEASES_FOLDER=build/releases
+
+###################
+#### FUNCTIONS ####
+###################
+function downloadWithShasumValidation() {
+    package=$1
+    folder=$2
+    url=$3
+    mkdir -p "${folder}"
+    rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    wget -q "${url}/${package}" -O "${folder}/${package}"
+    wget -q "${url}/${package}.sha512" -O "${folder}/${package}.sha512"
+    cd ${folder} || exit
+    shasum -a 512 -c "${package}.sha512"
+    cd -
+}
+
+##############
+#### MAIN ####
+##############
 if [ "${TYPE}" == "rpm" ] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release-github" ] ; then
-    mkdir -p build/releases
     ## fpm replaces - with _ in the version for rpms.
     PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
-    rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}"
-    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
-    rpm -ivh "build/releases/${PACKAGE}"
+    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
-    mkdir -p build/releases
     PACKAGE=apm-agent-php.tar
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "build/releases/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "build/releases/${PACKAGE}"
-    shasum -a 512 -c "build/releases/${PACKAGE}.sha512"
+    downloadWithShasumValidation "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     ## Install tar package and configure the agent accordingly
-    tar -xf build/releases/${PACKAGE} -C /
+    tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /.scripts/after_install
 else
