@@ -26,6 +26,6 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/junit.xml
 
 CMD phpize \
-    && ./configure --enable-elastic_apm \
+    && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
     && make clean \
     && make
