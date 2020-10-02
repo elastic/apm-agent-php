@@ -7,20 +7,21 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Tests\Util\Deserialization\SerializationTestUtil;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use RuntimeException;
 use Throwable;
 
 abstract class AppCodeHostBase extends CliProcessBase
 {
-    /** @var Logger */
-    private $logger;
-
+    /** @var array<string, mixed>|null */
+    public $appCodeArgs;
     /** @var string */
     protected $appCodeClass;
-
     /** @var string */
     protected $appCodeMethod;
+    /** @var Logger */
+    private $logger;
 
     public function __construct(string $runScriptFile)
     {
@@ -55,14 +56,31 @@ abstract class AppCodeHostBase extends CliProcessBase
         }
     }
 
+    /**
+     * @param string|null $appCodeArgsAsString
+     *
+     * @return array<string, mixed>|null
+     */
+    protected static function deserializeAppCodeArguments(?string $appCodeArgsAsString): ?array
+    {
+        return is_null($appCodeArgsAsString)
+            ? null
+            : SerializationTestUtil::deserializeJson($appCodeArgsAsString, /* asAssocArray */ true);
+    }
+
     protected function callAppCode(): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Calling application code...');
 
         try {
-            /** @phpstan-ignore-next-line */
-            call_user_func([$this->appCodeClass, $this->appCodeMethod]);
+            if (is_null($this->appCodeArgs)) {
+                /** @phpstan-ignore-next-line */
+                call_user_func([$this->appCodeClass, $this->appCodeMethod]);
+            } else {
+                /** @phpstan-ignore-next-line */
+                call_user_func([$this->appCodeClass, $this->appCodeMethod], $this->appCodeArgs);
+            }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Call to application code exited by exception', ['throwable' => $throwable]);
@@ -78,5 +96,6 @@ abstract class AppCodeHostBase extends CliProcessBase
         parent::toStringAddProperties($builder);
         $builder->add('appCodeClass', $this->appCodeClass);
         $builder->add('appCodeMethod', $this->appCodeMethod);
+        $builder->add('appCodeArgs', $this->appCodeArgs);
     }
 }

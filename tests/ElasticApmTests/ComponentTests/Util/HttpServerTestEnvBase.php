@@ -6,6 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionDataInterface;
@@ -14,14 +15,12 @@ use RuntimeException;
 
 abstract class HttpServerTestEnvBase extends TestEnvBase
 {
-    /** @var Logger */
-    private $logger;
-
     /** @var string|null */
     protected $appCodeHostServerId = null;
-
     /** @var int|null */
     protected $appCodeHostServerPort = null;
+    /** @var Logger */
+    private $logger;
 
     public function __construct()
     {
@@ -33,6 +32,11 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+    }
+
+    public function isHttp(): bool
+    {
+        return true;
     }
 
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
@@ -48,21 +52,30 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
+        $headers = [
+            BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
+            BuiltinHttpServerAppCodeHost::METHOD_HEADER_NAME => $testProperties->appCodeMethod,
+        ];
+        if (!is_null($testProperties->appCodeArgs)) {
+            $headers[BuiltinHttpServerAppCodeHost::ARGUMENTS_HEADER_NAME]
+                = SerializationUtil::serializeAsJson(
+                    $testProperties->appCodeArgs,
+                    AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
+                );
+        }
+
         $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
             $this->appCodeHostServerId,
             $testProperties->httpMethod,
             $testProperties->uriPath,
-            [
-                BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
-                BuiltinHttpServerAppCodeHost::METHOD_HEADER_NAME => $testProperties->appCodeMethod,
-            ]
+            $headers
         );
         if ($response->getStatusCode() !== $testProperties->expectedStatusCode) {
             throw new RuntimeException(
                 'HTTP status code does not match the expected one.'
-                . ' Expected:' . $testProperties->expectedStatusCode
-                . ', actual:' . $response->getStatusCode()
+                . ' Expected: ' . $testProperties->expectedStatusCode
+                . ', actual: ' . $response->getStatusCode()
             );
         }
 

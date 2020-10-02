@@ -128,6 +128,15 @@ final class Transaction extends TransactionData implements TransactionInterface
         }
     }
 
+    public function setResult(?string $result): void
+    {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+            return;
+        }
+
+        $this->result = $this->tracer->limitNullableKeywordString($result);
+    }
+
     public function end(?float $duration = null): void
     {
         if (!$this->endExecutionSegment($duration)) {

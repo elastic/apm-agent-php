@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-final class ExternalHttpServerTestEnv extends TestEnvBase
+final class ExternalHttpServerTestEnv extends HttpServerTestEnvBase
 {
-    public function sendRequestToInstrumentedApp(TestProperties $testProperties): void
+    protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
     {
-        // TODO: Implement sendRequestToInstrumentedApp() method.
+        // TODO: Implement ensureAppCodeHostServerRunning() method.
     }
 }

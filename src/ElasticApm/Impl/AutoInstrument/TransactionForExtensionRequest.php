@@ -50,6 +50,13 @@ final class TransactionForExtensionRequest
             return;
         }
 
+        if (is_null($this->transactionForRequest->getResult()) && !self::isCliScript()) {
+            $discoveredResult = $this->discoverHttpResult();
+            if (!is_null($discoveredResult)) {
+                $this->transactionForRequest->setResult($discoveredResult);
+            }
+        }
+
         $this->transactionForRequest->end();
     }
 
@@ -127,5 +134,28 @@ final class TransactionForExtensionRequest
             ['requestInitStartTime' => $requestInitStartTime]
         );
         return $requestInitStartTime;
+    }
+
+    private function discoverHttpResult(): ?string
+    {
+        $statusCode = http_response_code();
+        if (!is_int($statusCode)) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'http_response_code() returned a value that is not an int',
+                ['statusCode' => $statusCode]
+            );
+            return null;
+        }
+
+        $statusCode100s = intdiv($statusCode, 100);
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Discovered result for HTTP transaction',
+            ['statusCode' => $statusCode, '$statusCode100s' => $statusCode100s]
+        );
+
+        return 'HTTP ' . $statusCode100s . 'xx';
     }
 }

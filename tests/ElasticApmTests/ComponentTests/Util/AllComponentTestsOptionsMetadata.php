@@ -20,6 +20,7 @@ final class AllComponentTestsOptionsMetadata
 {
     use StaticClassTrait;
 
+    public const APP_CODE_ARGUMENTS_OPTION_NAME = 'app_code_arguments';
     public const APP_CODE_CLASS_OPTION_NAME = 'app_code_class';
     public const APP_CODE_METHOD_OPTION_NAME = 'app_code_method';
     public const RESOURCES_CLEANER_PORT_OPTION_NAME = 'resources_cleaner_port';
@@ -34,6 +35,7 @@ final class AllComponentTestsOptionsMetadata
     public static function build(): array
     {
         return [
+            self::APP_CODE_ARGUMENTS_OPTION_NAME          => new NullableStringOptionMetadata(),
             self::APP_CODE_CLASS_OPTION_NAME              => new NullableStringOptionMetadata(),
             AppCodeHostKindOptionMetadata::NAME           => new AppCodeHostKindOptionMetadata(),
             self::APP_CODE_METHOD_OPTION_NAME             => new NullableStringOptionMetadata(),

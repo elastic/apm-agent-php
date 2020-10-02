@@ -75,5 +75,12 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
      */
     public function getCurrentSpan(): SpanInterface;
 
+    /**
+     * @param string|null $result
+     *
+     * @see TransactionDataInterface::getResult() For the description
+     */
+    public function setResult(?string $result): void;
+
     public function __toString(): string;
 }

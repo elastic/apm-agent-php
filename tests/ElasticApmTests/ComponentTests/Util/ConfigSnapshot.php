@@ -17,6 +17,9 @@ final class ConfigSnapshot
     use SnapshotTrait;
 
     /** @var string|null */
+    private $appCodeArguments;
+
+    /** @var string|null */
     private $appCodeClass;
 
     /** @var int */
