@@ -443,9 +443,3 @@ def notifyStatus(def args = [:]) {
   def bodyEmail = args.body.replaceAll('\\(<', '').replaceAll('\\|.*>\\)', '')
   emailext(subject: args.subject, to: "${env.NOTIFY_TO}", body: bodyEmail)
 }
-
-// TODO: to be added to the shared library
-def isTag() {
-  def ret = env.TAG_NAME?.trim() ? true : false
-  return ret
-}
