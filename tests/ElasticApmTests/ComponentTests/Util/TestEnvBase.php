@@ -567,6 +567,8 @@ abstract class TestEnvBase
         return $newIntakeApiRequests;
     }
 
+    abstract public function isHttp(): bool;
+
     public function __toString(): string
     {
         $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));

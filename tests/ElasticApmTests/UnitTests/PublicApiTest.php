@@ -114,6 +114,36 @@ class PublicApiTest extends UnitTestCaseBase
         $this->assertSame('test_TX_type_2', $reportedTx->getType());
     }
 
+    public function testTransactionSetResult(): void
+    {
+        // Act
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type_1');
+        $this->assertSame(null, $tx->getResult());
+        $tx->setResult('test_TX_result');
+        $this->assertSame('test_TX_result', $tx->getResult());
+        $tx->end();
+
+        // Assert
+        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $this->assertSame('test_TX_result', $reportedTx->getResult());
+    }
+
+    public function testTransactionSetResultToNull(): void
+    {
+        // Act
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type_1');
+        $this->assertSame(null, $tx->getResult());
+        $tx->setResult('test_TX_result');
+        $this->assertSame('test_TX_result', $tx->getResult());
+        $tx->setResult(null);
+        $this->assertSame(null, $tx->getResult());
+        $tx->end();
+
+        // Assert
+        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $this->assertSame(null, $reportedTx->getResult());
+    }
+
     public function testSpanSetName(): void
     {
         // Act

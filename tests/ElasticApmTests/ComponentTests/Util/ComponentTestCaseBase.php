@@ -17,7 +17,7 @@ class ComponentTestCaseBase extends TestCaseBase
     private $logger;
 
     /** @var TestEnvBase */
-    private $testEnv;
+    protected $testEnv;
 
     public static function init(): void
     {
