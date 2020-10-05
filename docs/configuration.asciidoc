@@ -313,3 +313,27 @@ Characters in service name which don't match regular expression will be replaced
 The version of the currently deployed service. If you don’t version your deployments,
 the recommended value for this field is the commit identifier of the deployed revision, e.g.,
 the output of git rev-parse HEAD.
+
+[float]
+[[config-transaction-sample-rate]]
+==== `transaction_sample_rate`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_TRANSACTION_SAMPLE_RATE` | `elastic_apm.transaction_sample_rate`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| None       | String
+|============
+
+By default, the agent will sample every transaction (e.g. a request to your service).
+To reduce overhead and storage requirements, you can set the sample rate to a value between 0.0 and 1.0.
+The agent will still record the overall time and result for unsampled transactions,
+but no context information, labels, or spans will be recorded.
+
+NOTE: When parsing the value for this option, the agent doesn't consider the current culture.
+It also expects that a period (`.`) is used to separate the integer and the fraction of a floating-point number.
