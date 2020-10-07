@@ -255,9 +255,9 @@ pipeline {
           when {
             beforeAgent true
             allOf {
-              not {
-                changeRequest()
-              }
+              //not {
+              //  changeRequest()
+              //}
               expression { return params.release }
             }
           }
@@ -269,8 +269,9 @@ pipeline {
                 dir("${BASE_DIR}"){
                   sh script: "VERSION=${params.VERSION} BRANCH_NAME=${env.BRANCH_NAME} make -f .ci/Makefile bump-version", label: 'bump-version'
                   sh script: "VERSION=${params.VERSION} make -f .ci/Makefile changelog", label: 'changelog'
-                  sh script: """git commit -m "Bump version ${params.VERSION}" && git push origin ${BRANCH_NAME}"""
-                  gitCreateTag(tag: "v${params.VERSION}")
+                  sh script: """git checkout -b test/test-v${params.VERSION}"""
+                  sh script: """git commit -m "Bump version ${params.VERSION}" && git push origin test/test-v${params.VERSION}"""
+                  gitCreateTag(tag: "test-v${params.VERSION}")
                 }
               }
             }
