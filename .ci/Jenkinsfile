@@ -7,8 +7,8 @@ pipeline {
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
-    SLACK_CHANNEL = '#oblt-robots'
-    NOTIFY_TO = 'build-apm+test-apm-agent-php@elastic.co'
+    SLACK_CHANNEL = '#apm-agent-php'
+    NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
     ONLY_DOCS = "false"
   }
   options {
