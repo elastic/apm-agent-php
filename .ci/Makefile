@@ -1,3 +1,5 @@
+
+SHELL=/bin/bash -o pipefail
 IMAGE := test-php
 PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
@@ -63,6 +65,11 @@ composer: prepare  ## Run composer
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/composer.sh'
 
+.PHONY: previous-version
+previous-version:  ## Fetch the current version
+	@grep '\(VERSION = \)' src/ElasticApm/ElasticApm.php | \
+	sed "s#.*= '\(.*\)';#\1#g"
+
 .PHONY: bump-version
 bump-version:  ## Bump the version given VERSION
 ifndef VERSION
@@ -71,13 +78,32 @@ ifndef VERSION
 endif
 	.ci/bump_version.sh
 
+.PHONY: prepare-changelog
+prepare-changelog:  ## Prepare the dependencies to run the changelog
+	@docker build --tag gren -f docker/gren/Dockerfile .
+
 .PHONY: changelog
 changelog:  ## Create the changelog
-ifndef VERSION
-	@echo "Please set VERSION in the environment to create the changelog"
+ifndef GITHUB_TOKEN
+	@echo "Please set GITHUB_TOKEN in the environment to generate the changelog"
 	exit 1
 endif
-	@echo "TBD"
+ifndef PREVIOUS_VERSION
+	@echo "Please set PREVIOUS_VERSION in the environment to create the changelog"
+	exit 1
+endif
+	docker run --rm -t \
+		--volume "$(PWD)":/app \
+		-u $(CURRENT_UID):$(CURRENT_GID) \
+		gren \
+			changelog \
+				-B \
+				--token="${GITHUB_TOKEN}" \
+				--generate \
+				--override \
+				--config .ci/.grenrc.js \
+				--changelog-filename="CHANGELOG-RELEASE.asciidoc"
+	#sed "#// REPLACEME_TOKEN#i $(<CHANGELOG-RELEASE.asciidoc)" CHANGELOG.asciidoc
 
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME

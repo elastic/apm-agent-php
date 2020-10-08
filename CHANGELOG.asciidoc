@@ -18,12 +18,5 @@ endif::[]
 ===== Bug fixes
 ////
 
-[[release-notes-alpha]]
-=== PHP Agent version alpha/preview
-
-[[release-notes-alpha-1]]
-==== Alpha1 release
-
-_Coming soon_
-
 // Using the template above, release notes go here.
+// REPLACEME_TOKEN
