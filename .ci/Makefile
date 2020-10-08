@@ -63,6 +63,22 @@ composer: prepare  ## Run composer
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/composer.sh'
 
+.PHONY: bump-version
+bump-version:  ## Bump the version given VERSION
+ifndef VERSION
+	@echo "Please set VERSION in the environment to bump the version"
+	exit 1
+endif
+	.ci/bump_version.sh
+
+.PHONY: changelog
+changelog:  ## Create the changelog
+ifndef VERSION
+	@echo "Please set VERSION in the environment to create the changelog"
+	exit 1
+endif
+	@echo "TBD"
+
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
 ifndef GITHUB_TOKEN
