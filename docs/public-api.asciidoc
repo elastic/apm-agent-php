@@ -343,6 +343,31 @@ $parentId = $transaction->getParentId();
 ----
 
 [float]
+[[api-transaction-interface-set-result]]
+==== `TransactionInterface::setResult`
+Sets the result of the transaction.
+
+Transaction result is optional and can be set to `null`.
+For HTTP-related transactions, the result is HTTP status code formatted like `HTTP 2xx`.
+
+Example:
+[source,php]
+----
+$transaction->setResult('my custom transaction result');
+----
+
+[float]
+[[api-transaction-interface-get-result]]
+==== `TransactionInterface::getResult`
+Gets the result of the transaction.
+
+Example:
+[source,php]
+----
+$transactionResult = $transaction->getResult();
+----
+
+[float]
 [[api-transaction-interface-end]]
 ==== `TransactionInterface::end`
 Ends the transaction and queues it to be reported to the APM Server.

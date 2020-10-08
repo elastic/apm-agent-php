@@ -5,6 +5,8 @@ OUTPUT:=build/packages
 PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
+RELEASE_VERSION?=
+GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
 
 export FPM_FLAGS=
 
@@ -43,7 +45,6 @@ deb: create-deb  ## Create the deb installer
 
 .PHONY: rpm
 rpm: create-rpm  ## Create the rpm installer
-	## TODO: fpm replaces - with _ in the version
 
 .PHONY: tar
 tar: create-tar  ## Create the tar.gz
@@ -84,33 +85,64 @@ tar-info:  ## Show the tar package metadata
 	BINARY=$$(ls -1 $(OUTPUT)/*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
-.PHONY: apk-install
-apk-install:  ## Install the apk installer to run some smoke tests
+.PHONY: prepare-apk
+prepare-apk:  ## Build the docker image for the apk smoke tests
 	@cd $(PWD)/packaging/test/alpine ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	docker run --rm -v $(PWD):/src -w /src $@
 
-.PHONY: deb-install
-deb-install:  ## Install the deb installer to run some smoke tests
+.PHONY: prepare-deeb
+prepare-deb:  ## Build the docker image for the deb smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb $@
 
-.PHONY: tar-install
-tar-install:  ## Install the tar installer to run some smoke tests
+.PHONY: prepare-tar
+prepare-tar:  ## Build the docker image for the tar smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar $@
 
-.PHONY: rpm-install
-rpm-install:  ## Install the rpm installer to run some smoke tests
+.PHONY: prepare-rpm
+prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm $@
+
+.PHONY: apk-install
+apk-install: prepare-apk  ## Install the apk installer to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src prepare-apk
+
+.PHONY: deb-install
+deb-install: prepare-deb  ## Install the deb installer to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb prepare-deb
+
+.PHONY: tar-install
+tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar prepare-tar
+
+.PHONY: rpm-install
+rpm-install: prepare-rpm  ## Install the rpm installer to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm prepare-rpm
 
 .PHONY: install
 install: apk-install deb-install rpm-install tar-install  ## Install all the distributions
+
+.PHONY: apk-install-release-github
+apk-install-release-github: prepare-apk  ## Install the apk installer from a given release to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github prepare-apk
+
+.PHONY: deb-install-release-github
+deb-install-release-github: prepare-deb  ## Install the deb installer from a given release to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github prepare-deb
+
+.PHONY: rpm-install-release-github
+rpm-install-release-github: prepare-rpm  ## Install the rpm installer from a given release to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github prepare-rpm
+
+.PHONY: tar-install-release-github
+tar-install-release-github: prepare-tar  ## Install the tar installer from a given release to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e VERSION=$(RELEASE_VERSION) -e TYPE=release-tar-github prepare-tar
+
+.PHONY: install-release-github
+install-release-github: apk-install-release-github deb-install-release-github rpm-install-release-github tar-install-release-github  ## Install all the distributions for a given release using the downloaded binaries

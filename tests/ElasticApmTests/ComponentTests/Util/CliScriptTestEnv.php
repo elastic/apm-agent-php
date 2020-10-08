@@ -6,6 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionDataInterface;
@@ -30,6 +31,11 @@ final class CliScriptTestEnv extends TestEnvBase
         )->addContext('this', $this);
     }
 
+    public function isHttp(): bool
+    {
+        return false;
+    }
+
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
         $this->ensureMockApmServerRunning();
@@ -39,20 +45,32 @@ final class CliScriptTestEnv extends TestEnvBase
             'Running ' . DbgUtil::fqToShortClassName(CliScriptAppCodeHost::class) . '...',
             ['testProperties' => $testProperties]
         );
+
+        $additionalEnvVars
+            = $testProperties->configSetter->additionalEnvVars() +
+              [
+                  TestConfigUtil::envVarNameForTestsOption(
+                      AllComponentTestsOptionsMetadata::APP_CODE_CLASS_OPTION_NAME
+                  ) => $testProperties->appCodeClass,
+                  TestConfigUtil::envVarNameForTestsOption(
+                      AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
+                  ) => $testProperties->appCodeMethod,
+              ];
+
+        if (!is_null($testProperties->appCodeArgs)) {
+            $additionalEnvVars[TestConfigUtil::envVarNameForTestsOption(
+                AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
+            )]
+                = SerializationUtil::serializeAsJson(
+                    $testProperties->appCodeArgs,
+                    AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
+                );
+        }
+
         TestProcessUtil::runProcessAndWaitUntilExit(
             $testProperties->configSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
-            $this->buildEnvVars(
-                $testProperties->configSetter->additionalEnvVars() +
-                [
-                    TestConfigUtil::envVarNameForTestsOption(
-                        AllComponentTestsOptionsMetadata::APP_CODE_CLASS_OPTION_NAME
-                    ) => $testProperties->appCodeClass,
-                    TestConfigUtil::envVarNameForTestsOption(
-                        AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
-                    ) => $testProperties->appCodeMethod,
-                ]
-            )
+            $this->buildEnvVars($additionalEnvVars)
         );
     }
 

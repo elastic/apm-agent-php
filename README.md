@@ -2,7 +2,9 @@
 | --- |
 
 [![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmaster)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/)
-[![Artifacts](https://img.shields.io/badge/artifacts-Latest%20from%20master-yellow)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/lastSuccessfulBuild/artifact)
+[![Releases](https://img.shields.io/github/v/release/elastic/apm-agent-php?color=blue&include_prereleases&sort=semver)](https://github.com/elastic/apm-agent-php/releases)
+[![Downloads-Releases](https://img.shields.io/github/downloads/elastic/apm-agent-php/total)]()
+[![Download-Latest](https://img.shields.io/github/downloads-pre/elastic/apm-agent-php/latest/total)]()
 
 # Elastic APM Agent for PHP
 
@@ -19,7 +21,7 @@ please post them at the [Discuss forum](https://discuss.elastic.co/c/apm).
 
 This agent is a PHP extension that must be installed in your PHP environment.
 
-See the [documentation](docs) for setup and configuration details.
+See the [documentation](https://www.elastic.co/guide/en/apm/agent/php/current/index.html) for setup and configuration details.
 
 ## Contributing
 

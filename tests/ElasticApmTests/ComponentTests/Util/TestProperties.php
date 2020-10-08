@@ -9,6 +9,9 @@ use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 
 final class TestProperties
 {
+    /** @var array<string, mixed>|null */
+    public $appCodeArgs;
+
     /** @var string */
     public $appCodeClass;
 
@@ -48,11 +51,20 @@ final class TestProperties
     /** @var ?string */
     public $configuredServiceVersion = null;
 
-    public function __construct(callable $appCodeClassMethod)
+    /**
+     * TestProperties constructor.
+     *
+     * @param callable                  $appCodeClassMethod
+     * @param array<string, mixed>|null $appCodeArgs
+     */
+    public function __construct(callable $appCodeClassMethod, ?array $appCodeArgs = null)
     {
         assert(is_array($appCodeClassMethod));
         $this->appCodeClass = $appCodeClassMethod[0];
         $this->appCodeMethod = $appCodeClassMethod[1];
+
+        $this->appCodeArgs = $appCodeArgs;
+
         $this->configSetter = new ConfigSetterNoop();
     }
 

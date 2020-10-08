@@ -14,6 +14,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {
     use HttpServerProcessTrait;
 
+    public const ARGUMENTS_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_ARGUMENTS';
     public const CLASS_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_CLASS';
     public const METHOD_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_METHOD';
 
@@ -59,14 +60,15 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         parent::processConfig();
 
         if (!self::isStatusCheck()) {
-            $this->appCodeClass = self::getRequestHeader(self::CLASS_HEADER_NAME);
-            $this->appCodeMethod = self::getRequestHeader(self::METHOD_HEADER_NAME);
+            $this->appCodeClass = self::getRequiredRequestHeader(self::CLASS_HEADER_NAME);
+            $this->appCodeMethod = self::getRequiredRequestHeader(self::METHOD_HEADER_NAME);
+            $this->appCodeArgs = self::deserializeAppCodeArguments(self::getRequestHeader(self::ARGUMENTS_HEADER_NAME));
         }
     }
 
     protected function runImpl(): void
     {
-        $response = self::verifyServerIdEx([__CLASS__, 'getRequestHeader']);
+        $response = self::verifyServerIdEx([__CLASS__, 'getRequiredRequestHeader']);
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
             self::sendResponse($response);
             return;
@@ -88,13 +90,23 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         throw new RuntimeException('This method should not be called: ' . __METHOD__);
     }
 
-    protected static function getRequestHeader(string $headerName): string
+    protected static function getRequestHeader(string $headerName): ?string
     {
         $headerKey = 'HTTP_' . $headerName;
         if (!array_key_exists($headerKey, $_SERVER)) {
-            throw new RuntimeException('Required HTTP request header `' . $headerName . '\' is missing');
+            return null;
         }
 
         return $_SERVER[$headerKey];
+    }
+
+    protected static function getRequiredRequestHeader(string $headerName): string
+    {
+        $headerValue = self::getRequestHeader($headerName);
+        if (is_null($headerValue)) {
+            throw new RuntimeException('Required HTTP request header `' . $headerName . '\' is missing');
+        }
+
+        return $headerValue;
     }
 }

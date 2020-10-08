@@ -128,6 +128,24 @@ WARNING: The `API key` is sent as plain-text in every request to the server, so 
 your communications using HTTPS. Unless you do so, your API Key could be observed by an attacker.
 
 [float]
+[[config-enabled]]
+==== `enabled`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_ENABLED` | `elastic_apm.enabled`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| false       | Boolean
+|============
+
+Setting to false will completely disable the agent.
+
+[float]
 [[config-environment]]
 ==== `environment`
 
@@ -153,22 +171,62 @@ NOTE: This feature is fully supported in the APM app in Kibana versions >= 7.2.
 You must use the query bar to filter for a specific environment in versions prior to 7.2.
 
 [float]
-[[config-enabled]]
-==== `enabled`
+[[config-log-level]]
+==== `log_level`
 
 [options="header"]
 |============
 | Environment variable name      | Option name in `php.ini`
-| `ELASTIC_APM_ENABLED` | `elastic_apm.enabled`
+| `ELASTIC_APM_LOG_LEVEL` | `elastic_apm.log_level`
 |============
 
 [options="header"]
 |============
 | Default                          | Type
-| false       | Boolean
+| None       | Log level
 |============
 
-Setting to false will completely disable the agent.
+Fallback configuration setting to control the logging level for the agent.
+This setting has effect for the sink when sink specific option is not set explicitly.
+See <<configure-logging>> for details.
+
+[float]
+[[config-log-level-stderr]]
+==== `log_level_stderr`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_LOG_LEVEL_STDERR` | `elastic_apm.log_level_stderr`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `CRITICAL`       | Log level
+|============
+
+The logging level for `stderr` logging sink.
+See <<configure-logging>> for details.
+
+[float]
+[[config-log-level-syslog]]
+==== `log_level_syslog`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_LOG_LEVEL_SYSLOG` | `elastic_apm.log_level_syslog`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `NOTICE`       | Log level
+|============
+
+The logging level for `syslog` logging sink.
+See <<configure-logging>> for details.
 
 [float]
 [[config-secret-token]]
@@ -255,42 +313,3 @@ Characters in service name which don't match regular expression will be replaced
 The version of the currently deployed service. If you don’t version your deployments,
 the recommended value for this field is the commit identifier of the deployed revision, e.g.,
 the output of git rev-parse HEAD.
-
-[float]
-[[config-log-level]]
-==== `log_level`
-
-[options="header"]
-|============
-| Environment variable name      | Option name in `php.ini`
-| `ELASTIC_APM_LOG_LEVEL` | `elastic_apm.log_level`
-|============
-
-[options="header"]
-|============
-| Default                          | Type
-| None       | Log level
-|============
-
-Fallback configuration setting to control the logging level for the agent.
-This setting has effect for the sink when sink specific option is not set explicitly.
-See <<configure-logging>> for details.
-
-[float]
-[[config-log-level-syslog]]
-==== `log_level_syslog`
-
-[options="header"]
-|============
-| Environment variable name      | Option name in `php.ini`
-| `ELASTIC_APM_LOG_LEVEL_SYSLOG` | `elastic_apm.log_level_syslog`
-|============
-
-[options="header"]
-|============
-| Default                          | Type
-| `NOTICE`       | Log level
-|============
-
-The logging level for `syslog` logging sink.
-See <<configure-logging>> for details.

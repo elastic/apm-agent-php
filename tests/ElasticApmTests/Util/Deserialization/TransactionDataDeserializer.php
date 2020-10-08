@@ -69,6 +69,10 @@ final class TransactionDataDeserializer extends EventDataDeserializer
                         $result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
                         return true;
 
+                    case 'result':
+                        $result->result = ValidationUtil::assertValidKeywordString($value);
+                        return true;
+
                     case 'span_count':
                         $deserializer->deserializeSpanCount($value);
                         return true;

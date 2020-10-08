@@ -26,7 +26,6 @@ final class TestHttpClientUtil
      * @return ResponseInterface
      *
      * @throws GuzzleException
-     * @noinspection PhpDocRedundantThrowsInspection
      */
     public static function sendHttpRequest(
         int $port,
@@ -39,7 +38,19 @@ final class TestHttpClientUtil
         return $client->request(
             $httpMethod,
             $uriPath,
-            [RequestOptions::HEADERS => $headers + [TestEnvBase::SERVER_ID_HEADER_NAME => $serverId]]
+            [
+                RequestOptions::HEADERS     => $headers + [TestEnvBase::SERVER_ID_HEADER_NAME => $serverId],
+
+                /*
+                 * http://docs.guzzlephp.org/en/stable/request-options.html#http-errors
+                 *
+                 * http_errors
+                 *
+                 * Set to false to disable throwing exceptions on an HTTP protocol errors (i.e., 4xx and 5xx responses).
+                 * Exceptions are thrown by default when HTTP protocol errors are encountered.
+                 */
+                RequestOptions::HTTP_ERRORS => false,
+            ]
         );
     }
 }

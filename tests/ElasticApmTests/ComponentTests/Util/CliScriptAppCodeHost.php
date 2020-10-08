@@ -32,6 +32,11 @@ final class CliScriptAppCodeHost extends AppCodeHostBase
         $this->appCodeMethod = self::getRequiredTestOption(
             AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
         );
+        $this->appCodeArgs = self::deserializeAppCodeArguments(
+            AmbientContext::config()->getOptionValueByName(
+                AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
+            )
+        );
     }
 
     protected function runImpl(): void

@@ -24,6 +24,9 @@ class TransactionData extends ExecutionSegmentData implements TransactionDataInt
     /** @var int */
     protected $startedSpansCount = 0;
 
+    /** @var string|null */
+    protected $result = null;
+
     public function getDroppedSpansCount(): int
     {
         return $this->droppedSpansCount;
@@ -37,6 +40,11 @@ class TransactionData extends ExecutionSegmentData implements TransactionDataInt
     public function getStartedSpansCount(): int
     {
         return $this->startedSpansCount;
+    }
+
+    public function getResult(): ?string
+    {
+        return $this->result;
     }
 
     /**
