@@ -88,8 +88,8 @@ ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to generate the changelog"
 	exit 1
 endif
-ifndef PREVIOUS_VERSION
-	@echo "Please set PREVIOUS_VERSION in the environment to create the changelog"
+ifndef TAG_VERSION
+	@echo "Please set TAG_VERSION in the environment to create the changelog"
 	exit 1
 endif
 	docker run --rm -t \
@@ -98,6 +98,7 @@ endif
 		gren \
 			changelog \
 				-B \
+				--tags=$(TAG_VERSION) \
 				--token="${GITHUB_TOKEN}" \
 				--generate \
 				--override \
