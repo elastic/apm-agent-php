@@ -481,7 +481,8 @@ IF YOU WOULD LIKE TO MAKE MANUAL CHANGES - YOU SHOULD [ABORT](${env.BUILD_URL}in
   def previousVersion = sh(label: 'Get previous version', script: 'make -f .ci/Makefile previous-version', returnStdout: true).trim()
   sh label: 'Bump version', script: "VERSION=${params.VERSION} BRANCH_NAME=${env.BRANCH_NAME} make -f .ci/Makefile bump-version"
   if (sh(label: 'Bump version', script: 'git diff-index --quiet HEAD --', returnStatus: true) > 0) {
-    sh label: 'Create changelog', script: "PREVIOUS_VERSION=${previousVersion} make -f .ci/Makefile changelog"
+    sh(label: 'Create changelog',
+        script: "GITHUB_TOKEN=${GITHUB_TOKEN} TAG_VERSION=${tagName} make -f .ci/Makefile prepare-changelog changelog")
     sh label: 'Git branch', script: """git checkout -b ${branchName}"""
     sh label: 'Git commit', script: """git commit -m "${message}" """
     // TODO pr is null until returnStdout is supported

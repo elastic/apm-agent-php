@@ -80,7 +80,7 @@ endif
 
 .PHONY: prepare-changelog
 prepare-changelog:  ## Prepare the dependencies to run the changelog
-	@docker build --tag gren -f docker/gren/Dockerfile .
+	@docker build --tag gren -f .ci/docker/gren/Dockerfile .
 
 .PHONY: changelog
 changelog:  ## Create the changelog
@@ -92,12 +92,11 @@ ifndef TAG_VERSION
 	@echo "Please set TAG_VERSION in the environment to create the changelog"
 	exit 1
 endif
-	docker run --rm -t \
+	@docker run --rm -t \
 		--volume "$(PWD)":/app \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		gren \
 			changelog \
-				-B \
 				--tags=$(TAG_VERSION) \
 				--token="${GITHUB_TOKEN}" \
 				--generate \
