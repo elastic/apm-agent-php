@@ -65,8 +65,8 @@ pipeline {
             withGithubNotify(context: 'Prepare-Release') {
               deleteDir()
               unstash 'source'
-              withGitRelease(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7-UserAndToken') {
-                dir("${BASE_DIR}"){
+              dir("${BASE_DIR}"){
+                withGitRelease(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7-UserAndToken') {
                   prepareRelease()
                 }
               }
