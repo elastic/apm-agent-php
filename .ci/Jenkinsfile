@@ -61,6 +61,9 @@ pipeline {
               expression { return (params.VERSION?.trim() && params.VERSION =~ /^\d+.\d+/) }
             }
           }
+          environment {
+            BRANCH_NAME = 'master'  // MOCK the release
+          }
           steps {
             withGithubNotify(context: 'Prepare-Release') {
               deleteDir()
