@@ -12,7 +12,7 @@ github-release release \
     --user ${USER} \
     --repo ${REPO} \
     --tag "${TAG_NAME}" \
-    --description "Please check the changelog - https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html"
+    --description "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)."
 
 ## Upload the distribution files
 for package in build/packages/* ; do
