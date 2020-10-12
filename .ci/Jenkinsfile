@@ -483,17 +483,16 @@ IF YOU WOULD LIKE TO MAKE MANUAL CHANGES - YOU SHOULD [ABORT](${env.BUILD_URL}in
     sh label: 'Create changelog', script: "VERSION=${params.VERSION} make -f .ci/Makefile changelog"
     sh label: 'Git branch', script: """git checkout -b ${branchName}"""
     sh label: 'Git commit', script: """git commit -m "${message}" """
-    // TODO pr is null until returnStdout is supported
     def pr = githubCreatePullRequest(title: "[RELEASE] ${params.VERSION}",
-                                     description: "${warning}\n\n###WHAT\n${message}",
-                                     labels: 'docs,release,changelog',
-                                     returnStdout: true)
-    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
-                 body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<https://github.com/elastic/apm-agent-php/pulls|PR>).""")
-    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed.")) {
+                                     description: "${warning}\n\n### WHAT\n${message}",
+                                     labels: 'docs,release,changelog')
+    notifyStatus(slackStatus: 'warning',
+                 subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
+                 body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<${pr}|PR>).""")
+    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
       gitCreateTag(tag: "${tagName}")
     } else {
-      log(level: 'WARN', text: "Please review the PR.")
+      log(level: 'WARN', text: "Please review the PR ${pr}")
     }
   } else {
     gitCreateTag(tag: "${tagName}")
