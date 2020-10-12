@@ -76,7 +76,7 @@ class OptionMetadataUnitTest extends UnitTestCaseBase
             $rawValue = '';
             $expectedParsedValue = null;
             $optTestMeta->randomValidValue(/* ref */ $rawValue, /* ref */ $expectedParsedValue, $lastParsedValue);
-            $this->assertEquals($expectedParsedValue, $optMeta->parse($rawValue));
+            $this->assertSame($expectedParsedValue, $optMeta->parse($rawValue));
             $lastParsedValue = $expectedParsedValue;
         }
     }

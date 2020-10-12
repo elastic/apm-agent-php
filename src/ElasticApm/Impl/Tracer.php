@@ -62,7 +62,7 @@ final class Tracer implements TracerInterface
         $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
         $this->eventSink = $providedDependencies->eventSink ?? new EventSender();
 
-        $this->config = $this->getConfig();
+        $this->config = $this->buildConfig();
 
         $this->logBackend = new LogBackend(LogLevel::TRACE, $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
@@ -83,7 +83,7 @@ final class Tracer implements TracerInterface
         $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata($this->config));
     }
 
-    private function getConfig(): ConfigSnapshot
+    private function buildConfig(): ConfigSnapshot
     {
         $allOptsMeta = AllOptionsMetadata::build();
         $optionNames = array_keys($allOptsMeta);
@@ -100,6 +100,11 @@ final class Tracer implements TracerInterface
             = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
         $parser = new ConfigParser($allOptsMeta, $parsingLoggerFactory);
         return new ConfigSnapshot($parser->parse($rawSnapshotSource->currentSnapshot()));
+    }
+
+    public function getConfig(): ConfigSnapshot
+    {
+        return $this->config;
     }
 
     /** @inheritDoc */

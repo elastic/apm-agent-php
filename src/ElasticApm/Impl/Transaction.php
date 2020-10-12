@@ -9,6 +9,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\RandomUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 
@@ -37,9 +38,9 @@ final class Transaction extends TransactionData implements TransactionInterface
             $timestamp
         );
 
-        $this->setName($name);
-
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
+
+        $this->isSampled = $this->makeSamplingDecision();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId]);
@@ -61,7 +62,7 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording() || !$this->isSampled) {
             return NoopSpan::singletonInstance();
         }
 
@@ -83,7 +84,7 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
+        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording() || !$this->isSampled) {
             return NoopSpan::singletonInstance();
         }
 
@@ -159,5 +160,17 @@ final class Transaction extends TransactionData implements TransactionInterface
             $this->popCurrentSpan();
         }
         $this->discardExecutionSegment();
+    }
+
+    private function makeSamplingDecision(): bool
+    {
+        if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
+            return false;
+        }
+        if ($this->tracer->getConfig()->transactionSampleRate() === 1.0) {
+            return true;
+        }
+
+        return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
     }
 }

@@ -46,6 +46,10 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
         $addEnvVarIfOptionIsConfigured(OptionNames::SECRET_TOKEN, $this->parent->configuredSecretToken);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $this->parent->configuredServiceName);
         $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $this->parent->configuredServiceVersion);
+        $addEnvVarIfOptionIsConfigured(
+            OptionNames::TRANSACTION_SAMPLE_RATE,
+            $this->parent->configuredTransactionSampleRate
+        );
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting', ['result' => $result]);

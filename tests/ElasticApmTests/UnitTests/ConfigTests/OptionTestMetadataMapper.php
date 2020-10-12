@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
+use Elastic\Apm\Impl\Config\FloatOptionMetadata;
+use Elastic\Apm\Impl\Config\IntOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionMetadataInterface;
 use Elastic\Apm\Impl\Config\StringOptionMetadata;
@@ -33,6 +35,14 @@ final class OptionTestMetadataMapper
 
         if ($optMeta instanceof BoolOptionMetadata) {
             return BoolOptionTestMetadata::singletonInstance();
+        }
+
+        if ($optMeta instanceof IntOptionMetadata) {
+            return IntOptionTestMetadata::singletonInstance();
+        }
+
+        if ($optMeta instanceof FloatOptionMetadata) {
+            return new FloatOptionTestMetadata($optMeta);
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));

@@ -77,6 +77,10 @@ final class TransactionDataDeserializer extends EventDataDeserializer
                         $deserializer->deserializeSpanCount($value);
                         return true;
 
+                    case 'sampled':
+                        $result->isSampled = ValidationUtil::assertValidBool($value);
+                        return true;
+
                     default:
                         return false;
                 }

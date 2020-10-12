@@ -51,6 +51,9 @@ final class TestProperties
     /** @var ?string */
     public $configuredServiceVersion = null;
 
+    /** @var ?string */
+    public $configuredTransactionSampleRate = null;
+
     /**
      * TestProperties constructor.
      *
@@ -122,6 +125,7 @@ final class TestProperties
         $builder->add('configuredSecretToken', $this->configuredSecretToken);
         $builder->add('configuredServiceName', $this->configuredServiceName);
         $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
+        $builder->add('configuredTransactionSampleRate', $this->configuredTransactionSampleRate);
         return $builder->build();
     }
 }

@@ -324,4 +324,16 @@ final class ValidationUtil
         self::assertValidServiceData($metadata->service());
         self::assertValidProcessData($metadata->process());
     }
+
+    /**
+     * @param mixed $boolVal
+     *
+     * @return bool
+     */
+    public static function assertValidBool($boolVal): bool
+    {
+        self::assertThat(is_bool($boolVal));
+
+        return $boolVal;
+    }
 }
