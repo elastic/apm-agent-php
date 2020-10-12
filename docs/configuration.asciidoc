@@ -330,7 +330,7 @@ the output of git rev-parse HEAD.
 | None       | String
 |============
 
-By default, the agent will sample every transaction (e.g. a request to your service).
+By default, the agent will sample every transaction (e.g., a request to your service).
 To reduce overhead and storage requirements, you can set the sample rate to a value between 0.0 and 1.0.
 The agent will still record the overall time and result for unsampled transactions,
 but no context information, labels, or spans will be recorded.
