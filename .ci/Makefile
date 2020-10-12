@@ -83,7 +83,7 @@ prepare-changelog:  ## Prepare the dependencies to run the changelog
 	@docker build --tag gren -f .ci/docker/gren/Dockerfile .
 
 .PHONY: changelog
-changelog:  ## Create the changelog
+changelog:  ## Create the changelog for the given version
 ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to generate the changelog"
 	exit 1
@@ -103,7 +103,14 @@ endif
 				--override \
 				--config .ci/.grenrc.js \
 				--changelog-filename="CHANGELOG-RELEASE.asciidoc"
-	#sed "#// REPLACEME_TOKEN#i $(<CHANGELOG-RELEASE.asciidoc)" CHANGELOG.asciidoc
+	@echo 'Merge generated changelog'
+	@sed '/CHANGELOG_AUTOMATION_KEYWORD/q' CHANGELOG.asciidoc > CHANGELOG.asciidoc.new
+	@echo '' >> CHANGELOG.asciidoc.new
+	@cat CHANGELOG-RELEASE.asciidoc >> CHANGELOG.asciidoc.new
+	@echo '' >> CHANGELOG.asciidoc.new
+	@comm -13 CHANGELOG.asciidoc.new CHANGELOG.asciidoc >> CHANGELOG.asciidoc.new
+	@mv CHANGELOG.asciidoc.new CHANGELOG.asciidoc
+	@rm CHANGELOG-RELEASE.asciidoc
 
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
