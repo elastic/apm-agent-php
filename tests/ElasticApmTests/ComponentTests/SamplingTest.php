@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
+use RuntimeException;
 
 final class SamplingTest extends ComponentTestCaseBase
 {
@@ -27,14 +29,36 @@ final class SamplingTest extends ComponentTestCaseBase
         }
     }
 
-    public static function appCodeForRateConfigTest(): void
+    /**
+     * @param array<string, mixed> $args
+     */
+    public static function appCodeForRateConfigTest(array $args): void
     {
         $tx = ElasticApm::getCurrentTransaction();
+        $transactionSampleRate = ArrayUtil::getValueIfKeyExistsElse('transactionSampleRate', $args, 1.0);
+        $expectedIsSampled = $transactionSampleRate === 1.0 ? true : ($transactionSampleRate === 0.0 ? false : null);
+        if (!is_null($expectedIsSampled) && $tx->isSampled() !== $expectedIsSampled) {
+            $tx->discard();
+            throw new RuntimeException(
+                "transactionSampleRate: $transactionSampleRate" .
+                " expectedIsSampled: $expectedIsSampled" .
+                " tx->isSampled(): " . ($tx->isSampled() ? 'true' : 'false')
+            );
+        }
+
         $tx->setLabel('TX_label_key', 123);
-        $tx->captureCurrentSpan('span1_name', 'span1_type', function () use ($tx) {
-            $tx->captureCurrentSpan('span11_name', 'span11_type', function () {
-            });
-        });
+        $tx->captureCurrentSpan(
+            'span1_name',
+            'span1_type',
+            function () use ($tx) {
+                $tx->captureCurrentSpan(
+                    'span11_name',
+                    'span11_type',
+                    function () {
+                    }
+                );
+            }
+        );
     }
 
     /**
@@ -45,7 +69,10 @@ final class SamplingTest extends ComponentTestCaseBase
      */
     public function testRateConfig(?ConfigSetterBase $configSetter, ?float $transactionSampleRate): void
     {
-        $testProperties = (new TestProperties([__CLASS__, 'appCodeForRateConfigTest']));
+        $testProperties = new TestProperties(
+            [__CLASS__, 'appCodeForRateConfigTest'],
+            /* appCodeArgs: */ ['transactionSampleRate' => $transactionSampleRate]
+        );
         if (is_null($transactionSampleRate)) {
             self::assertNull($configSetter);
         } else {

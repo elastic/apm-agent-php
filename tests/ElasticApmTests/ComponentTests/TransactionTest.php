@@ -112,7 +112,7 @@ final class TransactionTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             (new TestProperties(
                 [__CLASS__, 'appCodeForTransactionWithCustomHttpStatus'],
-                ['customHttpStatus' => $customHttpStatus]
+                /* appCodeArgs: */ ['customHttpStatus' => $customHttpStatus]
             ))->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
             function (DataFromAgent $dataFromAgent) use ($expectedTxResult): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
