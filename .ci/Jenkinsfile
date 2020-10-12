@@ -483,19 +483,20 @@ IF YOU WOULD LIKE TO MAKE MANUAL CHANGES - YOU SHOULD [ABORT](${env.BUILD_URL}in
   if (sh(label: 'Bump version', script: 'git diff-index --quiet HEAD --', returnStatus: true) > 0) {
     // Create Changelog and verify it contains what's expected.
     sh(label: 'Create changelog', script: "GITHUB_TOKEN=${GITHUB_TOKEN} TAG_VERSION=${tagName} make -f .ci/Makefile prepare-changelog changelog")
-    sh(label: 'Git branch', script: """git checkout -b ${branchName}""")
+    sh(label: "Git branch ${branchName}", script: """git checkout -b ${branchName}""")
     sh(label: 'Git commit', script: """git commit -a -m "${message}" """)
     // TODO pr is null until returnStdout is supported
     def pr = githubCreatePullRequest(title: "[RELEASE] ${params.VERSION}",
-                                     description: "${warning}\n\n###WHAT\n${message}",
+                                     description: "${warning}\n\n### WHAT\n${message}",
                                      labels: 'docs,release,changelog',
                                      returnStdout: true)
     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
                  body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<https://github.com/elastic/apm-agent-php/pulls|PR>).""")
     if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed.")) {
       // Update branch.
-      sh(label: 'Git branch', script: """git checkout ${env.BRANCH_NAME}""")
+      sh(label: "Git branch ${env.BRANCH_NAME}", script: """git checkout ${env.BRANCH_NAME}""")
       sh(label: 'Git rebase', script: """git rebase ${branchName}""")
+      sh(label: 'Git push', script: """git push origin ${env.BRANCH_NAME}""")
       gitPush()
       gitCreateTag(tag: "${tagName}")
     } else {
