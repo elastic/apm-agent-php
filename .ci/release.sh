@@ -11,7 +11,8 @@ go get github.com/github-release/github-release
 github-release release \
     --user ${USER} \
     --repo ${REPO} \
-    --tag "${TAG_NAME}"
+    --tag "${TAG_NAME}" \
+    --description "Please check the changelog - https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html"
 
 ## Upload the distribution files
 for package in build/packages/* ; do
