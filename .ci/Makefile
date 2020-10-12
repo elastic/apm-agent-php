@@ -97,7 +97,6 @@ endif
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		gren \
 			changelog \
-				-B \
 				--token="${GITHUB_TOKEN}" \
 				--generate \
 				--override \
