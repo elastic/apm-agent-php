@@ -31,4 +31,10 @@ fi
 
 ## Validate the installation works as expected with composer
 composer install
-composer run-script run_component_tests
+set +x
+/usr/sbin/rsyslogd || true
+if ! composer run-script run_component_tests ; then
+    echo 'Something bad happened when running the tests, see the output from the syslog'
+    cat /var/log/syslog
+    exit 1
+fi
