@@ -18,6 +18,9 @@ endif::[]
 ===== Bug fixes
 ////
 
+// Using the template above, release notes go here.
+// CHANGELOG_AUTOMATION_KEYWORD
+
 [[release-notes-alpha]]
 === PHP Agent version alpha/preview
 
@@ -25,6 +28,3 @@ endif::[]
 ==== Alpha1 release
 
 _Coming soon_
-
-// Using the template above, release notes go here.
-// REPLACEME_TOKEN
