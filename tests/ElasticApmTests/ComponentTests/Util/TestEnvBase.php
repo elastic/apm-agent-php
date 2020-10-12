@@ -84,12 +84,14 @@ abstract class TestEnvBase
 
     protected function isHttpServerRunning(int $port, string $serverId, string $dbgServerDesc): bool
     {
-        return (new PollingCheck(
+        /** @var Throwable|null */
+        $lastException = null;
+        $checkResult = (new PollingCheck(
             $dbgServerDesc . ' started',
             self::MAX_WAIT_SERVER_START_MICROSECONDS,
             AmbientContext::loggerFactory()
         ))->run(
-            function () use ($port, $serverId, $dbgServerDesc) {
+            function () use ($port, $serverId, $dbgServerDesc, &$lastException) {
                 $logger = AmbientContext::loggerFactory()->loggerForClass(
                     TestLogCategory::TEST_UTIL,
                     __NAMESPACE__,
@@ -105,8 +107,7 @@ abstract class TestEnvBase
                         TestEnvBase::STATUS_CHECK_URI
                     );
                 } catch (Throwable $throwable) {
-                    ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->logThrowable($throwable, 'Failed to send request to check HTTP server status');
+                    $lastException = $throwable;
                     return false;
                 }
 
@@ -124,6 +125,18 @@ abstract class TestEnvBase
                 return true;
             }
         );
+
+        if (!$checkResult) {
+            if (is_null($lastException)) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Failed to send request to check HTTP server status');
+            } else {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->logThrowable($lastException, 'Failed to send request to check HTTP server status');
+            }
+        }
+
+        return $checkResult;
     }
 
     /**
