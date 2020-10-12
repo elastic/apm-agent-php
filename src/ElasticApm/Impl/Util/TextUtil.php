@@ -105,12 +105,12 @@ final class TextUtil
 
     public static function isUpperCaseLetter(int $charAsInt): bool
     {
-        return NumericUtil::isInInclusiveRange(ord('A'), $charAsInt, ord('Z'));
+        return NumericUtil::isInClosedInterval(ord('A'), $charAsInt, ord('Z'));
     }
 
     public static function isLowerCaseLetter(int $charAsInt): bool
     {
-        return NumericUtil::isInInclusiveRange(ord('a'), $charAsInt, ord('z'));
+        return NumericUtil::isInClosedInterval(ord('a'), $charAsInt, ord('z'));
     }
 
     public static function toLowerCaseLetter(int $charAsInt): int

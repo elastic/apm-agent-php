@@ -22,4 +22,5 @@ final class OptionNames
     public const SECRET_TOKEN = 'secret_token';
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_VERSION = 'service_version';
+    public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';
 }

@@ -15,17 +15,20 @@ use Elastic\Apm\TransactionDataInterface;
  */
 class TransactionData extends ExecutionSegmentData implements TransactionDataInterface
 {
-    /** @var int */
-    protected $droppedSpansCount = 0;
-
     /** @var string|null */
     protected $parentId = null;
 
     /** @var int */
     protected $startedSpansCount = 0;
 
+    /** @var int */
+    protected $droppedSpansCount = 0;
+
     /** @var string|null */
     protected $result = null;
+
+    /** @var bool */
+    protected $isSampled;
 
     public function getDroppedSpansCount(): int
     {
@@ -45,6 +48,17 @@ class TransactionData extends ExecutionSegmentData implements TransactionDataInt
     public function getResult(): ?string
     {
         return $this->result;
+    }
+
+    /**
+     * Transactions that are 'sampled' will include all available information
+     * Transactions that are not sampled will not have 'spans' or 'context'.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
+     */
+    public function isSampled(): bool
+    {
+        return $this->isSampled;
     }
 
     /**
@@ -81,7 +95,26 @@ class TransactionData extends ExecutionSegmentData implements TransactionDataInt
             return;
         }
 
+        if ($propKey === 'isSampled') {
+            parent::serializeProperty('sampled', $this->isSampled, /* ref */ $result);
+            return;
+        }
+
         parent::serializeProperty($propKey, $propValue, /* ref */ $result);
+    }
+
+    protected function shouldSerializeContext(): bool
+    {
+        return $this->isSampled && parent::shouldSerializeContext();
+    }
+
+    protected static function getterMethodNameForConvertToData(string $propKey): string
+    {
+        if ($propKey === 'isSampled') {
+            return 'isSampled';
+        }
+
+        return parent::getterMethodNameForConvertToData($propKey);
     }
 
     public function __toString(): string

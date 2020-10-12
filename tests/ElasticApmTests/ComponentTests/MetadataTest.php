@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests;
 
-use Closure;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 
 final class MetadataTest extends ComponentTestCaseBase
 {

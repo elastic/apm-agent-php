@@ -37,4 +37,12 @@ interface TransactionDataInterface extends ExecutionSegmentDataInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L52
      */
     public function getResult(): ?string;
+
+    /**
+     * Transactions that are 'sampled' will include all available information
+     * Transactions that are not sampled will not have 'spans' or 'context'.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
+     */
+    public function isSampled(): bool;
 }

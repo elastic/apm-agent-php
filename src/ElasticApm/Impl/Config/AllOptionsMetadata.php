@@ -21,10 +21,12 @@ final class AllOptionsMetadata
     public static function build(): array
     {
         return [
-            OptionNames::ENABLED         => new BoolOptionMetadata(/* defaultValue: */ true),
-            OptionNames::ENVIRONMENT     => new NullableStringOptionMetadata(),
-            OptionNames::SERVICE_NAME    => new NullableStringOptionMetadata(),
-            OptionNames::SERVICE_VERSION => new NullableStringOptionMetadata(),
+            OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
+            OptionNames::TRANSACTION_SAMPLE_RATE =>
+                new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
         ];
     }
 }

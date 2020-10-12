@@ -14,20 +14,74 @@ final class NumericUtil
     use StaticClassTrait;
 
     /**
-     * @param mixed $rangeFirst
+     * @param mixed $intervalLeft
      * @param mixed $x
-     * @param mixed $rangeLast
+     * @param mixed $intervalRight
      *
      * @return bool
      *
      * @template        T
-     * @phpstan-param   T $rangeFirst
+     * @phpstan-param   T $intervalLeft
      * @phpstan-param   T $x
-     * @phpstan-param   T $rangeLast
+     * @phpstan-param   T $intervalRight
      *
      */
-    public static function isInInclusiveRange($rangeFirst, $x, $rangeLast): bool
+    public static function isInClosedInterval($intervalLeft, $x, $intervalRight): bool
     {
-        return ($rangeFirst <= $x) && ($x <= $rangeLast);
+        return ($intervalLeft <= $x) && ($x <= $intervalRight);
+    }
+
+    /**
+     * @param mixed $intervalLeft
+     * @param mixed $x
+     * @param mixed $intervalRight
+     *
+     * @return bool
+     *
+     * @template        T
+     * @phpstan-param   T $intervalLeft
+     * @phpstan-param   T $x
+     * @phpstan-param   T $intervalRight
+     *
+     */
+    public static function isInOpenInterval($intervalLeft, $x, $intervalRight): bool
+    {
+        return ($intervalLeft < $x) && ($x < $intervalRight);
+    }
+
+    /**
+     * @param mixed $intervalLeft
+     * @param mixed $x
+     * @param mixed $intervalRight
+     *
+     * @return bool
+     *
+     * @template        T
+     * @phpstan-param   T $intervalLeft
+     * @phpstan-param   T $x
+     * @phpstan-param   T $intervalRight
+     *
+     */
+    public static function isInRightOpenInterval($intervalLeft, $x, $intervalRight): bool
+    {
+        return ($intervalLeft <= $x) && ($x < $intervalRight);
+    }
+
+    /**
+     * @param mixed $intervalLeft
+     * @param mixed $x
+     * @param mixed $intervalRight
+     *
+     * @return bool
+     *
+     * @template        T
+     * @phpstan-param   T $intervalLeft
+     * @phpstan-param   T $x
+     * @phpstan-param   T $intervalRight
+     *
+     */
+    public static function isInLeftOpenInterval($intervalLeft, $x, $intervalRight): bool
+    {
+        return ($intervalLeft < $x) && ($x <= $intervalRight);
     }
 }
