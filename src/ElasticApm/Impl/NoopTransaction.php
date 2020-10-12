@@ -64,11 +64,6 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
     {
     }
 
-    public function __toString(): string
-    {
-        return 'NO-OP Transaction';
-    }
-
     public function getStartedSpansCount(): int
     {
         return 0;
@@ -77,5 +72,15 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
     public function getDroppedSpansCount(): int
     {
         return 0;
+    }
+
+    public function isSampled(): bool
+    {
+        return false;
+    }
+
+    public function __toString(): string
+    {
+        return 'NO-OP Transaction';
     }
 }

@@ -7,7 +7,7 @@ namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\RandomUtil;
+use Elastic\Apm\Tests\Util\TestRandomUtil;
 use Elastic\Apm\Tests\Util\RangeUtil;
 use PHPUnit\Framework\Assert as PHPUnitAssert;
 
@@ -25,12 +25,16 @@ final class BoolOptionTestMetadata implements OptionTestMetadataInterface
             PHPUnitAssert::assertIsBool($differentFromParsedValue);
         }
 
-        $parsedValue = is_null($differentFromParsedValue) ? RandomUtil::generateBool() : !$differentFromParsedValue;
+        $parsedValue = is_null($differentFromParsedValue) ? TestRandomUtil::generateBool() : !$differentFromParsedValue;
+        PHPUnitAssert::assertNotNull($parsedValue);
+        if (!is_null($differentFromParsedValue)) {
+            PHPUnitAssert::assertNotEquals($differentFromParsedValue, $parsedValue);
+        }
         $rawValues = $parsedValue ? BoolOptionMetadata::$trueRawValues : BoolOptionMetadata::$falseRawValues;
         $rawValue = $rawValues[mt_rand(0, count($rawValues) - 1)];
         $rawValueLen = strlen($rawValue);
         foreach (RangeUtil::generate(0, $rawValueLen) as $i) {
-            if (RandomUtil::generateBool()) {
+            if (TestRandomUtil::generateBool()) {
                 $rawValue[$i] = chr(TextUtil::toUpperCaseLetter(ord($rawValue[$i])));
             }
         }

@@ -60,6 +60,12 @@ abstract class ConfigSetterBase
         return $this;
     }
 
+    public function transactionSampleRate(?string $configuredTransactionSampleRate): self
+    {
+        $this->parent->configuredTransactionSampleRate = $configuredTransactionSampleRate;
+        return $this;
+    }
+
     protected static function buildAppCodePhpCmd(?string $appCodePhpIni): string
     {
         $result = AmbientContext::config()->appCodePhpExe() ?? 'php';

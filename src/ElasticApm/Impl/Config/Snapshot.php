@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
-use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -27,6 +26,9 @@ final class Snapshot
 
     /** @var string|null */
     private $serviceVersion;
+
+    /** @var float */
+    private $transactionSampleRate;
 
     /**
      * Snapshot constructor.
@@ -58,6 +60,11 @@ final class Snapshot
         return $this->serviceVersion;
     }
 
+    public function transactionSampleRate(): float
+    {
+        return $this->transactionSampleRate;
+    }
+
     public function __toString(): string
     {
         $builder = new ObjectToStringBuilder();
@@ -65,6 +72,7 @@ final class Snapshot
         $builder->add('environment', $this->environment);
         $builder->add('serviceName', $this->serviceName);
         $builder->add('serviceVersion', $this->serviceVersion);
+        $builder->add('transactionSampleRate', $this->transactionSampleRate);
         return $builder->build();
     }
 }
