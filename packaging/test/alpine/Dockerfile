@@ -8,6 +8,7 @@ RUN apk update \
     git \
     perl-utils \
     procps \
+    rsyslog \
     unzip \
     wget
 
