@@ -67,6 +67,7 @@ if ! composer run-script run_component_tests ; then
 fi
 
 ## Validate the uninstallation works as expected
+set -x
 if [ "${TYPE}" == "rpm-uninstall" ] ; then
     rpm -e "${PACKAGE}"
     ## Verify if the elastic php agent has been uninstalled

@@ -39,6 +39,8 @@ if ! composer run-script run_component_tests ; then
     exit 1
 fi
 
+## Validate the uninstallation works as expected
+set -x
 if [ "${TYPE}" = "apk-uninstall" ] ; then
     apk del --verbose --no-cache "${PACKAGE}"
     ## Verify if the elastic php agent has been uninstalled
