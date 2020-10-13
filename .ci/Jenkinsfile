@@ -207,7 +207,7 @@ pipeline {
                     unstash 'source'
                     dir("${BASE_DIR}"){
                       unstash 'package'
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging uninstall", label: 'package install'
                     }
                   }
                 }
