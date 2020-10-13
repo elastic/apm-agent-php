@@ -495,14 +495,12 @@ def prepareRelease() {
     sh(label: 'Create changelog', script: "GITHUB_TOKEN=${GITHUB_TOKEN} TAG_VERSION=${tagName} make -f .ci/Makefile prepare-changelog changelog")
     sh(label: "Git branch ${branchName}", script: """git checkout -b ${branchName}""")
     sh(label: 'Git commit', script: """git commit -a -m "${message}" """)
-    // TODO pr is null until returnStdout is supported
     def pr = githubCreatePullRequest(title: "[RELEASE] ${params.VERSION}",
                                      description: "${warning}\n\n${actions}",
-                                     labels: 'docs,release,changelog',
-                                     returnStdout: true)
+                                     labels: 'docs,release,changelog')
     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
-                 body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<https://github.com/elastic/apm-agent-php/pulls|PR>).""")
-    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed.")) {
+                 body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<${pr}|PR>).""")
+    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
       // Update branch.
       sh(label: "Git branch ${env.BRANCH_NAME}", script: """git checkout ${env.BRANCH_NAME}""")
       sh(label: 'Git rebase', script: """git rebase ${branchName}""")
@@ -510,7 +508,7 @@ def prepareRelease() {
       gitPush()
       gitCreateTag(tag: "${tagName}")
     } else {
-      log(level: 'WARN', text: "Please review the PR.")
+      log(level: 'WARN', text: "Please review the PR ${pr}")
     }
   } else {
     gitCreateTag(tag: "${tagName}")
