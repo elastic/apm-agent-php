@@ -69,7 +69,7 @@ fi
 ## Validate the uninstallation works as expected
 set -x
 if [ "${TYPE}" == "deb-uninstall" ] ; then
-    dpkg –-remove "${PACKAGE}"
+    dpkg --remove "${PACKAGE}"
     ## Verify if the elastic php agent has been uninstalled
     if php -m | grep -q 'elastic' ; then
         echo 'Extension has not been uninstalled.'
