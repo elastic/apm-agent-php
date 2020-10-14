@@ -200,14 +200,14 @@ pipeline {
               }
             }
             stages {
-              stage('Package Test') {
+              stage('Uninstallation testing') {
                 steps {
                   withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
                     deleteDir()
                     unstash 'source'
                     dir("${BASE_DIR}"){
                       unstash 'package'
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging uninstall", label: 'package install'
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging uninstall", label: 'package uninstall'
                     }
                   }
                 }
