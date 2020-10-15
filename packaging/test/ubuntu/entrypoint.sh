@@ -28,7 +28,7 @@ function download() {
 ##############
 #### MAIN ####
 ##############
-if [ "${TYPE}" == "deb" ] ; then
+if [[ "${TYPE}" == "deb" || "${TYPE}" == "deb-uninstall" ]] ; then
     ## Install debian package and configure the agent accordingly
     dpkg -i build/packages/*.deb
 elif [ "${TYPE}" == "release-github" ] ; then
@@ -64,4 +64,15 @@ if ! composer run-script run_component_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
     cat /var/log/syslog
     exit 1
+fi
+
+## Validate the uninstallation works as expected
+set -x
+if [ "${TYPE}" == "deb-uninstall" ] ; then
+    dpkg --remove "${PACKAGE}"
+    ## Verify if the elastic php agent has been uninstalled
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
 fi

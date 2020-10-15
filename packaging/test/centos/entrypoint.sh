@@ -28,7 +28,7 @@ function download() {
 ##############
 #### MAIN ####
 ##############
-if [ "${TYPE}" == "rpm" ] ; then
+if [[ "${TYPE}" == "rpm" || "${TYPE}" == "rpm-uninstall" ]] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release-github" ] ; then
@@ -64,4 +64,15 @@ if ! composer run-script run_component_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
     cat /var/log/syslog
     exit 1
+fi
+
+## Validate the uninstallation works as expected
+set -x
+if [ "${TYPE}" == "rpm-uninstall" ] ; then
+    rpm -e "${PACKAGE}"
+    ## Verify if the elastic php agent has been uninstalled
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
 fi

@@ -46,7 +46,9 @@ fpm --input-type dir \
 		--package "${OUTPUT}" \
 		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
+		--before-remove=packaging/before-uninstall.sh \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
+		packaging/before-uninstall.sh=${PHP_AGENT_DIR}/bin/before-uninstall.sh \
 		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
 		README.md=${PHP_AGENT_DIR}/docs/README.md \
