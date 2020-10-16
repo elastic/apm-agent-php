@@ -334,3 +334,22 @@ By default, the agent will sample every transaction (e.g., a request to your ser
 To reduce overhead and storage requirements, you can set the sample rate to a value between 0.0 and 1.0.
 The agent will still record the overall time and result for unsampled transactions,
 but not context information, labels, or spans.
+
+[float]
+[[config-verify-server-cert]]
+==== `verify_server_cert`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_VERIFY_SERVER_CERT` | `elastic_apm.verify_server_cert`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `true`       | Boolean
+|============
+
+By default, the agent verifies the SSL certificate if you use an HTTPS connection to the APM server.
+The verification can be disabled by changing this setting to `false`.
