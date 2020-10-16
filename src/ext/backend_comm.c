@@ -31,6 +31,18 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     return dataSize;
 }
 
+#define ELASTIC_APM_CURL_EASY_SETOPT( curl, curlOptionId, ... ) \
+    do { \
+        CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curl, curlOptionId, __VA_ARGS__ ); \
+        if ( curl_easy_setopt_ret_val != CURLE_OK ) \
+        { \
+            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option. curlOptionId: %d.", curlOptionId ); \
+            resultCode = resultCurlFailure; \
+            goto failure; \
+        } \
+    } while ( false ) \
+    /**/
+
 ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
@@ -70,10 +82,17 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
         goto failure;
     }
 
-    curl_easy_setopt( curl, CURLOPT_POST, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
-    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT_MS, (long) durationToMilliseconds( config->serverConnectTimeout ) );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_CONNECTTIMEOUT_MS, (long) durationToMilliseconds( config->serverConnectTimeout ) );
+
+    if ( ! config->verifyServerCert )
+    {
+        ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false"
+                               " - disabling SSL/TLS certificate verification for communication with APM Server..." );
+        ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_SSL_VERIFYPEER, 0L );
+    }
 
     // Authorization with API key or secret token if present
     if ( ! isNullOrEmtpyString( config->apiKey ) )
@@ -102,7 +121,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
         chunk = curl_slist_append( chunk, auth );
     }
     chunk = curl_slist_append( chunk, "Content-Type: application/x-ndjson" );
-    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, chunk );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, chunk );
 
     // User agent - "elasticapm-<language>/<version>" (no separators between "elastic" and "apm" is on purpose)
 	// For example, "elasticapm-java/1.2.3" or "elasticapm-dotnet/1.2.3"
@@ -113,7 +132,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
         resultCode = resultFailure;
         goto failure;
     }
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, userAgent );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_USERAGENT, userAgent );
 
     snprintfRetVal = snprintf( url, urlBufferSize, "%s/intake/v2/events", config->serverUrl );
     if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
@@ -122,7 +141,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
         resultCode = resultFailure;
         goto failure;
     }
-    curl_easy_setopt( curl, CURLOPT_URL, url );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_URL, url );
 
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
@@ -147,3 +166,5 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     failure:
     goto finally;
 }
+
+#undef ELASTIC_APM_CURL_EASY_SETOPT

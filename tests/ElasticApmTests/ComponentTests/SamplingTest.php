@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
@@ -77,7 +78,10 @@ final class SamplingTest extends ComponentTestCaseBase
             self::assertNull($configSetter);
         } else {
             self::assertNotNull($configSetter);
-            $testProperties->withConfig($configSetter)->transactionSampleRate(strval($transactionSampleRate));
+            $testProperties->withConfigSetter($configSetter)->setOption(
+                OptionNames::TRANSACTION_SAMPLE_RATE,
+                strval($transactionSampleRate)
+            );
         }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
             $testProperties,

@@ -572,6 +572,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverConnectTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 
 #undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
 #undef ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS
@@ -750,6 +751,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             serviceName,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME,
             /* defaultValue: */ "Unknown PHP service" );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            verifyServerCert,
+            ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT,
+            /* defaultValue: */ true );
 
     ELASTIC_APM_ASSERT_EQ_UINT64( i, numberOfOptions );
 }

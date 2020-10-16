@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
@@ -17,7 +18,7 @@ final class SecretTokenTest extends ComponentTestCaseBase
             $configSetter,
             $configured,
             function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->secretToken($configured);
+                $configSetter->setOption(OptionNames::SECRET_TOKEN, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($configured): void {
                 TestEnvBase::verifyAuthHttpRequestHeaders(

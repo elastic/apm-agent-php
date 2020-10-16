@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
@@ -30,7 +31,7 @@ final class MetadataTest extends ComponentTestCaseBase
             $configSetter,
             $configured,
             function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->environment($configured);
+                $configSetter->setOption(OptionNames::ENVIRONMENT, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyEnvironment($expected, $dataFromAgent);
@@ -74,7 +75,7 @@ final class MetadataTest extends ComponentTestCaseBase
             $configSetter,
             $configured,
             function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->serviceName($configured);
+                $configSetter->setOption(OptionNames::SERVICE_NAME, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyServiceName($expected, $dataFromAgent);
@@ -145,7 +146,7 @@ final class MetadataTest extends ComponentTestCaseBase
             $configSetter,
             $configured,
             function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->serviceVersion($configured);
+                $configSetter->setOption(OptionNames::SERVICE_VERSION, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyServiceVersion($expected, $dataFromAgent);

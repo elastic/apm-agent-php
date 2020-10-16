@@ -190,10 +190,10 @@ abstract class TestEnvBase
                         TestConfigUtil::envVarNameForTestsOption(OptionNames::ENABLED) => 'false',
                         TestConfigUtil::envVarNameForTestsOption(
                             AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
-                        ) => strval($currentTryPort),
+                        )                                                              => strval($currentTryPort),
                         TestConfigUtil::envVarNameForTestsOption(
                             AllComponentTestsOptionsMetadata::THIS_SERVER_ID_OPTION_NAME
-                        ) => $currentTryServerId,
+                        )                                                              => $currentTryServerId,
                     ]
                 )
             );
@@ -456,12 +456,13 @@ abstract class TestEnvBase
 
     protected function verifyHttpRequestHeaders(TestProperties $testProperties): void
     {
+        $configuredApiKey = $testProperties->getConfiguredAgentOption(OptionNames::API_KEY);
+
         $this->verifyAuthHttpRequestHeaders(
-            $testProperties->configuredApiKey /* <- expectedApiKey */,
+            /* expectedApiKey: */
+            $configuredApiKey,
             /* expectedSecretToken: */
-            is_null($testProperties->configuredApiKey)
-                ? $testProperties->configuredSecretToken
-                : null,
+            is_null($configuredApiKey) ? $testProperties->getConfiguredAgentOption(OptionNames::SECRET_TOKEN) : null,
             $this->dataFromAgent
         );
     }
@@ -492,15 +493,20 @@ abstract class TestEnvBase
 
     protected function verifyMetadata(TestProperties $testProperties): void
     {
-        $expectedEnvironment = Tracer::limitNullableKeywordString($testProperties->configuredEnvironment);
-        self::verifyEnvironment($expectedEnvironment, $this->dataFromAgent);
+        self::verifyEnvironment(
+            Tracer::limitNullableKeywordString($testProperties->getConfiguredAgentOption(OptionNames::ENVIRONMENT)),
+            $this->dataFromAgent
+        );
 
-        $expectedServiceName = is_null($testProperties->configuredServiceName)
+        $configuredServiceName = $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_NAME);
+        $expectedServiceName = is_null($configuredServiceName)
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
-            : MetadataDiscoverer::adaptServiceName($testProperties->configuredServiceName);
+            : MetadataDiscoverer::adaptServiceName($configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
-        $expectedServiceVersion = Tracer::limitNullableKeywordString($testProperties->configuredServiceVersion);
+        $expectedServiceVersion = Tracer::limitNullableKeywordString(
+            $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
+        );
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
     }
 

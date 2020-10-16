@@ -134,7 +134,7 @@ class ComponentTestCaseBase extends TestCaseBase
         $testProperties = new TestProperties([__CLASS__, 'appCodeEmpty']);
         if (!is_null($configSetter)) {
             self::assertNotNull($configured);
-            $setConfigFunc($testProperties->withConfig($configSetter), $configured);
+            $setConfigFunc($testProperties->withConfigSetter($configSetter), $configured);
         }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx($testProperties, $verifyFunc);
     }

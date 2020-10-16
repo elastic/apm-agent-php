@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
@@ -20,12 +21,12 @@ final class ApiKeyTest extends ComponentTestCaseBase
         $testProperties = new TestProperties([__CLASS__, 'appCodeEmpty']);
         if (!is_null($configSetter)) {
             self::assertTrue(!is_null($configuredApiKey) || !is_null($configuredSecretToken));
-            $testProperties->withConfig($configSetter);
+            $testProperties->withConfigSetter($configSetter);
             if (!is_null($configuredApiKey)) {
-                $configSetter->apiKey($configuredApiKey);
+                $configSetter->setOption(OptionNames::API_KEY, $configuredApiKey);
             }
             if (!is_null($configuredSecretToken)) {
-                $configSetter->secretToken($configuredSecretToken);
+                $configSetter->setOption(OptionNames::SECRET_TOKEN, $configuredSecretToken);
             }
         }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(

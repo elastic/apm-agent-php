@@ -27,6 +27,7 @@ final class AllOptionsMetadata
             OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
             OptionNames::TRANSACTION_SAMPLE_RATE =>
                 new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
+            OptionNames::VERIFY_SERVER_CERT      => new BoolOptionMetadata(/* defaultValue: */ true),
         ];
     }
 }

@@ -20,49 +20,25 @@ abstract class ConfigSetterBase
 
     abstract public function tearDown(): void;
 
-    public function setParent(TestProperties $parent): void
-    {
-        $this->parent = $parent;
-    }
-
     public function getParent(): TestProperties
     {
         return $this->parent;
     }
 
-    public function apiKey(?string $configuredApiKey): self
+    public function setParent(TestProperties $parent): void
     {
-        $this->parent->configuredApiKey = $configuredApiKey;
-        return $this;
+        $this->parent = $parent;
     }
 
-    public function environment(?string $configuredEnvironment): self
+    /**
+     * @param string $optName
+     * @param mixed  $optVal
+     *
+     * @return $this
+     */
+    public function setOption(string $optName, $optVal): self
     {
-        $this->parent->configuredEnvironment = $configuredEnvironment;
-        return $this;
-    }
-
-    public function secretToken(?string $configuredSecretToken): self
-    {
-        $this->parent->configuredSecretToken = $configuredSecretToken;
-        return $this;
-    }
-
-    public function serviceName(?string $configuredServiceName): self
-    {
-        $this->parent->configuredServiceName = $configuredServiceName;
-        return $this;
-    }
-
-    public function serviceVersion(?string $configuredServiceVersion): self
-    {
-        $this->parent->configuredServiceVersion = $configuredServiceVersion;
-        return $this;
-    }
-
-    public function transactionSampleRate(?string $configuredTransactionSampleRate): self
-    {
-        $this->parent->configuredTransactionSampleRate = $configuredTransactionSampleRate;
+        $this->parent->configuredOptions[$optName] = $optVal;
         return $this;
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Tests\Util\TestLogCategory;
 use RuntimeException;
 
 final class TestProcessUtil
@@ -44,7 +45,7 @@ final class TestProcessUtil
      * @param string                $cmd
      * @param array<string, string> $envVars
      */
-    public static function runProcessAndWaitUntilExit(string $cmd, array $envVars): void
+    public static function startProcessAndWaitUntilExit(string $cmd, array $envVars): void
     {
         self::startProcessImpl(TestOsUtil::isWindows() ? "$cmd > NUL" : "$cmd > /dev/null", $envVars);
     }
@@ -53,8 +54,18 @@ final class TestProcessUtil
      * @param string                $adaptedCmd
      * @param array<string, string> $envVars
      */
-    public static function startProcessImpl(string $adaptedCmd, array $envVars): void
+    private static function startProcessImpl(string $adaptedCmd, array $envVars): void
     {
+        $logger = AmbientContext::loggerFactory()->loggerForClass(
+            TestLogCategory::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addAllContext(['adaptedCmd' => $adaptedCmd, 'envVars' => $envVars]);
+
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Starting an external process...');
+
         $pipes = [];
         $openedProc = proc_open(
             $adaptedCmd,
@@ -67,5 +78,8 @@ final class TestProcessUtil
             throw new RuntimeException("Failed to start process. adaptedCmd: `$adaptedCmd'");
         }
         proc_close($openedProc);
+
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('External process started');
     }
 }
