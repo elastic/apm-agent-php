@@ -7,35 +7,37 @@ endif::[]
 == Configuration
 
 You can utilize configuration options to adapt the Elastic APM agent to your needs.
-One way to do this is to configure settings in an `elastic_apm.ini` file:
+One way to do this is to configure settings via `php.ini` file:
 
 [source,ini]
 ----
 elastic_apm.server_url = http://localhost:8200
-elastic_apm.service_name = "Unknown PHP service"
-elastic_apm.log_level = 0
+elastic_apm.service_name = "My service"
 ----
 
-The agent can also be configured at runtime with the following PHP code:
+The agent can also be configured using environment variables:
 
-[source,php]
+[source,shell]
 ----
-ini_set('elastic_apm.server_url', 'http://localhost:8200');
-ini_set('elastic_apm.service_name', 'My_Test_Service');
-ini_set('elastic_apm.log_level', 'DEBUG');
+export ELASTIC_APM_SERVER_URL="http://localhost:8200"
+export ELASTIC_APM_SERVICE_NAME="My_Test_Service"
 ----
+
+NOTE: If you use environment variables to configure the agent make sure the process running your PHP code inherits those environment variables after they were set.
+
 
 [float]
 [[configure-ess]]
 === {ess} on {ecloud}
 
 The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
-configuring the `elastic_apm.server_url` and `elastic_apm.secret_token` found in the APM section of {ecloud}:
+setting <<config-server-url>> and <<config-secret-token>> options
+to the corresponding values found in the APM section of {ecloud}:
 
 [role="screenshot"]
 image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
 
-Configure in `elastic_apm.ini`:
+Configure the agent, for example via `php.ini`:
 
 [source,ini]
 ----
@@ -44,17 +46,10 @@ elastic_apm.secret_token = TOKEN
 elastic_apm.service_name = SERVICE_NAME
 ----
 
-Or, with the following PHP code:
-
-[source,php]
-----
-ini_set('elastic_apm.server_url', 'APM_SERVER_URL');
-ini_set('elastic_apm.secret_token', 'TOKEN');
-----
-
 [float]
 [[configure-logging]]
 === Logging
+The simplest way to configure the logging is by using <<config-log-level-syslog>> configuration option.
 
 Available log levels are:
 
@@ -69,17 +64,17 @@ INFO
 DEBUG
 TRACE
 ----
-`OFF` is only used to disable agent logging.
-There cannot be log records with level `OFF`.
-
 For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR` and `CRITICAL`
 will be emitted.
 
+`OFF` is only used to disable agent logging.
+There cannot be log records with level `OFF`.
+
 The agent supports logging to the following sinks: syslog and stderr.
 You can control the level of logging for individual sinks with the
-`elastic_apm.log_level_syslog` and `elastic_apm.log_level_stderr` keys.
+<<config-log-level-syslog>> and <<config-log-level-stderr>> options.
 When a sink-specific logging level is not set explicitly, the fallback setting,
-`elastic_apm.log_level`, will be used.
+<<config-log-level>>, will be used.
 
 For example, the following configuration sets the log level to `NOTICE` for all the sinks:
 
@@ -88,7 +83,8 @@ For example, the following configuration sets the log level to `NOTICE` for all 
 elastic_apm.log_level=NOTICE
 ----
 
-Alternatively, the following configuration sets log level to `NOTICE` for all the sinks except for `syslog`, whose log level is set to `TRACE`.
+Alternatively, the following configuration sets log level to `NOTICE` for all the sinks
+except for `syslog`, which log level is set to `TRACE`.
 
 [source,ini]
 ----
@@ -124,7 +120,7 @@ then <<config-api-key>> has precedence and <<config-secret-token>> is ignored.
 
 NOTE: This feature is fully supported in the APM Server versions >= 7.6.
 
-WARNING: The `API key` is sent as plain-text in every request to the server, so you should also secure
+WARNING: The `api_key` value is sent as plain-text in every request to the server, so you should also secure
 your communications using HTTPS. Unless you do so, your API Key could be observed by an attacker.
 
 [float]
@@ -222,7 +218,7 @@ See <<configure-logging>> for details.
 [options="header"]
 |============
 | Default                          | Type
-| `NOTICE`       | Log level
+| `INFO`       | Log level
 |============
 
 The logging level for `syslog` logging sink.
@@ -246,11 +242,18 @@ See <<configure-logging>> for details.
 
 This string is used to ensure that only your agents can send data to your APM Server.
 Both the agents and the APM Server have to be configured with the same secret token.
+
+See {apm-server-ref-v}/secret-token.html[the relevant APM Server's documentation]
+on how to configure APM Server's secret token.
+
 Use this setting if the APM Server requires a token, like in {ess}.
 
 <<config-secret-token>> is an alternative to <<config-api-key>>.
 If both <<config-secret-token>> and <<config-api-key>> are configured
 then <<config-api-key>> has precedence and <<config-secret-token>> is ignored.
+
+WARNING: The `secret_token` is sent as plain-text in every request to the server, so you should also secure
+your communications using HTTPS. Unless you do so, your secret token could be observed by an attacker.
 
 [float]
 [[config-server-url]]
