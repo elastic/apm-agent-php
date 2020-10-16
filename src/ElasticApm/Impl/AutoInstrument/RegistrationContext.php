@@ -33,7 +33,7 @@ final class RegistrationContext implements RegistrationContextInterface
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method($className, $methodName);
+        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method(strtolower($className), $methodName);
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(
                 $this->dbgCurrentPluginIndex,
