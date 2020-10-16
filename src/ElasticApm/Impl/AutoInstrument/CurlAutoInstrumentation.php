@@ -22,6 +22,10 @@ final class CurlAutoInstrumentation
 {
     public static function register(RegistrationContextInterface $ctx): void
     {
+        if (!extension_loaded('curl')) {
+            return;
+        }
+
         self::curlExec($ctx);
     }
 

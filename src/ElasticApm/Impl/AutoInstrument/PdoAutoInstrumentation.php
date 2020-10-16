@@ -20,6 +20,10 @@ final class PdoAutoInstrumentation
 {
     public static function register(RegistrationContextInterface $ctx): void
     {
+        if (!extension_loaded('pdo')) {
+            return;
+        }
+
         self::pdoConstruct($ctx);
         self::pdoExec($ctx);
     }
