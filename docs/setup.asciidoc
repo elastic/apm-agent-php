@@ -23,7 +23,7 @@ make
 sudo make install
 ----
 
-Enable the extension by adding the following to your `elastic_apm.ini` file:
+Enable the extension by adding the following to your `php.ini` file:
 
 [source,php]
 ----
