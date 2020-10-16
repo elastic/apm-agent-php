@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 
@@ -36,23 +37,8 @@ final class TestProperties
     /** @var ConfigSetterBase */
     public $configSetter;
 
-    /** @var ?string */
-    public $configuredApiKey = null;
-
-    /** @var ?string */
-    public $configuredEnvironment = null;
-
-    /** @var ?string */
-    public $configuredSecretToken = null;
-
-    /** @var ?string */
-    public $configuredServiceName = null;
-
-    /** @var ?string */
-    public $configuredServiceVersion = null;
-
-    /** @var ?string */
-    public $configuredTransactionSampleRate = null;
+    /** @var array<?string> */
+    public $configuredOptions = [];
 
     /**
      * TestProperties constructor.
@@ -101,7 +87,18 @@ final class TestProperties
         return $this;
     }
 
-    public function withConfig(ConfigSetterBase $configSetter): ConfigSetterBase
+    public function withAgentOption(string $optName, string $optVal): self
+    {
+        $this->configuredOptions[$optName] = $optVal;
+        return $this;
+    }
+
+    public function getConfiguredAgentOption(string $optName): ?string
+    {
+        return ArrayUtil::getValueIfKeyExistsElse($optName, $this->configuredOptions, null);
+    }
+
+    public function withConfigSetter(ConfigSetterBase $configSetter): ConfigSetterBase
     {
         $this->configSetter = $configSetter;
         $configSetter->setParent($this);
@@ -120,12 +117,16 @@ final class TestProperties
         $builder->add('appCodeMethod', $this->appCodeMethod);
         $builder->add('httpMethod', $this->httpMethod);
         $builder->add('configSetter', $this->configSetter);
-        $builder->add('configuredApiKey', $this->configuredApiKey);
-        $builder->add('configuredEnvironment', $this->configuredEnvironment);
-        $builder->add('configuredSecretToken', $this->configuredSecretToken);
-        $builder->add('configuredServiceName', $this->configuredServiceName);
-        $builder->add('configuredServiceVersion', $this->configuredServiceVersion);
-        $builder->add('configuredTransactionSampleRate', $this->configuredTransactionSampleRate);
+        $builder->add('configuredOptions', $this->configuredOptionsToString());
+        return $builder->build();
+    }
+
+    private function configuredOptionsToString(): string
+    {
+        $builder = new ObjectToStringBuilder();
+        foreach ($this->configuredOptions as $optName => $optVal) {
+            $builder->add($optName, $optVal);
+        }
         return $builder->build();
     }
 }

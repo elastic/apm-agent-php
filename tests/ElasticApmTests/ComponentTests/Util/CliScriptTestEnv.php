@@ -67,7 +67,7 @@ final class CliScriptTestEnv extends TestEnvBase
                 );
         }
 
-        TestProcessUtil::runProcessAndWaitUntilExit(
+        TestProcessUtil::startProcessAndWaitUntilExit(
             $testProperties->configSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
             $this->buildEnvVars($additionalEnvVars)

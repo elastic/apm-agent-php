@@ -792,7 +792,7 @@ LogLevel defaultLogLevelPerSinkType[numberOfLogSinkTypes] =
         {
                 [logSink_stderr] = logLevel_critical,
                 #ifndef PHP_WIN32
-                [ logSink_syslog ] = logLevel_notice,
+                [ logSink_syslog ] = logLevel_info,
                 #endif
 
                 #ifdef PHP_WIN32

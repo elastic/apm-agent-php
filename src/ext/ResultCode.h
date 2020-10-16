@@ -19,6 +19,7 @@ enum ResultCode
     resultSuccess,
     resultOutOfMemory,
     resultInvalidFormat,
+    resultCurlFailure,
     resultFailure
 };
 typedef enum ResultCode ResultCode;

@@ -33,23 +33,9 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
     {
         $result = [];
 
-        $addEnvVarIfOptionIsConfigured = function (string $optName, ?string $configuredValue) use (&$result): void {
-            if (is_null($configuredValue)) {
-                return;
-            }
-
-            $result[TestConfigUtil::envVarNameForOption($optName)] = $configuredValue;
-        };
-
-        $addEnvVarIfOptionIsConfigured(OptionNames::API_KEY, $this->parent->configuredApiKey);
-        $addEnvVarIfOptionIsConfigured(OptionNames::ENVIRONMENT, $this->parent->configuredEnvironment);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SECRET_TOKEN, $this->parent->configuredSecretToken);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_NAME, $this->parent->configuredServiceName);
-        $addEnvVarIfOptionIsConfigured(OptionNames::SERVICE_VERSION, $this->parent->configuredServiceVersion);
-        $addEnvVarIfOptionIsConfigured(
-            OptionNames::TRANSACTION_SAMPLE_RATE,
-            $this->parent->configuredTransactionSampleRate
-        );
+        foreach ($this->parent->configuredOptions as $optName => $optVal) {
+            $result[TestConfigUtil::envVarNameForOption($optName)] = strval($optVal);
+        }
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting', ['result' => $result]);

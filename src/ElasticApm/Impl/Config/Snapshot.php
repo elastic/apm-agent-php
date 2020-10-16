@@ -30,6 +30,9 @@ final class Snapshot
     /** @var float */
     private $transactionSampleRate;
 
+    /** @var bool */
+    private $verifyServerCert;
+
     /**
      * Snapshot constructor.
      *

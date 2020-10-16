@@ -57,7 +57,14 @@ final class PhpUnitExtension implements
         self::$testEnvId = IdGenerator::generateId(/* idLengthInBytes */ 16);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Test starting...', ['test' => $test, 'testEnvId' => self::$testEnvId]);
+        && $loggerProxy->log(
+            'Test starting...',
+            [
+                'test' => $test,
+                'testEnvId' => self::$testEnvId,
+                'Environment variables' => getenv()
+            ]
+        );
     }
 
     public function executeAfterTest(string $test, float $time): void
