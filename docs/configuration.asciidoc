@@ -49,7 +49,8 @@ elastic_apm.service_name = SERVICE_NAME
 [float]
 [[configure-logging]]
 === Logging
-The simplest way to configure the logging is by using <<config-log-level-syslog>> configuration option.
+
+The easiest way to configure the logging is by using the <<config-log-level-syslog>> configuration option.
 
 Available log levels are:
 
