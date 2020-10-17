@@ -187,7 +187,6 @@ abstract class TestEnvBase
                 $this->buildEnvVars(
                     $additionalEnvVars +
                     [
-                        TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false',
                         TestConfigUtil::envVarNameForTestsOption(
                             AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
                         )                                                              => strval($currentTryPort),
@@ -228,8 +227,9 @@ abstract class TestEnvBase
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) {
                 return self::runScriptNameToCmdLine('runResourcesCleaner.php');
             },
-            /* additionalEnvVars */
+            /* additionalEnvVars: */
             [
+                TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false',
                 TestConfigUtil::envVarNameForTestsOption(AllComponentTestsOptionsMetadata::ROOT_PROCESS_ID_OPTION_NAME)
                 => strval(getmypid()),
             ]
@@ -247,7 +247,9 @@ abstract class TestEnvBase
             /* cmdLineGenFunc: */
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) {
                 return self::runScriptNameToCmdLine('runMockApmServer.php');
-            }
+            },
+            /* additionalEnvVars: */
+            [TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false']
         );
     }
 
