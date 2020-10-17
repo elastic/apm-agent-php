@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Tests\Util\TestLogCategory;
@@ -65,6 +66,10 @@ final class PhpUnitExtension implements
                 'Environment variables' => getenv()
             ]
         );
+
+        // We don't want any of the testing infrastructure operations to be recorded as application's APM events
+        ElasticApm::pauseRecording();
+        ElasticApm::getCurrentTransaction()->discard();
     }
 
     public function executeAfterTest(string $test, float $time): void
