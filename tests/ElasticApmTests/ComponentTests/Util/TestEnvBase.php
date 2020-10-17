@@ -187,7 +187,7 @@ abstract class TestEnvBase
                 $this->buildEnvVars(
                     $additionalEnvVars +
                     [
-                        TestConfigUtil::envVarNameForTestsOption(OptionNames::ENABLED) => 'false',
+                        TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false',
                         TestConfigUtil::envVarNameForTestsOption(
                             AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
                         )                                                              => strval($currentTryPort),
