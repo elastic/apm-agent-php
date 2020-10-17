@@ -23,7 +23,7 @@ export ELASTIC_APM_SERVER_URL="http://localhost:8200"
 export ELASTIC_APM_SERVICE_NAME="My_Test_Service"
 ----
 
-NOTE: If you use environment variables to configure the agent make sure the process running your PHP code inherits those environment variables after they were set.
+NOTE: If you use environment variables to configure the agent, make sure the process running your PHP code inherits those environment variables after they were set.
 
 
 [float]
