@@ -10,6 +10,7 @@ use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\TransactionDataInterface;
@@ -177,7 +178,11 @@ class TestCaseBase extends TestCase
                 $rootTransaction = $transaction;
             }
         }
-        self::assertNotNull($rootTransaction, 'Root transaction not found');
+        self::assertNotNull(
+            $rootTransaction,
+            'Root transaction not found.'
+            . ' idToTransaction: ' . DbgUtil::formatValue($idToTransaction)
+        );
         return $rootTransaction;
     }
 
