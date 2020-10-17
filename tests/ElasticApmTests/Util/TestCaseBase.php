@@ -40,7 +40,14 @@ class TestCaseBase extends TestCase
 
     public static function assertLessThanOrEqualTimestamp(float $lhs, float $rhs): void
     {
-        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
+
+        self::assertThat(
+            $lhs,
+            self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)),
+            "lhs: $lhs, rhs: $rhs" .
+            ', number_format($lhs): ' . number_format($lhs) . ', number_format($rhs): ' . number_format($rhs) .
+            ((PHP_INT_SIZE >= 8) ? (', intval($lhs): ' . intval($lhs) . ', intval($rhs): ' . intval($rhs)) : '')
+        );
     }
 
     public static function assertLessThanOrEqualDuration(float $lhs, float $rhs): void

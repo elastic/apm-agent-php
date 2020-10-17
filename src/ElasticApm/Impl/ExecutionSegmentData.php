@@ -91,6 +91,7 @@ abstract class ExecutionSegmentData extends EventData implements ExecutionSegmen
      */
     protected function serializeProperty(string $propKey, $propValue, array &$result): void
     {
+        // If int type is large enough to hold 64-bit (8 bytes) use it instead of float
         if ($propKey === 'timestamp' && PHP_INT_SIZE >= 8) {
             parent::serializeProperty($propKey, intval($propValue), /* ref */ $result);
             return;

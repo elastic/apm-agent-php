@@ -67,9 +67,11 @@ final class PhpUnitExtension implements
             ]
         );
 
-        // We don't want any of the testing infrastructure operations to be recorded as application's APM events
-        ElasticApm::pauseRecording();
-        ElasticApm::getCurrentTransaction()->discard();
+        if (extension_loaded('elastic_apm')) {
+            // We don't want any of the testing infrastructure operations to be recorded as application's APM events
+            ElasticApm::pauseRecording();
+            ElasticApm::getCurrentTransaction()->discard();
+        }
     }
 
     public function executeAfterTest(string $test, float $time): void
