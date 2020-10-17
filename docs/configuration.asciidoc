@@ -11,8 +11,8 @@ One way to do this is to configure settings via the `php.ini` file:
 
 [source,ini]
 ----
-elastic_apm.server_url = http://localhost:8200
-elastic_apm.service_name = "My service"
+elastic_apm.server_url=http://localhost:8200
+elastic_apm.service_name="My service"
 ----
 
 The agent can also be configured using environment variables:
@@ -20,7 +20,7 @@ The agent can also be configured using environment variables:
 [source,shell]
 ----
 export ELASTIC_APM_SERVER_URL="http://localhost:8200"
-export ELASTIC_APM_SERVICE_NAME="My_Test_Service"
+export ELASTIC_APM_SERVICE_NAME="My service"
 ----
 
 NOTE: If you use environment variables to configure the agent, make sure the process running your PHP code inherits those environment variables after they were set.
@@ -41,9 +41,9 @@ Configure the agent, for example via `php.ini`:
 
 [source,ini]
 ----
-elastic_apm.server_url = APM_SERVER_URL
-elastic_apm.secret_token = TOKEN
-elastic_apm.service_name = SERVICE_NAME
+elastic_apm.server_url=APM_SERVER_URL
+elastic_apm.secret_token=TOKEN
+elastic_apm.service_name=SERVICE_NAME
 ----
 
 [float]
