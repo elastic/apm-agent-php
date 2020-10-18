@@ -98,9 +98,14 @@ final class TextUtil
         return substr($text, /* start: */ 0, /* length: */ $maxLength);
     }
 
+    public static function isEmptyString(string $str): bool
+    {
+        return strlen($str) === 0;
+    }
+
     public static function isNullOrEmptyString(?string $str): bool
     {
-        return (is_null($str) || strlen($str) === 0);
+        return is_null($str) || self::isEmptyString($str);
     }
 
     public static function isUpperCaseLetter(int $charAsInt): bool

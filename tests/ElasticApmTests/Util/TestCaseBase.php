@@ -82,13 +82,6 @@ class TestCaseBase extends TestCase
         array $idToSpan
     ): void {
         ValidationUtil::assertValidTransactionData($transaction);
-        self::assertCount($transaction->getStartedSpansCount(), $idToSpan);
-
-        $spanIdToParentId = [];
-        foreach ($idToSpan as $id => $span) {
-            $spanIdToParentId[$id] = $span->getParentId();
-        }
-        self::assertGraphIsTree($transaction->getId(), $spanIdToParentId);
 
         /** @var SpanDataInterface $span */
         foreach ($idToSpan as $span) {
@@ -99,6 +92,7 @@ class TestCaseBase extends TestCase
             if ($span->getParentId() === $transaction->getId()) {
                 self::assertTimedEventIsNested($span, $transaction);
             } else {
+                self::assertArrayHasKey($span->getParentId(), $idToSpan, 'count($idToSpan): ' . count($idToSpan));
                 self::assertTimedEventIsNested($span, $idToSpan[$span->getParentId()]);
             }
 
@@ -108,6 +102,14 @@ class TestCaseBase extends TestCase
                 $span->getTimestamp()
             );
         }
+
+        self::assertCount($transaction->getStartedSpansCount(), $idToSpan);
+
+        $spanIdToParentId = [];
+        foreach ($idToSpan as $id => $span) {
+            $spanIdToParentId[$id] = $span->getParentId();
+        }
+        self::assertGraphIsTree($transaction->getId(), $spanIdToParentId);
     }
 
     /**

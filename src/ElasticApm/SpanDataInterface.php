@@ -49,4 +49,13 @@ interface SpanDataInterface extends ExecutionSegmentDataInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L38
      */
     public function getAction(): ?string;
+
+    /**
+     *
+     *
+     * @return StacktraceFrame[]
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L38
+     */
+    public function getStacktrace(): array;
 }

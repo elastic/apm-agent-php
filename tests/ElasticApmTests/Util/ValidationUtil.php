@@ -16,7 +16,9 @@ use Elastic\Apm\Impl\ServiceDataInterface;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionDataInterface;
 use Throwable;
 
@@ -238,6 +240,64 @@ final class ValidationUtil
     }
 
     /**
+     * @param mixed $filename
+     *
+     * @return string
+     */
+    public static function assertValidStacktraceFrameFilename($filename): string
+    {
+        self::assertThat(is_string($filename));
+        self::assertThat(!TextUtil::isEmptyString($filename));
+
+        return $filename;
+    }
+
+    /**
+     * @param mixed $lineNumber
+     *
+     * @return int
+     */
+    public static function assertValidStacktraceFrameLineNumber($lineNumber): int
+    {
+        self::assertThat(is_int($lineNumber));
+        self::assertThat($lineNumber >= 0);
+
+        return $lineNumber;
+    }
+
+    /**
+     * @param mixed $function
+     *
+     * @return string|null
+     */
+    public static function assertValidStacktraceFrameFunction($function): ?string
+    {
+        if (!is_null($function)) {
+            self::assertThat(is_string($function));
+            self::assertThat(!TextUtil::isEmptyString($function));
+        }
+
+        return $function;
+    }
+
+    public static function assertValidStacktraceFrame(StacktraceFrame $stacktraceFrame): void
+    {
+        self::assertValidStacktraceFrameFilename($stacktraceFrame->filename);
+        self::assertValidStacktraceFrameLineNumber($stacktraceFrame->lineno);
+        self::assertValidStacktraceFrameFunction($stacktraceFrame->function);
+    }
+
+    /**
+     * @param StacktraceFrame[] $stacktrace
+     */
+    public static function assertValidStacktrace(array $stacktrace): void
+    {
+        foreach ($stacktrace as $stacktraceFrame) {
+            self::assertValidStacktraceFrame($stacktraceFrame);
+        }
+    }
+
+    /**
      * @param mixed $start
      *
      * @return float
@@ -252,6 +312,7 @@ final class ValidationUtil
         self::assertValidExecutionSegmentData($span);
         self::assertValidNullableKeywordString($span->getAction());
         self::assertValidExecutionSegmentId($span->getParentId());
+        self::assertValidStacktrace($span->getStacktrace());
         self::assertValidSpanStart($span->getStart());
         self::assertValidNullableKeywordString($span->getSubtype());
     }

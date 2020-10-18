@@ -8,7 +8,6 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\SpanInterface;
 use Throwable;
 
@@ -20,15 +19,20 @@ use Throwable;
 trait InterceptedCallTrackerTrait
 {
     /**
+     * @param int             $numberOfStackFramesToSkip
      * @param SpanInterface   $span
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
      */
-    protected static function endSpan(SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown): void
-    {
+    protected static function endSpan(
+        int $numberOfStackFramesToSkip,
+        SpanInterface $span,
+        bool $hasExitedByException,
+        $returnValueOrThrown
+    ): void {
         $span->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
         $span->setLabel('hasExitedByException', $hasExitedByException);
-        $span->end();
+        $span->endSpanEx(/* duration: */ null, $numberOfStackFramesToSkip + 1);
     }
 
     /**

@@ -52,6 +52,7 @@ final class InterceptionManager
     }
 
     /**
+     * @param int         $numberOfStackFramesToSkip
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
      * @param mixed       ...$interceptedCallArgs
@@ -59,8 +60,12 @@ final class InterceptionManager
      * @return mixed
      * @throws Throwable
      */
-    public function interceptedCall(int $interceptRegistrationId, ?object $thisObj, ...$interceptedCallArgs)
-    {
+    public function interceptedCall(
+        int $numberOfStackFramesToSkip,
+        int $interceptRegistrationId,
+        ?object $thisObj,
+        ...$interceptedCallArgs
+    ) {
         $localLogger = $this->logger->inherit()->addContext('interceptRegistrationId', $interceptRegistrationId);
 
         $callTracker = $this->interceptedCallPreHook(
@@ -85,7 +90,13 @@ final class InterceptionManager
         }
 
         if (!is_null($callTracker)) {
-            $this->interceptedCallPostHook($localLogger, $callTracker, $hasExitedByException, $returnValueOrThrown);
+            $this->interceptedCallPostHook(
+                $numberOfStackFramesToSkip + 1,
+                $localLogger,
+                $callTracker,
+                $hasExitedByException,
+                $returnValueOrThrown
+            );
         }
 
         if ($hasExitedByException) {
@@ -153,6 +164,7 @@ final class InterceptionManager
     }
 
     /**
+     * @param int                             $numberOfStackFramesToSkip
      * @param Logger                          $localLogger
      * @param InterceptedCallTrackerInterface $callTracker
      * @param bool                            $hasExitedByException
@@ -160,6 +172,7 @@ final class InterceptionManager
      *                                                             or the object thrown by the intercepted call
      */
     private function interceptedCallPostHook(
+        int $numberOfStackFramesToSkip,
         Logger $localLogger,
         $callTracker,
         bool $hasExitedByException,
@@ -169,7 +182,7 @@ final class InterceptionManager
         && $loggerProxy->log('Entered');
 
         try {
-            $callTracker->postHook($hasExitedByException, $returnValueOrThrown);
+            $callTracker->postHook($numberOfStackFramesToSkip + 1, $hasExitedByException, $returnValueOrThrown);
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(

@@ -11,8 +11,8 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use Elastic\Apm\SpanInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -23,14 +23,19 @@ trait ExecutionSegmentTrait
 {
     /** @var Tracer */
     protected $tracer;
+
     /** @var bool */
     protected $isDiscarded = false;
+
     /** @var float */
     private $durationOnBegin;
+
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
+
     /** @var Logger */
     private $logger;
+
     /** @var bool */
     private $isEnded = false;
 
@@ -66,7 +71,6 @@ trait ExecutionSegmentTrait
         return $logger;
     }
 
-    /** @inheritDoc */
     public function captureChildSpan(
         string $name,
         string $type,
@@ -75,11 +79,18 @@ trait ExecutionSegmentTrait
         ?string $action = null,
         ?float $timestamp = null
     ) {
-        $newSpan = $this->beginChildSpan($name, $type, $subtype, $action, $timestamp);
+        /** @var SpanInterface $newSpan */
+        $newSpan = $this->beginChildSpan(
+            $name,
+            $type,
+            $subtype,
+            $action,
+            $timestamp
+        );
         try {
             return $callback($newSpan);
         } finally {
-            $newSpan->end();
+            $newSpan->endSpanEx();
         }
     }
 

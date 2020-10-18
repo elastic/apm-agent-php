@@ -1,7 +1,10 @@
 includes:
-	- vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
 
 parameters:
+    bootstrapFiles:
+        - tests/bootstrap.php
+
     reportUnmatchedIgnoredErrors: false
 
     excludes_analyse:

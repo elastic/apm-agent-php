@@ -1,6 +1,6 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
+/** @noinspection PhpUnusedParameterInspection */
 
 declare(strict_types=1);
 
@@ -30,53 +30,44 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     /** @var string */
     public const TYPE = 'noop';
 
-    /** @inheritDoc */
     public function getTimestamp(): float
     {
         return 0.0;
     }
 
-    /** @inheritDoc */
     public function getDuration(): float
     {
         return 0.0;
     }
 
-    /** @inheritDoc */
     public function getId(): string
     {
         return self::ID;
     }
 
-    /** @inheritDoc */
     public function getName(): string
     {
         return self::NAME;
     }
 
-    /** @inheritDoc */
     public function setName(string $name): void
     {
     }
 
-    /** @inheritDoc */
     public function getTraceId(): string
     {
         return self::TRACE_ID;
     }
 
-    /** @inheritDoc */
     public function getType(): string
     {
         return self::TYPE;
     }
 
-    /** @inheritDoc */
     public function setType(string $type): void
     {
     }
 
-    /** @inheritDoc */
     public function beginChildSpan(
         string $name,
         string $type,
@@ -87,7 +78,6 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         return NoopSpan::singletonInstance();
     }
 
-    /** @inheritDoc */
     public function captureChildSpan(
         string $name,
         string $type,
@@ -99,23 +89,19 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
         return $callback(NoopSpan::singletonInstance());
     }
 
-    /** @inheritDoc */
     public function end(?float $duration = null): void
     {
     }
 
-    /** @inheritDoc */
     public function hasEnded(): bool
     {
         return true;
     }
 
-    /** @inheritDoc */
     public function setLabel(string $key, $value): void
     {
     }
 
-    /** @inheritDoc */
     public function getLabels(): array
     {
         return [];

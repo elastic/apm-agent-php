@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\StacktraceFrame;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -18,6 +19,9 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
 
     /** @var string */
     protected $parentId;
+
+    /** @var StacktraceFrame[] */
+    protected $stacktrace = [];
 
     /** @var float */
     protected $start;
@@ -38,6 +42,12 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
     public function getParentId(): string
     {
         return $this->parentId;
+    }
+
+    /** @inheritDoc */
+    public function getStacktrace(): array
+    {
+        return $this->stacktrace;
     }
 
     /** @inheritDoc */

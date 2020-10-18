@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\StacktraceFrame;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -62,7 +64,6 @@ final class Span extends SpanData implements SpanInterface
         && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
     }
 
-    /** @inheritDoc */
     public function beginChildSpan(
         string $name,
         string $type,
@@ -85,12 +86,13 @@ final class Span extends SpanData implements SpanInterface
         );
     }
 
-    /** @inheritDoc */
-    public function end(?float $duration = null): void
+    public function endSpanEx(?float $duration = null, int $numberOfStackFramesToSkip = 0): void
     {
         if (!$this->endExecutionSegment($duration)) {
             return;
         }
+
+        $this->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip + 1);
 
         $this->getTracer()->getEventSink()->consumeSpanData($this);
 
@@ -99,7 +101,11 @@ final class Span extends SpanData implements SpanInterface
         }
     }
 
-    /** @inheritDoc */
+    public function end(?float $duration = null): void
+    {
+        $this->endSpanEx($duration);
+    }
+
     public function setAction(?string $action): void
     {
         if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
@@ -109,7 +115,6 @@ final class Span extends SpanData implements SpanInterface
         $this->action = $this->tracer->limitNullableKeywordString($action);
     }
 
-    /** @inheritDoc */
     public function setSubtype(?string $subtype): void
     {
         if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
@@ -122,5 +127,36 @@ final class Span extends SpanData implements SpanInterface
     public function getParentSpan(): ?Span
     {
         return $this->parentSpan;
+    }
+
+    /**
+     * @param int $numberOfStackFramesToSkip
+     *
+     * @return StacktraceFrame[]
+     */
+    private static function captureStacktrace(int $numberOfStackFramesToSkip): array
+    {
+        $srcFrames = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        /** @var StacktraceFrame[] */
+        $dstFrames = [];
+        for ($i = $numberOfStackFramesToSkip + 1; $i < count($srcFrames); ++$i) {
+            $srcFrame = $srcFrames[$i];
+
+            $dstFrame = new StacktraceFrame(
+                ArrayUtil::getValueIfKeyExistsElse('file', $srcFrame, 'FILE NAME N/A'),
+                ArrayUtil::getValueIfKeyExistsElse('line', $srcFrame, 0)
+            );
+
+            $className = ArrayUtil::getValueIfKeyExistsElse('class', $srcFrame, null);
+            $funcName = ArrayUtil::getValueIfKeyExistsElse('function', $srcFrame, null);
+            $callType = ArrayUtil::getValueIfKeyExistsElse('type', $srcFrame, '.');
+            $dstFrame->function = is_null($className)
+                ? is_null($funcName) ? null : ($funcName . '()')
+                : (($className . $callType) . (is_null($funcName) ? 'FUNCTION NAME N/A' : ($funcName . '()')));
+
+            $dstFrames[] = $dstFrame;
+        }
+
+        return $dstFrames;
     }
 }

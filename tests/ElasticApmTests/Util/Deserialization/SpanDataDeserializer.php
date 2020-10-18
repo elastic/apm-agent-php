@@ -69,6 +69,10 @@ final class SpanDataDeserializer extends EventDataDeserializer
                         $result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
                         return true;
 
+                    case 'stacktrace':
+                        $result->stacktrace = StacktraceDeserializer::deserialize($value);
+                        return true;
+
                     case 'start':
                         $result->start = ValidationUtil::assertValidSpanStart($value);
                         return true;

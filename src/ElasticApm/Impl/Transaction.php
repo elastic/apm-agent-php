@@ -55,6 +55,13 @@ final class Transaction extends TransactionData implements TransactionInterface
         ++$this->startedSpansCount;
     }
 
+    public function shouldCreateNoopSpan(string $calledMethodName): bool
+    {
+        return $this->checkIfAlreadyEnded($calledMethodName)
+               || !$this->tracer->isRecording()
+               || !$this->isSampled;
+    }
+
     public function beginChildSpan(
         string $name,
         string $type,
@@ -62,7 +69,7 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording() || !$this->isSampled) {
+        if ($this->shouldCreateNoopSpan(__FUNCTION__)) {
             return NoopSpan::singletonInstance();
         }
 
@@ -84,7 +91,7 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording() || !$this->isSampled) {
+        if ($this->shouldCreateNoopSpan(__FUNCTION__)) {
             return NoopSpan::singletonInstance();
         }
 
@@ -100,7 +107,6 @@ final class Transaction extends TransactionData implements TransactionInterface
         return $this->currentSpan;
     }
 
-    /** @inheritDoc */
     public function captureCurrentSpan(
         string $name,
         string $type,
@@ -113,7 +119,7 @@ final class Transaction extends TransactionData implements TransactionInterface
         try {
             return $callback($newSpan);
         } finally {
-            $newSpan->end();
+            $newSpan->endSpanEx();
         }
     }
 

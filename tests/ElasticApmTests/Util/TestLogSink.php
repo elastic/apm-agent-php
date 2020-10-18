@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util;
 
-use DateTime;
-use DateTimeZone;
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\Tests\ComponentTests\Util\TestOsUtil;
 
 /**
