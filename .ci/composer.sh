@@ -8,11 +8,42 @@ echo 'elastic_apm.bootstrap_php_part_file=/app/src/bootstrap_php_part.php' >> ${
 php -m
 cd /app
 
+##
 ## Validate the installation works as expected with composer
+##
+
+# Install 3rd party dependencies
 composer install
-/usr/sbin/rsyslogd
+
+# Start syslog
+
+if which syslogd; then
+    syslogd
+else
+    if which rsyslogd; then
+        rsyslogd
+    else
+        echo 'syslog is not installed'
+        exit 1
+    fi
+fi
+
+
+# Run component tests
+
 if ! composer run-script run_component_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
-    cat /var/log/syslog
+
+    if [ -f "/var/log/syslog" ]; then
+        cat "/var/log/syslog"
+    else
+        if [ -f "/var/log/messages" ]; then
+        cat "/var/log/messages"
+        else
+            echo 'syslog's log file not found'
+            exit 1
+        fi
+    fi
+
     exit 1
 fi
