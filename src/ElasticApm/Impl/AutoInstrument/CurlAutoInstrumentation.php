@@ -58,8 +58,11 @@ final class CurlAutoInstrumentation
                         );
                     }
 
-                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
-                    {
+                    public function postHook(
+                        int $numberOfStackFramesToSkip,
+                        bool $hasExitedByException,
+                        $returnValueOrThrown
+                    ): void {
                         if (!$hasExitedByException) {
                             if (!is_null($this->curlHandle)) {
                                 $info = curl_getinfo($this->curlHandle);
@@ -70,7 +73,12 @@ final class CurlAutoInstrumentation
                             }
                         }
 
-                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                        self::endSpan(
+                            $numberOfStackFramesToSkip + 1,
+                            $this->span,
+                            $hasExitedByException,
+                            $returnValueOrThrown
+                        );
                     }
                 };
             }

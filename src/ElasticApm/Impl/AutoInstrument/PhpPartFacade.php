@@ -134,6 +134,7 @@ final class PhpPartFacade
         }
 
         return self::singletonInstance()->interceptionManager->interceptedCall(
+            1 /* <- $numberOfStackFramesToSkip */,
             $interceptRegistrationId,
             $thisObj,
             ...$interceptedCallArgs

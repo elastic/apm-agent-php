@@ -5,24 +5,20 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Closure;
-use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
-    /** @var Logger */
-    private $logger;
-
     /** @var TestEnvBase */
     protected $testEnv;
 
-    public static function init(): void
-    {
-        AmbientContext::init(/* dbgProcessName */ 'Component tests');
-    }
+    /** @var Logger */
+    private $logger;
 
     /**
      * @param mixed        $name
@@ -43,6 +39,12 @@ class ComponentTestCaseBase extends TestCaseBase
         );
 
         $this->testEnv = $this->selectTestEnv();
+    }
+
+    public static function init(): void
+    {
+        AmbientContext::init(/* dbgProcessName */ 'Component tests');
+        GlobalTracerHolder::set(NoopTracer::singletonInstance());
     }
 
     public function tearDown(): void
@@ -110,7 +112,7 @@ class ComponentTestCaseBase extends TestCaseBase
     {
         return [
             // [new ConfigSetterIni()],
-            [new ConfigSetterEnvVars()]
+            [new ConfigSetterEnvVars()],
         ];
     }
 

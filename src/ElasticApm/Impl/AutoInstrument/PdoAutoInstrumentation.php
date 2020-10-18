@@ -53,9 +53,17 @@ final class PdoAutoInstrumentation
                         );
                     }
 
-                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
-                    {
-                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                    public function postHook(
+                        int $numberOfStackFramesToSkip,
+                        bool $hasExitedByException,
+                        $returnValueOrThrown
+                    ): void {
+                        self::endSpan(
+                            $numberOfStackFramesToSkip + 1,
+                            $this->span,
+                            $hasExitedByException,
+                            $returnValueOrThrown
+                        );
                     }
                 };
             }
@@ -83,13 +91,21 @@ final class PdoAutoInstrumentation
                         );
                     }
 
-                    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void
-                    {
+                    public function postHook(
+                        int $numberOfStackFramesToSkip,
+                        bool $hasExitedByException,
+                        $returnValueOrThrown
+                    ): void {
                         if (!$hasExitedByException) {
                             $this->span->setLabel('rows_affected', (int)$returnValueOrThrown);
                         }
 
-                        self::endSpan($this->span, $hasExitedByException, $returnValueOrThrown);
+                        self::endSpan(
+                            $numberOfStackFramesToSkip + 1,
+                            $this->span,
+                            $hasExitedByException,
+                            $returnValueOrThrown
+                        );
                     }
                 };
             }

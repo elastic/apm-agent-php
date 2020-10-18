@@ -17,8 +17,9 @@ interface InterceptedCallTrackerInterface
     public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void;
 
     /**
+     * @param int             $numberOfStackFramesToSkip
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
      */
-    public function postHook(bool $hasExitedByException, $returnValueOrThrown): void;
+    public function postHook(int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown): void;
 }

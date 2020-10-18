@@ -8,7 +8,6 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Transaction;
-use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\TransactionDataInterface;
