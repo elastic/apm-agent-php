@@ -24,7 +24,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     public function __construct(string $runScriptFile)
     {
         if (self::isStatusCheck()) {
-            // We don't want any of the infrastructure operations to be recorded as application's APM events
+            // We don't want any of the testing infrastructure operations to be recorded as application's APM events
             ElasticApm::getCurrentTransaction()->discard();
         }
 

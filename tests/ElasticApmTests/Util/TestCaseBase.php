@@ -10,6 +10,7 @@ use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\TransactionDataInterface;
@@ -40,7 +41,14 @@ class TestCaseBase extends TestCase
 
     public static function assertLessThanOrEqualTimestamp(float $lhs, float $rhs): void
     {
-        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
+
+        self::assertThat(
+            $lhs,
+            self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)),
+            "lhs: $lhs, rhs: $rhs" .
+            ', number_format($lhs): ' . number_format($lhs) . ', number_format($rhs): ' . number_format($rhs) .
+            ((PHP_INT_SIZE >= 8) ? (', intval($lhs): ' . intval($lhs) . ', intval($rhs): ' . intval($rhs)) : '')
+        );
     }
 
     public static function assertLessThanOrEqualDuration(float $lhs, float $rhs): void
@@ -172,7 +180,11 @@ class TestCaseBase extends TestCase
                 $rootTransaction = $transaction;
             }
         }
-        self::assertNotNull($rootTransaction, 'Root transaction not found');
+        self::assertNotNull(
+            $rootTransaction,
+            'Root transaction not found.'
+            . ' idToTransaction: ' . DbgUtil::formatValue($idToTransaction)
+        );
         return $rootTransaction;
     }
 

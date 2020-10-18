@@ -77,9 +77,12 @@ final class TestProcessUtil
         if ($openedProc === false) {
             throw new RuntimeException("Failed to start process. adaptedCmd: `$adaptedCmd'");
         }
+
+        $newProcessInfo = proc_get_status($openedProc);
+
         proc_close($openedProc);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('External process started');
+        && $loggerProxy->log('External process started', ['newProcessInfo' => $newProcessInfo]);
     }
 }
