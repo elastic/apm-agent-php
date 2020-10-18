@@ -111,9 +111,4 @@ final class SamplingTest extends ComponentTestCaseBase
             }
         );
     }
-
-    public function testDummyAlwaysFailing(): void
-    {
-        self::assertTrue(false);
-    }
 }
