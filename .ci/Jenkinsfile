@@ -286,8 +286,8 @@ pipeline {
           steps {
             githubNotify(context: "${env.GITHUB_CHECK_ITS_NAME}", description: "${env.GITHUB_CHECK_ITS_NAME} ...", status: 'PENDING', targetUrl: "${env.JENKINS_URL}search/?q=${env.ITS_PIPELINE.replaceAll('/','+')}")
             build(job: env.ITS_PIPELINE, propagate: false, wait: true,
-                  parameters: [ string(name: 'INTEGRATION_TEST', value: 'Php'),
-                                string(name: 'BUILD_OPTS', value: "--php-agent-version ${env.GIT_BASE_COMMIT} --php-agent-repo ${env.CHANGE_FORK?.trim() ?: 'elastic'}/${env.REPO} --opbeans-php-agent-branch ${env.GIT_BASE_COMMIT}"),
+                  parameters: [ string(name: 'INTEGRATION_TEST', value: 'PHP'),
+                                string(name: 'BUILD_OPTS', value: "--php-agent-version ${env.GIT_BASE_COMMIT} --php-agent-repo ${env.CHANGE_FORK?.trim() ?: 'elastic'}/${env.REPO}"),
                                 string(name: 'GITHUB_CHECK_NAME', value: env.GITHUB_CHECK_ITS_NAME),
                                 string(name: 'GITHUB_CHECK_REPO', value: env.REPO),
                                 string(name: 'GITHUB_CHECK_SHA1', value: env.GIT_BASE_COMMIT) ])
