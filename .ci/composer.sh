@@ -40,7 +40,7 @@ if ! composer run-script run_component_tests ; then
         if [ -f "/var/log/messages" ]; then
         cat "/var/log/messages"
         else
-            echo 'syslog's log file not found'
+            echo 'syslog log file not found'
             exit 1
         fi
     fi
