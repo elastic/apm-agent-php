@@ -86,13 +86,15 @@ final class Span extends SpanData implements SpanInterface
         );
     }
 
-    public function endSpanEx(?float $duration = null, int $numberOfStackFramesToSkip = 0): void
+    public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
         if (!$this->endExecutionSegment($duration)) {
             return;
         }
 
-        $this->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip + 1);
+        // This method is part of public API so it should be kept in the stack trace
+        // if $numberOfStackFramesToSkip is 0
+        $this->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip);
 
         $this->getTracer()->getEventSink()->consumeSpanData($this);
 
@@ -103,7 +105,8 @@ final class Span extends SpanData implements SpanInterface
 
     public function end(?float $duration = null): void
     {
-        $this->endSpanEx($duration);
+        // Since endSpanEx was not called directly it should not be kept in the stack trace
+        $this->endSpanEx(/* numberOfStackFramesToSkip: */ 1, $duration);
     }
 
     public function setAction(?string $action): void

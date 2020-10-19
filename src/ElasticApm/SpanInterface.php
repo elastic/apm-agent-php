@@ -23,10 +23,10 @@ interface SpanInterface extends ExecutionSegmentInterface, SpanDataInterface
     /**
      * Extended version of ExecutionSegmentInterface::end()
      *
-     * @param float|null $duration                  In milliseconds with 3 decimal points.
      * @param int        $numberOfStackFramesToSkip Number of stack frames to skip when capturing stack trace.
+     * @param float|null $duration                  In milliseconds with 3 decimal points.
      *
      * @see ExecutionSegmentInterface::end() For the description
      */
-    public function endSpanEx(?float $duration = null, int $numberOfStackFramesToSkip = 0): void;
+    public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void;
 }

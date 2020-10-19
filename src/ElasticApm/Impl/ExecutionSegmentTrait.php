@@ -90,7 +90,8 @@ trait ExecutionSegmentTrait
         try {
             return $callback($newSpan);
         } finally {
-            $newSpan->endSpanEx();
+            // Since endSpanEx was not called directly it should not be kept in the stack trace
+            $newSpan->endSpanEx(/* numberOfStackFramesToSkip: */ 1);
         }
     }
 

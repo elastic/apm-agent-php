@@ -54,7 +54,7 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
     {
     }
 
-    public function endSpanEx(?float $duration = null, int $numberOfStackFramesToSkip = 0): void
+    public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
     }
 }

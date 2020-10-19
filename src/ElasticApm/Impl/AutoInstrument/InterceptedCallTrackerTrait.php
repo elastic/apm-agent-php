@@ -32,7 +32,7 @@ trait InterceptedCallTrackerTrait
     ): void {
         $span->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
         $span->setLabel('hasExitedByException', $hasExitedByException);
-        $span->endSpanEx(/* duration: */ null, $numberOfStackFramesToSkip + 1);
+        $span->endSpanEx($numberOfStackFramesToSkip + 1);
     }
 
     /**
