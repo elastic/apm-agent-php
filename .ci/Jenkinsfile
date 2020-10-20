@@ -162,7 +162,7 @@ pipeline {
           }
           steps {
             githubNotify(context: "${env.GITHUB_CHECK_ITS_NAME}", description: "${env.GITHUB_CHECK_ITS_NAME} ...", status: 'PENDING', targetUrl: "${env.JENKINS_URL}search/?q=${env.ITS_PIPELINE.replaceAll('/','+')}")
-            build(job: env.ITS_PIPELINE, propagate: false, wait: true,
+            build(job: env.ITS_PIPELINE, propagate: false, wait: false,
                   parameters: [ string(name: 'INTEGRATION_TEST', value: 'PHP'),
                                 string(name: 'BUILD_OPTS', value: "--php-agent-version ${env.GIT_BASE_COMMIT} --php-agent-repo ${env.CHANGE_FORK?.trim() ?: 'elastic/' + env.REPO}"),
                                 string(name: 'GITHUB_CHECK_NAME', value: env.GITHUB_CHECK_ITS_NAME),
