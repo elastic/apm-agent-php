@@ -64,9 +64,9 @@ function remove_extension_configuration_to_file() {
         if [ "${extension}" == "2" ] && [ "${bootstrap}" == "3" ] && [ "${footer}" == "4" ] ; then
             echo "$1 has been configured with the Elastic PHP agent setup, let's uninstalled it."
             headerLine=$(grep "${HEADER}" -n "$1" | cut -f1 -d:)
-            footerLine=$(("${headerLine}" + "${footer}"))
-            extensionLine=$(("${headerLine}" + "${extension}"))
-            bootstrapLine=$(("${headerLine}" + "${bootstrap}"))
+            footerLine=$((headerLine + footer))
+            extensionLine=$((headerLine + extension))
+            bootstrapLine=$((headerLine + bootstrap))
             sed -i${BACKUP_EXTENSION} "${headerLine}d;${extensionLine}d;${bootstrapLine}d;${footerLine}d" "$1"
         else
             echo "$1 has been configured with the Elastic PHP agent setup. But it cannot be uninstalled automatically."
