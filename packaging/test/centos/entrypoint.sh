@@ -70,6 +70,7 @@ set -x
 if [ "${TYPE}" == "rpm-uninstall" ] ; then
     rpm -e "${PACKAGE}"
     ## Verify if the elastic php agent has been uninstalled
+    php -m > /dev/null 2>&1
     if php -m | grep -q 'elastic' ; then
         echo 'Extension has not been uninstalled.'
         exit 1
