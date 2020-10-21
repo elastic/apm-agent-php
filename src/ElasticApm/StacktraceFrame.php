@@ -47,13 +47,4 @@ class StacktraceFrame extends EventData
         $this->filename = $filename;
         $this->lineno = $lineno;
     }
-
-    public function __toString(): string
-    {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $builder->add('filename', $this->filename);
-        $builder->add('lineno', $this->lineno);
-        $builder->add('function', $this->function);
-        return $builder->build();
-    }
 }

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 
 abstract class AgentConfigSetterBase
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /** @var array<string, string> */
     public $optionNameToValue = [];
 
@@ -41,10 +43,5 @@ abstract class AgentConfigSetterBase
             $result .= ' -c ' . $appCodePhpIni;
         }
         return $result;
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

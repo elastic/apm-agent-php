@@ -116,9 +116,4 @@ class TransactionData extends ExecutionSegmentData implements TransactionDataInt
 
         return parent::getterMethodNameForConvertToData($propKey);
     }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this, 'TransactionData');
-    }
 }

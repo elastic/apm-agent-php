@@ -12,6 +12,7 @@ use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 use Elastic\Apm\Tests\ComponentTests\Util\TopLevelCodeId;
 use Elastic\Apm\Tests\TestsSharedCode\StacktraceTestSharedCode;
+use PHPUnit\Framework\TestCase;
 
 class StacktraceComponentTest extends ComponentTestCaseBase
 {

@@ -6,7 +6,6 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Exception;
 use Psr\Http\Message\ResponseInterface;
@@ -215,10 +214,5 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
             throw new RuntimeException('Missing required HTTP request header `' . $headerName . '\'');
         }
         return $headerValue;
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

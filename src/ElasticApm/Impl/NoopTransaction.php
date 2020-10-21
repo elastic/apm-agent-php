@@ -78,9 +78,4 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
     {
         return false;
     }
-
-    public function __toString(): string
-    {
-        return 'NO-OP Transaction';
-    }
 }

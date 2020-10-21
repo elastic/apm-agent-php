@@ -76,6 +76,4 @@ interface TracerInterface
     public function resumeRecording(): void;
 
     public function isRecording(): bool;
-
-    public function __toString(): string;
 }
