@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 
-final class ConfigSetterEnvVars extends ConfigSetterBase
+final class AgentConfigSetterEnvVars extends AgentConfigSetterBase
 {
     /** @var Logger */
     private $logger;
@@ -25,7 +24,7 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
 
     public function appCodePhpCmd(): string
     {
-        return self::buildAppCodePhpCmd(AmbientContext::config()->appCodePhpIni());
+        return self::buildAppCodePhpCmd(AmbientContext::config()->appCodePhpIni);
     }
 
     /** @inheritDoc */
@@ -33,8 +32,8 @@ final class ConfigSetterEnvVars extends ConfigSetterBase
     {
         $result = [];
 
-        foreach ($this->parent->configuredOptions as $optName => $optVal) {
-            $result[TestConfigUtil::envVarNameForOption($optName)] = strval($optVal);
+        foreach ($this->optionNameToValue as $optName => $optVal) {
+            $result[TestConfigUtil::envVarNameForAgentOption($optName)] = $optVal;
         }
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))

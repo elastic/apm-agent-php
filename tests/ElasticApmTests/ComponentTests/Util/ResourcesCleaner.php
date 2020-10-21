@@ -8,7 +8,6 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -20,7 +19,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const CLEAN_AND_EXIT_URI_PATH = '/clean_resources_and_exit';
 
-    public const PID_QUERY_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'PID';
+    public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
 
     /** @var LoopInterface */
     protected $loop;
@@ -28,15 +27,12 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     /** @var Logger */
     private $logger;
 
-    /** @var int */
-    private $rootProcessId;
-
     /** @var Set<int> */
     private $processesToTerminateIds;
 
-    public function __construct(string $runScriptFile)
+    public function __construct()
     {
-        parent::__construct($runScriptFile);
+        parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,
@@ -52,10 +48,9 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     {
         parent::processConfig();
 
-        $this->rootProcessId = intval(
-            self::getRequiredTestOption(
-                AllComponentTestsOptionsMetadata::ROOT_PROCESS_ID_OPTION_NAME
-            )
+        TestAssertUtil::assertThat(
+            isset(AmbientContext::config()->sharedDataPerProcess->rootProcessId),
+            strval(AmbientContext::config())
         );
     }
 
@@ -64,7 +59,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         $loop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
-                if (!TestProcessUtil::doesProcessExist($this->rootProcessId)) {
+                if (!TestProcessUtil::doesProcessExist(AmbientContext::config()->sharedDataPerProcess->rootProcessId)) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log('Detected that parent process does not exist');
                     $this->cleanAndExit();
@@ -129,7 +124,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
 
     protected function registerProcessToTerminate(ServerRequestInterface $request): ResponseInterface
     {
-        $pid = intval(self::getRequestHeader($request, self::PID_QUERY_HEADER_NAME));
+        $pid = intval(self::getRequiredRequestHeader($request, self::PID_QUERY_HEADER_NAME));
         $this->processesToTerminateIds->add($pid);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -143,11 +138,5 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
     {
         return false;
-    }
-
-    protected function toStringAddProperties(ObjectToStringBuilder $builder): void
-    {
-        parent::toStringAddProperties($builder);
-        $builder->add('parentPid', $this->rootProcessId);
     }
 }

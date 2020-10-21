@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 
-abstract class ConfigSetterBase
+abstract class AgentConfigSetterBase
 {
-    /** @var TestProperties */
-    protected $parent;
+    /** @var array<string, string> */
+    public $optionNameToValue = [];
 
     abstract public function appCodePhpCmd(): string;
 
@@ -20,31 +21,22 @@ abstract class ConfigSetterBase
 
     abstract public function tearDown(): void;
 
-    public function getParent(): TestProperties
-    {
-        return $this->parent;
-    }
-
-    public function setParent(TestProperties $parent): void
-    {
-        $this->parent = $parent;
-    }
-
     /**
      * @param string $optName
-     * @param mixed  $optVal
+     * @param string $optVal
      *
      * @return $this
      */
-    public function setOption(string $optName, $optVal): self
+    public function set(string $optName, string $optVal): self
     {
-        $this->parent->configuredOptions[$optName] = $optVal;
+        $this->optionNameToValue[$optName] = $optVal;
+
         return $this;
     }
 
     protected static function buildAppCodePhpCmd(?string $appCodePhpIni): string
     {
-        $result = AmbientContext::config()->appCodePhpExe() ?? 'php';
+        $result = AmbientContext::config()->appCodePhpExe ?? 'php';
         if (!is_null($appCodePhpIni)) {
             $result .= ' -c ' . $appCodePhpIni;
         }
@@ -53,6 +45,6 @@ abstract class ConfigSetterBase
 
     public function __toString(): string
     {
-        return DbgUtil::fqToShortClassName(get_class($this));
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

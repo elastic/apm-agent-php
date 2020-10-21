@@ -226,4 +226,20 @@ final class TextUtil
 
         return strncmp($text, $prefix, $prefixLen) === 0;
     }
+
+    public static function isSuffixOf(string $suffix, string $text, bool $isCaseSensitive = true): bool
+    {
+        $suffixLen = strlen($suffix);
+        if ($suffixLen === 0) {
+            return true;
+        }
+
+        return substr_compare(
+            $text,
+            $suffix, /* offset */
+            -$suffixLen,
+            $suffixLen, /* case_insensitivity */
+            !$isCaseSensitive
+        ) === 0;
+    }
 }

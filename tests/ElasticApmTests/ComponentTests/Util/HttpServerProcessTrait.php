@@ -9,21 +9,14 @@ use React\Http\Response;
 
 trait HttpServerProcessTrait
 {
-    /**
-     * @param callable $getRequestHeaderFunc
-     *
-     * @return ResponseInterface
-     *
-     * @phpstan-param callable(string): string $getRequestHeaderFunc
-     */
-    protected static function verifyServerIdEx(callable $getRequestHeaderFunc): ResponseInterface
+    protected static function verifyServerId(string $receivedServerId): ResponseInterface
     {
-        $receivedServerId = $getRequestHeaderFunc(TestEnvBase::SERVER_ID_HEADER_NAME);
-        if ($receivedServerId !== AmbientContext::config()->thisServerId()) {
+        if ($receivedServerId !== AmbientContext::config()->sharedDataPerProcess->thisServerId) {
             return self::buildErrorResponse(
                 400,
                 'Received server ID does not match the expected one.'
-                . ' Expected: ' . AmbientContext::config()->thisServerId() . ', received: ' . $receivedServerId
+                . ' Expected: ' . AmbientContext::config()->sharedDataPerProcess->thisServerId
+                . ', received: ' . $receivedServerId
             );
         }
 

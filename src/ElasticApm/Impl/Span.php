@@ -9,6 +9,7 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\StacktraceFrame;
+use Elastic\Apm\TransactionInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -151,6 +152,13 @@ final class Span extends SpanData implements SpanInterface
             );
 
             $className = ArrayUtil::getValueIfKeyExistsElse('class', $srcFrame, null);
+            if (!is_null($className)) {
+                if ($className === Span::class) {
+                    $className = SpanInterface::class;
+                } elseif ($className === Transaction::class) {
+                    $className = TransactionInterface::class;
+                }
+            }
             $funcName = ArrayUtil::getValueIfKeyExistsElse('function', $srcFrame, null);
             $callType = ArrayUtil::getValueIfKeyExistsElse('type', $srcFrame, '.');
             $dstFrame->function = is_null($className)

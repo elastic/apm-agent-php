@@ -24,8 +24,7 @@ class EventData implements JsonSerializable
     {
         $result = [];
 
-        // Until this bug https://github.com/phpstan/phpstan/issues/1060 is fixed
-        // @phpstan-ignore-next-line
+        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
         foreach ($this as $thisObjPropName => $thisObjPropValue) {
             if ($this->shouldSerializeProperty($thisObjPropName, $thisObjPropValue)) {
                 $this->serializeProperty($thisObjPropName, $thisObjPropValue, /* ref */ $result);
@@ -81,8 +80,7 @@ class EventData implements JsonSerializable
         }
 
         $result = new static(); // @phpstan-ignore-line
-        // Until this bug https://github.com/phpstan/phpstan/issues/1060 is fixed
-        // @phpstan-ignore-next-line
+        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
         foreach ($result as $propKey => $propValue) {
             $methodName = static::getterMethodNameForConvertToData($propKey);
             $result->$propKey = static::convertPropertyValueToData($data->$methodName());

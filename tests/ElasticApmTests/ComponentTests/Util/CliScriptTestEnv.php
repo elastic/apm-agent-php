@@ -38,8 +38,6 @@ final class CliScriptTestEnv extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
-        $this->ensureMockApmServerRunning();
-
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Running ' . DbgUtil::fqToShortClassName(CliScriptAppCodeHost::class) . '...',
@@ -47,28 +45,24 @@ final class CliScriptTestEnv extends TestEnvBase
         );
 
         $additionalEnvVars
-            = $testProperties->configSetter->additionalEnvVars() +
-              [
-                  TestConfigUtil::envVarNameForTestsOption(
-                      AllComponentTestsOptionsMetadata::APP_CODE_CLASS_OPTION_NAME
-                  ) => $testProperties->appCodeClass,
-                  TestConfigUtil::envVarNameForTestsOption(
-                      AllComponentTestsOptionsMetadata::APP_CODE_METHOD_OPTION_NAME
-                  ) => $testProperties->appCodeMethod,
-              ];
-
-        if (!is_null($testProperties->appCodeArgs)) {
-            $additionalEnvVars[TestConfigUtil::envVarNameForTestsOption(
-                AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
-            )]
-                = SerializationUtil::serializeAsJson(
-                    $testProperties->appCodeArgs,
-                    AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
-                );
-        }
+            = [
+                  TestConfigUtil::envVarNameForTestOption(
+                      AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
+                  ) => SerializationUtil::serializeAsJson(
+                      $this->buildSharedDataPerProcess(),
+                      SharedDataPerProcess::class
+                  ),
+                  TestConfigUtil::envVarNameForTestOption(
+                      AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
+                  ) => SerializationUtil::serializeAsJson(
+                      $testProperties->sharedDataPerRequest,
+                      SharedDataPerRequest::class
+                  ),
+              ]
+              + $testProperties->agentConfigSetter->additionalEnvVars();
 
         TestProcessUtil::startProcessAndWaitUntilExit(
-            $testProperties->configSetter->appCodePhpCmd()
+            $testProperties->agentConfigSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
             $this->buildEnvVars($additionalEnvVars)
         );

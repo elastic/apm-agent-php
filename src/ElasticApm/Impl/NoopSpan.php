@@ -26,9 +26,9 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
         return NoopTransaction::ID;
     }
 
-    public function getStacktrace(): array
+    public function getStacktrace(): ?array
     {
-        return [];
+        return null;
     }
 
     public function getStart(): float

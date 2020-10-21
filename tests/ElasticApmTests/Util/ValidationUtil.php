@@ -312,7 +312,9 @@ final class ValidationUtil
         self::assertValidExecutionSegmentData($span);
         self::assertValidNullableKeywordString($span->getAction());
         self::assertValidExecutionSegmentId($span->getParentId());
-        self::assertValidStacktrace($span->getStacktrace());
+        if (!is_null($span->getStacktrace())) {
+            self::assertValidStacktrace($span->getStacktrace());
+        }
         self::assertValidSpanStart($span->getStart());
         self::assertValidNullableKeywordString($span->getSubtype());
     }

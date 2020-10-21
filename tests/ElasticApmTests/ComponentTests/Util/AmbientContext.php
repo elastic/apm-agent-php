@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
-use Elastic\Apm\Impl\Config\Parser;
+use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Log\SinkInterface;
 use Elastic\Apm\Tests\Util\TestLogSink;
 use RuntimeException;
 
@@ -18,27 +15,23 @@ final class AmbientContext
     /** @var self */
     private static $singletonInstance;
 
+    /** @var string */
+    private $dbgProcessName;
+
     /** @var LoggerFactory */
     private $loggerFactory;
 
-    /** @var EnvVarsRawSnapshotSource */
-    private $envVarConfigSource;
+    /** @var array<string> */
+    private $testOptionNames;
 
-    /** @var ConfigSnapshot */
-    private $config;
-
-    /** @var SinkInterface */
-    private $logSink;
+    /** @var TestConfigSnapshot */
+    private $testConfig;
 
     private function __construct(string $dbgProcessName)
     {
-        $allOptsMeta = AllComponentTestsOptionsMetadata::build();
-        $this->logSink = new TestLogSink($dbgProcessName);
-        $this->envVarConfigSource
-            = new EnvVarsRawSnapshotSource(TestConfigUtil::ENV_VAR_NAME_PREFIX, array_keys($allOptsMeta));
-        $parser = new Parser($allOptsMeta, self::createLoggerFactory(LogLevel::ERROR, $this->logSink));
-        $this->config = new ConfigSnapshot($parser->parse($this->envVarConfigSource->currentSnapshot()));
-        $this->loggerFactory = self::createLoggerFactory($this->config->logLevel(), $this->logSink);
+        $this->dbgProcessName = $dbgProcessName;
+        $this->testOptionNames = array_keys(AllComponentTestsOptionsMetadata::build());
+        $this->readAndApplyConfig(/* additionalConfigSource */ null);
     }
 
     public static function init(string $dbgProcessName): void
@@ -47,8 +40,8 @@ final class AmbientContext
             self::$singletonInstance = new AmbientContext($dbgProcessName);
         }
 
-        if (self::config()->appCodeHostKind() === AppCodeHostKind::NOT_SET) {
-            $envVarName = TestConfigUtil::envVarNameForTestsOption(AppCodeHostKindOptionMetadata::NAME);
+        if (self::config()->appCodeHostKind === AppCodeHostKind::NOT_SET) {
+            $envVarName = TestConfigUtil::envVarNameForTestOption(AppCodeHostKindOptionMetadata::NAME);
             throw new RuntimeException(
                 'Required configuration option ' . AppCodeHostKindOptionMetadata::NAME
                 . " (environment variable $envVarName)" . ' is not set'
@@ -56,18 +49,35 @@ final class AmbientContext
         }
     }
 
-    public static function config(): ConfigSnapshot
+    public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
     {
         assert(isset(self::$singletonInstance));
-
-        return self::$singletonInstance->config;
+        self::$singletonInstance->readAndApplyConfig($additionalConfigSource);
     }
 
-    public static function envVarConfigSource(): EnvVarsRawSnapshotSource
+    private function readAndApplyConfig(?RawSnapshotSourceInterface $additionalConfigSource): void
+    {
+        $this->testConfig = TestConfigUtil::read($this->dbgProcessName, $additionalConfigSource);
+        $this->loggerFactory = new LoggerFactory(
+            new LogBackend(
+                $this->testConfig->logLevel,
+                new TestLogSink($this->dbgProcessName)
+            )
+        );
+    }
+
+    public static function dbgProcessName(): string
     {
         assert(isset(self::$singletonInstance));
 
-        return self::$singletonInstance->envVarConfigSource;
+        return self::$singletonInstance->dbgProcessName;
+    }
+
+    public static function config(): TestConfigSnapshot
+    {
+        assert(isset(self::$singletonInstance));
+
+        return self::$singletonInstance->testConfig;
     }
 
     public static function loggerFactory(): LoggerFactory
@@ -75,17 +85,5 @@ final class AmbientContext
         assert(isset(self::$singletonInstance));
 
         return self::$singletonInstance->loggerFactory;
-    }
-
-    public static function logSink(): SinkInterface
-    {
-        assert(isset(self::$singletonInstance));
-
-        return self::$singletonInstance->logSink;
-    }
-
-    private static function createLoggerFactory(int $logLevel, SinkInterface $logSink): LoggerFactory
-    {
-        return new LoggerFactory(new LogBackend($logLevel, $logSink));
     }
 }

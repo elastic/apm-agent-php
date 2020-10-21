@@ -85,21 +85,20 @@ final class Tracer implements TracerInterface
 
     private function buildConfig(): ConfigSnapshot
     {
-        $allOptsMeta = AllOptionsMetadata::build();
-        $optionNames = array_keys($allOptsMeta);
         $rawSnapshotSource
             = $this->providedDependencies->configRawSnapshotSource
               ?? new CompositeRawSnapshotSource(
                   [
-                      new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX, $optionNames),
-                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX, $optionNames),
+                      new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX),
+                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX),
                   ]
               );
 
         $parsingLoggerFactory
             = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
-        $parser = new ConfigParser($allOptsMeta, $parsingLoggerFactory);
-        return new ConfigSnapshot($parser->parse($rawSnapshotSource->currentSnapshot()));
+        $parser = new ConfigParser($parsingLoggerFactory);
+        $allOptsMeta = AllOptionsMetadata::build();
+        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
     }
 
     public function getConfig(): ConfigSnapshot

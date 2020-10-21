@@ -11,5 +11,12 @@ namespace Elastic\Apm\Impl\Config;
  */
 interface RawSnapshotSourceInterface
 {
-    public function currentSnapshot(): RawSnapshotInterface;
+    /**
+     * Parser constructor.
+     *
+     * @param array<string, OptionMetadataInterface<mixed>> $optionNameToMeta
+     *
+     * @return RawSnapshotInterface
+     */
+    public function currentSnapshot(array $optionNameToMeta): RawSnapshotInterface;
 }

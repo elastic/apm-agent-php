@@ -7,8 +7,8 @@ namespace Elastic\Apm\Tests\ComponentTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 use RuntimeException;
@@ -16,7 +16,7 @@ use RuntimeException;
 final class SamplingTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array<ConfigSetterBase|float|null>>
+     * @return iterable<array<AgentConfigSetterBase|float|null>>
      */
     public function rateConfigTestDataProvider(): iterable
     {
@@ -65,25 +65,23 @@ final class SamplingTest extends ComponentTestCaseBase
     /**
      * @dataProvider rateConfigTestDataProvider
      *
-     * @param ConfigSetterBase|null $configSetter
-     * @param float|null            $transactionSampleRate
+     * @param AgentConfigSetterBase|null $configSetter
+     * @param float|null                 $transactionSampleRate
      */
-    public function testRateConfig(?ConfigSetterBase $configSetter, ?float $transactionSampleRate): void
+    public function testRateConfig(?AgentConfigSetterBase $configSetter, ?float $transactionSampleRate): void
     {
-        $testProperties = new TestProperties(
-            [__CLASS__, 'appCodeForRateConfigTest'],
-            /* appCodeArgs: */ ['transactionSampleRate' => $transactionSampleRate]
-        );
+        $testProperties = (new TestProperties())
+            ->withRoutedAppCode([__CLASS__, 'appCodeForRateConfigTest'])
+            ->withAppArgs(['transactionSampleRate' => $transactionSampleRate]);
         if (is_null($transactionSampleRate)) {
             self::assertNull($configSetter);
         } else {
             self::assertNotNull($configSetter);
-            $testProperties->withConfigSetter($configSetter)->setOption(
-                OptionNames::TRANSACTION_SAMPLE_RATE,
-                strval($transactionSampleRate)
+            $testProperties->withAgentConfig(
+                $configSetter->set(OptionNames::TRANSACTION_SAMPLE_RATE, strval($transactionSampleRate))
             );
         }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             $testProperties,
             function (DataFromAgent $dataFromAgent) use ($transactionSampleRate): void {
                 $tx = $dataFromAgent->singleTransaction();

@@ -23,7 +23,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
     public const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
     private const INTAKE_API_URI = '/intake/v2/events';
     public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
-    public const FROM_INDEX_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'FROM_INDEX';
+    public const FROM_INDEX_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'FROM_INDEX';
     public const INTAKE_API_REQUESTS_JSON_KEY = 'intake_api_requests_received_from_agent';
 
     /** @var int */
@@ -41,9 +41,9 @@ final class MockApmServer extends StatefulHttpServerProcessBase
     /** @var Map<int, MockApmServerPendingDataRequest> */
     private $pendingDataRequests;
 
-    public function __construct(string $runScriptFile)
+    public function __construct()
     {
-        parent::__construct($runScriptFile);
+        parent::__construct();
 
         $this->pendingDataRequests = new Map();
 
@@ -130,7 +130,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
      */
     private function getIntakeApiRequests(ServerRequestInterface $request)
     {
-        $fromIndex = intval(self::getRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
+        $fromIndex = intval(self::getRequiredRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
         if (!RangeUtil::isInInclusiveRange(0, $fromIndex, count($this->receivedIntakeApiRequests))) {
             return $this->buildErrorResponse(
                 400 /* status */,
@@ -222,11 +222,5 @@ final class MockApmServer extends StatefulHttpServerProcessBase
                 JSON_PRETTY_PRINT
             )
         );
-    }
-
-    protected function toStringAddProperties(ObjectToStringBuilder $builder): void
-    {
-        parent::toStringAddProperties($builder);
-        $builder->add('pendingDataRequestsCount', $this->pendingDataRequests->count());
     }
 }

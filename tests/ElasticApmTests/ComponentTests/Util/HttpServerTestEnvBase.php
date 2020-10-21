@@ -17,8 +17,10 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 {
     /** @var string|null */
     protected $appCodeHostServerId = null;
+
     /** @var int|null */
     protected $appCodeHostServerPort = null;
+
     /** @var Logger */
     private $logger;
 
@@ -41,7 +43,6 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
-        $this->ensureMockApmServerRunning();
         $this->ensureAppCodeHostServerRunning($testProperties);
         TestCase::assertNotNull($this->appCodeHostServerPort);
         TestCase::assertNotNull($this->appCodeHostServerId);
@@ -52,24 +53,11 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
-        $headers = [
-            BuiltinHttpServerAppCodeHost::CLASS_HEADER_NAME  => $testProperties->appCodeClass,
-            BuiltinHttpServerAppCodeHost::METHOD_HEADER_NAME => $testProperties->appCodeMethod,
-        ];
-        if (!is_null($testProperties->appCodeArgs)) {
-            $headers[BuiltinHttpServerAppCodeHost::ARGUMENTS_HEADER_NAME]
-                = SerializationUtil::serializeAsJson(
-                    $testProperties->appCodeArgs,
-                    AllComponentTestsOptionsMetadata::APP_CODE_ARGUMENTS_OPTION_NAME
-                );
-        }
-
         $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
-            $this->appCodeHostServerId,
             $testProperties->httpMethod,
             $testProperties->uriPath,
-            $headers
+            SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $testProperties->sharedDataPerRequest)
         );
         if ($response->getStatusCode() !== $testProperties->expectedStatusCode) {
             throw new RuntimeException(

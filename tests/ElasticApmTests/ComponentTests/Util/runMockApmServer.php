@@ -7,4 +7,4 @@ require __DIR__ . '/../../../bootstrap.php';
 use Elastic\Apm\Tests\ComponentTests\Util\MockApmServer;
 
 /** @noinspection PhpUnhandledExceptionInspection */
-MockApmServer::run(__FILE__);
+MockApmServer::run();

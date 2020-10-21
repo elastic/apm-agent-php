@@ -11,6 +11,7 @@ use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
@@ -35,8 +36,6 @@ abstract class TestEnvBase
     private const MAX_TRIES_TO_START_SERVER = 3;
 
     public const STATUS_CHECK_URI = '/elastic_apm_php_tests_status_check';
-    public const HEADER_NAME_PREFIX = 'ELASTIC_APM_PHP_TESTS_';
-    public const SERVER_ID_HEADER_NAME = self::HEADER_NAME_PREFIX . 'SERVER_ID';
 
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
@@ -51,14 +50,14 @@ abstract class TestEnvBase
     /** @var string|null */
     protected $mockApmServerId = null;
 
+    /** @var int|null */
+    private $mockApmServerPort = null;
+
     /** @var Logger */
     private $logger;
 
     /** @var DataFromAgent */
     private $dataFromAgent;
-
-    /** @var int|null */
-    private $mockApmServerPort = null;
 
     public function __construct()
     {
@@ -102,9 +101,9 @@ abstract class TestEnvBase
                 try {
                     $response = TestHttpClientUtil::sendHttpRequest(
                         $port,
-                        $serverId,
                         HttpConsts::METHOD_GET,
-                        TestEnvBase::STATUS_CHECK_URI
+                        TestEnvBase::STATUS_CHECK_URI,
+                        SharedDataPerRequest::fromServerId($serverId)
                     );
                 } catch (Throwable $throwable) {
                     $lastException = $throwable;
@@ -185,15 +184,15 @@ abstract class TestEnvBase
             TestProcessUtil::startBackgroundProcess(
                 $cmdLine,
                 $this->buildEnvVars(
-                    $additionalEnvVars +
                     [
-                        TestConfigUtil::envVarNameForTestsOption(
-                            AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
-                        )                                                              => strval($currentTryPort),
-                        TestConfigUtil::envVarNameForTestsOption(
-                            AllComponentTestsOptionsMetadata::THIS_SERVER_ID_OPTION_NAME
-                        )                                                              => $currentTryServerId,
+                        TestConfigUtil::envVarNameForTestOption(
+                            AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
+                        ) => SerializationUtil::serializeAsJson(
+                            $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort),
+                            SharedDataPerProcess::class
+                        ),
                     ]
+                    + $additionalEnvVars
                 )
             );
 
@@ -217,22 +216,32 @@ abstract class TestEnvBase
         return 'php ' . '"' . __DIR__ . DIRECTORY_SEPARATOR . $runScriptName . '"';
     }
 
-    private function ensureResourcesCleanerRunning(): void
-    {
+    private function ensureAuxHttpServerIsRunning(
+        string $dbgServerDesc,
+        string $runScriptName,
+        ?int &$port,
+        ?string &$serverId
+    ): void {
         $this->ensureHttpServerIsRunning(
-            $this->resourcesCleanerPort /* <- ref */,
-            $this->resourcesCleanerServerId /* <- ref */,
-            DbgUtil::fqToShortClassName(ResourcesCleaner::class) /* <- dbgServerDesc */,
+            $port /* <- ref */,
+            $serverId /* <- ref */,
+            $dbgServerDesc,
             /* cmdLineGenFunc: */
-            function (/** @noinspection PhpUnusedParameterInspection */ int $port) {
-                return self::runScriptNameToCmdLine('runResourcesCleaner.php');
+            function (/** @noinspection PhpUnusedParameterInspection */ int $port) use ($runScriptName) {
+                return self::runScriptNameToCmdLine($runScriptName);
             },
             /* additionalEnvVars: */
-            [
-                TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false',
-                TestConfigUtil::envVarNameForTestsOption(AllComponentTestsOptionsMetadata::ROOT_PROCESS_ID_OPTION_NAME)
-                => strval(getmypid()),
-            ]
+            [TestConfigUtil::envVarNameForAgentOption(OptionNames::ENABLED) => 'false']
+        );
+    }
+
+    private function ensureResourcesCleanerRunning(): void
+    {
+        $this->ensureAuxHttpServerIsRunning(
+            DbgUtil::fqToShortClassName(ResourcesCleaner::class) /* <- dbgServerDesc */,
+            'runResourcesCleaner.php' /* <- runScriptName */,
+            $this->resourcesCleanerPort /* <- ref */,
+            $this->resourcesCleanerServerId /* <- ref */
         );
     }
 
@@ -240,17 +249,29 @@ abstract class TestEnvBase
     {
         $this->ensureResourcesCleanerRunning();
 
-        $this->ensureHttpServerIsRunning(
-            $this->mockApmServerPort /* <- ref */,
-            $this->mockApmServerId /* <- ref */,
+        $this->ensureAuxHttpServerIsRunning(
             DbgUtil::fqToShortClassName(MockApmServer::class) /* <- dbgServerDesc */,
-            /* cmdLineGenFunc: */
-            function (/** @noinspection PhpUnusedParameterInspection */ int $port) {
-                return self::runScriptNameToCmdLine('runMockApmServer.php');
-            },
-            /* additionalEnvVars: */
-            [TestConfigUtil::envVarNameForOption(OptionNames::ENABLED) => 'false']
+            'runMockApmServer.php' /* <- runScriptName */,
+            $this->mockApmServerPort /* <- ref */,
+            $this->mockApmServerId /* <- ref */
         );
+    }
+
+    protected function buildSharedDataPerProcess(
+        ?string $targetProcessServerId = null,
+        ?int $targetProcessPort = null
+    ): SharedDataPerProcess {
+        $result = new SharedDataPerProcess();
+
+        $result->rootProcessId = getmypid();
+
+        $result->resourcesCleanerServerId = $this->resourcesCleanerServerId;
+        $result->resourcesCleanerPort = $this->resourcesCleanerPort;
+
+        $result->thisServerId = $targetProcessServerId;
+        $result->thisServerPort = $targetProcessPort;
+
+        return $result;
     }
 
     /**
@@ -258,30 +279,13 @@ abstract class TestEnvBase
      *
      * @return array<string, string>
      */
-    public function buildEnvVars(array $additionalEnvVars): array
+    protected function buildEnvVars(array $additionalEnvVars): array
     {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['additionalEnvVars' => $additionalEnvVars]);
 
         /** @var array<string, string> */
         $result = getenv();
-
-        if (!is_null($this->mockApmServerPort)) {
-            $result[TestConfigUtil::envVarNameForOption(OptionNames::SERVER_URL)]
-                = 'http://localhost:' . $this->mockApmServerPort;
-        }
-
-        if (!is_null($this->resourcesCleanerPort)) {
-            $result[TestConfigUtil::envVarNameForTestsOption(
-                AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_PORT_OPTION_NAME
-            )]
-                = strval($this->resourcesCleanerPort);
-            TestCase::assertNotNull($this->resourcesCleanerServerId);
-            $result[TestConfigUtil::envVarNameForTestsOption(
-                AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_SERVER_ID_OPTION_NAME
-            )]
-                = $this->resourcesCleanerServerId;
-        }
 
         $result += $additionalEnvVars;
 
@@ -306,6 +310,14 @@ abstract class TestEnvBase
         try {
             $this->dataFromAgent->clearAdded();
             $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
+
+            $this->ensureMockApmServerRunning();
+            TestCase::assertNotNull($this->mockApmServerPort);
+            $testProperties->agentConfigSetter->set(
+                OptionNames::SERVER_URL,
+                'http://localhost:' . $this->mockApmServerPort
+            );
+
             $this->sendRequestToInstrumentedApp($testProperties);
             $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
         } finally {
@@ -338,9 +350,9 @@ abstract class TestEnvBase
         try {
             TestHttpClientUtil::sendHttpRequest(
                 $this->resourcesCleanerPort,
-                $this->resourcesCleanerServerId,
                 HttpConsts::METHOD_POST,
-                ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH
+                ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH,
+                SharedDataPerRequest::fromServerId($this->resourcesCleanerServerId)
             );
         } catch (GuzzleException $ex) {
             // clean-and-exit request is expected to throw
@@ -461,7 +473,7 @@ abstract class TestEnvBase
         $configuredApiKey = $testProperties->getConfiguredAgentOption(OptionNames::API_KEY);
 
         $this->verifyAuthHttpRequestHeaders(
-            /* expectedApiKey: */
+        /* expectedApiKey: */
             $configuredApiKey,
             /* expectedSecretToken: */
             is_null($configuredApiKey) ? $testProperties->getConfiguredAgentOption(OptionNames::SECRET_TOKEN) : null,
@@ -561,9 +573,9 @@ abstract class TestEnvBase
 
         $response = TestHttpClientUtil::sendHttpRequest(
             $this->mockApmServerPort,
-            $this->mockApmServerId,
             HttpConsts::METHOD_GET,
             MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS,
+            SharedDataPerRequest::fromServerId($this->mockApmServerId),
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->dataFromAgent->nextIntakeApiRequestIndexToFetch())]
         );
 
@@ -593,8 +605,6 @@ abstract class TestEnvBase
 
     public function __toString(): string
     {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $builder->add('testEnvId', $this->testEnvId());
-        return $builder->build();
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

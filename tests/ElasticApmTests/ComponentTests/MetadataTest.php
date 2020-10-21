@@ -8,7 +8,7 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
+use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
 
@@ -23,15 +23,15 @@ final class MetadataTest extends ComponentTestCaseBase
     }
 
     private function environmentConfigTestImpl(
-        ?ConfigSetterBase $configSetter,
+        ?AgentConfigSetterBase $configSetter,
         ?string $configured,
         ?string $expected
     ): void {
         $this->configTestImpl(
             $configSetter,
             $configured,
-            function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->setOption(OptionNames::ENVIRONMENT, $configured);
+            function (AgentConfigSetterBase $configSetter, string $configured): void {
+                $configSetter->set(OptionNames::ENVIRONMENT, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyEnvironment($expected, $dataFromAgent);
@@ -47,9 +47,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testCustomEnvironment(ConfigSetterBase $configSetter): void
+    public function testCustomEnvironment(AgentConfigSetterBase $configSetter): void
     {
         $configured = 'custom service environment 9.8 @CI#!?';
         $this->environmentConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
@@ -58,24 +58,24 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testInvalidEnvironmentTooLong(ConfigSetterBase $configSetter): void
+    public function testInvalidEnvironmentTooLong(AgentConfigSetterBase $configSetter): void
     {
         $expected = self::generateDummyMaxKeywordString();
         $this->environmentConfigTestImpl($configSetter, /* configured: */ $expected . '_tail', $expected);
     }
 
     private function serviceNameConfigTestImpl(
-        ?ConfigSetterBase $configSetter,
+        ?AgentConfigSetterBase $configSetter,
         ?string $configured,
         string $expected
     ): void {
         $this->configTestImpl(
             $configSetter,
             $configured,
-            function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->setOption(OptionNames::SERVICE_NAME, $configured);
+            function (AgentConfigSetterBase $configSetter, string $configured): void {
+                $configSetter->set(OptionNames::SERVICE_NAME, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyServiceName($expected, $dataFromAgent);
@@ -95,9 +95,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testCustomServiceName(ConfigSetterBase $configSetter): void
+    public function testCustomServiceName(AgentConfigSetterBase $configSetter): void
     {
         $configured = 'custom service name';
         $this->serviceNameConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
@@ -106,9 +106,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testInvalidServiceNameChars(ConfigSetterBase $configSetter): void
+    public function testInvalidServiceNameChars(AgentConfigSetterBase $configSetter): void
     {
         $this->serviceNameConfigTestImpl(
             $configSetter,
@@ -120,9 +120,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testInvalidServiceNameTooLong(ConfigSetterBase $configSetter): void
+    public function testInvalidServiceNameTooLong(AgentConfigSetterBase $configSetter): void
     {
         $this->serviceNameConfigTestImpl(
             $configSetter,
@@ -138,15 +138,15 @@ final class MetadataTest extends ComponentTestCaseBase
     }
 
     private function serviceVersionConfigTestImpl(
-        ?ConfigSetterBase $configSetter,
+        ?AgentConfigSetterBase $configSetter,
         ?string $configured,
         ?string $expected
     ): void {
         $this->configTestImpl(
             $configSetter,
             $configured,
-            function (ConfigSetterBase $configSetter, string $configured): void {
-                $configSetter->setOption(OptionNames::SERVICE_VERSION, $configured);
+            function (AgentConfigSetterBase $configSetter, string $configured): void {
+                $configSetter->set(OptionNames::SERVICE_VERSION, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($expected): void {
                 TestEnvBase::verifyServiceVersion($expected, $dataFromAgent);
@@ -162,9 +162,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testCustomServiceVersion(ConfigSetterBase $configSetter): void
+    public function testCustomServiceVersion(AgentConfigSetterBase $configSetter): void
     {
         $configured = 'v1.5.4-alpha@CI#.!?.';
         $this->serviceVersionConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
@@ -173,9 +173,9 @@ final class MetadataTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testInvalidServiceVersionTooLong(ConfigSetterBase $configSetter): void
+    public function testInvalidServiceVersionTooLong(AgentConfigSetterBase $configSetter): void
     {
         $expected = self::generateDummyMaxKeywordString();
         $this->serviceVersionConfigTestImpl($configSetter, /* configured: */ $expected . '_tail', $expected);
