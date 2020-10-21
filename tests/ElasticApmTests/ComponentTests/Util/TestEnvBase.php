@@ -426,7 +426,13 @@ abstract class TestEnvBase
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 __FUNCTION__ . ' failed.',
-                ['last exception from verifyFunc()' => $lastException]
+                [
+                    'last exception from verifyFunc()' => $lastException,
+                    'timeBeforeRequestToApp' => $timeBeforeRequestToApp,
+                    'testProperties' => $testProperties,
+                    'this' => $this,
+                    'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
+                ]
             );
 
             throw $lastException;

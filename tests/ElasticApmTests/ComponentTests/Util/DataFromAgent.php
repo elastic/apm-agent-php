@@ -292,11 +292,6 @@ final class DataFromAgent
 
     public function __toString(): string
     {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $builder->add('intakeApiRequestsCount', count($this->intakeApiRequests));
-        $builder->add('metadataCount', count($this->metadata));
-        $builder->add('transactionsCount', count($this->idToTransaction));
-        $builder->add('spansCount', count($this->idToSpan));
-        return $builder->build();
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }
