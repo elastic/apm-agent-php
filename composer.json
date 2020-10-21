@@ -80,9 +80,9 @@
             "phpunit -c phpunit_component_tests.xml --filter"
         ],
         "run_component_tests": [
-            "@putenv ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_script",
+            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
             "composer run-script run_component_tests_configured",
-            "@putenv ELASTIC_APM_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server",
+            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server",
             "composer run-script run_component_tests_configured"
         ],
         "static_check_and_run_tests": [

@@ -20,8 +20,8 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
     /** @var string */
     protected $parentId;
 
-    /** @var StacktraceFrame[] */
-    protected $stacktrace = [];
+    /** @var StacktraceFrame[]|null */
+    protected $stacktrace = null;
 
     /** @var float */
     protected $start;
@@ -45,7 +45,7 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
     }
 
     /** @inheritDoc */
-    public function getStacktrace(): array
+    public function getStacktrace(): ?array
     {
         return $this->stacktrace;
     }

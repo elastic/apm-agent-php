@@ -6,7 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
+use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
@@ -14,22 +14,22 @@ use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 final class ApiKeyTest extends ComponentTestCaseBase
 {
     private function apiKeyConfigTestImpl(
-        ?ConfigSetterBase $configSetter,
+        ?AgentConfigSetterBase $configSetter,
         ?string $configuredApiKey,
         ?string $configuredSecretToken
     ): void {
-        $testProperties = new TestProperties([__CLASS__, 'appCodeEmpty']);
+        $testProperties = (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeEmpty']);
         if (!is_null($configSetter)) {
             self::assertTrue(!is_null($configuredApiKey) || !is_null($configuredSecretToken));
-            $testProperties->withConfigSetter($configSetter);
             if (!is_null($configuredApiKey)) {
-                $configSetter->setOption(OptionNames::API_KEY, $configuredApiKey);
+                $configSetter->set(OptionNames::API_KEY, $configuredApiKey);
             }
             if (!is_null($configuredSecretToken)) {
-                $configSetter->setOption(OptionNames::SECRET_TOKEN, $configuredSecretToken);
+                $configSetter->set(OptionNames::SECRET_TOKEN, $configuredSecretToken);
             }
+            $testProperties->withAgentConfig($configSetter);
         }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             $testProperties,
             function (DataFromAgent $dataFromAgent) use ($configuredApiKey, $configuredSecretToken): void {
                 TestEnvBase::verifyAuthHttpRequestHeaders(
@@ -53,9 +53,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testCustomApiKey(ConfigSetterBase $configSetter): void
+    public function testCustomApiKey(AgentConfigSetterBase $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, 'custom API Key 9.8 @CI#!?', /* configuredSecretToken: */ null);
     }
@@ -63,9 +63,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testApiKeyTakesPrecedenceOverSecretToken(ConfigSetterBase $configSetter): void
+    public function testApiKeyTakesPrecedenceOverSecretToken(AgentConfigSetterBase $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, 'custom API Key', 'custom Secret TOKEN');
     }
@@ -73,9 +73,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param ConfigSetterBase $configSetter
+     * @param AgentConfigSetterBase $configSetter
      */
-    public function testSecretTokenIsUsedIfNoApiKey(ConfigSetterBase $configSetter): void
+    public function testSecretTokenIsUsedIfNoApiKey(AgentConfigSetterBase $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, /* configuredApiKey */ null, 'custom Secret TOKEN');
     }

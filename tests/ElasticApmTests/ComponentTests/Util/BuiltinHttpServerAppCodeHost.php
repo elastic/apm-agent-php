@@ -14,21 +14,17 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {
     use HttpServerProcessTrait;
 
-    public const ARGUMENTS_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_ARGUMENTS';
-    public const CLASS_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_CLASS';
-    public const METHOD_HEADER_NAME = TestEnvBase::HEADER_NAME_PREFIX . 'APP_CODE_METHOD';
-
     /** @var Logger */
     private $logger;
 
-    public function __construct(string $runScriptFile)
+    public function __construct()
     {
         if (self::isStatusCheck()) {
             // We don't want any of the testing infrastructure operations to be recorded as application's APM events
             ElasticApm::getCurrentTransaction()->discard();
         }
 
-        parent::__construct($runScriptFile);
+        parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,
@@ -57,26 +53,36 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function processConfig(): void
     {
+        TestAssertUtil::assertThat(
+            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerId),
+            strval(AmbientContext::config())
+        );
+        TestAssertUtil::assertThat(
+            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerPort),
+            strval(AmbientContext::config())
+        );
+
         parent::processConfig();
 
-        if (!self::isStatusCheck()) {
-            $this->appCodeClass = self::getRequiredRequestHeader(self::CLASS_HEADER_NAME);
-            $this->appCodeMethod = self::getRequiredRequestHeader(self::METHOD_HEADER_NAME);
-            $this->appCodeArgs = self::deserializeAppCodeArguments(self::getRequestHeader(self::ARGUMENTS_HEADER_NAME));
-        }
+        AmbientContext::reconfigure(
+            new RequestHeadersRawSnapshotSource(
+                function (string $headerName): ?string {
+                    $headerKey = 'HTTP_' . $headerName;
+                    return array_key_exists($headerKey, $_SERVER) ? $_SERVER[$headerKey] : null;
+                }
+            )
+        );
     }
 
     protected function runImpl(): void
     {
-        $response = self::verifyServerIdEx([__CLASS__, 'getRequiredRequestHeader']);
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+        $response = self::verifyServerId(AmbientContext::config()->sharedDataPerRequest->serverId);
+        if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
             self::sendResponse($response);
             return;
         }
 
-        if (!self::isStatusCheck()) {
-            $this->callAppCode();
-        }
+        $this->callAppCode();
     }
 
     private static function sendResponse(ResponseInterface $response): void
@@ -88,25 +94,5 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     protected function cliHelpOptions(): string
     {
         throw new RuntimeException('This method should not be called: ' . __METHOD__);
-    }
-
-    protected static function getRequestHeader(string $headerName): ?string
-    {
-        $headerKey = 'HTTP_' . $headerName;
-        if (!array_key_exists($headerKey, $_SERVER)) {
-            return null;
-        }
-
-        return $_SERVER[$headerKey];
-    }
-
-    protected static function getRequiredRequestHeader(string $headerName): string
-    {
-        $headerValue = self::getRequestHeader($headerName);
-        if (is_null($headerValue)) {
-            throw new RuntimeException('Required HTTP request header `' . $headerName . '\' is missing');
-        }
-
-        return $headerValue;
     }
 }

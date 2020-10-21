@@ -5,20 +5,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use PHPUnit\Framework\TestCase;
 
 final class TestProperties
 {
-    /** @var array<string, mixed>|null */
-    public $appCodeArgs;
-
-    /** @var string */
-    public $appCodeClass;
-
-    /** @var string */
-    public $appCodeMethod;
-
     /** @var string */
     public $httpMethod = 'GET';
 
@@ -34,27 +25,53 @@ final class TestProperties
     /** @var ?string */
     public $transactionType = null;
 
-    /** @var ConfigSetterBase */
-    public $configSetter;
+    /** @var AgentConfigSetterBase */
+    public $agentConfigSetter;
 
-    /** @var array<?string> */
-    public $configuredOptions = [];
+    /** @var SharedDataPerRequest */
+    public $sharedDataPerRequest;
+
+    public function __construct()
+    {
+        $this->agentConfigSetter = new AgentConfigSetterEnvVars();
+        $this->sharedDataPerRequest = new SharedDataPerRequest();
+    }
+
+    public function withRoutedAppCode(callable $appCodeClassMethod): self
+    {
+        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appTopLevelCodeId));
+
+        TestCase::assertTrue(is_callable($appCodeClassMethod));
+        TestCase::assertTrue(is_array($appCodeClassMethod));
+        /** @noinspection PhpParamsInspection */
+        TestCase::assertCount(2, $appCodeClassMethod);
+
+        $this->sharedDataPerRequest->appCodeClass = $appCodeClassMethod[0];
+        $this->sharedDataPerRequest->appCodeMethod = $appCodeClassMethod[1];
+
+        return $this;
+    }
+
+    public function withTopLevelAppCode(string $topLevelCodeId): self
+    {
+        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appCodeClass));
+        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appCodeMethod));
+
+        $this->sharedDataPerRequest->appTopLevelCodeId = $topLevelCodeId;
+
+        return $this;
+    }
 
     /**
-     * TestProperties constructor.
+     * @param array<string, mixed> $appCodeArgs
      *
-     * @param callable                  $appCodeClassMethod
-     * @param array<string, mixed>|null $appCodeArgs
+     * @return TestProperties
      */
-    public function __construct(callable $appCodeClassMethod, ?array $appCodeArgs = null)
+    public function withAppArgs(array $appCodeArgs): self
     {
-        assert(is_array($appCodeClassMethod));
-        $this->appCodeClass = $appCodeClassMethod[0];
-        $this->appCodeMethod = $appCodeClassMethod[1];
+        $this->sharedDataPerRequest->appCodeArguments = $appCodeArgs;
 
-        $this->appCodeArgs = $appCodeArgs;
-
-        $this->configSetter = new ConfigSetterNoop();
+        return $this;
     }
 
     public function withHttpMethod(string $httpMethod): self
@@ -87,46 +104,24 @@ final class TestProperties
         return $this;
     }
 
-    public function withAgentOption(string $optName, string $optVal): self
-    {
-        $this->configuredOptions[$optName] = $optVal;
-        return $this;
-    }
-
     public function getConfiguredAgentOption(string $optName): ?string
     {
-        return ArrayUtil::getValueIfKeyExistsElse($optName, $this->configuredOptions, null);
+        return ArrayUtil::getValueIfKeyExistsElse($optName, $this->agentConfigSetter->optionNameToValue, null);
     }
 
-    public function withConfigSetter(ConfigSetterBase $configSetter): ConfigSetterBase
+    public function withAgentConfig(AgentConfigSetterBase $configSetter): self
     {
-        $this->configSetter = $configSetter;
-        $configSetter->setParent($this);
-        return $configSetter;
+        $this->agentConfigSetter = $configSetter;
+        return $this;
     }
 
     public function tearDown(): void
     {
-        $this->configSetter->tearDown();
+        $this->agentConfigSetter->tearDown();
     }
 
     public function __toString(): string
     {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $builder->add('appCodeClass', $this->appCodeClass);
-        $builder->add('appCodeMethod', $this->appCodeMethod);
-        $builder->add('httpMethod', $this->httpMethod);
-        $builder->add('configSetter', $this->configSetter);
-        $builder->add('configuredOptions', $this->configuredOptionsToString());
-        return $builder->build();
-    }
-
-    private function configuredOptionsToString(): string
-    {
-        $builder = new ObjectToStringBuilder();
-        foreach ($this->configuredOptions as $optName => $optVal) {
-            $builder->add($optName, $optVal);
-        }
-        return $builder->build();
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

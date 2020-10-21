@@ -13,38 +13,37 @@ final class EnvVarsRawSnapshotSource implements RawSnapshotSourceInterface
 {
     public const DEFAULT_NAME_PREFIX = 'ELASTIC_APM_';
 
-    /** @var array<string, string> */
-    private $optionToEnvVarName;
+    /** @var string */
+    private $envVarNamesPrefix;
 
     /**
-     * @param string        $envVarPrefix
-     * @param array<string> $optionNames
+     * @param string $envVarNamesPrefix
      */
-    public function __construct(string $envVarPrefix, array $optionNames)
+    public function __construct(string $envVarNamesPrefix)
     {
-        $this->optionToEnvVarName = [];
-        foreach ($optionNames as $optName) {
-            $this->optionToEnvVarName[$optName] = self::optionNameToEnvVarName($envVarPrefix, $optName);
-        }
+        $this->envVarNamesPrefix = $envVarNamesPrefix;
     }
 
-    public static function optionNameToEnvVarName(string $envVarPrefix, string $optionName): string
+    public static function optionNameToEnvVarName(string $envVarNamesPrefix, string $optionName): string
     {
-        return $envVarPrefix . strtoupper($optionName);
+        return $envVarNamesPrefix . strtoupper($optionName);
     }
 
-    public function currentSnapshot(): RawSnapshotInterface
+    public function currentSnapshot(array $optionNameToMeta): RawSnapshotInterface
     {
         /** @var array<string, string> */
-        $optNameToEnvVarValue = [];
+        $optionNameToEnvVarValue = [];
 
-        foreach ($this->optionToEnvVarName as $optName => $envVarName) {
-            $envVarValue = getenv($envVarName, /* local_only: */ true);
+        foreach ($optionNameToMeta as $optionName => $optionMeta) {
+            $envVarValue = getenv(
+                self::optionNameToEnvVarName($this->envVarNamesPrefix, $optionName),
+                /* local_only: */ true
+            );
             if ($envVarValue !== false) {
-                $optNameToEnvVarValue[$optName] = $envVarValue;
+                $optionNameToEnvVarValue[$optionName] = $envVarValue;
             }
         }
 
-        return new RawSnapshotFromArray($optNameToEnvVarValue);
+        return new RawSnapshotFromArray($optionNameToEnvVarValue);
     }
 }

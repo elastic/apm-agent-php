@@ -29,8 +29,7 @@ final class IntakeApiRequest implements JsonSerializable
     {
         $result = [];
 
-        // Until this bug https://github.com/phpstan/phpstan/issues/1060 is fixed
-        // @phpstan-ignore-next-line
+        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
         foreach ($this as $thisObjPropName => $thisObjPropValue) {
             $result[$thisObjPropName] = $thisObjPropValue;
         }
@@ -45,8 +44,7 @@ final class IntakeApiRequest implements JsonSerializable
     {
         $thisObj = new self();
 
-        // Until this bug https://github.com/phpstan/phpstan/issues/1060 is fixed
-        // @phpstan-ignore-next-line
+        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
         foreach ($decodedJson as $propName => $propValue) {
             if (!property_exists($thisObj, $propName)) {
                 throw new RuntimeException(

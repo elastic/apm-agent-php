@@ -15,33 +15,29 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
  */
 final class Parser
 {
-    /** @var array<string, OptionMetadataInterface<mixed>> */
-    private $optNameToMeta;
-
     /** @var Logger */
     private $logger;
 
     /**
      * Parser constructor.
      *
-     * @param array<string, OptionMetadataInterface<mixed>> $optNameToMeta
-     * @param LoggerFactory                                 $loggerFactory
+     * @param LoggerFactory $loggerFactory
      */
-    public function __construct(array $optNameToMeta, LoggerFactory $loggerFactory)
+    public function __construct(LoggerFactory $loggerFactory)
     {
-        $this->optNameToMeta = $optNameToMeta;
         $this->logger = $loggerFactory->loggerForClass(LogCategory::CONFIGURATION, __NAMESPACE__, __CLASS__, __FILE__);
     }
 
     /**
-     * @param RawSnapshotInterface $rawSnapshot
+     * @param array<string, OptionMetadataInterface<mixed>> $optNameToMeta
+     * @param RawSnapshotInterface                          $rawSnapshot
      *
      * @return array<string, mixed> Option name to parsed value
      */
-    public function parse(RawSnapshotInterface $rawSnapshot): array
+    public function parse(array $optNameToMeta, RawSnapshotInterface $rawSnapshot): array
     {
         $optNameToParsedValue = [];
-        foreach ($this->optNameToMeta as $optName => $optMeta) {
+        foreach ($optNameToMeta as $optName => $optMeta) {
             $rawValue = $rawSnapshot->valueFor($optName);
             if (is_null($rawValue)) {
                 $parsedValue = $optMeta->defaultValue();

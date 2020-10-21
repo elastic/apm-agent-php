@@ -7,15 +7,15 @@ namespace Elastic\Apm\Tests\ComponentTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ConfigSetterBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 
 final class VerifyServerCertTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array<ConfigSetterBase|bool|null>>
+     * @return iterable<array<AgentConfigSetterBase|bool|null>>
      */
     public function configTestDataProvider(): iterable
     {
@@ -42,25 +42,22 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     /**
      * @dataProvider configTestDataProvider
      *
-     * @param ConfigSetterBase|null $configSetter
-     * @param bool|null             $verifyServerCert
+     * @param AgentConfigSetterBase|null $configSetter
+     * @param bool|null                  $verifyServerCert
      */
-    public function testConfig(?ConfigSetterBase $configSetter, ?bool $verifyServerCert): void
+    public function testConfig(?AgentConfigSetterBase $configSetter, ?bool $verifyServerCert): void
     {
-        $testProperties = new TestProperties(
-            [__CLASS__, 'appCodeForConfigTest'],
-            /* appCodeArgs: */ ['verifyServerCert' => $verifyServerCert]
-        );
+        $testProperties = (new TestProperties())
+            ->withRoutedAppCode([__CLASS__, 'appCodeForConfigTest'])
+            ->withAppArgs(['verifyServerCert' => $verifyServerCert]);
         if (is_null($verifyServerCert)) {
             self::assertNull($configSetter);
         } else {
             self::assertNotNull($configSetter);
-            $testProperties->withConfigSetter($configSetter)->setOption(
-                OptionNames::VERIFY_SERVER_CERT,
-                $verifyServerCert ? 'true' : 'false'
-            );
+            $configSetter->set(OptionNames::VERIFY_SERVER_CERT, $verifyServerCert ? 'true' : 'false');
+            $testProperties->withAgentConfig($configSetter);
         }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             $testProperties,
             function (DataFromAgent $dataFromAgent) use ($verifyServerCert): void {
                 $tx = $dataFromAgent->singleTransaction();

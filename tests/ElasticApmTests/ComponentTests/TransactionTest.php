@@ -17,7 +17,7 @@ final class TransactionTest extends ComponentTestCaseBase
     public function testTransactionWithoutSpans(): void
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            [__CLASS__, 'appCodeForTransactionWithoutSpans'],
+            (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpans']),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 $this->assertEmpty($tx->getLabels());
@@ -60,8 +60,9 @@ final class TransactionTest extends ComponentTestCaseBase
 
     public function testTransactionWithoutSpansCustomProperties(): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
-            (new TestProperties([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties']))
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties'])
                 ->withTransactionName('custom TX name')->withTransactionType('custom TX type'),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
@@ -109,11 +110,11 @@ final class TransactionTest extends ComponentTestCaseBase
      */
     public function testTransactionWithCustomHttpStatus(?int $customHttpStatus, string $expectedTxResult): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
-            (new TestProperties(
-                [__CLASS__, 'appCodeForTransactionWithCustomHttpStatus'],
-                /* appCodeArgs: */ ['customHttpStatus' => $customHttpStatus]
-            ))->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithCustomHttpStatus'])
+                ->withAppArgs(['customHttpStatus' => $customHttpStatus])
+                ->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
             function (DataFromAgent $dataFromAgent) use ($expectedTxResult): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->getResult());

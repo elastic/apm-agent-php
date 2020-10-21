@@ -130,6 +130,18 @@ class ObjectToStringBuilder
         return $this->formatVertically($keyValueAsStringPairs);
     }
 
+    public static function buildUsingAllProperties(object $obj): string
+    {
+        $builder = new self(DbgUtil::fqToShortClassName(get_class($obj)));
+
+        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
+        foreach ($obj as $objPropName => $objPropValue) {
+            $builder->add($objPropName, $objPropValue);
+        }
+
+        return $builder->build();
+    }
+
     public function __toString(): string
     {
         return $this->build();

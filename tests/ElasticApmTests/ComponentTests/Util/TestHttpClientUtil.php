@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -18,9 +19,9 @@ final class TestHttpClientUtil
 
     /**
      * @param int                   $port
-     * @param string                $serverId
      * @param string                $httpMethod
      * @param string                $uriPath
+     * @param SharedDataPerRequest  $sharedDataPerRequest
      * @param array<string, string> $headers
      *
      * @return ResponseInterface
@@ -29,9 +30,9 @@ final class TestHttpClientUtil
      */
     public static function sendHttpRequest(
         int $port,
-        string $serverId,
         string $httpMethod,
         string $uriPath,
+        SharedDataPerRequest $sharedDataPerRequest,
         array $headers = []
     ): ResponseInterface {
         $client = new Client(['base_uri' => "http://localhost:$port"]);
@@ -39,8 +40,13 @@ final class TestHttpClientUtil
             $httpMethod,
             $uriPath,
             [
-                RequestOptions::HEADERS     => $headers + [TestEnvBase::SERVER_ID_HEADER_NAME => $serverId],
-
+                RequestOptions::HEADERS     =>
+                    $headers
+                    + [
+                        RequestHeadersRawSnapshotSource::optionNameToHeaderName(
+                            AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
+                        ) => SerializationUtil::serializeAsJson($sharedDataPerRequest, SharedDataPerRequest::class),
+                    ],
                 /*
                  * http://docs.guzzlephp.org/en/stable/request-options.html#http-errors
                  *

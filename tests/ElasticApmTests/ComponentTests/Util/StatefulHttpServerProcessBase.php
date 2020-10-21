@@ -26,15 +26,9 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     /** @var Logger */
     private $logger;
 
-    /** @var string */
-    protected $runScriptFile;
-
-    /** @var int */
-    protected $port;
-
-    public function __construct(string $runScriptFile)
+    public function __construct()
     {
-        parent::__construct($runScriptFile);
+        parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             TestLogCategory::TEST_UTIL,
@@ -48,13 +42,19 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     {
         parent::processConfig();
 
-        $this->port = intval(
-            self::getRequiredTestOption(
-                AllComponentTestsOptionsMetadata::THIS_SERVER_PORT_OPTION_NAME
-            )
+        TestAssertUtil::assertThat(
+            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerId),
+            strval(AmbientContext::config())
+        );
+        TestAssertUtil::assertThat(
+            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerPort),
+            strval(AmbientContext::config())
         );
 
-        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::THIS_SERVER_ID_OPTION_NAME);
+        TestAssertUtil::assertThat(
+            !isset(AmbientContext::config()->sharedDataPerRequest->serverId),
+            strval(AmbientContext::config())
+        );
     }
 
     /**
@@ -64,28 +64,39 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
      */
     abstract protected function processRequest(ServerRequestInterface $request);
 
-    protected function runImpl(): void
+    public static function run(): void
+    {
+        self::runSkeleton(
+            function (CliProcessBase $thisObjArg): void {
+                /** var StatefulHttpServerProcessBase */
+                $thisObj = $thisObjArg;
+                $thisObj->runImpl(); // @phpstan-ignore-line
+            }
+        );
+    }
+
+    public function runImpl(): void
     {
         try {
-            $this->runHttpServer($this->port);
+            $this->runHttpServer();
         } catch (Exception $ex) {
             ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
         }
     }
 
-    private function runHttpServer(int $port): void
+    private function runHttpServer(): void
     {
         $loop = Factory::create();
 
-        $serverSocket = new ServerSocket($port, $loop);
+        $serverSocket = new ServerSocket(AmbientContext::config()->sharedDataPerProcess->thisServerPort, $loop);
 
         $httpServer = new HttpServer(
-            /**
-             * @param ServerRequestInterface $request
-             *
-             * @return ResponseInterface|Promise
-             */
+        /**
+         * @param ServerRequestInterface $request
+         *
+         * @return ResponseInterface|Promise
+         */
             function (ServerRequestInterface $request) {
                 return $this->processRequestWrapper($request);
             }
@@ -162,27 +173,31 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
         if ($this->shouldRequestHaveServerId($request)) {
-            $verifyTestEnvIdResponse = self::verifyServerIdEx(
-                function (string $headerName) use ($request): string {
-                    return self::getRequestHeader($request, $headerName);
-                }
+            $testConfigForRequest = TestConfigUtil::read(
+                AmbientContext::dbgProcessName(),
+                new RequestHeadersRawSnapshotSource(
+                    function (string $headerName) use ($request): ?string {
+                        return self::getRequestHeader($request, $headerName);
+                    }
+                )
             );
+            $verifyServerIdResponse = self::verifyServerId($testConfigForRequest->sharedDataPerRequest->serverId);
             if (
-                $verifyTestEnvIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
+                $verifyServerIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
                 || $request->getUri()->getPath() === TestEnvBase::STATUS_CHECK_URI
             ) {
-                return $verifyTestEnvIdResponse;
+                return $verifyServerIdResponse;
             }
         }
 
         return $this->processRequest($request);
     }
 
-    protected static function getRequestHeader(ServerRequestInterface $request, string $headerName): string
+    protected static function getRequestHeader(ServerRequestInterface $request, string $headerName): ?string
     {
         $headerValues = $request->getHeader($headerName);
         if (empty($headerValues)) {
-            throw new RuntimeException('Missing required HTTP request header `' . $headerName . '\'');
+            return null;
         }
         if (count($headerValues) != 1) {
             throw new RuntimeException(
@@ -193,9 +208,17 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         return $headerValues[0];
     }
 
-    protected function toStringAddProperties(ObjectToStringBuilder $builder): void
+    protected static function getRequiredRequestHeader(ServerRequestInterface $request, string $headerName): string
     {
-        parent::toStringAddProperties($builder);
-        $builder->add('port', $this->port);
+        $headerValue = self::getRequestHeader($request, $headerName);
+        if (is_null($headerValue)) {
+            throw new RuntimeException('Missing required HTTP request header `' . $headerName . '\'');
+        }
+        return $headerValue;
+    }
+
+    public function __toString(): string
+    {
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

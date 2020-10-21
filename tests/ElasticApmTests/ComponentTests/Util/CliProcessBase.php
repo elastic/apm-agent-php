@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Closure;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Tests\Util\TestLogCategory;
@@ -15,15 +15,11 @@ use Throwable;
 
 abstract class CliProcessBase
 {
-    /** @var string */
-    protected $runScriptFile;
-
     /** @var Logger */
     private $logger;
 
-    protected function __construct(string $runScriptFile)
+    protected function __construct()
     {
-        $this->runScriptFile = $runScriptFile;
         $this->logger = self::buildLogger()->addContext('this', $this);
     }
 
@@ -39,28 +35,38 @@ abstract class CliProcessBase
 
     protected function processConfig(): void
     {
+        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
-            self::getRequiredTestOption(AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_PORT_OPTION_NAME);
-            self::getRequiredTestOption(
-                AllComponentTestsOptionsMetadata::RESOURCES_CLEANER_SERVER_ID_OPTION_NAME
+            TestAssertUtil::assertThat(
+                !is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId),
+                strval(AmbientContext::config())
+            );
+            TestAssertUtil::assertThat(
+                !is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort),
+                strval(AmbientContext::config())
             );
         }
     }
 
-    abstract protected function runImpl(): void;
-
-    public static function run(string $runScriptFile): void
+    /**
+     * @param Closure $runImpl
+     *
+     * @throws Throwable
+     *
+     * @phpstan-param Closure(CliProcessBase): void $runImpl
+     */
+    protected static function runSkeleton(Closure $runImpl): void
     {
         try {
             AmbientContext::init(/* dbgProcessName */ DbgUtil::fqToShortClassName(get_called_class()));
-            $thisObj = new static($runScriptFile); // @phpstan-ignore-line
+            $thisObj = new static(); // @phpstan-ignore-line
             $thisObj->processConfig();
 
             if ($thisObj->shouldRegisterThisProcessWithResourcesCleaner()) {
                 $thisObj->registerWithResourcesCleaner();
             }
 
-            $thisObj->runImpl();
+            $runImpl($thisObj);
         } catch (Throwable $throwable) {
             $level = Level::CRITICAL;
             $throwableToLog = $throwable;
@@ -88,13 +94,28 @@ abstract class CliProcessBase
     {
         $optValue = AmbientContext::config()->getOptionValueByName($optName);
         if (is_null($optValue)) {
-            $envVarName = TestConfigUtil::envVarNameForTestsOption($optName);
+            $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
             throw new RuntimeException(
-                'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set'
+                'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set.'
+                . ' AmbientContext::dbgProcessName(): ' . AmbientContext::dbgProcessName() . '.'
+                . ' AmbientContext::config(): ' . AmbientContext::config() . '.'
             );
         }
 
         return $optValue;
+    }
+
+    protected static function verifyRequiredSharedDataPropertyIsSet(
+        SharedDataBase $sharedData,
+        string $propName
+    ): void {
+        if (is_null($sharedData->$propName)) {
+            throw new RuntimeException(
+                'Required shared data property is not set'
+                . '. sharedData: ' . $sharedData
+                . '. $propName: ' . $propName
+            );
+        }
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
@@ -109,11 +130,15 @@ abstract class CliProcessBase
             'Registering with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . '...'
         );
 
+        assert(!is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort));
+        assert(!is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId));
         $response = TestHttpClientUtil::sendHttpRequest(
-            AmbientContext::config()->resourcesCleanerPort(),
-            AmbientContext::config()->resourcesCleanerServerId(),
+            AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort,
             HttpConsts::METHOD_POST,
             ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH,
+            SharedDataPerRequest::fromServerId(
+                AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId
+            ),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
@@ -131,13 +156,6 @@ abstract class CliProcessBase
 
     public function __toString(): string
     {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $this->toStringAddProperties($builder);
-        return $builder->build();
-    }
-
-    protected function toStringAddProperties(ObjectToStringBuilder $builder): void
-    {
-        $builder->add('config', AmbientContext::config());
+        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

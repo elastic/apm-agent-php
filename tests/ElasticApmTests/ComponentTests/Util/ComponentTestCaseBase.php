@@ -53,24 +53,6 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param callable $appCodeClassMethod
-     * @param Closure  $verifyFunc
-     *
-     * @return void
-     *
-     * @phpstan-param Closure(DataFromAgent): void $verifyFunc
-     */
-    protected function sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-        callable $appCodeClassMethod,
-        Closure $verifyFunc
-    ): void {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
-            new TestProperties($appCodeClassMethod),
-            $verifyFunc
-        );
-    }
-
-    /**
      * @param TestProperties $testProperties
      * @param Closure        $verifyFunc
      *
@@ -78,7 +60,7 @@ class ComponentTestCaseBase extends TestCaseBase
      *
      * @phpstan-param Closure(DataFromAgent): void $verifyFunc
      */
-    protected function sendRequestToInstrumentedAppAndVerifyDataFromAgentEx(
+    protected function sendRequestToInstrumentedAppAndVerifyDataFromAgent(
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
@@ -87,7 +69,7 @@ class ComponentTestCaseBase extends TestCaseBase
 
     private function selectTestEnv(): TestEnvBase
     {
-        switch (AmbientContext::config()->appCodeHostKind()) {
+        switch (AmbientContext::config()->appCodeHostKind) {
             case AppCodeHostKind::CLI_SCRIPT:
                 return new CliScriptTestEnv();
 
@@ -106,38 +88,39 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @return array<array<ConfigSetterBase>>
+     * @return array<array<AgentConfigSetterBase>>
      */
     public function configSetterTestDataProvider(): iterable
     {
         return [
             // [new ConfigSetterIni()],
-            [new ConfigSetterEnvVars()],
+            [new AgentConfigSetterEnvVars()],
         ];
     }
 
     /**
-     * @param ConfigSetterBase|null $configSetter
-     * @param string|null           $configured
-     * @param Closure               $setConfigFunc
-     * @param Closure               $verifyFunc
+     * @param AgentConfigSetterBase|null $configSetter
+     * @param string|null                $configured
+     * @param Closure                    $setConfigFunc
+     * @param Closure                    $verifyFunc
      *
      * @return void
      *
-     * @phpstan-param Closure(ConfigSetterBase, string): void $setConfigFunc
+     * @phpstan-param Closure(AgentConfigSetterBase, string): void $setConfigFunc
      * @phpstan-param Closure(DataFromAgent): void $verifyFunc
      */
     protected function configTestImpl(
-        ?ConfigSetterBase $configSetter,
+        ?AgentConfigSetterBase $configSetter,
         ?string $configured,
         Closure $setConfigFunc,
         Closure $verifyFunc
     ): void {
-        $testProperties = new TestProperties([__CLASS__, 'appCodeEmpty']);
+        $testProperties = (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeEmpty']);
         if (!is_null($configSetter)) {
             self::assertNotNull($configured);
-            $setConfigFunc($testProperties->withConfigSetter($configSetter), $configured);
+            $setConfigFunc($configSetter, $configured);
+            $testProperties->withAgentConfig($configSetter);
         }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgentEx($testProperties, $verifyFunc);
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent($testProperties, $verifyFunc);
     }
 }

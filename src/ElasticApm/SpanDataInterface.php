@@ -51,11 +51,11 @@ interface SpanDataInterface extends ExecutionSegmentDataInterface
     public function getAction(): ?string;
 
     /**
+     * List of stack frames with variable attributes (eg: lineno, filename, etc.)
      *
-     *
-     * @return StacktraceFrame[]
+     * @return StacktraceFrame[]|null
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L38
      */
-    public function getStacktrace(): array;
+    public function getStacktrace(): ?array;
 }
