@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use JsonSerializable;
 
@@ -14,6 +15,8 @@ use JsonSerializable;
  */
 class EventData implements JsonSerializable
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /**
      * @return array<string, mixed>
      *
@@ -101,5 +104,10 @@ class EventData implements JsonSerializable
     protected static function convertPropertyValueToData($propValue)
     {
         return $propValue;
+    }
+
+    public function __toString(): string
+    {
+        return $this->toStringUsingProperties(['logger']);
     }
 }

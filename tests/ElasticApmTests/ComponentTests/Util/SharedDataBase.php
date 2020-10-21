@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use JsonSerializable;
 
 abstract class SharedDataBase implements JsonSerializable
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /**
      * @return array<string, mixed>
      *
@@ -43,10 +46,5 @@ abstract class SharedDataBase implements JsonSerializable
         }
 
         return $result;
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

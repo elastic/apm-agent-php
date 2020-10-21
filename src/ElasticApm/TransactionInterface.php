@@ -81,6 +81,4 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
      * @see TransactionDataInterface::getResult() For the description
      */
     public function setResult(?string $result): void;
-
-    public function __toString(): string;
 }

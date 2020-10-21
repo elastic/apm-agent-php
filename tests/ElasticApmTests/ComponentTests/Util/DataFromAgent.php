@@ -8,8 +8,7 @@ use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
@@ -23,12 +22,7 @@ use RuntimeException;
 final class DataFromAgent
 {
     use SerializedEventSinkTrait;
-
-    /** @var Logger */
-    private $logger;
-
-    /** @var int */
-    private $intakeApiRequestIndexStartOffset = 0;
+    use ObjectToStringUsingPropertiesTrait;
 
     /** @var IntakeApiRequest[] */
     public $intakeApiRequests = [];
@@ -41,6 +35,12 @@ final class DataFromAgent
 
     /** @var array<string, SpanDataInterface> */
     public $idToSpan = [];
+
+    /** @var Logger */
+    private $logger;
+
+    /** @var int */
+    private $intakeApiRequestIndexStartOffset = 0;
 
     public function __construct()
     {
@@ -288,10 +288,5 @@ final class DataFromAgent
         $result = $this->executionSegmentByIdOrNull($id);
         TestCaseBase::assertNotNull($result);
         return $result;
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

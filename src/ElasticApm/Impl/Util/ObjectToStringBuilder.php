@@ -110,10 +110,9 @@ class ObjectToStringBuilder
         }
         foreach ($this->keyValuePairs as $key => $value) {
             $result .= PHP_EOL;
-            $valueAsString = $keyValueAsStringPairs[$key] ?? strval($value);
             $result .= TextUtil::indent($key);
             $result .= ': ';
-            $result .= $valueAsString;
+            $result .= $keyValueAsStringPairs[$key] ?? DbgUtil::formatValue($value);
         }
 
         return $result;

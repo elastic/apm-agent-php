@@ -8,13 +8,15 @@ use Closure;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use RuntimeException;
 use Throwable;
 
 abstract class CliProcessBase
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /** @var Logger */
     private $logger;
 
@@ -152,10 +154,5 @@ abstract class CliProcessBase
         && $loggerProxy->log(
             'Successfully registered with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class)
         );
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

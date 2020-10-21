@@ -15,7 +15,7 @@ use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\TestLogCategory;
 use Elastic\Apm\TransactionDataInterface;
@@ -29,6 +29,8 @@ use Throwable;
 
 abstract class TestEnvBase
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     private const PORTS_RANGE_BEGIN = 50000;
     private const PORTS_RANGE_END = 60000;
 
@@ -427,10 +429,10 @@ abstract class TestEnvBase
             && $loggerProxy->log(
                 __FUNCTION__ . ' failed.',
                 [
-                    'last exception from verifyFunc()' => $lastException,
-                    'timeBeforeRequestToApp' => $timeBeforeRequestToApp,
-                    'testProperties' => $testProperties,
-                    'this' => $this,
+                    'last exception from verifyFunc()'     => $lastException,
+                    'timeBeforeRequestToApp'               => $timeBeforeRequestToApp,
+                    'testProperties'                       => $testProperties,
+                    'this'                                 => $this,
                     'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
                 ]
             );
@@ -608,9 +610,4 @@ abstract class TestEnvBase
     }
 
     abstract public function isHttp(): bool;
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
-    }
 }

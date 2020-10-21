@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use PHPUnit\Framework\TestCase;
 
 final class TestProperties
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /** @var string */
     public $httpMethod = 'GET';
 
@@ -118,10 +120,5 @@ final class TestProperties
     public function tearDown(): void
     {
         $this->agentConfigSetter->tearDown();
-    }
-
-    public function __toString(): string
-    {
-        return ObjectToStringBuilder::buildUsingAllProperties($this);
     }
 }

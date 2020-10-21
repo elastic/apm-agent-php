@@ -170,4 +170,9 @@ final class Span extends SpanData implements SpanInterface
 
         return $dstFrames;
     }
+
+    public function __toString(): string
+    {
+        return $this->toStringUsingProperties(['containingTransaction', 'parentSpan', 'logger']);
+    }
 }

@@ -47,14 +47,11 @@ final class SerializationUtil
 
     public static function serializeTransaction(TransactionDataInterface $data): string
     {
-        return self::serializeAsJson(
-            Transaction::convertToData($data),
-            Transaction::dataToString($data, get_class($data))
-        );
+        return self::serializeAsJson(Transaction::convertToData($data), get_class($data));
     }
 
     public static function serializeSpan(SpanDataInterface $data): string
     {
-        return self::serializeAsJson(Span::convertToData($data), Span::dataToString($data, get_class($data)));
+        return self::serializeAsJson(Span::convertToData($data), get_class($data));
     }
 }
