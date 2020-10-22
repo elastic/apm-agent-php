@@ -86,7 +86,8 @@ pipeline {
   }
   post {
     cleanup {
-      notifyBuildResult(prComment: true)
+      ## PR comment is not needed with this pipeline
+      notifyBuildResult(prComment: false)
     }
   }
 }
