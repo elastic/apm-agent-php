@@ -68,7 +68,7 @@ composer: prepare  ## Run composer
 
 .PHONY: loop
 loop:  ## Bump the version given VERSION
-	.ci/loop.sh "$(LOOPS)"
+	.ci/loop.sh "$(LOOPS)" "${DOCKERFILE}" "${PHP_VERSION}"
 
 .PHONY: previous-version
 previous-version:  ## Fetch the current version
