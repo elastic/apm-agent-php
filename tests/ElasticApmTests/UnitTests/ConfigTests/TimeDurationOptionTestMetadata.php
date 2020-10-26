@@ -34,6 +34,24 @@ final class TimeDurationOptionTestMetadata implements OptionTestMetadataInterfac
             PHPUnitAssert::assertIsFloat($differentFromParsedValue);
         }
 
+        $predefinedValidValues = [
+            '1ms' => 1.0,
+            '1s' => 1.0 * 1000,
+            '1m' => 1.0 * 60 * 1000,
+            '1.5ms' => 1.5,
+            '1.5s' => 1.5 * 1000,
+            '1.5m' => 1.5 * 60 * 1000,
+            '-30.1ms' => -30.1,
+            '-30.1s' => -30.1 * 1000,
+            '-30.1m' => -30.1 * 60 * 1000,
+        ];
+
+        if ($index < count($predefinedValidValues)) {
+            $rawValue = array_keys($predefinedValidValues)[$index];
+            $parsedValue = $predefinedValidValues[$rawValue];
+            return;
+        }
+
         $unitsIndex = $index % count(TimeDurationUnits::$suffixAndIdPairs);
         $oneDayInMilliseconds = 24.0 * 60 * 60 * 1000;
         $valueInMilliseconds = TestRandomUtil::generateFloatInRange(-$oneDayInMilliseconds, $oneDayInMilliseconds);
