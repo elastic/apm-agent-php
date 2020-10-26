@@ -16,11 +16,12 @@ do
 
     ## Store test results with the iteration
     if [ -e $TEST_REPORT_TEST ] ; then
-        mv $TEST_REPORT_TEST "$TEST_REPORT_TEST.$c.xml"
+        mv $TEST_REPORT_TEST "${OUTPUT_FOLDER}/junit-test-$c.xml"
     fi
 
     ## Store composer test results with the iteration
     if [ -e $TEST_REPORT_COMPOSER ] ; then
-        mv $TEST_REPORT_COMPOSER "$TEST_REPORT_COMPOSER.$c.xml"
+        ## Let's copy since mv does not work when reusing the workspace for some required permissions
+        cp $TEST_REPORT_COMPOSER "${OUTPUT_FOLDER}/junit-composer-$c.xml"
     fi
 done

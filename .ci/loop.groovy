@@ -73,8 +73,8 @@ pipeline {
             }
             post {
               always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit*.xml,${BASE_DIR}/junit*.xml")
-                archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/*.txt')
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/junit*.xml")
+                archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/build/*.txt")
               }
             }
           }
