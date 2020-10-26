@@ -79,7 +79,7 @@ pipeline {
   }
   post {
     cleanup {
-      ## PR comment is not needed with this pipeline
+      // PR comment is not needed with this pipeline
       notifyBuildResult(prComment: false)
     }
   }
