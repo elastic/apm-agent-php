@@ -45,9 +45,11 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
 
 ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents )
 {
+    long serverTimeoutMillisecondsLong = (long) ceil(serverTimeoutMilliseconds);
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "Sending events to APM Server..."
+            "Sending events to APM Server... serverTimeoutMilliseconds: %f (%"PRIu64")"
             " serializedEvents [length: %"PRIu64"]:\n%.*s"
+            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     ResultCode resultCode;
@@ -85,7 +87,7 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, (long) ceil(serverTimeoutMilliseconds) );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, serverTimeoutMillisecondsLong );
 
     if ( ! config->verifyServerCert )
     {
