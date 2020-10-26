@@ -9,6 +9,7 @@ pipeline {
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
     LOOPS = "${params.LOOPS}"
+    GITHUB_CHECK_NAME = 'apm-loop'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -50,6 +51,7 @@ pipeline {
       stages {
         stage('Checkout') {
           steps {
+            githubNotify(context: "${env.GITHUB_CHECK_NAME}", description: "${env.GITHUB_CHECK_NAME} ...", status: 'PENDING', targetUrl: "${env.BUILD_URL}")
             pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
             deleteDir()
             gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
@@ -104,6 +106,12 @@ pipeline {
         }
       }
       post {
+        success {
+          githubNotify(context: "${env.GITHUB_CHECK_NAME}", description: "${env.GITHUB_CHECK_NAME} passed", status: 'SUCCESS', targetUrl: "${env.BUILD_URL}")
+        }
+        unsuccessful {
+          githubNotify(context: "${env.GITHUB_CHECK_NAME}", description: "${env.GITHUB_CHECK_NAME} failed", status: 'FAILURE', targetUrl: "${env.BUILD_URL}")
+        }
         cleanup {
           // PR comment is not needed with this pipeline
           notifyBuildResult(prComment: false)
