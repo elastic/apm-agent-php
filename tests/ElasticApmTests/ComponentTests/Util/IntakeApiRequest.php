@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use JsonSerializable;
 use RuntimeException;
 
 final class IntakeApiRequest implements JsonSerializable
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /** @var array<string, array<string>> */
     public $headers;
 
