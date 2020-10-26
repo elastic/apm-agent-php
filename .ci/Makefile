@@ -3,6 +3,7 @@ SHELL=/bin/bash -o pipefail
 IMAGE := test-php
 PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
+LOOPS ?= 50
 SUFFIX := 
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ## This is only required to tag the docker images used for building/testing this project
@@ -19,7 +20,7 @@ help: ## Display this help text
 
 .PHONY: prepare
 prepare:  ## Build docker image for building and testing the project
-	docker build \
+	@docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
@@ -64,6 +65,10 @@ composer: prepare  ## Run composer
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/composer.sh'
+
+.PHONY: loop
+loop:  ## Bump the version given VERSION
+	.ci/loop.sh "$(LOOPS)" "${DOCKERFILE}" "${PHP_VERSION}"
 
 .PHONY: previous-version
 previous-version:  ## Fetch the current version
