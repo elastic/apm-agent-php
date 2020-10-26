@@ -7,11 +7,7 @@ pipeline {
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
-    SLACK_CHANNEL = '#apm-agent-php'
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
-    ONLY_DOCS = "false"
-    GITHUB_CHECK_ITS_NAME = 'Integration Tests'
-    ITS_PIPELINE = 'apm-integration-tests-selector-mbp/master'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -21,17 +17,14 @@ pipeline {
     durabilityHint('PERFORMANCE_OPTIMIZED')
     rateLimitBuilds(throttle: [count: 60, durationName: 'hour', userBoost: true])
     quietPeriod(10)
-    timeout(time: 3, unit: 'HOURS')
+    timeout(time: 5, unit: 'HOURS')
   }
   triggers {
-    issueCommentTrigger('(?i)/loop\\W+test')
+    issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?loop\\W+tests(?:\\W+please)?.*')
   }
   stages {
     stage('Checkout') {
       steps {
-        whenTrue(isInternalCI() && isTag()) {
-          notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release tag *${env.TAG_NAME}* has been created", body: "Build: (<${env.RUN_DISPLAY_URL}|here>) for further details.")
-        }
         pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
         deleteDir()
         gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
