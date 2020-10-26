@@ -8,6 +8,7 @@ pipeline {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
+    LOOPS = "${params.LOOPS}"
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -21,6 +22,9 @@ pipeline {
   }
   triggers {
     issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?loop\\W+tests(?:\\W+please)?.*')
+  }
+  parameters {
+    string(name: 'LOOPS', defaultValue: '200', description: 'How many test loops?')
   }
   stages {
     stage('Checkout') {
@@ -64,12 +68,13 @@ pipeline {
           stage('Tests loop') {
             steps {
               dir("${BASE_DIR}"){
-                sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile loop", label: 'test'
+                sh script: "LOOPS=${LOOPS} PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile loop", label: 'test'
               }
             }
             post {
               always {
-                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml,${BASE_DIR}/junit.xml")
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit*.xml,${BASE_DIR}/junit*.xml")
+                archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/*.txt')
               }
             }
           }
