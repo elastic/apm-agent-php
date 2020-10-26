@@ -257,6 +257,33 @@ WARNING: The `secret_token` is sent as plain-text in every request to the server
 your communications using HTTPS. Unless you do so, your secret token could be observed by an attacker.
 
 [float]
+[[config-server-timeout]]
+==== `server_timeout`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SERVER_TIMEOUT` | `elastic_apm.server_timeout`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `30s`       | Duration
+|============
+
+If a request sending events to the APM server takes longer than the configured timeout,
+the request is cancelled, and the events are discarded.
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10s`.
+The default unit for this option is `s` so `5` is interpreted as `5s`.
+
+If the value is `0` (or `0ms`, `0s`, etc.) the timeout for sending events to the APM Server is disabled.
+
+If the value is negative it's invalid and the default value is used instead.
+
+[float]
 [[config-server-url]]
 ==== `server_url`
 
