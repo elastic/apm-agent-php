@@ -47,7 +47,7 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
 {
     long serverTimeoutMillisecondsLong = (long) ceil(serverTimeoutMilliseconds);
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "Sending events to APM Server... serverTimeoutMilliseconds: %f (%"PRIu64")"
+            "Sending events to APM Server... serverTimeoutMilliseconds: %f (passed to curl API as: %"PRIu64")"
             " serializedEvents [length: %"PRIu64"]:\n%.*s"
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
