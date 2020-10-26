@@ -29,4 +29,4 @@ void elasticApmCallInterceptedOriginal( zval* return_value );
 
 void resetCallInterceptionOnRequestShutdown();
 
-ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView serializedEvents );
+ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView serializedMetadata, StringView serializedEvents );

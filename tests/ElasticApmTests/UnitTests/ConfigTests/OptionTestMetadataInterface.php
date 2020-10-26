@@ -10,6 +10,7 @@ namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
 interface OptionTestMetadataInterface
 {
     /**
+     * @param int        $index
      * @param string     $rawValue
      * @param mixed      $parsedValue
      * @param mixed|null $differentFromParsedValue
@@ -19,7 +20,12 @@ interface OptionTestMetadataInterface
      * @phpstan-param  T $differentFromParsedValue
      * @phpstan-param  T|null $parsedValue
      */
-    public function randomValidValue(string &$rawValue, &$parsedValue, $differentFromParsedValue = null): void;
+    public function randomValidValue(
+        int $index,
+        string &$rawValue,
+        &$parsedValue,
+        $differentFromParsedValue = null
+    ): void;
 
     /**
      * @return iterable<string>

@@ -15,4 +15,4 @@
 #include "ConfigManager.h"
 #include "ResultCode.h"
 
-ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView serializedEvents );
+ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents );

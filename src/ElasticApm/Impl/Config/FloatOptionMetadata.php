@@ -28,14 +28,7 @@ final class FloatOptionMetadata extends OptionMetadataBase
         $this->maxValidValue = $maxValidValue;
     }
 
-    /**
-     * @param string $rawValue
-     *
-     * @return mixed
-     *
-     * @phpstan-return float
-     */
-    public function parse(string $rawValue)
+    public static function parseValueAsUnconstrained(string $rawValue): float
     {
         if (!is_numeric($rawValue)) {
             throw new ParseException("Not a valid float value. Raw option value: `$rawValue'");
@@ -46,6 +39,20 @@ final class FloatOptionMetadata extends OptionMetadataBase
         if (strval($valueAsFloat) !== $rawValue) {
             throw new ParseException("Not a valid float value. Raw option value: `$rawValue'");
         }
+
+        return $valueAsFloat;
+    }
+
+    /**
+     * @param string $rawValue
+     *
+     * @return mixed
+     *
+     * @phpstan-return float
+     */
+    public function parse(string $rawValue)
+    {
+        $valueAsFloat = self::parseValueAsUnconstrained($rawValue);
 
         if (!NumericUtil::isInClosedInterval($this->minValidValue, $valueAsFloat, $this->maxValidValue)) {
             throw new ParseException(

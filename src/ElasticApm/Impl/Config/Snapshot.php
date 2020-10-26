@@ -21,6 +21,9 @@ final class Snapshot
     /** @var string|null */
     private $environment;
 
+    /** @var float - In milliseconds */
+    private $serverTimeout;
+
     /** @var string|null */
     private $serviceName;
 
@@ -51,6 +54,11 @@ final class Snapshot
     public function environment(): ?string
     {
         return $this->environment;
+    }
+
+    public function serverTimeout(): float
+    {
+        return $this->serverTimeout;
     }
 
     public function serviceName(): ?string

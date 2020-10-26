@@ -68,4 +68,24 @@ class TextUtilTest extends TestCase
     {
         $this->assertSame($inputCamelCase, TextUtil::snakeToCamelCase($inputSnakeCase));
     }
+
+    public function testIsSuffixOf(): void
+    {
+        self::assertTrue(TextUtil::isSuffixOf('', ''));
+        self::assertTrue(TextUtil::isSuffixOf('', '', /* isCaseSensitive */ false));
+        self::assertTrue(!TextUtil::isSuffixOf('a', ''));
+        self::assertTrue(!TextUtil::isSuffixOf('a', '', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isSuffixOf('C', 'ABC'));
+        self::assertTrue(!TextUtil::isSuffixOf('c', 'ABC'));
+        self::assertTrue(TextUtil::isSuffixOf('c', 'ABC', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isSuffixOf('BC', 'ABC'));
+        self::assertTrue(!TextUtil::isSuffixOf('Bc', 'ABC'));
+        self::assertTrue(TextUtil::isSuffixOf('Bc', 'ABC', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isSuffixOf('ABC', 'ABC'));
+        self::assertTrue(!TextUtil::isSuffixOf('aBc', 'ABC'));
+        self::assertTrue(TextUtil::isSuffixOf('aBc', 'ABC', /* isCaseSensitive */ false));
+    }
 }

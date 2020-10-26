@@ -18,9 +18,12 @@ final class BoolOptionTestMetadata implements OptionTestMetadataInterface
 {
     use SingletonInstanceTrait;
 
-    /** @inheritDoc */
-    public function randomValidValue(string &$rawValue, &$parsedValue, $differentFromParsedValue = null): void
-    {
+    public function randomValidValue(
+        int $index,
+        string &$rawValue,
+        &$parsedValue,
+        $differentFromParsedValue = null
+    ): void {
         if (!is_null($differentFromParsedValue)) {
             PHPUnitAssert::assertIsBool($differentFromParsedValue);
         }
@@ -40,7 +43,6 @@ final class BoolOptionTestMetadata implements OptionTestMetadataInterface
         }
     }
 
-    /** @inheritDoc */
     public function invalidRawValues(): iterable
     {
         yield from ['', ' ', '\t', '\r\n', 'a', 'abc', '123'];

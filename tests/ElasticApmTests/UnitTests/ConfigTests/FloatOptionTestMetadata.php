@@ -21,8 +21,12 @@ final class FloatOptionTestMetadata implements OptionTestMetadataInterface
         $this->optMeta = $optMeta;
     }
 
-    public function randomValidValue(string &$rawValue, &$parsedValue, $differentFromParsedValue = null): void
-    {
+    public function randomValidValue(
+        int $index,
+        string &$rawValue,
+        &$parsedValue,
+        $differentFromParsedValue = null
+    ): void {
         if (!is_null($differentFromParsedValue)) {
             PHPUnitAssert::assertIsFloat($differentFromParsedValue);
         }
@@ -51,7 +55,6 @@ final class FloatOptionTestMetadata implements OptionTestMetadataInterface
         $rawValue = strval($parsedValue);
     }
 
-    /** @inheritDoc */
     public function invalidRawValues(): iterable
     {
         yield from ['', ' ', '\t', '\r\n', 'a', 'abc', '12.3abc', 'abc1.23', 'a_12.3_b', 'a_12.3E+1', '12.3E+1_b'];

@@ -95,6 +95,7 @@ PHP_INI_BEGIN()
     #endif
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL )
@@ -110,9 +111,11 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
     #endif
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN )
-    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_URL )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT )
 PHP_INI_END()
 
@@ -214,6 +217,10 @@ PHP_FUNCTION( elastic_apm_is_enabled )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_config_option_by_name_arginfo, 0, 0, 1 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, optionName, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+
 /* {{{ elastic_apm_get_config_option_by_name( string $optionName ): mixed
  */
 PHP_FUNCTION( elastic_apm_get_config_option_by_name )
@@ -292,24 +299,41 @@ PHP_FUNCTION( elastic_apm_call_intercepted_original )
 }
 /* }}} */
 
-/* {{{ elastic_apm_send_to_server( string $serializedEvents ): bool
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 3 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serverTimeoutMilliseconds, IS_DOUBLE, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedMetadata, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedEvents, IS_STRING, /* allow_null: */ 0 )
+ZEND_END_ARG_INFO()
+
+/* {{{ elastic_apm_send_to_server(
+ *          float $serverTimeoutMilliseconds
+ *          , string $serializedMetadata
+ *          , string $serializedEvents ): bool
  */
 PHP_FUNCTION( elastic_apm_send_to_server )
 {
+    double serverTimeoutMilliseconds = 0.0;
     char* serializedMetadata = NULL;
     size_t serializedMetadataLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 3, /* max_num_args: */ 3 )
+    Z_PARAM_DOUBLE( serverTimeoutMilliseconds )
     Z_PARAM_STRING( serializedMetadata, serializedMetadataLength )
     Z_PARAM_STRING( serializedEvents, serializedEventsLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmSendToServer( makeStringView( serializedMetadata, serializedMetadataLength )
-                                 , makeStringView( serializedEvents, serializedEventsLength ) ) != resultSuccess )
-    RETURN_FALSE
-    RETURN_TRUE
+    if ( elasticApmSendToServer( serverTimeoutMilliseconds
+                                 , makeStringView( serializedMetadata, serializedMetadataLength )
+                                 , makeStringView( serializedEvents, serializedEventsLength ) ) == resultSuccess )
+    {
+        RETURN_TRUE
+    }
+    else
+    {
+        RETURN_FALSE
+    }
 }
 /* }}} */
 
@@ -374,10 +398,6 @@ PHP_FUNCTION( elastic_apm_log )
  */
 ZEND_BEGIN_ARG_INFO(elastic_apm_no_paramters_arginfo, 0)
 ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_string_paramter_arginfo, 0, 0, 1 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, optionName, IS_STRING, /* allow_null: */ 0 )
-ZEND_END_ARG_INFO()
 /* }}} */
 
 /* {{{ elastic_apm_functions[]
@@ -385,11 +405,11 @@ ZEND_END_ARG_INFO()
 static const zend_function_entry elastic_apm_functions[] =
 {
     PHP_FE( elastic_apm_is_enabled, elastic_apm_no_paramters_arginfo )
-    PHP_FE( elastic_apm_get_config_option_by_name, elastic_apm_string_paramter_arginfo )
+    PHP_FE( elastic_apm_get_config_option_by_name, elastic_apm_get_config_option_by_name_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_method, elastic_apm_intercept_calls_to_internal_method_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
     PHP_FE( elastic_apm_call_intercepted_original, elastic_apm_call_intercepted_original_arginfo )
-    PHP_FE( elastic_apm_send_to_server, elastic_apm_string_paramter_arginfo )
+    PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
     PHP_FE_END
 };

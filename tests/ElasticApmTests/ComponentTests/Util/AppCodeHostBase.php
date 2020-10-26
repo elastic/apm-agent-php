@@ -12,6 +12,15 @@ use Throwable;
 
 abstract class AppCodeHostBase extends CliProcessBase
 {
+    /** @var array<string, mixed>|null */
+    public $appCodeArgs;
+
+    /** @var string */
+    protected $appCodeClass;
+
+    /** @var string */
+    protected $appCodeMethod;
+
     /** @var Logger */
     private $logger;
 
@@ -20,6 +29,7 @@ abstract class AppCodeHostBase extends CliProcessBase
         if (!extension_loaded('elastic_apm')) {
             throw new RuntimeException(
                 'Environment hosting component tests application code should have elastic_apm extension loaded.'
+                . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
             );
         }
 

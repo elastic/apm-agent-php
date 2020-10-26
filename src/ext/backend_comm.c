@@ -43,7 +43,7 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     } while ( false ) \
     /**/
 
-ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView serializedEvents )
+ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Sending events to APM Server..."
@@ -85,7 +85,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView seria
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_CONNECTTIMEOUT_MS, (long) durationToMilliseconds( config->serverConnectTimeout ) );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, (long) ceil(serverTimeoutMilliseconds) );
 
     if ( ! config->verifyServerCert )
     {

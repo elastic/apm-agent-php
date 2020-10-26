@@ -569,7 +569,6 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverConnectTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
@@ -733,12 +732,6 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             secretToken,
             ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN,
             /* defaultValue: */ NULL );
-
-    ELASTIC_APM_INIT_DURATION_METADATA(
-            serverConnectTimeout
-            , ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT
-            , /* defaultValue: */ makeDuration( 5, durationUnits_seconds )
-            , /* defaultUnits */ durationUnits_seconds );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
