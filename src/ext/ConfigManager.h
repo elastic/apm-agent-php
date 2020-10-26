@@ -70,7 +70,6 @@ enum OptionId
     optionId_memoryTrackingLevel,
     #endif
     optionId_secretToken,
-    optionId_serverConnectTimeout,
     optionId_serverUrl,
     optionId_serviceName,
     optionId_verifyServerCert,
@@ -108,7 +107,6 @@ struct ConfigSnapshot
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
     String secretToken;
-    Duration serverConnectTimeout;
     String serverUrl;
     String serviceName;
     bool verifyServerCert;
@@ -205,6 +203,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
+#define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
 #define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_FILE "log_file"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL "log_level"
@@ -220,9 +219,11 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
-#define ELASTIC_APM_CFG_OPT_NAME_SERVER_CONNECT_TIMEOUT "server_connect_timeout"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
 #define ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT "verify_server_cert"
 
 #define ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elastic_apm." optNameStringLiteral )

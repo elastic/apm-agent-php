@@ -23,6 +23,10 @@ final class AllOptionsMetadata
         return [
             OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
+            OptionNames::SERVER_TIMEOUT          => new TimeDurationOptionMetadata(
+                TimeDurationUnits::SECONDS /* <- defaultUnits: */,
+                30 * 1000 /* <- defaultValueInMilliseconds - 30s */
+            ),
             OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
             OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
             OptionNames::TRANSACTION_SAMPLE_RATE =>

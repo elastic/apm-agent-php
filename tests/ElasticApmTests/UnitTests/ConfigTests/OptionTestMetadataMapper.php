@@ -10,6 +10,7 @@ use Elastic\Apm\Impl\Config\IntOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionMetadataInterface;
 use Elastic\Apm\Impl\Config\StringOptionMetadata;
+use Elastic\Apm\Impl\Config\TimeDurationOptionMetadata;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use RuntimeException;
@@ -43,6 +44,10 @@ final class OptionTestMetadataMapper
 
         if ($optMeta instanceof FloatOptionMetadata) {
             return new FloatOptionTestMetadata($optMeta);
+        }
+
+        if ($optMeta instanceof TimeDurationOptionMetadata) {
+            return new TimeDurationOptionTestMetadata($optMeta);
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));

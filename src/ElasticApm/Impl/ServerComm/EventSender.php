@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\ServerComm;
 
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\SpanDataInterface;
@@ -14,13 +15,21 @@ use Elastic\Apm\TransactionDataInterface;
  *
  * @internal
  */
-class EventSender implements EventSinkInterface
+final class EventSender implements EventSinkInterface
 {
     /** @var MetadataInterface */
     private $metadata;
 
     /** @var SpanDataInterface[] */
     private $spans = [];
+
+    /** @var ConfigSnapshot */
+    private $config;
+
+    public function __construct(ConfigSnapshot $config)
+    {
+        $this->config = $config;
+    }
 
     /** @inheritDoc */
     public function setMetadata(MetadataInterface $metadata): void
@@ -56,7 +65,7 @@ class EventSender implements EventSinkInterface
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            \elastic_apm_send_to_server($serializedMetadata, $serializedEvents);
+            \elastic_apm_send_to_server($this->config->serverTimeout(), $serializedMetadata, $serializedEvents);
         }
     }
 

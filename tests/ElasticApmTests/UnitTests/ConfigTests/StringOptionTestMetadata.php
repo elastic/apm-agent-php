@@ -14,9 +14,12 @@ final class StringOptionTestMetadata implements OptionTestMetadataInterface
 {
     use SingletonInstanceTrait;
 
-    /** @inheritDoc */
-    public function randomValidValue(string &$rawValue, &$parsedValue, $differentFromParsedValue = null): void
-    {
+    public function randomValidValue(
+        int $index,
+        string &$rawValue,
+        &$parsedValue,
+        $differentFromParsedValue = null
+    ): void {
         if (!is_null($differentFromParsedValue)) {
             PHPUnitAssert::assertIsString($differentFromParsedValue);
         }
@@ -25,7 +28,6 @@ final class StringOptionTestMetadata implements OptionTestMetadataInterface
         $rawValue = $parsedValue;
     }
 
-    /** @inheritDoc */
     public function invalidRawValues(): iterable
     {
         return [];

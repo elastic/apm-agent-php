@@ -18,8 +18,9 @@ final class OptionNames
     public const API_KEY = 'api_key';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
-    public const SERVER_URL = 'server_url';
     public const SECRET_TOKEN = 'secret_token';
+    public const SERVER_TIMEOUT = 'server_timeout';
+    public const SERVER_URL = 'server_url';
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_VERSION = 'service_version';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';

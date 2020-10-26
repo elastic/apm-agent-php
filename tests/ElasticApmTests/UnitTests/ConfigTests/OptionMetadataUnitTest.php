@@ -12,7 +12,7 @@ use Elastic\Apm\Tests\Util\RangeUtil;
 
 class OptionMetadataUnitTest extends UnitTestCaseBase
 {
-    private const NUMBER_OF_VALID_VALUES_TO_TEST = 10;
+    private const NUMBER_OF_VALID_VALUES_TO_TEST = 100;
 
     public function setUp(): void
     {
@@ -75,7 +75,7 @@ class OptionMetadataUnitTest extends UnitTestCaseBase
         foreach (RangeUtil::generate(0, self::NUMBER_OF_VALID_VALUES_TO_TEST) as $i) {
             $rawValue = '';
             $expectedParsedValue = null;
-            $optTestMeta->randomValidValue(/* ref */ $rawValue, /* ref */ $expectedParsedValue, $lastParsedValue);
+            $optTestMeta->randomValidValue($i, /* ref */ $rawValue, /* ref */ $expectedParsedValue, $lastParsedValue);
             $this->assertSame($expectedParsedValue, $optMeta->parse($rawValue));
             $lastParsedValue = $expectedParsedValue;
         }

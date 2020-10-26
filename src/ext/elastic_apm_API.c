@@ -207,7 +207,7 @@ void elasticApmCallInterceptedOriginal( zval* return_value )
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
 
-ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView serializedEvents )
+ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView serializedMetadata, StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
@@ -215,7 +215,7 @@ ResultCode elasticApmSendToServer( StringView serializedMetadata, StringView ser
     Tracer* const tracer = getGlobalTracer();
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
-    sendEventsToApmServer( getTracerCurrentConfigSnapshot( tracer ), serializedEvents );
+    sendEventsToApmServer( serverTimeoutMilliseconds, getTracerCurrentConfigSnapshot( tracer ), serializedEvents );
 
     resultCode = resultSuccess;
 

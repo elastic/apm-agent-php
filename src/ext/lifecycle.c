@@ -274,7 +274,7 @@ static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
     serializedEventsTxtOutStream.autoTermZero = true;
     appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
 
-    sendEventsToApmServer( config, textOutputStreamContentAsStringView( &serializedEventsTxtOutStream ) );
+//    sendEventsToApmServer( config, textOutputStreamContentAsStringView( &serializedEventsTxtOutStream ) );
 
     resultCode = resultSuccess;
 

@@ -59,10 +59,10 @@ final class Tracer implements TracerInterface
     {
         $this->providedDependencies = $providedDependencies;
 
-        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
-        $this->eventSink = $providedDependencies->eventSink ?? new EventSender();
-
         $this->config = $this->buildConfig();
+
+        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
+        $this->eventSink = $providedDependencies->eventSink ?? new EventSender($this->config);
 
         $this->logBackend = new LogBackend(LogLevel::TRACE, $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
