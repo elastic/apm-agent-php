@@ -273,15 +273,15 @@ your communications using HTTPS. Unless you do so, your secret token could be ob
 |============
 
 If a request sending events to the APM server takes longer than the configured timeout,
-the request is cancelled, and the events are discarded.
+the request is canceled, and the events are discarded.
 
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10s`.
-The default unit for this option is `s` so `5` is interpreted as `5s`.
+This option's default unit is `s`, so `5` is interpreted as `5s`.
 
 If the value is `0` (or `0ms`, `0s`, etc.) the timeout for sending events to the APM Server is disabled.
 
-If the value is negative it's invalid and the default value is used instead.
+If the value is negative, it's invalid, and the default value is used instead.
 
 [float]
 [[config-server-url]]
