@@ -10,7 +10,7 @@ mkdir -p build || true
 
 /usr/local/bin/gren changelog \
         --token="${GITHUB_TOKEN}" \
-        --tags="current..${PREVIOUS_TAG}" \
+        --tags="ci-tag..${PREVIOUS_TAG}" \
         --generate \
         --override \
         --config .ci/.grenrc.js \
