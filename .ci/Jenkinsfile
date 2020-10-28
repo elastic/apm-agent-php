@@ -513,7 +513,7 @@ def prepareRelease() {
     // Change current pointer to be used for generating the changelog
     gitCreateTag(tag: 'current', tagArgs: '--force', pushArgs: '--force')
     // Create Changelog and verify it contains what's expected.
-    sh(label: 'Create changelog', script: "GITHUB_TOKEN=${GITHUB_TOKEN} TAG_VERSION=${tagName} PREVIOUS_VERSION=v${previousVersion} make -f .ci/Makefile prepare-changelog changelog")
+    sh(label: 'Create changelog', script: "GITHUB_TOKEN=${GITHUB_TOKEN} TAG_NAME=${tagName} PREVIOUS_TAG=v${previousVersion} make -f .ci/Makefile prepare-changelog changelog")
     sh(label: "Git branch ${branchName}", script: """git checkout -b ${branchName}""")
     sh(label: 'Git commit', script: """git commit -a -m "${message}" """)
     def pr = githubCreatePullRequest(title: "[RELEASE] ${params.VERSION}",
