@@ -22,15 +22,15 @@ endif::[]
 // CHANGELOG_AUTOMATION_KEYWORD
 
 [[release-notes-v0.3]]
-==== v0.3
+=== v0.3
 
 [float]
-===== Bug fixes
+==== Bug fixes
 * [packaging] uninstallation support for alpine: {pull}240[#240]
 * Added check that the corresponding extension is loaded before instrumenting it: {pull}228[#228]
 
 [float]
-===== Features
+==== Features
 * Added SERVER_TIMEOUT configuration option: {pull}245[#245]
 * Automatically capture stack trace for spans: {pull}232[#232]
 * Added VERIFY_SERVER_CERT configuration option: {pull}225[#225]
