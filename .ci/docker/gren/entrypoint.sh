@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 set -exo pipefail
 
+GENERATED_RELEASE_FILE=build/CHANGELOG-RELEASE.asciidoc
+GENERATED_CHANGELOG=build/CHANGELOG.asciidoc
+CHANGELOG=CHANGELOG.asciidoc
+
+# Where the files will be generated
+mkdir -p build || true
+
 /usr/local/bin/gren changelog \
         --token="${GITHUB_TOKEN}" \
         --tags="current..${PREVIOUS_TAG}" \
         --generate \
         --override \
         --config .ci/.grenrc.js \
-        --changelog-filename="CHANGELOG-RELEASE.asciidoc"
-
-echo 'Force version in the generated changelog with the current release'
-sed -i.bck "s/${PREVIOUS_TAG}/${TAG_NAME}/g" CHANGELOG-RELEASE.asciidoc
+        --changelog-filename="${GENERATED_RELEASE_FILE}"
 
 echo 'Aggregate generated release notes'
-previousReleasesLine=$(grep -n -m 1 "CHANGELOG_AUTOMATION_KEYWORD" CHANGELOG.asciidoc | cut -f1 -d:)
+previousReleasesLine=$(grep -n -m 1 "CHANGELOG_AUTOMATION_KEYWORD" ${CHANGELOG} | cut -f1 -d:)
 {
-  sed '/CHANGELOG_AUTOMATION_KEYWORD/q' CHANGELOG.asciidoc
+  sed '/CHANGELOG_AUTOMATION_KEYWORD/q' ${CHANGELOG}
   echo '' 
-  cat CHANGELOG-RELEASE.asciidoc
-  tail -n +$(( previousReleasesLine + 1 )) CHANGELOG.asciidoc
-} > CHANGELOG.asciidoc.new
-mv CHANGELOG.asciidoc.new CHANGELOG.asciidoc
-rm CHANGELOG-RELEASE.asciidoc
+  sed "s/${PREVIOUS_TAG}/${TAG_NAME}/g" "${GENERATED_RELEASE_FILE}"
+  tail -n +$(( previousReleasesLine + 1 )) ${CHANGELOG}
+} > ${GENERATED_CHANGELOG}
+cp ${GENERATED_CHANGELOG} ${CHANGELOG}
