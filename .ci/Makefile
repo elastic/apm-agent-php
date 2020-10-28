@@ -93,28 +93,22 @@ ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to generate the changelog"
 	exit 1
 endif
-ifndef TAG_VERSION
-	@echo "Please set TAG_VERSION in the environment to create the changelog"
+ifndef TAG_NAME
+	@echo "Please set TAG_NAME in the environment to create the changelog"
+	exit 1
+endif
+ifndef PREVIOUS_TAG
+	@echo "Please set PREVIOUS_TAG in the environment to create the changelog"
 	exit 1
 endif
 	@docker run --rm -t \
 		--volume "$(PWD)":/app \
+		--workdir /app \
+		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
+		--env TAG_NAME=$(TAG_NAME) \
+		--env PREVIOUS_TAG=$(PREVIOUS_TAG) \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
-		gren \
-			changelog \
-				--token="${GITHUB_TOKEN}" \
-				--generate \
-				--override \
-				--config .ci/.grenrc.js \
-				--changelog-filename="CHANGELOG-RELEASE.asciidoc"
-	@echo 'Merge generated changelog'
-	@sed '/CHANGELOG_AUTOMATION_KEYWORD/q' CHANGELOG.asciidoc > CHANGELOG.asciidoc.new
-	@echo '' >> CHANGELOG.asciidoc.new
-	@cat CHANGELOG-RELEASE.asciidoc >> CHANGELOG.asciidoc.new
-	@echo '' >> CHANGELOG.asciidoc.new
-	@comm -13 CHANGELOG.asciidoc.new CHANGELOG.asciidoc >> CHANGELOG.asciidoc.new
-	@mv CHANGELOG.asciidoc.new CHANGELOG.asciidoc
-	@rm CHANGELOG-RELEASE.asciidoc
+		gren
 
 .PHONY: release
 release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
