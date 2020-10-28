@@ -2,10 +2,15 @@ module.exports = {
     "username": "elastic",
     "repo": "apm-agent-php",
     "dataSource": "prs",
+    "ignoreIssuesWith": [
+      "automation",
+      "ci",
+      "developer only"
+    ],
     "groupBy": {
         "Breaking changes": ["breaking"],
         "Bug fixes": ["bug", "fix"],
-        "Features": ["enhancement", "internal", "feature", "feat"]
+        "Features": ["enhancement", "feature", "feat"]
     },
     "template": {
         issue: function (placeholders) {
