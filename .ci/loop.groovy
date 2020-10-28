@@ -25,6 +25,7 @@ pipeline {
     issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?loop\\W+tests(?:\\W+please)?.*')
     // disable upstream trigger on a PR basis
     upstream("apm-agent-php/apm-agent-php-mbp/${ env.JOB_BASE_NAME.startsWith('PR-') ? 'none' : env.JOB_BASE_NAME }")
+    cron('@midnight')
   }
   parameters {
     string(name: 'LOOPS', defaultValue: '200', description: 'How many test loops?')
@@ -35,6 +36,10 @@ pipeline {
       when {
         beforeAgent true
         anyOf {
+          allOf {
+            branch 'master'
+            triggeredBy cause: 'TimerTrigger'
+          }
           triggeredBy cause: "IssueCommentCause"
           expression {
             def ret = isUserTrigger() || isUpstreamTrigger()
