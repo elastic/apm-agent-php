@@ -97,17 +97,23 @@ ifndef TAG_VERSION
 	@echo "Please set TAG_VERSION in the environment to create the changelog"
 	exit 1
 endif
+ifndef PREVIOUS_VERSION
+	@echo "Please set PREVIOUS_VERSION in the environment to create the changelog"
+	exit 1
+endif
 	@docker run --rm -t \
 		--volume "$(PWD)":/app \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		gren \
 			changelog \
 				--token="${GITHUB_TOKEN}" \
+				--tags="current..${PREVIOUS_VERSION}" \
 				--generate \
 				--override \
 				--config .ci/.grenrc.js \
 				--changelog-filename="CHANGELOG-RELEASE.asciidoc"
 	@echo 'Merge generated changelog'
+	@sed -i.bck "s/${PREVIOUS_VERSION}/${TAG_VERSION}/g" CHANGELOG-RELEASE.asciidoc
 	@sed '/CHANGELOG_AUTOMATION_KEYWORD/q' CHANGELOG.asciidoc > CHANGELOG.asciidoc.new
 	@echo '' >> CHANGELOG.asciidoc.new
 	@cat CHANGELOG-RELEASE.asciidoc >> CHANGELOG.asciidoc.new
