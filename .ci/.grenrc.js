@@ -17,10 +17,10 @@ module.exports = {
           return '* ' + placeholders.name + ': {pull}' + placeholders.text.replace("#", "") + '[' + placeholders.text + ']';
         },
         changelogTitle: "",
-        release: "[[release-notes-{{release}}]]\n==== {{release}}\n{{body}}",
+        release: "[[release-notes-{{release}}]]\n=== {{release}}\n{{body}}",
         releaseSeparator: "",
         group: function (placeholders) {
-          return '\n[float]\n===== ' + placeholders.heading;
+          return '\n[float]\n==== ' + placeholders.heading;
         }
     }
 }
