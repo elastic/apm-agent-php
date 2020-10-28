@@ -26,7 +26,7 @@ endif::[]
 
 [float]
 ==== Bug fixes
-* [packaging] uninstallation support for alpine: {pull}240[#240]
+* Uninstallation support for Alpine Linux: {pull}240[#240]
 * Added check that the corresponding extension is loaded before instrumenting it: {pull}228[#228]
 
 [float]
@@ -36,8 +36,8 @@ endif::[]
 * Added VERIFY_SERVER_CERT configuration option: {pull}225[#225]
 * Package deb/rpm/tar.gz with fpm (1st delivery): {pull}79[#79]
 * Implemented sampling (TRANSACTION_SAMPLE_RATE): {pull}216[#216]
-* [packaging] support multiple PHP API: {pull}121[#121]
-* packaging: debian package installation with post-install: {pull}98[#98]
+* Support multiple PHP APIs: {pull}121[#121]
+* Debian Linux package installation with post-install: {pull}98[#98]
 
 [[release-notes-alpha]]
 === PHP Agent version alpha/preview
