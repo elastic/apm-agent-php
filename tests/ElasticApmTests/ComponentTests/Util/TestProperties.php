@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +37,8 @@ final class TestProperties
     public function __construct()
     {
         $this->agentConfigSetter = new AgentConfigSetterEnvVars();
+        $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, 'DEBUG');
+
         $this->sharedDataPerRequest = new SharedDataPerRequest();
     }
 

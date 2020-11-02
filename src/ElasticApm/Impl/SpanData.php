@@ -82,4 +82,9 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
 
         parent::serializeProperty($propKey, $propValue, /* ref */ $result);
     }
+
+    public function __toString(): string
+    {
+        return $this->toStringExcludeProperties(['stacktrace']);
+    }
 }
