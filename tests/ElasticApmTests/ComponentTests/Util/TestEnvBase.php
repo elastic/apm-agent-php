@@ -320,7 +320,7 @@ abstract class TestEnvBase
      */
     protected function buildEnvVars(array $additionalEnvVars): array
     {
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['additionalEnvVars' => $additionalEnvVars]);
 
         /** @var array<string, string> */
@@ -328,7 +328,7 @@ abstract class TestEnvBase
 
         $result += $additionalEnvVars;
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting', ['result' => $result]);
 
         return $result;

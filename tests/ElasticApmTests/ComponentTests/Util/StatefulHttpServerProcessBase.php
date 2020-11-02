@@ -131,7 +131,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
      */
     private function processRequestWrapper(ServerRequestInterface $request)
     {
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Received request',
             ['URI' => $request->getUri(), 'method' => $request->getMethod(), 'target' => $request->getRequestTarget()]
@@ -141,7 +141,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
             $response = $this->processRequestWrapperImpl($request);
 
             if ($response instanceof ResponseInterface) {
-                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
                     'Sending response ...',
                     ['statusCode' => $response->getStatusCode(), 'reasonPhrase' => $response->getReasonPhrase()]
@@ -149,7 +149,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
             } else {
                 assert($response instanceof Promise);
 
-                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Promise returned - response will be returned later...');
             }
 

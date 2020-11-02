@@ -170,7 +170,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
             ? array_slice($this->receivedIntakeApiRequests, $fromIndex)
             : [];
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Sending response ...', ['fromIndex' => $fromIndex, 'newDataCount' => count($newData)]);
 
         return new Response(

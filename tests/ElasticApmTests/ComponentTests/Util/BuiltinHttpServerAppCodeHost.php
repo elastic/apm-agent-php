@@ -33,7 +33,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
             __FILE__
         )->addContext('this', $this);
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Received request',
             ['URI' => $_SERVER['REQUEST_URI'], 'method' => $_SERVER['REQUEST_METHOD']]
