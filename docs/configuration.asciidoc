@@ -346,6 +346,31 @@ the recommended value for this field is the commit identifier of the deployed re
 the output of git rev-parse HEAD.
 
 [float]
+[[config-transaction-max-spans]]
+==== `transaction_max_spans`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_TRANSACTION_MAX_SPANS` | `elastic_apm.transaction_max_spans`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| 500       | Integer
+|============
+
+Limits the amount of spans that are recorded per transaction.
+This is helpful in cases where a transaction creates a very high amount of spans,
+for example, thousands of SQL queries.
+Setting an upper limit helps prevent overloading the Agent and APM server in these edge cases.
+
+If the value is `0` no spans will be collected.
+
+If the value is negative, it's invalid, and the default value is used instead.
+
+[float]
 [[config-transaction-sample-rate]]
 ==== `transaction_sample_rate`
 
@@ -358,7 +383,7 @@ the output of git rev-parse HEAD.
 [options="header"]
 |============
 | Default                          | Type
-| None       | String
+| 1.0       | Floating-point number
 |============
 
 By default, the agent will sample every transaction (e.g., a request to your service).
