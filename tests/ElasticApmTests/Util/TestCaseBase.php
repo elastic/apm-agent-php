@@ -166,6 +166,8 @@ class TestCaseBase extends TestCase
 
     /**
      * @param array<string, TransactionDataInterface> $idToTransaction
+     *
+     * @return TransactionDataInterface
      */
     public static function findRootTransaction(array $idToTransaction): TransactionDataInterface
     {
