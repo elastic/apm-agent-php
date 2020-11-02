@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use RuntimeException;
 
 final class TestProcessUtil
@@ -57,7 +57,7 @@ final class TestProcessUtil
     private static function startProcessImpl(string $adaptedCmd, array $envVars): void
     {
         $logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__

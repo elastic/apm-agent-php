@@ -7,11 +7,10 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 use Ds\Map;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\RangeUtil;
-use Elastic\Apm\Tests\Util\TestLogCategory;
-use Elastic\Apm\Tests\Util\TestTextUtil;
+use Elastic\Apm\Tests\Util\RangeUtilForTests;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -48,7 +47,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         $this->pendingDataRequests = new Map();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -114,7 +113,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
      */
     private function processMockApiRequest(ServerRequestInterface $request)
     {
-        $command = TestTextUtil::suffixFrom($request->getUri()->getPath(), strlen(self::MOCK_API_URI_PREFIX));
+        $command = substr($request->getUri()->getPath(), strlen(self::MOCK_API_URI_PREFIX));
 
         if ($command === self::GET_INTAKE_API_REQUESTS) {
             return $this->getIntakeApiRequests($request);
@@ -131,7 +130,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
     private function getIntakeApiRequests(ServerRequestInterface $request)
     {
         $fromIndex = intval(self::getRequiredRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
-        if (!RangeUtil::isInInclusiveRange(0, $fromIndex, count($this->receivedIntakeApiRequests))) {
+        if (!NumericUtil::isInClosedInterval(0, $fromIndex, count($this->receivedIntakeApiRequests))) {
             return $this->buildErrorResponse(
                 400 /* status */,
                 'Invalid `' . self::FROM_INDEX_HEADER_NAME . '\' HTTP request header value: $fromIndex'

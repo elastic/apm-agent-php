@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use RuntimeException;
 
@@ -17,6 +16,8 @@ use RuntimeException;
  */
 trait SnapshotTrait
 {
+    use ObjectToStringUsingPropertiesTrait;
+
     /** @var array<string, mixed> */
     private $optNameToParsedValue;
 
@@ -45,12 +46,5 @@ trait SnapshotTrait
     public function getOptionValueByName(string $optName)
     {
         return ArrayUtil::getValueIfKeyExistsElse($optName, $this->optNameToParsedValue, null);
-    }
-
-    public function __toString(): string
-    {
-        $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_called_class()));
-        $builder->add('optNameToParsedValue', $this->optNameToParsedValue);
-        return $builder->build();
     }
 }

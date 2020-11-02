@@ -23,6 +23,7 @@ final class MockTransactionData extends TransactionData
             $child->syncWithTransaction($this);
             $this->startedSpansCount += $child->getTreeSpansCount();
         }
+        $this->isSampled = true;
     }
 
     public function setParentId(?string $parentId): void

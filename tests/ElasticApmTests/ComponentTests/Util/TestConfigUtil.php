@@ -12,7 +12,7 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\Tests\Util\TestLogSink;
+use Elastic\Apm\Tests\Util\LogSinkForTests;
 
 final class TestConfigUtil
 {
@@ -47,7 +47,7 @@ final class TestConfigUtil
                 ]
             );
         $parser = new Parser(
-            new LoggerFactory(new LogBackend(LogLevel::ERROR, new TestLogSink($dbgProcessName)))
+            new LoggerFactory(new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName)))
         );
         $allOptsMeta = AllComponentTestsOptionsMetadata::build();
         return new TestConfigSnapshot(

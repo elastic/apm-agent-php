@@ -19,6 +19,9 @@ final class ServerApiSchemaValidator
     /** @var array<string, null> */
     private static $additionalPropertiesCandidateNodesKeys;
 
+    /** @var array<string> */
+    private $tempFilePaths = [];
+
     private static function pathToSpecsRootDir(): string
     {
         return TestsRootDir::$fullPath . '/APM_Server_intake_API_schema';
@@ -69,7 +72,7 @@ final class ServerApiSchemaValidator
                 $allowAdditionalPropertiesVariants[] = false;
             }
             foreach ($allowAdditionalPropertiesVariants as $allowAdditionalProperties) {
-                self::validateEventDataAgainstSchemaVariant(
+                (new self())->validateEventDataAgainstSchemaVariant(
                     $serializedData,
                     $pathToSchemaSupplier($isEarliestVariant),
                     $allowAdditionalProperties
@@ -78,7 +81,27 @@ final class ServerApiSchemaValidator
         }
     }
 
-    private static function validateEventDataAgainstSchemaVariant(
+    private function validateEventDataAgainstSchemaVariant(
+        string $serializedData,
+        string $relativePathToSchema,
+        bool $allowAdditionalProperties
+    ): void {
+        try {
+            $this->validateEventDataAgainstSchemaVariantImpl(
+                $serializedData,
+                $relativePathToSchema,
+                $allowAdditionalProperties
+            );
+        } finally {
+            foreach ($this->tempFilePaths as $tempFilePath) {
+                if (file_exists($tempFilePath)) {
+                    unlink($tempFilePath);
+                }
+            }
+        }
+    }
+
+    private function validateEventDataAgainstSchemaVariantImpl(
         string $serializedData,
         string $relativePathToSchema,
         bool $allowAdditionalProperties
@@ -87,14 +110,14 @@ final class ServerApiSchemaValidator
         $deserializedRawData = SerializationTestUtil::deserializeJson($serializedData, /* asAssocArray */ false);
         $validator->validate(
             $deserializedRawData,
-            (object)(self::loadSchema(
+            (object)($this->loadSchema(
                 self::normalizePath(self::pathToSpecsRootDir() . '/' . $relativePathToSchema),
                 $allowAdditionalProperties
             )),
             Constraint::CHECK_MODE_VALIDATE_SCHEMA
         );
         if (!$validator->isValid()) {
-            throw self::buildException($validator, $serializedData);
+            throw self::buildException($relativePathToSchema, $validator, $serializedData);
         }
     }
 
@@ -113,7 +136,7 @@ final class ServerApiSchemaValidator
      *
      * @return array<string, mixed>
      */
-    private static function loadSchema(string $absolutePath, bool $allowAdditionalProperties): array
+    private function loadSchema(string $absolutePath, bool $allowAdditionalProperties): array
     {
         if ($allowAdditionalProperties) {
             return ['$ref' => self::convertPathToFileUrl($absolutePath)];
@@ -121,7 +144,7 @@ final class ServerApiSchemaValidator
 
         $decodedSchema = self::loadSchemaAndResolveRefs($absolutePath);
         self::processSchema(/* ref */ $decodedSchema, $allowAdditionalProperties);
-        $pathToTempFileWithProcessedSchema = self::writeProcessedSchemaToTempFile($decodedSchema);
+        $pathToTempFileWithProcessedSchema = $this->writeProcessedSchemaToTempFile($decodedSchema);
         return ['$ref' => self::convertPathToFileUrl($pathToTempFileWithProcessedSchema)];
     }
 
@@ -139,9 +162,11 @@ final class ServerApiSchemaValidator
      *
      * @return string - Absolute path to the temp file
      */
-    private static function writeProcessedSchemaToTempFile(array $schema): string
+    private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $pathToTempFile = sys_get_temp_dir() . '/' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $pathToTempFile = tempnam(sys_get_temp_dir(), '');
+        $pathToTempFile .= '_' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,
             SerializationTestUtil::prettyEncodeJson($schema),
@@ -320,6 +345,7 @@ final class ServerApiSchemaValidator
     }
 
     private static function buildException(
+        string $relativePathToSchema,
         Validator $validator,
         string $serializedData
     ): ServerApiSchemaValidationException {
@@ -349,6 +375,8 @@ final class ServerApiSchemaValidator
         };
 
         $message = 'Serialized data failed APM Server Intake API JSON schema validation.';
+        $message .= PHP_EOL;
+        $message .= "relativePathToSchema: $relativePathToSchema";
         $message .= PHP_EOL;
         $message .= TextUtil::indent(
             'Errors [' . count($errors) . ']:'

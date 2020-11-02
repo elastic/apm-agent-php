@@ -9,24 +9,12 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @extends OptionMetadataBase<?string>
+ * @extends NullableOptionMetadata<string>
  */
-final class NullableStringOptionMetadata extends OptionMetadataBase
+final class NullableStringOptionMetadata extends NullableOptionMetadata
 {
-    public function __construct(?string $defaultValue = null)
+    public function __construct()
     {
-        parent::__construct($defaultValue);
-    }
-
-    /**
-     * @param string $rawValue
-     *
-     * @return mixed
-     *
-     * @phpstan-return string
-     */
-    public function parse(string $rawValue)
-    {
-        return $rawValue;
+        parent::__construct(new StringOptionParser());
     }
 }

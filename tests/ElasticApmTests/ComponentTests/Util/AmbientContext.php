@@ -7,7 +7,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Tests\Util\TestLogSink;
+use Elastic\Apm\Tests\Util\LogSinkForTests;
 use RuntimeException;
 
 final class AmbientContext
@@ -41,10 +41,21 @@ final class AmbientContext
         }
 
         if (self::config()->appCodeHostKind === AppCodeHostKind::NOT_SET) {
-            $envVarName = TestConfigUtil::envVarNameForTestOption(AppCodeHostKindOptionMetadata::NAME);
+            $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
+            $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
             throw new RuntimeException(
-                'Required configuration option ' . AppCodeHostKindOptionMetadata::NAME
+                'Required configuration option ' . $optionName
                 . " (environment variable $envVarName)" . ' is not set'
+            );
+        }
+
+        if (!is_null(self::config()->appCodePhpIni) && !file_exists(self::config()->appCodePhpIni)) {
+            $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
+            $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
+            throw new RuntimeException(
+                "Option $optionName (environment variable $envVarName)"
+                . ' is set but it points to a file that does not exist: '
+                . self::config()->appCodePhpIni
             );
         }
     }
@@ -61,7 +72,7 @@ final class AmbientContext
         $this->loggerFactory = new LoggerFactory(
             new LogBackend(
                 $this->testConfig->logLevel,
-                new TestLogSink($this->dbgProcessName)
+                new LogSinkForTests($this->dbgProcessName)
             )
         );
     }

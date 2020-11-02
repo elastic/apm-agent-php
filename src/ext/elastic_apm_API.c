@@ -49,7 +49,6 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
     return resultCode;
 }
 
-// TODO: Sergey Kleyman: Move to Tracer
 enum
 {
     maxFunctionsToIntercept = numberedInterceptingCallbacksCount
@@ -123,11 +122,6 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
 
     ResultCode resultCode;
-
-    // TODO: Sergey Kleyman: Implement: Actually convert className to lower case
-    #ifdef PHP_WIN32
-    className = "pdo";
-    #endif
 
     zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
     if ( classEntry == NULL )

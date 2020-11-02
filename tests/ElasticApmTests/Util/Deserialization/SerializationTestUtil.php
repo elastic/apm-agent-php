@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\Util\Deserialization;
 
-use Elastic\Apm\Impl\ServerComm\SerializationException;
+use Elastic\Apm\Impl\BackendComm\SerializationException;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Tests\Util\ValidationUtil;
 

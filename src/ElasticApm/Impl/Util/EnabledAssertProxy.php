@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
-use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Log\LogCategory;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -33,7 +29,7 @@ final class EnabledAssertProxy
      * @return bool
      * @throws AssertException
      */
-    public function info(string $conditionAsString, array $context): bool
+    public function withContext(string $conditionAsString, array $context): bool
     {
         $numberOfStackFramesToSkip = 1;
         $callerInfo = DbgUtil::getCallerInfoFromStacktrace($numberOfStackFramesToSkip);

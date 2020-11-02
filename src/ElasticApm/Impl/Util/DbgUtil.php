@@ -15,7 +15,7 @@ final class DbgUtil
 {
     use StaticClassTrait;
 
-    public const NULL_AS_STRING = /** @lang text */ '<null>';
+    public const NULL_AS_STRING = 'null';
 
     public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
     {
@@ -24,7 +24,7 @@ final class DbgUtil
 
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(count($stackFrames) >= $callerStackFrameIndex + 1)
-        && $assertProxy->info('count($stackFrames) >= $callerStackFrameIndex + 1', []);
+        && $assertProxy->withContext('count($stackFrames) >= $callerStackFrameIndex + 1', []);
 
         $stackFrame = $stackFrames[$callerStackFrameIndex];
         return new CallerInfo(
@@ -78,7 +78,15 @@ final class DbgUtil
             return self::formatBool($value);
         }
 
-        if (is_scalar($value)) {
+        if (is_string($value)) {
+            $jsonEncodedString = json_encode($value);
+            if ($jsonEncodedString === false) {
+                return '"FAILED to encode string"';
+            }
+            return $jsonEncodedString;
+        }
+
+        if (is_numeric($value)) {
             return strval($value);
         }
 
@@ -90,7 +98,7 @@ final class DbgUtil
             return self::formatObject($value);
         }
 
-        return '<' . self::getType($value) . '> ' . strval($value);
+        return '"<' . self::getType($value) . '> ' . strval($value) . '"';
     }
 
     private static function formatBool(bool $value): string
@@ -105,7 +113,18 @@ final class DbgUtil
      */
     public static function formatArray(array $arrayValue): string
     {
-        $result = 'array[' . count($arrayValue) . ']{';
+        return self::isListArray($arrayValue) ? self::formatListArray($arrayValue) : self::formatMapArray($arrayValue);
+    }
+
+    /**
+     * @param array<mixed> $arrayValue
+     *
+     * @return string
+     */
+    public static function formatMapArray(array $arrayValue): string
+    {
+        $result = '{';
+        $result .= '"type": "map-array", "count": ' . count($arrayValue) . ', "keyValuePairs": [';
         $isFirst = true;
         foreach ($arrayValue as $key => $value) {
             if ($isFirst) {
@@ -113,12 +132,48 @@ final class DbgUtil
             } else {
                 $result .= ', ';
             }
-            $result .= self::formatValue($key);
-            $result .= ' => ';
+            $result .= '{"key": ' . self::formatValue($key) . ', "value": ' . self::formatValue($value) . '}';
+        }
+        $result .= ']}';
+        return $result;
+    }
+
+    /**
+     * @param array<mixed> $arrayValue
+     *
+     * @return string
+     */
+    public static function formatListArray(array $arrayValue): string
+    {
+        $result = '{';
+        $result .= '"type": "list-array", "count": ' . count($arrayValue) . ', "values": [';
+        $isFirst = true;
+        foreach ($arrayValue as $value) {
+            if ($isFirst) {
+                $isFirst = false;
+            } else {
+                $result .= ', ';
+            }
             $result .= self::formatValue($value);
         }
-        $result .= '}';
+        $result .= ']}';
         return $result;
+    }
+
+    /**
+     * @param array<mixed, mixed> $arrayValue
+     *
+     * @return bool
+     */
+    public static function isListArray(array $arrayValue): bool
+    {
+        $expectedKey = 0;
+        foreach ($arrayValue as $key => $value) {
+            if ($key !== $expectedKey++) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function formatObject(object $objectValue): string
@@ -202,7 +257,6 @@ final class DbgUtil
 
     public static function formatSourceCodeFilePath(string $srcFile): string
     {
-        // TODO: Sergey Kleyman: Implement: cutoff only shared prefix
         return basename($srcFile);
     }
 

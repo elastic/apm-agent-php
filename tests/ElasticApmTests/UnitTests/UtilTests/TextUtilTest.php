@@ -69,6 +69,26 @@ class TextUtilTest extends TestCase
         $this->assertSame($inputCamelCase, TextUtil::snakeToCamelCase($inputSnakeCase));
     }
 
+    public function testIsPrefixOf(): void
+    {
+        self::assertTrue(TextUtil::isPrefixOf('', ''));
+        self::assertTrue(TextUtil::isPrefixOf('', '', /* isCaseSensitive */ false));
+        self::assertTrue(!TextUtil::isPrefixOf('a', ''));
+        self::assertTrue(!TextUtil::isPrefixOf('a', '', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isPrefixOf('A', 'ABC'));
+        self::assertTrue(!TextUtil::isPrefixOf('a', 'ABC'));
+        self::assertTrue(TextUtil::isPrefixOf('a', 'ABC', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isPrefixOf('AB', 'ABC'));
+        self::assertTrue(!TextUtil::isPrefixOf('aB', 'ABC'));
+        self::assertTrue(TextUtil::isPrefixOf('aB', 'ABC', /* isCaseSensitive */ false));
+
+        self::assertTrue(TextUtil::isPrefixOf('ABC', 'ABC'));
+        self::assertTrue(!TextUtil::isPrefixOf('aBc', 'ABC'));
+        self::assertTrue(TextUtil::isPrefixOf('aBc', 'ABC', /* isCaseSensitive */ false));
+    }
+
     public function testIsSuffixOf(): void
     {
         self::assertTrue(TextUtil::isSuffixOf('', ''));
@@ -87,5 +107,19 @@ class TextUtilTest extends TestCase
         self::assertTrue(TextUtil::isSuffixOf('ABC', 'ABC'));
         self::assertTrue(!TextUtil::isSuffixOf('aBc', 'ABC'));
         self::assertTrue(TextUtil::isSuffixOf('aBc', 'ABC', /* isCaseSensitive */ false));
+    }
+
+    public function testFlipLetterCase(): void
+    {
+        $flipOneLetterString = function (string $src): string {
+            return chr(TextUtil::flipLetterCase(ord($src[0])));
+        };
+
+        self::assertSame($flipOneLetterString('A'), 'a');
+        self::assertNotEquals($flipOneLetterString('A'), 'A');
+        self::assertSame($flipOneLetterString('x'), 'X');
+        self::assertNotEquals($flipOneLetterString('x'), 'x');
+        self::assertSame($flipOneLetterString('0'), '0');
+        self::assertSame($flipOneLetterString('#'), '#');
     }
 }

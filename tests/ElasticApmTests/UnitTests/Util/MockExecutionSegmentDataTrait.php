@@ -7,6 +7,7 @@ namespace Elastic\Apm\Tests\UnitTests\Util;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Tests\Util\FloatLimits;
 use Elastic\Apm\Tests\Util\TestCaseBase;
 
 trait MockExecutionSegmentDataTrait
@@ -65,8 +66,8 @@ trait MockExecutionSegmentDataTrait
 
     private function syncWithChildren(): void
     {
-        $minChildStartTimestamp = PHP_FLOAT_MAX;
-        $maxChildEndTimestamp = PHP_FLOAT_MIN;
+        $minChildStartTimestamp = FloatLimits::MAX;
+        $maxChildEndTimestamp = FloatLimits::MIN;
 
         foreach ($this->childSpans as $childSpan) {
             $childSpan->setParentId($this->getId());

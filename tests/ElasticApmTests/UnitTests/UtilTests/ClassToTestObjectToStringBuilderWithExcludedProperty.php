@@ -27,6 +27,6 @@ class ClassToTestObjectToStringBuilderWithExcludedProperty
 
     public function __toString(): string
     {
-        return $this->toStringUsingProperties(['excludedProperty']);
+        return $this->toStringExcludeProperties(['excludedProperty']);
     }
 }

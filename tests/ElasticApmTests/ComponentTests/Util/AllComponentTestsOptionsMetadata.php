@@ -20,18 +20,22 @@ final class AllComponentTestsOptionsMetadata
 {
     use StaticClassTrait;
 
+    public const APP_CODE_HOST_KIND_OPTION_NAME = 'app_code_host_kind';
+    public const APP_CODE_PHP_INI_OPTION_NAME = 'app_code_php_ini';
     public const SHARED_DATA_PER_PROCESS_OPTION_NAME = 'shared_data_per_process';
     public const SHARED_DATA_PER_REQUEST_OPTION_NAME = 'shared_data_per_request';
 
     /**
-     * @return array<string, OptionMetadataInterface<mixed>> Option name to metadata
+     * @return array<string, OptionMetadataInterface> Option name to metadata
+     *
+     * @phpstan-return array<string, OptionMetadataInterface<mixed>> Option name to metadata
      */
     public static function build(): array
     {
         return [
-            AppCodeHostKindOptionMetadata::NAME       => new AppCodeHostKindOptionMetadata(),
+            self::APP_CODE_HOST_KIND_OPTION_NAME      => new AppCodeHostKindOptionMetadata(),
             'app_code_php_exe'                        => new NullableStringOptionMetadata(),
-            'app_code_php_ini'                        => new NullableStringOptionMetadata(),
+            self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
             'log_level'                               => new LogLevelOptionMetadata(Level::TRACE),
             self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): SharedDataPerProcess {

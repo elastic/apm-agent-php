@@ -47,4 +47,10 @@ class StacktraceFrame extends EventData
         $this->filename = $filename;
         $this->lineno = $lineno;
     }
+
+    public function __toString(): string
+    {
+        // TODO: Sergey Kleyman: Fix the issue wtih logging StacktraceFrame::function, filename
+        return $this->toStringExcludeProperties(['filename', 'function']);
+    }
 }

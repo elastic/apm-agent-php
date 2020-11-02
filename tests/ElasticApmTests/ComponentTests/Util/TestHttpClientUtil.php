@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;

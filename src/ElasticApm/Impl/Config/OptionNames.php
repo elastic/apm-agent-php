@@ -23,6 +23,7 @@ final class OptionNames
     public const SERVER_URL = 'server_url';
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_VERSION = 'service_version';
+    public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';
     public const VERIFY_SERVER_CERT = 'verify_server_cert';
 }

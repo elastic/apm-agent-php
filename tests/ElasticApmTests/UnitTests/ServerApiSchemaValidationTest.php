@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\UnitTests;
 
 use Closure;
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
 use Elastic\Apm\Tests\Util\Deserialization\SerializationTestUtil;
 use Elastic\Apm\Tests\Util\Deserialization\ServerApiSchemaValidationException;
@@ -128,6 +128,7 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
                     )
                 );
             },
+            '' /* message */,
             function (ServerApiSchemaValidationException $ex) use ($unknownPropertyName, $unknownPropertyValue) {
                 $this->assertStringContainsString($unknownPropertyName, $ex->getMessage());
                 $this->assertStringContainsString($unknownPropertyValue, $ex->getMessage());
@@ -194,6 +195,7 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
                     )
                 );
             },
+            '' /* message */,
             function (ServerApiSchemaValidationException $ex) use ($pathToElement) {
                 foreach ($pathToElement as $pathPart) {
                     if (is_string($pathPart)) {

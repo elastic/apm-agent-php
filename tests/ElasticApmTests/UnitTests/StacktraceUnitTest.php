@@ -28,11 +28,11 @@ class StacktraceUnitTest extends UnitTestCaseBase
 
         // Assert
 
-        $this->assertTransactionEquals($tx, $this->mockEventSink->getSingleTransaction());
+        $this->assertTransactionEquals($tx, $this->mockEventSink->singleTransaction());
         StacktraceTestSharedCode::assertPartImpl(
             count($createSpanApis),
             $expectedData,
-            $this->mockEventSink->getIdToSpan()
+            $this->mockEventSink->idToSpan()
         );
     }
 }

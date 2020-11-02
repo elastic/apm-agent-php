@@ -14,16 +14,15 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\TransactionDataInterface;
-use Jchook\AssertThrows\AssertThrows;
+use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
+use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
+use Throwable;
 
 class TestCaseBase extends TestCase
 {
-    // Adds the assertThrows method
-    use AssertThrows;
-
     /**
      * @param mixed        $name
      * @param array<mixed> $data
@@ -45,9 +44,7 @@ class TestCaseBase extends TestCase
         self::assertThat(
             $lhs,
             self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)),
-            "lhs: $lhs, rhs: $rhs" .
-            ', number_format($lhs): ' . number_format($lhs) . ', number_format($rhs): ' . number_format($rhs) .
-            ((PHP_INT_SIZE >= 8) ? (', intval($lhs): ' . intval($lhs) . ', intval($rhs): ' . intval($rhs)) : '')
+            ' $lhs: ' . number_format($lhs) . ', $rhs: ' . number_format($rhs)
         );
     }
 
@@ -282,5 +279,38 @@ class TestCaseBase extends TestCase
         SpanDataInterface $actual
     ): void {
         self::assertEquals(SpanData::convertToData($expected), SpanData::convertToData($actual));
+    }
+
+    /**
+     * Asserts that the callable throws a specified throwable.
+     * If successful and the inspection callable is not null
+     * then it is called and the caught exception is passed as argument.
+     *
+     * @param string        $class   The exception type expected to be thrown.
+     * @param callable      $execute The callable.
+     * @param string        $message
+     * @param callable|null $inspect [optional] The inspector.
+     */
+    public static function assertThrows(
+        string $class,
+        callable $execute,
+        string $message = '',
+        callable $inspect = null
+    ): void {
+        try {
+            $execute();
+        } catch (ExpectationFailedException $ex) {
+            throw $ex;
+        } catch (Throwable $ex) {
+            static::assertThat($ex, new ConstraintException($class), $message);
+
+            if ($inspect !== null) {
+                $inspect($ex);
+            }
+
+            return;
+        }
+
+        static::assertThat(null, new ConstraintException($class), $message);
     }
 }

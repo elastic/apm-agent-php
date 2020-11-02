@@ -174,7 +174,6 @@ void appendLevel( LogLevel level, TextOutputStream* txtOutStream )
     else
     {
         // otherwise print it as a number
-        // TODO: Sergey Kleyman: Test with log level 100
         streamPrintf( txtOutStream, "%d", level );
     }
     streamChar( ']', txtOutStream );
@@ -510,7 +509,6 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt,
 
 #endif
 
-// TODO: Sergey Kleyman: Implement log to file
 //static bool openAndAppendToFile( Logger* logger, StringView fullText )
 //{
 //#ifdef PHP_WIN32
@@ -686,7 +684,6 @@ void vLogWithLogger(
     }
             #endif
 
-        // TODO: Sergey Kleyman: Implement log to file
 //    if ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel )
 //    {
 //        // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it

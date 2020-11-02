@@ -7,12 +7,11 @@ namespace Elastic\Apm\Tests\ComponentTests;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\Tests\TestsSharedCode\StacktraceTestSharedCode;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
 use Elastic\Apm\Tests\ComponentTests\Util\TopLevelCodeId;
-use Elastic\Apm\Tests\TestsSharedCode\StacktraceTestSharedCode;
-use PHPUnit\Framework\TestCase;
 
 class StacktraceComponentTest extends ComponentTestCaseBase
 {
@@ -54,7 +53,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
                 StacktraceTestSharedCode::assertPartImpl(
                     count($createSpanApis),
                     $expectedData,
-                    $dataFromAgent->idToSpan
+                    $dataFromAgent->idToSpan()
                 );
             }
         );

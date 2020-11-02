@@ -18,7 +18,6 @@ final class Assert
 
     public static function configure(int $maxEnabledLevel): void
     {
-        // TODO: Sergey Kleyman: Configure based on input configuration
         self::$maxEnabledLevel = $maxEnabledLevel;
     }
 

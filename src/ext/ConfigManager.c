@@ -1110,7 +1110,6 @@ void logConfigChange( const ConfigManager* cfgManager, const ConfigRawData* newR
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
     ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
 
-    // TODO: Sergey Kleyman: Implement: logConfigChange
 }
 
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager )

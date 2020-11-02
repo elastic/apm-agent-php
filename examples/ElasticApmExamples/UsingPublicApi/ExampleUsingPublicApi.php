@@ -24,8 +24,8 @@ class ExampleUsingPublicApi extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertEmpty($mockEventSink->getIdToSpan());
-        $reportedTx = $mockEventSink->getSingleTransaction();
+        $this->assertEmpty($mockEventSink->idToSpan());
+        $reportedTx = $mockEventSink->singleTransaction();
         $this->assertSame('test_TX_name', $reportedTx->getName());
         $this->assertSame('test_TX_type', $reportedTx->getType());
 

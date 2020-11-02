@@ -9,25 +9,12 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @extends OptionMetadataBase<string>
+ * @extends OptionWithDefaultValueMetadata<string>
  */
-final class StringOptionMetadata extends OptionMetadataBase
+final class StringOptionMetadata extends OptionWithDefaultValueMetadata
 {
-    /** @inheritDoc */
     public function __construct(string $defaultValue)
     {
-        parent::__construct($defaultValue);
-    }
-
-    /**
-     * @param string $rawValue
-     *
-     * @return mixed
-     *
-     * @phpstan-return string
-     */
-    public function parse(string $rawValue)
-    {
-        return $rawValue;
+        parent::__construct(new StringOptionParser(), $defaultValue);
     }
 }

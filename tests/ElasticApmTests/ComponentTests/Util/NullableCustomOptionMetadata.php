@@ -7,9 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Closure;
-use Elastic\Apm\Impl\Config\OptionMetadataBase;
-use Elastic\Apm\Tests\Util\Deserialization\SerializationTestUtil;
-use Elastic\Apm\Tests\ComponentTests\Util\SharedDataBase;
+use Elastic\Apm\Impl\Config\NullableOptionMetadata;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -18,15 +16,10 @@ use Elastic\Apm\Tests\ComponentTests\Util\SharedDataBase;
  *
  * @template   T
  *
- * @extends OptionMetadataBase<?T>
+ * @extends    NullableOptionMetadata<T>
  */
-final class NullableCustomOptionMetadata extends OptionMetadataBase
+final class NullableCustomOptionMetadata extends NullableOptionMetadata
 {
-    /**
-     * @var Closure(string): T
-     */
-    private $parseFunc;
-
     /**
      * @param Closure $parseFunc
      *
@@ -34,21 +27,6 @@ final class NullableCustomOptionMetadata extends OptionMetadataBase
      */
     public function __construct(Closure $parseFunc)
     {
-        parent::__construct(null);
-        $this->parseFunc = $parseFunc;
-    }
-
-    /**
-     * @param string $rawValue
-     *
-     * @return mixed
-     *
-     * @phpstan-return SharedDataBase
-     *
-     * @see SharedDataBase::deserializeFromJson
-     */
-    public function parse(string $rawValue)
-    {
-        return ($this->parseFunc)($rawValue);
+        parent::__construct(new CustomOptionParser($parseFunc));
     }
 }

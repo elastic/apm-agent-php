@@ -127,7 +127,6 @@ String streamErrNo( int errnoValue, TextOutputStream* txtOutStream )
 
 size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferSize )
 {
-    // TODO: Sergey Kleyman: Implement: captureStackTraceWindows
     ELASTIC_APM_UNUSED( addressesBuffer );
     ELASTIC_APM_UNUSED( addressesBufferSize );
     return 0;
@@ -139,7 +138,6 @@ String streamStackTraceWindows(
         String linePrefix,
         TextOutputStream* txtOutStream )
 {
-    // TODO: Sergey Kleyman: Implement: streamStackTraceWindows
     ELASTIC_APM_UNUSED( addresses );
     ELASTIC_APM_UNUSED( addressesCount );
     ELASTIC_APM_UNUSED( linePrefix );

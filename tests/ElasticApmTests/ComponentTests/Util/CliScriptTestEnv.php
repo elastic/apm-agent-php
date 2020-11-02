@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +26,7 @@ final class CliScriptTestEnv extends TestEnvBase
         parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -44,27 +46,25 @@ final class CliScriptTestEnv extends TestEnvBase
             ['testProperties' => $testProperties]
         );
 
-        $additionalEnvVars
-            = [
-                  TestConfigUtil::envVarNameForTestOption(
-                      AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
-                  ) => SerializationUtil::serializeAsJson(
-                      $this->buildSharedDataPerProcess(),
-                      SharedDataPerProcess::class
-                  ),
-                  TestConfigUtil::envVarNameForTestOption(
-                      AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                  ) => SerializationUtil::serializeAsJson(
-                      $testProperties->sharedDataPerRequest,
-                      SharedDataPerRequest::class
-                  ),
-              ]
-              + $testProperties->agentConfigSetter->additionalEnvVars();
-
         TestProcessUtil::startProcessAndWaitUntilExit(
             $testProperties->agentConfigSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
-            $this->buildEnvVars($additionalEnvVars)
+            self::inheritedEnvVars(/* keepElasticApmEnvVars */ false)
+            + [
+                TestConfigUtil::envVarNameForTestOption(
+                    AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
+                ) => SerializationUtil::serializeAsJson(
+                    $this->buildSharedDataPerProcess(),
+                    SharedDataPerProcess::class
+                ),
+                TestConfigUtil::envVarNameForTestOption(
+                    AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
+                ) => SerializationUtil::serializeAsJson(
+                    $testProperties->sharedDataPerRequest,
+                    SharedDataPerRequest::class
+                ),
+            ]
+            + $testProperties->agentConfigSetter->additionalEnvVars()
         );
     }
 

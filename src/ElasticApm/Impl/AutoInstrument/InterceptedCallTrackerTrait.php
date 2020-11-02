@@ -47,7 +47,7 @@ trait InterceptedCallTrackerTrait
     ): void {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!is_null($interceptedCallThis))
-        && $assertProxy->info('!is_null($interceptedCallThis)', ['interceptedCallArgs' => $interceptedCallArgs]);
+        && $assertProxy->withContext('!is_null($interceptedCallThis)', ['interceptedCallArgs' => $interceptedCallArgs]);
     }
 
     /**
@@ -62,7 +62,7 @@ trait InterceptedCallTrackerTrait
     ): void {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(is_null($interceptedCallThis))
-        && $assertProxy->info(
+        && $assertProxy->withContext(
             'is_null($interceptedCallThis)',
             [
                 'interceptedCallThis' => $interceptedCallThis,

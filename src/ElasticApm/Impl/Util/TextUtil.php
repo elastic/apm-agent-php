@@ -118,6 +118,11 @@ final class TextUtil
         return NumericUtil::isInClosedInterval(ord('a'), $charAsInt, ord('z'));
     }
 
+    public static function isLetter(int $charAsInt): bool
+    {
+        return self::isUpperCaseLetter($charAsInt) || self::isLowerCaseLetter($charAsInt);
+    }
+
     public static function toLowerCaseLetter(int $charAsInt): int
     {
         if (self::isUpperCaseLetter($charAsInt)) {
@@ -132,6 +137,13 @@ final class TextUtil
             return (($charAsInt - ord('a')) + ord('A'));
         }
         return $charAsInt;
+    }
+
+    public static function flipLetterCase(int $charAsInt): int
+    {
+        return self::isUpperCaseLetter($charAsInt)
+            ? self::toLowerCaseLetter($charAsInt)
+            : self::toUpperCaseLetter($charAsInt);
     }
 
     public static function camelToSnakeCase(string $input): string
@@ -209,6 +221,13 @@ final class TextUtil
         return $result . substr($input, $inputRemainderPos, $inputLen - $inputRemainderPos);
     }
 
+    /**
+     * Convert camel case ('someText') to Pascal case ('SomeText')
+     *
+     * @param string $input
+     *
+     * @return string
+     */
     public static function camelToPascalCase(string $input): string
     {
         if (empty($input)) {
@@ -217,14 +236,20 @@ final class TextUtil
         return chr(self::toUpperCaseLetter(ord($input[0]))) . substr($input, 1, strlen($input) - 1);
     }
 
-    public static function isPrefixOf(string $prefix, string $text): bool
+    public static function isPrefixOf(string $prefix, string $text, bool $isCaseSensitive = true): bool
     {
         $prefixLen = strlen($prefix);
-        if (strlen($text) < $prefixLen) {
-            return false;
+        if ($prefixLen === 0) {
+            return true;
         }
 
-        return strncmp($text, $prefix, $prefixLen) === 0;
+        return substr_compare(
+            $text /* <- haystack */,
+            $prefix /* <- needle */,
+            0 /* <- offset */,
+            $prefixLen /* <- length */,
+            !$isCaseSensitive /* <- case_insensitivity */
+        ) === 0;
     }
 
     public static function isSuffixOf(string $suffix, string $text, bool $isCaseSensitive = true): bool
@@ -235,11 +260,11 @@ final class TextUtil
         }
 
         return substr_compare(
-            $text,
-            $suffix, /* offset */
-            -$suffixLen,
-            $suffixLen, /* case_insensitivity */
-            !$isCaseSensitive
+            $text /* <- haystack */,
+            $suffix /* <- needle */,
+            -$suffixLen /* <- offset */,
+            $suffixLen /* <- length */,
+            !$isCaseSensitive /* <- case_insensitivity */
         ) === 0;
     }
 }

@@ -11,9 +11,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use PHPUnit\Framework\MockObject\RuntimeException;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -46,7 +49,7 @@ final class PhpUnitExtension implements
         ComponentTestCaseBase::init();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -67,10 +70,17 @@ final class PhpUnitExtension implements
             ]
         );
 
-        if (extension_loaded('elastic_apm')) {
-            // We don't want any of the testing infrastructure operations to be recorded as application's APM events
-            ElasticApm::pauseRecording();
-            ElasticApm::getCurrentTransaction()->discard();
+        $envVarName = TestConfigUtil::envVarNameForAgentOption(OptionNames::ENABLED);
+        $envVarValue = getenv($envVarName);
+        if ($envVarValue !== 'false') {
+            throw new RuntimeException(
+                "Environment variable $envVarName should be set to `false'."
+                . 'Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'" ) . '.'
+            );
+        }
+
+        if (GlobalTracerHolder::get()->isRecording()) {
+            throw new RuntimeException('Tracer should not be recording component tests root process (i.e., PHPUnit).');
         }
     }
 

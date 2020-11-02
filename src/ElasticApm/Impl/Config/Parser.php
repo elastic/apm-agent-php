@@ -29,6 +29,21 @@ final class Parser
     }
 
     /**
+     * @param string                       $rawValue
+     * @param OptionParserInterface<mixed> $optionParser
+     *
+     * @return mixed
+     *
+     * @template       T
+     * @phpstan-param  OptionParserInterface<T> $optionParser
+     * @phpstan-return T
+     */
+    public static function parseOptionRawValue(string $rawValue, OptionParserInterface $optionParser)
+    {
+        return $optionParser->parse(trim($rawValue));
+    }
+
+    /**
      * @param array<string, OptionMetadataInterface<mixed>> $optNameToMeta
      * @param RawSnapshotInterface                          $rawSnapshot
      *
@@ -37,6 +52,7 @@ final class Parser
     public function parse(array $optNameToMeta, RawSnapshotInterface $rawSnapshot): array
     {
         $optNameToParsedValue = [];
+        /** @var OptionMetadataInterface<mixed> $optMeta */
         foreach ($optNameToMeta as $optName => $optMeta) {
             $rawValue = $rawSnapshot->valueFor($optName);
             if (is_null($rawValue)) {
@@ -49,7 +65,7 @@ final class Parser
                 );
             } else {
                 try {
-                    $parsedValue = $optMeta->parse($rawValue);
+                    $parsedValue = self::parseOptionRawValue($rawValue, $optMeta->parser());
 
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(

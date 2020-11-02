@@ -12,6 +12,9 @@ use Elastic\Apm\TransactionDataInterface;
 
 trait SerializedEventSinkTrait
 {
+    /** @var bool */
+    public $shouldValidateAgainstSchema = true;
+
     /**
      * @param string  $serializedData
      * @param Closure $validateAgainstSchema
@@ -40,12 +43,14 @@ trait SerializedEventSinkTrait
     }
 
     /** @inheritDoc */
-    protected static function validateAndDeserializeMetadata(string $serializedMetadata): MetadataInterface
+    protected function validateAndDeserializeMetadata(string $serializedMetadata): MetadataInterface
     {
         return self::validateAndDeserialize(
             $serializedMetadata,
             function (string $serializedData): void {
-                ServerApiSchemaValidator::validateMetadata($serializedData);
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateMetadata($serializedData);
+                }
             },
             function ($deserializedRawData): MetadataInterface {
                 return MetadataDeserializer::deserialize($deserializedRawData);
@@ -56,13 +61,15 @@ trait SerializedEventSinkTrait
         );
     }
 
-    protected static function validateAndDeserializeTransactionData(
+    protected function validateAndDeserializeTransactionData(
         string $serializedTransactionData
     ): TransactionDataInterface {
         return self::validateAndDeserialize(
             $serializedTransactionData,
             function (string $serializedData): void {
-                ServerApiSchemaValidator::validateTransactionData($serializedData);
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateTransactionData($serializedData);
+                }
             },
             function ($deserializedRawData): TransactionDataInterface {
                 return TransactionDataDeserializer::deserialize($deserializedRawData);
@@ -73,12 +80,14 @@ trait SerializedEventSinkTrait
         );
     }
 
-    protected static function validateAndDeserializeSpanData(string $serializedSpanData): SpanDataInterface
+    protected function validateAndDeserializeSpanData(string $serializedSpanData): SpanDataInterface
     {
         return self::validateAndDeserialize(
             $serializedSpanData,
             function (string $serializedSpanData): void {
-                ServerApiSchemaValidator::validateSpanData($serializedSpanData);
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateSpanData($serializedSpanData);
+                }
             },
             function ($deserializedRawData): SpanDataInterface {
                 return SpanDataDeserializer::deserialize($deserializedRawData);

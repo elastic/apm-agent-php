@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\UnitTests\UtilTests;
 
-use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\Tests\ComponentTests\Util\TimeFormatUtil;
 use PHPUnit\Framework\TestCase;

@@ -45,10 +45,10 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
 
 ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents )
 {
-    long serverTimeoutMillisecondsLong = (long) ceil(serverTimeoutMilliseconds);
+    long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "Sending events to APM Server... serverTimeoutMilliseconds: %f (passed to curl API as: %"PRIu64")"
-            " serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "Sending events to APM Server... serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+                                                                                                " serializedEvents [length: %"PRIu64"]:\n%.*s"
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
@@ -86,8 +86,19 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
 
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, serverTimeoutMillisecondsLong );
+
+    if ( serverTimeoutMillisecondsLong == 0 )
+    {
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+                "Timeout is disabled. serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+                , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong );
+    }
+    else
+    {
+        ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, serverTimeoutMillisecondsLong );
+    }
 
     if ( ! config->verifyServerCert )
     {
@@ -114,8 +125,7 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
         if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
         {
             ELASTIC_APM_LOG_ERROR( "Failed to build Authorization header."
-                                   " snprintfRetVal: %d. authKind: %s. authValue: %s.",
-                                   snprintfRetVal, authKind, authValue );
+                                   " snprintfRetVal: %d. authKind: %s. authValue: %s.", snprintfRetVal, authKind, authValue );
             resultCode = resultFailure;
             goto failure;
         }
@@ -126,7 +136,7 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, chunk );
 
     // User agent - "elasticapm-<language>/<version>" (no separators between "elastic" and "apm" is on purpose)
-	// For example, "elasticapm-java/1.2.3" or "elasticapm-dotnet/1.2.3"
+    // For example, "elasticapm-java/1.2.3" or "elasticapm-dotnet/1.2.3"
     snprintfRetVal = snprintf( userAgent, userAgentBufferSize, "elasticapm-php/%s", PHP_ELASTIC_APM_VERSION );
     if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
     {
