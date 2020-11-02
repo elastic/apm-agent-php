@@ -53,7 +53,7 @@ final class PhpUnitExtension implements
             __NAMESPACE__,
             __CLASS__,
             __FILE__
-        )->addContext('appCodeHostKind', AppCodeHostKind::toString(AmbientContext::config()->appCodeHostKind));
+        )->addContext('appCodeHostKind', AppCodeHostKind::toString(AmbientContext::testConfig()->appCodeHostKind));
     }
 
     public function executeBeforeTest(string $test): void

@@ -11,45 +11,53 @@ use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
 use Elastic\Apm\Tests\Util\IterableUtilForTests;
 use Elastic\Apm\TransactionInterface;
-use IteratorIterator;
 use PHPUnit\Framework\TestCase;
 
 final class SharedCode
 {
     use StaticClassTrait;
 
+    /** @var ?int */
+    private static $limitVariousCombinationsToVariantIndex = null;
+
+    /** @var ?int */
+    private static $testArgsVariantsCount = null;
+
+    /** @var bool */
+    private static $shouldPrintProgress = true;
+
     /**
-     * @param bool $shouldLimitToBasic
+     * @param bool $isFullTestingMode
      *
      * @return iterable<int|null>
      */
-    public static function configTransactionMaxSpansVariants(bool $shouldLimitToBasic): iterable
+    public static function configTransactionMaxSpansVariants(bool $isFullTestingMode): iterable
     {
         yield from [null, 0];
 
-        if (!$shouldLimitToBasic) {
+        if ($isFullTestingMode) {
             yield from [10, 1000];
         }
     }
 
     /**
      * @param ?int $configTransactionMaxSpans
-     * @param bool $shouldLimitToBasic
+     * @param bool $isFullTestingMode
      *
      * @return iterable<int>
      */
     public static function numberOfSpansToCreateVariants(
         ?int $configTransactionMaxSpans,
-        bool $shouldLimitToBasic
+        bool $isFullTestingMode
     ): iterable {
         /** @var Set<int> */
         $result = new Set();
 
-        $addInterestingValues = function (int $maxSpans) use ($result, $shouldLimitToBasic) {
+        $addInterestingValues = function (int $maxSpans) use ($result, $isFullTestingMode) {
             $result->add($maxSpans);
             $result->add($maxSpans + 1);
 
-            if (!$shouldLimitToBasic) {
+            if ($isFullTestingMode) {
                 $result->add($maxSpans - 1);
                 $result->add(2 * $maxSpans);
             }
@@ -57,7 +65,7 @@ final class SharedCode
 
         $addInterestingValues($configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS);
 
-        if (!$shouldLimitToBasic) {
+        if ($isFullTestingMode) {
             $result->add(0);
         }
 
@@ -70,18 +78,18 @@ final class SharedCode
 
     /**
      * @param int  $numberOfSpansToCreateValues
-     * @param bool $shouldLimitToBasic
+     * @param bool $isFullTestingMode
      *
      * @return iterable<int>
      */
-    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, bool $shouldLimitToBasic): iterable
+    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
     {
         /** @var Set<int> */
         $result = new Set();
 
         $result->add(3);
 
-        if (!$shouldLimitToBasic) {
+        if ($isFullTestingMode) {
             $result->add(1);
             $result->add($numberOfSpansToCreateValues);
         }
@@ -95,18 +103,18 @@ final class SharedCode
 
     /**
      * @param int  $numberOfSpansToCreateValues
-     * @param bool $shouldLimitToBasic
+     * @param bool $isFullTestingMode
      *
      * @return iterable<int>
      */
-    public static function maxDepthVariants(int $numberOfSpansToCreateValues, bool $shouldLimitToBasic): iterable
+    public static function maxDepthVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
     {
         /** @var Set<int> */
         $result = new Set();
 
         $result->add(3);
 
-        if (!$shouldLimitToBasic) {
+        if ($isFullTestingMode) {
             $result->add(1);
             $result->add(2);
             $result->add($numberOfSpansToCreateValues);
@@ -121,20 +129,25 @@ final class SharedCode
     }
 
     /**
-     * @param bool $shouldLimitToBasic
+     * @param bool $isFullTestingMode
      *
      * @return iterable<Args>
      */
-    public static function testArgsVariants(bool $shouldLimitToBasic): iterable
+    public static function testArgsVariants(bool $isFullTestingMode): iterable
     {
+        /** @var ?int */
+        $limitVariousCombinationsToVariantIndex = null;
+
+        $variantIndex = 1;
         foreach ([true, false] as $isSampled) {
-            foreach (self::configTransactionMaxSpansVariants($shouldLimitToBasic) as $configTransactionMaxSpans) {
-                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $shouldLimitToBasic);
+            foreach (self::configTransactionMaxSpansVariants($isFullTestingMode) as $configTransactionMaxSpans) {
+                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $isFullTestingMode);
                 foreach ($numSpansVars as $numberOfSpansToCreate) {
-                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $shouldLimitToBasic) as $maxFanOut) {
-                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $shouldLimitToBasic) as $maxDepth) {
+                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxFanOut) {
+                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxDepth) {
                             foreach ([true, false] as $shouldUseOnlyCurrentCreateSpanApis) {
                                 $result = new Args();
+                                $result->variantIndex = $variantIndex++;
                                 $result->isSampled = $isSampled;
                                 $result->configTransactionMaxSpans = $configTransactionMaxSpans;
                                 $result->numberOfSpansToCreate = $numberOfSpansToCreate;
@@ -148,6 +161,32 @@ final class SharedCode
                 }
             }
         }
+    }
+
+    public static function testEachArgsVariantProlog(bool $isFullTestingMode, Args $testArgs): bool
+    {
+        self::$testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($isFullTestingMode));
+        if ($testArgs->variantIndex === 1) {
+            if (!is_null(self::$limitVariousCombinationsToVariantIndex)) {
+                $msg = 'LIMITED to variant #'
+                       . self::$limitVariousCombinationsToVariantIndex . ' out of '
+                       . self::$testArgsVariantsCount;
+                fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
+            }
+        }
+
+        $isThisVariantEnabled = is_null(self::$limitVariousCombinationsToVariantIndex)
+                                || ($testArgs->variantIndex === self::$limitVariousCombinationsToVariantIndex);
+
+        $shouldPrintProgress = is_null(self::$limitVariousCombinationsToVariantIndex)
+            ? self::$shouldPrintProgress
+            : $isThisVariantEnabled;
+        if ($shouldPrintProgress) {
+            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . self::$testArgsVariantsCount . ': ' . $testArgs;
+            fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
+        }
+
+        return $isThisVariantEnabled;
     }
 
     public static function appCode(Args $testArgs, TransactionInterface $tx): void

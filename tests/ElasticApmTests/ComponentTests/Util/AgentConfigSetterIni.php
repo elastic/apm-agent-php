@@ -8,7 +8,7 @@ final class AgentConfigSetterIni extends AgentConfigSetterBase
 {
     public function appCodePhpCmd(): string
     {
-        return self::buildAppCodePhpCmd(AmbientContext::config()->appCodePhpIni);
+        return self::buildAppCodePhpCmd(AmbientContext::testConfig()->appCodePhpIni);
     }
 
     public function additionalEnvVars(): array

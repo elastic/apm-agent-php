@@ -8,6 +8,5 @@ final class ExternalHttpServerTestEnv extends HttpServerTestEnvBase
 {
     protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
     {
-        // TODO: Implement ensureAppCodeHostServerRunning() method.
     }
 }

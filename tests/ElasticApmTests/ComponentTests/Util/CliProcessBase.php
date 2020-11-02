@@ -23,6 +23,16 @@ abstract class CliProcessBase
     protected function __construct()
     {
         $this->logger = self::buildLogger()->addContext('this', $this);
+
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Done',
+            [
+                'AmbientContext::testConfig()' => AmbientContext::testConfig(),
+                'Environment variables' => getenv(),
+            ]
+        );
     }
 
     private static function buildLogger(): Logger
@@ -40,12 +50,12 @@ abstract class CliProcessBase
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
             TestAssertUtil::assertThat(
-                !is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId),
-                strval(AmbientContext::config())
+                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId),
+                strval(AmbientContext::testConfig())
             );
             TestAssertUtil::assertThat(
-                !is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort),
-                strval(AmbientContext::config())
+                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
+                strval(AmbientContext::testConfig())
             );
         }
     }
@@ -94,13 +104,13 @@ abstract class CliProcessBase
      */
     protected static function getRequiredTestOption(string $optName)
     {
-        $optValue = AmbientContext::config()->getOptionValueByName($optName);
+        $optValue = AmbientContext::testConfig()->getOptionValueByName($optName);
         if (is_null($optValue)) {
             $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
             throw new RuntimeException(
                 'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set.'
                 . ' AmbientContext::dbgProcessName(): ' . AmbientContext::dbgProcessName() . '.'
-                . ' AmbientContext::config(): ' . AmbientContext::config() . '.'
+                . ' AmbientContext::config(): ' . AmbientContext::testConfig() . '.'
             );
         }
 
@@ -132,14 +142,14 @@ abstract class CliProcessBase
             'Registering with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . '...'
         );
 
-        assert(!is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort));
-        assert(!is_null(AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId));
+        assert(!is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort));
+        assert(!is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId));
         $response = TestHttpClientUtil::sendHttpRequest(
-            AmbientContext::config()->sharedDataPerProcess->resourcesCleanerPort,
+            AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort,
             HttpConsts::METHOD_POST,
             ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH,
             SharedDataPerRequest::fromServerId(
-                AmbientContext::config()->sharedDataPerProcess->resourcesCleanerServerId
+                AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId
             ),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );

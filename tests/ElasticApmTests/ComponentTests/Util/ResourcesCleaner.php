@@ -49,8 +49,8 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         parent::processConfig();
 
         TestAssertUtil::assertThat(
-            isset(AmbientContext::config()->sharedDataPerProcess->rootProcessId),
-            strval(AmbientContext::config())
+            isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId),
+            strval(AmbientContext::testConfig())
         );
     }
 
@@ -59,7 +59,8 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         $loop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
-                if (!TestProcessUtil::doesProcessExist(AmbientContext::config()->sharedDataPerProcess->rootProcessId)) {
+                $rootProcessId = AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId;
+                if (!TestProcessUtil::doesProcessExist($rootProcessId)) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log('Detected that parent process does not exist');
                     $this->cleanAndExit();

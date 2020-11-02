@@ -54,12 +54,12 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     protected function processConfig(): void
     {
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerId),
-            strval(AmbientContext::config())
+            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
+            strval(AmbientContext::testConfig())
         );
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerPort),
-            strval(AmbientContext::config())
+            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
+            strval(AmbientContext::testConfig())
         );
 
         parent::processConfig();
@@ -76,7 +76,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function runImpl(): void
     {
-        $response = self::verifyServerId(AmbientContext::config()->sharedDataPerRequest->serverId);
+        $response = self::verifyServerId(AmbientContext::testConfig()->sharedDataPerRequest->serverId);
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
             self::sendResponse($response);
             return;

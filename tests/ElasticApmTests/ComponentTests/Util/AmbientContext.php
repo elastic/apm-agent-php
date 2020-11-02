@@ -21,16 +21,12 @@ final class AmbientContext
     /** @var LoggerFactory */
     private $loggerFactory;
 
-    /** @var array<string> */
-    private $testOptionNames;
-
     /** @var TestConfigSnapshot */
     private $testConfig;
 
     private function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
-        $this->testOptionNames = array_keys(AllComponentTestsOptionsMetadata::build());
         $this->readAndApplyConfig(/* additionalConfigSource */ null);
     }
 
@@ -40,7 +36,7 @@ final class AmbientContext
             self::$singletonInstance = new AmbientContext($dbgProcessName);
         }
 
-        if (self::config()->appCodeHostKind === AppCodeHostKind::NOT_SET) {
+        if (self::testConfig()->appCodeHostKind === AppCodeHostKind::NOT_SET) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
             $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
             throw new RuntimeException(
@@ -49,13 +45,13 @@ final class AmbientContext
             );
         }
 
-        if (!is_null(self::config()->appCodePhpIni) && !file_exists(self::config()->appCodePhpIni)) {
+        if (!is_null(self::testConfig()->appCodePhpIni) && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
             $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
             throw new RuntimeException(
                 "Option $optionName (environment variable $envVarName)"
                 . ' is set but it points to a file that does not exist: '
-                . self::config()->appCodePhpIni
+                . self::testConfig()->appCodePhpIni
             );
         }
     }
@@ -84,7 +80,7 @@ final class AmbientContext
         return self::$singletonInstance->dbgProcessName;
     }
 
-    public static function config(): TestConfigSnapshot
+    public static function testConfig(): TestConfigSnapshot
     {
         assert(isset(self::$singletonInstance));
 

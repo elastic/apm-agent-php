@@ -12,15 +12,6 @@ use Throwable;
 
 abstract class AppCodeHostBase extends CliProcessBase
 {
-    /** @var array<string, mixed>|null */
-    public $appCodeArgs;
-
-    /** @var string */
-    protected $appCodeClass;
-
-    /** @var string */
-    protected $appCodeMethod;
-
     /** @var Logger */
     private $logger;
 
@@ -52,7 +43,7 @@ abstract class AppCodeHostBase extends CliProcessBase
     {
         self::runSkeleton(
             function (CliProcessBase $thisObjArg) use (&$topLevelCodeId): void {
-                $topLevelCodeId = AmbientContext::config()->sharedDataPerRequest->appTopLevelCodeId;
+                $topLevelCodeId = AmbientContext::testConfig()->sharedDataPerRequest->appTopLevelCodeId;
                 if (!is_null($topLevelCodeId)) {
                     return;
                 }
@@ -78,34 +69,40 @@ abstract class AppCodeHostBase extends CliProcessBase
 
     protected function callAppCode(): void
     {
+        $logCtx = [
+            'appCodeClass'     => AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass,
+            'appCodeMethod'    => AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod,
+            'appCodeArguments' => AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments,
+        ];
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Calling application code...');
+        && $loggerProxy->log('Calling application code...', $logCtx);
 
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::config()->sharedDataPerRequest->appCodeClass)
-            && !is_null(AmbientContext::config()->sharedDataPerRequest->appCodeMethod),
-            strval(AmbientContext::config())
+            !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass)
+            && !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod),
+            strval(AmbientContext::testConfig())
         );
 
         try {
             $methodToCall = [
-                AmbientContext::config()->sharedDataPerRequest->appCodeClass,
-                AmbientContext::config()->sharedDataPerRequest->appCodeMethod,
+                AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass,
+                AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod,
             ];
-            if (is_null(AmbientContext::config()->sharedDataPerRequest->appCodeArguments)) {
+            if (is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments)) {
                 /** @phpstan-ignore-next-line */
                 call_user_func($methodToCall);
             } else {
                 /** @phpstan-ignore-next-line */
-                call_user_func($methodToCall, AmbientContext::config()->sharedDataPerRequest->appCodeArguments);
+                call_user_func($methodToCall, AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments);
             }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Call to application code exited by exception', ['throwable' => $throwable]);
+            && $loggerProxy->log('Call to application code exited by exception', ['throwable' => $throwable] + $logCtx);
             throw new WrappedAppCodeException($throwable);
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Call to application code completed');
+        && $loggerProxy->log('Call to application code completed', $logCtx);
     }
 }
