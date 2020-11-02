@@ -58,6 +58,8 @@ final class PollingCheck
         $sinceLastReport = new Stopwatch();
         while (true) {
             ++$numberOfAttempts;
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Starting attempt ' . $numberOfAttempts . ' to checking if ' . $this->dbgDesc . '...');
             if ($check()) {
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(

@@ -24,15 +24,11 @@ final class TransactionForExtensionRequest
     /** @var Logger */
     private $logger;
 
-    /** @var Tracer */
-    private $tracer;
-
     /** @var TransactionInterface */
     private $transactionForRequest;
 
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
-        $this->tracer = $tracer;
         $this->logger = $tracer->loggerFactory()
                                ->loggerForClass(LogCategory::DISCOVERY, __NAMESPACE__, __CLASS__, __FILE__);
 

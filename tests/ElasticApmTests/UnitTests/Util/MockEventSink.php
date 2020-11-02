@@ -123,11 +123,7 @@ class MockEventSink implements EventSinkInterface
             },
             /* assertEquals: */
             function ($data, $deserializedData): void {
-                // TODO: Sergey Kleyman: REMOVE
-                $originalData = TransactionData::convertToData($data);
-                TestCase::assertEquals($originalData, $deserializedData);
-                // TODO: Sergey Kleyman: UNCOMMENT
-                // TestCase::assertEquals(TransactionData::convertToData($data), $deserializedData);
+                TestCase::assertEquals(TransactionData::convertToData($data), $deserializedData);
             }
         );
         TestCase::assertArrayNotHasKey($newTransaction->getId(), $this->eventsFromAgent->idToTransaction);

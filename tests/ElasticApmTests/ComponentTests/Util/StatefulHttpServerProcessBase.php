@@ -42,17 +42,17 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         parent::processConfig();
 
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerId),
-            strval(AmbientContext::config())
+            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
+            strval(AmbientContext::testConfig())
         );
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::config()->sharedDataPerProcess->thisServerPort),
-            strval(AmbientContext::config())
+            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
+            strval(AmbientContext::testConfig())
         );
 
         TestAssertUtil::assertThat(
-            !isset(AmbientContext::config()->sharedDataPerRequest->serverId),
-            strval(AmbientContext::config())
+            !isset(AmbientContext::testConfig()->sharedDataPerRequest->serverId),
+            strval(AmbientContext::testConfig())
         );
     }
 
@@ -88,7 +88,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     {
         $loop = Factory::create();
 
-        $serverSocket = new ServerSocket(AmbientContext::config()->sharedDataPerProcess->thisServerPort, $loop);
+        $serverSocket = new ServerSocket(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort, $loop);
 
         $httpServer = new HttpServer(
         /**

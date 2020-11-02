@@ -38,7 +38,7 @@ abstract class AgentConfigSetterBase
 
     protected static function buildAppCodePhpCmd(?string $appCodePhpIni): string
     {
-        $result = AmbientContext::config()->appCodePhpExe ?? 'php';
+        $result = AmbientContext::testConfig()->appCodePhpExe ?? 'php';
         if (!is_null($appCodePhpIni)) {
             $result .= ' -c ' . $appCodePhpIni;
         }

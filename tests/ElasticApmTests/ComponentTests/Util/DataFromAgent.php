@@ -13,8 +13,8 @@ use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
 use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\ValidationUtil;
 use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
@@ -96,11 +96,12 @@ final class DataFromAgent
      */
     public function addIntakeApiRequests(array $newIntakeApiRequests, float $timeBeforeRequestToApp): void
     {
-        assert(!empty($newIntakeApiRequests));
+        TestCase::assertNotEmpty($newIntakeApiRequests);
+
         foreach ($newIntakeApiRequests as $intakeApiRequest) {
             $this->processIntakeApiRequest($intakeApiRequest, $timeBeforeRequestToApp);
+            $this->intakeApiRequests[] = $intakeApiRequest;
         }
-        array_push($this->intakeApiRequests, ...$newIntakeApiRequests);
     }
 
     private function processIntakeApiRequest(
@@ -123,7 +124,7 @@ final class DataFromAgent
             // empty line can only be the last one
             ValidationUtil::assertThat(!$encounteredEmptyLine);
 
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Processing a line from intake API request',
                 ['bodyLine' => $bodyLine]

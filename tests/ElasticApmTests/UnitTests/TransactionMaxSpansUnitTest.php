@@ -12,10 +12,11 @@ use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use Elastic\Apm\Tests\UnitTests\Util\MockConfigRawSnapshotSource;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\Tests\Util\IterableUtilForTests;
 
 class TransactionMaxSpansUnitTest extends UnitTestCaseBase
 {
+    private const IS_FULL_TESTING_MODE = false;
+
     private function variousCombinationsTestImpl(Args $testArgs): void
     {
         ///////////////////////////////
@@ -50,38 +51,10 @@ class TransactionMaxSpansUnitTest extends UnitTestCaseBase
 
     public function testVariousCombinations(): void
     {
-        /**
-         * @return iterable<Args>
-         */
-        $createTestArgsVariants = function (): iterable {
-            // TODO: Sergey Kleyman: Find a way to run long time taking tests and change shouldLimitToBasic to false
-            return SharedCode::testArgsVariants(/* shouldLimitToBasic: */ true);
-        };
-
-        /** @var ?int */
-        $limitVariousCombinationsToVariantIndex = null;
-        /** @var bool */
-        $shouldPrintProgress = false;
-
-        $variantIndex = 0;
-        $testArgsVariantsCount = IterableUtilForTests::count($createTestArgsVariants());
-        if (!is_null($limitVariousCombinationsToVariantIndex)) {
-            $msg = "LIMITED to variant #$limitVariousCombinationsToVariantIndex out of $testArgsVariantsCount";
-            fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
-        }
-
         /** @var Args $testArgs */
-        foreach ($createTestArgsVariants() as $testArgs) {
-            $testArgs->variantIndex = ++$variantIndex;
-            if (!is_null($limitVariousCombinationsToVariantIndex)) {
-                if ($variantIndex !== $limitVariousCombinationsToVariantIndex) {
-                    continue;
-                }
-            }
-
-            if ($shouldPrintProgress) {
-                $msg = "variant #$variantIndex out of $testArgsVariantsCount: $testArgs";
-                fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
+        foreach (SharedCode::testArgsVariants(self::IS_FULL_TESTING_MODE) as $testArgs) {
+            if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
+                continue;
             }
 
             GlobalTracerHolder::unset();

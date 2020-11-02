@@ -69,7 +69,7 @@ class ComponentTestCaseBase extends TestCaseBase
 
     private function selectTestEnv(): TestEnvBase
     {
-        switch (AmbientContext::config()->appCodeHostKind) {
+        switch (AmbientContext::testConfig()->appCodeHostKind) {
             case AppCodeHostKind::CLI_SCRIPT:
                 return new CliScriptTestEnv();
 

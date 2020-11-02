@@ -1,6 +1,6 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
+/** @noinspection PhpDocMissingThrowsInspection, PhpUnhandledExceptionInspection, PhpUndefinedClassInspection */
 
 declare(strict_types=1);
 
@@ -18,8 +18,8 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\TransactionDataInterface;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;
@@ -159,6 +159,11 @@ abstract class TestEnvBase
                 return
                     TextUtil::isPrefixOf(
                         TestConfigUtil::ENV_VAR_NAME_PREFIX,
+                        $envVarName,
+                        false /* <- isCaseSensitive */
+                    )
+                    || TextUtil::isPrefixOf(
+                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_',
                         $envVarName,
                         false /* <- isCaseSensitive */
                     )
@@ -434,21 +439,31 @@ abstract class TestEnvBase
             ) {
                 ++$numberOfAttempts;
                 try {
+                    $lastCheckedIndexBeforeUpdate = $lastCheckedNextIntakeApiRequestIndex;
                     $this->ensureLatestDataFromMockApmServer($timeBeforeRequestToApp);
-                    $currentNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
-                    if (
-                        !is_null($lastException)
-                        && ($currentNextIntakeApiRequestIndex === $lastCheckedNextIntakeApiRequestIndex)
-                    ) {
-                        // No new data since the last check - there's no point in invoking $verifyFunc() again
+                    $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
+                    if ($lastCheckedIndexBeforeUpdate === $lastCheckedNextIntakeApiRequestIndex) {
+                        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                        && $loggerProxy->log(
+                            'No new data since the last check - there is no point in invoking $verifyFunc() again',
+                            [
+                                'lastCheckedIndexBeforeUpdate'         => $lastCheckedIndexBeforeUpdate,
+                                'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
+                            ]
+                        );
                         return false;
                     }
 
-                    $lastCheckedNextIntakeApiRequestIndex = $currentNextIntakeApiRequestIndex;
-
                     $this->verifyDataAgainstRequest($testProperties);
+
+                    ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log('Calling $verifyFunc supplied by the text case...');
+
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
+                    ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log('Attempt failed', ['numberOfAttempts' => $numberOfAttempts, 'ex' => $ex]);
+
                     if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
                         $lastException = $ex;
                         ++$numberOfFailedAttempts;
@@ -485,11 +500,17 @@ abstract class TestEnvBase
 
     private function ensureLatestDataFromMockApmServer(float $timeBeforeRequestToApp): void
     {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Starting...');
+
         try {
             $newIntakeApiRequests = $this->fetchLatestDataFromMockApmServer();
             if (!empty($newIntakeApiRequests)) {
                 $this->dataFromAgent->addIntakeApiRequests($newIntakeApiRequests, $timeBeforeRequestToApp);
             }
+
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Done');
             return;
         } catch (Throwable $thrown) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
@@ -504,6 +525,9 @@ abstract class TestEnvBase
 
     protected function verifyDataAgainstRequest(TestProperties $testProperties): void
     {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Verifying data received from the agent...');
+
         $this->verifyHttpRequestHeaders($testProperties);
 
         $this->verifyMetadata($testProperties);
