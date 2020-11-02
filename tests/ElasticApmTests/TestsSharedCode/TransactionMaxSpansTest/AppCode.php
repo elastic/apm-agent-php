@@ -160,7 +160,8 @@ final class AppCode
             $this->addRecursionApi(self::CAPTURE_CHILD_SPAN_API_ID, /* ref */ $createSpanApis);
         }
 
-        switch ($createSpanApis[RandomUtilForTests::generateIntInRange(0, count($createSpanApis) - 1)]) {
+        $apiIndex = $this->numberOfSpansCreated % count($createSpanApis);
+        switch ($createSpanApis[$apiIndex]) {
             case self::BEGIN_CHILD_SPAN_API_ID:
                 $span = $topExecSegment->beginChildSpan($spanName, 'test_span_type');
                 $this->initLabelAndPushToStack($span, $spanName, /* needsExplicitEndCall */ true);
