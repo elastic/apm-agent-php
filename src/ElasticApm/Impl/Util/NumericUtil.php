@@ -14,17 +14,11 @@ final class NumericUtil
     use StaticClassTrait;
 
     /**
-     * @param mixed $intervalLeft
-     * @param mixed $x
-     * @param mixed $intervalRight
+     * @param float|int $intervalLeft
+     * @param float|int $x
+     * @param float|int $intervalRight
      *
      * @return bool
-     *
-     * @template        T
-     * @phpstan-param   T $intervalLeft
-     * @phpstan-param   T $x
-     * @phpstan-param   T $intervalRight
-     *
      */
     public static function isInClosedInterval($intervalLeft, $x, $intervalRight): bool
     {

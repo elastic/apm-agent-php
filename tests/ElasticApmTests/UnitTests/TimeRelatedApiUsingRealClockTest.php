@@ -21,7 +21,7 @@ class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertGreaterThanOrEqual($beforeBegin, $reportedTx->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($beforeSleep, $afterSleep),
@@ -45,7 +45,7 @@ class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertGreaterThanOrEqual(
             self::calcDuration($beforeSleep, $afterSleep),
             self::calcDuration($beforeBegin, $afterEnd)
@@ -71,7 +71,7 @@ class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
         $afterEnd = self::getCurrentTimestamp();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertGreaterThanOrEqual($beforeBeginSpan, $reportedSpan->getTimestamp());
         $this->assertGreaterThanOrEqual(
             self::calcDuration($afterBeginTransaction, $beforeBeginSpan),
@@ -105,7 +105,7 @@ class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
         $this->assertGreaterThan($expectedSpanDuration, self::calcDuration($afterBeginSpan, $beforeEnd));
     }

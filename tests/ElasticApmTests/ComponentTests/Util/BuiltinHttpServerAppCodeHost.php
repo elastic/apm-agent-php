@@ -6,7 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
@@ -27,7 +27,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -89,10 +89,5 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     {
         http_response_code($response->getStatusCode());
         echo $response->getBody();
-    }
-
-    protected function cliHelpOptions(): string
-    {
-        throw new RuntimeException('This method should not be called: ' . __METHOD__);
     }
 }

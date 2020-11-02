@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use JsonSerializable;
@@ -99,9 +99,9 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
         $builder->add('name', $data->name());
         $builder->add('version', $data->version());
         $builder->add('environment', $data->environment());
-        $builder->add('framework', NameVersionData::dataToString($data->framework()));
-        $builder->add('language', NameVersionData::dataToString($data->language()));
-        $builder->add('runtime', NameVersionData::dataToString($data->runtime()));
+        $builder->add('framework', $data->framework());
+        $builder->add('language', $data->language());
+        $builder->add('runtime', $data->runtime());
         return $builder->build();
     }
 

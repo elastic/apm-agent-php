@@ -7,7 +7,7 @@ namespace Elastic\Apm\Tests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\Tests\Util\TestDummyException;
+use Elastic\Apm\Tests\Util\DummyExceptionForTests;
 use Elastic\Apm\TransactionInterface;
 
 class CapturePublicApiTest extends UnitTestCaseBase
@@ -32,7 +32,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
         $this->assertTrue(is_null($retVal));
         $this->assertNull($retVal);
         $this->assertNotNull($tx);
-        $this->assertTransactionEquals($tx, $this->mockEventSink->getSingleTransaction());
+        $this->assertTransactionEquals($tx, $this->mockEventSink->singleTransaction());
     }
 
     public function testElasticApmCurrentTransactionReturnObject(): void
@@ -56,7 +56,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
         $this->assertInstanceOf(TestDummyObject::class, $retVal);
         $this->assertSame('some dummy property value', $retVal->dummyPublicStringProperty);
         $this->assertNotNull($tx);
-        $this->assertTransactionEquals($tx, $this->mockEventSink->getSingleTransaction());
+        $this->assertTransactionEquals($tx, $this->mockEventSink->singleTransaction());
     }
 
     public function testElasticApmCurrentSpanReturnVoid(): void
@@ -88,7 +88,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
         // Assert
         $this->assertTrue(is_null($retVal));
         $this->assertNotNull($span);
-        $this->assertSpanEquals($span, $this->mockEventSink->getSingleSpan());
+        $this->assertSpanEquals($span, $this->mockEventSink->singleSpan());
     }
 
     public function testElasticApmCurrentSpanReturnObject(): void
@@ -122,14 +122,14 @@ class CapturePublicApiTest extends UnitTestCaseBase
         $this->assertInstanceOf(TestDummyObject::class, $retVal);
         $this->assertSame('some dummy property value', $retVal->dummyPublicStringProperty);
         $this->assertNotNull($span);
-        $this->assertSpanEquals($span, $this->mockEventSink->getSingleSpan());
+        $this->assertSpanEquals($span, $this->mockEventSink->singleSpan());
     }
 
     public function testWhenExceptionThrown(): void
     {
         $throwingFunc = function (bool $shouldThrow): bool {
             if ($shouldThrow) {
-                throw new TestDummyException("A message");
+                throw new DummyExceptionForTests("A message");
             }
             return $shouldThrow;
         };
@@ -152,12 +152,12 @@ class CapturePublicApiTest extends UnitTestCaseBase
 
         // Act
         $this->assertFalse($captureTx(false));
-        $this->assertThrows(TestDummyException::class, function () use ($captureTx) {
+        $this->assertThrows(DummyExceptionForTests::class, function () use ($captureTx) {
             $captureTx(/* shouldThrow:*/ true);
         });
 
         // Assert
-        $this->assertCount(2, $this->mockEventSink->getIdToTransaction());
-        $this->assertCount(2, $this->mockEventSink->getIdToSpan());
+        $this->assertCount(2, $this->mockEventSink->idToTransaction());
+        $this->assertCount(2, $this->mockEventSink->idToSpan());
     }
 }

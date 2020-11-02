@@ -6,7 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use RuntimeException;
 use Throwable;
 
@@ -36,7 +36,7 @@ abstract class AppCodeHostBase extends CliProcessBase
         parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__

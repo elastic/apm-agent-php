@@ -190,7 +190,7 @@ final class PhpPartFacade
     {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!GlobalTracerHolder::isSet())
-        && $assertProxy->info(
+        && $assertProxy->withContext(
             '!GlobalTracerHolder::isSet()',
             ['GlobalTracerHolder::get()' => GlobalTracerHolder::get()]
         );
@@ -202,7 +202,7 @@ final class PhpPartFacade
 
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that($tracer instanceof Tracer)
-        && $assertProxy->info('$tracer instanceof Tracer', ['get_class($tracer)' => get_class($tracer)]);
+        && $assertProxy->withContext('$tracer instanceof Tracer', ['get_class($tracer)' => get_class($tracer)]);
         assert($tracer instanceof Tracer);
 
         return $tracer;

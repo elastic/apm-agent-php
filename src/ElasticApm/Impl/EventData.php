@@ -108,6 +108,6 @@ class EventData implements JsonSerializable
 
     public function __toString(): string
     {
-        return $this->toStringUsingProperties(['logger']);
+        return $this->toStringExcludeProperties(['logger']);
     }
 }

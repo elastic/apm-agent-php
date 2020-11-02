@@ -16,7 +16,9 @@ interface EventSinkInterface
 {
     public function setMetadata(MetadataInterface $metadata): void;
 
-    public function consumeTransactionData(TransactionDataInterface $transactionData): void;
-
-    public function consumeSpanData(SpanDataInterface $spanSpanData): void;
+    /**
+     * @param SpanDataInterface[]           $spans
+     * @param TransactionDataInterface|null $transaction
+     */
+    public function consume(array $spans, ?TransactionDataInterface $transaction): void;
 }

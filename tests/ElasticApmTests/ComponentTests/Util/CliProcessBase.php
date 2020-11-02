@@ -9,7 +9,7 @@ use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use RuntimeException;
 use Throwable;
 
@@ -28,7 +28,7 @@ abstract class CliProcessBase
     private static function buildLogger(): Logger
     {
         return AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__

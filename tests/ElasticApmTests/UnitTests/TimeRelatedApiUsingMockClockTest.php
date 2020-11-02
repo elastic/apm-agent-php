@@ -34,7 +34,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame($expectedTimestamp, $reportedTx->getTimestamp());
         $this->assertSame($expectedDuration, $reportedTx->getDuration());
     }
@@ -49,7 +49,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         $tx->end($expectedDuration);
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame($expectedDuration, $reportedTx->getDuration());
     }
 
@@ -68,7 +68,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expectedSpanTimestamp, $reportedSpan->getTimestamp());
         $this->assertSame($expectedTxBeginToSpanBeginDuration, $reportedSpan->getStart());
         $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
@@ -87,7 +87,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
     }
 }

@@ -11,9 +11,10 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
 use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
 use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Elastic\Apm\Tests\Util\ValidationUtil;
 use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
@@ -27,14 +28,8 @@ final class DataFromAgent
     /** @var IntakeApiRequest[] */
     public $intakeApiRequests = [];
 
-    /** @var MetadataInterface[] */
-    public $metadata = [];
-
-    /** @var array<string, TransactionDataInterface> */
-    public $idToTransaction = [];
-
-    /** @var array<string, SpanDataInterface> */
-    public $idToSpan = [];
+    /** @var EventsFromAgent */
+    private $eventsFromAgent;
 
     /** @var Logger */
     private $logger;
@@ -45,20 +40,49 @@ final class DataFromAgent
     public function __construct()
     {
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        $this->eventsFromAgent = new EventsFromAgent();
+    }
+
+    public function eventsFromAgent(): EventsFromAgent
+    {
+        return $this->eventsFromAgent;
+    }
+
+    /**
+     * @return MetadataInterface[]
+     */
+    public function metadata(): array
+    {
+        return $this->eventsFromAgent->metadata;
+    }
+
+    /**
+     * @return array<string, TransactionDataInterface>
+     */
+    public function idToTransaction(): array
+    {
+        return $this->eventsFromAgent->idToTransaction;
+    }
+
+    /**
+     * @return array<string, SpanDataInterface>
+     */
+    public function idToSpan(): array
+    {
+        return $this->eventsFromAgent->idToSpan;
     }
 
     public function clearAdded(): void
     {
         $this->intakeApiRequestIndexStartOffset = count($this->intakeApiRequests);
         $this->intakeApiRequests = [];
-        $this->metadata = [];
-        $this->idToTransaction = [];
-        $this->idToSpan = [];
+        $this->eventsFromAgent->clear();
     }
 
     public function nextIntakeApiRequestIndexToFetch(): int
@@ -157,7 +181,8 @@ final class DataFromAgent
      */
     private function processMetadata(array $metadataAsDecodedJson): void
     {
-        $this->metadata[] = self::validateAndDeserializeMetadata(self::decodedJsonToString($metadataAsDecodedJson));
+        $this->eventsFromAgent->metadata[]
+            = $this->validateAndDeserializeMetadata(self::decodedJsonToString($metadataAsDecodedJson));
     }
 
     /**
@@ -170,9 +195,9 @@ final class DataFromAgent
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
 
-        $newTransaction = self::validateAndDeserializeTransactionData(
+        $newTransaction = $this->validateAndDeserializeTransactionData(
             self::decodedJsonToString($transactionDecodedJson)
         );
 
@@ -184,7 +209,7 @@ final class DataFromAgent
 
         ValidationUtil::assertThat(is_null($this->executionSegmentByIdOrNull($newTransaction->getId())));
 
-        $this->idToTransaction[$newTransaction->getId()] = $newTransaction;
+        $this->eventsFromAgent->idToTransaction[$newTransaction->getId()] = $newTransaction;
     }
 
     /**
@@ -197,9 +222,9 @@ final class DataFromAgent
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
 
-        $newSpan = self::validateAndDeserializeSpanData(self::decodedJsonToString($spanDecodedJson));
+        $newSpan = $this->validateAndDeserializeSpanData(self::decodedJsonToString($spanDecodedJson));
 
         TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newSpan->getTimestamp());
         TestCaseBase::assertLessThanOrEqualTimestamp(
@@ -209,7 +234,7 @@ final class DataFromAgent
 
         ValidationUtil::assertThat(is_null($this->executionSegmentByIdOrNull($newSpan->getId())));
 
-        $this->idToSpan[$newSpan->getId()] = $newSpan;
+        $this->eventsFromAgent->idToSpan[$newSpan->getId()] = $newSpan;
     }
 
     /**
@@ -224,7 +249,7 @@ final class DataFromAgent
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
 
         // TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newEvent->getTimestamp());
         // TestCaseBase::assertLessThanOrEqualTimestamp(
@@ -262,8 +287,8 @@ final class DataFromAgent
      */
     public function singleTransaction(): TransactionDataInterface
     {
-        TestCase::assertCount(1, $this->idToTransaction);
-        return $this->idToTransaction[array_key_first($this->idToTransaction)];
+        TestCase::assertCount(1, $this->eventsFromAgent->idToTransaction);
+        return $this->eventsFromAgent->idToTransaction[array_key_first($this->eventsFromAgent->idToTransaction)];
     }
 
     /**
@@ -271,16 +296,16 @@ final class DataFromAgent
      */
     public function singleSpan(): SpanDataInterface
     {
-        TestCase::assertCount(1, $this->idToSpan);
-        return $this->idToSpan[array_key_first($this->idToSpan)];
+        TestCase::assertCount(1, $this->eventsFromAgent->idToSpan);
+        return $this->eventsFromAgent->idToSpan[array_key_first($this->eventsFromAgent->idToSpan)];
     }
 
     public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentDataInterface
     {
-        if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->idToSpan, null))) {
+        if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToSpan, null))) {
             return $span;
         }
-        return ArrayUtil::getValueIfKeyExistsElse($id, $this->idToTransaction, null);
+        return ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToTransaction, null);
     }
 
     public function executionSegmentById(string $id): ExecutionSegmentDataInterface

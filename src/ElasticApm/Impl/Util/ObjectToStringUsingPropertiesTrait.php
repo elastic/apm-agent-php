@@ -18,7 +18,7 @@ trait ObjectToStringUsingPropertiesTrait
      *
      * @return string
      */
-    public function toStringUsingProperties(array $excludedProperties = []): string
+    public function toStringExcludeProperties(array $excludedProperties = []): string
     {
         $builder = new ObjectToStringBuilder(DbgUtil::fqToShortClassName(get_class($this)));
 
@@ -43,6 +43,6 @@ trait ObjectToStringUsingPropertiesTrait
 
     public function __toString(): string
     {
-        return $this->toStringUsingProperties();
+        return $this->toStringExcludeProperties();
     }
 }

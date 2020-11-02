@@ -15,6 +15,7 @@ final class LogCategory
 {
     use StaticClassTrait;
 
+    public const BACKEND_COMM = 'Backend-Comm';
     public const CONFIGURATION = 'Configuration';
     public const DISCOVERY = 'Discovery';
     public const INTERCEPTION = 'Interception';

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
+use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;

@@ -8,7 +8,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -35,7 +35,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         parent::__construct();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__

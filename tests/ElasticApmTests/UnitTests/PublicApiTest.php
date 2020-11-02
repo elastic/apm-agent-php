@@ -23,8 +23,8 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertEmpty($this->mockEventSink->getIdToSpan());
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $this->assertEmpty($this->mockEventSink->idToSpan());
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_name', $reportedTx->getName());
         $this->assertSame('test_TX_type', $reportedTx->getType());
     }
@@ -56,28 +56,28 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_name', $reportedTx->getName());
         $this->assertSame('test_TX_type', $reportedTx->getType());
 
-        $this->assertCount(4, $this->mockEventSink->getIdToSpan());
+        $this->assertCount(4, $this->mockEventSink->idToSpan());
 
-        $reportedSpan_1 = $this->mockEventSink->getSpanByName('test_span_1_name');
+        $reportedSpan_1 = $this->mockEventSink->spanByName('test_span_1_name');
         $this->assertSame('test_span_1_type', $reportedSpan_1->getType());
         $this->assertNull($reportedSpan_1->getSubtype());
         $this->assertNull($reportedSpan_1->getAction());
 
-        $reportedSpan_2 = $this->mockEventSink->getSpanByName('test_span_2_name');
+        $reportedSpan_2 = $this->mockEventSink->spanByName('test_span_2_name');
         $this->assertSame('test_span_2_type', $reportedSpan_2->getType());
         $this->assertSame('test_span_2_subtype', $reportedSpan_2->getSubtype());
         $this->assertSame('test_span_2_action', $reportedSpan_2->getAction());
 
-        $reportedSpan_2_1 = $this->mockEventSink->getSpanByName('test_span_2_1_name');
+        $reportedSpan_2_1 = $this->mockEventSink->spanByName('test_span_2_1_name');
         $this->assertSame('test_span_2_1_type', $reportedSpan_2_1->getType());
         $this->assertSame('test_span_2_1_subtype', $reportedSpan_2_1->getSubtype());
         $this->assertNull($reportedSpan_2_1->getAction());
 
-        $reportedSpan_2_2 = $this->mockEventSink->getSpanByName('test_span_2_2_name');
+        $reportedSpan_2_2 = $this->mockEventSink->spanByName('test_span_2_2_name');
         $this->assertSame('test_span_2_2_type', $reportedSpan_2_2->getType());
         $this->assertNull($reportedSpan_2_2->getSubtype());
         $this->assertSame('test_span_2_2_action', $reportedSpan_2_2->getAction());
@@ -85,7 +85,7 @@ class PublicApiTest extends UnitTestCaseBase
         $this->assertThrows(
             NotFoundException::class,
             function () {
-                $this->mockEventSink->getSpanByName('nonexistent_test_span_name');
+                $this->mockEventSink->spanByName('nonexistent_test_span_name');
             }
         );
     }
@@ -98,7 +98,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_name_2', $reportedTx->getName());
     }
 
@@ -110,7 +110,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_type_2', $reportedTx->getType());
     }
 
@@ -124,7 +124,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_result', $reportedTx->getResult());
     }
 
@@ -140,7 +140,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedTx = $this->mockEventSink->getSingleTransaction();
+        $reportedTx = $this->mockEventSink->singleTransaction();
         $this->assertSame(null, $reportedTx->getResult());
     }
 
@@ -154,7 +154,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame('test_span_name_2', $reportedSpan->getName());
     }
 
@@ -168,7 +168,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame('test_span_type_2', $reportedSpan->getType());
     }
 
@@ -182,7 +182,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame('test_span_subtype', $reportedSpan->getSubtype());
     }
 
@@ -196,7 +196,7 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $reportedSpan = $this->mockEventSink->getSingleSpan();
+        $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame('test_span_action', $reportedSpan->getAction());
     }
 
@@ -209,10 +209,10 @@ class PublicApiTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertTransactionEquals($tx, $this->mockEventSink->getSingleTransaction());
-        $this->assertSpanEquals($span, $this->mockEventSink->getSingleSpan());
+        $this->assertTransactionEquals($tx, $this->mockEventSink->singleTransaction());
+        $this->assertSpanEquals($span, $this->mockEventSink->singleSpan());
 
-        $this->assertValidTransactionAndItsSpans($tx, $this->mockEventSink->getIdToSpan());
+        $this->assertValidTransactionAndItsSpans($tx, $this->mockEventSink->idToSpan());
     }
 
     public function testVersionShouldNotBeEmpty(): void

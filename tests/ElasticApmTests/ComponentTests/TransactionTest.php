@@ -6,11 +6,11 @@ namespace Elastic\Apm\Tests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\TransactionDataInterface;
 use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
 use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
 use Elastic\Apm\Tests\ComponentTests\Util\HttpConsts;
 use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
-use Elastic\Apm\TransactionDataInterface;
 
 final class TransactionTest extends ComponentTestCaseBase
 {
@@ -33,7 +33,7 @@ final class TransactionTest extends ComponentTestCaseBase
 
     private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionDataInterface
     {
-        $this->assertEmpty($dataFromAgent->idToSpan);
+        $this->assertEmpty($dataFromAgent->idToSpan());
 
         $tx = $dataFromAgent->singleTransaction();
         $this->assertSame(0, $tx->getStartedSpansCount());

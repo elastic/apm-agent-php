@@ -7,9 +7,13 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\RandomUtil;
+use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 
@@ -22,11 +26,17 @@ final class Transaction extends TransactionData implements TransactionInterface
 {
     use ExecutionSegmentTrait;
 
+    /** @var ConfigSnapshot */
+    private $config;
+
     /** @var Span|null */
     private $currentSpan = null;
 
     /** @var Logger */
     private $logger;
+
+    /** @var SpanDataInterface[] */
+    private $spansToSend = [];
 
     public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
     {
@@ -38,6 +48,7 @@ final class Transaction extends TransactionData implements TransactionInterface
             $timestamp
         );
 
+        $this->config = $tracer->getConfig();
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
         $this->isSampled = $this->makeSamplingDecision();
@@ -46,20 +57,49 @@ final class Transaction extends TransactionData implements TransactionInterface
         && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId]);
     }
 
-    public function addStartedSpan(): void
-    {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
-            return;
+    public function beginSpan(
+        ?Span $parentSpan,
+        string $name,
+        string $type,
+        ?string $subtype,
+        ?string $action,
+        ?float $timestamp
+    ): ?Span {
+        if ($this->beforeMutating() || !$this->tracer->isRecording()) {
+            return null;
         }
 
-        ++$this->startedSpansCount;
-    }
+        $isDropped = false;
+        // Started and dropped spans should be counted only for sampled transactions
+        if ($this->isSampled) {
+            if ($this->startedSpansCount >= $this->config->transactionMaxSpans()) {
+                $isDropped = true;
+                ++$this->droppedSpansCount;
+                if ($this->droppedSpansCount === 1) {
+                    ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
+                        [
+                            'count($this->spansToSend)'                    => count($this->spansToSend),
+                            OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
+                        ]
+                    );
+                }
+            } else {
+                ++$this->startedSpansCount;
+            }
+        }
 
-    public function shouldCreateNoopSpan(string $calledMethodName): bool
-    {
-        return $this->checkIfAlreadyEnded($calledMethodName)
-               || !$this->tracer->isRecording()
-               || !$this->isSampled;
+        return new Span(
+            $this /* <- containingTransaction*/,
+            $parentSpan,
+            $name,
+            $type,
+            $subtype,
+            $action,
+            $timestamp,
+            $isDropped
+        );
     }
 
     public function beginChildSpan(
@@ -69,19 +109,14 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->shouldCreateNoopSpan(__FUNCTION__)) {
-            return NoopSpan::singletonInstance();
-        }
-
-        return new Span(
-            $this /* <- containingTransaction*/,
+        return $this->beginSpan(
             null /* <- parentSpan */,
             $name,
             $type,
             $subtype,
             $action,
             $timestamp
-        );
+        ) ?? NoopSpan::singletonInstance();
     }
 
     public function beginCurrentSpan(
@@ -91,20 +126,16 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->shouldCreateNoopSpan(__FUNCTION__)) {
-            return NoopSpan::singletonInstance();
-        }
-
-        $this->currentSpan = new Span(
-            $this /* <- containingTransaction */,
-            $this->currentSpan /* <- parentSpan */,
+        $this->currentSpan = $this->beginSpan(
+            $this->currentSpan,
             $name,
             $type,
             $subtype,
             $action,
             $timestamp
         );
-        return $this->currentSpan;
+
+        return $this->getCurrentSpan();
     }
 
     public function captureCurrentSpan(
@@ -129,20 +160,28 @@ final class Transaction extends TransactionData implements TransactionInterface
         return $this->currentSpan ?? NoopSpan::singletonInstance();
     }
 
-    public function popCurrentSpan(): void
+    public function setCurrentSpan(?Span $newCurrentSpan): void
     {
-        if ($this->currentSpan != null) {
-            $this->currentSpan = $this->currentSpan->getParentSpan();
-        }
+        $this->currentSpan = $newCurrentSpan;
     }
 
     public function setResult(?string $result): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 
         $this->result = $this->tracer->limitNullableKeywordString($result);
+    }
+
+    public function queueSpanToSend(Span $span): void
+    {
+        if ($this->hasEnded()) {
+            $this->getTracer()->getEventSink()->consume([$span], /* transaction: */ null);
+            return;
+        }
+
+        $this->spansToSend[] = $span;
     }
 
     public function end(?float $duration = null): void
@@ -151,7 +190,7 @@ final class Transaction extends TransactionData implements TransactionInterface
             return;
         }
 
-        $this->getTracer()->getEventSink()->consumeTransactionData($this);
+        $this->getTracer()->getEventSink()->consume($this->spansToSend, $this);
 
         if ($this->getTracer()->getCurrentTransaction() === $this) {
             $this->getTracer()->resetCurrentTransaction();
@@ -161,10 +200,11 @@ final class Transaction extends TransactionData implements TransactionInterface
     public function discard(): void
     {
         while (!is_null($this->currentSpan)) {
-            if (!$this->currentSpan->hasEnded()) {
-                $this->currentSpan->discard();
+            $spanToDiscard = $this->currentSpan;
+            $this->currentSpan = $spanToDiscard->parentSpan();
+            if (!$spanToDiscard->hasEnded()) {
+                $spanToDiscard->discard();
             }
-            $this->popCurrentSpan();
         }
         $this->discardExecutionSegment();
     }

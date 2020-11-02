@@ -212,9 +212,7 @@ final class ValidationUtil
     {
         self::assertThat(is_int($droppedSpansCount));
 
-        // Until we support dropped spans the count should be zero
-        // self::assertThat($droppedSpansCount >= 0);
-        self::assertThat($droppedSpansCount == 0);
+        self::assertThat($droppedSpansCount >= 0);
         return $droppedSpansCount;
     }
 
@@ -236,6 +234,10 @@ final class ValidationUtil
         self::assertValidExecutionSegmentData($transaction);
         if (!is_null($transaction->getParentId())) {
             self::assertValidExecutionSegmentId($transaction->getParentId());
+        }
+        if (!$transaction->isSampled()) {
+            self::assertThat($transaction->getStartedSpansCount() === 0);
+            self::assertThat($transaction->getDroppedSpansCount() === 0);
         }
     }
 

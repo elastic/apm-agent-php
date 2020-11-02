@@ -9,7 +9,7 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -32,7 +32,7 @@ class ComponentTestCaseBase extends TestCaseBase
         self::init();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__

@@ -33,7 +33,7 @@ class ObjectToStringBuilder
     public function __construct(
         ?string $type = null,
         $initialKeyValuePairs = [],
-        bool $shouldFormatOnlyHorizontally = false
+        bool $shouldFormatOnlyHorizontally = true
     ) {
         $this->type = $type;
         $this->shouldFormatOnlyHorizontally = $shouldFormatOnlyHorizontally;
@@ -68,11 +68,11 @@ class ObjectToStringBuilder
      */
     private function tryToFormatHorizontally(array &$keyValueAsStringPairs): ?string
     {
-        $result = '';
+        $result = '{';
         if (!is_null($this->type)) {
-            $result .= $this->type;
+            $result .= '"type": "' . $this->type . '", ';
         }
-        $result .= '{';
+        $result .= '"properties": {';
         $isFirst = true;
         foreach ($this->keyValuePairs as $key => $value) {
             $valueAsString = DbgUtil::formatValue($value);
@@ -85,14 +85,14 @@ class ObjectToStringBuilder
             } else {
                 $result .= ', ';
             }
-            $result .= $key;
+            $result .= '"' . $key . '"';
             $result .= ': ';
             $result .= $valueAsString;
             if (!$this->shouldFormatOnlyHorizontally && strlen($result) > self::MAX_HORIZONTAL_LENGTH) {
                 return null;
             }
         }
-        $result .= '}';
+        $result .= '}}';
 
         return $result;
     }

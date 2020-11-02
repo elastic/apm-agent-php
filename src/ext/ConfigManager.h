@@ -223,6 +223,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
 #define ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT "verify_server_cert"
 

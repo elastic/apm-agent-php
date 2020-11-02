@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface as ConfigRawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 
 /**
@@ -55,6 +56,12 @@ final class TracerBuilder
     public function withLogSink(Log\SinkInterface $logSink): self
     {
         $this->tracerDependencies->logSink = $logSink;
+        return $this;
+    }
+
+    public function withConfigRawSnapshotSource(?ConfigRawSnapshotSourceInterface $configRawSnapshotSource): self
+    {
+        $this->tracerDependencies->configRawSnapshotSource = $configRawSnapshotSource;
         return $this;
     }
 

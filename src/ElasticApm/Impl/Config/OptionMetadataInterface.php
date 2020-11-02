@@ -9,24 +9,21 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template T
+ * @template   T
  */
 interface OptionMetadataInterface
 {
     /**
-     * @param string $rawValue
+     * @return OptionParserInterface
      *
-     * @return mixed
-     * @throws ParseException
-     *
-     * @phpstan-return T
+     * @phpstan-return OptionParserInterface<T>
      */
-    public function parse(string $rawValue);
+    public function parser(): OptionParserInterface;
 
     /**
      * @return mixed
      *
-     * @phpstan-return T
+     * @phpstan-return T|null
      */
     public function defaultValue();
 }

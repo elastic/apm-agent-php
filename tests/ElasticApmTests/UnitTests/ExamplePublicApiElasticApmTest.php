@@ -20,17 +20,17 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
 
         // Assert
         // 2 calls to processCheckoutRequest == 2 transactions
-        $this->assertCount(2, $this->mockEventSink->getIdToTransaction());
+        $this->assertCount(2, $this->mockEventSink->idToTransaction());
         /** @var TransactionDataInterface */
         $tx1 = ArrayTestUtil::findByPredicate(
-            $this->mockEventSink->getIdToTransaction(),
+            $this->mockEventSink->idToTransaction(),
             function (TransactionDataInterface $tx): bool {
                 return $tx->getLabels()['shop-id'] === 'Shop #1';
             }
         );
         /** @var TransactionDataInterface */
         $tx2 = ArrayTestUtil::findByPredicate(
-            $this->mockEventSink->getIdToTransaction(),
+            $this->mockEventSink->idToTransaction(),
             function (TransactionDataInterface $tx): bool {
                 return $tx->getLabels()['shop-id'] === 'Shop #2';
             }
@@ -41,21 +41,21 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
         //      1.1) DB query or Fetch from Redis
         // 2) Charge payment
         //      2.1) DB query or Fetch from Redis
-        $this->assertCount(8, $this->mockEventSink->getIdToSpan());
+        $this->assertCount(8, $this->mockEventSink->idToSpan());
 
         $this->verifyTransactionAndSpans(
             $tx1,
-            $this->mockEventSink->getSpansForTransaction($tx1),
+            $this->mockEventSink->spansForTransaction($tx1),
             /* $isFirstTx: */ true
         );
         $this->verifyTransactionAndSpans(
             $tx2,
-            $this->mockEventSink->getSpansForTransaction($tx2),
+            $this->mockEventSink->spansForTransaction($tx2),
             /* $isFirstTx: */ false
         );
 
         $spansWithLostLabel = array_filter(
-            $this->mockEventSink->getIdToSpan(),
+            $this->mockEventSink->idToSpan(),
             function (SpanDataInterface $span): bool {
                 return array_key_exists(ExamplePublicApiElasticApm::LOST_LABEL, $span->getLabels());
             }
@@ -63,7 +63,7 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
         $this->assertCount(0, $spansWithLostLabel);
 
         $transactionsWithLostLabel = array_filter(
-            $this->mockEventSink->getIdToTransaction(),
+            $this->mockEventSink->idToTransaction(),
             function (TransactionDataInterface $transaction): bool {
                 return array_key_exists(ExamplePublicApiElasticApm::LOST_LABEL, $transaction->getLabels());
             }

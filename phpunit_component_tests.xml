@@ -14,6 +14,10 @@
     stopOnWarning="true"
     verbose= "true"
 >
+    <php>
+        <ini name="memory_limit" value="2G" />
+    </php>
+
     <testsuites>
         <testsuite name="Tests">
             <directory>./tests/ElasticApmTests/ComponentTests</directory>

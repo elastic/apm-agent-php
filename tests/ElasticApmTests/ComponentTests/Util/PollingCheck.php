@@ -7,7 +7,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 use Closure;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 
 final class PollingCheck
 {
@@ -31,7 +31,7 @@ final class PollingCheck
         $this->dbgDesc = $dbgDesc;
         $this->maxWaitTimeInMicroseconds = $maxWaitTimeInMicroseconds;
         $this->logger = $loggerFactory->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -47,9 +47,17 @@ final class PollingCheck
      */
     public function run(Closure $check): bool
     {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Starting to check if ' . $this->dbgDesc . '...',
+            ['maxWaitTime' => TimeFormatUtil::formatDurationInMicroseconds($this->maxWaitTimeInMicroseconds)]
+        );
+
+        $numberOfAttempts = 0;
         $sinceStarted = new Stopwatch();
         $sinceLastReport = new Stopwatch();
         while (true) {
+            ++$numberOfAttempts;
             if ($check()) {
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
@@ -69,11 +77,12 @@ final class PollingCheck
             if ($sinceLastReport->elapsedInMicroseconds() >= $this->reportIntervalInMicroseconds) {
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
-                    'Still checking if ' . $this->dbgDesc,
+                    'Still checking if ' . $this->dbgDesc . '...',
                     [
-                        'elapsedTime' =>
+                        'elapsedTime'      =>
                             TimeFormatUtil::formatDurationInMicroseconds($sinceStarted->elapsedInMicroseconds()),
-                        'maxWaitTime' =>
+                        'numberOfAttempts' => $numberOfAttempts,
+                        'maxWaitTime'      =>
                             TimeFormatUtil::formatDurationInMicroseconds($this->maxWaitTimeInMicroseconds),
                     ]
                 );
@@ -83,7 +92,9 @@ final class PollingCheck
             ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Sleeping ' . TimeFormatUtil::formatDurationInMicroseconds($this->sleepTimeInMicroseconds)
-                . ' before checking again if ' . $this->dbgDesc . '...'
+                . ' before checking again if ' . $this->dbgDesc
+                . ' (numberOfAttempts: ' . $numberOfAttempts . ')'
+                . '...'
             );
             usleep($this->sleepTimeInMicroseconds);
         }
@@ -92,9 +103,10 @@ final class PollingCheck
         && $loggerProxy->log(
             'Reached max wait time while checking if ' . $this->dbgDesc,
             [
-                'elapsedTime' =>
+                'elapsedTime'      =>
                     TimeFormatUtil::formatDurationInMicroseconds($sinceStarted->elapsedInMicroseconds()),
-                'maxWaitTime' =>
+                'numberOfAttempts' => $numberOfAttempts,
+                'maxWaitTime'      =>
                     TimeFormatUtil::formatDurationInMicroseconds($this->maxWaitTimeInMicroseconds),
             ]
         );

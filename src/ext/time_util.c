@@ -35,7 +35,6 @@ Duration makeDuration( Int64 value, DurationUnits units )
 
 ResultCode parseDuration( StringView valueAsString, DurationUnits defaultUnits, /* out */ Duration* result )
 {
-    // TODO: Sergey Kleyman: Implement: parseDuration
     result->valueInMilliseconds = 10;
 
     return resultSuccess;
@@ -43,7 +42,6 @@ ResultCode parseDuration( StringView valueAsString, DurationUnits defaultUnits, 
 
 String streamDuration( Duration duration, TextOutputStream* txtOutStream )
 {
-    // TODO: Sergey Kleyman: Implement: streamDuration by using the highest units with the whole value
     // so 5s and not 5000ms
 
     return streamPrintf( txtOutStream, "%"PRIu64"ms", duration.valueInMilliseconds );

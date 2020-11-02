@@ -102,7 +102,7 @@ trait ExecutionSegmentTrait
             return false;
         }
 
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return false;
         }
 
@@ -129,7 +129,7 @@ trait ExecutionSegmentTrait
         return $this->isEnded;
     }
 
-    protected function checkIfAlreadyEnded(string $calledMethodName): bool
+    protected function beforeMutating(): bool
     {
         if (!$this->isEnded) {
             return false;
@@ -141,7 +141,7 @@ trait ExecutionSegmentTrait
 
         ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            $calledMethodName . '() has been called on already ended ' . DbgUtil::fqToShortClassName(get_class($this)),
+            'A mutating method has been called on already ended ' . DbgUtil::fqToShortClassName(get_class($this)),
             ['stackTrace' => DbgUtil::formatCurrentStackTrace(/* numberOfStackFramesToSkip */ 1)]
         );
 
@@ -160,7 +160,7 @@ trait ExecutionSegmentTrait
 
     public function setName(string $name): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 
@@ -169,7 +169,7 @@ trait ExecutionSegmentTrait
 
     public function setType(string $type): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 
@@ -178,7 +178,7 @@ trait ExecutionSegmentTrait
 
     public function setLabel(string $key, $value): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating() || (!$this->isSampled())) {
             return;
         }
 
@@ -198,7 +198,7 @@ trait ExecutionSegmentTrait
 
     protected function discardExecutionSegment(): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 

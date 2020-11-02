@@ -20,23 +20,27 @@ final class Span extends SpanData implements SpanInterface
 {
     use ExecutionSegmentTrait;
 
+    /** @var Logger */
+    private $logger;
+
     /** @var Transaction */
     private $containingTransaction;
 
     /** @var Span|null */
     private $parentSpan;
 
-    /** @var Logger */
-    private $logger;
+    /** @var bool */
+    private $isDropped;
 
     public function __construct(
         Transaction $containingTransaction,
         ?Span $parentSpan,
         string $name,
         string $type,
-        ?string $subtype = null,
-        ?string $action = null,
-        ?float $timestamp = null
+        ?string $subtype,
+        ?string $action,
+        ?float $timestamp,
+        bool $isDropped
     ) {
         $this->constructExecutionSegmentTrait(
             $containingTransaction->getTracer(),
@@ -59,7 +63,7 @@ final class Span extends SpanData implements SpanInterface
 
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
-        $containingTransaction->addStartedSpan();
+        $this->isDropped = $isDropped;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
@@ -72,19 +76,19 @@ final class Span extends SpanData implements SpanInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__) || !$this->tracer->isRecording()) {
-            return NoopSpan::singletonInstance();
-        }
-
-        return new Span(
-            $this->containingTransaction,
-            /* parentSpan: */ $this,
+        return $this->containingTransaction->beginSpan(
+            $this /* <- parentSpan */,
             $name,
             $type,
             $subtype,
             $action,
             $timestamp
-        );
+        ) ?? NoopSpan::singletonInstance();
+    }
+
+    public function isSampled(): bool
+    {
+        return $this->containingTransaction->isSampled();
     }
 
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
@@ -97,10 +101,12 @@ final class Span extends SpanData implements SpanInterface
         // if $numberOfStackFramesToSkip is 0
         $this->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip);
 
-        $this->getTracer()->getEventSink()->consumeSpanData($this);
+        if ($this->shouldBeSentToApmServer()) {
+            $this->containingTransaction->queueSpanToSend($this);
+        }
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
-            $this->containingTransaction->popCurrentSpan();
+            $this->containingTransaction->setCurrentSpan($this->parentSpan);
         }
     }
 
@@ -112,7 +118,7 @@ final class Span extends SpanData implements SpanInterface
 
     public function setAction(?string $action): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 
@@ -121,14 +127,19 @@ final class Span extends SpanData implements SpanInterface
 
     public function setSubtype(?string $subtype): void
     {
-        if ($this->checkIfAlreadyEnded(__FUNCTION__)) {
+        if ($this->beforeMutating()) {
             return;
         }
 
         $this->subtype = $this->tracer->limitNullableKeywordString($subtype);
     }
 
-    public function getParentSpan(): ?Span
+    public function containingTransaction(): Transaction
+    {
+        return $this->containingTransaction;
+    }
+
+    public function parentSpan(): ?Span
     {
         return $this->parentSpan;
     }
@@ -171,8 +182,13 @@ final class Span extends SpanData implements SpanInterface
         return $dstFrames;
     }
 
+    private function shouldBeSentToApmServer(): bool
+    {
+        return $this->containingTransaction->isSampled() && (!$this->isDropped);
+    }
+
     public function __toString(): string
     {
-        return $this->toStringUsingProperties(['containingTransaction', 'parentSpan', 'logger']);
+        return $this->toStringExcludeProperties(['containingTransaction', 'parentSpan', 'logger']);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Util\NumericUtil;
+use Elastic\Apm\Tests\Util\FloatLimits;
 use PHPUnit\Framework\TestCase;
 
 class NumericUtilTest extends TestCase
@@ -42,15 +43,15 @@ class NumericUtilTest extends TestCase
         self::assertTrue(NumericUtil::isInClosedInterval(-1.2, 3.3, 3.4));
         self::assertTrue(NumericUtil::isInClosedInterval(-1.2, -1.2, 3.4));
         self::assertTrue(NumericUtil::isInClosedInterval(-1.2, -1.1, 3.4));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, 0, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, 1.2, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, -1.2, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, 123.4, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, -123.4, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, PHP_FLOAT_MAX - 0.1, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, -(PHP_FLOAT_MAX - 0.1), PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, PHP_FLOAT_MAX, PHP_FLOAT_MAX));
-        self::assertTrue(NumericUtil::isInClosedInterval(-PHP_FLOAT_MAX, -PHP_FLOAT_MAX, PHP_FLOAT_MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, 0, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, 1.2, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, -1.2, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, 123.4, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, -123.4, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, FloatLimits::MAX - 0.1, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, FloatLimits::MIN + 0.1, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, FloatLimits::MAX, FloatLimits::MAX));
+        self::assertTrue(NumericUtil::isInClosedInterval(FloatLimits::MIN, FloatLimits::MIN, FloatLimits::MAX));
 
         // float - outside
         self::assertTrue(!NumericUtil::isInClosedInterval(-1.2, -1.201, 3.4));

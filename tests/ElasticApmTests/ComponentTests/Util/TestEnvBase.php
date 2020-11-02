@@ -7,17 +7,19 @@ declare(strict_types=1);
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
-use Elastic\Apm\Impl\ServerComm\SerializationUtil;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\TestLogCategory;
+use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Elastic\Apm\TransactionDataInterface;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;
@@ -64,7 +66,7 @@ abstract class TestEnvBase
     public function __construct()
     {
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            TestLogCategory::TEST_UTIL,
+            LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
@@ -94,7 +96,7 @@ abstract class TestEnvBase
         ))->run(
             function () use ($port, $serverId, $dbgServerDesc, &$lastException) {
                 $logger = AmbientContext::loggerFactory()->loggerForClass(
-                    TestLogCategory::TEST_UTIL,
+                    LogCategoryForTests::TEST_UTIL,
                     __NAMESPACE__,
                     __CLASS__,
                     __FILE__
@@ -141,10 +143,41 @@ abstract class TestEnvBase
     }
 
     /**
+     * @param bool $keepElasticApmEnvVars
+     *
+     * @return array<string, string>
+     */
+    protected static function inheritedEnvVars(bool $keepElasticApmEnvVars): array
+    {
+        if ($keepElasticApmEnvVars) {
+            return getenv();
+        }
+
+        return array_filter(
+            getenv(),
+            function (string $envVarName): bool {
+                return
+                    TextUtil::isPrefixOf(
+                        TestConfigUtil::ENV_VAR_NAME_PREFIX,
+                        $envVarName,
+                        false /* <- isCaseSensitive */
+                    )
+                    || !TextUtil::isPrefixOf(
+                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
+                        $envVarName,
+                        false /* <- isCaseSensitive */
+                    );
+            },
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    /**
      * @param int|null              $port
      * @param string|null           $serverId
      * @param string                $dbgServerDesc
      * @param Closure               $cmdLineGenFunc
+     * @param bool                  $keepElasticApmEnvVars
      * @param array<string, string> $additionalEnvVars
      *
      * @phpstan-param   Closure(int $port): string $cmdLineGenFunc
@@ -154,6 +187,7 @@ abstract class TestEnvBase
         ?string &$serverId,
         string $dbgServerDesc,
         Closure $cmdLineGenFunc,
+        bool $keepElasticApmEnvVars,
         array $additionalEnvVars = []
     ): void {
         if (!is_null($port)) {
@@ -185,17 +219,16 @@ abstract class TestEnvBase
 
             TestProcessUtil::startBackgroundProcess(
                 $cmdLine,
-                $this->buildEnvVars(
-                    [
-                        TestConfigUtil::envVarNameForTestOption(
-                            AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
-                        ) => SerializationUtil::serializeAsJson(
-                            $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort),
-                            SharedDataPerProcess::class
-                        ),
-                    ]
-                    + $additionalEnvVars
-                )
+                self::inheritedEnvVars($keepElasticApmEnvVars)
+                + [
+                    TestConfigUtil::envVarNameForTestOption(
+                        AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
+                    ) => SerializationUtil::serializeAsJson(
+                        $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort),
+                        SharedDataPerProcess::class
+                    ),
+                ]
+                + $additionalEnvVars
             );
 
             if (self::isHttpServerRunning($currentTryPort, $currentTryServerId, $dbgServerDesc)) {
@@ -232,8 +265,7 @@ abstract class TestEnvBase
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) use ($runScriptName) {
                 return self::runScriptNameToCmdLine($runScriptName);
             },
-            /* additionalEnvVars: */
-            [TestConfigUtil::envVarNameForAgentOption(OptionNames::ENABLED) => 'false']
+            true /* $keepElasticApmEnvVars */
         );
     }
 
@@ -384,9 +416,11 @@ abstract class TestEnvBase
         /** @var Exception|null */
         $lastException = null;
         $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
+        $numberOfFailedAttempts = 0;
+        $numberOfAttempts = 0;
         $hasPassed = (new PollingCheck(
             __FUNCTION__ . ' passes',
-            self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 1000 * 1000 /* maxWaitTimeInMicroseconds */,
+            3 * self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 1000 * 1000 /* maxWaitTimeInMicroseconds */,
             AmbientContext::loggerFactory()
         ))->run(
             function () use (
@@ -394,28 +428,34 @@ abstract class TestEnvBase
                 $testProperties,
                 $verifyFunc,
                 &$lastException,
-                &$lastCheckedNextIntakeApiRequestIndex
+                &$lastCheckedNextIntakeApiRequestIndex,
+                &$numberOfAttempts,
+                &$numberOfFailedAttempts
             ) {
-                $this->ensureLatestDataFromMockApmServer($timeBeforeRequestToApp);
-                $currentNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
-                if (
-                    !is_null($lastException)
-                    && ($currentNextIntakeApiRequestIndex === $lastCheckedNextIntakeApiRequestIndex)
-                ) {
-                    // No new data since the last check - there's no point in invoking $verifyFunc() again
-                    return false;
-                }
-
-                $lastCheckedNextIntakeApiRequestIndex = $currentNextIntakeApiRequestIndex;
+                ++$numberOfAttempts;
                 try {
+                    $this->ensureLatestDataFromMockApmServer($timeBeforeRequestToApp);
+                    $currentNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
+                    if (
+                        !is_null($lastException)
+                        && ($currentNextIntakeApiRequestIndex === $lastCheckedNextIntakeApiRequestIndex)
+                    ) {
+                        // No new data since the last check - there's no point in invoking $verifyFunc() again
+                        return false;
+                    }
+
+                    $lastCheckedNextIntakeApiRequestIndex = $currentNextIntakeApiRequestIndex;
+
                     $this->verifyDataAgainstRequest($testProperties);
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
                     if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
                         $lastException = $ex;
+                        ++$numberOfFailedAttempts;
                         return false;
                     }
 
+                    /** @noinspection PhpUnhandledExceptionInspection */
                     throw $ex;
                 }
                 return true;
@@ -430,6 +470,8 @@ abstract class TestEnvBase
                 __FUNCTION__ . ' failed.',
                 [
                     'last exception from verifyFunc()'     => $lastException,
+                    'numberOfAttempts'                     => $numberOfAttempts,
+                    'numberOfFailedAttempts'               => $numberOfFailedAttempts,
                     'timeBeforeRequestToApp'               => $timeBeforeRequestToApp,
                     'testProperties'                       => $testProperties,
                     'this'                                 => $this,
@@ -466,13 +508,13 @@ abstract class TestEnvBase
 
         $this->verifyMetadata($testProperties);
 
-        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction);
+        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
         $this->verifyRootTransactionName($testProperties, $rootTransaction);
         $this->verifyRootTransactionType($testProperties, $rootTransaction);
 
         TestCaseBase::assertValidTransactionsAndSpans(
-            $this->dataFromAgent->idToTransaction,
-            $this->dataFromAgent->idToSpan
+            $this->dataFromAgent->idToTransaction(),
+            $this->dataFromAgent->idToSpan()
         );
     }
 
@@ -534,21 +576,21 @@ abstract class TestEnvBase
 
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata as $metadata) {
+        foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->environment());
         }
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata as $metadata) {
+        foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->name());
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata as $metadata) {
+        foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service()->version());
         }
     }

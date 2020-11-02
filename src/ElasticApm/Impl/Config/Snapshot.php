@@ -30,6 +30,9 @@ final class Snapshot
     /** @var string|null */
     private $serviceVersion;
 
+    /** @var int */
+    private $transactionMaxSpans;
+
     /** @var float */
     private $transactionSampleRate;
 
@@ -71,19 +74,13 @@ final class Snapshot
         return $this->serviceVersion;
     }
 
+    public function transactionMaxSpans(): int
+    {
+        return $this->transactionMaxSpans;
+    }
+
     public function transactionSampleRate(): float
     {
         return $this->transactionSampleRate;
-    }
-
-    public function __toString(): string
-    {
-        $builder = new ObjectToStringBuilder();
-        $builder->add('enabled', $this->enabled);
-        $builder->add('environment', $this->environment);
-        $builder->add('serviceName', $this->serviceName);
-        $builder->add('serviceVersion', $this->serviceVersion);
-        $builder->add('transactionSampleRate', $this->transactionSampleRate);
-        return $builder->build();
     }
 }

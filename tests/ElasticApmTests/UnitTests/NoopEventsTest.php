@@ -84,8 +84,8 @@ class NoopEventsTest extends UnitTestCaseBase
         // Assert
         $this->assertNoopTransaction($tx);
         $this->assertNoopSpan($span);
-        $this->assertEmpty($this->mockEventSink->getIdToSpan());
-        $this->assertEmpty($this->mockEventSink->getIdToTransaction());
+        $this->assertEmpty($this->mockEventSink->idToSpan());
+        $this->assertEmpty($this->mockEventSink->idToTransaction());
     }
 
     public function testDisabledTracerUsingElasticApmFacade(): void
@@ -125,8 +125,8 @@ class NoopEventsTest extends UnitTestCaseBase
         // Assert
         $this->assertNoopTransaction($tx);
         $this->assertNoopSpan($span);
-        $this->assertEmpty($this->mockEventSink->getIdToSpan());
-        $this->assertEmpty($this->mockEventSink->getIdToTransaction());
+        $this->assertEmpty($this->mockEventSink->idToSpan());
+        $this->assertEmpty($this->mockEventSink->idToTransaction());
     }
 
     private function assertNoopExecutionSegment(ExecutionSegmentInterface $execSegment): void
