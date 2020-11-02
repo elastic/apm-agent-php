@@ -32,7 +32,7 @@ fi
 ## Validate the installation works as expected with composer
 composer install
 syslogd
-if ! COMPOSER_PROCESS_TIMEOUT=1200 composer run-script static_check_and_run_tests ; then
+if ! composer run-script static_check_and_run_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
     cat /var/log/messages
     exit 1

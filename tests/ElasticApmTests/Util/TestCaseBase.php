@@ -24,6 +24,9 @@ use Throwable;
 
 class TestCaseBase extends TestCase
 {
+    // Compare up to 1 milliseconds (1000 microseconds) precision
+    public const TIMESTAMP_COMPARISON_PRECISION = 1000;
+
     /**
      * @param mixed        $name
      * @param array<mixed> $data
@@ -36,15 +39,17 @@ class TestCaseBase extends TestCase
 
     public static function assertEqualTimestamp(float $expected, float $actual): void
     {
-        self::assertEqualsWithDelta($expected, $actual, 1);
+        self::assertEqualsWithDelta($expected, $actual, self::TIMESTAMP_COMPARISON_PRECISION);
     }
 
     public static function assertLessThanOrEqualTimestamp(float $lhs, float $rhs): void
     {
-
         self::assertThat(
             $lhs,
-            self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)),
+            self::logicalOr(
+                new IsEqual($rhs, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION),
+                new LessThan($rhs)
+            ),
             ' $lhs: ' . number_format($lhs) . ', $rhs: ' . number_format($rhs)
         );
     }
