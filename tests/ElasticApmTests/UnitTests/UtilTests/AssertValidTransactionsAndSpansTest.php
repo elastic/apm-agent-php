@@ -331,17 +331,17 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     public function testChildTransactionStartedBeforeParentStarted(): void
     {
         $tx_C = new MockTransactionData();
-        self::padSegmentTime($tx_C, /* microseconds */ 3);
+        self::padSegmentTime($tx_C, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_B = new MockSpanData([], [$tx_C]);
-        self::padSegmentTime($span_B, /* microseconds */ 3);
+        self::padSegmentTime($span_B, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $tx_A = new MockTransactionData([$span_B]);
-        self::padSegmentTime($tx_A, /* microseconds */ 3);
+        self::padSegmentTime($tx_A, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
 
         $this->assertValidAndCorrupted(
             [$tx_A, $tx_C],
             [$span_B],
             function () use ($span_B, $tx_C): Closure {
-                $delta = $tx_C->getTimestamp() - $span_B->getTimestamp() + 2;
+                $delta = $tx_C->getTimestamp() - $span_B->getTimestamp() + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $tx_C->setTimestamp($tx_C->getTimestamp() - $delta);
                 return function () use ($tx_C, $delta): void {
