@@ -90,6 +90,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
             }
             $testProperties->withAgentConfig($configSetter);
         }
+        $testProperties->getAgentConfig()->set(OptionNames::LOG_LEVEL_SYSLOG, 'DEBUG');
 
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             $testProperties,

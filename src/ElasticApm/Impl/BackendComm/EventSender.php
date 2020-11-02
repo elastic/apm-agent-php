@@ -63,6 +63,16 @@ final class EventSender implements EventSinkInterface
         }
 
         if (extension_loaded('elastic_apm')) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Calling elastic_apm_send_to_server...',
+                [
+                    'serverTimeout' => $this->config->serverTimeout(),
+                    'strlen($serializedMetadata)' => strlen($serializedMetadata),
+                    'strlen($serializedEvents)' => strlen($serializedEvents),
+                ]
+            );
+
             /**
              * elastic_apm_* functions are provided by the elastic_apm extension
              *
