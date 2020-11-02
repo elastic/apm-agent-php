@@ -36,7 +36,7 @@ final class AllComponentTestsOptionsMetadata
             self::APP_CODE_HOST_KIND_OPTION_NAME      => new AppCodeHostKindOptionMetadata(),
             'app_code_php_exe'                        => new NullableStringOptionMetadata(),
             self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
-            'log_level'                               => new LogLevelOptionMetadata(Level::TRACE),
+            'log_level'                               => new LogLevelOptionMetadata(Level::DEBUG),
             self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): SharedDataPerProcess {
                     return SharedDataPerProcess::deserializeFromJson(
