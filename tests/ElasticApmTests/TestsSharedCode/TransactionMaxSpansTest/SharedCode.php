@@ -17,9 +17,8 @@ final class SharedCode
 {
     use StaticClassTrait;
 
-    // TODO: Sergey Kleyman: REVERT $limitVariousCombinationsToVariantIndex back to null
     /** @var ?int */
-    private static $limitVariousCombinationsToVariantIndex = 4;
+    private static $limitVariousCombinationsToVariantIndex = null;
 
     /** @var ?int */
     private static $testArgsVariantsCount = null;

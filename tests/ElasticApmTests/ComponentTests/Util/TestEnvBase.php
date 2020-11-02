@@ -462,7 +462,7 @@ abstract class TestEnvBase
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log('Attempt failed', ['numberOfAttempts' => $numberOfAttempts, 'ex' => $ex]);
+                    && $loggerProxy->log('Attempt ' . $numberOfAttempts . ' failed', ['ex' => $ex]);
 
                     if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
                         $lastException = $ex;

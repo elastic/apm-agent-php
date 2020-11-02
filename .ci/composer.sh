@@ -31,7 +31,7 @@ fi
 
 # Run component tests
 
-if ! composer run-script run_component_tests ; then
+if ! COMPOSER_PROCESS_TIMEOUT=1200 composer run-script static_check_and_run_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
 
     if [ -f "/var/log/syslog" ]; then

@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Tests\ComponentTests\Util;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
@@ -38,14 +37,16 @@ final class PhpUnitExtension implements
     AfterIncompleteTestHook,
     AfterRiskyTestHook
 {
-    /** @var Logger */
-    private $logger;
-
     /** @var string */
     public static $testEnvId;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct()
     {
+        TempDisableFailingAssertions::$shouldDisableFailingAssertions = true;
+
         ComponentTestCaseBase::init();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
@@ -64,9 +65,9 @@ final class PhpUnitExtension implements
         && $loggerProxy->log(
             'Test starting...',
             [
-                'test' => $test,
-                'testEnvId' => self::$testEnvId,
-                'Environment variables' => getenv()
+                'test'                  => $test,
+                'testEnvId'             => self::$testEnvId,
+                'Environment variables' => getenv(),
             ]
         );
 
@@ -75,7 +76,7 @@ final class PhpUnitExtension implements
         if ($envVarValue !== 'false') {
             throw new RuntimeException(
                 "Environment variable $envVarName should be set to `false'."
-                . 'Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'" ) . '.'
+                . 'Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'") . '.'
             );
         }
 
