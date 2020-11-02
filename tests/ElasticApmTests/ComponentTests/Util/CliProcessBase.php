@@ -25,7 +25,7 @@ abstract class CliProcessBase
         $this->logger = self::buildLogger()->addContext('this', $this);
 
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Done',
             [

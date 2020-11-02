@@ -70,7 +70,7 @@ final class TransactionForExtensionRequest
         global $argc, $argv;
         if (isset($argc) && ($argc > 0) && isset($argv) && !empty($argv[0])) {
             $cliScriptName = basename($argv[0]);
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Successfully discovered CLI script name - using it for transaction name',
                 ['cliScriptName' => $cliScriptName]
@@ -78,7 +78,7 @@ final class TransactionForExtensionRequest
             return $cliScriptName;
         }
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Could not discover CLI script name - using default transaction name',
             ['DEFAULT_NAME' => self::DEFAULT_NAME]
@@ -95,13 +95,13 @@ final class TransactionForExtensionRequest
             }
             $name .= $requestUri;
 
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);
 
             return $name;
         }
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Could not discover HTTP data to derive transaction name - using default transaction name',
             ['DEFAULT_NAME' => self::DEFAULT_NAME]
@@ -119,7 +119,7 @@ final class TransactionForExtensionRequest
             $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
             $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * 1000000;
 
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Using $_SERVER[\'REQUEST_TIME_FLOAT\'] for transaction serverRequestTimeInMicroseconds',
                 ['serverRequestTimeInMicroseconds' => $serverRequestTimeInMicroseconds]
@@ -128,7 +128,7 @@ final class TransactionForExtensionRequest
             return $serverRequestTimeInMicroseconds;
         }
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Using requestInitStartTime for transaction serverRequestTimeInMicroseconds',
             ['requestInitStartTime' => $requestInitStartTime]
@@ -140,7 +140,7 @@ final class TransactionForExtensionRequest
     {
         $statusCode = http_response_code();
         if (!is_int($statusCode)) {
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'http_response_code() returned a value that is not an int',
                 ['statusCode' => $statusCode]
@@ -150,7 +150,7 @@ final class TransactionForExtensionRequest
 
         $statusCode100s = intdiv($statusCode, 100);
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Discovered result for HTTP transaction',
             ['statusCode' => $statusCode, '$statusCode100s' => $statusCode100s]

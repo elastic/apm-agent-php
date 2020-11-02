@@ -36,7 +36,7 @@ final class AgentConfigSetterEnvVars extends AgentConfigSetterBase
             $result[TestConfigUtil::envVarNameForAgentOption($optName)] = $optVal;
         }
 
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting', ['result' => $result]);
 
         return $result;
