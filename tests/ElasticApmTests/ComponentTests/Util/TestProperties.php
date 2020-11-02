@@ -117,6 +117,11 @@ final class TestProperties
         return $this;
     }
 
+    public function getAgentConfig(): AgentConfigSetterBase
+    {
+        return $this->agentConfigSetter;
+    }
+
     public function tearDown(): void
     {
         $this->agentConfigSetter->tearDown();

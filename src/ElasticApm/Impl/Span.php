@@ -189,6 +189,6 @@ final class Span extends SpanData implements SpanInterface
 
     public function __toString(): string
     {
-        return $this->toStringExcludeProperties(['containingTransaction', 'parentSpan', 'logger']);
+        return $this->toStringExcludeProperties(['containingTransaction', 'parentSpan', 'logger', 'stacktrace']);
     }
 }
