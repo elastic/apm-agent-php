@@ -67,7 +67,7 @@ composer: prepare  ## Run composer
 		sh -c '/app/.ci/composer.sh'
 
 .PHONY: unit-test
-unit-test: unit-test  ## Run unit-test
+unit-test: prepare  ## Run unit-test
 	docker run -t --rm \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(PWD):/app \
