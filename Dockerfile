@@ -6,10 +6,12 @@ RUN apt-get -qq update \
     autoconf \
     build-essential \
     curl \
+    libcmocka-dev \
     libcurl4-openssl-dev \
     procps \
     rsyslog \
     unzip \
+    wget \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
@@ -18,12 +20,21 @@ RUN php -r "copy('https://raw.githubusercontent.com/composer/getcomposer.org/bae
  && php composer-setup.php --install-dir=/usr/bin --filename=composer --version=1.10.10 \
  && php -r "unlink('composer-setup.php');"
 
+RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
+      && mkdir /usr/bin/cmake \
+      && tar -xpf /tmp/cmake.tar.gz --strip-components=1 -C /usr/bin/cmake \
+      && rm /tmp/cmake.tar.gz
+
+ENV PATH="/usr/bin/cmake/bin:${PATH}"
+
 WORKDIR /app/src/ext
 
 ENV REPORT_EXIT_STATUS=1
 ENV TEST_PHP_DETAILED=1
 ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/junit.xml
+ENV CMOCKA_MESSAGE_OUTPUT=XML
+ENV CMOCKA_XML_FILE=/app/unit-tests-junit.xml
 
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \

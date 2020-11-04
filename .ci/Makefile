@@ -66,6 +66,15 @@ composer: prepare  ## Run composer
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/composer.sh'
 
+.PHONY: unit-test
+unit-test: unit-test  ## Run unit-test
+	docker run -t --rm \
+		-u $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(PWD):/app \
+		-w /app \
+		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
+		sh -c 'cd /app/src/ext/unit_tests ; cmake . ; make ; make test'
+
 .PHONY: loop
 loop:  ## Bump the version given VERSION
 	.ci/loop.sh "$(LOOPS)" "${DOCKERFILE}" "${PHP_VERSION}"

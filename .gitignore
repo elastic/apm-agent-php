@@ -42,3 +42,6 @@ build/
 
 # Backup files when using sed
 .bck
+
+# CMocka
+unit-tests-junit.xml
