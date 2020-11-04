@@ -6,6 +6,8 @@ RUN apk update \
     autoconf \
     bash \
     build-base \
+    cmake \
+    cmocka-dev \
     curl \
     curl-dev \
     git \
@@ -23,6 +25,8 @@ ENV REPORT_EXIT_STATUS=1
 ENV TEST_PHP_DETAILED=1
 ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/junit.xml
+ENV CMOCKA_MESSAGE_OUTPUT=XML
+ENV CMOCKA_XML_FILE=/app/unit-tests-junit.xml
         
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
