@@ -255,61 +255,6 @@ pipeline {
             }
           }
         }
-        stage('Testing') {
-          when {
-            beforeAgent true
-            // TODO: && false in place to disable this particular section for the time being.
-            //       as agreed to avoid any misleading until this particular section has been implemented.
-            expression { return env.ONLY_DOCS == "false" && false }
-          }
-          matrix {
-            // TODO: This should be uncommented out when the implementation is in place
-            // agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-            options { skipDefaultCheckout() }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
-              }
-              axis {
-                name 'FRAMEWORK'
-                values 'nginx', 'apache', 'redis', 'memcached', 'mysql'
-              }
-            }
-            stages {
-              stage('Install') {
-                steps {
-                  // TODO: This should be uncommented out when the implementation is in place
-                  // deleteDir()
-                  // unstash 'source'
-                  dir("${BASE_DIR}"){
-                    echo 'TBD'
-                  }
-                }
-              }
-              stage('Test') {
-                steps {
-                  // TODO: This should be uncommented out when the implementation is in place
-                  // deleteDir()
-                  // unstash 'source'
-                  dir("${BASE_DIR}"){
-                    sh 'scripts/test-framework.sh ${PHP_VERSION} ${FRAMEWORK}'
-                  }
-                }
-                post {
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
-                  }
-                }
-              }
-            }
-            post {
-              always {
-                echo 'STORE docker logs'
-              }
-            }
-          }
-        }
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
