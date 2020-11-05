@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Log;
 
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -22,7 +23,10 @@ final class Backend
     public function __construct(int $maxEnabledLevel, ?SinkInterface $logSink)
     {
         $this->maxEnabledLevel = $maxEnabledLevel;
-        $this->logSink = $logSink ?? new DefaultSink();
+        $this->logSink = $logSink ??
+                         (ElasticApmExtensionUtil::isLoaded()
+                             ? new DefaultSink()
+                             : NoopLogSink::singletonInstance());
     }
 
     public function maxEnabledLevel(): int

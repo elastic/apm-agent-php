@@ -62,24 +62,22 @@ final class EventSender implements EventSinkInterface
             $serializedEvents .= "}";
         }
 
-        if (extension_loaded('elastic_apm')) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Calling elastic_apm_send_to_server...',
-                [
-                    'serverTimeout' => $this->config->serverTimeout(),
-                    'strlen($serializedMetadata)' => strlen($serializedMetadata),
-                    'strlen($serializedEvents)' => strlen($serializedEvents),
-                ]
-            );
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Calling elastic_apm_send_to_server...',
+            [
+                'serverTimeout'               => $this->config->serverTimeout(),
+                'strlen($serializedMetadata)' => strlen($serializedMetadata),
+                'strlen($serializedEvents)'   => strlen($serializedEvents),
+            ]
+        );
 
-            /**
-             * elastic_apm_* functions are provided by the elastic_apm extension
-             *
-             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-             * @phpstan-ignore-next-line
-             */
-            \elastic_apm_send_to_server($this->config->serverTimeout(), $serializedMetadata, $serializedEvents);
-        }
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        \elastic_apm_send_to_server($this->config->serverTimeout(), $serializedMetadata, $serializedEvents);
     }
 }
