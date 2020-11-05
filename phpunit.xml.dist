@@ -19,7 +19,7 @@
     </php>
 
     <logging>
-        <log type="junit" target="phpunit-junit.xml"/>
+        <log type="junit" target="build/phpunit-junit.xml"/>
     </logging>
 
     <testsuites>

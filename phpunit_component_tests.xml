@@ -19,7 +19,7 @@
     </php>
 
     <logging>
-        <log type="junit" target="phpunit-component-junit.xml"/>
+        <log type="junit" target="build/phpunit-component-junit.xml"/>
     </logging>
 
     <testsuites>
@@ -35,7 +35,4 @@
     <extensions>
         <extension class="\Elastic\Apm\Tests\ComponentTests\Util\PhpUnitExtension" />
     </extensions>
-    <logging>
-        <log type="junit" target="./_GENERATED/COMPONENT_TESTS/log_as_junit.xml"/>
-    </logging>
 </phpunit>

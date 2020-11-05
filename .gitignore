@@ -5,9 +5,6 @@ docker/wordpress/data/ext
 # Mac
 .DS_Store
 
-# JUnit
-junit.xml
-
 # JetBrains PhpStorm
 .idea/
 
@@ -16,9 +13,6 @@ junit.xml
 
 # Visual Studio Code
 .vscode/
-
-# Generated files
-_GENERATED/
 
 # Composer
 composer.lock
@@ -33,7 +27,6 @@ vendor/
 # This allows a developer to use a custom configuration without running the risk of accidentally checking it into version control.
 phpunit.xml
 .phpunit.result.cache
-phpunit-*junit.xml
 
 # Built documentation
 html_docs

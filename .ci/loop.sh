@@ -6,7 +6,7 @@ PHP_VERSION=${3:-7.2}
 
 OUTPUT_FOLDER="build/loop-$DOCKERFILE-$PHP_VERSION"
 TEST_REPORT_TEST="junit.xml"
-TEST_REPORT_COMPOSER="_GENERATED/COMPONENT_TESTS/log_as_junit.xml"
+TEST_REPORT_COMPOSER="build/phpunit-component-junit.xml"
 mkdir -p "${OUTPUT_FOLDER}" || true
 
 for (( c=1; c<=LOOPS; c++ ))
