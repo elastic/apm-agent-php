@@ -44,11 +44,6 @@ final class Backend
     {
         $result = [];
 
-        $result[] = [
-            'namespace' => $loggerData->namespace,
-            'class'     => DbgUtil::fqToShortClassName($loggerData->fqClassName),
-        ];
-
         /** @var LoggerData $currentLoggerData */
         for (
             $currentLoggerData = $loggerData;
@@ -57,6 +52,11 @@ final class Backend
         ) {
             $result[] = $currentLoggerData->context;
         }
+
+        $result[] = [
+            'namespace' => $loggerData->namespace,
+            'class'     => DbgUtil::fqToShortClassName($loggerData->fqClassName),
+        ];
 
         $result[] = $statementCtx;
 
@@ -70,6 +70,7 @@ final class Backend
      * @param int                  $srcCodeLine
      * @param string               $srcCodeFunc
      * @param LoggerData           $loggerData
+     * @param bool|null            $includeStacktrace
      * @param int                  $numberOfStackFramesToSkip
      */
     public function log(
@@ -79,6 +80,7 @@ final class Backend
         int $srcCodeLine,
         string $srcCodeFunc,
         LoggerData $loggerData,
+        ?bool $includeStacktrace,
         int $numberOfStackFramesToSkip
     ): void {
         $this->logSink->consume(
@@ -89,6 +91,7 @@ final class Backend
             $loggerData->srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc,
+            $includeStacktrace,
             $numberOfStackFramesToSkip + 1
         );
     }

@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode;
+namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 
-use function Elastic\Apm\Tests\dummyFuncForTestsWithNamespace;
+use function ElasticApmTests\dummyFuncForTestsWithNamespace;
 
-use const Elastic\Apm\Tests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME;
-use const Elastic\Apm\Tests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER;
-use const Elastic\Apm\Tests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE;
+use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME;
+use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER;
+use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE;
 
 final class StacktraceTestSharedCode
 {
@@ -150,7 +151,9 @@ final class StacktraceTestSharedCode
         $actualStacktrace = $span->getStacktrace();
         TestCase::assertNotNull($actualStacktrace);
         for ($i = 0; $i < count($expectedStacktrace); ++$i) {
-            $infoMsg = 'expected: ' . strval($expectedStacktrace[$i]) . ', actual: ' . strval($actualStacktrace[$i]);
+            $infoMsg = LoggableToString::convert(
+                ['expected' => $expectedStacktrace[$i], 'actual' => $actualStacktrace[$i]]
+            );
             TestCase::assertSame($expectedStacktrace[$i]->filename, $actualStacktrace[$i]->filename, $infoMsg);
             TestCase::assertSame($expectedStacktrace[$i]->lineno, $actualStacktrace[$i]->lineno, $infoMsg);
             TestCase::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);

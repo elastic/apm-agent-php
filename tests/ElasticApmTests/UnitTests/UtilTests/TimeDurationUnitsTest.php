@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\UtilTests;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Config\DurationUnits;
 use Elastic\Apm\Impl\Util\TextUtil;

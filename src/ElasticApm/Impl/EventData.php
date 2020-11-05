@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use JsonSerializable;
 
@@ -13,9 +14,17 @@ use JsonSerializable;
  *
  * @internal
  */
-class EventData implements JsonSerializable
+class EventData implements JsonSerializable, LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
+
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return ['logger'];
+    }
 
     /**
      * @return array<string, mixed>
@@ -104,10 +113,5 @@ class EventData implements JsonSerializable
     protected static function convertPropertyValueToData($propValue)
     {
         return $propValue;
-    }
-
-    public function __toString(): string
-    {
-        return $this->toStringExcludeProperties(['logger']);
     }
 }

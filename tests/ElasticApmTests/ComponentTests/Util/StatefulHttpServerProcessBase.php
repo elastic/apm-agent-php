@@ -1,13 +1,17 @@
 <?php
 
+/** @noinspection PhpUnhandledExceptionInspection */
+
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Exception;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Factory;
@@ -18,7 +22,7 @@ use React\Socket\Server as ServerSocket;
 use RuntimeException;
 use Throwable;
 
-abstract class StatefulHttpServerProcessBase extends CliProcessBase
+abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
@@ -43,16 +47,16 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
 
         TestAssertUtil::assertThat(
             !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
         TestAssertUtil::assertThat(
             !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
 
         TestAssertUtil::assertThat(
             !isset(AmbientContext::testConfig()->sharedDataPerRequest->serverId),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
     }
 
@@ -66,7 +70,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
     public static function run(): void
     {
         self::runSkeleton(
-            function (CliProcessBase $thisObjArg): void {
+            function (SpawnedProcessBase $thisObjArg): void {
                 /** var StatefulHttpServerProcessBase */
                 $thisObj = $thisObjArg;
                 $thisObj->runImpl(); // @phpstan-ignore-line
@@ -147,7 +151,7 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
                     ['statusCode' => $response->getStatusCode(), 'reasonPhrase' => $response->getReasonPhrase()]
                 );
             } else {
-                assert($response instanceof Promise);
+                TestCase::assertInstanceOf(Promise::class, $response);
 
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Promise returned - response will be returned later...');
@@ -200,8 +204,10 @@ abstract class StatefulHttpServerProcessBase extends CliProcessBase
         }
         if (count($headerValues) != 1) {
             throw new RuntimeException(
-                "Header `$headerName\' should not have more than one value."
-                . ' Instead found: ' . DbgUtil::formatArray($headerValues)
+                ExceptionUtil::buildMessage(
+                    'The header should not have more than one value',
+                    ['headerName' => $headerName, 'headerValues' => $headerValues]
+                )
             );
         }
         return $headerValues[0];

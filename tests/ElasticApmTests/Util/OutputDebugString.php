@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util;
+namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\Tests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\TestOsUtil;
 use Throwable;
 
 /**

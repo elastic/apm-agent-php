@@ -140,10 +140,7 @@ trait ExecutionSegmentTrait
         }
 
         ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'A mutating method has been called on already ended ' . DbgUtil::fqToShortClassName(get_class($this)),
-            ['stackTrace' => DbgUtil::formatCurrentStackTrace(/* numberOfStackFramesToSkip */ 1)]
-        );
+        && $loggerProxy->includeStacktrace()->log('A mutating method has been called on already ended event');
 
         return true;
     }

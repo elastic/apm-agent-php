@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class Metadata extends EventData implements MetadataInterface
+class Metadata extends EventData implements MetadataInterface, LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var ProcessDataInterface */
     protected $process;
 
@@ -47,18 +50,5 @@ class Metadata extends EventData implements MetadataInterface
         }
 
         return parent::convertPropertyValueToData($propValue);
-    }
-
-    public static function dataToString(MetadataInterface $data, string $type): string
-    {
-        $builder = new ObjectToStringBuilder($type);
-        $builder->add('process', $data->process());
-        $builder->add('service', $data->service());
-        return $builder->build();
-    }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this, 'Metadata');
     }
 }

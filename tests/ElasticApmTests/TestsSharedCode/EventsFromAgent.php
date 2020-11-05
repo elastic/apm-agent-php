@@ -2,21 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode;
+namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\UnitTests\Util\NotFoundException;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\UnitTests\Util\NotFoundException;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
-final class EventsFromAgent
+final class EventsFromAgent implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var MetadataInterface[] */
     public $metadata = [];

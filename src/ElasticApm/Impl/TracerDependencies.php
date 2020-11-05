@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface as ConfigRawSnapshotSourceInterface;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class TracerDependencies
+final class TracerDependencies implements LoggableInterface
 {
     /** @var ?ClockInterface */
     public $clock = null;
@@ -26,18 +27,19 @@ final class TracerDependencies
     /** @var ?Log\SinkInterface */
     public $logSink = null;
 
-    public function __toString(): string
+    public function toLog(LogStreamInterface $stream): void
     {
-        $builder = new ObjectToStringBuilder();
-        $builder->add('clock', self::depToString($this->clock));
-        $builder->add('configRawSnapshotSource', self::depToString($this->configRawSnapshotSource));
-        $builder->add('eventSink', self::depToString($this->eventSink));
-        $builder->add('logSink', self::depToString($this->logSink));
-        return $builder->build();
-    }
+        $getDependencyType = function (?object $dep): ?string {
+            return is_null($dep) ? null : get_class($dep);
+        };
 
-    private static function depToString(?object $dep): string
-    {
-        return is_null($dep) ? 'null' : get_class($dep);
+        $stream->toLogAs(
+            [
+                'clock'                   => $getDependencyType($this->clock),
+                'configRawSnapshotSource' => $getDependencyType($this->configRawSnapshotSource),
+                'eventSink'               => $getDependencyType($this->eventSink),
+                'logSink'                 => $getDependencyType($this->logSink),
+            ]
+        );
     }
 }

@@ -138,10 +138,10 @@ final class InterceptionManager
             $callTracker = ($registration->factory)();
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
+            && $loggerProxy->logThrowable(
+                $throwable,
                 DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
-                . ' factory has let a Throwable to escape - returning null',
-                ['throwable' => $throwable]
+                . ' factory has let a Throwable to escape - returning null'
             );
             return null;
         }
@@ -150,10 +150,10 @@ final class InterceptionManager
             $callTracker->preHook($thisObj, ...$interceptedCallArgs);
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
+            && $loggerProxy->logThrowable(
+                $throwable,
                 DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
-                . 'preHook() has let a Throwable to escape - returning null',
-                ['throwable' => $throwable]
+                . ' preHook() has let a Throwable to escape - returning null'
             );
             return null;
         }
@@ -170,11 +170,13 @@ final class InterceptionManager
      * @param bool                            $hasExitedByException
      * @param mixed|Throwable                 $returnValueOrThrown Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
+     *
+     * @noinspection PhpMissingParamTypeInspection
      */
     private function interceptedCallPostHook(
         int $numberOfStackFramesToSkip,
         Logger $localLogger,
-        $callTracker,
+        InterceptedCallTrackerInterface $callTracker,
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
@@ -185,10 +187,10 @@ final class InterceptionManager
             $callTracker->postHook($numberOfStackFramesToSkip + 1, $hasExitedByException, $returnValueOrThrown);
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
+            && $loggerProxy->logThrowable(
+                $throwable,
                 DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
-                . 'postHook() has let a Throwable to escape',
-                ['throwable' => $throwable]
+                . ' postHook() has let a Throwable to escape'
             );
         }
     }

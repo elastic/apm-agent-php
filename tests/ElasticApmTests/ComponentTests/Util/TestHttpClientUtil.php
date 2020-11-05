@@ -4,7 +4,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -45,7 +45,7 @@ final class TestHttpClientUtil
                     + [
                         RequestHeadersRawSnapshotSource::optionNameToHeaderName(
                             AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                        ) => SerializationUtil::serializeAsJson($sharedDataPerRequest, SharedDataPerRequest::class),
+                        ) => SerializationUtil::serializeAsJson($sharedDataPerRequest),
                     ],
                 /*
                  * http://docs.guzzlephp.org/en/stable/request-options.html#http-errors

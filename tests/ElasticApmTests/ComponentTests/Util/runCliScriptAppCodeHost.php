@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 
 require __DIR__ . '/../../../bootstrap.php';
 require __DIR__ . '/defineTopLevelCodeIdGlobalVar.php';
 
-/** @noinspection PhpUnhandledExceptionInspection */
 CliScriptAppCodeHost::run(/* ref */ $globalTopLevelCodeId);
 
 if (!is_null($globalTopLevelCodeId)) {

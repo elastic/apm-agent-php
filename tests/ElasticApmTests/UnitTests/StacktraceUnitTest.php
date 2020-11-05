@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Tests\TestsSharedCode\StacktraceTestSharedCode;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class StacktraceUnitTest extends UnitTestCaseBase
 {

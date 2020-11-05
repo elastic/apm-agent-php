@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 /**
  * @template T

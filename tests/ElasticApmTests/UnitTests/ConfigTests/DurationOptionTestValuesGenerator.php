@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\DurationOptionParser;
 use Elastic\Apm\Impl\Config\DurationUnits;
 use Elastic\Apm\Impl\Config\FloatOptionParser;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
 use RuntimeException;
 
 /**
@@ -196,9 +196,10 @@ final class DurationOptionTestValuesGenerator implements OptionTestValuesGenerat
 
             default:
                 throw new RuntimeException(
-                    'Not a valid time duration units ID.'
-                    . ' dstUnits: ' . $dstUnits . '.'
-                    . ' Valid units: ' . DbgUtil::formatValue(DurationUnits::$suffixAndIdPairs) . '.'
+                    ExceptionUtil::buildMessage(
+                        'Not a valid time duration units ID',
+                        ['dstUnits' => $dstUnits, 'valid time duration units' => DurationUnits::$suffixAndIdPairs]
+                    )
                 );
         }
     }

@@ -15,10 +15,11 @@ use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionInterface;
 
@@ -27,7 +28,7 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-final class Tracer implements TracerInterface
+final class Tracer implements TracerInterface, LoggableInterface
 {
     /** @var TracerDependencies */
     private $providedDependencies;
@@ -212,11 +213,14 @@ final class Tracer implements TracerInterface
         return $this->isRecording;
     }
 
-    public function __toString(): string
+    public function toLog(LogStreamInterface $stream): void
     {
-        $builder = new ObjectToStringBuilder();
-        $builder->add('providedDependencies', $this->providedDependencies);
-        $builder->add('config', $this->config);
-        return $builder->build();
+        $stream->toLogAs(
+            [
+                'isRecording'          => $this->isRecording,
+                'providedDependencies' => $this->providedDependencies,
+                'config'               => $this->config,
+            ]
+        );
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
@@ -14,12 +13,10 @@ use Elastic\Apm\Impl\Util\TextUtil;
  *
  * @template   T
  *
- * @implements OptionParserInterface<T>
+ * @extends    OptionParser<T>
  */
-class EnumOptionParser implements OptionParserInterface
+class EnumOptionParser extends OptionParser
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /** @var string */
     private $dbgEnumDesc;
 

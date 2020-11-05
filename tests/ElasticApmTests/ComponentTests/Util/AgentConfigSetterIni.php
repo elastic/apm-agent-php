@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
-final class AgentConfigSetterIni extends AgentConfigSetterBase
+final class AgentConfigSetterIni extends AgentConfigSetter
 {
     public function appCodePhpCmd(): string
     {

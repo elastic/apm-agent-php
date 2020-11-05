@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\UtilTests;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Closure;
 use Elastic\Apm\ExecutionSegmentDataInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\UnitTests\Util\MockSpanData;
-use Elastic\Apm\Tests\UnitTests\Util\MockTransactionData;
-use Elastic\Apm\Tests\Util\InvalidEventDataException;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\UnitTests\Util\MockSpanData;
+use ElasticApmTests\UnitTests\Util\MockTransactionData;
+use ElasticApmTests\Util\InvalidEventDataException;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Exception as PhpUnitException;
 use Throwable;
 
@@ -251,25 +251,25 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     public function testSpanStartedBeforeParent(): void
     {
         $span_1_1 = new MockSpanData();
-        self::padSegmentTime($span_1_1, /* microseconds */ 3);
+        self::padSegmentTime($span_1_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_1 = new MockSpanData([$span_1_1]);
-        self::padSegmentTime($span_1, /* microseconds */ 3);
+        self::padSegmentTime($span_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $tx = new MockTransactionData([$span_1]);
-        self::padSegmentTime($tx, /* microseconds */ 3);
+        self::padSegmentTime($tx, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
 
         $this->assertValidAndCorrupted(
             [$tx],
             [$span_1, $span_1_1],
+            /* corruptFunc: */
             function () use ($span_1, $span_1_1): Closure {
-                $delta = $span_1_1->getTimestamp() - $span_1->getTimestamp() + 2;
+                $delta = $span_1_1->getTimestamp() - $span_1->getTimestamp() + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1_1->setTimestamp($span_1_1->getTimestamp() - $delta);
                 $span_1_1->setDuration($span_1_1->getDuration() + $delta);
-                $span_1_1->setStart($span_1_1->getStart() - $delta);
+                /* revertCorruptFunc: */
                 return function () use ($span_1_1, $delta): void {
                     $span_1_1->setTimestamp($span_1_1->getTimestamp() + $delta);
                     $span_1_1->setDuration($span_1_1->getDuration() - $delta);
-                    $span_1_1->setStart($span_1_1->getStart() + $delta);
                 };
             }
         );
@@ -278,15 +278,13 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             [$tx],
             [$span_1, $span_1_1],
             function () use ($tx, $span_1): Closure {
-                $delta = $span_1->getTimestamp() - $tx->getTimestamp() + 2;
+                $delta = $span_1->getTimestamp() - $tx->getTimestamp() + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1->setTimestamp($span_1->getTimestamp() - $delta);
                 $span_1->setDuration($span_1->getDuration() + $delta);
-                $span_1->setStart($span_1->getStart() - $delta);
                 return function () use ($span_1, $delta): void {
                     $span_1->setTimestamp($span_1->getTimestamp() + $delta);
                     $span_1->setDuration($span_1->getDuration() - $delta);
-                    $span_1->setStart($span_1->getStart() + $delta);
                 };
             }
         );
@@ -295,17 +293,18 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     public function testSpanEndedAfterParent(): void
     {
         $span_1_1 = new MockSpanData();
-        self::padSegmentTime($span_1_1, /* microseconds */ 3);
+        self::padSegmentTime($span_1_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_1 = new MockSpanData([$span_1_1]);
-        self::padSegmentTime($span_1, /* microseconds */ 3);
+        self::padSegmentTime($span_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $tx = new MockTransactionData([$span_1]);
-        self::padSegmentTime($tx, /* microseconds */ 3);
+        self::padSegmentTime($tx, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
 
         $this->assertValidAndCorrupted(
             [$tx],
             [$span_1, $span_1_1],
             function () use ($span_1, $span_1_1): Closure {
-                $delta = TestCaseBase::calcEndTime($span_1) - TestCaseBase::calcEndTime($span_1_1) + 2;
+                $delta = TestCaseBase::calcEndTime($span_1) - TestCaseBase::calcEndTime($span_1_1)
+                         + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1_1->setDuration($span_1_1->getDuration() + $delta);
                 return function () use ($span_1_1, $delta): void {
@@ -318,7 +317,8 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             [$tx],
             [$span_1, $span_1_1],
             function () use ($tx, $span_1): Closure {
-                $delta = TestCaseBase::calcEndTime($tx) - TestCaseBase::calcEndTime($span_1) + 2;
+                $delta = TestCaseBase::calcEndTime($tx) - TestCaseBase::calcEndTime($span_1)
+                         + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1->setDuration($span_1->getDuration() + $delta);
                 return function () use ($span_1, $delta): void {
@@ -354,13 +354,13 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     public function testChildTransactionCanStartAfterParentEnded(): void
     {
         $tx_C = new MockTransactionData();
-        self::padSegmentTime($tx_C, /* microseconds */ 5);
+        self::padSegmentTime($tx_C, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_B = new MockSpanData([], [$tx_C]);
-        self::padSegmentTime($span_B, /* microseconds */ 5);
-        $tx_C->setTimestamp(TestCaseBase::calcEndTime($span_B) + 2);
-        $tx_C->setDuration(TimeUtil::microsecondsToMilliseconds(2));
+        self::padSegmentTime($span_B, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $tx_C->setTimestamp(TestCaseBase::calcEndTime($span_B) + 2 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $tx_C->setDuration(TimeUtil::microsecondsToMilliseconds(2 * self::TIMESTAMP_COMPARISON_PRECISION));
         $tx_A = new MockTransactionData([$span_B]);
-        self::padSegmentTime($tx_A, /* microseconds */ 5);
+        self::padSegmentTime($tx_A, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
 
         self::assertValidTransactionsAndSpans(self::idToEvent([$tx_A, $tx_C]), self::idToEvent([$span_B]));
     }

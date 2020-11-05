@@ -9,6 +9,12 @@ namespace Elastic\Apm\Impl\Log;
  *
  * @internal
  */
-interface StreamInterface
+interface LogStreamInterface
 {
+    /**
+     * @param mixed $value
+     */
+    public function toLogAs($value): void;
+
+    public function isLastLevel(): bool;
 }

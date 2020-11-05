@@ -23,14 +23,6 @@ interface SpanDataInterface extends ExecutionSegmentDataInterface
     public function getParentId(): string;
 
     /**
-     * Offset relative to the transaction's timestamp identifying the start of the span.
-     * In milliseconds.
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L29
-     */
-    public function getStart(): float;
-
-    /**
      * A further sub-division of the type
      * e.g., 'mysql', 'postgresql' or 'elasticsearch' for type 'db', 'http' for type 'external', etc.
      *

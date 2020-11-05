@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\IdGenerator;
@@ -34,8 +34,5 @@ final class MockTransactionData extends TransactionData
     public function setTimestamp(float $timestamp): void
     {
         $this->timestamp = $timestamp;
-        foreach ($this->childSpans as $child) {
-            $child->deriveStartOffsetFrom($this);
-        }
     }
 }

@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util\Deserialization;
+namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\StacktraceFrame;
-use Elastic\Apm\Tests\Util\ValidationUtil;
+use ElasticApmTests\Util\ValidationUtil;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -70,7 +71,7 @@ final class StacktraceDeserializer
         }
 
         ValidationUtil::assertThat(!is_null($filename));
-        assert(!is_null($filename));
+        TestCase::assertNotNull($filename);
         ValidationUtil::assertThat($lineNumber !== -1);
 
         $result = new StacktraceFrame($filename, $lineNumber);

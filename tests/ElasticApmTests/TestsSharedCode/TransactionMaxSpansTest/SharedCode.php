@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest;
+namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
-use Elastic\Apm\Tests\Util\IterableUtilForTests;
+use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\Util\IterableUtilForTests;
 use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -182,7 +183,8 @@ final class SharedCode
             ? self::$shouldPrintProgress
             : $isThisVariantEnabled;
         if ($shouldPrintProgress) {
-            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . self::$testArgsVariantsCount . ': ' . $testArgs;
+            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . self::$testArgsVariantsCount
+                   . ': ' . LoggableToString::convert($testArgs);
             fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
         }
 
@@ -204,7 +206,7 @@ final class SharedCode
             $transactionMaxSpans = OptionDefaultValues::TRANSACTION_MAX_SPANS;
         }
 
-        $msg = "testArgs: $testArgs. eventsFromAgent: $eventsFromAgent.";
+        $msg = LoggableToString::convert(['testArgs' => $testArgs, 'eventsFromAgent' => $eventsFromAgent]);
         if (!$tx->isSampled()) {
             TestCase::assertSame(0, $tx->getStartedSpansCount(), $msg);
             TestCase::assertSame(0, $tx->getDroppedSpansCount(), $msg);

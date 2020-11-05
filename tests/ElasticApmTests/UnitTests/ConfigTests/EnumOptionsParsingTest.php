@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
-use Elastic\Apm\Tests\Util\TestCaseBase;
+use ElasticApmTests\Util\TestCaseBase;
 
 class EnumOptionsParsingTest extends TestCaseBase
 {

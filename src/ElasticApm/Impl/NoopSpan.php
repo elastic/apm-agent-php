@@ -31,11 +31,6 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
         return null;
     }
 
-    public function getStart(): float
-    {
-        return 0.0;
-    }
-
     public function getSubtype(): ?string
     {
         return null;

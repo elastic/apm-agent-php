@@ -14,7 +14,7 @@ interface RawSnapshotSourceInterface
     /**
      * Parser constructor.
      *
-     * @param array<string, OptionMetadataInterface<mixed>> $optionNameToMeta
+     * @param array<string, OptionMetadata<mixed>> $optionNameToMeta
      *
      * @return RawSnapshotInterface
      */

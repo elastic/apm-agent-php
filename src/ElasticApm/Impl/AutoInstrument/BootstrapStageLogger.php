@@ -59,6 +59,25 @@ final class BootstrapStageLogger
         );
     }
 
+    public static function logNotice(
+        string $message,
+        int $srcCodeLine,
+        string $srcCodeFunc
+    ): void {
+        /** @noinspection PhpUndefinedConstantInspection */
+        self::logLevel(
+        /**
+         * ELASTIC_APM_* constants are provided by the elastic_apm extension
+         *
+         * @phpstan-ignore-next-line
+         */
+            ELASTIC_APM_LOG_LEVEL_NOTICE,
+            $message,
+            $srcCodeLine,
+            $srcCodeFunc
+        );
+    }
+
     public static function logCritical(
         string $message,
         int $srcCodeLine,
@@ -85,8 +104,8 @@ final class BootstrapStageLogger
         string $srcCodeFunc
     ): void {
         self::logCritical(
-            $message
-            . get_class($throwable) . ': ' . $throwable->getMessage()
+            $message . '.'
+            . ' ' . get_class($throwable) . ': ' . $throwable->getMessage()
             . PHP_EOL . 'Stack trace:' . PHP_EOL . $throwable->getTraceAsString(),
             $srcCodeLine,
             $srcCodeFunc

@@ -2,14 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-
-final class SharedDataPerRequest extends SharedDataBase
+final class SharedDataPerRequest extends SharedData
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /** @var array<string, mixed>|null */
     public $appCodeArguments = null;
 

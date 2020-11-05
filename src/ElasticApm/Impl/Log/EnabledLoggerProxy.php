@@ -25,6 +25,9 @@ final class EnabledLoggerProxy
     /** @var LoggerData */
     private $loggerData;
 
+    /** @var bool|null */
+    private $includeStacktrace = null;
+
     public function __construct(int $statementLevel, int $srcCodeLine, string $srcCodeFunc, LoggerData $loggerData)
     {
         $this->statementLevel = $statementLevel;
@@ -33,9 +36,17 @@ final class EnabledLoggerProxy
         $this->loggerData = $loggerData;
     }
 
+    public function includeStacktrace(): self
+    {
+        $this->includeStacktrace = true;
+        return $this;
+    }
+
     /**
      * @param string               $message
      * @param array<string, mixed> $statementCtx
+     *
+     * @return bool
      */
     public function log(string $message, array $statementCtx = []): bool
     {
@@ -46,6 +57,7 @@ final class EnabledLoggerProxy
             $this->srcCodeLine,
             $this->srcCodeFunc,
             $this->loggerData,
+            $this->includeStacktrace,
             /* numberOfStackFramesToSkip */ 1
         );
         // return dummy bool to suppress PHPStan's "Right side of && is always false"
@@ -68,6 +80,7 @@ final class EnabledLoggerProxy
             $this->srcCodeLine,
             $this->srcCodeFunc,
             $this->loggerData,
+            $this->includeStacktrace,
             /* numberOfStackFramesToSkip */ 1
         );
         // return dummy bool to suppress PHPStan's "Right side of && is always false"

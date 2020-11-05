@@ -31,16 +31,12 @@ final class EnabledAssertProxy
      */
     public function withContext(string $conditionAsString, array $context): bool
     {
-        $numberOfStackFramesToSkip = 1;
-        $callerInfo = DbgUtil::getCallerInfoFromStacktrace($numberOfStackFramesToSkip);
-
-        $contextToStringBuilder = new ObjectToStringBuilder();
-        foreach ($context as $key => $value) {
-            $contextToStringBuilder->add($key, $value);
-        }
+        $callerInfo = DbgUtil::getCallerInfoFromStacktrace(/* numberOfStackFramesToSkip: */ 1);
         throw new AssertException(
-            "Assertion $conditionAsString failed. Source code location: $callerInfo."
-            . ' ' . $contextToStringBuilder->build()
+            ExceptionUtil::buildMessage(
+                'Assertion failed',
+                ['condition' => $conditionAsString, 'location' => $callerInfo] + $context
+            )
         );
     }
 }

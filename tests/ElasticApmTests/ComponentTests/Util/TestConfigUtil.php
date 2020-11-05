@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
@@ -12,7 +12,7 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\Tests\Util\LogSinkForTests;
+use ElasticApmTests\Util\LogSinkForTests;
 
 final class TestConfigUtil
 {

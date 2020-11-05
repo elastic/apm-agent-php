@@ -8,9 +8,12 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Transaction;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\TransactionDataInterface;
+use Exception;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -23,18 +26,17 @@ final class SerializationUtil
 
     /**
      * @param mixed  $data
-     * @param string $dbgDataDesc
      *
      * @return string
      */
-    public static function serializeAsJson($data, string $dbgDataDesc): string
+    public static function serializeAsJson($data): string
     {
-        $serializedData = json_encode($data);
-        if ($serializedData === false) {
+        try {
+            $serializedData = JsonUtil::encode($data);
+        } catch (Exception $ex) {
             throw new SerializationException(
-                'Serialization failed'
-                . '. json_last_error_msg(): ' . json_last_error_msg()
-                . '. $data: ' . $dbgDataDesc
+                ExceptionUtil::buildMessage('Serialization failed', ['data' => $data]),
+                $ex
             );
         }
         return $serializedData;
@@ -42,16 +44,16 @@ final class SerializationUtil
 
     public static function serializeMetadata(MetadataInterface $data): string
     {
-        return self::serializeAsJson(Metadata::convertToData($data), Metadata::dataToString($data, get_class($data)));
+        return self::serializeAsJson(Metadata::convertToData($data));
     }
 
     public static function serializeTransaction(TransactionDataInterface $data): string
     {
-        return self::serializeAsJson(Transaction::convertToData($data), get_class($data));
+        return self::serializeAsJson(Transaction::convertToData($data));
     }
 
     public static function serializeSpan(SpanDataInterface $data): string
     {
-        return self::serializeAsJson(Span::convertToData($data), get_class($data));
+        return self::serializeAsJson(Span::convertToData($data));
     }
 }

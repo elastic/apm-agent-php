@@ -4,11 +4,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Examples\UsingPublicApi;
+namespace ElasticApmExamples\UsingPublicApi;
 
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Tests\UnitTests\Util\MockEventSink;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\MockEventSink;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class ExampleUsingPublicApi extends UnitTestCaseBase
 {

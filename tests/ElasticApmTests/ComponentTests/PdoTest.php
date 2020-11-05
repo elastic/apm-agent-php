@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
 final class PdoTest extends ComponentTestCaseBase
 {

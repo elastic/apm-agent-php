@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest;
+namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Ds\Stack;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\NoopSpan;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\SpanInterface;
-use Elastic\Apm\Tests\Util\RandomUtilForTests;
 use Elastic\Apm\TransactionInterface;
 use PHPUnit\Framework\TestCase;
 
-final class AppCode
+final class AppCode implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     private const MAX_RECURSION_DEPTH = 10;
 
@@ -136,7 +137,7 @@ final class AppCode
         /** @var ExecutionSegmentInterface $topExecSegment */
         $topExecSegment = ($this->actualSpansDepth() === 0) ? $this->tx : $this->topSpanInfo()->span;
         $topExecSegment->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
-        $spanName = $this->topSpanInfo()->name . strval($this->topSpanInfo()->childCount);
+        $spanName = $this->topSpanInfo()->name . '_' . strval($this->topSpanInfo()->childCount);
 
         $recursiveCallback = function (SpanInterface $span) use ($spanName) {
             ++$this->currentRecursionDepth;
@@ -181,7 +182,7 @@ final class AppCode
                 break;
 
             default:
-                TestCase::fail("This point should never be reached. this: $this");
+                TestCase::fail('This point should never be reached. ' . LoggableToString::convert(['this' => $this]));
         }
     }
 }

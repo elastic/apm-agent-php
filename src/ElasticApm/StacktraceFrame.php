@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm;
 
 use Elastic\Apm\Impl\EventData;
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -46,10 +45,5 @@ class StacktraceFrame extends EventData
     {
         $this->filename = $filename;
         $this->lineno = $lineno;
-    }
-
-    public function __toString(): string
-    {
-        return $this->toStringExcludeProperties(['filename', 'function']);
     }
 }

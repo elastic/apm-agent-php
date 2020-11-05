@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util\Deserialization;
+namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\TestsRootDir;
-use Elastic\Apm\Tests\Util\ValidationUtil;
+use ElasticApmTests\TestsRootDir;
+use ElasticApmTests\Util\ValidationUtil;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
 
@@ -107,7 +109,7 @@ final class ServerApiSchemaValidator
         bool $allowAdditionalProperties
     ): void {
         $validator = new Validator();
-        $deserializedRawData = SerializationTestUtil::deserializeJson($serializedData, /* asAssocArray */ false);
+        $deserializedRawData = JsonUtil::decode($serializedData, /* asAssocArray */ false);
         $validator->validate(
             $deserializedRawData,
             (object)($this->loadSchema(
@@ -169,7 +171,7 @@ final class ServerApiSchemaValidator
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,
-            SerializationTestUtil::prettyEncodeJson($schema),
+            JsonUtil::encode($schema, /* prettyPrint: */ true),
             /* flags */ LOCK_EX
         );
         if ($numberOfBytesWritten === false) {
@@ -189,7 +191,7 @@ final class ServerApiSchemaValidator
         if ($fileContents === false) {
             throw ValidationUtil::buildException("Failed to load schema from `$absolutePath'");
         }
-        $decodedSchema = SerializationTestUtil::deserializeJson($fileContents, /* asAssocArray */ true);
+        $decodedSchema = JsonUtil::decode($fileContents, /* asAssocArray */ true);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
     }
@@ -351,45 +353,47 @@ final class ServerApiSchemaValidator
     ): ServerApiSchemaValidationException {
         $errors = $validator->getErrors();
 
-        $errorToString = function ($error): string {
-            $concatIfNotNullOrEmpty = function (string $key) use ($error): string {
-                return (TextUtil::isNullOrEmptyString($error[$key])) ? '' : ("; $key: `" . $error[$key] . "'");
+        /**
+         * @param array<string, mixed> $error
+         *
+         * @return array<string, mixed>
+         */
+        $errorToLoggable = function (array $error): array {
+            /**
+             * @param string $key
+             *
+             * @return array<string, mixed>
+             */
+            $nameToValueIfNotNullOrEmpty = function (string $key) use ($error): array {
+                return TextUtil::isNullOrEmptyString($error[$key]) ? [] : [$key => $error[$key]];
             };
-            $result = $error['message'];
-            $result .= $concatIfNotNullOrEmpty('property');
-            $result .= $concatIfNotNullOrEmpty('pointer');
+
+            $result[] = $nameToValueIfNotNullOrEmpty('message');
+            $result[] = $nameToValueIfNotNullOrEmpty('property');
+            $result[] = $nameToValueIfNotNullOrEmpty('pointer');
             return $result;
         };
 
-        $errorsToString = function () use ($errors, $errorToString): string {
-            $result = '';
-            $index = 1;
+        /**
+         * @return array<string, mixed>
+         */
+        $allErrorsToLoggable = function () use ($errors, $errorToLoggable): array {
+            $result = [];
             foreach ($errors as $error) {
-                if ($index !== 1) {
-                    $result .= PHP_EOL;
-                }
-                $result .= "$index) " . $errorToString($error);
-                ++$index;
+                $result[] = $errorToLoggable($error);
             }
             return $result;
         };
 
-        $message = 'Serialized data failed APM Server Intake API JSON schema validation.';
-        $message .= PHP_EOL;
-        $message .= "relativePathToSchema: $relativePathToSchema";
-        $message .= PHP_EOL;
-        $message .= TextUtil::indent(
-            'Errors [' . count($errors) . ']:'
-            . PHP_EOL
-            . TextUtil::indent($errorsToString())
+        return new ServerApiSchemaValidationException(
+            ExceptionUtil::buildMessage(
+                'Serialized data failed APM Server Intake API JSON schema validation',
+                [
+                    'relativePathToSchema' => $relativePathToSchema,
+                    'errors' => $allErrorsToLoggable(),
+                    'serializedData' => $serializedData,
+                ]
+            )
         );
-        $message .= PHP_EOL;
-        $message .= TextUtil::indent(
-            'Serialized data:'
-            . PHP_EOL
-            . TextUtil::indent(SerializationTestUtil::prettyFormatJson($serializedData))
-        );
-
-        return new ServerApiSchemaValidationException($message);
     }
 }

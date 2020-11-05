@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Tests\TestsSharedCode\SamplingTestSharedCode;
-use Elastic\Apm\Tests\UnitTests\Util\MockConfigRawSnapshotSource;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class SamplingUnitTest extends UnitTestCaseBase
 {

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\RangeUtilForTests;
-use Elastic\Apm\Tests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
 
 /**
  * @template   T

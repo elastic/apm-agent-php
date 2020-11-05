@@ -74,7 +74,7 @@ final class PhpPartFacade
 
         if (!is_null(self::$singletonInstance)) {
             BootstrapStageLogger::logCritical(
-                'bootstrap() is called even though singletonInstance is already created'
+                'bootstrap() is called even though singleton instance is already created'
                 . ' (probably bootstrap() is called more than once)',
                 __LINE__,
                 __FUNCTION__
@@ -151,6 +151,16 @@ final class PhpPartFacade
     {
         BootstrapStageLogger::logDebug('Starting shutdown sequence...', __LINE__, __FUNCTION__);
 
+        if (is_null(self::$singletonInstance)) {
+            BootstrapStageLogger::logNotice(
+                'Shutdown sequence is invoked even though singleton instance is not created'
+                . ' (probably because bootstrap sequence failed)',
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+
         try {
             self::singletonInstance()->shutdownImpl();
         } catch (Throwable $throwable) {
@@ -168,19 +178,8 @@ final class PhpPartFacade
 
     private function shutdownImpl(): void
     {
-        BootstrapStageLogger::logDebug('Starting shutdown sequence...', __LINE__, __FUNCTION__);
-
-        try {
-            if (!is_null($this->transactionForExtensionRequest)) {
-                $this->transactionForExtensionRequest->onShutdown();
-            }
-        } catch (Throwable $throwable) {
-            BootstrapStageLogger::logCriticalThrowable(
-                $throwable,
-                'One of the steps in shutdown sequence let a throwable escape - skipping the rest of the steps',
-                __LINE__,
-                __FUNCTION__
-            );
+        if (!is_null($this->transactionForExtensionRequest)) {
+            $this->transactionForExtensionRequest->onShutdown();
         }
     }
 

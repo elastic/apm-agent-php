@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class Snapshot
+final class Snapshot implements LoggableInterface
 {
     use SnapshotTrait;
+    use LoggableTrait;
 
     /** @var bool */
     private $enabled;

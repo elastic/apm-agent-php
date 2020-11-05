@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
@@ -12,9 +12,9 @@ use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
-use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
-use Elastic\Apm\Tests\Util\ValidationUtil;
+use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
+use ElasticApmTests\Util\ValidationUtil;
 use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
 

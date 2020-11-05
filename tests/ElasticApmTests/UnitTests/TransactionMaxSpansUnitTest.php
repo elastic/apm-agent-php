@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\Args;
-use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
-use Elastic\Apm\Tests\UnitTests\Util\MockConfigRawSnapshotSource;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
+use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class TransactionMaxSpansUnitTest extends UnitTestCaseBase
 {

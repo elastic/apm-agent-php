@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestEnvBase;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class ApiKeyTest extends ComponentTestCaseBase
 {
     private function apiKeyConfigTestImpl(
-        ?AgentConfigSetterBase $configSetter,
+        ?AgentConfigSetter $configSetter,
         ?string $configuredApiKey,
         ?string $configuredSecretToken
     ): void {
@@ -53,9 +53,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param AgentConfigSetterBase $configSetter
+     * @param AgentConfigSetter $configSetter
      */
-    public function testCustomApiKey(AgentConfigSetterBase $configSetter): void
+    public function testCustomApiKey(AgentConfigSetter $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, 'custom API Key 9.8 @CI#!?', /* configuredSecretToken: */ null);
     }
@@ -63,9 +63,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param AgentConfigSetterBase $configSetter
+     * @param AgentConfigSetter $configSetter
      */
-    public function testApiKeyTakesPrecedenceOverSecretToken(AgentConfigSetterBase $configSetter): void
+    public function testApiKeyTakesPrecedenceOverSecretToken(AgentConfigSetter $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, 'custom API Key', 'custom Secret TOKEN');
     }
@@ -73,9 +73,9 @@ final class ApiKeyTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param AgentConfigSetterBase $configSetter
+     * @param AgentConfigSetter $configSetter
      */
-    public function testSecretTokenIsUsedIfNoApiKey(AgentConfigSetterBase $configSetter): void
+    public function testSecretTokenIsUsedIfNoApiKey(AgentConfigSetter $configSetter): void
     {
         $this->apiKeyConfigTestImpl($configSetter, /* configuredApiKey */ null, 'custom Secret TOKEN');
     }

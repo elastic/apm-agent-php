@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
-use Elastic\Apm\Tests\TestsSharedCode\SamplingTestSharedCode;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 
 final class SamplingComponentTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array{?AgentConfigSetterBase, ?float}>
+     * @return iterable<array{?AgentConfigSetter, ?float}>
      */
     public function rateConfigTestDataProvider(): iterable
     {
@@ -44,10 +44,10 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     /**
      * @dataProvider rateConfigTestDataProvider
      *
-     * @param AgentConfigSetterBase|null $configSetter
-     * @param float|null                 $transactionSampleRate
+     * @param AgentConfigSetter|null $configSetter
+     * @param float|null             $transactionSampleRate
      */
-    public function testTwoNestedSpans(?AgentConfigSetterBase $configSetter, ?float $transactionSampleRate): void
+    public function testTwoNestedSpans(?AgentConfigSetter $configSetter, ?float $transactionSampleRate): void
     {
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTwoNestedSpansTest'])

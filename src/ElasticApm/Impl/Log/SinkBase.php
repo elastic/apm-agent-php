@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
-use Elastic\Apm\Impl\Util\TextUtil;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -23,27 +19,24 @@ abstract class SinkBase implements SinkInterface
         string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc,
+        ?bool $includeStacktrace,
         int $numberOfStackFramesToSkip
     ): void {
-        $contextToStringBuilder = new ObjectToStringBuilder();
+        $combinedContext = [];
 
-        foreach ($contextsStack as $context) {
-            foreach ($context as $key => $value) {
-                $contextToStringBuilder->add($key, $value);
+        // Traverse $contextsStack in reverse order since the data most specific to the log statement is on top
+        for (end($contextsStack); key($contextsStack) !== null; prev($contextsStack)) {
+            foreach (current($contextsStack) as $key => $value) {
+                $combinedContext[$key] = $value;
             }
         }
 
-        $messageWithContext = $message . ' ' . $contextToStringBuilder->build();
-
-        if ($statementLevel <= Level::ERROR) {
-            $messageWithContext .= PHP_EOL;
-            $messageWithContext .= TextUtil::indent('Stack trace:');
-            $messageWithContext .= PHP_EOL;
-            $messageWithContext .= TextUtil::indent(
-                DbgUtil::formatCurrentStackTrace($numberOfStackFramesToSkip + 1),
-                /*level: */ 2
-            );
+        if (is_null($includeStacktrace) ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
+            $combinedContext[LoggablePhpStacktrace::STACK_TRACE_KEY]
+                = LoggablePhpStacktrace::buildForCurrent($numberOfStackFramesToSkip + 1);
         }
+
+        $messageWithContext = $message . '. ' . LoggableToString::convert($combinedContext);
 
         $this->consumePreformatted(
             $statementLevel,

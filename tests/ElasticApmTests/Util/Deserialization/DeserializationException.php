@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util\Deserialization;
+namespace ElasticApmTests\Util\Deserialization;
 
 use RuntimeException;
 use Throwable;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 
 final class CliScriptTestEnv extends TestEnvBase
@@ -51,16 +51,10 @@ final class CliScriptTestEnv extends TestEnvBase
             + [
                 TestConfigUtil::envVarNameForTestOption(
                     AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
-                ) => SerializationUtil::serializeAsJson(
-                    $this->buildSharedDataPerProcess(),
-                    SharedDataPerProcess::class
-                ),
+                ) => SerializationUtil::serializeAsJson($this->buildSharedDataPerProcess()),
                 TestConfigUtil::envVarNameForTestOption(
                     AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                ) => SerializationUtil::serializeAsJson(
-                    $testProperties->sharedDataPerRequest,
-                    SharedDataPerRequest::class
-                ),
+                ) => SerializationUtil::serializeAsJson($testProperties->sharedDataPerRequest),
             ]
             + $testProperties->agentConfigSetter->additionalEnvVars()
         );

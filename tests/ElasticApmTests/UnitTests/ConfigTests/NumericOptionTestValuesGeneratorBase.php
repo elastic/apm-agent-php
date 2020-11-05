@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Ds\Set;
-use Elastic\Apm\Impl\Config\NumericOptionParserBase;
+use Elastic\Apm\Impl\Config\NumericOptionParser;
 use Elastic\Apm\Impl\Util\NumericUtil;
-use Elastic\Apm\Tests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
 use IteratorIterator;
 
 /**
@@ -18,10 +18,10 @@ use IteratorIterator;
 abstract class NumericOptionTestValuesGeneratorBase implements OptionTestValuesGeneratorInterface
 {
     /**
-     * @return NumericOptionParserBase
-     * @phpstan-return NumericOptionParserBase<T>
+     * @return NumericOptionParser
+     * @phpstan-return NumericOptionParser<T>
      */
-    abstract protected function optionParser(): NumericOptionParserBase;
+    abstract protected function optionParser(): NumericOptionParser;
 
     /**
      * @return float|int

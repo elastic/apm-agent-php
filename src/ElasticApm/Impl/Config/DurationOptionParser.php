@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
@@ -13,12 +12,10 @@ use Elastic\Apm\Impl\Util\TextUtil;
  *
  * @internal
  *
- * @implements OptionParserInterface<float>
+ * @extends OptionParser<float>
  */
-final class DurationOptionParser implements OptionParserInterface
+final class DurationOptionParser extends OptionParser
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /** @var float|null */
     private $minValidValueInMilliseconds;
 
@@ -119,9 +116,15 @@ final class DurationOptionParser implements OptionParserInterface
 
             default:
                 throw new ParseException(
-                    'Not a valid time duration units ID.'
-                    . ' srcValueUnits: ' . $srcValueUnits . '.'
-                    . ' Valid units: ' . DbgUtil::formatValue(DurationUnits::$suffixAndIdPairs) . '.'
+                    ExceptionUtil::buildMessage(
+                        'Not a valid time duration units ID',
+                        /* context */
+                        [
+                            'srcValueUnits' => $srcValueUnits,
+                            'srcValue'      => $srcValue,
+                            'valid time duration units' => DurationUnits::$suffixAndIdPairs,
+                        ]
+                    )
                 );
         }
     }

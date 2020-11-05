@@ -35,8 +35,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Elastic\\Apm\\Tests\\": "./tests/ElasticApmTests/",
-            "Elastic\\Apm\\Examples\\": "./examples/ElasticApmExamples/"
+            "ElasticApmTests\\": "./tests/ElasticApmTests/",
+            "ElasticApmExamples\\": "./examples/ElasticApmExamples/"
         }
     },
     "config": {

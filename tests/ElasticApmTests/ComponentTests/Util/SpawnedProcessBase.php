@@ -1,21 +1,28 @@
 <?php
 
+/** @noinspection PhpUnhandledExceptionInspection */
+
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Log\Level;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
 
-abstract class CliProcessBase
+abstract class SpawnedProcessBase implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var Logger */
     private $logger;
@@ -30,7 +37,7 @@ abstract class CliProcessBase
             'Done',
             [
                 'AmbientContext::testConfig()' => AmbientContext::testConfig(),
-                'Environment variables' => getenv(),
+                'Environment variables'        => getenv(),
             ]
         );
     }
@@ -51,11 +58,11 @@ abstract class CliProcessBase
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
             TestAssertUtil::assertThat(
                 !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId),
-                strval(AmbientContext::testConfig())
+                LoggableToString::convert(AmbientContext::testConfig())
             );
             TestAssertUtil::assertThat(
                 !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
-                strval(AmbientContext::testConfig())
+                LoggableToString::convert(AmbientContext::testConfig())
             );
         }
     }
@@ -65,10 +72,12 @@ abstract class CliProcessBase
      *
      * @throws Throwable
      *
-     * @phpstan-param Closure(CliProcessBase): void $runImpl
+     * @phpstan-param Closure(SpawnedProcessBase): void $runImpl
      */
     protected static function runSkeleton(Closure $runImpl): void
     {
+        LoggingSubsystem::$isInTestingContext = true;
+
         try {
             AmbientContext::init(/* dbgProcessName */ DbgUtil::fqToShortClassName(get_called_class()));
             $thisObj = new static(); // @phpstan-ignore-line
@@ -88,10 +97,7 @@ abstract class CliProcessBase
             }
             $logger = isset($thisObj) ? $thisObj->logger : self::buildLogger();
             ($loggerProxy = $logger->ifLevelEnabled($level, __LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Throwable escaped to the top of the script',
-                ['throwable' => $throwableToLog]
-            );
+            && $loggerProxy->logThrowable($throwableToLog, 'Throwable escaped to the top of the script');
             /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwableToLog;
         }
@@ -108,9 +114,15 @@ abstract class CliProcessBase
         if (is_null($optValue)) {
             $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
             throw new RuntimeException(
-                'Required configuration option ' . $optName . " (environment variable $envVarName)" . ' is not set.'
-                . ' AmbientContext::dbgProcessName(): ' . AmbientContext::dbgProcessName() . '.'
-                . ' AmbientContext::config(): ' . AmbientContext::testConfig() . '.'
+                ExceptionUtil::buildMessage(
+                    'Required configuration option is not set',
+                    [
+                        'optName'        => $optName,
+                        'envVarName'     => $envVarName,
+                        'dbgProcessName' => AmbientContext::dbgProcessName(),
+                        'testConfig'     => AmbientContext::testConfig(),
+                    ]
+                )
             );
         }
 
@@ -118,14 +130,15 @@ abstract class CliProcessBase
     }
 
     protected static function verifyRequiredSharedDataPropertyIsSet(
-        SharedDataBase $sharedData,
+        SharedData $sharedData,
         string $propName
     ): void {
         if (is_null($sharedData->$propName)) {
             throw new RuntimeException(
-                'Required shared data property is not set'
-                . '. sharedData: ' . $sharedData
-                . '. $propName: ' . $propName
+                ExceptionUtil::buildMessage(
+                    'Required shared data property is not set',
+                    ['sharedData' => $sharedData, '. $propName' => $propName]
+                )
             );
         }
     }
@@ -142,8 +155,8 @@ abstract class CliProcessBase
             'Registering with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . '...'
         );
 
-        assert(!is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort));
-        assert(!is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId));
+        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort);
+        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId);
         $response = TestHttpClientUtil::sendHttpRequest(
             AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort,
             HttpConsts::METHOD_POST,

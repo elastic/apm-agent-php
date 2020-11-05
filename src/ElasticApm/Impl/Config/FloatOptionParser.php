@@ -9,9 +9,9 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @extends NumericOptionParserBase<float>
+ * @extends NumericOptionParser<float>
  */
-final class FloatOptionParser extends NumericOptionParserBase
+final class FloatOptionParser extends NumericOptionParser
 {
     protected function dbgValueTypeDesc(): string
     {

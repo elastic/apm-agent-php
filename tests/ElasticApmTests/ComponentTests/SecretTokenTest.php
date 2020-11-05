@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestEnvBase;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestEnvBase;
 
 final class SecretTokenTest extends ComponentTestCaseBase
 {
-    private function secretTokenConfigTestImpl(?AgentConfigSetterBase $configSetter, ?string $configured): void
+    private function secretTokenConfigTestImpl(?AgentConfigSetter $configSetter, ?string $configured): void
     {
         $this->configTestImpl(
             $configSetter,
             $configured,
-            function (AgentConfigSetterBase $configSetter, string $configured): void {
+            function (AgentConfigSetter $configSetter, string $configured): void {
                 $configSetter->set(OptionNames::SECRET_TOKEN, $configured);
             },
             function (DataFromAgent $dataFromAgent) use ($configured): void {
@@ -38,9 +38,9 @@ final class SecretTokenTest extends ComponentTestCaseBase
     /**
      * @dataProvider configSetterTestDataProvider
      *
-     * @param AgentConfigSetterBase $configSetter
+     * @param AgentConfigSetter $configSetter
      */
-    public function testCustomSecretToken(AgentConfigSetterBase $configSetter): void
+    public function testCustomSecretToken(AgentConfigSetter $configSetter): void
     {
         $this->secretTokenConfigTestImpl($configSetter, 'custom Secret TOKEN 9.8 @CI#!?');
     }

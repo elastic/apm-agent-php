@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
-use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -88,7 +88,7 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @return array<array<AgentConfigSetterBase>>
+     * @return array<array<AgentConfigSetter>>
      */
     public function configSetterTestDataProvider(): iterable
     {
@@ -99,18 +99,18 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param AgentConfigSetterBase|null $configSetter
-     * @param string|null                $configured
-     * @param Closure                    $setConfigFunc
-     * @param Closure                    $verifyFunc
+     * @param AgentConfigSetter|null $configSetter
+     * @param string|null            $configured
+     * @param Closure                $setConfigFunc
+     * @param Closure                $verifyFunc
      *
      * @return void
      *
-     * @phpstan-param Closure(AgentConfigSetterBase, string): void $setConfigFunc
+     * @phpstan-param Closure(AgentConfigSetter, string): void $setConfigFunc
      * @phpstan-param Closure(DataFromAgent): void $verifyFunc
      */
     protected function configTestImpl(
-        ?AgentConfigSetterBase $configSetter,
+        ?AgentConfigSetter $configSetter,
         ?string $configured,
         Closure $setConfigFunc,
         Closure $verifyFunc

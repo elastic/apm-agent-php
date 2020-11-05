@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use JsonSerializable;
 
 /**
@@ -12,8 +13,10 @@ use JsonSerializable;
  *
  * @internal
  */
-class ProcessData extends EventData implements ProcessDataInterface, JsonSerializable
+class ProcessData extends EventData implements ProcessDataInterface, JsonSerializable, LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var int */
     protected $pid;
 
@@ -21,17 +24,5 @@ class ProcessData extends EventData implements ProcessDataInterface, JsonSeriali
     public function pid(): int
     {
         return $this->pid;
-    }
-
-    public static function dataToString(ProcessDataInterface $data, string $type): string
-    {
-        $builder = new ObjectToStringBuilder($type);
-        $builder->add('pid', $data->pid());
-        return $builder->build();
-    }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this, 'ProcessData');
     }
 }
