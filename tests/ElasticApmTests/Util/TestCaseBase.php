@@ -24,8 +24,8 @@ use Throwable;
 
 class TestCaseBase extends TestCase
 {
-    // Compare up to 1 milliseconds (1000 microseconds) precision
-    public const TIMESTAMP_COMPARISON_PRECISION = 1000;
+    // Compare up to 10 milliseconds (10000 microseconds) precision
+    public const TIMESTAMP_COMPARISON_PRECISION = 10000;
 
     /**
      * @param mixed        $name
