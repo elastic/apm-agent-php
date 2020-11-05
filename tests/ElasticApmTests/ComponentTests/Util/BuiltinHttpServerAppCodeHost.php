@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
@@ -55,11 +56,11 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     {
         TestAssertUtil::assertThat(
             !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
         TestAssertUtil::assertThat(
             !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
 
         parent::processConfig();

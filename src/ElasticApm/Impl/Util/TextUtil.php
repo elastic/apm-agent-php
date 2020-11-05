@@ -13,82 +13,8 @@ final class TextUtil
 {
     use StaticClassTrait;
 
-    private const INDENTATION = '    '; // 4 spaces
-
     private const CR_AS_INT = 13;
     private const LF_AS_INT = 10;
-
-    /** @var array<string> */
-    private static $endOfLineSequences = ["\r\n", "\r", "\n"];
-
-    /** @var array<string> */
-    private static $endOfLineOneCharSequences = ["\r", "\n"];
-
-    public static function containsNewLine(string $text): bool
-    {
-        return self::containsAnyOf($text, self::$endOfLineOneCharSequences);
-    }
-
-    /**
-     * @param string        $haystack
-     * @param array<string> $needle
-     *
-     * @return bool
-     */
-    public static function containsAnyOf(string $haystack, array $needle): bool
-    {
-        foreach ($needle as $needleChar) {
-            if (strpos($haystack, $needleChar) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static function ifEndOfLineSeqGetLength(string $text, int $textLen, int $index): int
-    {
-        $charAsInt = ord($text[$index]);
-        if ($charAsInt === self::CR_AS_INT && $index != ($textLen - 1) && ord($text[$index + 1]) === self::LF_AS_INT) {
-            return 2;
-        }
-        if ($charAsInt === self::CR_AS_INT || $charAsInt === self::LF_AS_INT) {
-            return 1;
-        }
-        return 0;
-    }
-
-    public static function prefixEachLine(string $text, string $prefix): string
-    {
-        $result = $prefix;
-        $prevPos = 0;
-        $currentPos = $prevPos;
-        $textLen = strlen($text);
-        for (; $currentPos != $textLen;) {
-            $endOfLineSeqLength = self::ifEndOfLineSeqGetLength($text, $textLen, $currentPos);
-            if ($endOfLineSeqLength === 0) {
-                ++$currentPos;
-                continue;
-            }
-            $result .= substr($text, $prevPos, $currentPos + $endOfLineSeqLength - $prevPos);
-            $result .= $prefix;
-            $prevPos = $currentPos + $endOfLineSeqLength;
-            $currentPos = $prevPos;
-        }
-
-        $result .= substr($text, $prevPos, $currentPos - $prevPos);
-
-        return $result;
-    }
-
-    public static function indent(string $text, int $level = 1): string
-    {
-        return self::prefixEachLine($text, /* $prefix */ self::indentationForLevel($level));
-    }
-
-    private static function indentationForLevel(int $level): string
-    {
-        return str_repeat(self::INDENTATION, $level);
-    }
 
     public static function ensureMaxLength(string $text, int $maxLength): string
     {

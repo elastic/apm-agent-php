@@ -37,6 +37,14 @@ abstract class ExecutionSegmentData extends EventData implements ExecutionSegmen
     /** @var string */
     protected $type;
 
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return array_merge(parent::propertiesExcludedFromLog(), ['tracer']);
+    }
+
     public function getId(): string
     {
         return $this->id;

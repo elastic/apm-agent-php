@@ -4,17 +4,17 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
-use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\Args;
-use Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
+use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use PHPUnit\Framework\TestCase;
 
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
@@ -23,7 +23,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 
     /**
      * @return iterable<array<mixed>>
-     * @phpstan-return iterable<array{?AgentConfigSetterBase, Args}>
+     * @phpstan-return iterable<array{?AgentConfigSetter, Args}>
      */
     public function dataProviderForTestVariousCombinations(): iterable
     {
@@ -64,10 +64,10 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     /**
      * @dataProvider dataProviderForTestVariousCombinations
      *
-     * @param AgentConfigSetterBase|null $configSetter
-     * @param Args                       $testArgs
+     * @param AgentConfigSetter|null $configSetter
+     * @param Args                   $testArgs
      */
-    public function testVariousCombinations(?AgentConfigSetterBase $configSetter, Args $testArgs): void
+    public function testVariousCombinations(?AgentConfigSetter $configSetter, Args $testArgs): void
     {
         if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
             self::assertTrue(true);

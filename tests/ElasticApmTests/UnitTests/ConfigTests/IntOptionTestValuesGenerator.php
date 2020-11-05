@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\IntOptionParser;
-use Elastic\Apm\Impl\Config\NumericOptionParserBase;
-use Elastic\Apm\Tests\Util\RandomUtilForTests;
+use Elastic\Apm\Impl\Config\NumericOptionParser;
+use ElasticApmTests\Util\RandomUtilForTests;
 
 /**
  * @extends NumericOptionTestValuesGeneratorBase<int>
@@ -24,7 +24,7 @@ class IntOptionTestValuesGenerator extends NumericOptionTestValuesGeneratorBase
     /**
      * @return IntOptionParser
      */
-    protected function optionParser(): NumericOptionParserBase
+    protected function optionParser(): NumericOptionParser
     {
         return $this->optionParser;
     }

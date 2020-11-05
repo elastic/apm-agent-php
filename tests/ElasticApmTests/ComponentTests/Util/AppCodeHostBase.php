@@ -1,17 +1,20 @@
 <?php
 
+/** @noinspection PhpUnhandledExceptionInspection */
+
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 use Throwable;
 
-abstract class AppCodeHostBase extends CliProcessBase
+abstract class AppCodeHostBase extends SpawnedProcessBase
 {
     /** @var Logger */
     private $logger;
@@ -44,7 +47,7 @@ abstract class AppCodeHostBase extends CliProcessBase
     public static function run(?string &$topLevelCodeId): void
     {
         self::runSkeleton(
-            function (CliProcessBase $thisObjArg) use (&$topLevelCodeId): void {
+            function (SpawnedProcessBase $thisObjArg) use (&$topLevelCodeId): void {
                 $topLevelCodeId = AmbientContext::testConfig()->sharedDataPerRequest->appTopLevelCodeId;
                 if (!is_null($topLevelCodeId)) {
                     return;
@@ -83,7 +86,7 @@ abstract class AppCodeHostBase extends CliProcessBase
         TestAssertUtil::assertThat(
             !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass)
             && !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
 
         try {
@@ -100,7 +103,7 @@ abstract class AppCodeHostBase extends CliProcessBase
             }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Call to application code exited by exception', ['throwable' => $throwable] + $logCtx);
+            && $loggerProxy->logThrowable($throwable, 'Call to application code exited by exception', $logCtx);
             throw new WrappedAppCodeException($throwable);
         }
 

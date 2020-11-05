@@ -8,6 +8,9 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\Log\LogConsts;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 
@@ -16,7 +19,7 @@ use Elastic\Apm\SpanInterface;
  *
  * @internal
  */
-abstract class NoopExecutionSegment implements ExecutionSegmentInterface
+abstract class NoopExecutionSegment implements ExecutionSegmentInterface, LoggableInterface
 {
     /** @var string */
     public const ID = '0000000000000000';
@@ -111,8 +114,8 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface
     {
     }
 
-    public function __toString(): string
+    public function toLog(LogStreamInterface $stream): void
     {
-        return DbgUtil::fqToShortClassName(get_class($this));
+        $stream->toLogAs([LogConsts::TYPE_KEY => DbgUtil::fqToShortClassName(get_class($this))]);
     }
 }

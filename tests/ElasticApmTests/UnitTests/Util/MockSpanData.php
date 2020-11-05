@@ -2,18 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\Impl\Util\TimeUtil;
 
 final class MockSpanData extends SpanData
 {
     use MockExecutionSegmentDataTrait;
 
     /**
-     * @param MockSpanData[] $childSpans
+     * @param MockSpanData[]        $childSpans
      * @param MockTransactionData[] $childTransactions
      */
     public function __construct(array $childSpans = [], array $childTransactions = [])
@@ -25,7 +24,6 @@ final class MockSpanData extends SpanData
     {
         $this->setTraceId($transaction->getTraceId());
         $this->setTransactionId($transaction->getId());
-        $this->deriveStartOffsetFrom($transaction);
     }
 
     public function setParentId(string $parentId): void
@@ -48,18 +46,5 @@ final class MockSpanData extends SpanData
             $result += $child->getTreeSpansCount();
         }
         return $result;
-    }
-
-    public function setStart(float $offsetFromTransactionStart): void
-    {
-        $this->start = $offsetFromTransactionStart;
-    }
-
-    public function deriveStartOffsetFrom(TransactionData $transaction): void
-    {
-        $this->start = TimeUtil::microsecondsToMilliseconds($this->getTimestamp() - $transaction->getTimestamp());
-        foreach ($this->childSpans as $child) {
-            $child->deriveStartOffsetFrom($transaction);
-        }
     }
 }

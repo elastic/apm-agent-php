@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util;
+namespace ElasticApmTests\Util;
 
 use Ds\Queue;
 use Ds\Set;
 use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\ComponentTests\Util\TempDisableFailingAssertions;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\ComponentTests\Util\TempDisableFailingAssertions;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -34,6 +35,8 @@ class TestCaseBase extends TestCase
      */
     public function __construct($name = null, array $data = [], $dataName = '')
     {
+        LoggingSubsystem::$isInTestingContext = true;
+
         parent::__construct($name, $data, $dataName);
     }
 
@@ -106,12 +109,6 @@ class TestCaseBase extends TestCase
                 self::assertArrayHasKey($span->getParentId(), $idToSpan, 'count($idToSpan): ' . count($idToSpan));
                 self::assertTimedEventIsNested($span, $idToSpan[$span->getParentId()]);
             }
-
-            self::assertLessThanOrEqualDuration($span->getStart() + $span->getDuration(), $transaction->getDuration());
-            self::assertEqualTimestamp(
-                $transaction->getTimestamp() + TimeUtil::millisecondsToMicroseconds((float)($span->getStart())),
-                $span->getTimestamp()
-            );
         }
 
         if (TempDisableFailingAssertions::$shouldDisableFailingAssertions) {
@@ -209,8 +206,7 @@ class TestCaseBase extends TestCase
         }
         self::assertNotNull(
             $rootTransaction,
-            'Root transaction not found.'
-            . ' idToTransaction: ' . DbgUtil::formatValue($idToTransaction)
+            'Root transaction not found. ' . LoggableToString::convert(['idToTransaction' => $idToTransaction])
         );
         return $rootTransaction;
     }
@@ -342,5 +338,68 @@ class TestCaseBase extends TestCase
         }
 
         static::assertThat(null, new ConstraintException($class), $message);
+    }
+
+    /**
+     * @param array<mixed> $subSet
+     * @param array<mixed> $largerSet
+     */
+    public static function assertListArrayIsSubsetOf(array $subSet, array $largerSet): void
+    {
+        self::assertTrue(
+            count(array_intersect($subSet, $largerSet)) === count($subSet),
+            LoggableToString::convert(
+                [
+                    'array_diff'             => array_diff($subSet, $largerSet),
+                    'count(array_intersect)' => count(array_intersect($subSet, $largerSet)),
+                    'count($subSet)'         => count($subSet),
+                    'array_intersect'        => array_intersect($subSet, $largerSet),
+                    '$subSet'                => $subSet,
+                    '$largerSet'             => $largerSet,
+                ]
+            )
+        );
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertSameEx($expected, $actual, string $message = ''): void
+    {
+        /**
+         * @param mixed $value
+         *
+         * @return bool
+         */
+        $isNumeric = function ($value): bool {
+            return is_float($value) || is_int($value);
+        };
+        if ($isNumeric($expected) && $isNumeric($actual) && (is_float($expected) !== is_float($actual) )) {
+            self::assertSame(floatval($expected), floatval($actual), $message);
+        } else {
+            self::assertSame($expected, $actual, $message);
+        }
+    }
+
+    /**
+     * @param array<mixed, mixed> $subSet
+     * @param array<mixed, mixed> $largerSet
+     */
+    public static function assertMapArrayIsSubsetOf(array $subSet, array $largerSet): void
+    {
+        foreach ($subSet as $key => $value) {
+            $ctx = LoggableToString::convert(
+                [
+                    '$key'             => $key,
+                    '$value'           => $value,
+                    '$largerSet[$key]' => $largerSet[$key],
+                    '$subSet'          => $subSet,
+                    '$largerSet'       => $largerSet,
+                ]
+            );
+            self::assertArrayHasKey($key, $largerSet, $ctx);
+            self::assertSameEx($value, $largerSet[$key], $ctx);
+        }
     }
 }

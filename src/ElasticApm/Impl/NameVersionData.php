@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class NameVersionData extends EventData implements NameVersionDataInterface
+class NameVersionData extends EventData implements NameVersionDataInterface, LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var string|null */
     protected $name;
 
@@ -36,22 +38,5 @@ class NameVersionData extends EventData implements NameVersionDataInterface
     public function version(): ?string
     {
         return $this->version;
-    }
-
-    public static function dataToString(?NameVersionDataInterface $data, ?string $type = null): string
-    {
-        if (is_null($data)) {
-            return DbgUtil::NULL_AS_STRING;
-        }
-
-        $builder = new ObjectToStringBuilder($type);
-        $builder->add('name', $data->name());
-        $builder->add('version', $data->version());
-        return $builder->build();
-    }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this);
     }
 }

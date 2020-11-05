@@ -4,19 +4,15 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @implements OptionParserInterface<string>
+ * @extends OptionParser<string>
  */
-final class StringOptionParser implements OptionParserInterface
+final class StringOptionParser extends OptionParser
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /**
      * @param string $rawValue
      *

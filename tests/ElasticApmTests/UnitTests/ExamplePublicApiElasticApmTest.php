@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\UnitTests\Util\ArrayTestUtil;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\ArrayTestUtil;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 use Elastic\Apm\TransactionDataInterface;
 
 class ExamplePublicApiElasticApmTest extends UnitTestCaseBase

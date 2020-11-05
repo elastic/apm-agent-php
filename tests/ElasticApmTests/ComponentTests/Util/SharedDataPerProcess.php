@@ -2,14 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-
-final class SharedDataPerProcess extends SharedDataBase
+final class SharedDataPerProcess extends SharedData
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /** @var int|null */
     public $resourcesCleanerPort = null;
 

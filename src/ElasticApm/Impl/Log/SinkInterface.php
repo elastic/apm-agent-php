@@ -19,6 +19,7 @@ interface SinkInterface
      * @param string                      $srcCodeFile
      * @param int                         $srcCodeLine
      * @param string                      $srcCodeFunc
+     * @param bool|null                   $includeStacktrace
      * @param int                         $numberOfStackFramesToSkip
      */
     public function consume(
@@ -29,6 +30,7 @@ interface SinkInterface
         string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc,
+        ?bool $includeStacktrace,
         int $numberOfStackFramesToSkip
     ): void;
 }

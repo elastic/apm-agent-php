@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;

@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest;
+namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-use Elastic\Apm\Tests\Util\Deserialization\DeserializableDataObjectTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use ElasticApmTests\Util\Deserialization\DeserializableDataObjectTrait;
 
-final class Args
+final class Args implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
     use DeserializableDataObjectTrait;
+    use LoggableTrait;
 
     /** @var int */
     public $variantIndex;

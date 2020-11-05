@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
 {
@@ -73,14 +73,6 @@ class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
         // Assert
         $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertGreaterThanOrEqual($beforeBeginSpan, $reportedSpan->getTimestamp());
-        $this->assertGreaterThanOrEqual(
-            self::calcDuration($afterBeginTransaction, $beforeBeginSpan),
-            $reportedSpan->getStart()
-        );
-        $this->assertLessThanOrEqual(
-            self::calcDuration($beforeBeginTransaction, $afterBeginSpan),
-            $reportedSpan->getStart()
-        );
         $this->assertGreaterThanOrEqual(
             self::calcDuration($afterBeginSpan, $beforeEnd),
             $reportedSpan->getDuration()

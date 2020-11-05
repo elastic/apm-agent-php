@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use JsonSerializable;
 
 /**
@@ -14,8 +13,10 @@ use JsonSerializable;
  *
  * @internal
  */
-class ServiceData extends EventData implements ServiceDataInterface, JsonSerializable
+class ServiceData extends EventData implements ServiceDataInterface, JsonSerializable, LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var string|null */
     protected $name = null;
 
@@ -91,22 +92,5 @@ class ServiceData extends EventData implements ServiceDataInterface, JsonSeriali
         }
 
         return parent::convertPropertyValueToData($propValue);
-    }
-
-    public static function dataToString(ServiceDataInterface $data, string $type): string
-    {
-        $builder = new ObjectToStringBuilder($type);
-        $builder->add('name', $data->name());
-        $builder->add('version', $data->version());
-        $builder->add('environment', $data->environment());
-        $builder->add('framework', $data->framework());
-        $builder->add('language', $data->language());
-        $builder->add('runtime', $data->runtime());
-        return $builder->build();
-    }
-
-    public function __toString(): string
-    {
-        return self::dataToString($this, DbgUtil::fqToShortClassName(get_class($this)));
     }
 }

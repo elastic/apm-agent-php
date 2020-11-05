@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use RuntimeException;
 
@@ -16,8 +15,6 @@ use RuntimeException;
  */
 trait SnapshotTrait
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /** @var array<string, mixed> */
     private $optNameToParsedValue;
 

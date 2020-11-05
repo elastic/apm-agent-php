@@ -7,16 +7,19 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
-use Elastic\Apm\Impl\MetadataInterface;
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class Registration
+final class Registration implements LoggableInterface
 {
+    /** @var callable */
+    public $factory;
+
     /** @var int */
     private $dbgPluginIndex;
 
@@ -26,9 +29,6 @@ final class Registration
     /** @var string */
     private $dbgInterceptedCallDesc;
 
-    /** @var callable */
-    public $factory;
-
     /**
      * @param int      $dbgPluginIndex
      * @param string   $dbgPluginDesc
@@ -37,6 +37,7 @@ final class Registration
      *
      * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
      *
+     * @see           InterceptedCallTrackerInterface
      */
     public function __construct(
         int $dbgPluginIndex,
@@ -50,20 +51,16 @@ final class Registration
         $this->factory = $interceptedCallTrackerFactory;
     }
 
-    public function __toString(): string
+    public function toLog(LogStreamInterface $stream): void
     {
-        $builder = new ObjectToStringBuilder();
-
-        $builder->add(
-            'plugin',
-            (new ObjectToStringBuilder())
-                ->add('index', $this->dbgPluginIndex)
-                ->add('description', $this->dbgPluginDesc)
-                ->build()
+        $stream->toLogAs(
+            [
+                'interceptedCallDescription' => $this->dbgInterceptedCallDesc,
+                'plugin'                     => [
+                    'index'       => $this->dbgPluginIndex,
+                    'description' => $this->dbgPluginDesc,
+                ],
+            ]
         );
-
-        $builder->add('interceptedCallDescription', $this->dbgInterceptedCallDesc);
-
-        return $builder->build();
     }
 }

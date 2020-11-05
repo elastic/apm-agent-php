@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\DurationOptionMetadata;
@@ -12,29 +12,30 @@ use Elastic\Apm\Impl\Config\EnumOptionParser;
 use Elastic\Apm\Impl\Config\FloatOptionMetadata;
 use Elastic\Apm\Impl\Config\FloatOptionParser;
 use Elastic\Apm\Impl\Config\IntOptionParser;
-use Elastic\Apm\Impl\Config\OptionMetadataInterface;
-use Elastic\Apm\Impl\Config\OptionParserInterface;
+use Elastic\Apm\Impl\Config\OptionMetadata;
+use Elastic\Apm\Impl\Config\OptionParser;
 use Elastic\Apm\Impl\Config\ParseException;
 use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\StringOptionParser;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\IterableUtilForTests;
-use Elastic\Apm\Tests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
-use Elastic\Apm\Tests\ComponentTests\Util\CustomOptionParser;
-use Elastic\Apm\Tests\ComponentTests\Util\TestConfigSnapshot;
+use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
+use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
+use ElasticApmTests\ComponentTests\Util\TestConfigSnapshot;
+use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 use SebastianBergmann\GlobalState\Snapshot;
 
 class VariousOptionsParsingTest extends TestCaseBase
 {
     /**
-     * @param OptionMetadataInterface<mixed> $optMeta
+     * @param OptionMetadata<mixed> $optMeta
      *
      * @return OptionTestValuesGeneratorInterface<mixed>
      */
     private static function selectTestValuesGenerator(
-        OptionMetadataInterface $optMeta
+        OptionMetadata $optMeta
     ): OptionTestValuesGeneratorInterface {
         $optionParser = $optMeta->parser();
         if ($optionParser instanceof DurationOptionParser) {
@@ -57,9 +58,9 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @return array<string, OptionMetadataInterface>
+     * @return array<string, OptionMetadata>
      *
-     * @phpstan-return array<string, OptionMetadataInterface<mixed>>
+     * @phpstan-return array<string, OptionMetadata<mixed>>
      */
     private function additionalOptionMetas(): array
     {
@@ -113,30 +114,30 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @return iterable<array{string, OptionMetadataInterface}>
+     * @return iterable<array{string, OptionMetadata}>
      *
-     * @phpstan-return iterable<array{string, OptionMetadataInterface<mixed>}>
+     * @phpstan-return iterable<array{string, OptionMetadata<mixed>}>
      */
     public function allOptionsMetadataProvider(): iterable
     {
         foreach (self::snapshotClassToOptionsMeta() as $optionsMeta) {
             foreach ($optionsMeta as $optMeta) {
                 if (!$optMeta->parser() instanceof CustomOptionParser) {
-                    yield [DbgUtil::formatValue($optMeta), $optMeta];
+                    yield [LoggableToString::convert($optMeta), $optMeta];
                 }
             }
         }
     }
 
     /**
-     * @return iterable<array{string, OptionMetadataInterface}>
+     * @return iterable<array{string, OptionMetadata}>
      *
-     * @phpstan-return iterable<array{string, OptionMetadataInterface<mixed>}>
+     * @phpstan-return iterable<array{string, OptionMetadata<mixed>}>
      */
     public function allOptionsMetadataWithPossibleInvalidRawValuesProvider(): iterable
     {
         foreach ($this->allOptionsMetadataProvider() as $optMetaDescAndDataPair) {
-            /** @var OptionMetadataInterface<mixed> $optMeta */
+            /** @var OptionMetadata<mixed> $optMeta */
             $optMeta = $optMetaDescAndDataPair[1];
             if (!IterableUtilForTests::isEmpty(self::selectTestValuesGenerator($optMeta)->invalidRawValues())) {
                 yield $optMetaDescAndDataPair;
@@ -163,11 +164,11 @@ class VariousOptionsParsingTest extends TestCaseBase
 
     /**
      * @param OptionTestValuesGeneratorInterface<mixed> $testValuesGenerator
-     * @param OptionParserInterface<mixed>              $optParser
+     * @param OptionParser<mixed>                       $optParser
      */
     public static function parseInvalidValueTestImpl(
         OptionTestValuesGeneratorInterface $testValuesGenerator,
-        OptionParserInterface $optParser
+        OptionParser $optParser
     ): void {
         foreach ($testValuesGenerator->invalidRawValues() as $invalidRawValue) {
             self::assertThrows(
@@ -175,8 +176,7 @@ class VariousOptionsParsingTest extends TestCaseBase
                 function () use ($optParser, $invalidRawValue): void {
                     Parser::parseOptionRawValue($invalidRawValue, $optParser);
                 },
-                '$optParser: ' . DbgUtil::formatValue($optParser) . '.'
-                . ' $invalidRawValue: ' . $invalidRawValue . '.'
+                LoggableToString::convert(['optParser' => $optParser, 'invalidRawValue' => $invalidRawValue])
             );
         }
     }
@@ -184,37 +184,35 @@ class VariousOptionsParsingTest extends TestCaseBase
     /**
      * @dataProvider allOptionsMetadataWithPossibleInvalidRawValuesProvider
      *
-     * @param string                         $optMetaDbgDesc
-     * @param OptionMetadataInterface<mixed> $optMeta
+     * @param string                $optMetaDbgDesc
+     * @param OptionMetadata<mixed> $optMeta
      *
      * @noinspection PhpUnusedParameterInspection
      */
-    public function testParseInvalidValue(string $optMetaDbgDesc, OptionMetadataInterface $optMeta): void
+    public function testParseInvalidValue(string $optMetaDbgDesc, OptionMetadata $optMeta): void
     {
         self::parseInvalidValueTestImpl(self::selectTestValuesGenerator($optMeta), $optMeta->parser());
     }
 
     /**
      * @param OptionTestValuesGeneratorInterface<mixed> $testValuesGenerator
-     * @param OptionParserInterface<mixed>              $optParser
+     * @param OptionParser<mixed>                       $optParser
      */
     public static function parseValidValueTestImpl(
         OptionTestValuesGeneratorInterface $testValuesGenerator,
-        OptionParserInterface $optParser
+        OptionParser $optParser
     ): void {
         /**
-         * @param mixed $expectedParsedValue
-         * @param mixed $actualParsedValue
+         * @param mixed $value
          *
-         * @return string
+         * @return mixed
          */
-        $displayFloatInFull = function ($expectedParsedValue, $actualParsedValue): string {
-            if (!is_float($actualParsedValue)) {
-                return '';
+        $valueWithDetails = function ($value) {
+            if (!is_float($value)) {
+                return $value;
             }
 
-            return '$expectedParsedValue: ' . number_format($expectedParsedValue) . '.'
-                   . ' $actualParsedValue: ' . number_format($actualParsedValue) . '.';
+            return ['$value' => $value, 'number_format($value)' => number_format($value)];
         };
 
         /** @var OptionTestValidValue<mixed> $validValueData */
@@ -223,9 +221,14 @@ class VariousOptionsParsingTest extends TestCaseBase
             self::assertSame(
                 $validValueData->parsedValue,
                 $actualParsedValue,
-                '$optParser: ' . DbgUtil::formatValue($optParser) . '.'
-                . ' $validValueData: `' . DbgUtil::formatValue($validValueData) . '\'.'
-                . $displayFloatInFull($validValueData->parsedValue, $actualParsedValue)
+                LoggableToString::convert(
+                    [
+                        '$optParser'                   => $optParser,
+                        '$validValueData'              => $validValueData,
+                        '$validValueData->parsedValue' => $valueWithDetails($validValueData->parsedValue),
+                        '$actualParsedValue'           => $valueWithDetails($actualParsedValue),
+                    ]
+                )
             );
         }
     }
@@ -233,12 +236,12 @@ class VariousOptionsParsingTest extends TestCaseBase
     /**
      * @dataProvider   allOptionsMetadataProvider
      *
-     * @param string                         $optMetaDbgDesc
-     * @param OptionMetadataInterface<mixed> $optMeta
+     * @param string                $optMetaDbgDesc
+     * @param OptionMetadata<mixed> $optMeta
      *
      * @noinspection   PhpUnusedParameterInspection
      */
-    public function testParseValidValue(string $optMetaDbgDesc, OptionMetadataInterface $optMeta): void
+    public function testParseValidValue(string $optMetaDbgDesc, OptionMetadata $optMeta): void
     {
         self::parseValidValueTestImpl(self::selectTestValuesGenerator($optMeta), $optMeta->parser());
     }

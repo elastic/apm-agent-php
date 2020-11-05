@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 error_reporting(E_ALL | E_STRICT);
 
-use Elastic\Apm\Tests\TestsRootDir;
+use ElasticApmTests\TestsRootDir;
 
 // Ensure that composer has installed all dependencies
 if (!file_exists(dirname(__DIR__) . '/composer.lock')) {

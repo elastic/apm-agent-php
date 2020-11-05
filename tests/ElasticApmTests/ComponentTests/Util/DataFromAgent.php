@@ -2,28 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\TestsSharedCode\EventsFromAgent;
-use Elastic\Apm\Tests\Util\Deserialization\SerializedEventSinkTrait;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
-use Elastic\Apm\Tests\Util\TestCaseBase;
-use Elastic\Apm\Tests\Util\ValidationUtil;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
+use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TextUtilForTests;
+use ElasticApmTests\Util\ValidationUtil;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
-final class DataFromAgent
+final class DataFromAgent implements LoggableInterface
 {
     use SerializedEventSinkTrait;
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var IntakeApiRequest[] */
     public $intakeApiRequests = [];
@@ -130,7 +131,7 @@ final class DataFromAgent
                 ['bodyLine' => $bodyLine]
             );
 
-            $decodedJson = json_decode($bodyLine, /* assoc */ true);
+            $decodedJson = JsonUtil::decode($bodyLine, /* asAssocArray */ true);
             TestCase::assertCount(
                 1,
                 $decodedJson,
@@ -168,13 +169,9 @@ final class DataFromAgent
      */
     private static function decodedJsonToString(array $decodedJson): string
     {
-        $encodedJson = json_encode($decodedJson, JSON_PRETTY_PRINT);
-        if ($encodedJson === false) {
-            throw new RuntimeException(
-                'json_encode failed. json_last_error_msg(): ' . json_last_error_msg()
-            );
-        }
-        return $encodedJson;
+        // TODO: Sergey Kleyman: DataFromAgent::decodedJsonToString
+
+        return JsonUtil::encode($decodedJson, /* prettyPrint: */ true);
     }
 
     /**
@@ -270,7 +267,7 @@ final class DataFromAgent
         $currentPos = $prevPos;
         $textLen = strlen($text);
         for (; $currentPos != $textLen;) {
-            $endOfLineSeqLength = TextUtil::ifEndOfLineSeqGetLength($text, $textLen, $currentPos);
+            $endOfLineSeqLength = TextUtilForTests::ifEndOfLineSeqGetLength($text, $textLen, $currentPos);
             if ($endOfLineSeqLength === 0) {
                 ++$currentPos;
                 continue;

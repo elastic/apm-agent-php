@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
@@ -10,7 +10,7 @@ use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use Elastic\Apm\Tests\Util\TestCaseBase;
+use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
 class UnitTestCaseBase extends TestCaseBase

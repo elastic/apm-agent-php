@@ -4,11 +4,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Tests\UnitTests\Util\NotFoundException;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\NotFoundException;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class PublicApiTest extends UnitTestCaseBase
 {

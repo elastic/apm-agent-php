@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
-abstract class AgentConfigSetterBase
+abstract class AgentConfigSetter implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var array<string, string> */
     public $optionNameToValue = [];

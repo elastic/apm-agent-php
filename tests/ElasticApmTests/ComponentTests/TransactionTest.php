@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\TransactionDataInterface;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\HttpConsts;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\HttpConsts;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class TransactionTest extends ComponentTestCaseBase
 {

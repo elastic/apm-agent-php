@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Psr\Http\Message\ResponseInterface;
 use React\Http\Response;
 
@@ -32,7 +33,7 @@ trait HttpServerProcessTrait
                 'Content-Type' => 'application/json',
             ],
             // body:
-            json_encode(['message' => $message], JSON_PRETTY_PRINT)
+            JsonUtil::encode(['message' => $message], /* prettyPrint: */ true)
         );
     }
 }

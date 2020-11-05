@@ -4,11 +4,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Set;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -50,7 +51,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
 
         TestAssertUtil::assertThat(
             isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId),
-            strval(AmbientContext::testConfig())
+            LoggableToString::convert(AmbientContext::testConfig())
         );
     }
 

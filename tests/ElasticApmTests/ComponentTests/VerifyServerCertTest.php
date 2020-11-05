@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Tests\ComponentTests\Util\AgentConfigSetterBase;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class VerifyServerCertTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array<AgentConfigSetterBase|bool|null>>
+     * @return iterable<array<AgentConfigSetter|bool|null>>
      */
     public function configTestDataProvider(): iterable
     {
@@ -42,10 +42,10 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     /**
      * @dataProvider configTestDataProvider
      *
-     * @param AgentConfigSetterBase|null $configSetter
-     * @param bool|null                  $verifyServerCert
+     * @param AgentConfigSetter|null $configSetter
+     * @param bool|null              $verifyServerCert
      */
-    public function testConfig(?AgentConfigSetterBase $configSetter, ?bool $verifyServerCert): void
+    public function testConfig(?AgentConfigSetter $configSetter, ?bool $verifyServerCert): void
     {
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForConfigTest'])

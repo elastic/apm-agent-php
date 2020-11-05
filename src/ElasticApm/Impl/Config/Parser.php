@@ -30,21 +30,21 @@ final class Parser
 
     /**
      * @param string                       $rawValue
-     * @param OptionParserInterface<mixed> $optionParser
+     * @param OptionParser<mixed> $optionParser
      *
      * @return mixed
      *
      * @template       T
-     * @phpstan-param  OptionParserInterface<T> $optionParser
+     * @phpstan-param  OptionParser<T> $optionParser
      * @phpstan-return T
      */
-    public static function parseOptionRawValue(string $rawValue, OptionParserInterface $optionParser)
+    public static function parseOptionRawValue(string $rawValue, OptionParser $optionParser)
     {
         return $optionParser->parse(trim($rawValue));
     }
 
     /**
-     * @param array<string, OptionMetadataInterface<mixed>> $optNameToMeta
+     * @param array<string, OptionMetadata<mixed>> $optNameToMeta
      * @param RawSnapshotInterface                          $rawSnapshot
      *
      * @return array<string, mixed> Option name to parsed value
@@ -52,7 +52,7 @@ final class Parser
     public function parse(array $optNameToMeta, RawSnapshotInterface $rawSnapshot): array
     {
         $optNameToParsedValue = [];
-        /** @var OptionMetadataInterface<mixed> $optMeta */
+        /** @var OptionMetadata<mixed> $optMeta */
         foreach ($optNameToMeta as $optName => $optMeta) {
             $rawValue = $rawSnapshot->valueFor($optName);
             if (is_null($rawValue)) {

@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use PHPUnit\Framework\TestCase;
 
-final class TestProperties
+final class TestProperties implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var string */
     public $httpMethod = 'GET';
@@ -28,7 +29,7 @@ final class TestProperties
     /** @var ?string */
     public $transactionType = null;
 
-    /** @var AgentConfigSetterBase */
+    /** @var AgentConfigSetter */
     public $agentConfigSetter;
 
     /** @var SharedDataPerRequest */
@@ -114,13 +115,13 @@ final class TestProperties
         return ArrayUtil::getValueIfKeyExistsElse($optName, $this->agentConfigSetter->optionNameToValue, null);
     }
 
-    public function withAgentConfig(AgentConfigSetterBase $configSetter): self
+    public function withAgentConfig(AgentConfigSetter $configSetter): self
     {
         $this->agentConfigSetter = $configSetter;
         return $this;
     }
 
-    public function getAgentConfig(): AgentConfigSetterBase
+    public function getAgentConfig(): AgentConfigSetter
     {
         return $this->agentConfigSetter;
     }

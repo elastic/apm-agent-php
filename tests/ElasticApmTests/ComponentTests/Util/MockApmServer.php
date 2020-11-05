@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Map;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\RangeUtilForTests;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -178,7 +179,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
             // headers:
             ['Content-Type' => 'application/json'],
             // body:
-            json_encode([self::INTAKE_API_REQUESTS_JSON_KEY => $newData], JSON_PRETTY_PRINT)
+            JsonUtil::encode([self::INTAKE_API_REQUESTS_JSON_KEY => $newData], /* prettyPrint: */ true)
         );
     }
 
@@ -209,7 +210,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
                 'Content-Type' => 'application/json',
             ],
             // body:
-            json_encode(
+            JsonUtil::encode(
                 [
                     'accepted' => 0,
                     'errors'   => [
@@ -218,7 +219,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
                         ],
                     ],
                 ],
-                JSON_PRETTY_PRINT
+                /* prettyPrint: */ true
             )
         );
     }

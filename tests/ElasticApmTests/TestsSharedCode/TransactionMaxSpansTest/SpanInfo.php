@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\TestsSharedCode\TransactionMaxSpansTest;
+namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\SpanInterface;
 
-final class SpanInfo
+final class SpanInfo implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var SpanInterface */
     public $span;

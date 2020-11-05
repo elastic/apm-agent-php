@@ -16,9 +16,9 @@ final class AllOptionsMetadata
     use StaticClassTrait;
 
     /**
-     * @return array<string, OptionMetadataInterface> Option name to metadata
+     * @return array<string, OptionMetadata> Option name to metadata
      *
-     * @phpstan-return array<string, OptionMetadataInterface<mixed>> Option name to metadata
+     * @phpstan-return array<string, OptionMetadata<mixed>> Option name to metadata
      */
     public static function build(): array
     {

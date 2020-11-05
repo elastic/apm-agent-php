@@ -23,6 +23,7 @@ final class NoopLogSink implements SinkInterface
         string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc,
+        ?bool $includeStacktrace,
         int $numberOfStackFramesToSkip
     ): void {
     }

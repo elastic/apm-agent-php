@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -13,29 +11,27 @@ use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
  *
  * @template   T
  *
- * @implements OptionMetadataInterface<T>
+ * @extends    OptionMetadata<T>
  */
-abstract class NullableOptionMetadata implements OptionMetadataInterface
+abstract class NullableOptionMetadata extends OptionMetadata
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /**
-     * @var OptionParserInterface
-     * @phpstan-var OptionParserInterface<T>
+     * @var OptionParser
+     * @phpstan-var OptionParser<T>
      */
     private $parser;
 
     /**
-     * @param OptionParserInterface $parser
+     * @param OptionParser $parser
      *
-     * @phpstan-param OptionParserInterface<T> $parser
+     * @phpstan-param OptionParser<T> $parser
      */
-    public function __construct(OptionParserInterface $parser)
+    public function __construct(OptionParser $parser)
     {
         $this->parser = $parser;
     }
 
-    public function parser(): OptionParserInterface
+    public function parser(): OptionParser
     {
         return $this->parser;
     }

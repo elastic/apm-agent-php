@@ -23,9 +23,6 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
     /** @var StacktraceFrame[]|null */
     protected $stacktrace = null;
 
-    /** @var float */
-    protected $start;
-
     /** @var string|null */
     protected $subtype = null;
 
@@ -48,12 +45,6 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
     public function getStacktrace(): ?array
     {
         return $this->stacktrace;
-    }
-
-    /** @inheritDoc */
-    public function getStart(): float
-    {
-        return $this->start;
     }
 
     /** @inheritDoc */
@@ -83,8 +74,11 @@ class SpanData extends ExecutionSegmentData implements SpanDataInterface
         parent::serializeProperty($propKey, $propValue, /* ref */ $result);
     }
 
-    public function __toString(): string
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
     {
-        return $this->toStringExcludeProperties(['stacktrace']);
+        return array_merge(parent::propertiesExcludedFromLog(), ['stacktrace']);
     }
 }

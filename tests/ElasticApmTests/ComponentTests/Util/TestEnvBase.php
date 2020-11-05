@@ -4,23 +4,25 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
-use Elastic\Apm\Tests\Util\TestCaseBase;
 use Elastic\Apm\TransactionDataInterface;
+use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
@@ -29,9 +31,9 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
 
-abstract class TestEnvBase
+abstract class TestEnvBase implements LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     private const PORTS_RANGE_BEGIN = 50000;
     private const PORTS_RANGE_END = 60000;
@@ -222,16 +224,14 @@ abstract class TestEnvBase
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting HTTP server...');
 
+            $sharedDataPerProcessOptName = AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME;
+            $sharedDataPerProcess = $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort);
             TestProcessUtil::startBackgroundProcess(
                 $cmdLine,
                 self::inheritedEnvVars($keepElasticApmEnvVars)
                 + [
-                    TestConfigUtil::envVarNameForTestOption(
-                        AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
-                    ) => SerializationUtil::serializeAsJson(
-                        $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort),
-                        SharedDataPerProcess::class
-                    ),
+                    TestConfigUtil::envVarNameForTestOption($sharedDataPerProcessOptName) =>
+                        SerializationUtil::serializeAsJson($sharedDataPerProcess),
                 ]
                 + $additionalEnvVars
             );
@@ -442,7 +442,10 @@ abstract class TestEnvBase
                     $lastCheckedIndexBeforeUpdate = $lastCheckedNextIntakeApiRequestIndex;
                     $this->ensureLatestDataFromMockApmServer($timeBeforeRequestToApp);
                     $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
-                    if ($lastCheckedIndexBeforeUpdate === $lastCheckedNextIntakeApiRequestIndex) {
+                    if (
+                        !is_null($lastException)
+                        && ($lastCheckedIndexBeforeUpdate === $lastCheckedNextIntakeApiRequestIndex)
+                    ) {
                         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                         && $loggerProxy->log(
                             'No new data since the last check - there is no point in invoking $verifyFunc() again',
@@ -462,7 +465,7 @@ abstract class TestEnvBase
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log('Attempt ' . $numberOfAttempts . ' failed', ['ex' => $ex]);
+                    && $loggerProxy->logThrowable($ex, "Attempt $numberOfAttempts failed");
 
                     if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
                         $lastException = $ex;
@@ -657,7 +660,7 @@ abstract class TestEnvBase
             throw new RuntimeException('Received unexpected status code');
         }
 
-        $decodedBody = json_decode($response->getBody()->getContents(), /* assoc */ true);
+        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
 
         $requestsJson = $decodedBody[MockApmServer::INTAKE_API_REQUESTS_JSON_KEY];
         $newIntakeApiRequests = [];

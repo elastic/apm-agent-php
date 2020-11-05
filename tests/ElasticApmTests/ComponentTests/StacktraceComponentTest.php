@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests;
+namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
-use Elastic\Apm\Tests\TestsSharedCode\StacktraceTestSharedCode;
-use Elastic\Apm\Tests\ComponentTests\Util\ComponentTestCaseBase;
-use Elastic\Apm\Tests\ComponentTests\Util\DataFromAgent;
-use Elastic\Apm\Tests\ComponentTests\Util\TestProperties;
-use Elastic\Apm\Tests\ComponentTests\Util\TopLevelCodeId;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DataFromAgent;
+use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
+use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
 
 class StacktraceComponentTest extends ComponentTestCaseBase
 {
@@ -69,7 +69,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
                 self::assertSame('top_level_code_span_type', $span->getType());
                 $actualStacktrace = $span->getStacktrace();
                 self::assertNotNull($actualStacktrace);
-                self::assertCount(1, $actualStacktrace, DbgUtil::formatValue($actualStacktrace));
+                self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
                 /** @var string */
                 $expectedFileName = $span->getLabels()['top_level_code_span_end_file_name'];
                 self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);

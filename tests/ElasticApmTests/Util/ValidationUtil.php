@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util;
+namespace ElasticApmTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentDataInterface;
@@ -20,6 +20,7 @@ use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionDataInterface;
+use PHPUnit\Framework\TestCase;
 use Throwable;
 
 final class ValidationUtil
@@ -41,7 +42,7 @@ final class ValidationUtil
         }
 
         return new InvalidEventDataException(
-            ExceptionUtil::buildMessageWithStacktrace($msgStart, /* numberOfStackFramesToSkip */ 1),
+            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 1),
             $code,
             $previous
         );
@@ -299,16 +300,6 @@ final class ValidationUtil
         }
     }
 
-    /**
-     * @param mixed $start
-     *
-     * @return float
-     */
-    public static function assertValidSpanStart($start): float
-    {
-        return self::assertValidDuration($start);
-    }
-
     public static function assertValidSpanData(SpanDataInterface $span): void
     {
         self::assertValidExecutionSegmentData($span);
@@ -317,7 +308,6 @@ final class ValidationUtil
         if (!is_null($span->getStacktrace())) {
             self::assertValidStacktrace($span->getStacktrace());
         }
-        self::assertValidSpanStart($span->getStart());
         self::assertValidNullableKeywordString($span->getSubtype());
     }
 
@@ -368,18 +358,18 @@ final class ValidationUtil
         self::assertValidNullableKeywordString($serviceData->environment());
 
         self::assertValidNameVersionData($serviceData->agent());
-        assert(!is_null($serviceData->agent()));
+        TestCase::assertNotNull($serviceData->agent());
         self::assertThat($serviceData->agent()->name() === MetadataDiscoverer::AGENT_NAME);
         self::assertThat($serviceData->agent()->version() === ElasticApm::VERSION);
 
         self::assertValidNameVersionData($serviceData->framework());
 
         self::assertValidNameVersionData($serviceData->language());
-        assert(!is_null($serviceData->language()));
+        TestCase::assertNotNull($serviceData->language());
         self::assertThat($serviceData->language()->name() === MetadataDiscoverer::LANGUAGE_NAME);
 
         self::assertValidNameVersionData($serviceData->runtime());
-        assert(!is_null($serviceData->runtime()));
+        TestCase::assertNotNull($serviceData->runtime());
         self::assertThat($serviceData->runtime()->name() === MetadataDiscoverer::LANGUAGE_NAME);
         self::assertThat($serviceData->runtime()->version() === $serviceData->language()->version());
     }

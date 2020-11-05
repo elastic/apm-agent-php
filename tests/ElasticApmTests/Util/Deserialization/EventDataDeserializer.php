@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util\Deserialization;
+namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Throwable;
@@ -47,7 +47,7 @@ abstract class EventDataDeserializer
         }
 
         return new DeserializationException(
-            ExceptionUtil::buildMessageWithStacktrace($msgStart, /* numberOfStackFramesToSkip */ 1),
+            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 1),
             $code,
             $previous
         );

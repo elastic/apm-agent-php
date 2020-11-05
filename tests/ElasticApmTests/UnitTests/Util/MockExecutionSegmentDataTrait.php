@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use Elastic\Apm\Tests\Util\FloatLimits;
-use Elastic\Apm\Tests\Util\TestCaseBase;
+use ElasticApmTests\Util\FloatLimits;
+use ElasticApmTests\Util\TestCaseBase;
 
 trait MockExecutionSegmentDataTrait
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\UtilTests;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-use Elastic\Apm\Tests\Util\IterableUtilForTests;
-use Elastic\Apm\Tests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
 use PHPUnit\Framework\TestCase;
 
 class RangeUtilTest extends TestCase

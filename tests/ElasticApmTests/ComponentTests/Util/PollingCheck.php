@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Tests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 
 final class PollingCheck
 {
@@ -59,7 +59,7 @@ final class PollingCheck
         while (true) {
             ++$numberOfAttempts;
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Starting attempt ' . $numberOfAttempts . ' to checking if ' . $this->dbgDesc . '...');
+            && $loggerProxy->log('Starting attempt ' . $numberOfAttempts . ' to check if ' . $this->dbgDesc . '...');
             if ($check()) {
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(

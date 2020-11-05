@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\Config\RawSnapshotInterface;
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;

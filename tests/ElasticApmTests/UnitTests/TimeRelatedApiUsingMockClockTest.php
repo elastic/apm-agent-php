@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\TracerBuilder;
-use Elastic\Apm\Tests\UnitTests\Util\MockClock;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\MockClock;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
 {
@@ -58,8 +58,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         // Act
         $this->mockClock->fastForwardMicroseconds(987654321);
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
-        $expectedTxBeginToSpanBeginDuration = 112233.445;
-        $this->mockClock->fastForwardMilliseconds($expectedTxBeginToSpanBeginDuration);
+        $this->mockClock->fastForwardMilliseconds(112233.445);
         $expectedSpanTimestamp = $this->mockClock->getTimestamp();
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
         $expectedSpanDuration = 12345.678;
@@ -70,7 +69,6 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         // Assert
         $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expectedSpanTimestamp, $reportedSpan->getTimestamp());
-        $this->assertSame($expectedTxBeginToSpanBeginDuration, $reportedSpan->getStart());
         $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
     }
 

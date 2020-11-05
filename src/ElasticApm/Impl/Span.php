@@ -6,7 +6,6 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionInterface;
@@ -58,8 +57,6 @@ final class Span extends SpanData implements SpanInterface
 
         $this->parentSpan = $parentSpan;
         $this->parentId = $parentSpan === null ? $containingTransaction->getId() : $parentSpan->getId();
-
-        $this->start = TimeUtil::calcDuration($containingTransaction->getTimestamp(), $this->getTimestamp());
 
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
@@ -187,8 +184,14 @@ final class Span extends SpanData implements SpanInterface
         return $this->containingTransaction->isSampled() && (!$this->isDropped);
     }
 
-    public function __toString(): string
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
     {
-        return $this->toStringExcludeProperties(['containingTransaction', 'parentSpan', 'logger', 'stacktrace']);
+        return array_merge(
+            parent::propertiesExcludedFromLog(),
+            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace']
+        );
     }
 }

@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Tests\Util\LogSinkForTests;
+use ElasticApmTests\Util\LogSinkForTests;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class AmbientContext
@@ -58,7 +59,7 @@ final class AmbientContext
 
     public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
     {
-        assert(isset(self::$singletonInstance));
+        TestCase::assertTrue(isset(self::$singletonInstance));
         self::$singletonInstance->readAndApplyConfig($additionalConfigSource);
     }
 
@@ -75,21 +76,21 @@ final class AmbientContext
 
     public static function dbgProcessName(): string
     {
-        assert(isset(self::$singletonInstance));
+        TestCase::assertTrue(isset(self::$singletonInstance));
 
         return self::$singletonInstance->dbgProcessName;
     }
 
     public static function testConfig(): TestConfigSnapshot
     {
-        assert(isset(self::$singletonInstance));
+        TestCase::assertTrue(isset(self::$singletonInstance));
 
         return self::$singletonInstance->testConfig;
     }
 
     public static function loggerFactory(): LoggerFactory
     {
-        assert(isset(self::$singletonInstance));
+        TestCase::assertTrue(isset(self::$singletonInstance));
 
         return self::$singletonInstance->loggerFactory;
     }

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util;
+namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\TestOsUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -46,7 +46,7 @@ final class LogSinkForTests extends SinkBase
             print($formattedRecord . PHP_EOL);
         }
 
-        $recordText = TextUtil::prefixEachLine(
+        $recordText = TextUtilForTests::prefixEachLine(
             $formattedRecord,
             'Elastic APM PHP tests  [PID: ' . getmypid() . '] ' . $this->dbgProcessName . ' | '
         );

@@ -2,16 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
 use JsonSerializable;
 use RuntimeException;
 
-final class IntakeApiRequest implements JsonSerializable
+final class IntakeApiRequest implements JsonSerializable, LoggableInterface
 {
-    use ObjectToStringUsingPropertiesTrait;
+    use LoggableTrait;
 
     /** @var array<string, array<string>> */
     public $headers;

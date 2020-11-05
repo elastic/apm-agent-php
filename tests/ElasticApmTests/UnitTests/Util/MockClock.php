@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\ClockInterface;

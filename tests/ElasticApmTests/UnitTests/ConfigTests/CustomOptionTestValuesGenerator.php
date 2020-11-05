@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\Tests\Util\RangeUtilForTests;
-use Elastic\Apm\Tests\Util\IterableUtilForTests;
-use Elastic\Apm\Tests\Util\RandomUtilForTests;
-use Elastic\Apm\Tests\Util\TextUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\TextUtilForTests;
 
 /**
  * @implements OptionTestValuesGeneratorInterface<null>

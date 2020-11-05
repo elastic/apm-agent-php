@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\Tests\UnitTests\UtilTests\TimeDurationUnitsTest;
+use ElasticApmTests\UnitTests\UtilTests\TimeDurationUnitsTest;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.

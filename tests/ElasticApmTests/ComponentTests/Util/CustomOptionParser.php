@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\ComponentTests\Util;
+namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
-use Elastic\Apm\Impl\Config\OptionParserInterface;
+use Elastic\Apm\Impl\Config\OptionParser;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @template T
  *
- * @implements OptionParserInterface<T>
+ * @extends OptionParser<T>
  */
-final class CustomOptionParser implements OptionParserInterface
+final class CustomOptionParser extends OptionParser
 {
     /**
      * @var Closure(string): T

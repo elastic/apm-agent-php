@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests;
+namespace ElasticApmTests\UnitTests;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\Tests\Util\Deserialization\SerializationTestUtil;
-use Elastic\Apm\Tests\Util\Deserialization\ServerApiSchemaValidationException;
-use Elastic\Apm\Tests\Util\Deserialization\ServerApiSchemaValidator;
+use Elastic\Apm\Impl\Util\JsonUtil;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
+use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
 
 class ServerApiSchemaValidationTest extends UnitTestCaseBase
 {
@@ -112,7 +112,7 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
     ): void {
         $unknownPropertyName = 'dummy_property_added_to_corrupt_key';
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
-        $deserializedEventToCorrupt = SerializationTestUtil::deserializeJson($serializedEvent, /* asAssocArray */ true);
+        $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
 
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
         $this->assertArrayNotHasKey($unknownPropertyName, $parentJsonNode);
@@ -120,13 +120,8 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
 
         $this->assertThrows(
             ServerApiSchemaValidationException::class,
-            function () use ($validateSerializedEvent, $deserializedEventToCorrupt, $serializedEvent) {
-                $validateSerializedEvent(
-                    SerializationUtil::serializeAsJson(
-                        $deserializedEventToCorrupt,
-                        "Corrupted event based on: $serializedEvent"
-                    )
-                );
+            function () use ($validateSerializedEvent, $deserializedEventToCorrupt) {
+                $validateSerializedEvent(SerializationUtil::serializeAsJson($deserializedEventToCorrupt));
             },
             '' /* message */,
             function (ServerApiSchemaValidationException $ex) use ($unknownPropertyName, $unknownPropertyValue) {
@@ -181,19 +176,14 @@ class ServerApiSchemaValidationTest extends UnitTestCaseBase
         array $pathToElement,
         $wrongTypeValue
     ): void {
-        $deserializedEventToCorrupt = SerializationTestUtil::deserializeJson($serializedEvent, /* asAssocArray */ true);
+        $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
         $propToCorrupt = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToElement);
         $propToCorrupt = $wrongTypeValue;
 
         $this->assertThrows(
             ServerApiSchemaValidationException::class,
-            function () use ($validateSerializedEvent, $deserializedEventToCorrupt, $serializedEvent) {
-                $validateSerializedEvent(
-                    SerializationUtil::serializeAsJson(
-                        $deserializedEventToCorrupt,
-                        "Corrupted event based on: $serializedEvent"
-                    )
-                );
+            function () use ($validateSerializedEvent, $deserializedEventToCorrupt) {
+                $validateSerializedEvent(SerializationUtil::serializeAsJson($deserializedEventToCorrupt));
             },
             '' /* message */,
             function (ServerApiSchemaValidationException $ex) use ($pathToElement) {

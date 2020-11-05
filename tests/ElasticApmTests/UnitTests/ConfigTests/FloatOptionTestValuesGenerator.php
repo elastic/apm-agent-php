@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Config\FloatOptionParser;
-use Elastic\Apm\Impl\Config\NumericOptionParserBase;
+use Elastic\Apm\Impl\Config\NumericOptionParser;
 use Elastic\Apm\Impl\Util\NumericUtil;
-use Elastic\Apm\Tests\Util\FloatLimits;
-use Elastic\Apm\Tests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\FloatLimits;
+use ElasticApmTests\Util\RandomUtilForTests;
 use IteratorIterator;
 
 /**
@@ -28,7 +28,7 @@ class FloatOptionTestValuesGenerator extends NumericOptionTestValuesGeneratorBas
     /**
      * @return FloatOptionParser
      */
-    protected function optionParser(): NumericOptionParserBase
+    protected function optionParser(): NumericOptionParser
     {
         return $this->optionParser;
     }

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -13,12 +11,10 @@ use Elastic\Apm\Impl\Util\ObjectToStringUsingPropertiesTrait;
  *
  * @template   T
  *
- * @implements OptionParserInterface<T>
+ * @extends    OptionParser<T>
  */
-abstract class NumericOptionParserBase implements OptionParserInterface
+abstract class NumericOptionParser extends OptionParser
 {
-    use ObjectToStringUsingPropertiesTrait;
-
     /**
      * @var int|float|null
      * @phpstan-var T|null

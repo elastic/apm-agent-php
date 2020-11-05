@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util\Deserialization;
+namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
 use Elastic\Apm\Impl\MetadataInterface;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\Tests\Util\ValidationUtil;
+use ElasticApmTests\Util\ValidationUtil;
 use Elastic\Apm\TransactionDataInterface;
 
 trait SerializedEventSinkTrait
@@ -36,7 +37,7 @@ trait SerializedEventSinkTrait
         Closure $assertValid
     ) {
         $validateAgainstSchema($serializedData);
-        $deserializedJson = SerializationTestUtil::deserializeJson($serializedData, /* asAssocArray */ true);
+        $deserializedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
         $deserializedData = $deserialize($deserializedJson);
         $assertValid($deserializedData);
         return $deserializedData;
