@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -xe
 
-## Location for the generated files
-mkdir -p /app/build
+## Location for the generated test report files
+BUILD_FOLDER=/app/build
+mkdir -p ${BUILD_FOLDER}
 
 ## This make runs PHPT
 make test
@@ -18,7 +19,7 @@ make test
 ret=$?
 
 ## Manipulate JUnit report without multiple testsuites entries.
-for file in /app/build/*-unit-tests-junit.xml; do
+for file in "${BUILD_FOLDER}"/*-unit-tests-junit.xml; do
     sed -i.bck ':begin;$!N;s#</testsuites>\n<testsuites>##;tbegin;P;D' "${file}"
 done
 

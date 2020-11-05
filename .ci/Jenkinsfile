@@ -123,7 +123,7 @@ pipeline {
                 }
                 post {
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml,${BASE_DIR}/build/*unit-tests-junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
                   }
                 }
               }
