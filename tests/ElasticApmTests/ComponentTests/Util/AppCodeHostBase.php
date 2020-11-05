@@ -6,6 +6,7 @@ namespace Elastic\Apm\Tests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Tests\Util\LogCategoryForTests;
 use RuntimeException;
 use Throwable;
@@ -17,9 +18,10 @@ abstract class AppCodeHostBase extends CliProcessBase
 
     public function __construct()
     {
-        if (!extension_loaded('elastic_apm')) {
+        if (!ElasticApmExtensionUtil::isLoaded()) {
             throw new RuntimeException(
-                'Environment hosting component tests application code should have elastic_apm extension loaded.'
+                'Environment hosting component tests application code should have '
+                . ElasticApmExtensionUtil::EXTENSION_NAME . ' extension loaded.'
                 . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
             );
         }

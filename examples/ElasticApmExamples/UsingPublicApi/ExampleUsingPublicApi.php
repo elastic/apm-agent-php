@@ -9,7 +9,6 @@ namespace Elastic\Apm\Examples\UsingPublicApi;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Tests\UnitTests\Util\MockEventSink;
 use Elastic\Apm\Tests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\TransactionInterface;
 
 class ExampleUsingPublicApi extends UnitTestCaseBase
 {
