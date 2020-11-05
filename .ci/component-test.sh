@@ -8,15 +8,10 @@ echo 'elastic_apm.bootstrap_php_part_file=/app/src/bootstrap_php_part.php' >> ${
 php -m
 cd /app
 
-##
-## Validate the installation works as expected with composer
-##
-
 # Install 3rd party dependencies
 composer install
 
 # Start syslog
-
 if which syslogd; then
     syslogd
 else
@@ -28,10 +23,8 @@ else
     fi
 fi
 
-
 # Run component tests
-
-if ! composer run-script static_check_and_run_tests ; then
+if ! composer run-script run_component_tests ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
 
     if [ -f "/var/log/syslog" ]; then
