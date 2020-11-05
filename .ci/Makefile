@@ -66,15 +66,6 @@ component-test: prepare  ## Run component-test
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/component-test.sh'
 
-.PHONY: unit-test
-unit-test: prepare  ## Run unit-test
-	docker run -t --rm \
-		-u $(CURRENT_UID):$(CURRENT_GID) \
-		-v $(PWD):/app \
-		-w /app \
-		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		sh -c '/app/.ci/unit-test.sh'
-
 .PHONY: loop
 loop:  ## Bump the version given VERSION
 	.ci/loop.sh "$(LOOPS)" "${DOCKERFILE}" "${PHP_VERSION}"
