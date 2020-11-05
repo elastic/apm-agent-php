@@ -18,6 +18,10 @@
         <ini name="memory_limit" value="2G" />
     </php>
 
+    <logging>
+        <log type="junit" target="build/phpunit-component-junit.xml"/>
+    </logging>
+
     <testsuites>
         <testsuite name="Tests">
             <directory>./tests/ElasticApmTests/ComponentTests</directory>
@@ -31,7 +35,4 @@
     <extensions>
         <extension class="\Elastic\Apm\Tests\ComponentTests\Util\PhpUnitExtension" />
     </extensions>
-    <logging>
-        <log type="junit" target="./_GENERATED/COMPONENT_TESTS/log_as_junit.xml"/>
-    </logging>
 </phpunit>

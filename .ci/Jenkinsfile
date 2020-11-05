@@ -123,7 +123,7 @@ pipeline {
                 }
                 post {
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml,${BASE_DIR}/phpunit-junit.xml")
                   }
                 }
               }
@@ -147,7 +147,7 @@ pipeline {
                 }
                 post {
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
                   }
                 }
               }
@@ -231,7 +231,7 @@ pipeline {
                 }
                 post {
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
                   }
                 }
               }
@@ -330,7 +330,7 @@ pipeline {
                     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
                   }
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
                   }
                 }
               }
@@ -386,7 +386,7 @@ pipeline {
                     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published with some test failures in the installers.", body: "Please review the signed and released binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
                   }
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/**/log_as_junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
                   }
                 }
               }

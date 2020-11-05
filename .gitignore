@@ -5,9 +5,6 @@ docker/wordpress/data/ext
 # Mac
 .DS_Store
 
-# JUnit
-junit.xml
-
 # JetBrains PhpStorm
 .idea/
 
