@@ -113,11 +113,11 @@ pipeline {
                   }
                 }
               }
-              stage('PHPT Tests') {
+              stage('Static check and Unit Tests') {
                 steps {
-                  withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
+                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test", label: 'test'
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                     }
                   }
                 }
@@ -137,11 +137,11 @@ pipeline {
                   }
                 }
               }
-              stage('PHPUnit Tests') {
+              stage('Component Tests') {
                 steps {
-                  withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
+                  withGithubNotify(context: "Component-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer", label: 'composer'
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile component-test", label: 'component-test'
                     }
                   }
                 }
