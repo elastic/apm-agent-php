@@ -64,6 +64,15 @@ void stream_errno_overflow( void** testFixtureState )
     testStreamXyzOverflow( streamErrNoUnderTest );
 }
 
+#ifndef ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01
+#   ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#       define ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 1
+#   else // #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#       define ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 0
+#   endif // #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#endif // #ifndef ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01
+
+#if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
 // This function should not be static - otherwise it won't show up on the stack trace
 // static
 void capturing_stack_trace( void** testFixtureState )
@@ -81,6 +90,7 @@ void capturing_stack_trace( void** testFixtureState )
     assert_ptr_not_equal( strstr( stackTraceAsString, __FUNCTION__ ), NULL );
     #endif
 }
+#endif // ##if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
 
 int run_platform_tests()
 {
@@ -88,7 +98,9 @@ int run_platform_tests()
     {
         ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno_overflow ),
+#       if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
         ELASTIC_APM_CMOCKA_UNIT_TEST( capturing_stack_trace ),
+#       endif // ##if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );
