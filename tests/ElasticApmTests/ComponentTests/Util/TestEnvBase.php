@@ -478,7 +478,7 @@ abstract class TestEnvBase
         );
 
         if (!$hasPassed) {
-            assert(!is_null($lastException));
+            TestCase::assertNotNull($lastException);
 
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
