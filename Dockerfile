@@ -34,7 +34,7 @@ ENV TEST_PHP_DETAILED=1
 ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/junit.xml
 ENV CMOCKA_MESSAGE_OUTPUT=XML
-ENV CMOCKA_XML_FILE=/app/${PHP_VERSION}-unit-tests-junit.xml
+ENV CMOCKA_XML_FILE=/app/build/${PHP_VERSION}-%g-unit-tests-junit.xml
 
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \

@@ -73,7 +73,7 @@ unit-test: prepare  ## Run unit-test
 		-v $(PWD):/app \
 		-w /app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		sh -c 'cd /app/src/ext/unit_tests ; cmake . ; make ; make test'
+		sh -c '/app/.ci/unit-test.sh'
 
 .PHONY: loop
 loop:  ## Bump the version given VERSION
