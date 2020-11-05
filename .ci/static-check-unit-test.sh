@@ -38,3 +38,6 @@ composer install
 
 # Run static_check_and_run_unit_tests
 composer run-script static_check_and_run_unit_tests
+
+# Generate junit output for phpstan
+composer phpstan-junit-report-for-ci
