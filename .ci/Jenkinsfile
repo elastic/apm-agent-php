@@ -113,35 +113,17 @@ pipeline {
                   }
                 }
               }
-              stage('PHPC Unit Tests') {
-                when {
-                  expression { return env.DOCKERFILE == 'Dockerfile' }
-                }
+              stage('Static check and Unit Tests') {
                 steps {
-                  withGithubNotify(context: "PHPCUnit-Tests-${PHP_VERSION}", tab: 'tests') {
+                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile unit-test", label: 'unit-test'
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                     }
                   }
                 }
                 post {
                   always {
-                    archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/build/*unit-tests-junit.xml")
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*unit-tests-junit.xml")
-                  }
-                }
-              }
-              stage('PHPT Tests') {
-                steps {
-                  withGithubNotify(context: "PHPT-Tests-${PHP_VERSION}", tab: 'tests') {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test", label: 'test'
-                    }
-                  }
-                }
-                post {
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/junit.xml,${BASE_DIR}/build/*unit-tests-junit.xml")
                   }
                 }
               }
@@ -155,11 +137,11 @@ pipeline {
                   }
                 }
               }
-              stage('PHPUnit Tests') {
+              stage('Component Tests') {
                 steps {
-                  withGithubNotify(context: "PHPUnit-Tests-${PHP_VERSION}", tab: 'tests') {
+                  withGithubNotify(context: "Component-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer", label: 'composer'
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile component-test", label: 'component-test'
                     }
                   }
                 }

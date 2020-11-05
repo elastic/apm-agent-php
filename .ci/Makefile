@@ -33,14 +33,14 @@ build: prepare  ## Build the project
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX)
 
-.PHONY: test
-test: prepare  ## Test the project
+.PHONY: static-check-unit-test
+static-check-unit-test: prepare  ## Test the static check and unit tests
 	# docker as the current user
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		make test
+		/app/.ci/static-check-unit-test.sh
 
 .PHONY: generate-for-package
 generate-for-package: prepare  ## Generate the agent extension for the package
@@ -58,13 +58,13 @@ interactive: prepare  ## Run an interactive docker shell
 		$(IMAGE):${PHP_VERSION} \
 		/bin/bash
 
-.PHONY: composer
-composer: prepare  ## Run composer
+.PHONY: component-test
+component-test: prepare  ## Run component-test
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		sh -c '/app/.ci/composer.sh'
+		sh -c '/app/.ci/component-test.sh'
 
 .PHONY: unit-test
 unit-test: prepare  ## Run unit-test
