@@ -44,9 +44,15 @@ void stream_errno( void** testFixtureState )
     ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( ENOENT_str, "directory" );
 
     const String non_existing_errno_str = streamErrNo( 999, &txtOutStream );
+    #ifdef PHP_WIN32
     ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "Unknown" );
-    #ifndef PHP_WIN32
+    #else
+    #   ifdef __GLIBC__
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "Unknown" );
     ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "999" );
+    #   else
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( non_existing_errno_str, "No error information" );
+    #   endif
     #endif
 }
 
