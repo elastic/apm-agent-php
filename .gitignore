@@ -37,7 +37,7 @@ phpunit.xml
 # Built documentation
 html_docs
 
-# Packaging artifacts
+# Packaging artifacts and generated unit test reports
 build/
 
 # Backup files when using sed
