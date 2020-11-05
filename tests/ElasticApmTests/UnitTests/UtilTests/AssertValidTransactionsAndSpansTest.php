@@ -365,36 +365,6 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         self::assertValidTransactionsAndSpans(self::idToEvent([$tx_A, $tx_C]), self::idToEvent([$span_B]));
     }
 
-    public function testSpanOffsetNotInSyncWithTransaction(): void
-    {
-        $span = new MockSpanData();
-        self::padSegmentTime($span, /* microseconds */ 3);
-        $tx = new MockTransactionData([$span]);
-        self::padSegmentTime($tx, /* microseconds */ 3);
-
-        $this->assertValidAndCorrupted(
-            [$tx],
-            [$span],
-            function () use ($span): Closure {
-                $span->setStart($span->getStart() - 2);
-                return function () use ($span): void {
-                    $span->setStart($span->getStart() + 2);
-                };
-            }
-        );
-
-        $this->assertValidAndCorrupted(
-            [$tx],
-            [$span],
-            function () use ($span): Closure {
-                $span->setStart($span->getStart() + 2);
-                return function () use ($span): void {
-                    $span->setStart($span->getStart() - 2);
-                };
-            }
-        );
-    }
-
     public function testParentAndChildTransactionsTraceIdMismatch(): void
     {
         $tx_B = new MockTransactionData();
