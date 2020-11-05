@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
@@ -16,7 +17,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\BackendComm\EventSender;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\ObjectToStringBuilder;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionInterface;
@@ -68,7 +69,10 @@ final class Tracer implements TracerInterface
         $this->logger = $this->loggerFactory
             ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
 
-        $this->eventSink = $providedDependencies->eventSink ?? new EventSender($this->config, $this->loggerFactory);
+        $this->eventSink = $providedDependencies->eventSink ??
+                           (ElasticApmExtensionUtil::isLoaded()
+                               ? new EventSender($this->config, $this->loggerFactory)
+                               : NoopEventSink::singletonInstance());
 
         $this->currentTransaction = null;
 

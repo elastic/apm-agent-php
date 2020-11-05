@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Tests\Util;
+namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Log\SinkInterface;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -13,6 +13,8 @@ use Elastic\Apm\Impl\Log\SinkInterface;
  */
 final class NoopLogSink implements SinkInterface
 {
+    use NoopObjectTrait;
+
     public function consume(
         int $statementLevel,
         string $message,

@@ -6,10 +6,12 @@ namespace Elastic\Apm\Tests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TracerInterface;
-use Elastic\Apm\Tests\Util\NoopLogSink;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Tests\Util\TestCaseBase;
+use RuntimeException;
 
 class UnitTestCaseBase extends TestCaseBase
 {
@@ -19,6 +21,23 @@ class UnitTestCaseBase extends TestCaseBase
     /** @var TracerInterface */
     protected $tracer;
 
+    /**
+     * @param mixed        $name
+     * @param array<mixed> $data
+     * @param mixed        $dataName
+     */
+    public function __construct($name = null, array $data = [], $dataName = '')
+    {
+        if (ElasticApmExtensionUtil::isLoaded()) {
+            throw new RuntimeException(
+                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
+                . ' because it will cause a clash.'
+            );
+        }
+
+        parent::__construct($name, $data, $dataName);
+    }
+
     public function setUp(): void
     {
         $this->setUpTestEnv();
@@ -27,10 +46,15 @@ class UnitTestCaseBase extends TestCaseBase
     protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
         $builder = TracerBuilder::startNew();
+
+        // Set empty config source to prevent config from default sources (env vars and php.ini) from being used
+        // since unit test cannot assume anything about the state of those config sources
+        $builder->withConfigRawSnapshotSource(new EmptyConfigRawSnapshotSource());
+
         if ($shouldCreateMockEventSink) {
             $this->mockEventSink = new MockEventSink();
             $builder->withEventSink($this->mockEventSink)
-                    ->withLogSink(new NoopLogSink());
+                    ->withLogSink(NoopLogSink::singletonInstance());
         }
         if (!is_null($tracerBuildCallback)) {
             $tracerBuildCallback($builder);

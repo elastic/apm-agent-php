@@ -7,6 +7,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\Assert;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 use RuntimeException;
 use Throwable;
@@ -34,8 +35,8 @@ final class PhpPartFacade
 
     private function __construct(float $requestInitStartTime)
     {
-        if (!extension_loaded('elastic_apm')) {
-            throw new RuntimeException('elastic_apm extension is not loaded');
+        if (!ElasticApmExtensionUtil::isLoaded()) {
+            throw new RuntimeException(ElasticApmExtensionUtil::EXTENSION_NAME . ' extension is not loaded');
         }
 
         $tracer = self::buildTracer();
