@@ -16,6 +16,7 @@ docker/wordpress/data/ext
 
 # Generated files
 _GENERATED/
+
 # Composer
 composer.lock
 composer.phar
