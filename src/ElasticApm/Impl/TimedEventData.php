@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use JsonSerializable;
@@ -13,15 +14,19 @@ use JsonSerializable;
  *
  * @internal
  */
-final class ProcessData implements JsonSerializable, LoggableInterface
+class TimedEventData extends TimestampedEventData
 {
     use LoggableTrait;
 
-    /** @var int */
-    public $pid;
+    /** @var float */
+    public $duration;
 
     public function jsonSerialize()
     {
-        return ['pid' => $this->pid];
+        $result = parent::jsonSerialize();
+
+        SerializationUtil::addNameValueIfNotNull('duration', $this->duration, /* ref */ $result);
+
+        return $result;
     }
 }

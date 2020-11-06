@@ -6,10 +6,9 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\Util\LogCategoryForTests;
-use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -53,6 +52,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
+        /** @noinspection PhpUnhandledExceptionInspection */
         $response = TestHttpClientUtil::sendHttpRequest(
             $this->appCodeHostServerPort,
             $testProperties->httpMethod,
@@ -78,26 +78,26 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
         parent::verifyRootTransactionName($testProperties, $rootTransaction);
 
-        if (is_null($testProperties->transactionName)) {
+        if (is_null($testProperties->expectedTransactionName)) {
             TestCase::assertSame(
                 $testProperties->httpMethod . ' ' . $testProperties->uriPath,
-                $rootTransaction->getName()
+                $rootTransaction->name
             );
         }
     }
 
     protected function verifyRootTransactionType(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
         parent::verifyRootTransactionType($testProperties, $rootTransaction);
 
         if (is_null($testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransaction->getType());
+            TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransaction->type);
         }
     }
 }

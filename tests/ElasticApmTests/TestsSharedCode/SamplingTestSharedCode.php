@@ -6,6 +6,7 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -30,11 +31,11 @@ final class SamplingTestSharedCode
             throw new RuntimeException(
                 "transactionSampleRate: $transactionSampleRate" .
                 " expectedIsSampled: $expectedIsSampled" .
-                " tx->isSampled(): " . ($tx->isSampled() ? 'true' : 'false')
+                " tx->isSampled: " . ($tx->isSampled() ? 'true' : 'false')
             );
         }
 
-        $tx->setLabel('TX_label_key', 123);
+        $tx->context()->setLabel('TX_label_key', 123);
         $tx->captureCurrentSpan(
             'span1_name',
             'span1_type',
@@ -55,25 +56,25 @@ final class SamplingTestSharedCode
     ): void {
         $tx = $eventsFromAgent->singleTransaction();
         if (is_null($transactionSampleRate) || $transactionSampleRate === 1.0) {
-            TestCase::assertTrue($tx->isSampled());
+            TestCase::assertTrue($tx->isSampled);
         } elseif ($transactionSampleRate === 0.0) {
-            TestCase::assertFalse($tx->isSampled());
+            TestCase::assertFalse($tx->isSampled);
         }
 
-        if ($tx->isSampled()) {
+        if ($tx->isSampled) {
             TestCase::assertCount(2, $eventsFromAgent->idToSpan);
             // Started and dropped spans should be counted only for sampled transactions
-            TestCase::assertSame(2, $tx->getStartedSpansCount());
+            TestCase::assertSame(2, $tx->startedSpansCount);
 
-            TestCase::assertCount(1, $tx->getLabels());
-            TestCase::assertSame(123, $tx->getLabels()['TX_label_key']);
+            TestCaseBase::assertLabelsCount(1, $tx);
+            TestCase::assertSame(123, TestCaseBase::getLabel($tx, 'TX_label_key'));
         } else {
             TestCase::assertEmpty($eventsFromAgent->idToSpan);
             // Started and dropped spans should be counted only for sampled transactions
-            TestCase::assertSame(0, $tx->getStartedSpansCount());
+            TestCase::assertSame(0, $tx->startedSpansCount);
 
-            TestCase::assertEmpty($tx->getLabels());
+            TestCase::assertNull($tx->context);
         }
-        TestCase::assertSame(0, $tx->getDroppedSpansCount());
+        TestCase::assertSame(0, $tx->droppedSpansCount);
     }
 }

@@ -6,16 +6,23 @@ namespace ElasticApmTests\Util;
 
 use Ds\Queue;
 use Ds\Set;
-use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\EventSinkInterface;
+use Elastic\Apm\Impl\ExecutionSegmentContextData;
+use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
+use Elastic\Apm\Impl\Log\NoopLogSink;
+use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TimedEventData;
+use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
 use ElasticApmTests\ComponentTests\Util\TempDisableFailingAssertions;
+use ElasticApmTests\UnitTests\Util\EmptyConfigRawSnapshotSource;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -36,6 +43,7 @@ class TestCaseBase extends TestCase
     public function __construct($name = null, array $data = [], $dataName = '')
     {
         LoggingSubsystem::$isInTestingContext = true;
+        SerializationUtil::$isInTestingContext = true;
 
         parent::__construct($name, $data, $dataName);
     }
@@ -62,52 +70,46 @@ class TestCaseBase extends TestCase
         self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
     }
 
-    public static function calcEndTime(ExecutionSegmentDataInterface $timedEvent): float
+    public static function calcEndTime(TimedEventData $timedData): float
     {
-        return $timedEvent->getTimestamp() + TimeUtil::millisecondsToMicroseconds($timedEvent->getDuration());
+        return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
+    }
+
+    public static function assertTimestampIsInside(float $innerTimestamp, TimedEventData $outerTimedData): void
+    {
+        self::assertLessThanOrEqualTimestamp($outerTimedData->timestamp, $innerTimestamp);
+        self::assertLessThanOrEqualTimestamp($innerTimestamp, self::calcEndTime($outerTimedData));
+    }
+
+    public static function assertTimedEventIsNested(
+        TimedEventData $nestedTimedData,
+        TimedEventData $outerTimedData
+    ): void {
+        self::assertTimestampIsInside($nestedTimedData->timestamp, $outerTimedData);
+        self::assertTimestampIsInside(self::calcEndTime($nestedTimedData), $outerTimedData);
     }
 
     /**
-     * @param mixed $timestamp
-     * @param mixed $outerTimedEvent
-     */
-    public static function assertTimestampNested($timestamp, $outerTimedEvent): void
-    {
-        self::assertLessThanOrEqualTimestamp($outerTimedEvent->getTimestamp(), $timestamp);
-        self::assertLessThanOrEqualTimestamp($timestamp, self::calcEndTime($outerTimedEvent));
-    }
-
-    /**
-     * @param mixed $nestedTimedEvent
-     * @param mixed $outerTimedEvent
-     */
-    public static function assertTimedEventIsNested($nestedTimedEvent, $outerTimedEvent): void
-    {
-        self::assertTimestampNested($nestedTimedEvent->getTimestamp(), $outerTimedEvent);
-        self::assertTimestampNested(self::calcEndTime($nestedTimedEvent), $outerTimedEvent);
-    }
-
-    /**
-     * @param TransactionDataInterface         $transaction
-     * @param array<string, SpanDataInterface> $idToSpan
+     * @param TransactionData         $transaction
+     * @param array<string, SpanData> $idToSpan
      */
     public static function assertValidTransactionAndItsSpans(
-        TransactionDataInterface $transaction,
+        TransactionData $transaction,
         array $idToSpan
     ): void {
         ValidationUtil::assertValidTransactionData($transaction);
 
-        /** @var SpanDataInterface $span */
+        /** @var SpanData $span */
         foreach ($idToSpan as $span) {
             ValidationUtil::assertValidSpanData($span);
-            self::assertSame($transaction->getId(), $span->getTransactionId());
-            self::assertSame($transaction->getTraceId(), $span->getTraceId());
+            self::assertSame($transaction->id, $span->transactionId);
+            self::assertSame($transaction->traceId, $span->traceId);
 
-            if ($span->getParentId() === $transaction->getId()) {
+            if ($span->parentId === $transaction->id) {
                 self::assertTimedEventIsNested($span, $transaction);
             } else {
-                self::assertArrayHasKey($span->getParentId(), $idToSpan, 'count($idToSpan): ' . count($idToSpan));
-                self::assertTimedEventIsNested($span, $idToSpan[$span->getParentId()]);
+                self::assertArrayHasKey($span->parentId, $idToSpan, 'count($idToSpan): ' . count($idToSpan));
+                self::assertTimedEventIsNested($span, $idToSpan[$span->parentId]);
             }
         }
 
@@ -115,20 +117,20 @@ class TestCaseBase extends TestCase
             TempDisableFailingAssertions::checkDisableFailedAssertion(
                 __FILE__,
                 __LINE__,
-                $transaction->getStartedSpansCount() === count($idToSpan),
-                '$transaction->getStartedSpansCount() === count($idToSpan)',
-                '$transaction->getStartedSpansCount(): ' . $transaction->getStartedSpansCount() . '.'
+                $transaction->startedSpansCount === count($idToSpan),
+                '$transaction->startedSpansCount === count($idToSpan)',
+                '$transaction->startedSpansCount: ' . $transaction->startedSpansCount . '.'
                 . ' count($idToSpan): ' . count($idToSpan) . '.'
             );
         } else {
-            self::assertCount($transaction->getStartedSpansCount(), $idToSpan);
+            self::assertCount($transaction->startedSpansCount, $idToSpan);
         }
 
         $spanIdToParentId = [];
         foreach ($idToSpan as $id => $span) {
-            $spanIdToParentId[$id] = $span->getParentId();
+            $spanIdToParentId[$id] = $span->parentId;
         }
-        self::assertGraphIsTree($transaction->getId(), $spanIdToParentId);
+        self::assertGraphIsTree($transaction->id, $spanIdToParentId);
     }
 
     /**
@@ -169,37 +171,37 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, SpanDataInterface> $idToSpan
+     * @param array<string, SpanData> $idToSpan
      *
-     * @return array<string, array<string, SpanDataInterface>>
+     * @return array<string, array<string, SpanData>>
      */
     public static function groupSpansByTransactionId(array $idToSpan): array
     {
-        /** @var array<string, array<string, SpanDataInterface>> */
+        /** @var array<string, array<string, SpanData>> */
         $transactionIdToSpans = [];
 
-        /** @var SpanDataInterface $span */
+        /** @var SpanData $span */
         foreach ($idToSpan as $spanId => $span) {
-            if (!array_key_exists($span->getTransactionId(), $transactionIdToSpans)) {
-                $transactionIdToSpans[$span->getTransactionId()] = [];
+            if (!array_key_exists($span->transactionId, $transactionIdToSpans)) {
+                $transactionIdToSpans[$span->transactionId] = [];
             }
-            $transactionIdToSpans[$span->getTransactionId()][$spanId] = $span;
+            $transactionIdToSpans[$span->transactionId][$spanId] = $span;
         }
 
         return $transactionIdToSpans;
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
+     * @param array<string, TransactionData> $idToTransaction
      *
-     * @return TransactionDataInterface
+     * @return TransactionData
      */
-    public static function findRootTransaction(array $idToTransaction): TransactionDataInterface
+    public static function findRootTransaction(array $idToTransaction): TransactionData
     {
-        /** @var TransactionDataInterface|null */
+        /** @var TransactionData|null */
         $rootTransaction = null;
         foreach ($idToTransaction as $transactionId => $transaction) {
-            if (is_null($transaction->getParentId())) {
+            if (is_null($transaction->parentId)) {
                 self::assertNull($rootTransaction, 'Found more than one root transaction');
                 $rootTransaction = $transaction;
             }
@@ -212,8 +214,8 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
-     * @param array<string, SpanDataInterface>        $idToSpan
+     * @param array<string, TransactionData> $idToTransaction
+     * @param array<string, SpanData>        $idToSpan
      */
     private static function assertTransactionsGraphIsTree(array $idToTransaction, array $idToSpan): void
     {
@@ -221,24 +223,24 @@ class TestCaseBase extends TestCase
         /** @var array<string, string> */
         $transactionIdToParentId = [];
         foreach ($idToTransaction as $transactionId => $transaction) {
-            if (is_null($transaction->getParentId())) {
+            if (is_null($transaction->parentId)) {
                 continue;
             }
-            $parentSpan = ArrayUtil::getValueIfKeyExistsElse($transaction->getParentId(), $idToSpan, null);
+            $parentSpan = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $idToSpan, null);
             if (is_null($parentSpan)) {
-                self::assertArrayHasKey($transaction->getParentId(), $idToTransaction);
-                $transactionIdToParentId[$transactionId] = $transaction->getParentId();
+                self::assertArrayHasKey($transaction->parentId, $idToTransaction);
+                $transactionIdToParentId[$transactionId] = $transaction->parentId;
             } else {
-                $transactionIdToParentId[$transactionId] = $parentSpan->getTransactionId();
+                $transactionIdToParentId[$transactionId] = $parentSpan->transactionId;
             }
         }
         self::assertNotNull($rootTransaction);
-        self::assertGraphIsTree($rootTransaction->getId(), $transactionIdToParentId);
+        self::assertGraphIsTree($rootTransaction->id, $transactionIdToParentId);
     }
 
     /**
-     * @param array<string, TransactionDataInterface> $idToTransaction
-     * @param array<string, SpanDataInterface>        $idToSpan
+     * @param array<string, TransactionData> $idToTransaction
+     * @param array<string, SpanData>        $idToSpan
      */
     public static function assertValidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
@@ -248,44 +250,45 @@ class TestCaseBase extends TestCase
 
         // Assert that all transactions have the same traceId
         foreach ($idToTransaction as $transactionId => $transaction) {
-            self::assertSame($rootTransaction->getTraceId(), $transaction->getTraceId());
+            self::assertSame($rootTransaction->traceId, $transaction->traceId);
         }
 
         // Assert that each transaction did not start before its parent
         foreach ($idToTransaction as $transactionId => $transaction) {
-            if (is_null($transaction->getParentId())) {
+            if (is_null($transaction->parentId)) {
                 continue;
             }
-            /** @var ExecutionSegmentDataInterface|null $parentExecSegment */
-            $parentExecSegment = ArrayUtil::getValueIfKeyExistsElse($transaction->getParentId(), $idToSpan, null);
+            /** @var ExecutionSegmentData|null $parentExecSegment */
+            $parentExecSegment = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $idToSpan, null);
             if (is_null($parentExecSegment)) {
                 self::assertTrue(
                     ArrayUtil::getValueIfKeyExists(
-                        $transaction->getParentId(),
+                        $transaction->parentId,
                         $idToTransaction,
                         /* ref */ $parentExecSegment
                     )
                 );
             }
             self::assertNotNull($parentExecSegment);
-            self::assertLessThanOrEqualTimestamp($parentExecSegment->getTimestamp(), $transaction->getTimestamp());
+            self::assertLessThanOrEqualTimestamp($parentExecSegment->timestamp, $transaction->timestamp);
         }
 
         // Assert that all spans have the same traceId
         foreach ($idToSpan as $spanId => $span) {
-            self::assertSame($rootTransaction->getTraceId(), $span->getTraceId());
+            self::assertSame($rootTransaction->traceId, $span->traceId);
         }
 
         // Assert that every span's transactionId is present
-        foreach ($idToSpan as $spanId => $span) {
-            self::assertArrayHasKey($span->getTransactionId(), $idToTransaction);
+        /** @var SpanData $span */
+        foreach ($idToSpan as $span) {
+            self::assertArrayHasKey($span->transactionId, $idToTransaction);
         }
 
         // Group spans by transaction and verify every group
         foreach ($idToTransaction as $transactionId => $transaction) {
             $idToSpanOnlyCurrentTransaction = [];
             foreach ($idToSpan as $spanId => $span) {
-                if ($span->getTransactionId() === $transactionId) {
+                if ($span->transactionId === $transactionId) {
                     $idToSpanOnlyCurrentTransaction[$spanId] = $span;
                 }
             }
@@ -293,18 +296,14 @@ class TestCaseBase extends TestCase
         }
     }
 
-    public static function assertTransactionEquals(
-        TransactionDataInterface $expected,
-        TransactionDataInterface $actual
-    ): void {
-        self::assertEquals(TransactionData::convertToData($expected), TransactionData::convertToData($actual));
+    public static function assertTransactionEquals(TransactionData $expected, TransactionData $actual): void
+    {
+        self::assertEquals($expected, $actual);
     }
 
-    public static function assertSpanEquals(
-        SpanDataInterface $expected,
-        SpanDataInterface $actual
-    ): void {
-        self::assertEquals(SpanData::convertToData($expected), SpanData::convertToData($actual));
+    public static function assertSpanEquals(SpanData $expected, SpanData $actual): void
+    {
+        self::assertEquals($expected, $actual);
     }
 
     /**
@@ -362,8 +361,9 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param mixed $expected
-     * @param mixed $actual
+     * @param mixed  $expected
+     * @param mixed  $actual
+     * @param string $message
      */
     public static function assertSameEx($expected, $actual, string $message = ''): void
     {
@@ -375,7 +375,7 @@ class TestCaseBase extends TestCase
         $isNumeric = function ($value): bool {
             return is_float($value) || is_int($value);
         };
-        if ($isNumeric($expected) && $isNumeric($actual) && (is_float($expected) !== is_float($actual) )) {
+        if ($isNumeric($expected) && $isNumeric($actual) && (is_float($expected) !== is_float($actual))) {
             self::assertSame(floatval($expected), floatval($actual), $message);
         } else {
             self::assertSame($expected, $actual, $message);
@@ -391,15 +391,140 @@ class TestCaseBase extends TestCase
         foreach ($subSet as $key => $value) {
             $ctx = LoggableToString::convert(
                 [
-                    '$key'             => $key,
-                    '$value'           => $value,
-                    '$largerSet[$key]' => $largerSet[$key],
-                    '$subSet'          => $subSet,
-                    '$largerSet'       => $largerSet,
+                    '$key'       => $key,
+                    '$value'     => $value,
+                    '$subSet'    => $subSet,
+                    '$largerSet' => $largerSet,
                 ]
             );
             self::assertArrayHasKey($key, $largerSet, $ctx);
             self::assertSameEx($value, $largerSet[$key], $ctx);
         }
+    }
+
+    public static function getExecutionSegmentContext(ExecutionSegmentData $execSegData): ?ExecutionSegmentContextData
+    {
+        if ($execSegData instanceof SpanData) {
+            return $execSegData->context;
+        }
+
+        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+        return $execSegData->context;
+    }
+
+    /**
+     * @param ExecutionSegmentData $execSegData
+     * @param string               $key
+     *
+     * @return bool
+     */
+    public static function hasLabel(ExecutionSegmentData $execSegData, string $key): bool
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        if (is_null($context)) {
+            return false;
+        }
+        return array_key_exists($key, $context->labels);
+    }
+
+    /**
+     * @param int                  $expectedCount
+     * @param ExecutionSegmentData $execSegData
+     *
+     * @return void
+     */
+    public static function assertLabelsCount(int $expectedCount, ExecutionSegmentData $execSegData): void
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        if (is_null($context)) {
+            self::assertSame(0, $expectedCount, LoggableToString::convert($execSegData));
+            return;
+        }
+        self::assertCount($expectedCount, $context->labels);
+    }
+
+    /**
+     * @param ExecutionSegmentData $execSegData
+     *
+     * @return array<string, string|bool|int|float|null>
+     */
+    public static function getLabels(ExecutionSegmentData $execSegData): array
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        if (is_null($context)) {
+            return [];
+        }
+        return $context->labels;
+    }
+
+    /**
+     * @param ExecutionSegmentData $execSegData
+     * @param string               $key
+     *
+     * @return string|bool|int|float|null
+     */
+    public static function getLabel(ExecutionSegmentData $execSegData, string $key)
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        self::assertNotNull($context);
+        self::assertArrayHasKey($key, $context->labels);
+        return $context->labels[$key];
+    }
+
+    public static function assertHasLabel(ExecutionSegmentData $execSegData, string $key, string $message = ''): void
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        self::assertNotNull($context, LoggableToString::convert(['execSegData' => $execSegData]) . '. ' . $message);
+        self::assertArrayHasKey(
+            $key,
+            $context->labels,
+            LoggableToString::convert(['key' => $key, 'execSegData' => $execSegData]) . '. ' . $message
+        );
+    }
+
+    public static function assertNotHasLabel(ExecutionSegmentData $execSegData, string $key): void
+    {
+        $context = self::getExecutionSegmentContext($execSegData);
+        if (is_null($context)) {
+            return;
+        }
+        self::assertArrayNotHasKey($key, $context->labels);
+    }
+
+    public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilder
+    {
+        // Set empty config source to prevent config from default sources (env vars and php.ini) from being used
+        // since unit test cannot assume anything about the state of those config sources
+        $cfgSrc = new EmptyConfigRawSnapshotSource();
+
+        return TracerBuilder::startNew()
+                            ->withLogSink(NoopLogSink::singletonInstance())
+                            ->withConfigRawSnapshotSource($cfgSrc)
+                            ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
+    }
+
+    public static function getParentId(ExecutionSegmentData $execSegData): ?string
+    {
+        if ($execSegData instanceof SpanData) {
+            return $execSegData->parentId;
+        }
+
+        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+        return $execSegData->parentId;
+    }
+
+    public static function setParentId(ExecutionSegmentData $execSegData, ?string $newParentId): void
+    {
+        if ($execSegData instanceof SpanData) {
+            self::assertNotNull($newParentId);
+            $execSegData->parentId = $newParentId;
+            return;
+        }
+
+        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+        $execSegData->parentId = $newParentId;
     }
 }

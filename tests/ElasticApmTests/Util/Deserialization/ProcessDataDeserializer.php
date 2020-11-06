@@ -12,7 +12,7 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class ProcessDataDeserializer extends EventDataDeserializer
+final class ProcessDataDeserializer extends DataDeserializer
 {
     /** @var ProcessData */
     private $result;
@@ -44,25 +44,13 @@ final class ProcessDataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        return (new class extends ProcessData {
-            /**
-             * @param string      $key
-             * @param mixed       $value
-             * @param ProcessData $result
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(string $key, $value, ProcessData $result): bool
-            {
-                switch ($key) {
-                    case 'pid':
-                        $result->pid = ValidationUtil::assertValidProcessId($value);
-                        return true;
+        switch ($key) {
+            case 'pid':
+                $this->result->pid = ValidationUtil::assertValidProcessId($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

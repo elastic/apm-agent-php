@@ -25,7 +25,7 @@ interface ClockInterface
      *
      * @return float Monotonic time since some unspecified starting point in microseconds
      *
-     * @see ExecutionSegmentInterface::getDuration() For example
+     * @see ExecutionSegmentInterface::end()
      */
     public function getMonotonicClockCurrentTime(): float;
 }

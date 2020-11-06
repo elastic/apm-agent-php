@@ -30,8 +30,8 @@ trait InterceptedCallTrackerTrait
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        $span->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
-        $span->setLabel('hasExitedByException', $hasExitedByException);
+        $span->context()->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
+        $span->context()->setLabel('hasExitedByException', $hasExitedByException);
         $span->endSpanEx($numberOfStackFramesToSkip + 1);
     }
 

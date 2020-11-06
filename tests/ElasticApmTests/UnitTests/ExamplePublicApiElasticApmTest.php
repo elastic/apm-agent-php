@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\UnitTests\Util\ArrayTestUtil;
 use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
-use Elastic\Apm\TransactionDataInterface;
 
 class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
 {
@@ -21,18 +21,18 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
         // Assert
         // 2 calls to processCheckoutRequest == 2 transactions
         $this->assertCount(2, $this->mockEventSink->idToTransaction());
-        /** @var TransactionDataInterface */
+        /** @var TransactionData */
         $tx1 = ArrayTestUtil::findByPredicate(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionDataInterface $tx): bool {
-                return $tx->getLabels()['shop-id'] === 'Shop #1';
+            function (TransactionData $tx): bool {
+                return self::getLabel($tx, 'shop-id') === 'Shop #1';
             }
         );
-        /** @var TransactionDataInterface */
+        /** @var TransactionData */
         $tx2 = ArrayTestUtil::findByPredicate(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionDataInterface $tx): bool {
-                return $tx->getLabels()['shop-id'] === 'Shop #2';
+            function (TransactionData $tx): bool {
+                return self::getLabel($tx, 'shop-id') === 'Shop #2';
             }
         );
 
@@ -56,28 +56,28 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
 
         $spansWithLostLabel = array_filter(
             $this->mockEventSink->idToSpan(),
-            function (SpanDataInterface $span): bool {
-                return array_key_exists(ExamplePublicApiElasticApm::LOST_LABEL, $span->getLabels());
+            function (SpanData $span): bool {
+                return self::hasLabel($span, ExamplePublicApiElasticApm::LOST_LABEL);
             }
         );
         $this->assertCount(0, $spansWithLostLabel);
 
         $transactionsWithLostLabel = array_filter(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionDataInterface $transaction): bool {
-                return array_key_exists(ExamplePublicApiElasticApm::LOST_LABEL, $transaction->getLabels());
+            function (TransactionData $transaction): bool {
+                return self::hasLabel($transaction, ExamplePublicApiElasticApm::LOST_LABEL);
             }
         );
         $this->assertCount(0, $transactionsWithLostLabel);
     }
 
     /**
-     * @param TransactionDataInterface         $transaction
-     * @param array<string, SpanDataInterface> $idToSpan
-     * @param bool                             $isFirstTx
+     * @param TransactionData         $transaction
+     * @param array<string, SpanData> $idToSpan
+     * @param bool                    $isFirstTx
      */
     private function verifyTransactionAndSpans(
-        TransactionDataInterface $transaction,
+        TransactionData $transaction,
         array $idToSpan,
         bool $isFirstTx
     ): void {
@@ -85,71 +85,73 @@ class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
 
         $this->assertValidTransactionAndItsSpans($transaction, $idToSpan);
 
-        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_NAME, $transaction->getName());
-        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_TYPE, $transaction->getType());
+        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_NAME, $transaction->name);
+        $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_TYPE, $transaction->type);
 
         foreach ($idToSpan as $span) {
+            $this->assertHasLabel($span, 'shop-id');
             if ($isFirstTx) {
-                $this->assertSame("Shop #1", $span->getLabels()['shop-id']);
+                $this->assertSame("Shop #1", self::getLabel($span, 'shop-id'));
             } else {
-                $this->assertSame("Shop #2", $span->getLabels()['shop-id']);
+                $this->assertSame("Shop #2", self::getLabel($span, 'shop-id'));
             }
         }
 
-        /** @var array<SpanDataInterface> */
+        /** @var array<SpanData> */
         $businessSpans = array_filter(
             $idToSpan,
-            function (SpanDataInterface $span): bool {
-                return $span->getType() === 'business';
+            function (SpanData $span): bool {
+                return $span->type === 'business';
             }
         );
 
         $this->assertCount(2, $businessSpans);
-        /** @var SpanDataInterface $businessSpan */
+        /** @var SpanData $businessSpan */
         foreach ($businessSpans as $businessSpan) {
-            $this->assertSame($transaction->getId(), $businessSpan->getParentId());
+            $this->assertSame($transaction->id, $businessSpan->parentId);
+            $this->assertHasLabel($businessSpan, 'is-data-in-cache');
             if ($isFirstTx) {
-                $this->assertFalse($businessSpan->getLabels()['is-data-in-cache']);
+                $this->assertFalse(self::getLabel($businessSpan, 'is-data-in-cache'));
             } else {
-                $this->assertTrue($businessSpan->getLabels()['is-data-in-cache']);
+                $this->assertTrue(self::getLabel($businessSpan, 'is-data-in-cache'));
             }
         }
 
-        /** @var SpanDataInterface $getShoppingCartItemsSpan */
+        /** @var SpanData $getShoppingCartItemsSpan */
         $getShoppingCartItemsSpan = ArrayTestUtil::findByPredicate(
             $businessSpans,
-            function (SpanDataInterface $span): bool {
-                return $span->getName() === 'Get shopping cart items';
+            function (SpanData $span): bool {
+                return $span->name === 'Get shopping cart items';
             }
         );
         $this->assertNotNull($getShoppingCartItemsSpan);
 
-        /** @var SpanDataInterface $chargePaymentSpan */
+        /** @var SpanData $chargePaymentSpan */
         $chargePaymentSpan = ArrayTestUtil::findByPredicate(
             $businessSpans,
-            function (SpanDataInterface $span): bool {
-                return $span->getName() === 'Charge payment';
+            function (SpanData $span): bool {
+                return $span->name === 'Charge payment';
             }
         );
         $this->assertNotNull($chargePaymentSpan);
 
-        /** @var array<SpanDataInterface> */
+        /** @var array<SpanData> */
         $dbSpans = array_filter(
             $idToSpan,
-            function (SpanDataInterface $span): bool {
-                return $span->getType() === 'db';
+            function (SpanData $span): bool {
+                return $span->type === 'db';
             }
         );
 
         $this->assertCount(2, $dbSpans);
-        /** @var SpanDataInterface $dbSpan */
+        /** @var SpanData $dbSpan */
         foreach ($dbSpans as $dbSpan) {
-            $dataId = $dbSpan->getLabels()['data-id'];
+            $dataId = self::getLabel($dbSpan, 'data-id');
             if ($dataId === 'shopping-cart-items') {
-                $this->assertSame($getShoppingCartItemsSpan->getId(), $dbSpan->getParentId());
+                $this->assertSame($getShoppingCartItemsSpan->id, $dbSpan->parentId);
             } else {
                 $this->assertSame('payment-method-details', $dataId);
-                $this->assertSame($chargePaymentSpan->getId(), $dbSpan->getParentId());
+                $this->assertSame($chargePaymentSpan->id, $dbSpan->parentId);
             }
         }
     }

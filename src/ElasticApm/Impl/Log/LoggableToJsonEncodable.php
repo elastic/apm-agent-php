@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ReflectionClass;
+use ReflectionException;
 use Throwable;
 
 /**
@@ -16,6 +19,13 @@ use Throwable;
 final class LoggableToJsonEncodable
 {
     use StaticClassTrait;
+
+    private const IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK = 10000;
+    private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK
+        = 2 * self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK;
+
+    /** @var array<string, bool> */
+    private static $isDtoObjectCache = [];
 
     /**
      * @param mixed $value
@@ -214,6 +224,10 @@ final class LoggableToJsonEncodable
             return self::convertThrowable($object);
         }
 
+        if (self::isDtoObject($object)) {
+            return self::convertDtoObject($object);
+        }
+
         if (method_exists($object, '__debugInfo')) {
             return [
                 LogConsts::TYPE_KEY                => get_class($object),
@@ -258,5 +272,100 @@ final class LoggableToJsonEncodable
             LogConsts::TYPE_KEY            => get_class($throwable),
             LogConsts::VALUE_AS_STRING_KEY => self::convert($throwable->__toString()),
         ];
+    }
+
+    /**
+     * @param object $object
+     *
+     * @return mixed
+     */
+    private static function convertDtoObject(object $object)
+    {
+        $class = get_class($object);
+        try {
+            $currentClass = new ReflectionClass($class);
+        } catch (ReflectionException $ex) {
+            return LoggingSubsystem::onInternalFailure('Failed to reflect', ['class' => $class], $ex);
+        }
+
+        $nameToValue = [];
+        while (true) {
+            foreach ($currentClass->getProperties() as $reflectionProperty) {
+                if ($reflectionProperty->isStatic()) {
+                    continue;
+                }
+
+                $propName = $reflectionProperty->name;
+                $propValue = $reflectionProperty->getValue($object);
+                $nameToValue[$propName] = $propValue;
+            }
+            $currentClass = $currentClass->getParentClass();
+            if ($currentClass === false) {
+                break;
+            }
+        }
+        return $nameToValue;
+    }
+
+    private static function isDtoObject(object $object): bool
+    {
+        $class = get_class($object);
+        $valueInCache = ArrayUtil::getValueIfKeyExistsElse($class, self::$isDtoObjectCache, null);
+        if (!is_null($valueInCache)) {
+            return $valueInCache;
+        }
+
+        $value = self::detectIfDtoObject($class);
+
+        self::addToIsDtoObjectCache($class, $value);
+
+        return $value;
+    }
+
+    /**
+     * @param string $className
+     * @phpstan-param class-string<mixed> $className
+     *
+     * @return bool
+     */
+    private static function detectIfDtoObject(string $className): bool
+    {
+        try {
+            $currentClass = new ReflectionClass($className);
+        } catch (ReflectionException $ex) {
+            LoggingSubsystem::onInternalFailure('Failed to reflect', ['className' => $className], $ex);
+            return false;
+        }
+
+        while (true) {
+            foreach ($currentClass->getProperties() as $reflectionProperty) {
+                if ($reflectionProperty->isStatic()) {
+                    continue;
+                }
+
+                if (!$reflectionProperty->isPublic()) {
+                    return false;
+                }
+            }
+            $currentClass = $currentClass->getParentClass();
+            if ($currentClass === false) {
+                break;
+            }
+        }
+
+        return true;
+    }
+
+    private static function addToIsDtoObjectCache(string $class, bool $value): void
+    {
+        $isDtoObjectCacheCount = count(self::$isDtoObjectCache);
+        if ($isDtoObjectCacheCount >= self::IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK) {
+            self::$isDtoObjectCache = array_slice(
+                self::$isDtoObjectCache,
+                $isDtoObjectCacheCount - self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK
+            );
+        }
+
+        self::$isDtoObjectCache[$class] = $value;
     }
 }

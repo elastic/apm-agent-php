@@ -65,17 +65,17 @@ class StacktraceComponentTest extends ComponentTestCaseBase
             (new TestProperties())->withTopLevelAppCode(TopLevelCodeId::SPAN_BEGIN_END),
             function (DataFromAgent $dataFromAgent): void {
                 $span = $dataFromAgent->singleSpan();
-                self::assertSame('top_level_code_span_name', $span->getName());
-                self::assertSame('top_level_code_span_type', $span->getType());
-                $actualStacktrace = $span->getStacktrace();
+                self::assertSame('top_level_code_span_name', $span->name);
+                self::assertSame('top_level_code_span_type', $span->type);
+                $actualStacktrace = $span->stacktrace;
                 self::assertNotNull($actualStacktrace);
                 self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
                 /** @var string */
-                $expectedFileName = $span->getLabels()['top_level_code_span_end_file_name'];
+                $expectedFileName = self::getLabel($span, 'top_level_code_span_end_file_name');
                 self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);
                 self::assertSame($expectedFileName, $actualStacktrace[0]->filename);
                 self::assertSame(
-                    $span->getLabels()['top_level_code_span_end_line_number'],
+                    self::getLabel($span, 'top_level_code_span_end_line_number'),
                     $actualStacktrace[0]->lineno
                 );
                 self::assertSame(

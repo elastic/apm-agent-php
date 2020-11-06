@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Ds\Stack;
+use Elastic\Apm\ExecutionSegmentContextInterface;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
@@ -126,7 +127,7 @@ final class AppCode implements LoggableInterface
     private function initLabelAndPushToStack(SpanInterface $span, string $name, bool $needsExplicitEndCall): void
     {
         $execSegmentToSetLabel = $this->spanInfoStack->isEmpty() ? $this->tx : $span;
-        $execSegmentToSetLabel->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, 0);
+        $execSegmentToSetLabel->context()->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, 0);
         $this->spanInfoStack->push(new SpanInfo($span, $name, $needsExplicitEndCall));
     }
 
@@ -134,9 +135,11 @@ final class AppCode implements LoggableInterface
     {
         ++$this->numberOfSpansCreated;
         ++$this->topSpanInfo()->childCount;
-        /** @var ExecutionSegmentInterface $topExecSegment */
+        /** @var ExecutionSegmentInterface */
         $topExecSegment = ($this->actualSpansDepth() === 0) ? $this->tx : $this->topSpanInfo()->span;
-        $topExecSegment->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
+        /** @var ExecutionSegmentContextInterface */
+        $context = $topExecSegment->context(); // @phpstan-ignore-line
+        $context->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
         $spanName = $this->topSpanInfo()->name . '_' . strval($this->topSpanInfo()->childCount);
 
         $recursiveCallback = function (SpanInterface $span) use ($spanName) {

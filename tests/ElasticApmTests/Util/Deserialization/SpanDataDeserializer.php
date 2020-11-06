@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Elastic\Apm\Impl\ExecutionSegmentContextData;
+use Elastic\Apm\Impl\SpanContextData;
 use Elastic\Apm\Impl\SpanData;
 use ElasticApmTests\Util\ValidationUtil;
 
@@ -12,16 +14,28 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class SpanDataDeserializer extends EventDataDeserializer
+final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
 {
-    use ExecutionSegmentDataDeserializerTrait;
-
     /** @var SpanData */
     private $result;
 
     private function __construct(SpanData $result)
     {
+        parent::__construct($result);
         $this->result = $result;
+    }
+
+    private function lazyContextData(): SpanContextData
+    {
+        if (is_null($this->result->context)) {
+            $this->result->context = new SpanContextData();
+        }
+        return $this->result->context;
+    }
+
+    protected function executionSegmentContextData(): ExecutionSegmentContextData
+    {
+        return $this->lazyContextData();
     }
 
     /**
@@ -46,46 +60,34 @@ final class SpanDataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        if ($this->executionSegmentDeserializeKeyValue($key, $value)) {
+        if (parent::deserializeKeyValue($key, $value)) {
             return true;
         }
 
-        return (new class extends SpanData {
-            /**
-             * @param string   $key
-             * @param mixed    $value
-             * @param SpanData $result
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(string $key, $value, SpanData $result): bool
-            {
-                switch ($key) {
-                    case 'action':
-                        $result->action = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+        switch ($key) {
+            case 'action':
+                $this->result->action = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'parent_id':
-                        $result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
-                        return true;
+            case 'parent_id':
+                $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
+                return true;
 
-                    case 'stacktrace':
-                        $result->stacktrace = StacktraceDeserializer::deserialize($value);
-                        return true;
+            case 'stacktrace':
+                $this->result->stacktrace = StacktraceDeserializer::deserialize($value);
+                return true;
 
-                    case 'subtype':
-                        $result->subtype = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+            case 'subtype':
+                $this->result->subtype = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'transaction_id':
-                        $result->transactionId = ValidationUtil::assertValidExecutionSegmentId($value);
-                        return true;
+            case 'transaction_id':
+                $this->result->transactionId = ValidationUtil::assertValidExecutionSegmentId($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 
     /**
@@ -96,29 +98,17 @@ final class SpanDataDeserializer extends EventDataDeserializer
      */
     public function deserializeContextKeyValue(string $key, $value): bool
     {
-        if ($this->executionSegmentDeserializeContextKeyValue($key, $value)) {
+        if (parent::deserializeContextKeyValue($key, $value)) {
             return true;
         }
 
-        return (new class extends SpanData {
-            /**
-             * @param string   $key
-             * @param mixed    $value
-             * @param SpanData $result
-             *
-             * @return bool
-             */
-            public static function deserializeContextKeyValueImpl(string $key, $value, SpanData $result): bool
-            {
-                switch ($key) {
-                    // case 'destination':
-                    //     $result->destination = ValidationUtil::assertValid...($value);
-                    //     return true;
+        switch ($key) {
+            // case 'destination':
+            //     $this->lazyContextData()->destination = ValidationUtil::assertValid...($value);
+            //     return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeContextKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

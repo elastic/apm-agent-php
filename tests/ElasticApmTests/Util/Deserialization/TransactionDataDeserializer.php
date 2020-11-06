@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Elastic\Apm\Impl\ExecutionSegmentContextData;
+use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\Util\ValidationUtil;
 
@@ -12,16 +14,28 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class TransactionDataDeserializer extends EventDataDeserializer
+final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
 {
-    use ExecutionSegmentDataDeserializerTrait;
-
     /** @var TransactionData */
     private $result;
 
     private function __construct(TransactionData $result)
     {
+        parent::__construct($result);
         $this->result = $result;
+    }
+
+    private function lazyContextData(): TransactionContextData
+    {
+        if (is_null($this->result->context)) {
+            $this->result->context = new TransactionContextData();
+        }
+        return $this->result->context;
+    }
+
+    protected function executionSegmentContextData(): ExecutionSegmentContextData
+    {
+        return $this->lazyContextData();
     }
 
     /**
@@ -45,47 +59,30 @@ final class TransactionDataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        if ($this->executionSegmentDeserializeKeyValue($key, $value)) {
+        if (parent::deserializeKeyValue($key, $value)) {
             return true;
         }
 
-        return (new class extends TransactionData {
-            /**
-             * @param string                      $key
-             * @param mixed                       $value
-             * @param TransactionData             $result
-             * @param TransactionDataDeserializer $deserializer
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(
-                string $key,
-                $value,
-                TransactionData $result,
-                TransactionDataDeserializer $deserializer
-            ): bool {
-                switch ($key) {
-                    case 'parent_id':
-                        $result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
-                        return true;
+        switch ($key) {
+            case 'parent_id':
+                $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
+                return true;
 
-                    case 'result':
-                        $result->result = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+            case 'result':
+                $this->result->result = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'span_count':
-                        $deserializer->deserializeSpanCount($value);
-                        return true;
+            case 'span_count':
+                $this->deserializeSpanCount($value);
+                return true;
 
-                    case 'sampled':
-                        $result->isSampled = ValidationUtil::assertValidBool($value);
-                        return true;
+            case 'sampled':
+                $this->result->isSampled = ValidationUtil::assertValidBool($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result, $this);
+            default:
+                return false;
+        }
     }
 
     /**
@@ -93,31 +90,22 @@ final class TransactionDataDeserializer extends EventDataDeserializer
      */
     public function deserializeSpanCount(array $deserializedRawData): void
     {
-        (new class extends TransactionData {
-            /**
-             * @param array<string, mixed> $deserializedRawData
-             * @param TransactionData      $result
-             */
-            public static function deserializeSpanCountImpl(array $deserializedRawData, TransactionData $result): void
-            {
-                foreach ($deserializedRawData as $key => $value) {
-                    switch ($key) {
-                        case 'dropped':
-                            $result->droppedSpansCount
-                                = ValidationUtil::assertValidTransactionDroppedSpansCount($value);
-                            break;
+        foreach ($deserializedRawData as $key => $value) {
+            switch ($key) {
+                case 'dropped':
+                    $this->result->droppedSpansCount
+                        = ValidationUtil::assertValidTransactionDroppedSpansCount($value);
+                    break;
 
-                        case 'started':
-                            $result->startedSpansCount
-                                = ValidationUtil::assertValidTransactionStartedSpansCount($value);
-                            break;
+                case 'started':
+                    $this->result->startedSpansCount
+                        = ValidationUtil::assertValidTransactionStartedSpansCount($value);
+                    break;
 
-                        default:
-                            throw EventDataDeserializer::buildException("Unknown key: span_count->`$key'");
-                    }
-                }
+                default:
+                    throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
             }
-        })->deserializeSpanCountImpl($deserializedRawData, $this->result);
+        }
     }
 
     /**
@@ -128,29 +116,17 @@ final class TransactionDataDeserializer extends EventDataDeserializer
      */
     public function deserializeContextKeyValue(string $key, $value): bool
     {
-        if ($this->executionSegmentDeserializeContextKeyValue($key, $value)) {
+        if (parent::deserializeContextKeyValue($key, $value)) {
             return true;
         }
 
-        return (new class extends TransactionData {
-            /**
-             * @param string          $key
-             * @param mixed           $value
-             * @param TransactionData $result
-             *
-             * @return bool
-             */
-            public static function deserializeContextKeyValueImpl(string $key, $value, TransactionData $result): bool
-            {
-                switch ($key) {
-                    // case 'http':
-                    //     $result->http = ValidationUtil::assertValid...($value);
-                    //     return true;
+        switch ($key) {
+            // case 'http':
+            //     $this->lazyContextData()->http = ValidationUtil::assertValid...($value);
+            //     return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeContextKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

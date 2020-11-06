@@ -7,8 +7,8 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\TransactionDataInterface;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 
@@ -62,23 +62,23 @@ final class CliScriptTestEnv extends TestEnvBase
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
         parent::verifyRootTransactionName($testProperties, $rootTransaction);
 
-        if (is_null($testProperties->transactionName)) {
-            TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransaction->getName());
+        if (is_null($testProperties->expectedTransactionName)) {
+            TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransaction->name);
         }
     }
 
     protected function verifyRootTransactionType(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
         parent::verifyRootTransactionType($testProperties, $rootTransaction);
 
         if (is_null($testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransaction->getType());
+            TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransaction->type);
         }
     }
 }

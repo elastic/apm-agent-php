@@ -8,11 +8,28 @@ namespace Elastic\Apm;
 
 use Closure;
 
-interface TransactionInterface extends ExecutionSegmentInterface, TransactionDataInterface
+interface TransactionInterface extends ExecutionSegmentInterface
 {
     /**
-     * Begins a new span with the current execution segment as the new span's parent and
-     * sets as the new span as the current span for this transaction.
+     * Transactions that are 'sampled' will include all available information
+     * Transactions that are not sampled will not have 'spans' or 'context'.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
+     */
+    public function isSampled(): bool;
+
+    /**
+     * Hex encoded 64 random bits ID of the parent transaction or span.
+     * Only a root transaction of a trace does not have a parent ID, otherwise it needs to be set.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L19
+     */
+    public function getParentId(): ?string;
+
+    /**
+     * Begins a new span with the current execution segment
+     * as the new span's parent and sets as the new span as the current span for this transaction.
+     * The current execution segment is the current span if there is one or this transaction itself otherwise.
      *
      * @param string      $name      New span's name.
      * @param string      $type      New span's type
@@ -39,6 +56,7 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
     /**
      * Begins a new span with the current execution segment as the new span's parent and
      * sets the new span as the current span for this transaction.
+     * The current execution segment is the current span if there is one or this transaction itself otherwise.
      *
      * @param string      $name      New span's name
      * @param string      $type      New span's type
@@ -76,9 +94,24 @@ interface TransactionInterface extends ExecutionSegmentInterface, TransactionDat
     public function getCurrentSpan(): SpanInterface;
 
     /**
+     * Returns context (context allows to set labels, etc.)
+     */
+    public function context(): TransactionContextInterface;
+
+    /**
+     * The result of the transaction.
+     * For HTTP-related transactions, this should be the status code formatted like 'HTTP 2xx'.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L52
+     *
      * @param string|null $result
      *
-     * @see TransactionDataInterface::getResult() For the description
+     * @return void
      */
     public function setResult(?string $result): void;
+
+    /**
+     * * @see setResult() For the description
+     */
+    public function getResult(): ?string;
 }

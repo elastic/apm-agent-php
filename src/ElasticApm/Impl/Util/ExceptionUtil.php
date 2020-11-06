@@ -38,7 +38,7 @@ final class ExceptionUtil
                 PropertyLogPriority::MUST_BE_INCLUDED
             );
         }
-        $messageSuffix = LoggableToString::convert($messageSuffixObj);
+        $messageSuffix = LoggableToString::convert($messageSuffixObj, /* prettyPrint */ true);
         return $messagePrefix . (TextUtil::isEmptyString($messageSuffix) ? '' : ('. ' . $messageSuffix));
     }
 }

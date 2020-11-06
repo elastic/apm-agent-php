@@ -8,14 +8,11 @@ use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetadataInterface;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\SpanDataInterface;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\ValidationUtil;
-use Elastic\Apm\TransactionDataInterface;
 use PHPUnit\Framework\TestCase;
 
 class MockEventSink implements EventSinkInterface
@@ -69,102 +66,102 @@ class MockEventSink implements EventSinkInterface
         return $deserializedData;
     }
 
-    public function setMetadata(MetadataInterface $metadata): void
+    public function setMetadata(Metadata $metadata): void
     {
         $this->eventsFromAgent->metadata[] = self::passThroughSerialization(
             $metadata,
             /* assertValid: */
-            function (MetadataInterface $data): void {
+            function (Metadata $data): void {
                 ValidationUtil::assertValidMetadata($data);
                 self::additionalMetadataValidation($data);
             },
             /* serialize: */
-            function (MetadataInterface $data): string {
-                return SerializationUtil::serializeMetadata($data);
+            function (Metadata $data): string {
+                return SerializationUtil::serializeAsJson($data);
             },
             /* validateAndDeserialize: */
-            function (string $serializedMetadata): MetadataInterface {
+            function (string $serializedMetadata): Metadata {
                 return $this->validateAndDeserializeMetadata($serializedMetadata);
             },
             /* assertEquals: */
             function ($data, $deserializedData): void {
-                ValidationUtil::assertThat(Metadata::convertToData($data) == $deserializedData);
+                TestCase::assertEquals($data, $deserializedData);
             }
         );
     }
 
-    public function consume(array $spans, ?TransactionDataInterface $transaction): void
+    public function consume(array $spansData, ?TransactionData $transactionData): void
     {
-        foreach ($spans as $span) {
+        foreach ($spansData as $span) {
             $this->consumeSpanData($span);
         }
 
-        if (!is_null($transaction)) {
-            $this->consumeTransactionData($transaction);
+        if (!is_null($transactionData)) {
+            $this->consumeTransactionData($transactionData);
         }
     }
 
-    private function consumeTransactionData(TransactionDataInterface $transaction): void
+    private function consumeTransactionData(TransactionData $transaction): void
     {
-        /** @var TransactionDataInterface $newTransaction */
+        /** @var TransactionData $newTransaction */
         $newTransaction = self::passThroughSerialization(
             $transaction,
             /* assertValid: */
-            function (TransactionDataInterface $data): void {
+            function (TransactionData $data): void {
                 ValidationUtil::assertValidTransactionData($data);
             },
             /* serialize: */
-            function (TransactionDataInterface $data): string {
-                return SerializationUtil::serializeTransaction($data);
+            function (TransactionData $data): string {
+                return SerializationUtil::serializeAsJson($data);
             },
             /* validateAndDeserialize: */
-            function (string $serializedTransactionData): TransactionDataInterface {
+            function (string $serializedTransactionData): TransactionData {
                 return $this->validateAndDeserializeTransactionData($serializedTransactionData);
             },
             /* assertEquals: */
             function ($data, $deserializedData): void {
-                TestCase::assertEquals(TransactionData::convertToData($data), $deserializedData);
+                TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newTransaction->getId(), $this->eventsFromAgent->idToTransaction);
-        $this->eventsFromAgent->idToTransaction[$newTransaction->getId()] = $newTransaction;
+        TestCase::assertArrayNotHasKey($newTransaction->id, $this->eventsFromAgent->idToTransaction);
+        $this->eventsFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
-    private function consumeSpanData(SpanDataInterface $spanData): void
+    private function consumeSpanData(SpanData $spanData): void
     {
-        /** @var SpanDataInterface $newSpan */
+        /** @var SpanData $newSpan */
         $newSpan = self::passThroughSerialization(
             $spanData,
             /* assertValid: */
-            function (SpanDataInterface $data): void {
+            function (SpanData $data): void {
                 ValidationUtil::assertValidSpanData($data);
             },
             /* serialize: */
-            function (SpanDataInterface $data): string {
-                return SerializationUtil::serializeSpan($data);
+            function (SpanData $data): string {
+                return SerializationUtil::serializeAsJson($data);
             },
             /* validateAndDeserialize: */
-            function (string $serializedSpanData): SpanDataInterface {
+            function (string $serializedSpanData): SpanData {
                 return $this->validateAndDeserializeSpanData($serializedSpanData);
             },
             /* assertEquals: */
             function ($data, $deserializedData): void {
-                ValidationUtil::assertThat(SpanData::convertToData($data) == $deserializedData);
+                TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newSpan->getId(), $this->eventsFromAgent->idToSpan);
-        $this->eventsFromAgent->idToSpan[$newSpan->getId()] = $newSpan;
+        TestCase::assertArrayNotHasKey($newSpan->id, $this->eventsFromAgent->idToSpan);
+        $this->eventsFromAgent->idToSpan[$newSpan->id] = $newSpan;
     }
 
-    public static function additionalMetadataValidation(MetadataInterface $metadata): void
+    public static function additionalMetadataValidation(Metadata $metadata): void
     {
-        TestCase::assertSame(getmypid(), $metadata->process()->pid());
-        TestCase::assertNotNull($metadata->service()->language());
-        TestCase::assertSame(PHP_VERSION, $metadata->service()->language()->version());
+        TestCase::assertSame(getmypid(), $metadata->process->pid);
+        TestCase::assertNotNull($metadata->service->language);
+        TestCase::assertSame(PHP_VERSION, $metadata->service->language->version);
     }
 
     /**
-     * @return array<string, TransactionDataInterface>
+     * @return array<string, TransactionData>
      */
     public function idToTransaction(): array
     {
@@ -172,15 +169,15 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return TransactionDataInterface
+     * @return TransactionData
      */
-    public function singleTransaction(): TransactionDataInterface
+    public function singleTransaction(): TransactionData
     {
         return $this->eventsFromAgent->singleTransaction();
     }
 
     /**
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanData>
      */
     public function idToSpan(): array
     {
@@ -188,9 +185,9 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return SpanDataInterface
+     * @return SpanData
      */
-    public function singleSpan(): SpanDataInterface
+    public function singleSpan(): SpanData
     {
         return $this->eventsFromAgent->singleSpan();
     }
@@ -198,20 +195,20 @@ class MockEventSink implements EventSinkInterface
     /**
      * @param string $name
      *
-     * @return SpanDataInterface
+     * @return SpanData
      * @throws NotFoundException
      */
-    public function spanByName(string $name): SpanDataInterface
+    public function spanByName(string $name): SpanData
     {
         return $this->eventsFromAgent->spanByName($name);
     }
 
     /**
-     * @param TransactionDataInterface $transaction
+     * @param TransactionData $transaction
      *
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanData>
      */
-    public function spansForTransaction(TransactionDataInterface $transaction): array
+    public function spansForTransaction(TransactionData $transaction): array
     {
         return $this->eventsFromAgent->spansForTransaction($transaction);
     }

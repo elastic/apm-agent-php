@@ -12,7 +12,7 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class MetadataDeserializer extends EventDataDeserializer
+final class MetadataDeserializer extends DataDeserializer
 {
     /** @var Metadata */
     private $result;
@@ -44,29 +44,17 @@ final class MetadataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        return (new class extends Metadata {
-            /**
-             * @param string   $key
-             * @param mixed    $value
-             * @param Metadata $result
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(string $key, $value, Metadata $result): bool
-            {
-                switch ($key) {
-                    case 'process':
-                        $result->process = ProcessDataDeserializer::deserialize($value);
-                        return true;
+        switch ($key) {
+            case 'process':
+                $this->result->process = ProcessDataDeserializer::deserialize($value);
+                return true;
 
-                    case 'service':
-                        $result->service = ServiceDataDeserializer::deserialize($value);
-                        return true;
+            case 'service':
+                $this->result->service = ServiceDataDeserializer::deserialize($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

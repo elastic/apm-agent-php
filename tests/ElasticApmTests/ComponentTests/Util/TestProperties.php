@@ -24,7 +24,7 @@ final class TestProperties implements LoggableInterface
     public $expectedStatusCode = HttpConsts::STATUS_OK;
 
     /** @var ?string */
-    public $transactionName = null;
+    public $expectedTransactionName = null;
 
     /** @var ?string */
     public $transactionType = null;
@@ -98,9 +98,9 @@ final class TestProperties implements LoggableInterface
         return $this;
     }
 
-    public function withTransactionName(string $transactionName): self
+    public function withExpectedTransactionName(string $expectedTransactionName): self
     {
-        $this->transactionName = $transactionName;
+        $this->expectedTransactionName = $expectedTransactionName;
         return $this;
     }
 

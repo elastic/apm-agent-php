@@ -51,7 +51,7 @@ final class CurlAutoInstrumentation
                             ? $interceptedCallArgs[0]
                             : null;
 
-                        $this->span = ElasticApm::beginCurrentSpan(
+                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             'curl_exec',
                             Constants::SPAN_TYPE_EXTERNAL,
                             Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP
@@ -68,7 +68,7 @@ final class CurlAutoInstrumentation
                                 $info = curl_getinfo($this->curlHandle);
                                 $httpCode = ArrayUtil::getValueIfKeyExistsElse('http_code', $info, null);
                                 if (!is_null($httpCode)) {
-                                    $this->span->setLabel('HTTP status', $httpCode);
+                                    $this->span->context()->setLabel('HTTP status', $httpCode);
                                 }
                             }
                         }

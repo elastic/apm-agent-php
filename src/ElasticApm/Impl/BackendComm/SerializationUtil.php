@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\BackendComm;
 
-use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetadataInterface;
-use Elastic\Apm\Impl\Span;
-use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
 use Exception;
 
 /**
@@ -24,8 +18,11 @@ final class SerializationUtil
 {
     use StaticClassTrait;
 
+    /** @var bool */
+    public static $isInTestingContext = false;
+
     /**
-     * @param mixed  $data
+     * @param mixed $data
      *
      * @return string
      */
@@ -42,18 +39,28 @@ final class SerializationUtil
         return $serializedData;
     }
 
-    public static function serializeMetadata(MetadataInterface $data): string
+    /**
+     * @param string               $name
+     * @param mixed                $value
+     * @param array<string, mixed> $nameToValue
+     *
+     * @return void
+     */
+    public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
     {
-        return self::serializeAsJson(Metadata::convertToData($data));
-    }
+        if (self::$isInTestingContext && array_key_exists($name, $nameToValue)) {
+            throw new SerializationException(
+                ExceptionUtil::buildMessage(
+                    'Given key already exists in given array',
+                    ['name' => $name, 'value' => $value, 'nameToValue' => $nameToValue]
+                )
+            );
+        }
 
-    public static function serializeTransaction(TransactionDataInterface $data): string
-    {
-        return self::serializeAsJson(Transaction::convertToData($data));
-    }
+        if (is_null($value)) {
+            return;
+        }
 
-    public static function serializeSpan(SpanDataInterface $data): string
-    {
-        return self::serializeAsJson(Span::convertToData($data));
+        $nameToValue[$name] = $value;
     }
 }

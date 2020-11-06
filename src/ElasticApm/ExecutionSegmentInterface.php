@@ -11,8 +11,35 @@ use Closure;
 /**
  * This interface has functionality shared between Transaction and Span.
  */
-interface ExecutionSegmentInterface extends ExecutionSegmentDataInterface
+interface ExecutionSegmentInterface
 {
+    /**
+     * Hex encoded 64 random bits (== 8 bytes == 16 hex digits) ID.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L9
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L9
+     */
+    public function getId(): string;
+
+    /**
+     * Hex encoded 128 random bits (== 16 bytes == 32 hex digits) ID of the correlated trace.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L14
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L19
+     */
+    public function getTraceId(): string;
+
+    /**
+     * Recorded time of the event.
+     * For events that have non-zero duration this time corresponds to the start of the event.
+     * UTC based and in microseconds since Unix epoch.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L6
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L6
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/timestamp_epoch.json#L7
+     */
+    public function getTimestamp(): float;
+
     /**
      * Begins a new span with this execution segment as the new span's parent.
      *
@@ -22,11 +49,11 @@ interface ExecutionSegmentInterface extends ExecutionSegmentDataInterface
      * @param string|null $action    New span's action
      * @param float|null  $timestamp Start time of the new span
      *
-     * @see SpanInterface::getName() For the description.
-     * @see SpanInterface::getType() For the description.
-     * @see SpanInterface::getSubtype() For the description.
-     * @see SpanInterface::getAction() For the description.
-     * @see SpanInterface::getTimestamp() For the description.
+     * @see SpanInterface::setName() For the description.
+     * @see SpanInterface::setType() For the description.
+     * @see SpanInterface::setSubtype() For the description.
+     * @see SpanInterface::setAction() For the description.
+     * @see SpanInterface::setTimestamp() For the description.
      *
      * @return SpanInterface New span
      */
@@ -49,11 +76,11 @@ interface ExecutionSegmentInterface extends ExecutionSegmentDataInterface
      * @param string|null $action    New span's action
      * @param float|null  $timestamp Start time of the new span
      *
-     * @see             SpanInterface::getName() For the description.
-     * @see             SpanInterface::getType() For the description.
-     * @see             SpanInterface::getSubtype() For the description.
-     * @see             SpanInterface::getAction() For the description.
-     * @see             SpanInterface::getTimestamp() For the description.
+     * @see             SpanInterface::setName() For the description.
+     * @see             SpanInterface::setType() For the description.
+     * @see             SpanInterface::setSubtype() For the description.
+     * @see             SpanInterface::setAction() For the description.
+     * @see             SpanInterface::setTimestamp() For the description.
      *
      * @template        T
      * @phpstan-param   Closure(SpanInterface $newSpan): T $callback
@@ -71,45 +98,60 @@ interface ExecutionSegmentInterface extends ExecutionSegmentDataInterface
     );
 
     /**
+     * - For transactions:
+     *      The name of this transaction.
+     *      Generic designation of a transaction in the scope of a single service (eg: 'GET /users/:id').
+     *
+     * - For spans:
+     *      Generic designation of a span in the scope of a transaction.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L47
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L136
+     *
+     * @param string $name
+     */
+    public function setName(string $name): void;
+
+    /**
+     * Type is a keyword of specific relevance in the service's domain
+     * e.g.,
+     *      - For transaction: 'db', 'external' for a span and 'request', 'backgroundjob' for a transaction, etc.
+     *      - For span: 'db.postgresql.query', 'template.erb', etc.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L57
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L149
+     *
+     * @param string $type
+     */
+    public function setType(string $type): void;
+
+    /**
      * Sets the end timestamp and finalizes this object's state.
      *
-     * With the exception of calls to getContext() (which are always allowed),
-     * end() must be the last call made to any object of this type,
-     * and to do otherwise leads to undefined behavior but not throwing an exception.
-     *
-     * If end() was already called for this object then a warning should be logged.
+     * If any mutating method (for example any `set...` method is a mutating method)
+     * is called on a instance which has already then a warning is logged.
+     * For example, end() is a mutating method as well.
      *
      * @param float|null $duration In milliseconds with 3 decimal points.
      */
     public function end(?float $duration = null): void;
 
     /**
-     * Checks if this execution segment has already ended.
+     * Returns true if this execution segment has already ended.
      */
     public function hasEnded(): bool;
 
     /**
-     * @param string                     $key
-     * @param string|bool|int|float|null $value
-     *
-     * @see ExecutionSegmentDataInterface::getLabels() For the description
+     * Returns true if this execution segment is a no-op (for example when recording is disabled).
      */
-    public function setLabel(string $key, $value): void;
-    /**
-     * @param string $name
-     *
-     * @see ExecutionSegmentDataInterface::getName() For the description
-     */
-    public function setName(string $name): void;
-
-    /**
-     * @param string $type
-     *
-     * @see ExecutionSegmentDataInterface::getType() For the description
-     */
-    public function setType(string $type): void;
-
     public function isNoop(): bool;
 
+    /**
+     * Discards this execution segment.
+     */
     public function discard(): void;
 }

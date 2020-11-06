@@ -9,6 +9,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -55,27 +56,22 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
         return NoopSpan::singletonInstance();
     }
 
+    public function setResult(?string $result): void
+    {
+    }
+
     public function getResult(): ?string
     {
         return null;
     }
 
-    public function setResult(?string $result): void
-    {
-    }
-
-    public function getStartedSpansCount(): int
-    {
-        return 0;
-    }
-
-    public function getDroppedSpansCount(): int
-    {
-        return 0;
-    }
-
     public function isSampled(): bool
     {
         return false;
+    }
+
+    public function context(): TransactionContextInterface
+    {
+        return NoopTransactionContext::singletonInstance();
     }
 }

@@ -14,7 +14,7 @@ class StacktraceUnitTest extends UnitTestCaseBase
     {
         // Act
 
-        $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
+        $tx = ElasticApm::beginCurrentTransaction(__FUNCTION__, 'test_TX_type');
 
         /** @var array<string, mixed> */
         $expectedData = [];
@@ -28,7 +28,7 @@ class StacktraceUnitTest extends UnitTestCaseBase
 
         // Assert
 
-        $this->assertTransactionEquals($tx, $this->mockEventSink->singleTransaction());
+        $this->assertSame(__FUNCTION__, $this->mockEventSink->singleTransaction()->name);
         StacktraceTestSharedCode::assertPartImpl(
             count($createSpanApis),
             $expectedData,
