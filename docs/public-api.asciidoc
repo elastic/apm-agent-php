@@ -241,17 +241,6 @@ $transaction->setName('GET /users/:id');
 ----
 
 [float]
-[[api-transaction-interface-get-name]]
-==== `TransactionInterface::getName`
-Gets the name of the transaction.
-
-Example:
-[source,php]
-----
-$transactionName = $transaction->getName();
-----
-
-[float]
 [[api-transaction-interface-set-type]]
 ==== `TransactionInterface::setType`
 Sets the type of the transaction.
@@ -262,17 +251,6 @@ Example:
 [source,php]
 ----
 $transaction->setType('my custom transaction type');
-----
-
-[float]
-[[api-transaction-interface-get-type]]
-==== `TransactionInterface::getType`
-Gets the type of the transaction.
-
-Example:
-[source,php]
-----
-$transactionType = $transaction->getType();
 ----
 
 [float]
@@ -357,22 +335,11 @@ $transaction->setResult('my custom transaction result');
 ----
 
 [float]
-[[api-transaction-interface-get-result]]
-==== `TransactionInterface::getResult`
-Gets the result of the transaction.
-
-Example:
-[source,php]
-----
-$transactionResult = $transaction->getResult();
-----
-
-[float]
 [[api-transaction-interface-end]]
 ==== `TransactionInterface::end`
 Ends the transaction and queues it to be reported to the APM Server.
 
-It is illegal to call any mutating methods (i.e., not `getXyz`) on a transaction instance which has already ended.
+It is illegal to call any mutating methods (for example any `set...` method is a mutating method) on a transaction instance which has already ended.
 
 Example:
 
@@ -406,17 +373,6 @@ $span->setName('SELECT FROM customer');
 ----
 
 [float]
-[[api-span-interface-get-name]]
-==== `SpanInterface::getName`
-Gets the name of the span.
-
-Example:
-[source,php]
-----
-$spanName = $span->getName();
-----
-
-[float]
 [[api-span-interface-set-type]]
 ==== `SpanInterface::setType`
 Sets the type of the span.
@@ -427,17 +383,6 @@ Example:
 [source,php]
 ----
 $span->setType('my custom span type');
-----
-
-[float]
-[[api-span-interface-get-type]]
-==== `SpanInterface::getType`
-Gets the type of the span.
-
-Example:
-[source,php]
-----
-$spanType = $span->getType();
 ----
 
 [float]
@@ -457,17 +402,6 @@ $span->setSubtype('my custom span sub-type');
 ----
 
 [float]
-[[api-span-interface-get-subtype]]
-==== `SpanInterface::getSubtype`
-Gets the sub-type of the span.
-
-Example:
-[source,php]
-----
-$spanSubtype = $span->getSubtype();
-----
-
-[float]
 [[api-span-interface-set-action]]
 ==== `SpanInterface::setAction`
 Sets the action of the span.
@@ -481,17 +415,6 @@ Example:
 [source,php]
 ----
 $span->setAction('my custom span action');
-----
-
-[float]
-[[api-span-interface-get-action]]
-==== `SpanInterface::getAction`
-Gets the action of the span.
-
-Example:
-[source,php]
-----
-$spanAction = $span->getAction();
 ----
 
 [float]
@@ -631,7 +554,7 @@ $parentSpan->captureChildSpan(
 ==== `SpanInterface::end`
 Ends the span and queues it to be reported to the APM Server.
 
-It is illegal to call any mutating methods (i.e., not `getXyz`) on a span instance which has already ended.
+It is illegal to call any mutating methods (for example any `set...` method is a mutating method) on a span instance which has already ended.
 
 Example:
 [source,php]
