@@ -9,12 +9,6 @@ namespace Elastic\Apm\Impl;
  *
  * @internal
  */
-interface ProcessDataInterface
+class TransactionContextData extends ExecutionSegmentContextData
 {
-    /**
-     * Process ID of the service
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/process.json#L6
-     */
-    public function pid(): int;
 }

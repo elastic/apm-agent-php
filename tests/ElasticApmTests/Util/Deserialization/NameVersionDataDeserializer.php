@@ -12,7 +12,7 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class NameVersionDataDeserializer extends EventDataDeserializer
+final class NameVersionDataDeserializer extends DataDeserializer
 {
     /** @var NameVersionData */
     private $result;
@@ -44,29 +44,17 @@ final class NameVersionDataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        return (new class extends NameVersionData {
-            /**
-             * @param string          $key
-             * @param mixed           $value
-             * @param NameVersionData $result
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(string $key, $value, NameVersionData $result): bool
-            {
-                switch ($key) {
-                    case 'name':
-                        $result->name = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+        switch ($key) {
+            case 'name':
+                $this->result->name = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'version':
-                        $result->version = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+            case 'version':
+                $this->result->version = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

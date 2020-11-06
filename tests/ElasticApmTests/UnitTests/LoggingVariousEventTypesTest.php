@@ -20,7 +20,7 @@ class LoggingVariousEventTypesTest extends UnitTestCaseBase
                 'type'      => 'test_TX_type',
                 'timestamp' => 12345654321,
             ],
-            $loggedTx
+            $loggedTx['data']
         );
     }
 }

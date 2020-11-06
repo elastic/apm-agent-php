@@ -9,8 +9,8 @@ use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\MetadataInterface;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\TransactionData;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -22,7 +22,7 @@ final class EventSender implements EventSinkInterface
     /** @var Logger */
     private $logger;
 
-    /** @var MetadataInterface */
+    /** @var Metadata */
     private $metadata;
 
     /** @var ConfigSnapshot */
@@ -35,33 +35,34 @@ final class EventSender implements EventSinkInterface
         $this->logger->addContext('this', $this);
     }
 
-    public function setMetadata(MetadataInterface $metadata): void
+    public function setMetadata(Metadata $metadata): void
     {
         $this->metadata = $metadata;
     }
 
-    public function consume(array $spans, ?TransactionDataInterface $transaction): void
+    public function consume(array $spansData, ?TransactionData $transactionData): void
     {
         $serializedMetadata = '{"metadata":';
-        $serializedMetadata .= SerializationUtil::serializeMetadata($this->metadata);
+        $serializedMetadata .= SerializationUtil::serializeAsJson($this->metadata);
         $serializedMetadata .= "}";
 
         $serializedEvents = $serializedMetadata;
 
-        foreach ($spans as $span) {
+        foreach ($spansData as $span) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"span":';
-            $serializedEvents .= SerializationUtil::serializeSpan($span);
+            $serializedEvents .= SerializationUtil::serializeAsJson($span);
             $serializedEvents .= '}';
         }
 
-        if (!is_null($transaction)) {
+        if (!is_null($transactionData)) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"transaction":';
-            $serializedEvents .= SerializationUtil::serializeTransaction($transaction);
+            $serializedEvents .= SerializationUtil::serializeAsJson($transactionData);
             $serializedEvents .= "}";
         }
 
+        /** @noinspection SpellCheckingInspection */
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Calling elastic_apm_send_to_server...',

@@ -10,11 +10,11 @@ use Closure;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\RandomUtil;
-use Elastic\Apm\SpanDataInterface;
 use Elastic\Apm\SpanInterface;
+use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -22,9 +22,10 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-final class Transaction extends TransactionData implements TransactionInterface
+final class Transaction extends ExecutionSegment implements TransactionInterface, TransactionContextInterface
 {
-    use ExecutionSegmentTrait;
+    /** @var TransactionData */
+    private $data;
 
     /** @var ConfigSnapshot */
     private $config;
@@ -35,12 +36,14 @@ final class Transaction extends TransactionData implements TransactionInterface
     /** @var Logger */
     private $logger;
 
-    /** @var SpanDataInterface[] */
-    private $spansToSend = [];
+    /** @var SpanData[] */
+    private $spansDataToSend = [];
 
     public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
     {
-        $this->constructExecutionSegmentTrait(
+        $this->data = new TransactionData();
+
+        parent::__construct(
             $tracer,
             IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES),
             $name,
@@ -49,12 +52,31 @@ final class Transaction extends TransactionData implements TransactionInterface
         );
 
         $this->config = $tracer->getConfig();
+
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
-        $this->isSampled = $this->makeSamplingDecision();
+        $this->data->isSampled = $this->makeSamplingDecision();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Transaction created', ['parentId' => $this->parentId]);
+        && $loggerProxy->log('Transaction created');
+    }
+
+    protected function executionSegmentData(): ExecutionSegmentData
+    {
+        return $this->data;
+    }
+
+    private function lazyContextData(): TransactionContextData
+    {
+        if (is_null($this->data->context)) {
+            $this->data->context = new TransactionContextData();
+        }
+        return $this->data->context;
+    }
+
+    protected function executionSegmentContextData(): ExecutionSegmentContextData
+    {
+        return $this->lazyContextData();
     }
 
     public function beginSpan(
@@ -71,26 +93,27 @@ final class Transaction extends TransactionData implements TransactionInterface
 
         $isDropped = false;
         // Started and dropped spans should be counted only for sampled transactions
-        if ($this->isSampled) {
-            if ($this->startedSpansCount >= $this->config->transactionMaxSpans()) {
+        if ($this->data->isSampled) {
+            if ($this->data->startedSpansCount >= $this->config->transactionMaxSpans()) {
                 $isDropped = true;
-                ++$this->droppedSpansCount;
-                if ($this->droppedSpansCount === 1) {
+                ++$this->data->droppedSpansCount;
+                if ($this->data->droppedSpansCount === 1) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
                         'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
                         [
-                            'count($this->spansToSend)'                    => count($this->spansToSend),
+                            'count($this->spansDataToSend)'                    => count($this->spansDataToSend),
                             OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
                         ]
                     );
                 }
             } else {
-                ++$this->startedSpansCount;
+                ++$this->data->startedSpansCount;
             }
         }
 
         return new Span(
+            $this->tracer,
             $this /* <- containingTransaction*/,
             $parentSpan,
             $name,
@@ -109,14 +132,35 @@ final class Transaction extends TransactionData implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        return $this->beginSpan(
-            null /* <- parentSpan */,
+        return
+            $this->beginSpan(
+                null /* <- parentSpan */,
+                $name,
+                $type,
+                $subtype,
+                $action,
+                $timestamp
+            )
+            ?? NoopSpan::singletonInstance();
+    }
+
+    public function captureChildSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null,
+        ?float $timestamp = null
+    ) {
+        return $this->captureChildSpanImpl(
             $name,
             $type,
+            $callback,
             $subtype,
             $action,
-            $timestamp
-        ) ?? NoopSpan::singletonInstance();
+            $timestamp,
+            1 /* numberOfStackFramesToSkip */
+        );
     }
 
     public function beginCurrentSpan(
@@ -165,23 +209,53 @@ final class Transaction extends TransactionData implements TransactionInterface
         $this->currentSpan = $newCurrentSpan;
     }
 
+    public function context(): TransactionContextInterface
+    {
+        if ($this->beforeMutating() || (!$this->isSampled())) {
+            return NoopTransactionContext::singletonInstance();
+        }
+
+        return $this;
+    }
+
+    public function getParentId(): ?string
+    {
+        return $this->data->parentId;
+    }
+
+    /**
+     * Transactions that are 'sampled' will include all available information
+     * Transactions that are not sampled will not have 'spans' or 'context'.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
+     */
+    public function isSampled(): bool
+    {
+        return $this->data->isSampled;
+    }
+
     public function setResult(?string $result): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        $this->result = $this->tracer->limitNullableKeywordString($result);
+        $this->data->result = $this->tracer->limitNullableKeywordString($result);
     }
 
-    public function queueSpanToSend(Span $span): void
+    public function getResult(): ?string
+    {
+        return $this->data->result;
+    }
+
+    public function queueSpanDataToSend(SpanData $spanData): void
     {
         if ($this->hasEnded()) {
-            $this->getTracer()->getEventSink()->consume([$span], /* transaction: */ null);
+            $this->tracer->getEventSink()->consume([$spanData], /* transaction: */ null);
             return;
         }
 
-        $this->spansToSend[] = $span;
+        $this->spansDataToSend[] = $spanData;
     }
 
     public function end(?float $duration = null): void
@@ -190,10 +264,14 @@ final class Transaction extends TransactionData implements TransactionInterface
             return;
         }
 
-        $this->getTracer()->getEventSink()->consume($this->spansToSend, $this);
+        if (!is_null($this->data->context) && $this->isContextEmpty()) {
+            $this->data->context = null;
+        }
 
-        if ($this->getTracer()->getCurrentTransaction() === $this) {
-            $this->getTracer()->resetCurrentTransaction();
+        $this->tracer->getEventSink()->consume($this->spansDataToSend, $this->data);
+
+        if ($this->tracer->getCurrentTransaction() === $this) {
+            $this->tracer->resetCurrentTransaction();
         }
     }
 
@@ -219,5 +297,22 @@ final class Transaction extends TransactionData implements TransactionInterface
         }
 
         return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return array_merge(
+            parent::propertiesExcludedFromLog(),
+            ['config', 'logger', 'spansDataToSend']
+        );
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $currentSpanId = is_null($this->currentSpan) ? null : $this->currentSpan->getId();
+        parent::toLogLoggableTraitImpl($stream, /* customPropValues */ ['currentSpan' => $currentSpanId]);
     }
 }

@@ -20,15 +20,10 @@ final class MockSpanData extends SpanData
         $this->constructMockExecutionSegmentDataTrait($childSpans, $childTransactions);
     }
 
-    public function syncWithTransaction(TransactionData $transaction): void
+    public function syncWithTransaction(TransactionData $transactionData): void
     {
-        $this->setTraceId($transaction->getTraceId());
-        $this->setTransactionId($transaction->getId());
-    }
-
-    public function setParentId(string $parentId): void
-    {
-        $this->parentId = $parentId;
+        $this->traceId = $transactionData->traceId;
+        $this->setTransactionId($transactionData->id);
     }
 
     public function setTransactionId(string $transactionId): void

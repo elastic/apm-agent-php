@@ -18,19 +18,14 @@ final class MetadataDiscoverer
     public const LANGUAGE_NAME = 'PHP';
     public const DEFAULT_SERVICE_NAME = 'Unnamed PHP service';
 
-    public static function discoverMetadata(ConfigSnapshot $config): MetadataInterface
+    public static function discoverMetadata(ConfigSnapshot $config): Metadata
     {
-        return (new class extends Metadata {
-            public static function discoverImpl(ConfigSnapshot $config): MetadataInterface
-            {
-                $result = new Metadata();
+        $result = new Metadata();
 
-                $result->process = MetadataDiscoverer::discoverProcessData();
-                $result->service = MetadataDiscoverer::discoverServiceData($config);
+        $result->process = MetadataDiscoverer::discoverProcessData();
+        $result->service = MetadataDiscoverer::discoverServiceData($config);
 
-                return $result;
-            }
-        })->discoverImpl($config);
+        return $result;
     }
 
     public static function adaptServiceName(string $configuredName): string
@@ -45,45 +40,47 @@ final class MetadataDiscoverer
             : Tracer::limitKeywordString($charsAdaptedName);
     }
 
-    public static function discoverServiceData(ConfigSnapshot $config): ServiceDataInterface
+    public static function discoverServiceData(ConfigSnapshot $config): ServiceData
     {
-        return (new class extends ServiceData {
-            public static function discoverImpl(ConfigSnapshot $config): ServiceDataInterface
-            {
-                $result = new ServiceData();
+        $result = new ServiceData();
 
-                if (!is_null($config->environment())) {
-                    $result->environment = Tracer::limitKeywordString($config->environment());
-                }
+        if (!is_null($config->environment())) {
+            $result->environment = Tracer::limitKeywordString($config->environment());
+        }
 
-                $result->name = is_null($config->serviceName())
-                    ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
-                    : MetadataDiscoverer::adaptServiceName($config->serviceName());
+        $result->name = is_null($config->serviceName())
+            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            : MetadataDiscoverer::adaptServiceName($config->serviceName());
 
-                if (!is_null($config->serviceVersion())) {
-                    $result->version = Tracer::limitKeywordString($config->serviceVersion());
-                }
+        if (!is_null($config->serviceVersion())) {
+            $result->version = Tracer::limitKeywordString($config->serviceVersion());
+        }
 
-                $result->agent = new NameVersionData(MetadataDiscoverer::AGENT_NAME, ElasticApm::VERSION);
-                $result->language = new NameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
-                $result->runtime = $result->language;
+        $result->agent = self::buildNameVersionData(self::AGENT_NAME, ElasticApm::VERSION);
 
-                return $result;
-            }
-        })->discoverImpl($config);
+        $result->language = self::buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
+
+        $result->runtime = $result->language;
+
+        return $result;
     }
 
-    public static function discoverProcessData(): ProcessDataInterface
+    public static function buildNameVersionData(?string $name, ?string $version): NameVersionData
     {
-        return (new class extends ProcessData {
-            public static function discoverImpl(): ProcessDataInterface
-            {
-                $result = new ProcessData();
+        $result = new NameVersionData();
 
-                $result->pid = getmypid();
+        $result->name = $name;
+        $result->version = $version;
 
-                return $result;
-            }
-        })->discoverImpl();
+        return $result;
+    }
+
+    public static function discoverProcessData(): ProcessData
+    {
+        $result = new ProcessData();
+
+        $result->pid = getmypid();
+
+        return $result;
     }
 }

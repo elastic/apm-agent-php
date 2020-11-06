@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\TestsSharedCode;
 
-use Elastic\Apm\ExecutionSegmentDataInterface;
+use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\MetadataInterface;
+use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\TransactionDataInterface;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
@@ -19,13 +19,13 @@ final class EventsFromAgent implements LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var MetadataInterface[] */
+    /** @var Metadata[] */
     public $metadata = [];
 
-    /** @var array<string, TransactionDataInterface> */
+    /** @var array<string, TransactionData> */
     public $idToTransaction = [];
 
-    /** @var array<string, SpanDataInterface> */
+    /** @var array<string, SpanData> */
     public $idToSpan = [];
 
     public function clear(): void
@@ -36,24 +36,24 @@ final class EventsFromAgent implements LoggableInterface
     }
 
     /**
-     * @return TransactionDataInterface
+     * @return TransactionData
      */
-    public function singleTransaction(): TransactionDataInterface
+    public function singleTransaction(): TransactionData
     {
         TestCase::assertCount(1, $this->idToTransaction);
         return $this->idToTransaction[array_key_first($this->idToTransaction)];
     }
 
     /**
-     * @return SpanDataInterface
+     * @return SpanData
      */
-    public function singleSpan(): SpanDataInterface
+    public function singleSpan(): SpanData
     {
         TestCase::assertCount(1, $this->idToSpan);
         return $this->idToSpan[array_key_first($this->idToSpan)];
     }
 
-    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentDataInterface
+    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentData
     {
         if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->idToSpan, null))) {
             return $span;
@@ -61,7 +61,7 @@ final class EventsFromAgent implements LoggableInterface
         return ArrayUtil::getValueIfKeyExistsElse($id, $this->idToTransaction, null);
     }
 
-    public function executionSegmentById(string $id): ExecutionSegmentDataInterface
+    public function executionSegmentById(string $id): ExecutionSegmentData
     {
         $result = $this->executionSegmentByIdOrNull($id);
         TestCaseBase::assertNotNull($result);
@@ -71,13 +71,13 @@ final class EventsFromAgent implements LoggableInterface
     /**
      * @param string $name
      *
-     * @return SpanDataInterface
+     * @return SpanData
      * @throws NotFoundException
      */
-    public function spanByName(string $name): SpanDataInterface
+    public function spanByName(string $name): SpanData
     {
         foreach ($this->idToSpan as $id => $span) {
-            if ($span->getName() === $name) {
+            if ($span->name === $name) {
                 return $span;
             }
         }
@@ -85,16 +85,16 @@ final class EventsFromAgent implements LoggableInterface
     }
 
     /**
-     * @param TransactionDataInterface $transaction
+     * @param TransactionData $transaction
      *
-     * @return array<string, SpanDataInterface>
+     * @return array<string, SpanData>
      */
-    public function spansForTransaction(TransactionDataInterface $transaction): array
+    public function spansForTransaction(TransactionData $transaction): array
     {
         $idToSpanFromTransaction = [];
 
         foreach ($this->idToSpan as $id => $span) {
-            if ($span->getTransactionId() === $transaction->getId()) {
+            if ($span->transactionId === $transaction->id) {
                 $idToSpanFromTransaction[$id] = $span;
             }
         }
@@ -103,16 +103,16 @@ final class EventsFromAgent implements LoggableInterface
     }
 
     /**
-     * @param string                       $parentId
-     * @param ?iterable<SpanDataInterface> $spans
+     * @param string              $parentId
+     * @param ?iterable<SpanData> $spans
      *
-     * @return iterable<SpanDataInterface>
+     * @return iterable<SpanData>
      */
     public function findChildSpans(string $parentId, ?iterable $spans = null): iterable
     {
-        /** @var SpanDataInterface $span */
+        /** @var SpanData $span */
         foreach ($spans ?? $this->idToSpan as $span) {
-            if ($span->getParentId() === $parentId) {
+            if ($span->parentId === $parentId) {
                 yield $span;
             }
         }

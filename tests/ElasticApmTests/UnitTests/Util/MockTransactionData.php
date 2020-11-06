@@ -26,11 +26,6 @@ final class MockTransactionData extends TransactionData
         $this->isSampled = true;
     }
 
-    public function setParentId(?string $parentId): void
-    {
-        $this->parentId = $parentId;
-    }
-
     public function setTimestamp(float $timestamp): void
     {
         $this->timestamp = $timestamp;

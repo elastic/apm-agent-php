@@ -7,11 +7,12 @@ namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 use Ds\Set;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
-use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
 final class SharedCode
@@ -199,7 +200,7 @@ final class SharedCode
     public static function assertResults(Args $testArgs, EventsFromAgent $eventsFromAgent): void
     {
         $tx = $eventsFromAgent->singleTransaction();
-        TestCase::assertSame($testArgs->isSampled, $tx->isSampled());
+        TestCase::assertSame($testArgs->isSampled, $tx->isSampled);
 
         $transactionMaxSpans = $testArgs->configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS;
         if ($transactionMaxSpans < 0) {
@@ -207,29 +208,29 @@ final class SharedCode
         }
 
         $msg = LoggableToString::convert(['testArgs' => $testArgs, 'eventsFromAgent' => $eventsFromAgent]);
-        if (!$tx->isSampled()) {
-            TestCase::assertSame(0, $tx->getStartedSpansCount(), $msg);
-            TestCase::assertSame(0, $tx->getDroppedSpansCount(), $msg);
+        if (!$tx->isSampled) {
+            TestCase::assertSame(0, $tx->startedSpansCount, $msg);
+            TestCase::assertSame(0, $tx->droppedSpansCount, $msg);
             TestCase::assertEmpty($eventsFromAgent->idToSpan, $msg);
             return;
         }
 
         $expectedStartedSpansCount = min($testArgs->numberOfSpansToCreate, $transactionMaxSpans);
-        TestCase::assertSame($expectedStartedSpansCount, $tx->getStartedSpansCount(), $msg);
+        TestCase::assertSame($expectedStartedSpansCount, $tx->startedSpansCount, $msg);
         $expectedDroppedSpansCount = $testArgs->numberOfSpansToCreate - $expectedStartedSpansCount;
-        TestCase::assertSame($expectedDroppedSpansCount, $tx->getDroppedSpansCount(), $msg);
+        TestCase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
         TestCase::assertCount($expectedStartedSpansCount, $eventsFromAgent->idToSpan, $msg);
 
-        /** @var ?SpanDataInterface $spanMissingChildren */
+        /** @var ?SpanData $spanMissingChildren */
         $spanMissingChildren = null;
 
-        /** @var SpanDataInterface $span */
+        /** @var SpanData $span */
         foreach ($eventsFromAgent->idToSpan as $span) {
-            $msg2 = $msg . ' spanId: ' . $span->getId() . '.';
-            TestCase::assertArrayHasKey(AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $span->getLabels(), $msg2);
-            $createdChildCount = $span->getLabels()[AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY];
-            $sentChildCount = IterableUtilForTests::count($eventsFromAgent->findChildSpans($span->getId()));
-            if ($tx->getDroppedSpansCount() === 0) {
+            $msg2 = $msg . ' spanId: ' . $span->id . '.';
+            TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $msg2);
+            $createdChildCount = TestCaseBase::getLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
+            $sentChildCount = IterableUtilForTests::count($eventsFromAgent->findChildSpans($span->id));
+            if ($tx->droppedSpansCount === 0) {
                 TestCase::assertSame($createdChildCount, $sentChildCount, $msg2);
             } else {
                 TestCase::assertLessThanOrEqual($createdChildCount, $sentChildCount, $msg2);

@@ -6,7 +6,7 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\TransactionDataInterface;
+use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
 use ElasticApmTests\ComponentTests\Util\HttpConsts;
@@ -20,8 +20,8 @@ final class TransactionTest extends ComponentTestCaseBase
             (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpans']),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertEmpty($tx->getLabels());
-                $this->assertGreaterThanOrEqual(200, $tx->getDuration());
+                $this->assertNull($tx->context);
+                $this->assertGreaterThanOrEqual(200, $tx->duration);
             }
         );
     }
@@ -31,14 +31,14 @@ final class TransactionTest extends ComponentTestCaseBase
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
     }
 
-    private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionDataInterface
+    private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionData
     {
         $this->assertEmpty($dataFromAgent->idToSpan());
 
         $tx = $dataFromAgent->singleTransaction();
-        $this->assertSame(0, $tx->getStartedSpansCount());
-        $this->assertSame(0, $tx->getDroppedSpansCount());
-        $this->assertNull($tx->getParentId());
+        $this->assertSame(0, $tx->startedSpansCount);
+        $this->assertSame(0, $tx->droppedSpansCount);
+        $this->assertNull($tx->parentId);
         return $tx;
     }
 
@@ -46,11 +46,11 @@ final class TransactionTest extends ComponentTestCaseBase
     {
         ElasticApm::getCurrentTransaction()->setName('custom TX name');
         ElasticApm::getCurrentTransaction()->setType('custom TX type');
-        ElasticApm::getCurrentTransaction()->setLabel('string_label_key', 'string_label_value');
-        ElasticApm::getCurrentTransaction()->setLabel('bool_label_key', true);
-        ElasticApm::getCurrentTransaction()->setLabel('int_label_key', -987654321);
-        ElasticApm::getCurrentTransaction()->setLabel('float_label_key', 1234.56789);
-        ElasticApm::getCurrentTransaction()->setLabel('null_label_key', null);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('string_label_key', 'string_label_value');
+        ElasticApm::getCurrentTransaction()->context()->setLabel('bool_label_key', true);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('int_label_key', -987654321);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('float_label_key', 1234.56789);
+        ElasticApm::getCurrentTransaction()->context()->setLabel('null_label_key', null);
 
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
 
@@ -63,17 +63,17 @@ final class TransactionTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties'])
-                ->withTransactionName('custom TX name')->withTransactionType('custom TX type'),
+                ->withExpectedTransactionName('custom TX name')->withTransactionType('custom TX type'),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertCount(5, $tx->getLabels());
-                $this->assertSame('string_label_value', $tx->getLabels()['string_label_key']);
-                $this->assertTrue($tx->getLabels()['bool_label_key']);
-                $this->assertSame(-987654321, $tx->getLabels()['int_label_key']);
-                $this->assertSame(1234.56789, $tx->getLabels()['float_label_key']);
-                $this->assertNull($tx->getLabels()['null_label_key']);
-                $this->assertSame('custom TX result', $tx->getResult());
-                $this->assertEquals(100, $tx->getDuration());
+                $this->assertLabelsCount(5, $tx);
+                $this->assertSame('string_label_value', self::getLabel($tx, 'string_label_key'));
+                $this->assertTrue(self::getLabel($tx, 'bool_label_key'));
+                $this->assertSame(-987654321, self::getLabel($tx, 'int_label_key'));
+                $this->assertSame(1234.56789, self::getLabel($tx, 'float_label_key'));
+                $this->assertNull(self::getLabel($tx, 'null_label_key'));
+                $this->assertSame('custom TX result', $tx->result);
+                $this->assertEquals(100, $tx->duration);
             }
         );
     }
@@ -117,7 +117,7 @@ final class TransactionTest extends ComponentTestCaseBase
                 ->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
             function (DataFromAgent $dataFromAgent) use ($expectedTxResult): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->getResult());
+                self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->result);
             }
         );
     }

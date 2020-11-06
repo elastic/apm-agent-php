@@ -52,7 +52,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     private $logger;
 
     /** @var TransactionInterface|null */
-    private $currentTransaction;
+    private $currentTransaction = null;
 
     /** @var bool */
     private $isRecording = true;
@@ -74,8 +74,6 @@ final class Tracer implements TracerInterface, LoggableInterface
                            (ElasticApmExtensionUtil::isLoaded()
                                ? new EventSender($this->config, $this->loggerFactory)
                                : NoopEventSink::singletonInstance());
-
-        $this->currentTransaction = null;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(

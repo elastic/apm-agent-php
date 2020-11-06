@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\StacktraceFrame;
+use Elastic\Apm\Impl\StacktraceFrame;
 use ElasticApmTests\Util\ValidationUtil;
 use PHPUnit\Framework\TestCase;
 
@@ -19,11 +19,11 @@ final class StacktraceDeserializer
      *
      * @param array<mixed, mixed> $deserializedRawData
      *
-     * @return StacktraceFrame[]
+     * @return \Elastic\Apm\Impl\StacktraceFrame[]
      */
     public static function deserialize(array $deserializedRawData): array
     {
-        /** @var \Elastic\Apm\StacktraceFrame[] */
+        /** @var \Elastic\Apm\Impl\StacktraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
@@ -66,7 +66,7 @@ final class StacktraceDeserializer
                     break;
 
                 default:
-                    throw EventDataDeserializer::buildException("Unknown key: span_count->`$key'");
+                    throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
             }
         }
 

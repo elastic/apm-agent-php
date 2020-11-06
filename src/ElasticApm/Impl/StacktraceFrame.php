@@ -2,18 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm;
+namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\EventData;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class StacktraceFrame extends EventData
+final class StacktraceFrame implements JsonSerializable, LoggableInterface
 {
+    use LoggableTrait;
+
     /**
      * @var string
      *
@@ -45,5 +49,16 @@ class StacktraceFrame extends EventData
     {
         $this->filename = $filename;
         $this->lineno = $lineno;
+    }
+
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('filename', $this->filename, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('function', $this->function, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('lineno', $this->lineno, /* ref */ $result);
+
+        return $result;
     }
 }

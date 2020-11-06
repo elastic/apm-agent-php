@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use JsonSerializable;
@@ -13,84 +14,98 @@ use JsonSerializable;
  *
  * @internal
  */
-class ServiceData extends EventData implements ServiceDataInterface, JsonSerializable, LoggableInterface
+class ServiceData implements JsonSerializable, LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var string|null */
-    protected $name = null;
-
-    /** @var string|null */
-    protected $version = null;
-
-    /** @var string|null */
-    protected $environment = null;
-
-    /** @var NameVersionData|null */
-    protected $agent = null;
-
-    /** @var NameVersionData|null */
-    protected $framework = null;
-
-    /** @var NameVersionData|null */
-    protected $language = null;
-
-    /** @var NameVersionData|null */
-    protected $runtime = null;
-
-    /** @inheritDoc */
-    public function name(): ?string
-    {
-        return $this->name;
-    }
-
-    /** @inheritDoc */
-    public function version(): ?string
-    {
-        return $this->version;
-    }
-
-    /** @inheritDoc */
-    public function environment(): ?string
-    {
-        return $this->environment;
-    }
-
-    /** @inheritDoc */
-    public function agent(): ?NameVersionDataInterface
-    {
-        return $this->agent;
-    }
-
-    /** @inheritDoc */
-    public function framework(): ?NameVersionDataInterface
-    {
-        return $this->framework;
-    }
-
-    /** @inheritDoc */
-    public function language(): ?NameVersionDataInterface
-    {
-        return $this->language;
-    }
-
-    /** @inheritDoc */
-    public function runtime(): ?NameVersionDataInterface
-    {
-        return $this->runtime;
-    }
+    /**
+     * @var string|null
+     *
+     * Immutable name of the service emitting this event.
+     * Valid characters are: 'a'-'z', 'A'-'Z', '0'-'9', '_' and '-'.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L50
+     */
+    public $name = null;
 
     /**
-     * @param mixed $propValue
+     * @var string|null
      *
-     * @return mixed
+     * Version of the service emitting this event.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L75
      */
-    protected static function convertPropertyValueToData($propValue)
-    {
-        if ($propValue instanceof NameVersionDataInterface) {
-            return NameVersionData::convertToData($propValue);
-        }
+    public $version = null;
 
-        return parent::convertPropertyValueToData($propValue);
+    /**
+     * @var string|null
+     *
+     * Environment name of the service, e.g. "production" or "staging".
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L56
+     */
+    public $environment = null;
+
+    /**
+     * @var NameVersionData|null
+     *
+     * Name and version of the Elastic APM agent.
+     * Name of the Elastic APM agent, e.g. "php".
+     * Version of the Elastic APM agent, e.g."1.0.0".
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L10
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L15
+     */
+    public $agent = null;
+
+    /**
+     * @var NameVersionData|null
+     *
+     * Name and version of the web framework used.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L26
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L30
+     */
+    public $framework = null;
+
+    /**
+     * @var NameVersionData|null
+     *
+     * Name and version of the programming language used.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L40
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L44
+     */
+    public $language = null;
+
+    /**
+     * @var NameVersionData|null
+     *
+     * Name and version of the language runtime running this service.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L65
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L69
+     */
+    public $runtime = null;
+
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('version', $this->version, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('environment', $this->environment, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('agent', $this->agent, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('framework', $this->framework, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('language', $this->language, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('runtime', $this->runtime, /* ref */ $result);
+
+        return $result;
     }
 }

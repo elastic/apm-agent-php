@@ -14,30 +14,22 @@ use JsonSerializable;
  *
  * @internal
  */
-class ExecutionSegmentData extends TimedEventData
+class TimestampedEventData implements JsonSerializable, LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var string */
-    public $id;
-
-    /** @var string */
-    public $name;
-
-    /** @var string */
-    public $traceId;
-
-    /** @var string */
-    public $type;
+    /** @var float UTC based and in microseconds since Unix epoch */
+    public $timestamp;
 
     public function jsonSerialize()
     {
-        $result = parent::jsonSerialize();
+        $result = [];
 
-        SerializationUtil::addNameValueIfNotNull('id', $this->id, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('trace_id', $this->traceId, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('type', $this->type, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull(
+            'timestamp',
+            self::adaptTimestamp($this->timestamp),
+            /* ref */ $result
+        );
 
         return $result;
     }

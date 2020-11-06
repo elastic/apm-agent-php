@@ -46,7 +46,7 @@ final class TransactionForExtensionRequest
 
     public function onShutdown(): void
     {
-        if ($this->transactionForRequest->hasEnded()) {
+        if ($this->transactionForRequest->isNoop() || $this->transactionForRequest->hasEnded()) {
             return;
         }
 

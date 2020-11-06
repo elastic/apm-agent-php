@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
-use Elastic\Apm\Impl\BackendComm\SerializationException;
 use RuntimeException;
 
 /**

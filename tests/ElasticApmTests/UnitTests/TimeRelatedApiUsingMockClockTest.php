@@ -26,6 +26,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
     public function testTransactionBeginEnd(): void
     {
         // Act
+
         $this->mockClock->fastForwardMicroseconds(987654321);
         $expectedTimestamp = $this->mockClock->getTimestamp();
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
@@ -34,9 +35,10 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
         $tx->end();
 
         // Assert
+
         $reportedTx = $this->mockEventSink->singleTransaction();
-        $this->assertSame($expectedTimestamp, $reportedTx->getTimestamp());
-        $this->assertSame($expectedDuration, $reportedTx->getDuration());
+        $this->assertSame($expectedTimestamp, $reportedTx->timestamp);
+        $this->assertSame($expectedDuration, $reportedTx->duration);
     }
 
     public function testTransactionBeginEndWithDuration(): void
@@ -50,7 +52,7 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
 
         // Assert
         $reportedTx = $this->mockEventSink->singleTransaction();
-        $this->assertSame($expectedDuration, $reportedTx->getDuration());
+        $this->assertSame($expectedDuration, $reportedTx->duration);
     }
 
     public function testSpanBeginEnd(): void
@@ -68,8 +70,8 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
 
         // Assert
         $reportedSpan = $this->mockEventSink->singleSpan();
-        $this->assertSame($expectedSpanTimestamp, $reportedSpan->getTimestamp());
-        $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
+        $this->assertSame($expectedSpanTimestamp, $reportedSpan->timestamp);
+        $this->assertSame($expectedSpanDuration, $reportedSpan->duration);
     }
 
     public function testSpanBeginEndWithDuration(): void
@@ -86,6 +88,6 @@ class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
 
         // Assert
         $reportedSpan = $this->mockEventSink->singleSpan();
-        $this->assertSame($expectedSpanDuration, $reportedSpan->getDuration());
+        $this->assertSame($expectedSpanDuration, $reportedSpan->duration);
     }
 }

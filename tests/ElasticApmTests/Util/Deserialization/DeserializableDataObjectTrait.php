@@ -17,7 +17,7 @@ trait DeserializableDataObjectTrait
     {
         $currentClass = new ReflectionClass(get_class($this));
         foreach ($currentClass->getProperties() as $reflectionProperty) {
-            $propName = $reflectionProperty->getName();
+            $propName = $reflectionProperty->name;
             if (!array_key_exists($propName, $decodedJson)) {
                 continue;
             }

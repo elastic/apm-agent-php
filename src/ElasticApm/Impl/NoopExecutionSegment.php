@@ -8,10 +8,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\ExecutionSegmentInterface;
-use Elastic\Apm\Impl\Log\LogConsts;
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LogStreamInterface;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 
 /**
@@ -38,19 +35,9 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
         return 0.0;
     }
 
-    public function getDuration(): float
-    {
-        return 0.0;
-    }
-
     public function getId(): string
     {
         return self::ID;
-    }
-
-    public function getName(): string
-    {
-        return self::NAME;
     }
 
     public function setName(string $name): void
@@ -60,11 +47,6 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     public function getTraceId(): string
     {
         return self::TRACE_ID;
-    }
-
-    public function getType(): string
-    {
-        return self::TYPE;
     }
 
     public function setType(string $type): void
@@ -101,21 +83,7 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
         return true;
     }
 
-    public function setLabel(string $key, $value): void
-    {
-    }
-
-    public function getLabels(): array
-    {
-        return [];
-    }
-
     public function discard(): void
     {
-    }
-
-    public function toLog(LogStreamInterface $stream): void
-    {
-        $stream->toLogAs([LogConsts::TYPE_KEY => DbgUtil::fqToShortClassName(get_class($this))]);
     }
 }

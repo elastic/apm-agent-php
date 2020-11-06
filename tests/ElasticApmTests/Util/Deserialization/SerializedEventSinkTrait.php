@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
-use Elastic\Apm\Impl\MetadataInterface;
+use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use Elastic\Apm\SpanDataInterface;
 use ElasticApmTests\Util\ValidationUtil;
-use Elastic\Apm\TransactionDataInterface;
 
 trait SerializedEventSinkTrait
 {
@@ -43,8 +43,7 @@ trait SerializedEventSinkTrait
         return $deserializedData;
     }
 
-    /** @inheritDoc */
-    protected function validateAndDeserializeMetadata(string $serializedMetadata): MetadataInterface
+    protected function validateAndDeserializeMetadata(string $serializedMetadata): Metadata
     {
         return self::validateAndDeserialize(
             $serializedMetadata,
@@ -53,10 +52,10 @@ trait SerializedEventSinkTrait
                     ServerApiSchemaValidator::validateMetadata($serializedData);
                 }
             },
-            function ($deserializedRawData): MetadataInterface {
+            function ($deserializedRawData): Metadata {
                 return MetadataDeserializer::deserialize($deserializedRawData);
             },
-            function (MetadataInterface $data): void {
+            function (Metadata $data): void {
                 ValidationUtil::assertValidMetadata($data);
             }
         );
@@ -64,7 +63,7 @@ trait SerializedEventSinkTrait
 
     protected function validateAndDeserializeTransactionData(
         string $serializedTransactionData
-    ): TransactionDataInterface {
+    ): TransactionData {
         return self::validateAndDeserialize(
             $serializedTransactionData,
             function (string $serializedData): void {
@@ -72,16 +71,16 @@ trait SerializedEventSinkTrait
                     ServerApiSchemaValidator::validateTransactionData($serializedData);
                 }
             },
-            function ($deserializedRawData): TransactionDataInterface {
+            function ($deserializedRawData): TransactionData {
                 return TransactionDataDeserializer::deserialize($deserializedRawData);
             },
-            function (TransactionDataInterface $data): void {
+            function (TransactionData $data): void {
                 ValidationUtil::assertValidTransactionData($data);
             }
         );
     }
 
-    protected function validateAndDeserializeSpanData(string $serializedSpanData): SpanDataInterface
+    protected function validateAndDeserializeSpanData(string $serializedSpanData): SpanData
     {
         return self::validateAndDeserialize(
             $serializedSpanData,
@@ -90,10 +89,10 @@ trait SerializedEventSinkTrait
                     ServerApiSchemaValidator::validateSpanData($serializedSpanData);
                 }
             },
-            function ($deserializedRawData): SpanDataInterface {
+            function ($deserializedRawData): SpanData {
                 return SpanDataDeserializer::deserialize($deserializedRawData);
             },
-            function (SpanDataInterface $data): void {
+            function (SpanData $data): void {
                 ValidationUtil::assertValidSpanData($data);
             }
         );

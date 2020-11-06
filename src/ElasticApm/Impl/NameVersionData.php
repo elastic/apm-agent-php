@@ -4,39 +4,45 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class NameVersionData extends EventData implements NameVersionDataInterface, LoggableInterface
+class NameVersionData implements JsonSerializable, LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var string|null */
-    protected $name;
+    /**
+     * @var string|null
+     *
+     * Name of an entity.
+     *
+     * The length of this string is limited to 1024.
+     */
+    public $name;
 
-    /** @var string|null */
-    protected $version;
+    /**
+     * @var string|null
+     *
+     * Version of an entity, e.g."1.0.0".
+     *
+     * The length of this string is limited to 1024.
+     */
+    public $version;
 
-    public function __construct(?string $name = null, ?string $version = null)
+    public function jsonSerialize()
     {
-        $this->name = $name;
-        $this->version = $version;
-    }
+        $result = [];
 
-    /** @inheritDoc */
-    public function name(): ?string
-    {
-        return $this->name;
-    }
+        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('version', $this->version, /* ref */ $result);
 
-    /** @inheritDoc */
-    public function version(): ?string
-    {
-        return $this->version;
+        return $result;
     }
 }

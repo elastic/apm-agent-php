@@ -36,7 +36,7 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     {
         $tx = ElasticApm::getCurrentTransaction();
         $verifyServerCert = ArrayUtil::getValueIfKeyExistsElse('verifyServerCert', $args, null);
-        $tx->setLabel('verifyServerCert', $verifyServerCert);
+        $tx->context()->setLabel('verifyServerCert', $verifyServerCert);
     }
 
     /**
@@ -61,8 +61,8 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
             $testProperties,
             function (DataFromAgent $dataFromAgent) use ($verifyServerCert): void {
                 $tx = $dataFromAgent->singleTransaction();
-                self::assertCount(1, $tx->getLabels());
-                self::assertSame($verifyServerCert, $tx->getLabels()['verifyServerCert']);
+                self::assertLabelsCount(1, $tx);
+                self::assertSame($verifyServerCert, self::getLabel($tx, 'verifyServerCert'));
             }
         );
     }

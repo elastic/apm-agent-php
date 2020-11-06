@@ -12,7 +12,7 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class ServiceDataDeserializer extends EventDataDeserializer
+final class ServiceDataDeserializer extends DataDeserializer
 {
     /** @var ServiceData */
     private $result;
@@ -44,49 +44,37 @@ final class ServiceDataDeserializer extends EventDataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        return (new class extends ServiceData {
-            /**
-             * @param string      $key
-             * @param mixed       $value
-             * @param ServiceData $result
-             *
-             * @return bool
-             */
-            public static function deserializeKeyValueImpl(string $key, $value, ServiceData $result): bool
-            {
-                switch ($key) {
-                    case 'name':
-                        $result->name = ValidationUtil::assertValidServiceName($value);
-                        return true;
+        switch ($key) {
+            case 'name':
+                $this->result->name = ValidationUtil::assertValidServiceName($value);
+                return true;
 
-                    case 'version':
-                        $result->version = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+            case 'version':
+                $this->result->version = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'environment':
-                        $result->environment = ValidationUtil::assertValidKeywordString($value);
-                        return true;
+            case 'environment':
+                $this->result->environment = ValidationUtil::assertValidKeywordString($value);
+                return true;
 
-                    case 'agent':
-                        $result->agent = NameVersionDataDeserializer::deserialize($value);
-                        return true;
+            case 'agent':
+                $this->result->agent = NameVersionDataDeserializer::deserialize($value);
+                return true;
 
-                    case 'framework':
-                        $result->framework = NameVersionDataDeserializer::deserialize($value);
-                        return true;
+            case 'framework':
+                $this->result->framework = NameVersionDataDeserializer::deserialize($value);
+                return true;
 
-                    case 'language':
-                        $result->language = NameVersionDataDeserializer::deserialize($value);
-                        return true;
+            case 'language':
+                $this->result->language = NameVersionDataDeserializer::deserialize($value);
+                return true;
 
-                    case 'runtime':
-                        $result->runtime = NameVersionDataDeserializer::deserialize($value);
-                        return true;
+            case 'runtime':
+                $this->result->runtime = NameVersionDataDeserializer::deserialize($value);
+                return true;
 
-                    default:
-                        return false;
-                }
-            }
-        })->deserializeKeyValueImpl($key, $value, $this->result);
+            default:
+                return false;
+        }
     }
 }

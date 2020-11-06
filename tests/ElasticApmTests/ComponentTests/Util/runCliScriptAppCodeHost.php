@@ -17,8 +17,8 @@ if (!is_null($globalTopLevelCodeId)) {
             'top_level_code_span_name',
             'top_level_code_span_type'
         );
-        $span->setLabel('top_level_code_span_end_file_name', __FILE__);
-        $span->setLabel('top_level_code_span_end_line_number', __LINE__ + 1);
+        $span->context()->setLabel('top_level_code_span_end_file_name', __FILE__);
+        $span->context()->setLabel('top_level_code_span_end_line_number', __LINE__ + 1);
         $span->end();
     }
 }

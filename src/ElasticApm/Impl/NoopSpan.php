@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
 
 /**
@@ -26,23 +27,8 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
         return NoopTransaction::ID;
     }
 
-    public function getStacktrace(): ?array
-    {
-        return null;
-    }
-
-    public function getSubtype(): ?string
-    {
-        return null;
-    }
-
     public function setSubtype(?string $subtype): void
     {
-    }
-
-    public function getAction(): ?string
-    {
-        return null;
     }
 
     public function setAction(?string $action): void
@@ -51,5 +37,10 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
 
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
+    }
+
+    public function context(): SpanContextInterface
+    {
+        return NoopSpanContext::singletonInstance();
     }
 }

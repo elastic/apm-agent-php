@@ -4,81 +4,50 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\SpanDataInterface;
-use Elastic\Apm\StacktraceFrame;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class SpanData extends ExecutionSegmentData implements SpanDataInterface
+class SpanData extends ExecutionSegmentData
 {
-    /** @var string|null */
-    protected $action = null;
+    /** @var string */
+    public $parentId;
 
     /** @var string */
-    protected $parentId;
+    public $transactionId;
+
+    /** @var string|null */
+    public $action = null;
+
+    /** @var string|null */
+    public $subtype = null;
 
     /** @var StacktraceFrame[]|null */
-    protected $stacktrace = null;
+    public $stacktrace = null;
 
-    /** @var string|null */
-    protected $subtype = null;
+    /** @var SpanContextData|null */
+    public $context = null;
 
-    /** @var string */
-    protected $transactionId;
-
-    /** @inheritDoc */
-    public function getAction(): ?string
+    public function jsonSerialize()
     {
-        return $this->action;
-    }
+        $result = parent::jsonSerialize();
 
-    /** @inheritDoc */
-    public function getParentId(): string
-    {
-        return $this->parentId;
-    }
+        SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('transaction_id', $this->transactionId, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('action', $this->action, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('subtype', $this->subtype, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stacktrace, /* ref */ $result);
 
-    /** @inheritDoc */
-    public function getStacktrace(): ?array
-    {
-        return $this->stacktrace;
-    }
-
-    /** @inheritDoc */
-    public function getSubtype(): ?string
-    {
-        return $this->subtype;
-    }
-
-    /** @inheritDoc */
-    public function getTransactionId(): string
-    {
-        return $this->transactionId;
-    }
-
-    /**
-     * @param string               $propKey
-     * @param mixed                $propValue
-     * @param array<string, mixed> $result
-     */
-    protected function serializeProperty(string $propKey, $propValue, array &$result): void
-    {
-        // Don't serialize properties added by a derived class
-        if (!property_exists(__CLASS__, $propKey)) {
-            return;
+        if (!is_null($this->context)) {
+            $dstCtx = $this->context->jsonSerialize();
+            if (!empty($dstCtx)) {
+                SerializationUtil::addNameValueIfNotNull('context', $dstCtx, /* ref */ $result);
+            }
         }
 
-        parent::serializeProperty($propKey, $propValue, /* ref */ $result);
-    }
-
-    /**
-     * @return array<string>
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return array_merge(parent::propertiesExcludedFromLog(), ['stacktrace']);
+        return $result;
     }
 }

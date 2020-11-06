@@ -44,7 +44,7 @@ final class PdoAutoInstrumentation
                     {
                         self::assertInterceptedCallThisIsNotNull($interceptedCallThis, ...$interceptedCallArgs);
 
-                        $this->span = ElasticApm::beginCurrentSpan(
+                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             'PDO::__construct('
                             . (count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : '')
                             . ')',
@@ -84,7 +84,7 @@ final class PdoAutoInstrumentation
 
                     public function preHook($thisObj, ...$interceptedCallArgs): void
                     {
-                        $this->span = ElasticApm::beginCurrentSpan(
+                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO::exec',
                             Constants::SPAN_TYPE_DB,
                             Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE
@@ -97,7 +97,7 @@ final class PdoAutoInstrumentation
                         $returnValueOrThrown
                     ): void {
                         if (!$hasExitedByException) {
-                            $this->span->setLabel('rows_affected', (int)$returnValueOrThrown);
+                            $this->span->context()->setLabel('rows_affected', (int)$returnValueOrThrown);
                         }
 
                         self::endSpan(

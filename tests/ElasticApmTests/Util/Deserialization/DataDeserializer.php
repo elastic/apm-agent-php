@@ -12,7 +12,7 @@ use Throwable;
  *
  * @internal
  */
-abstract class EventDataDeserializer
+abstract class DataDeserializer
 {
     /**
      *

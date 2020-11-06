@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Closure;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
-use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -15,9 +16,10 @@ use Elastic\Apm\TransactionInterface;
  *
  * @internal
  */
-final class Span extends SpanData implements SpanInterface
+final class Span extends ExecutionSegment implements SpanInterface, SpanContextInterface
 {
-    use ExecutionSegmentTrait;
+    /** @var SpanData */
+    private $data;
 
     /** @var Logger */
     private $logger;
@@ -32,6 +34,7 @@ final class Span extends SpanData implements SpanInterface
     private $isDropped;
 
     public function __construct(
+        Tracer $tracer,
         Transaction $containingTransaction,
         ?Span $parentSpan,
         string $name,
@@ -41,8 +44,10 @@ final class Span extends SpanData implements SpanInterface
         ?float $timestamp,
         bool $isDropped
     ) {
-        $this->constructExecutionSegmentTrait(
-            $containingTransaction->getTracer(),
+        $this->data = new SpanData();
+
+        parent::__construct(
+            $tracer,
             $containingTransaction->getTraceId(),
             $name,
             $type,
@@ -53,17 +58,46 @@ final class Span extends SpanData implements SpanInterface
         $this->setAction($action);
 
         $this->containingTransaction = $containingTransaction;
-        $this->transactionId = $containingTransaction->getId();
+        $this->data->transactionId = $containingTransaction->getId();
 
         $this->parentSpan = $parentSpan;
-        $this->parentId = $parentSpan === null ? $containingTransaction->getId() : $parentSpan->getId();
+        $this->data->parentId = is_null($parentSpan) ? $containingTransaction->getId() : $parentSpan->getId();
 
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
         $this->isDropped = $isDropped;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Span created', ['parentId' => $this->parentId]);
+        && $loggerProxy->log('Span created');
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return array_merge(
+            parent::propertiesExcludedFromLog(),
+            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace']
+        );
+    }
+
+    protected function executionSegmentData(): ExecutionSegmentData
+    {
+        return $this->data;
+    }
+
+    protected function executionSegmentContextData(): ExecutionSegmentContextData
+    {
+        return $this->lazyContextData();
+    }
+
+    private function lazyContextData(): SpanContextData
+    {
+        if (is_null($this->data->context)) {
+            $this->data->context = new SpanContextData();
+        }
+        return $this->data->context;
     }
 
     public function beginChildSpan(
@@ -73,19 +107,49 @@ final class Span extends SpanData implements SpanInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        return $this->containingTransaction->beginSpan(
-            $this /* <- parentSpan */,
+        return
+            $this->containingTransaction->beginSpan(
+                $this /* <- parentSpan */,
+                $name,
+                $type,
+                $subtype,
+                $action,
+                $timestamp
+            )
+            ?? NoopSpan::singletonInstance();
+    }
+
+    public function captureChildSpan(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?string $subtype = null,
+        ?string $action = null,
+        ?float $timestamp = null
+    ) {
+        return $this->captureChildSpanImpl(
             $name,
             $type,
+            $callback,
             $subtype,
             $action,
-            $timestamp
-        ) ?? NoopSpan::singletonInstance();
+            $timestamp,
+            1 /* numberOfStackFramesToSkip */
+        );
     }
 
     public function isSampled(): bool
     {
         return $this->containingTransaction->isSampled();
+    }
+
+    public function context(): SpanContextInterface
+    {
+        if ($this->beforeMutating() || (!$this->isSampled())) {
+            return NoopSpanContext::singletonInstance();
+        }
+
+        return $this;
     }
 
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
@@ -96,10 +160,14 @@ final class Span extends SpanData implements SpanInterface
 
         // This method is part of public API so it should be kept in the stack trace
         // if $numberOfStackFramesToSkip is 0
-        $this->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip);
+        $this->data->stacktrace = self::captureStacktrace($numberOfStackFramesToSkip);
+
+        if (!is_null($this->data->context) && $this->isContextEmpty()) {
+            $this->data->context = null;
+        }
 
         if ($this->shouldBeSentToApmServer()) {
-            $this->containingTransaction->queueSpanToSend($this);
+            $this->containingTransaction->queueSpanDataToSend($this->data);
         }
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
@@ -119,7 +187,7 @@ final class Span extends SpanData implements SpanInterface
             return;
         }
 
-        $this->action = $this->tracer->limitNullableKeywordString($action);
+        $this->data->action = $this->tracer->limitNullableKeywordString($action);
     }
 
     public function setSubtype(?string $subtype): void
@@ -128,7 +196,7 @@ final class Span extends SpanData implements SpanInterface
             return;
         }
 
-        $this->subtype = $this->tracer->limitNullableKeywordString($subtype);
+        $this->data->subtype = $this->tracer->limitNullableKeywordString($subtype);
     }
 
     public function containingTransaction(): Transaction
@@ -184,14 +252,13 @@ final class Span extends SpanData implements SpanInterface
         return $this->containingTransaction->isSampled() && (!$this->isDropped);
     }
 
-    /**
-     * @return array<string>
-     */
-    protected static function propertiesExcludedFromLog(): array
+    public function getParentId(): string
     {
-        return array_merge(
-            parent::propertiesExcludedFromLog(),
-            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace']
-        );
+        return $this->data->parentId;
+    }
+
+    public function getTransactionId(): string
+    {
+        return $this->data->transactionId;
     }
 }

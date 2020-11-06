@@ -16,11 +16,11 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\TransactionDataInterface;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use Exception;
@@ -485,7 +485,7 @@ abstract class TestEnvBase implements LoggableInterface
 
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                __FUNCTION__ . ' failed.',
+                __FUNCTION__ . ' failed',
                 [
                     'last exception from verifyFunc()'     => $lastException,
                     'numberOfAttempts'                     => $numberOfAttempts,
@@ -604,39 +604,39 @@ abstract class TestEnvBase implements LoggableInterface
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expected, $metadata->service()->environment());
+            TestCase::assertSame($expected, $metadata->service->environment);
         }
     }
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expected, $metadata->service()->name());
+            TestCase::assertSame($expected, $metadata->service->name);
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
-            TestCase::assertSame($expected, $metadata->service()->version());
+            TestCase::assertSame($expected, $metadata->service->version);
         }
     }
 
     protected function verifyRootTransactionName(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
-        if (!is_null($testProperties->transactionName)) {
-            TestCase::assertSame($testProperties->transactionName, $rootTransaction->getName());
+        if (!is_null($testProperties->expectedTransactionName)) {
+            TestCase::assertSame($testProperties->expectedTransactionName, $rootTransaction->name);
         }
     }
 
     protected function verifyRootTransactionType(
         TestProperties $testProperties,
-        TransactionDataInterface $rootTransaction
+        TransactionData $rootTransaction
     ): void {
         if (!is_null($testProperties->transactionType)) {
-            TestCase::assertSame($testProperties->transactionType, $rootTransaction->getType());
+            TestCase::assertSame($testProperties->transactionType, $rootTransaction->type);
         }
     }
 

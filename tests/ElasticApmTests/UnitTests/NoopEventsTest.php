@@ -7,12 +7,11 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
-use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 
 class NoopEventsTest extends UnitTestCaseBase
 {
@@ -94,8 +93,12 @@ class NoopEventsTest extends UnitTestCaseBase
         $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
         $this->assertNoopTransaction($tx);
 
-        $span
-            = ElasticApm::beginCurrentSpan('test_span_name', 'test_span_type', 'test_span_subtype', 'test_span_action');
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+            'test_span_name',
+            'test_span_type',
+            'test_span_subtype',
+            'test_span_action'
+        );
         $this->assertNoopSpan($span);
 
         $span->end();
@@ -109,7 +112,7 @@ class NoopEventsTest extends UnitTestCaseBase
                 $this->assertNoopTransaction($transaction);
                 $this->assertSame(125, $counter);
                 ++$counter;
-                ElasticApm::captureCurrentSpan(
+                ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $span) use (&$counter): void {
@@ -132,43 +135,25 @@ class NoopEventsTest extends UnitTestCaseBase
     private function assertNoopExecutionSegment(ExecutionSegmentInterface $execSegment): void
     {
         $this->assertTrue($execSegment->isNoop());
+        $execSegment->setType('some_other_type');
         $this->assertSame(NoopExecutionSegment::ID, $execSegment->getId());
         $this->assertSame(NoopExecutionSegment::TRACE_ID, $execSegment->getTraceId());
-        $this->assertSame(0.0, $execSegment->getDuration());
         $this->assertSame(0.0, $execSegment->getTimestamp());
-
-        $this->assertSame(NoopExecutionSegment::TYPE, $execSegment->getType());
-        $execSegment->setType('some_other_type');
-        $this->assertSame(NoopExecutionSegment::TYPE, $execSegment->getType());
     }
 
     private function assertNoopTransaction(TransactionInterface $transaction): void
     {
         $this->assertNoopExecutionSegment($transaction);
-
-        $this->assertNull($transaction->getParentId());
-
-        $this->assertSame(NoopTransaction::NAME, $transaction->getName());
         $transaction->setName('test_TX_name');
-        $this->assertSame(NoopTransaction::NAME, $transaction->getName());
+        $this->assertNull($transaction->getParentId());
     }
 
     private function assertNoopSpan(SpanInterface $span): void
     {
         $this->assertNoopExecutionSegment($span);
-
-        $this->assertSame(NoopTransaction::ID, $span->getParentId());
-
-        $this->assertSame(NoopSpan::NAME, $span->getName());
         $span->setName('test_span_name');
-        $this->assertSame(NoopSpan::NAME, $span->getName());
-
-        $this->assertNull($span->getSubtype());
         $span->setSubtype('test_span_subtype');
-        $this->assertNull($span->getSubtype());
-
-        $this->assertNull($span->getAction());
         $span->setAction('test_span_action');
-        $this->assertNull($span->getAction());
+        $this->assertSame(NoopTransaction::ID, $span->getParentId());
     }
 }

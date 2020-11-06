@@ -6,10 +6,11 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\SpanDataInterface;
+use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\SpanInterface;
-use Elastic\Apm\StacktraceFrame;
 use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
 use function ElasticApmTests\dummyFuncForTestsWithNamespace;
@@ -80,9 +81,9 @@ final class StacktraceTestSharedCode
 
     /**
      * @param array<string, mixed> $expectedData
-     * @param SpanDataInterface    $span
+     * @param SpanData             $span
      */
-    private static function assertPartImplOneSpan(array $expectedData, SpanDataInterface $span): void
+    private static function assertPartImplOneSpan(array $expectedData, SpanData $span): void
     {
         $buildFuncName = function (string $funcName): string {
             return $funcName . '()';
@@ -101,7 +102,8 @@ final class StacktraceTestSharedCode
         $funcNameForClosureWithThisCaptured = self::buildMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
         $funcNameForClosureWithoutThisCaptured = $buildStaticMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
 
-        $spanCreatingApi = $span->getLabels()[self::SPAN_CREATING_API_LABEL_KEY];
+        /** @var string */
+        $spanCreatingApi = TestCaseBase::getLabel($span, self::SPAN_CREATING_API_LABEL_KEY);
 
         /** @var StacktraceFrame[] */
         $expectedStacktrace = [];
@@ -148,7 +150,7 @@ final class StacktraceTestSharedCode
             $expectedData[self::lineNumberKey('myInstanceMethod')]
         );
 
-        $actualStacktrace = $span->getStacktrace();
+        $actualStacktrace = $span->stacktrace;
         TestCase::assertNotNull($actualStacktrace);
         for ($i = 0; $i < count($expectedStacktrace); ++$i) {
             $infoMsg = LoggableToString::convert(
@@ -161,16 +163,17 @@ final class StacktraceTestSharedCode
     }
 
     /**
-     * @param int                              $expectedSpansToCheckCount
-     * @param array<string, mixed>             $expectedData
-     * @param array<string, SpanDataInterface> $idToSpan
+     * @param int                     $expectedSpansToCheckCount
+     * @param array<string, mixed>    $expectedData
+     * @param array<string, SpanData> $idToSpan
      */
     public static function assertPartImpl(int $expectedSpansToCheckCount, array $expectedData, array $idToSpan): void
     {
         $checkedSpansCount = 0;
-        /** @var SpanDataInterface $span */
+        /** @var SpanData $span */
         foreach ($idToSpan as $span) {
-            if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $span->getLabels())) {
+            $labels = is_null($span->context) ? [] : $span->context->labels;
+            if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {
                 self::assertPartImplOneSpan($expectedData, $span);
                 ++$checkedSpansCount;
             }
@@ -196,7 +199,7 @@ final class StacktraceTestSharedCode
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::beginCurrentSpan';
                 $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_name', 'test_span_type');
-                $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'end');
@@ -209,7 +212,7 @@ final class StacktraceTestSharedCode
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                     } // <- this line's number is used for captureCurrentSpan() call stack's frame
                 );
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;
@@ -219,7 +222,7 @@ final class StacktraceTestSharedCode
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::beginChildSpan';
                 $span = ElasticApm::getCurrentTransaction()->beginChildSpan('test_span_name', 'test_span_type');
-                $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'end');
@@ -232,7 +235,7 @@ final class StacktraceTestSharedCode
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                     } // <- this line's number is used for captureCurrentSpan() call stack's frame
                 );
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;
@@ -244,7 +247,7 @@ final class StacktraceTestSharedCode
                 $parentSpan = ElasticApm::getCurrentTransaction()
                                         ->beginChildSpan('parent_span_name', 'parent_span_type');
                 $span = $parentSpan->beginChildSpan('test_span_name', 'test_span_type');
-                $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'end');
@@ -260,7 +263,7 @@ final class StacktraceTestSharedCode
                     'test_span_name',
                     'test_span_type',
                     function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                     } // <- this line's number is used for captureCurrentSpan() call stack's frame
                 );
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;

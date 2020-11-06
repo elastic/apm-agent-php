@@ -32,7 +32,7 @@ trait MockExecutionSegmentDataTrait
         $this->type = $prefix . 'type';
         if (empty($this->childSpans) && empty($this->childTransactions)) {
             $this->setTimestamp(Clock::singletonInstance()->getSystemClockCurrentTime());
-            $this->setDuration(mt_rand(0, 1));
+            $this->duration = mt_rand(0, 1);
         } else {
             $this->syncWithChildren();
         }
@@ -41,11 +41,6 @@ trait MockExecutionSegmentDataTrait
     public function setName(string $name): void
     {
         $this->name = $name;
-    }
-
-    public function setDuration(float $duration): void
-    {
-        $this->duration = $duration;
     }
 
     public function setTimestamp(float $timestamp): void
@@ -70,18 +65,18 @@ trait MockExecutionSegmentDataTrait
         $maxChildEndTimestamp = FloatLimits::MIN;
 
         foreach ($this->childSpans as $childSpan) {
-            $childSpan->setParentId($this->getId());
-            $minChildStartTimestamp = min($minChildStartTimestamp, $childSpan->getTimestamp());
+            $childSpan->parentId = $this->id;
+            $minChildStartTimestamp = min($minChildStartTimestamp, $childSpan->timestamp);
             $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childSpan));
         }
 
         foreach ($this->childTransactions as $childTransaction) {
-            $childTransaction->setParentId($this->getId());
-            $minChildStartTimestamp = min($minChildStartTimestamp, $childTransaction->getTimestamp());
+            $childTransaction->parentId = $this->id;
+            $minChildStartTimestamp = min($minChildStartTimestamp, $childTransaction->timestamp);
             $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childTransaction));
         }
 
         $this->setTimestamp($minChildStartTimestamp - mt_rand(0, 1));
-        $this->setDuration($maxChildEndTimestamp + mt_rand(0, 1) - $this->timestamp);
+        $this->duration = $maxChildEndTimestamp + mt_rand(0, 1) - $this->timestamp;
     }
 }

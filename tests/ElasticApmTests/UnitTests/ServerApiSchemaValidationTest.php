@@ -6,29 +6,36 @@ namespace ElasticApmTests\UnitTests;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use ElasticApmTests\UnitTests\Util\MockEventSink;
 use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
+use ElasticApmTests\Util\TestCaseBase;
 
-class ServerApiSchemaValidationTest extends UnitTestCaseBase
+class ServerApiSchemaValidationTest extends TestCaseBase
 {
     private function createSerializedTransaction(): string
     {
-        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
-        $tx->setLabel('test_label_key', 'test_label_value');
+        $mockEventSink = new MockEventSink();
+        $tracer = self::buildTracerForTests($mockEventSink)->build();
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->context()->setLabel('test_label_key', 'test_label_value');
         $tx->end();
-        return SerializationUtil::serializeTransaction($tx);
+        return SerializationUtil::serializeAsJson($mockEventSink->singleTransaction());
     }
 
     private function createSerializedSpan(): string
     {
-        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $mockEventSink = new MockEventSink();
+        $tracer = self::buildTracerForTests($mockEventSink)->build();
+        $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
-        $span->setLabel('test_label_key', 'test_label_value');
+        $span->context()->setLabel('test_label_key', 'test_label_value');
         $span->end();
         $tx->end();
-        return SerializationUtil::serializeSpan($span);
+        return SerializationUtil::serializeAsJson($mockEventSink->singleSpan());
     }
 
     /**
