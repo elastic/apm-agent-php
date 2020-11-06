@@ -419,7 +419,7 @@ $span->setAction('my custom span action');
 
 [float]
 [[api-span-interface-set-label]]
-==== `SpanInterface\->setLabel`
+==== `SpanInterface\->context()\->setLabel`
 Sets a label by a key.
 Labels are a flat mapping of user-defined string keys and string, number, or boolean values.
 
@@ -430,9 +430,9 @@ as a label key because it can lead to {ref}/mapping.html#mapping-limit-settings[
 Example:
 [source,php]
 ----
-$span->setLabel('my label with string value', 'some text');
-$span->setLabel('my label with int value', 123);
-$span->setLabel('my label with float value', 4.56);
+$span->context()->setLabel('my label with string value', 'some text');
+$span->context()->setLabel('my label with int value', 123);
+$span->context()->setLabel('my label with float value', 4.56);
 ----
 
 [float]
