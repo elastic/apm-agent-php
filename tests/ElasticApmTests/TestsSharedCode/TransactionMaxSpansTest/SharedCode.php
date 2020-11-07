@@ -20,13 +20,10 @@ final class SharedCode
     use StaticClassTrait;
 
     /** @var ?int */
-    private static $limitVariousCombinationsToVariantIndex = null;
-
-    /** @var ?int */
-    private static $testArgsVariantsCount = null;
+    private const LIMIT_TO_VARIANT_INDEX = null;
 
     /** @var bool */
-    private static $shouldPrintProgress = true;
+    private const SHOULD_PRINT_PROGRESS = false;
 
     /**
      * @param bool $isFullTestingMode
@@ -167,24 +164,28 @@ final class SharedCode
 
     public static function testEachArgsVariantProlog(bool $isFullTestingMode, Args $testArgs): bool
     {
-        self::$testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($isFullTestingMode));
+        $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($isFullTestingMode));
         if ($testArgs->variantIndex === 1) {
-            if (!is_null(self::$limitVariousCombinationsToVariantIndex)) {
+            /** @phpstan-ignore-next-line */
+            if (!is_null(self::LIMIT_TO_VARIANT_INDEX) && self::SHOULD_PRINT_PROGRESS) {
                 $msg = 'LIMITED to variant #'
-                       . self::$limitVariousCombinationsToVariantIndex . ' out of '
-                       . self::$testArgsVariantsCount;
+                       . self::LIMIT_TO_VARIANT_INDEX . ' out of '
+                       . $testArgsVariantsCount;
                 fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
             }
         }
 
-        $isThisVariantEnabled = is_null(self::$limitVariousCombinationsToVariantIndex)
-                                || ($testArgs->variantIndex === self::$limitVariousCombinationsToVariantIndex);
+        /** @phpstan-ignore-next-line */
+        $isThisVariantEnabled = is_null(self::LIMIT_TO_VARIANT_INDEX)
+                                || ($testArgs->variantIndex === self::LIMIT_TO_VARIANT_INDEX);
 
-        $shouldPrintProgress = is_null(self::$limitVariousCombinationsToVariantIndex)
-            ? self::$shouldPrintProgress
-            : $isThisVariantEnabled;
+        $shouldPrintProgress = is_null(self::LIMIT_TO_VARIANT_INDEX)
+            ? self::SHOULD_PRINT_PROGRESS
+            : $isThisVariantEnabled; // @phpstan-ignore-line
+
+        /** @phpstan-ignore-next-line */
         if ($shouldPrintProgress) {
-            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . self::$testArgsVariantsCount
+            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . $testArgsVariantsCount
                    . ': ' . LoggableToString::convert($testArgs);
             fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
         }
