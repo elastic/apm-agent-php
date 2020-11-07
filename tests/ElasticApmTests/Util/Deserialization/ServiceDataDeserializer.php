@@ -58,7 +58,7 @@ final class ServiceDataDeserializer extends DataDeserializer
                 return true;
 
             case 'agent':
-                $this->result->agent = NameVersionDataDeserializer::deserialize($value);
+                $this->result->agent = ServiceAgentDataDeserializer::deserialize($value);
                 return true;
 
             case 'framework':

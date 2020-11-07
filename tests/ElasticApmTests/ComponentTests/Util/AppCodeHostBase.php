@@ -7,10 +7,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
 
@@ -78,16 +80,17 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
             'appCodeClass'     => AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass,
             'appCodeMethod'    => AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod,
             'appCodeArguments' => AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments,
+            'agentEphemeralId' => AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId,
         ];
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Calling application code...', $logCtx);
 
-        TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass)
-            && !is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod),
-            LoggableToString::convert(AmbientContext::testConfig())
-        );
+        $msg = LoggableToString::convert(AmbientContext::testConfig());
+        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass, $msg);
+        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod, $msg);
+
+        self::setAgentEphemeralId();
 
         try {
             $methodToCall = [
@@ -109,5 +112,25 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Call to application code completed', $logCtx);
+    }
+
+    public static function setAgentEphemeralId(): void
+    {
+        $logger = AmbientContext::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        );
+
+        $msg = LoggableToString::convert(AmbientContext::testConfig());
+        TestCase::assertTrue(isset(AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId), $msg);
+        $agentEphemeralId = AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId;
+        TestCase::assertNotEmpty($agentEphemeralId);
+
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Setting agentEphemeralId...', ['agentEphemeralId' => $agentEphemeralId]);
+
+        GlobalTracerHolder::get()->setAgentEphemeralId($agentEphemeralId);
     }
 }

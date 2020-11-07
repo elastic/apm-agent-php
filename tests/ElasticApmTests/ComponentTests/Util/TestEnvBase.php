@@ -77,9 +77,9 @@ abstract class TestEnvBase implements LoggableInterface
         $this->dataFromAgent = new DataFromAgent();
     }
 
-    public function testEnvId(): string
+    public function generateSecondaryIdFromTestEnvId(): string
     {
-        return PhpUnitExtension::$testEnvId;
+        return PhpUnitExtension::$testEnvId . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
     }
 
     protected function findFreePortToListen(): int
@@ -207,7 +207,7 @@ abstract class TestEnvBase implements LoggableInterface
         $currentTryPort = null;
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
             $currentTryPort = $this->findFreePortToListen();
-            $currentTryServerId = $this->testEnvId() . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
+            $currentTryServerId = $this->generateSecondaryIdFromTestEnvId();
             $cmdLine = $cmdLineGenFunc($currentTryPort);
 
             $logger = $this->logger->inherit()->addAllContext(
@@ -357,6 +357,8 @@ abstract class TestEnvBase implements LoggableInterface
                 'http://localhost:' . $this->mockApmServerPort
             );
 
+            TestCase::assertTrue(!isset($testProperties->sharedDataPerRequest->agentEphemeralId));
+            $testProperties->sharedDataPerRequest->agentEphemeralId = $this->generateSecondaryIdFromTestEnvId();
             $this->sendRequestToInstrumentedApp($testProperties);
             $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
         } finally {
@@ -531,6 +533,8 @@ abstract class TestEnvBase implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Verifying data received from the agent...');
 
+        self::verifyAgentEphemeralId($testProperties, $this->dataFromAgent);
+
         $this->verifyHttpRequestHeaders($testProperties);
 
         $this->verifyMetadata($testProperties);
@@ -599,6 +603,17 @@ abstract class TestEnvBase implements LoggableInterface
             $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
         );
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+    }
+
+    public static function verifyAgentEphemeralId(TestProperties $testProperties, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertTrue(isset($metadata->service->agent));
+            TestCase::assertSame(
+                $testProperties->sharedDataPerRequest->agentEphemeralId,
+                $metadata->service->agent->ephemeralId
+            );
+        }
     }
 
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void

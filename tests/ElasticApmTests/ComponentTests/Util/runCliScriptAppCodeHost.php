@@ -12,6 +12,7 @@ require __DIR__ . '/defineTopLevelCodeIdGlobalVar.php';
 CliScriptAppCodeHost::run(/* ref */ $globalTopLevelCodeId);
 
 if (!is_null($globalTopLevelCodeId)) {
+    AppCodeHostBase::setAgentEphemeralId();
     if ($globalTopLevelCodeId === TopLevelCodeId::SPAN_BEGIN_END) {
         $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
             'top_level_code_span_name',

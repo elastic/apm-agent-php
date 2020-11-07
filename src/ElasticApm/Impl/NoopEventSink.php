@@ -15,11 +15,8 @@ final class NoopEventSink implements EventSinkInterface
 {
     use NoopObjectTrait;
 
-    public function setMetadata(Metadata $metadata): void
-    {
-    }
-
-    public function consume(array $spansData, ?TransactionData $transactionData): void
+    /** @inheritDoc */
+    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
     {
     }
 }

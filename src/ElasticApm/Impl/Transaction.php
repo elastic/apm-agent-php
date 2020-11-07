@@ -251,7 +251,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function queueSpanDataToSend(SpanData $spanData): void
     {
         if ($this->hasEnded()) {
-            $this->tracer->getEventSink()->consume([$spanData], /* transaction: */ null);
+            $this->tracer->sendEventsToApmServer([$spanData], /* transaction: */ null);
             return;
         }
 
@@ -268,7 +268,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $this->data->context = null;
         }
 
-        $this->tracer->getEventSink()->consume($this->spansDataToSend, $this->data);
+        $this->tracer->sendEventsToApmServer($this->spansDataToSend, $this->data);
 
         if ($this->tracer->getCurrentTransaction() === $this) {
             $this->tracer->resetCurrentTransaction();

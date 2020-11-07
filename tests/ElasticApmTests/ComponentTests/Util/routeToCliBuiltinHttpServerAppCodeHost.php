@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 
 require __DIR__ . '/../../../bootstrap.php';
 require __DIR__ . '/defineTopLevelCodeIdGlobalVar.php';
@@ -12,6 +13,7 @@ require __DIR__ . '/defineTopLevelCodeIdGlobalVar.php';
 BuiltinHttpServerAppCodeHost::run(/* ref */ $globalTopLevelCodeId);
 
 if (!is_null($globalTopLevelCodeId)) {
+    AppCodeHostBase::setAgentEphemeralId();
     if ($globalTopLevelCodeId === TopLevelCodeId::SPAN_BEGIN_END) {
         $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
             'top_level_code_span_name',

@@ -66,7 +66,21 @@ class MockEventSink implements EventSinkInterface
         return $deserializedData;
     }
 
-    public function setMetadata(Metadata $metadata): void
+    /** @inheritDoc */
+    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
+    {
+        $this->consumeMetadata($metadata);
+
+        foreach ($spansData as $span) {
+            $this->consumeSpanData($span);
+        }
+
+        if (!is_null($transactionData)) {
+            $this->consumeTransactionData($transactionData);
+        }
+    }
+
+    private function consumeMetadata(Metadata $metadata): void
     {
         $this->eventsFromAgent->metadata[] = self::passThroughSerialization(
             $metadata,
@@ -88,17 +102,6 @@ class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-    }
-
-    public function consume(array $spansData, ?TransactionData $transactionData): void
-    {
-        foreach ($spansData as $span) {
-            $this->consumeSpanData($span);
-        }
-
-        if (!is_null($transactionData)) {
-            $this->consumeTransactionData($transactionData);
-        }
     }
 
     private function consumeTransactionData(TransactionData $transaction): void

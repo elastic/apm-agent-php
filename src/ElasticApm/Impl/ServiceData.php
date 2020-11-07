@@ -53,7 +53,7 @@ class ServiceData implements JsonSerializable, LoggableInterface
     public $environment = null;
 
     /**
-     * @var NameVersionData|null
+     * @var ServiceAgentData|null
      *
      * Name and version of the Elastic APM agent.
      * Name of the Elastic APM agent, e.g. "php".
