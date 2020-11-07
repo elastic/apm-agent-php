@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\TransactionInterface;
 
 interface TracerInterface
@@ -67,13 +68,35 @@ interface TracerInterface
      */
     public function captureCurrentTransaction(string $name, string $type, Closure $callback, ?float $timestamp = null);
 
+    /**
+     * @see ElasticApm::getCurrentTransaction()
+     */
     public function getCurrentTransaction(): TransactionInterface;
 
+    /**
+     * Returns true if this Tracer is a no-op (for example because Elastic APM is disabled)
+     */
     public function isNoop(): bool;
 
+    /**
+     * @see ElasticApm::pauseRecording()
+     */
     public function pauseRecording(): void;
 
+    /**
+     * @see ElasticApm::resumeRecording()
+     */
     public function resumeRecording(): void;
 
+    /**
+     * Returns true if this Tracer has recording on i.e., not paused
+     */
     public function isRecording(): bool;
+
+    /**
+     * @param string|null $ephemeralId
+     *
+     * @see ServiceAgentData::ephemeralId
+     */
+    public function setAgentEphemeralId(?string $ephemeralId): void;
 }

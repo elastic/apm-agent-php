@@ -388,6 +388,7 @@ final class ValidationUtil
         TestCase::assertNotNull($serviceData->agent);
         self::assertThat($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
         self::assertThat($serviceData->agent->version === ElasticApm::VERSION);
+        self::assertValidNullableKeywordString($serviceData->agent->ephemeralId);
 
         self::assertValidNameVersionData($serviceData->framework);
 

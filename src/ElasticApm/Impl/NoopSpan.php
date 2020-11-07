@@ -17,28 +17,34 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
 {
     use NoopObjectTrait;
 
+    /** @inheritDoc */
     public function getTransactionId(): string
     {
         return NoopTransaction::ID;
     }
 
+    /** @inheritDoc */
     public function getParentId(): string
     {
         return NoopTransaction::ID;
     }
 
+    /** @inheritDoc */
     public function setSubtype(?string $subtype): void
     {
     }
 
+    /** @inheritDoc */
     public function setAction(?string $action): void
     {
     }
 
+    /** @inheritDoc */
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
     }
 
+    /** @inheritDoc */
     public function context(): SpanContextInterface
     {
         return NoopSpanContext::singletonInstance();

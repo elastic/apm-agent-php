@@ -21,6 +21,9 @@ final class SharedDataPerRequest extends SharedData
     /** @var string */
     public $serverId;
 
+    /** @var string */
+    public $agentEphemeralId;
+
     public static function fromServerId(string $serverId, ?SharedDataPerRequest $prototype = null): self
     {
         $result = new SharedDataPerRequest();

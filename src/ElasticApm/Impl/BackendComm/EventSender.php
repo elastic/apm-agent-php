@@ -22,9 +22,6 @@ final class EventSender implements EventSinkInterface
     /** @var Logger */
     private $logger;
 
-    /** @var Metadata */
-    private $metadata;
-
     /** @var ConfigSnapshot */
     private $config;
 
@@ -35,15 +32,11 @@ final class EventSender implements EventSinkInterface
         $this->logger->addContext('this', $this);
     }
 
-    public function setMetadata(Metadata $metadata): void
-    {
-        $this->metadata = $metadata;
-    }
-
-    public function consume(array $spansData, ?TransactionData $transactionData): void
+    /** @inheritDoc */
+    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
     {
         $serializedMetadata = '{"metadata":';
-        $serializedMetadata .= SerializationUtil::serializeAsJson($this->metadata);
+        $serializedMetadata .= SerializationUtil::serializeAsJson($metadata);
         $serializedMetadata .= "}";
 
         $serializedEvents = $serializedMetadata;

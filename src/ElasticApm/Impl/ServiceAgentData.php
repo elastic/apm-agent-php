@@ -14,34 +14,24 @@ use JsonSerializable;
  *
  * @internal
  */
-class NameVersionData implements JsonSerializable, LoggableInterface
+class ServiceAgentData extends NameVersionData
 {
-    use LoggableTrait;
-
     /**
      * @var string|null
      *
-     * Name of an entity.
+     * Free format ID used for metrics correlation by some agents.
      *
      * The length of this string is limited to 1024.
-     */
-    public $name = null;
-
-    /**
-     * @var string|null
      *
-     * Version of an entity, e.g."1.0.0".
-     *
-     * The length of this string is limited to 1024.
+     * @link https://github.com/elastic/apm-server/blob/7.2/docs/spec/service.json#L20
      */
-    public $version = null;
+    public $ephemeralId = null;
 
     public function jsonSerialize()
     {
-        $result = [];
+        $result = parent::jsonSerialize();
 
-        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('version', $this->version, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('ephemeral_id', $this->ephemeralId, /* ref */ $result);
 
         return $result;
     }

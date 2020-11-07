@@ -57,6 +57,9 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var bool */
     private $isRecording = true;
 
+    /** @var Metadata */
+    private $currentMetadata;
+
     public function __construct(TracerDependencies $providedDependencies)
     {
         $this->providedDependencies = $providedDependencies;
@@ -84,7 +87,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             ]
         );
 
-        $this->eventSink->setMetadata(MetadataDiscoverer::discoverMetadata($this->config));
+        $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config);
     }
 
     private function buildConfig(): ConfigSnapshot
@@ -153,11 +156,6 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->clock;
     }
 
-    public function getEventSink(): EventSinkInterface
-    {
-        return $this->eventSink;
-    }
-
     public function isNoop(): bool
     {
         return false;
@@ -209,6 +207,21 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function isRecording(): bool
     {
         return $this->isRecording;
+    }
+
+    /**
+     * @param SpanData[]           $spansData
+     * @param TransactionData|null $transactionData
+     */
+    public function sendEventsToApmServer(array $spansData, ?TransactionData $transactionData): void
+    {
+        $this->eventSink->consume($this->currentMetadata, $spansData, $transactionData);
+    }
+
+    public function setAgentEphemeralId(?string $ephemeralId): void
+    {
+        assert(isset($this->currentMetadata->service->agent));
+        $this->currentMetadata->service->agent->ephemeralId = $this->limitNullableKeywordString($ephemeralId);
     }
 
     public function toLog(LogStreamInterface $stream): void

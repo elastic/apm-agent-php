@@ -11,11 +11,10 @@ namespace Elastic\Apm\Impl;
  */
 interface EventSinkInterface
 {
-    public function setMetadata(Metadata $metadata): void;
-
     /**
+     * @param Metadata             $metadata
      * @param SpanData[]           $spansData
      * @param TransactionData|null $transactionData
      */
-    public function consume(array $spansData, ?TransactionData $transactionData): void;
+    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void;
 }

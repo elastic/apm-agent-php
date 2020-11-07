@@ -49,21 +49,24 @@ final class NoopTracer implements TracerInterface
         return NoopTransaction::singletonInstance();
     }
 
+    /** @inheritDoc */
     public function pauseRecording(): void
     {
     }
 
+    /** @inheritDoc */
     public function resumeRecording(): void
     {
     }
 
+    /** @inheritDoc */
     public function isRecording(): bool
     {
         return false;
     }
 
-    public function __toString(): string
+    /** @inheritDoc */
+    public function setAgentEphemeralId(?string $ephemeralId): void
     {
-        return 'NO-OP Tracer';
     }
 }

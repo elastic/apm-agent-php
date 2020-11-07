@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\NameVersionData;
+use Elastic\Apm\Impl\ServiceAgentData;
 use ElasticApmTests\Util\ValidationUtil;
 
 /**
@@ -12,13 +12,17 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-class NameVersionDataDeserializer extends DataDeserializer
+final class ServiceAgentDataDeserializer extends DataDeserializer
 {
-    /** @var NameVersionData */
+    /** @var ServiceAgentData */
     private $result;
 
-    public function __construct(NameVersionData $result)
+    /** @var NameVersionDataDeserializer */
+    private $parentDeserializer;
+
+    private function __construct(ServiceAgentData $result)
     {
+        $this->parentDeserializer = new NameVersionDataDeserializer($result);
         $this->result = $result;
     }
 
@@ -26,11 +30,11 @@ class NameVersionDataDeserializer extends DataDeserializer
      *
      * @param array<string, mixed> $deserializedRawData
      *
-     * @return NameVersionData
+     * @return ServiceAgentData
      */
-    public static function deserialize(array $deserializedRawData): NameVersionData
+    public static function deserialize(array $deserializedRawData): ServiceAgentData
     {
-        $result = new NameVersionData();
+        $result = new ServiceAgentData();
         (new self($result))->doDeserialize($deserializedRawData);
         ValidationUtil::assertValidNameVersionData($result);
         return $result;
@@ -44,13 +48,13 @@ class NameVersionDataDeserializer extends DataDeserializer
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        switch ($key) {
-            case 'name':
-                $this->result->name = ValidationUtil::assertValidKeywordString($value);
-                return true;
+        if ($this->parentDeserializer->deserializeKeyValue($key, $value)) {
+            return true;
+        }
 
-            case 'version':
-                $this->result->version = ValidationUtil::assertValidKeywordString($value);
+        switch ($key) {
+            case 'ephemeral_id':
+                $this->result->ephemeralId = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
             default:

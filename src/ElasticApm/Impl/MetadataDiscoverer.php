@@ -56,7 +56,9 @@ final class MetadataDiscoverer
             $result->version = Tracer::limitKeywordString($config->serviceVersion());
         }
 
-        $result->agent = self::buildNameVersionData(self::AGENT_NAME, ElasticApm::VERSION);
+        $result->agent = new ServiceAgentData();
+        $result->agent->name = self::AGENT_NAME;
+        $result->agent->version = ElasticApm::VERSION;
 
         $result->language = self::buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
 
