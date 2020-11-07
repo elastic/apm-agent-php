@@ -86,20 +86,17 @@ class LoggingVariousTypesTest extends TestCaseBase
 
     // public function testResource(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testResource
     //     // $tmpFile = tmpfile()
     //     // self::logValueAndVerify(null, null);
     // }
     //
     // public function testListArray(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testListArray
     //     // new SimpleObjectForTests()
     // }
     //
     // public function testMapArray(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testMapArray
     //     // new SimpleObjectForTests()
     // }
 
@@ -198,19 +195,16 @@ class LoggingVariousTypesTest extends TestCaseBase
 
     // public function testObjectWithThrowingToString(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testObjectWithThrowingToString
     //     // new SimpleObjectForTests()
     // }
     //
     // public function testObjectWithDebugInfo(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testObjectWithThrowingToString
     //     // new SimpleObjectForTests()
     // }
     //
     // public function testThrowable(): void
     // {
-    //     // TODO: Sergey Kleyman: Implement: LoggingVariousTypesTest::testObjectWithThrowingToString
     //     // new SimpleObjectForTests()
     // }
 
