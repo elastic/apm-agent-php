@@ -1,64 +1,60 @@
 {
-    "$id": "docs/spec/metadata.json",
+    "$id": "docs/spec/rum_v3_metadata.json",
     "title": "Metadata",
     "description": "Metadata concerning the other objects in the stream.",
-    "type": "object",
+    "type": [
+        "object"
+    ],
     "properties": {
-        "service": {
+        "se": {
+            "$id": "docs/spec/rum_v3_service.json",
+            "title": "Service",
             "type": [
                 "object"
             ],
             "properties": {
-                "agent": {
+                "a": {
                     "description": "Name and version of the Elastic APM agent",
                     "type": [
                         "object"
                     ],
                     "properties": {
-                        "name": {
+                        "n": {
                             "description": "Name of the Elastic APM agent, e.g. \"Python\"",
                             "type": [
                                 "string"
                             ],
-                            "maxLength": 1024,
-                            "minLength": 1
+                            "minLength": 1,
+                            "maxLength": 1024
                         },
-                        "version": {
+                        "ve": {
                             "description": "Version of the Elastic APM agent, e.g.\"1.0.0\"",
                             "type": [
                                 "string"
                             ],
                             "maxLength": 1024
-                        },
-                        "ephemeral_id": {
-                            "description": "Free format ID used for metrics correlation by some agents",
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "maxLength": 1024
                         }
                     },
                     "required": [
-                        "name",
-                        "version"
+                        "n",
+                        "ve"
                     ]
                 },
-                "framework": {
+                "fw": {
                     "description": "Name and version of the web framework used",
                     "type": [
                         "object",
                         "null"
                     ],
                     "properties": {
-                        "name": {
+                        "n": {
                             "type": [
                                 "string",
                                 "null"
                             ],
                             "maxLength": 1024
                         },
-                        "version": {
+                        "ve": {
                             "type": [
                                 "string",
                                 "null"
@@ -67,20 +63,20 @@
                         }
                     }
                 },
-                "language": {
+                "la": {
                     "description": "Name and version of the programming language used",
                     "type": [
                         "object",
                         "null"
                     ],
                     "properties": {
-                        "name": {
+                        "n": {
                             "type": [
                                 "string"
                             ],
                             "maxLength": 1024
                         },
-                        "version": {
+                        "ve": {
                             "type": [
                                 "string",
                                 "null"
@@ -89,19 +85,19 @@
                         }
                     },
                     "required": [
-                        "name"
+                        "n"
                     ]
                 },
-                "name": {
+                "n": {
                     "description": "Immutable name of the service emitting this event",
                     "type": [
                         "string"
                     ],
                     "pattern": "^[a-zA-Z0-9 _-]+$",
-                    "maxLength": 1024,
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 1024
                 },
-                "environment": {
+                "en": {
                     "description": "Environment name of the service, e.g. \"production\" or \"staging\"",
                     "type": [
                         "string",
@@ -109,20 +105,20 @@
                     ],
                     "maxLength": 1024
                 },
-                "runtime": {
+                "ru": {
                     "description": "Name and version of the language runtime running this service",
                     "type": [
                         "object",
                         "null"
                     ],
                     "properties": {
-                        "name": {
+                        "n": {
                             "type": [
                                 "string"
                             ],
                             "maxLength": 1024
                         },
-                        "version": {
+                        "ve": {
                             "type": [
                                 "string"
                             ],
@@ -130,58 +126,26 @@
                         }
                     },
                     "required": [
-                        "name",
-                        "version"
+                        "n",
+                        "ve"
                     ]
                 },
-                "version": {
+                "ve": {
                     "description": "Version of the service emitting this event",
                     "type": [
                         "string",
                         "null"
                     ],
                     "maxLength": 1024
-                },
-                "node": {
-                    "description": "Unique meaningful name of the service node.",
-                    "type": [
-                        "object",
-                        "null"
-                    ],
-                    "properties": {
-                        "configured_name": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "maxLength": 1024
-                        }
-                    }
                 }
             },
             "required": [
-                "name",
-                "agent"
+                "a",
+                "n"
             ]
-        },
-        "process": {
-            "$ref": "process.json"
-        },
-        "system": {
-            "$ref": "system.json"
-        },
-        "user": {
-            "description": "Describes the authenticated User for a request.",
-            "$ref": "user.json"
-        },
-        "cloud": {
-            "$ref": "cloud.json"
-        },
-        "labels": {
-            "$ref": "tags.json"
         }
     },
     "required": [
-        "service"
+        "se"
     ]
 }
