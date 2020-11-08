@@ -21,7 +21,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use ElasticApmTests\ComponentTests\Util\TempDisableFailingAssertions;
+use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use ElasticApmTests\UnitTests\Util\EmptyConfigRawSnapshotSource;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
@@ -99,6 +99,21 @@ class TestCaseBase extends TestCase
     ): void {
         ValidationUtil::assertValidTransactionData($transaction);
 
+        FlakyAssertions::run(
+            function () use ($transaction, $idToSpan): void {
+                self::assertValidTransactionAndItsSpansFlakyPart($transaction, $idToSpan);
+            }
+        );
+    }
+
+    /**
+     * @param TransactionData         $transaction
+     * @param array<string, SpanData> $idToSpan
+     */
+    private static function assertValidTransactionAndItsSpansFlakyPart(
+        TransactionData $transaction,
+        array $idToSpan
+    ): void {
         /** @var SpanData $span */
         foreach ($idToSpan as $span) {
             ValidationUtil::assertValidSpanData($span);
@@ -113,18 +128,7 @@ class TestCaseBase extends TestCase
             }
         }
 
-        if (TempDisableFailingAssertions::$shouldDisableFailingAssertions) {
-            TempDisableFailingAssertions::checkDisableFailedAssertion(
-                __FILE__,
-                __LINE__,
-                $transaction->startedSpansCount === count($idToSpan),
-                '$transaction->startedSpansCount === count($idToSpan)',
-                '$transaction->startedSpansCount: ' . $transaction->startedSpansCount . '.'
-                . ' count($idToSpan): ' . count($idToSpan) . '.'
-            );
-        } else {
-            self::assertCount($transaction->startedSpansCount, $idToSpan);
-        }
+        self::assertCount($transaction->startedSpansCount, $idToSpan);
 
         $spanIdToParentId = [];
         foreach ($idToSpan as $id => $span) {
@@ -156,18 +160,7 @@ class TestCaseBase extends TestCase
             }
         }
 
-        if (TempDisableFailingAssertions::$shouldDisableFailingAssertions) {
-            TempDisableFailingAssertions::checkDisableFailedAssertion(
-                __FILE__,
-                __LINE__,
-                $idsReachableFromRoot->count() === count($idToParentId),
-                '$idsReachableFromRoot->count() === count($idToParentId)',
-                '$idsReachableFromRoot->count(): ' . $idsReachableFromRoot->count() . '.'
-                . ' count($idToParentId): ' . count($idToParentId) . '.'
-            );
-        } else {
-            self::assertCount($idsReachableFromRoot->count(), $idToParentId);
-        }
+        self::assertCount($idsReachableFromRoot->count(), $idToParentId);
     }
 
     /**

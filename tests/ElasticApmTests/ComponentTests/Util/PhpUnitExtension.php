@@ -45,8 +45,6 @@ final class PhpUnitExtension implements
 
     public function __construct()
     {
-        TempDisableFailingAssertions::$shouldDisableFailingAssertions = true;
-
         ComponentTestCaseBase::init();
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
