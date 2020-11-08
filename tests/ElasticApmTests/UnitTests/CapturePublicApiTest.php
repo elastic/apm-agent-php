@@ -12,6 +12,9 @@ use ElasticApmTests\Util\DummyExceptionForTests;
 
 class CapturePublicApiTest extends UnitTestCaseBase
 {
+    /** @var int */
+    private static $callToMethodThrowingDummyExceptionForTestsLineNumber;
+
     public function testElasticApmCurrentTransactionReturnVoid(): void
     {
         // Act
@@ -173,24 +176,36 @@ class CapturePublicApiTest extends UnitTestCaseBase
         $this->assertSame('final_test_span_action', $span->action);
     }
 
+    private static function methodThrowingDummyExceptionForTests(): void
+    {
+        throw new DummyExceptionForTests("A message", 123321);
+    }
+
     public function testWhenExceptionThrown(): void
     {
         $throwingFunc = function (bool $shouldThrow): bool {
             if ($shouldThrow) {
-                throw new DummyExceptionForTests("A message");
+                self::$callToMethodThrowingDummyExceptionForTestsLineNumber = __LINE__ + 1;
+                self::methodThrowingDummyExceptionForTests();
             }
             return $shouldThrow;
         };
 
-        $captureTx = function (bool $shouldThrow) use ($throwingFunc): bool {
+        $throwingRunData = [];
+        $captureTx = function (bool $shouldThrow) use ($throwingFunc, &$throwingRunData): bool {
             return ElasticApm::captureCurrentTransaction(
                 'test_TX_name',
-                'test_TX_type',
-                function () use ($throwingFunc, $shouldThrow): bool {
+                $shouldThrow ? 'test_throwing_TX_type' : 'test_TX_type',
+                function (TransactionInterface $tx) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {
+                    $throwingRunData['traceId'] = $tx->getTraceId();
+                    $throwingRunData['transactionId'] = $tx->getId();
+                    $tx->context()->setLabel('TX_label_key', 'TX_label_value');
                     return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
                         'test_span_name',
                         'test_span_type',
-                        function () use ($throwingFunc, $shouldThrow): bool {
+                        function (SpanInterface $span) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {
+                            $throwingRunData['spanId'] = $span->getId();
+                            $span->context()->setLabel('span_label_key', 'span_label_value');
                             return $throwingFunc($shouldThrow);
                         }
                     );
@@ -199,6 +214,7 @@ class CapturePublicApiTest extends UnitTestCaseBase
         };
 
         // Act
+
         $this->assertFalse($captureTx(false));
         $this->assertThrows(
             DummyExceptionForTests::class,
@@ -208,7 +224,40 @@ class CapturePublicApiTest extends UnitTestCaseBase
         );
 
         // Assert
-        $this->assertCount(2, $this->mockEventSink->idToTransaction());
-        $this->assertCount(2, $this->mockEventSink->idToSpan());
+
+        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToTransaction);
+        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToSpan);
+
+        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToError);
+        foreach ($this->mockEventSink->eventsFromAgent->idToError as $_ => $error) {
+            self::assertSame($throwingRunData['traceId'], $error->traceId);
+            self::assertSame($throwingRunData['transactionId'], $error->transactionId);
+            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->eventsFromAgent->idToTransaction);
+            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->eventsFromAgent->idToSpan);
+            self::assertArrayHasKey($error->id, $this->mockEventSink->eventsFromAgent->idToError);
+            self::assertTrue(
+                $error->parentId === $throwingRunData['spanId']
+                ||  $error->parentId === $throwingRunData['transactionId']
+            );
+
+            self::assertNotNull($error->transaction);
+            self::assertSame('test_throwing_TX_type', $error->transaction->type);
+            self::assertTrue($error->transaction->isSampled);
+
+            // Only transaction's context is copied to an error and thus only transaction's labels
+            self::assertNotNull($error->context);
+            self::assertCount(1, $error->context->labels);
+            self::assertSame('TX_label_value', $error->context->labels['TX_label_key']);
+
+            self::assertNotNull($error->exception);
+            self::assertSame(DummyExceptionForTests::NAMESPACE, $error->exception->module);
+            self::assertSame(DummyExceptionForTests::CLASS_NAME, $error->exception->type);
+            self::assertNotNull($error->exception->stacktrace);
+            $topFrame = $error->exception->stacktrace[0];
+            self::assertSame(__CLASS__ . '::methodThrowingDummyExceptionForTests()', $topFrame->function);
+            self::assertSame(__FILE__, $topFrame->filename);
+            self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
+        }
+        // TODO: Sergey Kleyman: Add checks for errors
     }
 }

@@ -56,20 +56,24 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
         return NoopSpan::singletonInstance();
     }
 
+    /** @inheritDoc */
     public function setResult(?string $result): void
     {
     }
 
+    /** @inheritDoc */
     public function getResult(): ?string
     {
         return null;
     }
 
+    /** @inheritDoc */
     public function isSampled(): bool
     {
         return false;
     }
 
+    /** @inheritDoc */
     public function context(): TransactionContextInterface
     {
         return NoopTransactionContext::singletonInstance();

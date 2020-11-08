@@ -43,13 +43,4 @@ final class DbgUtil
         }
         return gettype($value);
     }
-
-    public static function fqToShortClassName(string $fqClassName): string
-    {
-        $forwardSlashPos = strrchr($fqClassName, '\\');
-        if ($forwardSlashPos === false) {
-            return $fqClassName;
-        }
-        return substr($forwardSlashPos, 1);
-    }
 }

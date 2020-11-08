@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
+use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
@@ -94,6 +95,24 @@ trait SerializedEventSinkTrait
             },
             function (SpanData $data): void {
                 ValidationUtil::assertValidSpanData($data);
+            }
+        );
+    }
+
+    protected function validateAndDeserializeErrorData(string $serializedErrorData): ErrorData
+    {
+        return self::validateAndDeserialize(
+            $serializedErrorData,
+            function (string $serializedSpanData): void {
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateErrorData($serializedSpanData);
+                }
+            },
+            function ($deserializedRawData): ErrorData {
+                return ErrorDataDeserializer::deserialize($deserializedRawData);
+            },
+            function (ErrorData $data): void {
+                ValidationUtil::assertValidErrorData($data);
             }
         );
     }

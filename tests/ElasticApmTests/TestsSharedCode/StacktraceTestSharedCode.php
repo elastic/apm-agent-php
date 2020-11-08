@@ -156,9 +156,9 @@ final class StacktraceTestSharedCode
             $infoMsg = LoggableToString::convert(
                 ['expected' => $expectedStacktrace[$i], 'actual' => $actualStacktrace[$i]]
             );
+            TestCase::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);
             TestCase::assertSame($expectedStacktrace[$i]->filename, $actualStacktrace[$i]->filename, $infoMsg);
             TestCase::assertSame($expectedStacktrace[$i]->lineno, $actualStacktrace[$i]->lineno, $infoMsg);
-            TestCase::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);
         }
     }
 

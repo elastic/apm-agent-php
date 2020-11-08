@@ -13,10 +13,12 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -62,7 +64,7 @@ abstract class ExecutionSegment implements
         $this->monotonicBeginTime = $tracer->getClock()->getMonotonicClockCurrentTime();
         $this->tracer = $tracer;
         $this->executionSegmentData()->traceId = $traceId;
-        $this->executionSegmentData()->id = IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $this->executionSegmentData()->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
@@ -76,10 +78,19 @@ abstract class ExecutionSegment implements
         return ['tracer', 'logger'];
     }
 
+    /**
+     * @return ExecutionSegmentData
+     */
     abstract protected function executionSegmentData(): ExecutionSegmentData;
 
+    /**
+     * @return ExecutionSegmentContextData
+     */
     abstract protected function executionSegmentContextData(): ExecutionSegmentContextData;
 
+    /**
+     * @return bool
+     */
     abstract public function isSampled(): bool;
 
     protected function createLogger(string $namespace, string $className, string $srcCodeFile): Logger
@@ -110,6 +121,8 @@ abstract class ExecutionSegment implements
      * @phpstan-return  T
      *
      * @see             SpanInterface
+     *
+     * @noinspection    PhpDocMissingThrowsInspection
      */
     protected function captureChildSpanImpl(
         string $name,
@@ -129,15 +142,124 @@ abstract class ExecutionSegment implements
         );
         try {
             return $callback($newSpan);
+        } catch (Throwable $throwable) {
+            $newSpan->createError($throwable);
+            /** @noinspection PhpUnhandledExceptionInspection */
+            throw $throwable;
         } finally {
             // Since endSpanEx was not called directly it should not be kept in the stack trace
             $newSpan->endSpanEx(/* numberOfStackFramesToSkip: */ $numberOfStackFramesToSkip + 1);
         }
     }
 
+    /**
+     * @return bool
+     */
     protected function isContextEmpty(): bool
     {
         return empty($this->executionSegmentContextData()->labels);
+    }
+
+    protected function beforeMutating(): bool
+    {
+        if (!$this->isEnded) {
+            return false;
+        }
+
+        if ($this->isDiscarded) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->includeStacktrace()->log('A mutating method has been called on already ended event');
+
+        return true;
+    }
+
+    /** @inheritDoc */
+    public function isNoop(): bool
+    {
+        return false;
+    }
+
+    /** @inheritDoc */
+    public function getId(): string
+    {
+        return $this->executionSegmentData()->id;
+    }
+
+    /** @inheritDoc */
+    public function getTimestamp(): float
+    {
+        return $this->executionSegmentData()->timestamp;
+    }
+
+    /** @inheritDoc */
+    public function getTraceId(): string
+    {
+        return $this->executionSegmentData()->traceId;
+    }
+
+    /** @inheritDoc */
+    public function setName(string $name): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->executionSegmentData()->name = Tracer::limitKeywordString($name);
+    }
+
+    /** @inheritDoc */
+    public function setType(string $type): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->executionSegmentData()->type = Tracer::limitKeywordString($type);
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return bool
+     */
+    public static function doesValueHaveSupportedLabelType($value): bool
+    {
+        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
+    }
+
+    /** @inheritDoc */
+    public function setLabel(string $key, $value): void
+    {
+        if ($this->beforeMutating() || (!$this->isSampled())) {
+            return;
+        }
+
+        if (!self::doesValueHaveSupportedLabelType($value)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Value for label is of unsupported type - it will be discarded',
+                ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value]
+            );
+            return;
+        }
+
+        $this->executionSegmentContextData()->labels[Tracer::limitKeywordString($key)] = is_string($value)
+            ? Tracer::limitKeywordString($value)
+            : $value;
+    }
+
+    /** @inheritDoc */
+    public function discard(): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->isDiscarded = true;
+        $this->end();
     }
 
     protected function endExecutionSegment(?float $duration = null): bool
@@ -164,123 +286,15 @@ abstract class ExecutionSegment implements
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(DbgUtil::fqToShortClassName(get_class($this)) . ' ended', []);
+        && $loggerProxy->log(ClassNameUtil::fqToShort(get_class($this)) . ' ended', []);
 
         $this->isEnded = true;
         return true;
     }
 
+    /** @inheritDoc */
     public function hasEnded(): bool
     {
         return $this->isEnded;
-    }
-
-    protected function beforeMutating(): bool
-    {
-        if (!$this->isEnded) {
-            return false;
-        }
-
-        if ($this->isDiscarded) {
-            return true;
-        }
-
-        ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->includeStacktrace()->log('A mutating method has been called on already ended event');
-
-        return true;
-    }
-
-    public function isNoop(): bool
-    {
-        return false;
-    }
-
-    public function getId(): string
-    {
-        return $this->executionSegmentData()->id;
-    }
-
-    public function getTimestamp(): float
-    {
-        return $this->executionSegmentData()->timestamp;
-    }
-
-    public function getTraceId(): string
-    {
-        return $this->executionSegmentData()->traceId;
-    }
-
-    public function getName(): string
-    {
-        return $this->executionSegmentData()->name;
-    }
-
-    public function getType(): string
-    {
-        return $this->executionSegmentData()->type;
-    }
-
-    public function setName(string $name): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->executionSegmentData()->name = Tracer::limitKeywordString($name);
-    }
-
-    public function setType(string $type): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->executionSegmentData()->type = Tracer::limitKeywordString($type);
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return bool
-     */
-    public static function doesValueHaveSupportedLabelType($value): bool
-    {
-        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
-    }
-
-    public function setLabel(string $key, $value): void
-    {
-        if ($this->beforeMutating() || (!$this->isSampled())) {
-            return;
-        }
-
-        if (!self::doesValueHaveSupportedLabelType($value)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Value for label is of unsupported type - it will be discarded',
-                ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value]
-            );
-            return;
-        }
-
-        $this->executionSegmentContextData()->labels[Tracer::limitKeywordString($key)] = is_string($value)
-            ? Tracer::limitKeywordString($value)
-            : $value;
-    }
-
-    protected function discardExecutionSegment(): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->isDiscarded = true;
-        $this->end();
-    }
-
-    public function discard(): void
-    {
-        $this->discardExecutionSegment();
     }
 }

@@ -66,6 +66,11 @@ final class ServerApiSchemaValidator
         self::validateEventData($serializedData, self::buildPathToSchemaSupplier('spans/span.json'));
     }
 
+    public static function validateErrorData(string $serializedData): void
+    {
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier('errors/error.json'));
+    }
+
     private static function validateEventData(string $serializedData, Closure $pathToSchemaSupplier): void
     {
         foreach ([true, false] as $isEarliestVariant) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\TestsSharedCode;
 
+use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -28,11 +29,15 @@ final class EventsFromAgent implements LoggableInterface
     /** @var array<string, SpanData> */
     public $idToSpan = [];
 
+    /** @var ErrorData[] */
+    public $idToError = [];
+
     public function clear(): void
     {
         $this->metadata = [];
         $this->idToTransaction = [];
         $this->idToSpan = [];
+        $this->idToError = [];
     }
 
     /**
@@ -51,6 +56,15 @@ final class EventsFromAgent implements LoggableInterface
     {
         TestCase::assertCount(1, $this->idToSpan);
         return $this->idToSpan[array_key_first($this->idToSpan)];
+    }
+
+    /**
+     * @return ErrorData
+     */
+    public function singleError(): ErrorData
+    {
+        TestCase::assertCount(1, $this->idToError);
+        return $this->idToError[array_key_first($this->idToError)];
     }
 
     public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentData
@@ -91,15 +105,33 @@ final class EventsFromAgent implements LoggableInterface
      */
     public function spansForTransaction(TransactionData $transaction): array
     {
-        $idToSpanFromTransaction = [];
+        $idToSpanForTransaction = [];
 
         foreach ($this->idToSpan as $id => $span) {
             if ($span->transactionId === $transaction->id) {
-                $idToSpanFromTransaction[$id] = $span;
+                $idToSpanForTransaction[$id] = $span;
             }
         }
 
-        return $idToSpanFromTransaction;
+        return $idToSpanForTransaction;
+    }
+
+    /**
+     * @param TransactionData $transaction
+     *
+     * @return array<string, ErrorData>
+     */
+    public function errorsForTransaction(TransactionData $transaction): array
+    {
+        $idToErrorForTransaction = [];
+
+        foreach ($this->idToError as $id => $error) {
+            if ($error->transactionId === $transaction->id) {
+                $idToErrorForTransaction[$id] = $error;
+            }
+        }
+
+        return $idToErrorForTransaction;
     }
 
     /**
@@ -114,6 +146,22 @@ final class EventsFromAgent implements LoggableInterface
         foreach ($spans ?? $this->idToSpan as $span) {
             if ($span->parentId === $parentId) {
                 yield $span;
+            }
+        }
+    }
+
+    /**
+     * @param string               $parentId
+     * @param ?iterable<ErrorData> $errors
+     *
+     * @return iterable<ErrorData>
+     */
+    public function findChildErrors(string $parentId, ?iterable $errors = null): iterable
+    {
+        /** @var ErrorData $error */
+        foreach ($errors ?? $this->idToError as $error) {
+            if ($error->parentId === $parentId) {
+                yield $error;
             }
         }
     }

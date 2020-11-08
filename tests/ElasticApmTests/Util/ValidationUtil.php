@@ -6,6 +6,9 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\ErrorData;
+use Elastic\Apm\Impl\ErrorExceptionData;
+use Elastic\Apm\Impl\ErrorTransactionData;
 use Elastic\Apm\Impl\ExecutionSegment;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
@@ -20,7 +23,6 @@ use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
-use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use PHPUnit\Framework\TestCase;
@@ -86,7 +88,17 @@ final class ValidationUtil
      */
     public static function assertValidExecutionSegmentId($executionSegmentId): string
     {
-        return self::assertValidId($executionSegmentId, IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        return self::assertValidId($executionSegmentId, Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+    }
+
+    /**
+     * @param mixed $errorId
+     *
+     * @return string
+     */
+    public static function assertValidErrorId($errorId): string
+    {
+        return self::assertValidId($errorId, Constants::ERROR_ID_SIZE_IN_BYTES);
     }
 
     /**
@@ -96,7 +108,7 @@ final class ValidationUtil
      */
     public static function assertValidTraceId($traceId): string
     {
-        return self::assertValidId($traceId, IdGenerator::TRACE_ID_SIZE_IN_BYTES);
+        return self::assertValidId($traceId, Constants::TRACE_ID_SIZE_IN_BYTES);
     }
 
     /**
@@ -187,7 +199,7 @@ final class ValidationUtil
     public static function assertValidLabels(array $labels): array
     {
         foreach ($labels as $key => $value) {
-            self::assertThat(is_string($key));
+            self::assertValidKeywordString($key);
             self::assertThat(ExecutionSegment::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::assertValidKeywordString($value);
@@ -335,6 +347,67 @@ final class ValidationUtil
 
         if (!is_null($span->context)) {
             self::assertValidSpanContextData($span->context);
+        }
+    }
+
+    public static function assertValidErrorTransactionData(ErrorTransactionData $errorTransactionData): void
+    {
+        self::assertValidKeywordString($errorTransactionData->type);
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return mixed
+     */
+    public static function assertValidErrorExceptionCode($value)
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return self::assertValidNullableKeywordString($value);
+    }
+
+    public static function assertValidErrorExceptionData(ErrorExceptionData $errorExceptionData): void
+    {
+        self::assertValidErrorExceptionCode($errorExceptionData->code);
+        self::assertValidNullableNonKeywordString($errorExceptionData->message);
+        self::assertValidNullableKeywordString($errorExceptionData->module);
+        if (!is_null($errorExceptionData->stacktrace)) {
+            self::assertValidStacktrace($errorExceptionData->stacktrace);
+        }
+        self::assertValidNullableKeywordString($errorExceptionData->type);
+    }
+
+    public static function assertValidErrorData(ErrorData $error): void
+    {
+        ValidationUtil::assertValidTimestamp($error->timestamp);
+        ValidationUtil::assertValidErrorId($error->id);
+
+        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->transactionId));
+        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->parentId));
+        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->transaction));
+
+        if (!is_null($error->traceId)) {
+            ValidationUtil::assertValidTraceId($error->traceId);
+        }
+        if (!is_null($error->transactionId)) {
+            ValidationUtil::assertValidExecutionSegmentId($error->transactionId);
+        }
+        if (!is_null($error->parentId)) {
+            ValidationUtil::assertValidExecutionSegmentId($error->parentId);
+        }
+        if (!is_null($error->transaction)) {
+            ValidationUtil::assertValidErrorTransactionData($error->transaction);
+        }
+
+        if (!is_null($error->context)) {
+            ValidationUtil::assertValidTransactionContextData($error->context);
+        }
+
+        if (!is_null($error->exception)) {
+            ValidationUtil::assertValidErrorExceptionData($error->exception);
         }
     }
 

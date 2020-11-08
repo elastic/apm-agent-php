@@ -19,11 +19,11 @@ final class StacktraceDeserializer
      *
      * @param array<mixed, mixed> $deserializedRawData
      *
-     * @return \Elastic\Apm\Impl\StacktraceFrame[]
+     * @return StacktraceFrame[]
      */
     public static function deserialize(array $deserializedRawData): array
     {
-        /** @var \Elastic\Apm\Impl\StacktraceFrame[] */
+        /** @var StacktraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
@@ -41,6 +41,8 @@ final class StacktraceDeserializer
 
     /**
      * @param array<string, mixed> $deserializedRawData
+     *
+     * @return StacktraceFrame
      */
     private static function deserializeFrame(array $deserializedRawData): StacktraceFrame
     {

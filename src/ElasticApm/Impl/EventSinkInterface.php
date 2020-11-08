@@ -14,7 +14,13 @@ interface EventSinkInterface
     /**
      * @param Metadata             $metadata
      * @param SpanData[]           $spansData
+     * @param ErrorData[]          $errorsData
      * @param TransactionData|null $transactionData
      */
-    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void;
+    public function consume(
+        Metadata $metadata,
+        array $spansData,
+        array $errorsData,
+        ?TransactionData $transactionData
+    ): void;
 }

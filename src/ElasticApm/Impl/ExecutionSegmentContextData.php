@@ -25,12 +25,10 @@ class ExecutionSegmentContextData implements JsonSerializable, LoggableInterface
     {
         $result = [];
 
-        if (!empty($this->labels)) {
-            // APM Server Intake API expects 'tags' key for labels
-            // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
-            // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
-            SerializationUtil::addNameValueIfNotNull('tags', $this->labels, /* ref */ $result);
-        }
+        // APM Server Intake API expects 'tags' key for labels
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
+        SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
 
         return $result;
     }

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\ExecutionSegmentContextData;
-use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\Util\ValidationUtil;
 
@@ -23,19 +21,6 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
     {
         parent::__construct($result);
         $this->result = $result;
-    }
-
-    private function lazyContextData(): TransactionContextData
-    {
-        if (is_null($this->result->context)) {
-            $this->result->context = new TransactionContextData();
-        }
-        return $this->result->context;
-    }
-
-    protected function executionSegmentContextData(): ExecutionSegmentContextData
-    {
-        return $this->lazyContextData();
     }
 
     /**
@@ -64,6 +49,10 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
         }
 
         switch ($key) {
+            case 'context':
+                $this->result->context = TransactionContextDataDeserializer::deserialize($value);
+                return true;
+
             case 'parent_id':
                 $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
                 return true;
@@ -105,28 +94,6 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
                 default:
                     throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
             }
-        }
-    }
-
-    /**
-     * @param string $key
-     * @param mixed  $value
-     *
-     * @return bool
-     */
-    public function deserializeContextKeyValue(string $key, $value): bool
-    {
-        if (parent::deserializeContextKeyValue($key, $value)) {
-            return true;
-        }
-
-        switch ($key) {
-            // case 'http':
-            //     $this->lazyContextData()->http = ValidationUtil::assertValid...($value);
-            //     return true;
-
-            default:
-                return false;
         }
     }
 }

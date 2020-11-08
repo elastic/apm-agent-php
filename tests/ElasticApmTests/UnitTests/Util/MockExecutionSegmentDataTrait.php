@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\Clock;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use ElasticApmTests\Util\FloatLimits;
 use ElasticApmTests\Util\TestCaseBase;
@@ -26,8 +27,8 @@ trait MockExecutionSegmentDataTrait
     {
         $this->childSpans = $childSpans;
         $this->childTransactions = $childTransactions;
-        $prefix = 'dummy ' . DbgUtil::fqToShortClassName(get_called_class()) . ' ';
-        $this->id = IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $prefix = 'dummy ' . ClassNameUtil::fqToShort(get_called_class()) . ' ';
+        $this->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->name = $prefix . 'name';
         $this->type = $prefix . 'type';
         if (empty($this->childSpans) && empty($this->childTransactions)) {

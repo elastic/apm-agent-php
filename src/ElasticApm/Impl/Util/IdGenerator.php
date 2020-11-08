@@ -14,9 +14,6 @@ final class IdGenerator
     use StaticClassTrait;
 
     /** @var int */
-    public const EXECUTION_SEGMENT_ID_SIZE_IN_BYTES = 8;
-
-    /** @var int */
     public const TRACE_ID_SIZE_IN_BYTES = 16;
 
     public static function generateId(int $idLengthInBytes): string

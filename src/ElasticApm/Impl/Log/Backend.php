@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 
 /**
@@ -55,7 +55,7 @@ final class Backend
 
         $result[] = [
             'namespace' => $loggerData->namespace,
-            'class'     => DbgUtil::fqToShortClassName($loggerData->fqClassName),
+            'class'     => ClassNameUtil::fqToShort($loggerData->fqClassName),
         ];
 
         $result[] = $statementCtx;

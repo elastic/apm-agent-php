@@ -23,7 +23,7 @@ final class SharedCode
     private const LIMIT_TO_VARIANT_INDEX = null;
 
     /** @var bool */
-    private const SHOULD_PRINT_PROGRESS = false;
+    private const SHOULD_PRINT_PROGRESS = true;
 
     /**
      * @param bool $isFullTestingMode

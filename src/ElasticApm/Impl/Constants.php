@@ -15,6 +15,10 @@ final class Constants
 
     public const NON_KEYWORD_STRING_MAX_LENGTH = 10 * 1024;
 
+    public const EXECUTION_SEGMENT_ID_SIZE_IN_BYTES = 8;
+    public const TRACE_ID_SIZE_IN_BYTES = 16;
+    public const ERROR_ID_SIZE_IN_BYTES = 16;
+
     public const TRANSACTION_TYPE_REQUEST = 'request';
     public const TRANSACTION_TYPE_CLI = 'cli';
 

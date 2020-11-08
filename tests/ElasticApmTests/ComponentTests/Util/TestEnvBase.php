@@ -17,7 +17,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -277,7 +277,7 @@ abstract class TestEnvBase implements LoggableInterface
     private function ensureResourcesCleanerRunning(): void
     {
         $this->ensureAuxHttpServerIsRunning(
-            DbgUtil::fqToShortClassName(ResourcesCleaner::class) /* <- dbgServerDesc */,
+            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgServerDesc */,
             'runResourcesCleaner.php' /* <- runScriptName */,
             $this->resourcesCleanerPort /* <- ref */,
             $this->resourcesCleanerServerId /* <- ref */
@@ -289,7 +289,7 @@ abstract class TestEnvBase implements LoggableInterface
         $this->ensureResourcesCleanerRunning();
 
         $this->ensureAuxHttpServerIsRunning(
-            DbgUtil::fqToShortClassName(MockApmServer::class) /* <- dbgServerDesc */,
+            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgServerDesc */,
             'runMockApmServer.php' /* <- runScriptName */,
             $this->mockApmServerPort /* <- ref */,
             $this->mockApmServerId /* <- ref */
@@ -385,7 +385,7 @@ abstract class TestEnvBase implements LoggableInterface
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Signaling ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . ' to clean and exit...'
+            'Signaling ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit...'
         );
 
         try {
@@ -402,7 +402,7 @@ abstract class TestEnvBase implements LoggableInterface
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Signaled ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . ' to clean and exit'
+            'Signaled ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit'
         );
     }
 

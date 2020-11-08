@@ -15,7 +15,6 @@ use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TimedEventData;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -70,23 +69,23 @@ class TestCaseBase extends TestCase
         self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
     }
 
-    public static function calcEndTime(TimedEventData $timedData): float
+    public static function calcEndTime(ExecutionSegmentData $timedData): float
     {
         return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
     }
 
-    public static function assertTimestampIsInside(float $innerTimestamp, TimedEventData $outerTimedData): void
+    public static function assertTimestampIsInside(float $innerTimestamp, ExecutionSegmentData $outerExecSeg): void
     {
-        self::assertLessThanOrEqualTimestamp($outerTimedData->timestamp, $innerTimestamp);
-        self::assertLessThanOrEqualTimestamp($innerTimestamp, self::calcEndTime($outerTimedData));
+        self::assertLessThanOrEqualTimestamp($outerExecSeg->timestamp, $innerTimestamp);
+        self::assertLessThanOrEqualTimestamp($innerTimestamp, self::calcEndTime($outerExecSeg));
     }
 
     public static function assertTimedEventIsNested(
-        TimedEventData $nestedTimedData,
-        TimedEventData $outerTimedData
+        ExecutionSegmentData $nestedExecSeg,
+        ExecutionSegmentData $outerExecSeg
     ): void {
-        self::assertTimestampIsInside($nestedTimedData->timestamp, $outerTimedData);
-        self::assertTimestampIsInside(self::calcEndTime($nestedTimedData), $outerTimedData);
+        self::assertTimestampIsInside($nestedExecSeg->timestamp, $outerExecSeg);
+        self::assertTimestampIsInside(self::calcEndTime($nestedExecSeg), $outerExecSeg);
     }
 
     /**

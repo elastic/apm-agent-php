@@ -6,7 +6,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use JsonSerializable;
 use RuntimeException;
 
@@ -53,7 +53,7 @@ final class IntakeApiRequest implements JsonSerializable, LoggableInterface
             if (!property_exists($thisObj, $propName)) {
                 throw new RuntimeException(
                     'Unexpected key `' . $propName . '\' - there is no corresponding property in '
-                    . DbgUtil::fqToShortClassName(get_class($thisObj)) . ' class'
+                    . ClassNameUtil::fqToShort(get_class($thisObj)) . ' class'
                 );
             }
             $thisObj->$propName = $propValue;

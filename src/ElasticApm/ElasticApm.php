@@ -9,6 +9,7 @@ namespace Elastic\Apm;
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Throwable;
 
 /**
  * Class ElasticApm is a facade (as in Facade design pattern) to the rest of Elastic APM public API.
@@ -27,8 +28,8 @@ final class ElasticApm
      * @param string     $type      New transaction's type
      * @param float|null $timestamp Start time of the new transaction
      *
-     * @see TransactionInterface::getName() For the description.
-     * @see TransactionInterface::getType() For the description.
+     * @see TransactionInterface::setName() For the description.
+     * @see TransactionInterface::setType() For the description.
      * @see TransactionInterface::getTimestamp() For the description.
      *
      * @return TransactionInterface New transaction
@@ -54,8 +55,8 @@ final class ElasticApm
      * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
      * @phpstan-return  T
      *
-     * @see             TransactionInterface::getName() For the description.
-     * @see             TransactionInterface::getType() For the description.
+     * @see             TransactionInterface::setName() For the description.
+     * @see             TransactionInterface::setType() For the description.
      * @see             TransactionInterface::getTimestamp() For the description.
      *
      * @return mixed The return value of $callback
@@ -77,6 +78,21 @@ final class ElasticApm
     public static function getCurrentTransaction(): TransactionInterface
     {
         return GlobalTracerHolder::get()->getCurrentTransaction();
+    }
+
+    /**
+     * Creates an error based on the given Throwable instance
+     * with the current execution segment (if there is one) as the parent.
+     *
+     * @param Throwable $throwable
+     * @return string|null ID of the reported error event or null if no event was reported
+     *                      (for example, becasue recording is disabled)
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+     */
+    public static function createError(Throwable $throwable): ?string
+    {
+        return GlobalTracerHolder::get()->createError($throwable);
     }
 
     /**
