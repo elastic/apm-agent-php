@@ -1,7 +1,5 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
@@ -16,6 +14,7 @@ use Elastic\Apm\Impl\Util\RandomUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -39,13 +38,16 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var SpanData[] */
     private $spansDataToSend = [];
 
+    /** @var ErrorData[] */
+    private $errorsDataToSend = [];
+
     public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
     {
         $this->data = new TransactionData();
 
         parent::__construct(
             $tracer,
-            IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES),
+            IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES),
             $name,
             $type,
             $timestamp
@@ -61,6 +63,36 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         && $loggerProxy->log('Transaction created');
     }
 
+    /** @inheritDoc */
+    public function getParentId(): ?string
+    {
+        return $this->data->parentId;
+    }
+
+    public function getType(): string
+    {
+        return $this->data->type;
+    }
+
+    private function makeSamplingDecision(): bool
+    {
+        if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
+            return false;
+        }
+        if ($this->tracer->getConfig()->transactionSampleRate() === 1.0) {
+            return true;
+        }
+
+        return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
+    }
+
+    /** @inheritDoc */
+    public function isSampled(): bool
+    {
+        return $this->data->isSampled;
+    }
+
+    /** @inheritDoc */
     protected function executionSegmentData(): ExecutionSegmentData
     {
         return $this->data;
@@ -74,9 +106,55 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->data->context;
     }
 
+    /** @inheritDoc */
     protected function executionSegmentContextData(): ExecutionSegmentContextData
     {
         return $this->lazyContextData();
+    }
+
+    /** @inheritDoc */
+    public function context(): TransactionContextInterface
+    {
+        if (!$this->isSampled()) {
+            return NoopTransactionContext::singletonInstance();
+        }
+
+        return $this;
+    }
+
+    public function cloneContextData(): ?TransactionContextData
+    {
+        if (is_null($this->data->context)) {
+            return null;
+        }
+        return clone $this->data->context;
+    }
+
+    /** @inheritDoc */
+    public function setResult(?string $result): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->data->result = $this->tracer->limitNullableKeywordString($result);
+    }
+
+    /** @inheritDoc */
+    public function getResult(): ?string
+    {
+        return $this->data->result;
+    }
+
+    /** @inheritDoc */
+    public function getCurrentSpan(): SpanInterface
+    {
+        return $this->currentSpan ?? NoopSpan::singletonInstance();
+    }
+
+    public function setCurrentSpan(?Span $newCurrentSpan): void
+    {
+        $this->currentSpan = $newCurrentSpan;
     }
 
     public function beginSpan(
@@ -102,7 +180,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
                     && $loggerProxy->log(
                         'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
                         [
-                            'count($this->spansDataToSend)'                    => count($this->spansDataToSend),
+                            'count($this->spansDataToSend)'                => count($this->spansDataToSend),
                             OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
                         ]
                     );
@@ -125,6 +203,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
+    /** @inheritDoc */
     public function beginChildSpan(
         string $name,
         string $type,
@@ -144,6 +223,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             ?? NoopSpan::singletonInstance();
     }
 
+    /** @inheritDoc */
     public function captureChildSpan(
         string $name,
         string $type,
@@ -152,6 +232,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ) {
+        /** @noinspection PhpUnhandledExceptionInspection */
         return $this->captureChildSpanImpl(
             $name,
             $type,
@@ -163,6 +244,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
+    /** @inheritDoc */
     public function beginCurrentSpan(
         string $name,
         string $type,
@@ -182,6 +264,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->getCurrentSpan();
     }
 
+    /** @inheritDoc */
     public function captureCurrentSpan(
         string $name,
         string $type,
@@ -193,69 +276,68 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         $newSpan = $this->beginCurrentSpan($name, $type, $subtype, $action, $timestamp);
         try {
             return $callback($newSpan);
+        } catch (Throwable $throwable) {
+            $newSpan->createError($throwable);
+            throw $throwable;
         } finally {
             // Since endSpanEx was not called directly it should not be kept in the stack trace
             $newSpan->endSpanEx(/* numberOfStackFramesToSkip: */ 1);
         }
     }
 
-    public function getCurrentSpan(): SpanInterface
+    /** @inheritDoc */
+    public function createError(Throwable $throwable): ?string
     {
-        return $this->currentSpan ?? NoopSpan::singletonInstance();
-    }
-
-    public function setCurrentSpan(?Span $newCurrentSpan): void
-    {
-        $this->currentSpan = $newCurrentSpan;
-    }
-
-    public function context(): TransactionContextInterface
-    {
-        if ($this->beforeMutating() || (!$this->isSampled())) {
-            return NoopTransactionContext::singletonInstance();
+        if (is_null($this->currentSpan)) {
+            return $this->tracer->doCreateError($throwable, /* transaction: */ $this, /* span */ null);
         }
 
-        return $this;
-    }
-
-    public function getParentId(): ?string
-    {
-        return $this->data->parentId;
-    }
-
-    /**
-     * Transactions that are 'sampled' will include all available information
-     * Transactions that are not sampled will not have 'spans' or 'context'.
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
-     */
-    public function isSampled(): bool
-    {
-        return $this->data->isSampled;
-    }
-
-    public function setResult(?string $result): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->data->result = $this->tracer->limitNullableKeywordString($result);
-    }
-
-    public function getResult(): ?string
-    {
-        return $this->data->result;
+        return $this->currentSpan->createError($throwable);
     }
 
     public function queueSpanDataToSend(SpanData $spanData): void
     {
         if ($this->hasEnded()) {
-            $this->tracer->sendEventsToApmServer([$spanData], /* transaction: */ null);
+            $this->tracer->sendEventsToApmServer([$spanData], /* errorsData */ [], /* transaction: */ null);
             return;
         }
 
         $this->spansDataToSend[] = $spanData;
+    }
+
+    public function reserveSpaceInErrorToSendQueue(): bool
+    {
+        if ($this->hasEnded() || count($this->errorsDataToSend) < $this->config->transactionMaxSpans()) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Starting to drop errors because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
+            [
+                'count($this->errorsDataToSend)'               => count($this->errorsDataToSend),
+                OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
+            ]
+        );
+        return false;
+    }
+
+    public function queueErrorDataToSend(ErrorData $errorData): void
+    {
+        $this->errorsDataToSend[] = $errorData;
+    }
+
+    public function discard(): void
+    {
+        while (!is_null($this->currentSpan)) {
+            $spanToDiscard = $this->currentSpan;
+            $this->currentSpan = $spanToDiscard->parentSpan();
+            if (!$spanToDiscard->hasEnded()) {
+                $spanToDiscard->discard();
+            }
+        }
+
+        parent::discard();
     }
 
     public function end(?float $duration = null): void
@@ -268,35 +350,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $this->data->context = null;
         }
 
-        $this->tracer->sendEventsToApmServer($this->spansDataToSend, $this->data);
+        $this->tracer->sendEventsToApmServer($this->spansDataToSend, $this->errorsDataToSend, $this->data);
 
         if ($this->tracer->getCurrentTransaction() === $this) {
             $this->tracer->resetCurrentTransaction();
         }
-    }
-
-    public function discard(): void
-    {
-        while (!is_null($this->currentSpan)) {
-            $spanToDiscard = $this->currentSpan;
-            $this->currentSpan = $spanToDiscard->parentSpan();
-            if (!$spanToDiscard->hasEnded()) {
-                $spanToDiscard->discard();
-            }
-        }
-        $this->discardExecutionSegment();
-    }
-
-    private function makeSamplingDecision(): bool
-    {
-        if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
-            return false;
-        }
-        if ($this->tracer->getConfig()->transactionSampleRate() === 1.0) {
-            return true;
-        }
-
-        return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
     }
 
     /**
@@ -310,6 +368,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
+    /** @inheritDoc */
     public function toLog(LogStreamInterface $stream): void
     {
         $currentSpanId = is_null($this->currentSpan) ? null : $this->currentSpan->getId();

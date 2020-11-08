@@ -9,6 +9,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\TransactionInterface;
+use Throwable;
 
 interface TracerInterface
 {
@@ -72,6 +73,17 @@ interface TracerInterface
      * @see ElasticApm::getCurrentTransaction()
      */
     public function getCurrentTransaction(): TransactionInterface;
+
+    /**
+     * Reports error event based on the given
+     *
+     * @param Throwable $throwable
+     *
+     * @return string|null
+     *
+     * @see ElasticApm::createError
+     */
+    public function createError(Throwable $throwable): ?string;
 
     /**
      * Returns true if this Tracer is a no-op (for example because Elastic APM is disabled)

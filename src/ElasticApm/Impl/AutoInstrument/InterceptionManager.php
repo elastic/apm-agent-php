@@ -9,7 +9,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Throwable;
 
 /**
@@ -140,7 +140,7 @@ final class InterceptionManager
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
                 $throwable,
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
                 . ' factory has let a Throwable to escape - returning null'
             );
             return null;
@@ -152,7 +152,7 @@ final class InterceptionManager
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
                 $throwable,
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
                 . ' preHook() has let a Throwable to escape - returning null'
             );
             return null;
@@ -189,7 +189,7 @@ final class InterceptionManager
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
                 $throwable,
-                DbgUtil::fqToShortClassName(InterceptedCallTrackerInterface::class)
+                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
                 . ' postHook() has let a Throwable to escape'
             );
         }

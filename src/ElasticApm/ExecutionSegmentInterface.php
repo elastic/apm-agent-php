@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm;
 
 use Closure;
+use Throwable;
 
 /**
  * This interface has functionality shared between Transaction and Span.
@@ -144,6 +145,17 @@ interface ExecutionSegmentInterface
      * Returns true if this execution segment has already ended.
      */
     public function hasEnded(): bool;
+
+    /**
+     * Creates an error based on the given Throwable instance with this execution segment as the parent.
+     *
+     * @param Throwable $throwable
+     * @return string|null ID of the reported error event or null if no event was reported
+     *                      (for example, becasue recording is disabled)
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+     */
+    public function createError(Throwable $throwable): ?string;
 
     /**
      * Returns true if this execution segment is a no-op (for example when recording is disabled).

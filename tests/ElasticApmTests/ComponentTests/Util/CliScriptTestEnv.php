@@ -8,7 +8,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 
@@ -40,7 +40,7 @@ final class CliScriptTestEnv extends TestEnvBase
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Running ' . DbgUtil::fqToShortClassName(CliScriptAppCodeHost::class) . '...',
+            'Running ' . ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '...',
             ['testProperties' => $testProperties]
         );
 

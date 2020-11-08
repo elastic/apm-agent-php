@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\ExecutionSegmentContextData;
-use Elastic\Apm\Impl\SpanContextData;
 use Elastic\Apm\Impl\SpanData;
 use ElasticApmTests\Util\ValidationUtil;
 
@@ -23,19 +21,6 @@ final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
     {
         parent::__construct($result);
         $this->result = $result;
-    }
-
-    private function lazyContextData(): SpanContextData
-    {
-        if (is_null($this->result->context)) {
-            $this->result->context = new SpanContextData();
-        }
-        return $this->result->context;
-    }
-
-    protected function executionSegmentContextData(): ExecutionSegmentContextData
-    {
-        return $this->lazyContextData();
     }
 
     /**
@@ -69,6 +54,10 @@ final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
                 $this->result->action = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
+            case 'context':
+                $this->result->context = SpanContextDataDeserializer::deserialize($value);
+                return true;
+
             case 'parent_id':
                 $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
                 return true;
@@ -84,28 +73,6 @@ final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
             case 'transaction_id':
                 $this->result->transactionId = ValidationUtil::assertValidExecutionSegmentId($value);
                 return true;
-
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * @param string $key
-     * @param mixed  $value
-     *
-     * @return bool
-     */
-    public function deserializeContextKeyValue(string $key, $value): bool
-    {
-        if (parent::deserializeContextKeyValue($key, $value)) {
-            return true;
-        }
-
-        switch ($key) {
-            // case 'destination':
-            //     $this->lazyContextData()->destination = ValidationUtil::assertValid...($value);
-            //     return true;
 
             default:
                 return false;

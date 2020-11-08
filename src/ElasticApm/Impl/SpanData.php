@@ -35,17 +35,14 @@ class SpanData extends ExecutionSegmentData
     {
         $result = parent::jsonSerialize();
 
-        SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('transaction_id', $this->transactionId, /* ref */ $result);
+        SerializationUtil::addNameValue('parent_id', $this->parentId, /* ref */ $result);
+        SerializationUtil::addNameValue('transaction_id', $this->transactionId, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('action', $this->action, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('subtype', $this->subtype, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stacktrace, /* ref */ $result);
 
         if (!is_null($this->context)) {
-            $dstCtx = $this->context->jsonSerialize();
-            if (!empty($dstCtx)) {
-                SerializationUtil::addNameValueIfNotNull('context', $dstCtx, /* ref */ $result);
-            }
+            SerializationUtil::addNameValueIfNotEmpty('context', $this->context->jsonSerialize(), /* ref */ $result);
         }
 
         return $result;

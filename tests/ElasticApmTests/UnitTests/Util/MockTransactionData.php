@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\IdGenerator;
 
@@ -18,7 +19,7 @@ final class MockTransactionData extends TransactionData
     public function __construct(array $childSpans = [], array $childTransactions = [])
     {
         $this->constructMockExecutionSegmentDataTrait($childSpans, $childTransactions);
-        $this->setTraceId(IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES));
+        $this->setTraceId(IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES));
         foreach ($this->childSpans as $child) {
             $child->syncWithTransaction($this);
             $this->startedSpansCount += $child->getTreeSpansCount();

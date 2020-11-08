@@ -22,6 +22,7 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionInterface;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -51,7 +52,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var TransactionInterface|null */
+    /** @var Transaction|null */
     private $currentTransaction = null;
 
     /** @var bool */
@@ -113,42 +114,113 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->config;
     }
 
+    private function beginTransactionImpl(string $name, string $type, ?float $timestamp): ?Transaction
+    {
+        if (!$this->isRecording) {
+            return null;
+        }
+
+        return new Transaction($this, $name, $type, $timestamp);
+    }
+
     /** @inheritDoc */
     public function beginTransaction(string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
-        if (!$this->isRecording) {
+        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp);
+
+        if (is_null($newTransaction)) {
             return NoopTransaction::singletonInstance();
         }
-        return new Transaction($this, $name, $type, $timestamp);
+
+        return $newTransaction;
     }
 
     /** @inheritDoc */
     public function beginCurrentTransaction(string $name, string $type, ?float $timestamp = null): TransactionInterface
     {
-        $this->currentTransaction = $this->beginTransaction($name, $type, $timestamp);
+        if (!is_null($this->currentTransaction)) {
+            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Received request to begin a new current transaction'
+                . ' even though there is a current transaction that is still not ended',
+                ['this' => $this]
+            );
+        }
+
+        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp);
+        if (is_null($this->currentTransaction)) {
+            return NoopTransaction::singletonInstance();
+        }
+
         return $this->currentTransaction;
     }
 
     /** @inheritDoc */
     public function captureTransaction(string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
-        $transaction = $this->beginTransaction($name, $type, $timestamp);
+        $newTransaction = $this->beginTransaction($name, $type, $timestamp);
         try {
-            return $callback($transaction);
+            return $callback($newTransaction);
+        } catch (Throwable $throwable) {
+            $newTransaction->createError($throwable);
+            /** @noinspection PhpUnhandledExceptionInspection */
+            throw $throwable;
         } finally {
-            $transaction->end();
+            $newTransaction->end();
         }
     }
 
     /** @inheritDoc */
     public function captureCurrentTransaction(string $name, string $type, Closure $callback, ?float $timestamp = null)
     {
-        $transaction = $this->beginCurrentTransaction($name, $type, $timestamp);
+        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp);
         try {
-            return $callback($transaction);
+            return $callback($newTransaction);
+        } catch (Throwable $throwable) {
+            $newTransaction->createError($throwable);
+            /** @noinspection PhpUnhandledExceptionInspection */
+            throw $throwable;
         } finally {
-            $transaction->end();
+            $newTransaction->end();
         }
+    }
+
+    /** @inheritDoc */
+    public function createError(Throwable $throwable): ?string
+    {
+        if (is_null($this->currentTransaction)) {
+            return $this->doCreateError($throwable, /* transaction */ null, /* span */ null);
+        }
+
+        return $this->currentTransaction->createError($throwable);
+    }
+
+    public function doCreateError(?Throwable $throwable, ?Transaction $transaction, ?Span $span): ?string
+    {
+        if (!$this->isRecording) {
+            return null;
+        }
+
+        $isGoingToBeSentWithTransaction = !is_null($transaction) && !$transaction->hasEnded();
+
+        // PHPStan cannot deduce that $transaction is not null
+        // if $isGoingToBeSentWithTransaction is true
+        // @phpstan-ignore-next-line
+        if ($isGoingToBeSentWithTransaction && !$transaction->reserveSpaceInErrorToSendQueue()) {
+            return null;
+        }
+
+        $newError = ErrorData::build(/* tracer: */ $this, $throwable, $transaction, $span);
+
+        if ($isGoingToBeSentWithTransaction) {
+            // PHPStan cannot deduce that $transaction is not null
+            // if $isGoingToBeSentWithTransaction is true
+            assert(!is_null($transaction));
+            $transaction->queueErrorDataToSend($newError);
+        } else {
+            $this->sendEventsToApmServer(/* spansData */ [], [$newError], /* transaction: */ null);
+        }
+        return $newError->id;
     }
 
     public function getClock(): ClockInterface
@@ -211,11 +283,12 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     /**
      * @param SpanData[]           $spansData
+     * @param ErrorData[]          $errorsData
      * @param TransactionData|null $transactionData
      */
-    public function sendEventsToApmServer(array $spansData, ?TransactionData $transactionData): void
+    public function sendEventsToApmServer(array $spansData, array $errorsData, ?TransactionData $transactionData): void
     {
-        $this->eventSink->consume($this->currentMetadata, $spansData, $transactionData);
+        $this->eventSink->consume($this->currentMetadata, $spansData, $errorsData, $transactionData);
     }
 
     public function setAgentEphemeralId(?string $ephemeralId): void

@@ -37,10 +37,10 @@ interface TransactionInterface extends ExecutionSegmentInterface
      * @param string|null $action    New span's action
      * @param float|null  $timestamp Start time of the new span
      *
-     * @see SpanInterface::getName() For the description.
-     * @see SpanInterface::getType() For the description.
-     * @see SpanInterface::getSubtype() For the description.
-     * @see SpanInterface::getAction() For the description.
+     * @see SpanInterface::setName() For the description.
+     * @see SpanInterface::setType() For the description.
+     * @see SpanInterface::setSubtype() For the description.
+     * @see SpanInterface::setAction() For the description.
      * @see SpanInterface::getTimestamp() For the description.
      *
      * @return SpanInterface New span
@@ -65,10 +65,10 @@ interface TransactionInterface extends ExecutionSegmentInterface
      * @param string|null $action    New span's action
      * @param float|null  $timestamp Start time of the new span
      *
-     * @see             SpanInterface::getName() For the description.
-     * @see             SpanInterface::getType() For the description.
-     * @see             SpanInterface::getSubtype() For the description.
-     * @see             SpanInterface::getAction() For the description.
+     * @see             SpanInterface::setName() For the description.
+     * @see             SpanInterface::setType() For the description.
+     * @see             SpanInterface::setSubtype() For the description.
+     * @see             SpanInterface::setAction() For the description.
      * @see             SpanInterface::getTimestamp() For the description.
      *
      * @template        T

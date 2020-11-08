@@ -8,12 +8,8 @@ use Elastic\Apm\Impl\Log\LogConsts;
 use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
-use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\TracerDependencies;
-use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\FloatLimits;
-use ElasticApmTests\Util\LogSinkForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 

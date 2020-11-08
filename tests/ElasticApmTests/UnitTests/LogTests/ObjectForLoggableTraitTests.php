@@ -8,11 +8,17 @@ namespace ElasticApmTests\UnitTests\LogTests;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 
 class ObjectForLoggableTraitTests implements LoggableInterface
 {
     use LoggableTrait;
+
+    /** @var bool */
+    private static $shouldExcludeProp = true;
+
+    /** @var ?string */
+    private static $logWithClassNameValue;
 
     /** @var int */
     private $intProp = 123;
@@ -26,12 +32,6 @@ class ObjectForLoggableTraitTests implements LoggableInterface
     /** @var string */
     private $excludedProp = 'excludedProp value';
 
-    /** @var bool */
-    private static $shouldExcludeProp = true;
-
-    /** @var ?string */
-    private static $logWithClassNameValue;
-
     public static function logWithoutClassName(): void
     {
         self::$logWithClassNameValue = null;
@@ -44,7 +44,7 @@ class ObjectForLoggableTraitTests implements LoggableInterface
 
     public static function logWithShortClassName(): void
     {
-        self::$logWithClassNameValue = DbgUtil::fqToShortClassName(static::class);
+        self::$logWithClassNameValue = ClassNameUtil::fqToShort(static::class);
     }
 
     protected static function classNameToLog(): ?string

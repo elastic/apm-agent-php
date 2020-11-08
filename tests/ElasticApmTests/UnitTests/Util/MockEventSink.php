@@ -6,6 +6,7 @@ namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\SpanData;
@@ -67,12 +68,20 @@ class MockEventSink implements EventSinkInterface
     }
 
     /** @inheritDoc */
-    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
-    {
+    public function consume(
+        Metadata $metadata,
+        array $spansData,
+        array $errorsData,
+        ?TransactionData $transactionData
+    ): void {
         $this->consumeMetadata($metadata);
 
         foreach ($spansData as $span) {
             $this->consumeSpanData($span);
+        }
+
+        foreach ($errorsData as $error) {
+            $this->consumeErrorData($error);
         }
 
         if (!is_null($transactionData)) {
@@ -156,8 +165,35 @@ class MockEventSink implements EventSinkInterface
         $this->eventsFromAgent->idToSpan[$newSpan->id] = $newSpan;
     }
 
+    private function consumeErrorData(ErrorData $errorData): void
+    {
+        /** @var ErrorData $newError */
+        $newError = self::passThroughSerialization(
+            $errorData,
+            /* assertValid: */
+            function (ErrorData $data): void {
+                ValidationUtil::assertValidErrorData($data);
+            },
+            /* serialize: */
+            function (ErrorData $data): string {
+                return SerializationUtil::serializeAsJson($data);
+            },
+            /* validateAndDeserialize: */
+            function (string $serializedErrorData): ErrorData {
+                return $this->validateAndDeserializeErrorData($serializedErrorData);
+            },
+            /* assertEquals: */
+            function ($data, $deserializedData): void {
+                TestCase::assertEquals($data, $deserializedData);
+            }
+        );
+        TestCase::assertArrayNotHasKey($newError->id, $this->eventsFromAgent->idToError);
+        $this->eventsFromAgent->idToError[$newError->id] = $newError;
+    }
+
     public static function additionalMetadataValidation(Metadata $metadata): void
     {
+        TestCase::assertNotNull($metadata->process);
         TestCase::assertSame(getmypid(), $metadata->process->pid);
         TestCase::assertNotNull($metadata->service->language);
         TestCase::assertSame(PHP_VERSION, $metadata->service->language->version);

@@ -23,6 +23,6 @@ trait NoopObjectTrait
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs([LogConsts::TYPE_KEY => DbgUtil::fqToShortClassName(get_class($this))]);
+        $stream->toLogAs([LogConsts::TYPE_KEY => ClassNameUtil::fqToShort(get_class($this))]);
     }
 }

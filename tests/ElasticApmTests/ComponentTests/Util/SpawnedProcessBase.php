@@ -13,7 +13,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
@@ -79,7 +79,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
         LoggingSubsystem::$isInTestingContext = true;
 
         try {
-            AmbientContext::init(/* dbgProcessName */ DbgUtil::fqToShortClassName(get_called_class()));
+            AmbientContext::init(/* dbgProcessName */ ClassNameUtil::fqToShort(get_called_class()));
             $thisObj = new static(); // @phpstan-ignore-line
             $thisObj->processConfig();
 
@@ -152,7 +152,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Registering with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class) . '...'
+            'Registering with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...'
         );
 
         TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort);
@@ -169,13 +169,13 @@ abstract class SpawnedProcessBase implements LoggableInterface
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
             throw new RuntimeException(
                 'Failed to register with '
-                . DbgUtil::fqToShortClassName(ResourcesCleaner::class)
+                . ClassNameUtil::fqToShort(ResourcesCleaner::class)
             );
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Successfully registered with ' . DbgUtil::fqToShortClassName(ResourcesCleaner::class)
+            'Successfully registered with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class)
         );
     }
 }

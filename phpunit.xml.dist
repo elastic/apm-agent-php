@@ -6,7 +6,6 @@
     bootstrap="tests/bootstrap.php"
     colors="true"
     failOnRisky="true"
-    processIsolation="true"
     stopOnDefect="true"
     stopOnError="true"
     stopOnFailure="true"

@@ -6,8 +6,8 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -49,7 +49,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Sending HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
-            . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
+            . ' to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
         /** @noinspection PhpUnhandledExceptionInspection */
@@ -70,7 +70,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Successfully sent HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
-            . ' to ' . DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) . '...'
+            . ' to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
         );
     }
 

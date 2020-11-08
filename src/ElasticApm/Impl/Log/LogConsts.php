@@ -24,8 +24,8 @@ final class LogConsts
     public const VALUE_AS_STRING_KEY = 'value_as_string';
     public const VALUE_AS_DEBUG_INFO_KEY = 'value_as_string';
 
-    public const SMALL_LIST_ARRAY_MAX_COUNT = 10;
-    public const SMALL_MAP_ARRAY_MAX_COUNT = 30;
+    public const SMALL_LIST_ARRAY_MAX_COUNT = 100;
+    public const SMALL_MAP_ARRAY_MAX_COUNT = 100;
 
     public const LIST_ARRAY_TYPE_VALUE = 'list-array';
     public const MAP_ARRAY_TYPE_VALUE = 'map-array';

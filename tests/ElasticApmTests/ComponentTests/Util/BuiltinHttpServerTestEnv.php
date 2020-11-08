@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 
 final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
@@ -32,7 +32,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
         $this->ensureHttpServerIsRunning(
             $this->appCodeHostServerPort /* <- ref */,
             $this->appCodeHostServerId /* <- ref */,
-            DbgUtil::fqToShortClassName(BuiltinHttpServerAppCodeHost::class) /* <- dbgServerDesc */,
+            ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) /* <- dbgServerDesc */,
             /* cmdLineGenFunc: */
             function (int $port) use ($testProperties) {
                 return $testProperties->agentConfigSetter->appCodePhpCmd()

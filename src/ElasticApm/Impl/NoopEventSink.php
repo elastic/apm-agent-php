@@ -16,7 +16,11 @@ final class NoopEventSink implements EventSinkInterface
     use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
-    {
+    public function consume(
+        Metadata $metadata,
+        array $spansData,
+        array $errorsData,
+        ?TransactionData $transactionData
+    ): void {
     }
 }

@@ -33,8 +33,12 @@ final class EventSender implements EventSinkInterface
     }
 
     /** @inheritDoc */
-    public function consume(Metadata $metadata, array $spansData, ?TransactionData $transactionData): void
-    {
+    public function consume(
+        Metadata $metadata,
+        array $spansData,
+        array $errorsData,
+        ?TransactionData $transactionData
+    ): void {
         $serializedMetadata = '{"metadata":';
         $serializedMetadata .= SerializationUtil::serializeAsJson($metadata);
         $serializedMetadata .= "}";
@@ -45,6 +49,13 @@ final class EventSender implements EventSinkInterface
             $serializedEvents .= "\n";
             $serializedEvents .= '{"span":';
             $serializedEvents .= SerializationUtil::serializeAsJson($span);
+            $serializedEvents .= '}';
+        }
+
+        foreach ($errorsData as $error) {
+            $serializedEvents .= "\n";
+            $serializedEvents .= '{"error":';
+            $serializedEvents .= SerializationUtil::serializeAsJson($error);
             $serializedEvents .= '}';
         }
 

@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Closure;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
@@ -98,7 +99,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             $oldParentId = self::getParentId($executionSegment);
             self::setParentId(
                 $executionSegment,
-                $newParentId ?? IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
+                $newParentId ?? IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
             );
             return function () use ($executionSegment, $oldParentId): void {
                 self::setParentId($executionSegment, $oldParentId);
@@ -119,7 +120,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         return function () use ($span, $newTransactionId): Closure {
             $oldTransactionId = $span->transactionId;
             $span->setTransactionId(
-                $newTransactionId ?? IdGenerator::generateId(IdGenerator::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
+                $newTransactionId ?? IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
             );
             return function () use ($span, $oldTransactionId): void {
                 $span->setTransactionId($oldTransactionId);
@@ -374,7 +375,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             [$tx_A, $tx_B],
             [],
             function () use ($tx_A, $tx_B): Closure {
-                $tx_B->setTraceId(IdGenerator::generateId(IdGenerator::TRACE_ID_SIZE_IN_BYTES));
+                $tx_B->setTraceId(IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES));
                 return function () use ($tx_A, $tx_B): void {
                     $tx_B->setTraceId($tx_A->traceId);
                 };

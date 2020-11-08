@@ -38,8 +38,8 @@ final class Metadata implements JsonSerializable, LoggableInterface
     {
         $result = [];
 
-        SerializationUtil::addNameValueIfNotNull('process', $this->process, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
+        SerializationUtil::addNameValue('process', $this->process, /* ref */ $result);
+        SerializationUtil::addNameValue('service', $this->service, /* ref */ $result);
 
         return $result;
     }

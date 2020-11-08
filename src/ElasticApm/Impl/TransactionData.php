@@ -41,21 +41,18 @@ class TransactionData extends ExecutionSegmentData
         if ($this->droppedSpansCount != 0) {
             $spanCountSubObject['dropped'] = $this->droppedSpansCount;
         }
-        SerializationUtil::addNameValueIfNotNull('span_count', $spanCountSubObject, /* ref */ $result);
+        SerializationUtil::addNameValue('span_count', $spanCountSubObject, /* ref */ $result);
 
         SerializationUtil::addNameValueIfNotNull('result', $this->result, /* ref */ $result);
 
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
         // 'sampled' is optional and defaults to true.
         if (!$this->isSampled) {
-            SerializationUtil::addNameValueIfNotNull('sampled', $this->isSampled, /* ref */ $result);
+            SerializationUtil::addNameValue('sampled', $this->isSampled, /* ref */ $result);
         }
 
         if (!is_null($this->context)) {
-            $dstCtx = $this->context->jsonSerialize();
-            if (!empty($dstCtx)) {
-                SerializationUtil::addNameValueIfNotNull('context', $dstCtx, /* ref */ $result);
-            }
+            SerializationUtil::addNameValueIfNotEmpty('context', $this->context->jsonSerialize(), /* ref */ $result);
         }
 
         return $result;
