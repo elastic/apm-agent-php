@@ -6,12 +6,37 @@ endif::[]
 [[setup]]
 == Set up the Agent
 
-Set up the Agent by compiling and installing this library as a PHP extension.
-It is currently only available for a unix-lke operating system.
+Install the agent using one of the https://github.com/elastic/apm-agent-php/releases/latest[packages for supported platforms].
 
 NOTE: The agent supports PHP versions 7.2-7.4.
 
-Execute the following commands to install:
+=== Using RPM package (RHEL/CentOS, Fedora)
+[source,bash]
+----
+rpm -ivh <package-file>.rpm
+----
+
+=== Using DEB package (Debian, Ubuntu)
+[source,bash]
+----
+dpkg -i <package-file>.deb
+----
+
+=== Using APK package (Alpine)
+[source,bash]
+----
+apk add --allow-untrusted <package-file>.apk
+----
+
+[[build_from-source]]
+=== Build from source
+
+If you can’t find your distribution, you can install the agent by building it from the source.
+
+NOTE: The agent is currently only available for a unix-lke operating system.
+
+1. Download the agent source from https://github.com/elastic/apm-agent-php/.
+2. Execute the following commands to build the agent and install it:
 
 [source,bash]
 ----
@@ -30,3 +55,9 @@ Enable the extension by adding the following to your `php.ini` file:
 extension=elastic_apm.so
 elastic_apm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
 ----
+
+NOTE: In order to work the agent needs both the built `elastic_apm.so`
+and the downloaded source files.
+So if you would like to build `elastic_apm.so` on one machine and
+then deploy it on a different machine you will need to copy both
+the built `elastic_apm.so` and the downloaded source files.
