@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class GlobalTracerTest extends UnitTestCaseBase
+class GlobalTracerTest extends TracerUnitTestCaseBase
 {
     public function testGlobalTracerIsInitializedOnFirstAccess(): void
     {

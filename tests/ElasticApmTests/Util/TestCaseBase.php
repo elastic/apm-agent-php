@@ -10,7 +10,10 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
@@ -33,6 +36,9 @@ class TestCaseBase extends TestCase
 {
     // Compare up to 10 milliseconds (10000 microseconds) precision
     public const TIMESTAMP_COMPARISON_PRECISION = 10000;
+
+    /** @var LoggerFactory */
+    private static $noopLoggerFactory;
 
     /**
      * @param mixed        $name
@@ -494,6 +500,16 @@ class TestCaseBase extends TestCase
                             ->withLogSink(NoopLogSink::singletonInstance())
                             ->withConfigRawSnapshotSource($cfgSrc)
                             ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
+    }
+
+    public static function noopLoggerFactory(): LoggerFactory
+    {
+        if (!isset(self::$noopLoggerFactory)) {
+            self::$noopLoggerFactory = new LoggerFactory(
+                new LogBackend(LogLevel::OFF, NoopLogSink::singletonInstance())
+            );
+        }
+        return self::$noopLoggerFactory;
     }
 
     public static function getParentId(ExecutionSegmentData $execSegData): ?string

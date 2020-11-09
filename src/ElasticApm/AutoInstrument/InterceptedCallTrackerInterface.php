@@ -1,10 +1,10 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\AutoInstrument;
+
+use Throwable;
 
 interface InterceptedCallTrackerInterface
 {
@@ -20,6 +20,8 @@ interface InterceptedCallTrackerInterface
      * @param int             $numberOfStackFramesToSkip
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
+     *
+     * @noinspection PhpMissingParamTypeInspection
      */
     public function postHook(int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown): void;
 }

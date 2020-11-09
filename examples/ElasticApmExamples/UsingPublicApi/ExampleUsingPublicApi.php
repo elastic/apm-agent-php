@@ -8,9 +8,9 @@ namespace ElasticApmExamples\UsingPublicApi;
 
 use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class ExampleUsingPublicApi extends UnitTestCaseBase
+class ExampleUsingPublicApi extends TracerUnitTestCaseBase
 {
     public function main(): void
     {

@@ -11,7 +11,7 @@ use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
-class UnitTestCaseBase extends TestCaseBase
+class TracerUnitTestCaseBase extends TestCaseBase
 {
     /** @var MockEventSink */
     protected $mockEventSink;

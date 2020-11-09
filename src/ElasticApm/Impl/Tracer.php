@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
@@ -61,6 +62,9 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var Metadata */
     private $currentMetadata;
 
+    /** @var HttpDistributedTracing */
+    private $httpDistributedTracing;
+
     public function __construct(TracerDependencies $providedDependencies)
     {
         $this->providedDependencies = $providedDependencies;
@@ -89,6 +93,8 @@ final class Tracer implements TracerInterface, LoggableInterface
         );
 
         $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config);
+
+        $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
     }
 
     private function buildConfig(): ConfigSnapshot
@@ -114,30 +120,26 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->config;
     }
 
-    private function beginTransactionImpl(string $name, string $type, ?float $timestamp): ?Transaction
-    {
+    private function beginTransactionImpl(
+        string $name,
+        string $type,
+        ?float $timestamp,
+        ?DistributedTracingData $distributedTracingData
+    ): ?Transaction {
         if (!$this->isRecording) {
             return null;
         }
 
-        return new Transaction($this, $name, $type, $timestamp);
+        return new Transaction($this, $name, $type, $timestamp, $distributedTracingData);
     }
 
     /** @inheritDoc */
-    public function beginTransaction(string $name, string $type, ?float $timestamp = null): TransactionInterface
-    {
-        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp);
-
-        if (is_null($newTransaction)) {
-            return NoopTransaction::singletonInstance();
-        }
-
-        return $newTransaction;
-    }
-
-    /** @inheritDoc */
-    public function beginCurrentTransaction(string $name, string $type, ?float $timestamp = null): TransactionInterface
-    {
+    public function beginCurrentTransaction(
+        string $name,
+        string $type,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ): TransactionInterface {
         if (!is_null($this->currentTransaction)) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
@@ -147,7 +149,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             );
         }
 
-        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp);
+        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $distributedTracingData);
         if (is_null($this->currentTransaction)) {
             return NoopTransaction::singletonInstance();
         }
@@ -156,24 +158,59 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /** @inheritDoc */
-    public function captureTransaction(string $name, string $type, Closure $callback, ?float $timestamp = null)
-    {
-        $newTransaction = $this->beginTransaction($name, $type, $timestamp);
+    public function captureCurrentTransaction(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ) {
+        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
             $newTransaction->createError($throwable);
-            /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwable;
         } finally {
             $newTransaction->end();
         }
     }
 
-    /** @inheritDoc */
-    public function captureCurrentTransaction(string $name, string $type, Closure $callback, ?float $timestamp = null)
+    public function getCurrentTransaction(): TransactionInterface
     {
-        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp);
+        return $this->currentTransaction ?? NoopTransaction::singletonInstance();
+    }
+
+    public function resetCurrentTransaction(): void
+    {
+        $this->currentTransaction = null;
+    }
+
+    /** @inheritDoc */
+    public function beginTransaction(
+        string $name,
+        string $type,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ): TransactionInterface {
+        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $distributedTracingData);
+
+        if (is_null($newTransaction)) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        return $newTransaction;
+    }
+
+    /** @inheritDoc */
+    public function captureTransaction(
+        string $name,
+        string $type,
+        Closure $callback,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ) {
+        $newTransaction = $this->beginTransaction($name, $type, $timestamp, $distributedTracingData);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
@@ -233,16 +270,6 @@ final class Tracer implements TracerInterface, LoggableInterface
         return false;
     }
 
-    public function getCurrentTransaction(): TransactionInterface
-    {
-        return $this->currentTransaction ?? NoopTransaction::singletonInstance();
-    }
-
-    public function resetCurrentTransaction(): void
-    {
-        $this->currentTransaction = null;
-    }
-
     public static function limitKeywordString(string $keywordString): string
     {
         return TextUtil::ensureMaxLength($keywordString, Constants::KEYWORD_STRING_MAX_LENGTH);
@@ -264,6 +291,11 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function loggerFactory(): LoggerFactory
     {
         return $this->loggerFactory;
+    }
+
+    public function httpDistributedTracing(): HttpDistributedTracing
+    {
+        return $this->httpDistributedTracing;
     }
 
     public function pauseRecording(): void

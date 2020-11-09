@@ -6,9 +6,9 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class StacktraceUnitTest extends UnitTestCaseBase
+class StacktraceUnitTest extends TracerUnitTestCaseBase
 {
     public function testAllSpanCreatingApis(): void
     {

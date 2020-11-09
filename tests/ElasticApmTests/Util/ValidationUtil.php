@@ -23,6 +23,7 @@ use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use PHPUnit\Framework\TestCase;
@@ -71,13 +72,7 @@ final class ValidationUtil
     public static function assertValidId($id, int $expectedSizeInBytes): string
     {
         self::assertThat(is_string($id));
-
-        self::assertThat($expectedSizeInBytes * 2 === strlen($id));
-
-        foreach (str_split($id) as $idChar) {
-            self::assertThat(ctype_xdigit($idChar));
-        }
-
+        self::assertThat(IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes));
         return $id;
     }
 

@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\SpanInterface;
@@ -30,6 +31,9 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
 
     /** @var string */
     public const TYPE = 'noop';
+
+    /** @var DistributedTracingData */
+    private static $noopDistributedTracingData;
 
     /** @inheritDoc */
     public function getTimestamp(): float
@@ -80,6 +84,12 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
         ?float $timestamp = null
     ) {
         return $callback(NoopSpan::singletonInstance());
+    }
+
+    /** @inheritDoc */
+    public function getDistributedTracingData(): ?DistributedTracingData
+    {
+        return null;
     }
 
     /** @inheritDoc */

@@ -6,9 +6,9 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\UnitTests\Util\MockClock;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class TimeRelatedApiUsingMockClockTest extends UnitTestCaseBase
+class TimeRelatedApiUsingMockClockTest extends TracerUnitTestCaseBase
 {
     /** @var MockClock */
     protected $mockClock;

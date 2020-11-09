@@ -6,10 +6,8 @@ namespace ElasticApmTests\UnitTests;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
 use ElasticApmTests\Util\TestCaseBase;

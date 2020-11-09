@@ -6,9 +6,9 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use ElasticApmTests\UnitTests\LogTests\LoggingVariousTypesTest;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class LoggingVariousEventTypesTest extends UnitTestCaseBase
+class LoggingVariousEventTypesTest extends TracerUnitTestCaseBase
 {
     public function testTransaction(): void
     {

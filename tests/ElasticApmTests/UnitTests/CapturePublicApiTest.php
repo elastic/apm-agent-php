@@ -7,10 +7,10 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DummyExceptionForTests;
 
-class CapturePublicApiTest extends UnitTestCaseBase
+class CapturePublicApiTest extends TracerUnitTestCaseBase
 {
     /** @var int */
     private static $callToMethodThrowingDummyExceptionForTestsLineNumber;
@@ -258,6 +258,5 @@ class CapturePublicApiTest extends UnitTestCaseBase
             self::assertSame(__FILE__, $topFrame->filename);
             self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
         }
-        // TODO: Sergey Kleyman: Add checks for errors
     }
 }

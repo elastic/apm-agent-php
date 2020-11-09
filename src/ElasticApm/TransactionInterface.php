@@ -1,7 +1,5 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm;
@@ -111,7 +109,7 @@ interface TransactionInterface extends ExecutionSegmentInterface
     public function setResult(?string $result): void;
 
     /**
-     * * @see setResult() For the description
+     * @see setResult() For the description
      */
     public function getResult(): ?string;
 }

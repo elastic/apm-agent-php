@@ -9,9 +9,9 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class SamplingUnitTest extends UnitTestCaseBase
+class SamplingUnitTest extends TracerUnitTestCaseBase
 {
     /**
      * @return iterable<array{float|null}>
