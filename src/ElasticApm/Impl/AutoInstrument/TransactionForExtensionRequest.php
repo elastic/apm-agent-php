@@ -11,6 +11,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -99,7 +100,16 @@ final class TransactionForExtensionRequest
             if (!is_null($requestMethod = ArrayUtil::getValueIfKeyExistsElse('REQUEST_METHOD', $_SERVER, null))) {
                 $name = $requestMethod . ' ';
             }
-            $name .= $requestUri;
+            $urlPath = UrlUtil::extractPathPart($requestUri);
+            if (is_null($urlPath)) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Failed to extract path part from request URL - using default transaction name',
+                    ['requestUri' => $requestUri, 'DEFAULT_NAME' => self::DEFAULT_NAME]
+                );
+                return self::DEFAULT_NAME;
+            }
+            $name .= $urlPath;
 
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);
@@ -107,7 +117,7 @@ final class TransactionForExtensionRequest
             return $name;
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Could not discover HTTP data to derive transaction name - using default transaction name',
             ['DEFAULT_NAME' => self::DEFAULT_NAME]
