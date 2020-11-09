@@ -11,9 +11,9 @@ use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class NoopEventsTest extends UnitTestCaseBase
+class NoopEventsTest extends TracerUnitTestCaseBase
 {
     public function setUp(): void
     {

@@ -15,9 +15,11 @@ final class LogCategory
 {
     use StaticClassTrait;
 
+    public const AUTO_INSTRUMENTATION = 'Auto-Instrumentation';
     public const BACKEND_COMM = 'Backend-Comm';
     public const CONFIGURATION = 'Configuration';
     public const DISCOVERY = 'Discovery';
+    public const DISTRIBUTED_TRACING = 'Distributed-Tracing';
     public const INTERCEPTION = 'Interception';
     public const PUBLIC_API = 'Public-API';
 }

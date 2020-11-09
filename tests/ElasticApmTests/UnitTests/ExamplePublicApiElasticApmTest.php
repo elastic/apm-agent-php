@@ -7,9 +7,9 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\UnitTests\Util\ArrayTestUtil;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class ExamplePublicApiElasticApmTest extends UnitTestCaseBase
+class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
 {
     public function test(): void
     {

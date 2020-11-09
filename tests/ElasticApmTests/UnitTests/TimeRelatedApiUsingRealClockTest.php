@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class TimeRelatedApiUsingRealClockTest extends UnitTestCaseBase
+class TimeRelatedApiUsingRealClockTest extends TracerUnitTestCaseBase
 {
     public function testTransactionBeginEnd(): void
     {

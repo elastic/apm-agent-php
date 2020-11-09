@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\ElasticApm;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
@@ -21,6 +22,9 @@ final class TransactionForExtensionRequest
 {
     private const DEFAULT_NAME = 'Unnamed transaction';
 
+    /** @var Tracer */
+    private $tracer;
+
     /** @var Logger */
     private $logger;
 
@@ -29,8 +33,9 @@ final class TransactionForExtensionRequest
 
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
+        $this->tracer = $tracer;
         $this->logger = $tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::DISCOVERY, __NAMESPACE__, __CLASS__, __FILE__);
+                               ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
     }
@@ -40,8 +45,9 @@ final class TransactionForExtensionRequest
         $name = self::isCliScript() ? $this->discoverCliName() : $this->discoverHttpName();
         $type = self::isCliScript() ? Constants::TRANSACTION_TYPE_CLI : Constants::TRANSACTION_TYPE_REQUEST;
         $timestamp = $this->discoverTimestamp($requestInitStartTime);
+        $distributedTracingData = $this->discoverIncomingDistributedTracingData();
 
-        return ElasticApm::beginCurrentTransaction($name, $type, $timestamp);
+        return $this->tracer->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
     }
 
     public function onShutdown(): void
@@ -111,11 +117,8 @@ final class TransactionForExtensionRequest
 
     private function discoverTimestamp(float $requestInitStartTime): float
     {
-        if (
-            !is_null(
-                $serverRequestTimeAsString = ArrayUtil::getValueIfKeyExistsElse('REQUEST_TIME_FLOAT', $_SERVER, null)
-            )
-        ) {
+        $serverRequestTimeAsString = ArrayUtil::getValueIfKeyExistsElse('REQUEST_TIME_FLOAT', $_SERVER, null);
+        if (!is_null($serverRequestTimeAsString)) {
             $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
             $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * 1000000;
 
@@ -134,6 +137,26 @@ final class TransactionForExtensionRequest
             ['requestInitStartTime' => $requestInitStartTime]
         );
         return $requestInitStartTime;
+    }
+
+    private function discoverIncomingDistributedTracingData(): ?DistributedTracingData
+    {
+        $headerName = HttpDistributedTracing::TRACE_PARENT_HEADER_NAME;
+        $traceParentHeaderKey = 'HTTP_' . strtoupper($headerName);
+        if (!array_key_exists($traceParentHeaderKey, $_SERVER)) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Incoming ' . $headerName . ' HTTP request header not found');
+            return null;
+        }
+
+        $traceParentHeaderValue = $_SERVER[$traceParentHeaderKey];
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Incoming ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header found',
+            ['traceParentHeaderValue' => $traceParentHeaderValue]
+        );
+
+        return $this->tracer->httpDistributedTracing()->parseTraceParentHeader($traceParentHeaderValue);
     }
 
     private function discoverHttpResult(): ?string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Logger;
@@ -41,13 +42,25 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ErrorData[] */
     private $errorsDataToSend = [];
 
-    public function __construct(Tracer $tracer, string $name, string $type, ?float $timestamp = null)
-    {
+    public function __construct(
+        Tracer $tracer,
+        string $name,
+        string $type,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ) {
         $this->data = new TransactionData();
+
+        if (is_null($distributedTracingData)) {
+            $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
+        } else {
+            $traceId = $distributedTracingData->traceId;
+            $this->data->parentId = $distributedTracingData->parentId;
+        }
 
         parent::__construct(
             $tracer,
-            IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES),
+            $traceId,
             $name,
             $type,
             $timestamp
@@ -57,7 +70,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
 
-        $this->data->isSampled = $this->makeSamplingDecision();
+        $this->data->isSampled = is_null($distributedTracingData)
+            ? $this->makeSamplingDecision()
+            : $distributedTracingData->isSampled;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
@@ -293,6 +308,29 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
 
         return $this->currentSpan->createError($throwable);
+    }
+
+    /** @inheritDoc */
+    public function getDistributedTracingData(): ?DistributedTracingData
+    {
+        if (is_null($this->currentSpan)) {
+            return $this->doGetDistributedTracingData(/* span */ null);
+        }
+
+        return $this->currentSpan->getDistributedTracingData();
+    }
+
+    public function doGetDistributedTracingData(?Span $span): ?DistributedTracingData
+    {
+        if (!$this->tracer->isRecording()) {
+            return null;
+        }
+
+        $result = new DistributedTracingData();
+        $result->traceId = $this->data->traceId;
+        $result->parentId = is_null($span) ? $this->data->id : $span->getId();
+        $result->isSampled = $this->data->isSampled;
+        return $result;
     }
 
     public function queueSpanDataToSend(SpanData $spanData): void

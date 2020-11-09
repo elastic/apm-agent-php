@@ -11,9 +11,9 @@ use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class TransactionMaxSpansUnitTest extends UnitTestCaseBase
+class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 {
     private const IS_FULL_TESTING_MODE = false;
 

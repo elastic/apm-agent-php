@@ -30,20 +30,20 @@ final class InterceptionManager
         $this->logger = $tracer->loggerFactory()
                                ->loggerForClass(LogCategory::INTERCEPTION, __NAMESPACE__, __CLASS__, __FILE__);
 
-        $this->loadPlugins();
+        $this->loadPlugins($tracer);
     }
 
-    private function loadPlugins(): void
+    private function loadPlugins(Tracer $tracer): void
     {
         $registerCtx = new RegistrationContext();
-        $this->loadPluginsImpl($registerCtx);
+        $this->loadPluginsImpl($tracer, $registerCtx);
 
         $this->interceptedCallRegistrations = $registerCtx->interceptedCallRegistrations;
     }
 
-    private function loadPluginsImpl(RegistrationContext $registerCtx): void
+    private function loadPluginsImpl(Tracer $tracer, RegistrationContext $registerCtx): void
     {
-        $builtinPlugin = new BuiltinPlugin();
+        $builtinPlugin = new BuiltinPlugin($tracer);
         $registerCtx->dbgCurrentPluginIndex = 0;
         $registerCtx->dbgCurrentPluginDesc = $builtinPlugin->getDescription();
         $builtinPlugin->register($registerCtx);

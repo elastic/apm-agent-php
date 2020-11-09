@@ -8,6 +8,7 @@ use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 
@@ -18,17 +19,25 @@ use Elastic\Apm\SpanInterface;
  */
 final class PdoAutoInstrumentation
 {
-    public static function register(RegistrationContextInterface $ctx): void
+    /** @var Tracer */
+    private $tracer;
+
+    public function __construct(Tracer $tracer)
+    {
+        $this->tracer = $tracer;
+    }
+
+    public function register(RegistrationContextInterface $ctx): void
     {
         if (!extension_loaded('pdo')) {
             return;
         }
 
-        self::pdoConstruct($ctx);
-        self::pdoExec($ctx);
+        $this->pdoConstruct($ctx);
+        $this->pdoExec($ctx);
     }
 
-    public static function pdoConstruct(RegistrationContextInterface $ctx): void
+    public function pdoConstruct(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
             'PDO',
@@ -70,7 +79,7 @@ final class PdoAutoInstrumentation
         );
     }
 
-    public static function pdoExec(RegistrationContextInterface $ctx): void
+    public function pdoExec(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
             'PDO',

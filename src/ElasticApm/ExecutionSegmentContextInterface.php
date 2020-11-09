@@ -1,12 +1,8 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm;
-
-use Closure;
 
 /**
  * This interface has functionality shared between Transaction and Span contexts'.

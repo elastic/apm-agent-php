@@ -1,12 +1,11 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
@@ -21,26 +20,50 @@ final class NoopTracer implements TracerInterface
     use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function beginTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
-    {
+    public function beginCurrentTransaction(
+        ?string $name,
+        string $type,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ): TransactionInterface {
         return NoopTransaction::singletonInstance();
     }
 
     /** @inheritDoc */
-    public function beginCurrentTransaction(?string $name, string $type, ?float $timestamp = null): TransactionInterface
-    {
-        return NoopTransaction::singletonInstance();
-    }
-
-    /** @inheritDoc */
-    public function captureTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
-    {
+    public function captureCurrentTransaction(
+        ?string $name,
+        string $type,
+        Closure $callback,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ) {
         return $callback(NoopTransaction::singletonInstance());
     }
 
     /** @inheritDoc */
-    public function captureCurrentTransaction(?string $name, string $type, Closure $callback, ?float $timestamp = null)
+    public function getCurrentTransaction(): TransactionInterface
     {
+        return NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function beginTransaction(
+        ?string $name,
+        string $type,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ): TransactionInterface {
+        return NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function captureTransaction(
+        ?string $name,
+        string $type,
+        Closure $callback,
+        ?float $timestamp = null,
+        ?DistributedTracingData $distributedTracingData = null
+    ) {
         return $callback(NoopTransaction::singletonInstance());
     }
 
@@ -48,12 +71,6 @@ final class NoopTracer implements TracerInterface
     public function createError(Throwable $throwable): ?string
     {
         return null;
-    }
-
-    /** @inheritDoc */
-    public function getCurrentTransaction(): TransactionInterface
-    {
-        return NoopTransaction::singletonInstance();
     }
 
     /** @inheritDoc */

@@ -1,7 +1,5 @@
 <?php
 
-/** @noinspection PhpUndefinedClassInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm;
@@ -131,6 +129,11 @@ interface ExecutionSegmentInterface
     public function setType(string $type): void;
 
     /**
+     * Returns distributed tracing data
+     */
+    public function getDistributedTracingData(): ?DistributedTracingData;
+
+    /**
      * Sets the end timestamp and finalizes this object's state.
      *
      * If any mutating method (for example any `set...` method is a mutating method)
@@ -151,7 +154,7 @@ interface ExecutionSegmentInterface
      *
      * @param Throwable $throwable
      * @return string|null ID of the reported error event or null if no event was reported
-     *                      (for example, becasue recording is disabled)
+     *                      (for example, because recording is disabled)
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
      */

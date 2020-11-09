@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
@@ -157,6 +158,13 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
         }
 
         $this->data->subtype = $this->tracer->limitNullableKeywordString($subtype);
+    }
+
+    /** @inheritDoc */
+    public function getDistributedTracingData(): ?DistributedTracingData
+    {
+        $spanAsParent = $this->shouldBeSentToApmServer() ? $this : null;
+        return $this->containingTransaction->doGetDistributedTracingData($spanAsParent);
     }
 
     /** @inheritDoc */

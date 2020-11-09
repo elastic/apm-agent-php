@@ -8,9 +8,9 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
-use ElasticApmTests\UnitTests\Util\UnitTestCaseBase;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class PublicApiTest extends UnitTestCaseBase
+class PublicApiTest extends TracerUnitTestCaseBase
 {
     public function testBeginEndTransaction(): void
     {

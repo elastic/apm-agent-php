@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
+use Elastic\Apm\Impl\Util\TextUtil;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -36,7 +38,8 @@ abstract class SinkBase implements SinkInterface
                 = LoggablePhpStacktrace::buildForCurrent($numberOfStackFramesToSkip + 1);
         }
 
-        $messageWithContext = $message . '. ' . LoggableToString::convert($combinedContext);
+        $afterMessageDelimiter = TextUtil::isSuffixOf('.', $message) ? '' : '.';
+        $messageWithContext = $message . $afterMessageDelimiter . ' ' . LoggableToString::convert($combinedContext);
 
         $this->consumePreformatted(
             $statementLevel,
