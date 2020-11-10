@@ -14,8 +14,6 @@ use Elastic\Apm\TransactionContextInterface;
  */
 final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
 {
-    use LoggableTrait;
-
     /** @var TransactionContextData */
     private $data;
 
