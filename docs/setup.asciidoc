@@ -10,30 +10,40 @@ Install the agent using one of the https://github.com/elastic/apm-agent-php/rele
 
 NOTE: The agent supports PHP versions 7.2-7.4.
 
+[discrete]
+[[setup-rpm]]
 === Using RPM package (RHEL/CentOS, Fedora)
+
 [source,bash]
 ----
 rpm -ivh <package-file>.rpm
 ----
 
+[discrete]
+[[setup-deb]]
 === Using DEB package (Debian, Ubuntu)
+
 [source,bash]
 ----
 dpkg -i <package-file>.deb
 ----
 
+[discrete]
+[[setup-apk]]
 === Using APK package (Alpine)
+
 [source,bash]
 ----
 apk add --allow-untrusted <package-file>.apk
 ----
 
-[[build_from-source]]
+[discrete]
+[[build-from-source]]
 === Build from source
 
 If you can’t find your distribution, you can install the agent by building it from the source.
 
-NOTE: The agent is currently only available for a unix-lke operating system.
+NOTE: The agent is currently only available for a unix-like operating system.
 
 1. Download the agent source from https://github.com/elastic/apm-agent-php/.
 2. Execute the following commands to build the agent and install it:
@@ -56,8 +66,8 @@ extension=elastic_apm.so
 elastic_apm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
 ----
 
-NOTE: In order to work the agent needs both the built `elastic_apm.so`
+To work, the agent needs both the built `elastic_apm.so`
 and the downloaded source files.
 So if you would like to build `elastic_apm.so` on one machine and
-then deploy it on a different machine you will need to copy both
+then deploy it on a different machine, you will need to copy both
 the built `elastic_apm.so` and the downloaded source files.
