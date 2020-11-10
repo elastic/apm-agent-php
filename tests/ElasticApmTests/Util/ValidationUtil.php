@@ -9,7 +9,7 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ErrorExceptionData;
 use Elastic\Apm\Impl\ErrorTransactionData;
-use Elastic\Apm\Impl\ExecutionSegment;
+use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Metadata;
@@ -18,6 +18,7 @@ use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
 use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SpanContextData;
+use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\TransactionContextData;
@@ -195,7 +196,7 @@ final class ValidationUtil
     {
         foreach ($labels as $key => $value) {
             self::assertValidKeywordString($key);
-            self::assertThat(ExecutionSegment::doesValueHaveSupportedLabelType($value));
+            self::assertThat(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::assertValidKeywordString($value);
             }
@@ -324,9 +325,34 @@ final class ValidationUtil
         }
     }
 
-    public static function assertValidSpanContextData(SpanContextData $spanCtxData): void
+    /**
+     * @param mixed $value
+     */
+    public static function assertValidNullableHttpStatusCode($value): ?int
     {
-        self::assertValidExecutionSegmentContextData($spanCtxData);
+        if (is_null($value)) {
+            return null;
+        }
+
+        self::assertThat(is_int($value));
+        TestCase::assertIsInt($value);
+        return $value;
+    }
+
+    public static function assertValidSpanContextHttpData(SpanContextHttpData $obj): void
+    {
+        ValidationUtil::assertValidNullableNonKeywordString($obj->url);
+        ValidationUtil::assertValidNullableHttpStatusCode($obj->statusCode);
+        ValidationUtil::assertValidNullableKeywordString($obj->method);
+    }
+
+    public static function assertValidSpanContextData(SpanContextData $obj): void
+    {
+        self::assertValidExecutionSegmentContextData($obj);
+
+        if (!is_null($obj->http)) {
+            self::assertValidSpanContextHttpData($obj->http);
+        }
     }
 
     public static function assertValidSpanData(SpanData $span): void

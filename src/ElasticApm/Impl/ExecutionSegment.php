@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\ExecutionSegmentContextInterface;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
@@ -23,10 +21,7 @@ use Throwable;
  *
  * @internal
  */
-abstract class ExecutionSegment implements
-    ExecutionSegmentInterface,
-    ExecutionSegmentContextInterface,
-    LoggableInterface
+abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -48,7 +43,11 @@ abstract class ExecutionSegment implements
     /** @var bool */
     private $isEnded = false;
 
+    /** @var ExecutionSegmentData */
+    private $data;
+
     protected function __construct(
+        ExecutionSegmentData $data,
         Tracer $tracer,
         string $traceId,
         string $name,
@@ -56,16 +55,19 @@ abstract class ExecutionSegment implements
         ?float $timestamp = null
     ) {
         $systemClockCurrentTime = $tracer->getClock()->getSystemClockCurrentTime();
-        $this->executionSegmentData()->timestamp = $timestamp ?? $systemClockCurrentTime;
+        $this->data = $data;
+        $this->data->timestamp = $timestamp ?? $systemClockCurrentTime;
         $this->durationOnBegin
-            = TimeUtil::calcDuration($this->executionSegmentData()->timestamp, $systemClockCurrentTime);
+            = TimeUtil::calcDuration($this->data->timestamp, $systemClockCurrentTime);
         $this->monotonicBeginTime = $tracer->getClock()->getMonotonicClockCurrentTime();
         $this->tracer = $tracer;
-        $this->executionSegmentData()->traceId = $traceId;
-        $this->executionSegmentData()->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $this->data->traceId = $traceId;
+        $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
-        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+        $this->logger = $this->tracer->loggerFactory()
+                                     ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
+                                     ->addContext('this', $this);
     }
 
     /**
@@ -77,28 +79,14 @@ abstract class ExecutionSegment implements
     }
 
     /**
-     * @return ExecutionSegmentData
-     */
-    abstract protected function executionSegmentData(): ExecutionSegmentData;
-
-    /**
-     * @return ExecutionSegmentContextData
-     */
-    abstract protected function executionSegmentContextData(): ExecutionSegmentContextData;
-
-    /**
      * @return bool
      */
     abstract public function isSampled(): bool;
 
-    protected function createLogger(string $namespace, string $className, string $srcCodeFile): Logger
+    public function getTracer(): Tracer
     {
-        $logger = $this->tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::PUBLIC_API, $namespace, $className, $srcCodeFile);
-        $logger->addContext('this', $this);
-        return $logger;
+        return $this->tracer;
     }
-
     /**
      * Begins a new span with this execution segment as the new span's parent,
      * runs the provided callback as the new span and automatically ends the new span.
@@ -150,15 +138,7 @@ abstract class ExecutionSegment implements
         }
     }
 
-    /**
-     * @return bool
-     */
-    protected function isContextEmpty(): bool
-    {
-        return empty($this->executionSegmentContextData()->labels);
-    }
-
-    protected function beforeMutating(): bool
+    public function beforeMutating(): bool
     {
         if (!$this->isEnded) {
             return false;
@@ -183,19 +163,19 @@ abstract class ExecutionSegment implements
     /** @inheritDoc */
     public function getId(): string
     {
-        return $this->executionSegmentData()->id;
+        return $this->data->id;
     }
 
     /** @inheritDoc */
     public function getTimestamp(): float
     {
-        return $this->executionSegmentData()->timestamp;
+        return $this->data->timestamp;
     }
 
     /** @inheritDoc */
     public function getTraceId(): string
     {
-        return $this->executionSegmentData()->traceId;
+        return $this->data->traceId;
     }
 
     /** @inheritDoc */
@@ -205,7 +185,7 @@ abstract class ExecutionSegment implements
             return;
         }
 
-        $this->executionSegmentData()->name = Tracer::limitKeywordString($name);
+        $this->data->name = Tracer::limitKeywordString($name);
     }
 
     /** @inheritDoc */
@@ -215,38 +195,7 @@ abstract class ExecutionSegment implements
             return;
         }
 
-        $this->executionSegmentData()->type = Tracer::limitKeywordString($type);
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return bool
-     */
-    public static function doesValueHaveSupportedLabelType($value): bool
-    {
-        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
-    }
-
-    /** @inheritDoc */
-    public function setLabel(string $key, $value): void
-    {
-        if ($this->beforeMutating() || (!$this->isSampled())) {
-            return;
-        }
-
-        if (!self::doesValueHaveSupportedLabelType($value)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Value for label is of unsupported type - it will be discarded',
-                ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value]
-            );
-            return;
-        }
-
-        $this->executionSegmentContextData()->labels[Tracer::limitKeywordString($key)] = is_string($value)
-            ? Tracer::limitKeywordString($value)
-            : $value;
+        $this->data->type = Tracer::limitKeywordString($type);
     }
 
     /** @inheritDoc */
@@ -278,9 +227,9 @@ abstract class ExecutionSegment implements
             if ($calculatedDuration < 0) {
                 $calculatedDuration = 0;
             }
-            $this->executionSegmentData()->duration = $calculatedDuration;
+            $this->data->duration = $calculatedDuration;
         } else {
-            $this->executionSegmentData()->duration = $duration;
+            $this->data->duration = $duration;
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

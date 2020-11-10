@@ -21,6 +21,14 @@ class ExecutionSegmentContextData implements JsonSerializable, LoggableInterface
     /** @var array<string, string|bool|int|float|null> */
     public $labels = [];
 
+    /**
+     * @return bool
+     */
+    public function isEmpty(): bool
+    {
+        return empty($this->labels);
+    }
+
     public function jsonSerialize()
     {
         $result = [];

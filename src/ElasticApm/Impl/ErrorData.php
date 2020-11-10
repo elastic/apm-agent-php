@@ -12,7 +12,13 @@ use JsonSerializable;
 use Throwable;
 
 /**
+ * An error or a logged error message captured by an agent occurring in a monitored service
+ *
  * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+ *
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
  */
 class ErrorData implements JsonSerializable, LoggableInterface
 {

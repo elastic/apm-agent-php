@@ -6,6 +6,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
@@ -71,30 +72,34 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->config = $this->buildConfig();
 
-        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
-
-        $this->logBackend = new LogBackend(LogLevel::TRACE, $providedDependencies->logSink);
+        $this->logBackend = new LogBackend($this->config->effectiveLogLevel(), $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
         $this->logger = $this->loggerFactory
-            ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
+            ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Constructing Tracer...',
+            [
+                'Version of agent PHP part' => ElasticApm::VERSION,
+                'providedDependencies'      => $providedDependencies,
+                'effectiveLogLevel'         => LogLevel::intToName($this->config->effectiveLogLevel()),
+            ]
+        );
+
+        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
 
         $this->eventSink = $providedDependencies->eventSink ??
                            (ElasticApmExtensionUtil::isLoaded()
                                ? new EventSender($this->config, $this->loggerFactory)
                                : NoopEventSink::singletonInstance());
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Tracer created',
-            [
-                'providedDependencies' => $providedDependencies,
-                'this'                 => $this,
-            ]
-        );
-
         $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config);
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Constructed Tracer successfully');
     }
 
     private function buildConfig(): ConfigSnapshot
@@ -331,12 +336,16 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs(
-            [
-                'isRecording'          => $this->isRecording,
-                'providedDependencies' => $this->providedDependencies,
-                'config'               => $this->config,
-            ]
-        );
+        $result = [
+            'isRecording'          => $this->isRecording,
+            'providedDependencies' => $this->providedDependencies,
+            'config'               => $this->config,
+        ];
+
+        if (!is_null($this->currentTransaction)) {
+            $result['currentTransactionId'] = $this->currentTransaction->getId();
+        }
+
+        $stream->toLogAs($result);
     }
 }
