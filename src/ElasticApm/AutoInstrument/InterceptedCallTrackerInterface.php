@@ -10,11 +10,11 @@ interface InterceptedCallTrackerInterface
 {
     /**
      * @param object|null $interceptedCallThis
-     * @param mixed       ...$interceptedCallArgs Intercepted call arguments
+     * @param mixed[]     $interceptedCallArgs Intercepted call arguments
      *
      * @return void
      */
-    public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void;
+    public function preHook(?object $interceptedCallThis, array $interceptedCallArgs): void;
 
     /**
      * @param int             $numberOfStackFramesToSkip

@@ -49,9 +49,9 @@ final class PdoAutoInstrumentation
                     /** @var SpanInterface */
                     private $span;
 
-                    public function preHook(?object $interceptedCallThis, ...$interceptedCallArgs): void
+                    public function preHook(?object $interceptedCallThis, array $interceptedCallArgs): void
                     {
-                        self::assertInterceptedCallThisIsNotNull($interceptedCallThis, ...$interceptedCallArgs);
+                        self::assertInterceptedCallThisIsNotNull($interceptedCallThis, $interceptedCallArgs);
 
                         $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             'PDO::__construct('
@@ -91,7 +91,7 @@ final class PdoAutoInstrumentation
                     /** @var SpanInterface */
                     private $span;
 
-                    public function preHook($thisObj, ...$interceptedCallArgs): void
+                    public function preHook($thisObj, array $interceptedCallArgs): void
                     {
                         $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO::exec',

@@ -25,6 +25,9 @@ final class AllOptionsMetadata
         return [
             OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
+            OptionNames::LOG_LEVEL               => new NullableLogLevelOptionMetadata(),
+            OptionNames::LOG_LEVEL_STDERR        => new NullableLogLevelOptionMetadata(),
+            OptionNames::LOG_LEVEL_SYSLOG        => new NullableLogLevelOptionMetadata(),
             OptionNames::SERVER_TIMEOUT          => new DurationOptionMetadata(
                 0.0 /* minValidValueInMilliseconds */,
                 null /* maxValidValueInMilliseconds */,

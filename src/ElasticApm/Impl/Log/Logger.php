@@ -107,4 +107,17 @@ final class Logger
             ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)
             : null;
     }
+
+    /**
+     * @param mixed $value
+     *
+     * @return mixed
+     */
+    public function possiblySecuritySensitive($value)
+    {
+        if ($this->maxEnabledLevel >= Level::TRACE) {
+            return $value;
+        }
+        return 'HIDDEN POSSIBLY SECURITY SENSITIVE DATA';
+    }
 }

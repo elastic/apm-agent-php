@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextHttpInterface;
 use Elastic\Apm\SpanContextInterface;
 
 /**
@@ -15,4 +16,10 @@ use Elastic\Apm\SpanContextInterface;
 final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
 {
     use NoopObjectTrait;
+
+    /** @inheritDoc */
+    public function http(): SpanContextHttpInterface
+    {
+        return NoopSpanContextHttp::singletonInstance();
+    }
 }

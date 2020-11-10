@@ -14,6 +14,10 @@ use JsonSerializable;
  * Data for correlating errors with transactions
  *
  * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L29
+ *
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
  */
 class ErrorTransactionData implements JsonSerializable, LoggableInterface
 {

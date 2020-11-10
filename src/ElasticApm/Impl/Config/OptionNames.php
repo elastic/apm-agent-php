@@ -18,7 +18,9 @@ final class OptionNames
     public const API_KEY = 'api_key';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
+    public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
+    public const LOG_LEVEL_STDERR = 'log_level_stderr';
     public const SECRET_TOKEN = 'secret_token';
     public const SERVER_TIMEOUT = 'server_timeout';
     public const SERVER_URL = 'server_url';

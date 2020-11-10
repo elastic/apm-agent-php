@@ -7,6 +7,7 @@ namespace Elastic\Apm\Impl\Log;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ReflectionClass;
 use ReflectionException;
 use Throwable;
@@ -224,7 +225,7 @@ final class LoggableToJsonEncodable
             return self::convertThrowable($object);
         }
 
-        if (self::isDtoObject($object)) {
+        if (TextUtil::isPrefixOf('Elastic\\Apm\\', get_class($object)) && self::isDtoObject($object)) {
             return self::convertDtoObject($object);
         }
 

@@ -7,7 +7,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Util\Assert;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 use Throwable;
 
@@ -23,27 +22,31 @@ trait InterceptedCallTrackerTrait
      * @param SpanInterface   $span
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
+     * @param float|null      $duration
+     *
+     * @noinspection PhpMissingParamTypeInspection
      */
     protected static function endSpan(
         int $numberOfStackFramesToSkip,
         SpanInterface $span,
+        /** @noinspection PhpUnusedParameterInspection */
         bool $hasExitedByException,
-        $returnValueOrThrown
+        /** @noinspection PhpUnusedParameterInspection */
+        $returnValueOrThrown,
+        ?float $duration = null
     ): void {
-        $span->context()->setLabel('returnValueOrThrown type', DbgUtil::getType($returnValueOrThrown));
-        $span->context()->setLabel('hasExitedByException', $hasExitedByException);
-        $span->endSpanEx($numberOfStackFramesToSkip + 1);
+        $span->endSpanEx($numberOfStackFramesToSkip + 1, $duration);
     }
 
     /**
      * @param object|null $interceptedCallThis
-     * @param mixed       ...$interceptedCallArgs Intercepted call arguments
+     * @param mixed[]     $interceptedCallArgs Intercepted call arguments
      *
      * @return void
      */
     protected static function assertInterceptedCallThisIsNotNull(
         ?object $interceptedCallThis,
-        ...$interceptedCallArgs
+        array $interceptedCallArgs
     ): void {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!is_null($interceptedCallThis))
@@ -52,13 +55,13 @@ trait InterceptedCallTrackerTrait
 
     /**
      * @param object|null $interceptedCallThis
-     * @param mixed       ...$interceptedCallArgs Intercepted call arguments
+     * @param mixed[]     $interceptedCallArgs Intercepted call arguments
      *
      * @return void
      */
     protected static function assertInterceptedCallThisIsNull(
         ?object $interceptedCallThis,
-        ...$interceptedCallArgs
+        array $interceptedCallArgs
     ): void {
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(is_null($interceptedCallThis))
@@ -69,5 +72,20 @@ trait InterceptedCallTrackerTrait
                 'interceptedCallArgs' => $interceptedCallArgs,
             ]
         );
+    }
+
+    /**
+     * @param bool                 $hasExitedByException
+     * @param array<string, mixed> $dbgCtx
+     *
+     * @return void
+     */
+    protected static function assertInterceptedCallNotExitedByException(
+        bool $hasExitedByException,
+        array $dbgCtx = []
+    ): void {
+        ($assertProxy = Assert::ifEnabled())
+        && $assertProxy->that(!$hasExitedByException)
+        && $assertProxy->withContext('!$hasExitedByException', $dbgCtx);
     }
 }
