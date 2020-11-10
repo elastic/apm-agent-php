@@ -60,6 +60,8 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 
 void logSupportabilityInfo( LogLevel logLevel )
 {
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
+
     ResultCode resultCode;
     enum
     {
@@ -103,7 +105,9 @@ void elasticApmModuleInit( int type, int moduleNumber )
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+
     logSupportabilityInfo( logLevel_debug );
+
     config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( ! config->enabled )

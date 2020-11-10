@@ -5,15 +5,32 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DummyExceptionForTests;
+use ElasticApmTests\Util\LogSinkForTests;
 
 class CapturePublicApiTest extends TracerUnitTestCaseBase
 {
     /** @var int */
     private static $callToMethodThrowingDummyExceptionForTestsLineNumber;
+
+    // public function setUp(): void
+    // {
+    //     $this->setUpTestEnv(
+    //         function (TracerBuilder $builder): void {
+    //             $mockConfig = new MockConfigRawSnapshotSource();
+    //             $mockConfig->set(OptionNames::LOG_LEVEL, LogLevel::intToName(LogLevel::TRACE));
+    //             $builder->withLogSink(new LogSinkForTests(__CLASS__))
+    //                     ->withConfigRawSnapshotSource($mockConfig);
+    //         }
+    //     );
+    // }
 
     public function testElasticApmCurrentTransactionReturnVoid(): void
     {
@@ -237,7 +254,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             self::assertArrayHasKey($error->id, $this->mockEventSink->eventsFromAgent->idToError);
             self::assertTrue(
                 $error->parentId === $throwingRunData['spanId']
-                ||  $error->parentId === $throwingRunData['transactionId']
+                || $error->parentId === $throwingRunData['transactionId']
             );
 
             self::assertNotNull($error->transaction);

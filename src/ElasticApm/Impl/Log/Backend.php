@@ -60,7 +60,7 @@ final class Backend
 
         $result[] = $statementCtx;
 
-        return array_reverse($result);
+        return $result;
     }
 
     /**
