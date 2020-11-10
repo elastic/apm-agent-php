@@ -85,7 +85,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace']
+            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace', 'context']
         );
     }
 

@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\ExecutionSegmentContextInterface;
-use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
@@ -38,9 +35,17 @@ abstract class ContextDataWrapper implements LoggableInterface
         return $this->owner->getTracer();
     }
 
+    /**
+     * @return string[]
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return ['owner'];
+    }
+
     /** @inheritDoc */
     public function toLog(LogStreamInterface $stream): void
     {
-        $this->toLogLoggableTraitImpl($stream, /* customPropValues */ ['ownerId' => $this->owner->getId()]);
+        $this->toLogLoggableTraitImpl($stream, ['ownerId' => $this->owner->getId()]);
     }
 }

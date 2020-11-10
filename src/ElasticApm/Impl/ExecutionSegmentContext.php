@@ -6,7 +6,6 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\ExecutionSegmentContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
-use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\DbgUtil;
 
@@ -17,8 +16,6 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  */
 abstract class ExecutionSegmentContext extends ContextDataWrapper implements ExecutionSegmentContextInterface
 {
-    use LoggableTrait;
-
     /** @var ExecutionSegmentContextData */
     private $data;
 
@@ -66,10 +63,10 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
     }
 
     /**
-     * @return array<string>
+     * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return ['logger'];
+        return array_merge(parent::propertiesExcludedFromLog(), ['logger']);
     }
 }

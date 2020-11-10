@@ -15,8 +15,6 @@ use Elastic\Apm\SpanContextInterface;
  */
 final class SpanContext extends ExecutionSegmentContext implements SpanContextInterface
 {
-    use LoggableTrait;
-
     /** @var Span */
     private $owner;
 
@@ -41,5 +39,13 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
         }
 
         return $this->http;
+    }
+
+    /**
+     * @return string[]
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return array_merge(parent::propertiesExcludedFromLog(), ['http']);
     }
 }

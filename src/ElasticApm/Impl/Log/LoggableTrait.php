@@ -33,7 +33,7 @@ trait LoggableTrait
      */
     protected function toLogLoggableTraitImpl(LogStreamInterface $stream, array $customPropValues = []): void
     {
-        $nameToValue = [];
+        $nameToValue = $customPropValues;
 
         $classNameToLog = static::classNameToLog();
         if (!is_null($classNameToLog)) {
@@ -59,14 +59,12 @@ trait LoggableTrait
                 $reflectionProperty->setAccessible(true);
                 $propName = $reflectionProperty->name;
                 if (array_key_exists($propName, $customPropValues)) {
-                    $propValue = $customPropValues[$propName];
-                } else {
-                    if (in_array($propName, $propertiesExcludedFromLog, /* strict */ true)) {
-                        continue;
-                    }
-                    $propValue = $reflectionProperty->getValue($this);
+                    continue;
                 }
-                $nameToValue[$propName] = $propValue;
+                if (in_array($propName, $propertiesExcludedFromLog, /* strict */ true)) {
+                    continue;
+                }
+                $nameToValue[$propName] = $reflectionProperty->getValue($this);
             }
             $currentClass = $currentClass->getParentClass();
             if ($currentClass === false) {

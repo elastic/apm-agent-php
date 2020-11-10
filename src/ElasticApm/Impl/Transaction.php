@@ -394,7 +394,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['config', 'logger', 'spansDataToSend']
+            ['config', 'logger', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
         );
     }
 
@@ -402,6 +402,14 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function toLog(LogStreamInterface $stream): void
     {
         $currentSpanId = is_null($this->currentSpan) ? null : $this->currentSpan->getId();
-        parent::toLogLoggableTraitImpl($stream, /* customPropValues */ ['currentSpan' => $currentSpanId]);
+        parent::toLogLoggableTraitImpl(
+            $stream,
+            /* customPropValues */
+            [
+                'currentSpanId' => $currentSpanId,
+                'spansDataToSendCount' => count($this->spansDataToSend),
+                'errorsDataToSendCount' => count($this->errorsDataToSend),
+            ]
+        );
     }
 }
