@@ -6,6 +6,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
@@ -16,7 +17,7 @@ use Throwable;
  *
  * @internal
  */
-final class Span extends ExecutionSegment implements SpanInterface, SpanContextInterface
+final class Span extends ExecutionSegment implements SpanInterface
 {
     /** @var SpanData */
     private $data;
@@ -33,6 +34,9 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
     /** @var bool */
     private $isDropped;
 
+    /** @var SpanContext|null */
+    private $context = null;
+
     public function __construct(
         Tracer $tracer,
         Transaction $containingTransaction,
@@ -47,6 +51,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
         $this->data = new SpanData();
 
         parent::__construct(
+            $this->data,
             $tracer,
             $containingTransaction->getTraceId(),
             $name,
@@ -63,7 +68,9 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
         $this->parentSpan = $parentSpan;
         $this->data->parentId = is_null($parentSpan) ? $containingTransaction->getId() : $parentSpan->getId();
 
-        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
+        $this->logger = $this->tracer->loggerFactory()
+                                     ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
+                                     ->addContext('this', $this);
 
         $this->isDropped = $isDropped;
 
@@ -111,33 +118,18 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
     }
 
     /** @inheritDoc */
-    protected function executionSegmentData(): ExecutionSegmentData
-    {
-        return $this->data;
-    }
-
-    /** @inheritDoc */
-    protected function executionSegmentContextData(): ExecutionSegmentContextData
-    {
-        return $this->lazyContextData();
-    }
-
-    private function lazyContextData(): SpanContextData
-    {
-        if (is_null($this->data->context)) {
-            $this->data->context = new SpanContextData();
-        }
-        return $this->data->context;
-    }
-
-    /** @inheritDoc */
     public function context(): SpanContextInterface
     {
         if (!$this->isSampled()) {
             return NoopSpanContext::singletonInstance();
         }
 
-        return $this;
+        if (is_null($this->context)) {
+            $this->data->context = new SpanContextData();
+            $this->context = new SpanContext($this, $this->data->context);
+        }
+
+        return $this->context;
     }
 
     /** @inheritDoc */
@@ -229,7 +221,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanContextI
             true /* <- hideElasticApmImpl */
         );
 
-        if (!is_null($this->data->context) && $this->isContextEmpty()) {
+        if ((!is_null($this->data->context)) && $this->data->context->isEmpty()) {
             $this->data->context = null;
         }
 

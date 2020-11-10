@@ -50,8 +50,8 @@ final class TransactionContextDataDeserializer extends ExecutionSegmentContextDa
         }
 
         switch ($key) {
-            // case 'http':
-            //     $this->lazyContextData()->http = ValidationUtil::assertValid...($value);
+            // case 'xyz':
+            //     $this->...->xyz = ValidationUtil::assertValid...($value);
             //     return true;
 
             default:

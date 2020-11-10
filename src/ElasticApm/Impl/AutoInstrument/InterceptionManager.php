@@ -55,7 +55,7 @@ final class InterceptionManager
      * @param int         $numberOfStackFramesToSkip
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
-     * @param mixed       ...$interceptedCallArgs
+     * @param mixed[]     $interceptedCallArgs
      *
      * @return mixed
      * @throws Throwable
@@ -64,7 +64,7 @@ final class InterceptionManager
         int $numberOfStackFramesToSkip,
         int $interceptRegistrationId,
         ?object $thisObj,
-        ...$interceptedCallArgs
+        array $interceptedCallArgs
     ) {
         $localLogger = $this->logger->inherit()->addContext('interceptRegistrationId', $interceptRegistrationId);
 
@@ -72,7 +72,7 @@ final class InterceptionManager
             $localLogger,
             $interceptRegistrationId,
             $thisObj,
-            ...$interceptedCallArgs
+            $interceptedCallArgs
         );
 
         $hasExitedByException = false;
@@ -110,7 +110,7 @@ final class InterceptionManager
      * @param Logger      $localLogger
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
-     * @param mixed       ...$interceptedCallArgs
+     * @param mixed[]     $interceptedCallArgs
      *
      * @return InterceptedCallTrackerInterface|null
      */
@@ -118,7 +118,7 @@ final class InterceptionManager
         Logger $localLogger,
         int $interceptRegistrationId,
         ?object $thisObj,
-        ...$interceptedCallArgs
+        array $interceptedCallArgs
     ) {
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
@@ -147,7 +147,7 @@ final class InterceptionManager
         }
 
         try {
-            $callTracker->preHook($thisObj, ...$interceptedCallArgs);
+            $callTracker->preHook($thisObj, $interceptedCallArgs);
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(

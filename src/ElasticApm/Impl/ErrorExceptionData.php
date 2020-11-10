@@ -15,6 +15,10 @@ use Throwable;
  * Information about the originally thrown error
  *
  * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L53
+ *
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
  */
 class ErrorExceptionData implements JsonSerializable, LoggableInterface
 {

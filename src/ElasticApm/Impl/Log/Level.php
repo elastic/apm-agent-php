@@ -23,4 +23,43 @@ final class Level
     public const INFO = self::NOTICE + 1;
     public const DEBUG = self::INFO + 1;
     public const TRACE = self::DEBUG + 1;
+
+    /**
+     * @var array<array<string|int>>
+     * @phpstan-var array<array{string, int}>
+     */
+    private static $nameIntPairs
+        = [
+            ['OFF', Level::OFF],
+            ['CRITICAL', Level::CRITICAL],
+            ['ERROR', Level::ERROR],
+            ['WARNING', Level::WARNING],
+            ['NOTICE', Level::NOTICE],
+            ['INFO', Level::INFO],
+            ['DEBUG', Level::DEBUG],
+            ['TRACE', Level::TRACE],
+        ];
+
+    /** @var array<int, string> */
+    private static $intToName;
+
+    /**
+     * @return array<array<string|int>>
+     * @phpstan-return array<array{string, int}>
+     */
+    public static function nameIntPairs(): array
+    {
+        return self::$nameIntPairs;
+    }
+
+    public static function intToName(int $intValueToMap): string
+    {
+        if (!isset(self::$intToName)) {
+            self::$intToName = [];
+            foreach (self::$nameIntPairs as $nameIntPair) {
+                self::$intToName[$nameIntPair[1]] = $nameIntPair[0];
+            }
+        }
+        return self::$intToName[$intValueToMap];
+    }
 }

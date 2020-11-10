@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
@@ -22,6 +23,15 @@ final class Snapshot implements LoggableInterface
 
     /** @var string|null */
     private $environment;
+
+    /** @var int|null */
+    private $logLevel;
+
+    /** @var int|null */
+    private $logLevelStderr;
+
+    /** @var int|null */
+    private $logLevelSyslog;
 
     /** @var float - In milliseconds */
     private $serverTimeout;
@@ -59,6 +69,13 @@ final class Snapshot implements LoggableInterface
     public function environment(): ?string
     {
         return $this->environment;
+    }
+
+    public function effectiveLogLevel(): int
+    {
+        $effectiveLogLevelStderr = ($this->logLevelStderr ?? $this->logLevel) ?? LogLevel::INFO;
+        $effectiveLogLevelSyslog = ($this->logLevelSyslog ?? $this->logLevel) ?? LogLevel::CRITICAL;
+        return max($effectiveLogLevelStderr, $effectiveLogLevelSyslog, $this->logLevel ?? LogLevel::OFF);
     }
 
     public function serverTimeout(): float

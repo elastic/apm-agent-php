@@ -50,9 +50,9 @@ final class SpanContextDataDeserializer extends ExecutionSegmentContextDataDeser
         }
 
         switch ($key) {
-            // case 'destination':
-            //     $this->lazyContextData()->destination = ValidationUtil::assertValid...($value);
-            //     return true;
+            case 'http':
+                $this->result->http = SpanContextHttpDataDeserializer::deserialize($value);
+                return true;
 
             default:
                 return false;

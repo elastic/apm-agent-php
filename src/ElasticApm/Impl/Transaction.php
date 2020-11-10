@@ -8,6 +8,7 @@ use Closure;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
@@ -22,7 +23,7 @@ use Throwable;
  *
  * @internal
  */
-final class Transaction extends ExecutionSegment implements TransactionInterface, TransactionContextInterface
+final class Transaction extends ExecutionSegment implements TransactionInterface
 {
     /** @var TransactionData */
     private $data;
@@ -42,6 +43,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ErrorData[] */
     private $errorsDataToSend = [];
 
+    /** @var TransactionContext|null */
+    private $context = null;
+
     public function __construct(
         Tracer $tracer,
         string $name,
@@ -59,6 +63,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
 
         parent::__construct(
+            $this->data,
             $tracer,
             $traceId,
             $name,
@@ -68,7 +73,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $this->config = $tracer->getConfig();
 
-        $this->logger = $this->createLogger(__NAMESPACE__, __CLASS__, __FILE__);
+        $this->logger = $this->tracer->loggerFactory()
+                                     ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
+                                     ->addContext('this', $this);
 
         $this->data->isSampled = is_null($distributedTracingData)
             ? $this->makeSamplingDecision()
@@ -108,33 +115,18 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
-    protected function executionSegmentData(): ExecutionSegmentData
-    {
-        return $this->data;
-    }
-
-    private function lazyContextData(): TransactionContextData
-    {
-        if (is_null($this->data->context)) {
-            $this->data->context = new TransactionContextData();
-        }
-        return $this->data->context;
-    }
-
-    /** @inheritDoc */
-    protected function executionSegmentContextData(): ExecutionSegmentContextData
-    {
-        return $this->lazyContextData();
-    }
-
-    /** @inheritDoc */
     public function context(): TransactionContextInterface
     {
         if (!$this->isSampled()) {
             return NoopTransactionContext::singletonInstance();
         }
 
-        return $this;
+        if (is_null($this->context)) {
+            $this->data->context = new TransactionContextData();
+            $this->context = new TransactionContext($this, $this->data->context);
+        }
+
+        return $this->context;
     }
 
     public function cloneContextData(): ?TransactionContextData
@@ -384,7 +376,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        if (!is_null($this->data->context) && $this->isContextEmpty()) {
+        if ((!is_null($this->data->context)) && $this->data->context->isEmpty()) {
             $this->data->context = null;
         }
 
@@ -396,7 +388,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /**
-     * @return array<string>
+     * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {

@@ -19,16 +19,7 @@ final class LogLevelOptionParser extends EnumOptionParser
     {
         parent::__construct(
             'log level' /* dbgEnumDesc */,
-            [
-                ['OFF', Level::OFF],
-                ['CRITICAL', Level::CRITICAL],
-                ['ERROR', Level::ERROR],
-                ['WARNING', Level::WARNING],
-                ['NOTICE', Level::NOTICE],
-                ['INFO', Level::INFO],
-                ['DEBUG', Level::DEBUG],
-                ['TRACE', Level::TRACE],
-            ],
+            Level::nameIntPairs(),
             false /* <- isCaseSensitive */,
             true /* <- isUnambiguousPrefixAllowed */
         );

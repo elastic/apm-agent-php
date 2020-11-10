@@ -13,6 +13,15 @@ final class UrlUtil
 {
     use StaticClassTrait;
 
+    public static function extractHostPart(string $url): ?string
+    {
+        $result = parse_url($url, PHP_URL_HOST);
+        if (!is_string($result)) {
+            return null;
+        }
+        return $result;
+    }
+
     public static function extractPathPart(string $url): ?string
     {
         $result = parse_url($url, PHP_URL_PATH);
@@ -20,5 +29,11 @@ final class UrlUtil
             return null;
         }
         return $result;
+    }
+
+    public static function isHttp(string $url): bool
+    {
+        return TextUtil::isPrefixOf('http://', $url, /* isCaseSensitive */ false)
+               || TextUtil::isPrefixOf('https://', $url, /* isCaseSensitive */ false);
     }
 }

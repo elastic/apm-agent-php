@@ -117,7 +117,7 @@ final class PhpPartFacade
      *
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
-     * @param mixed       ...$interceptedCallArgs
+     * @param mixed     ...$interceptedCallArgs
      *
      * @return mixed
      * @throws Throwable
@@ -138,7 +138,7 @@ final class PhpPartFacade
             1 /* <- $numberOfStackFramesToSkip */,
             $interceptRegistrationId,
             $thisObj,
-            ...$interceptedCallArgs
+            $interceptedCallArgs
         );
     }
 

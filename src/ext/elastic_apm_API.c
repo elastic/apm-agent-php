@@ -13,7 +13,6 @@
 #include "util.h"
 #include "log.h"
 #include "Tracer.h"
-#include "util_for_PHP.h"
 #include "elastic_apm_alloc.h"
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
@@ -62,23 +61,40 @@ struct CallToInterceptData
 typedef struct CallToInterceptData CallToInterceptData;
 static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 
-static zend_execute_data* g_interceptedCallZendExecuteData = NULL;
-static zif_handler g_interceptedCallOriginalHandler = NULL;
+static zend_execute_data* g_interceptedCallInProgressZendExecuteData = NULL;
+static zif_handler g_interceptedCallInProgressOriginalHandler = NULL;
+static uint32_t g_interceptedCallInProgressRegistrationId = 0;
 
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
-    ELASTIC_APM_ASSERT(g_interceptedCallZendExecuteData == NULL, "");
-    ELASTIC_APM_ASSERT(g_interceptedCallOriginalHandler == NULL, "");
-    g_interceptedCallZendExecuteData = execute_data;
-    g_interceptedCallOriginalHandler = g_functionsToInterceptData[ interceptRegistrationId ].originalHandler;
+    if ( g_interceptedCallInProgressRegistrationId != 0 )
+    {
+        ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
+                "There's already an intercepted call in progress with interceptRegistrationId: %u."
+                "Nesting intercepted calls is not supported yet so invoking the original handler directly..."
+                , g_interceptedCallInProgressRegistrationId );
+        g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+        return;
+    }
+
+    ELASTIC_APM_ASSERT( g_interceptedCallInProgressZendExecuteData == NULL
+                        , "call in progress interceptRegistrationId: %u, nested call interceptRegistrationId: %u"
+                        , g_interceptedCallInProgressRegistrationId, interceptRegistrationId );
+    ELASTIC_APM_ASSERT( g_interceptedCallInProgressOriginalHandler == NULL
+                        , "call in progress interceptRegistrationId: %u, nested call interceptRegistrationId: %u"
+                        , g_interceptedCallInProgressRegistrationId, interceptRegistrationId );
+    g_interceptedCallInProgressZendExecuteData = execute_data;
+    g_interceptedCallInProgressOriginalHandler = g_functionsToInterceptData[ interceptRegistrationId ].originalHandler;
+    g_interceptedCallInProgressRegistrationId = interceptRegistrationId;
 
     tracerPhpPartInterceptedCall( interceptRegistrationId, execute_data, return_value );
 
-    g_interceptedCallZendExecuteData = NULL;
-    g_interceptedCallOriginalHandler = NULL;
+    g_interceptedCallInProgressZendExecuteData = NULL;
+    g_interceptedCallInProgressOriginalHandler = NULL;
+    g_interceptedCallInProgressRegistrationId = 0;
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 }
@@ -103,8 +119,8 @@ bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* intercep
     if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
     {
         ELASTIC_APM_LOG_ERROR( "Reached maxFunctionsToIntercept."
-                              " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
-                              , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
+                               " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
+                               , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
         return false;
     }
 
@@ -135,7 +151,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     if ( funcEntry == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
-                              " className: `%s'; methodName: `%s'", className, methodName );
+                               " className: `%s'; methodName: `%s'", className, methodName );
         resultCode = resultFailure;
         goto failure;
     }
@@ -167,7 +183,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
     if ( funcEntry == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
-                              " functionName: `%s'", functionName );
+                               " functionName: `%s'", functionName );
         resultCode = resultFailure;
         goto failure;
     }
@@ -182,7 +198,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d). interceptRegistrationId: %u.", resultCodeToString( resultCode ), resultCode, *interceptRegistrationId );
     return resultCode;
 
     failure:
@@ -193,10 +209,10 @@ void elasticApmCallInterceptedOriginal( zval* return_value )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
-    ELASTIC_APM_ASSERT(g_interceptedCallZendExecuteData != NULL, "");
-    ELASTIC_APM_ASSERT(g_interceptedCallOriginalHandler != NULL, "");
+    ELASTIC_APM_ASSERT( g_interceptedCallInProgressZendExecuteData != NULL, "" );
+    ELASTIC_APM_ASSERT( g_interceptedCallInProgressOriginalHandler != NULL, "" );
 
-    g_interceptedCallOriginalHandler( g_interceptedCallZendExecuteData, return_value );
+    g_interceptedCallInProgressOriginalHandler( g_interceptedCallInProgressZendExecuteData, return_value );
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
