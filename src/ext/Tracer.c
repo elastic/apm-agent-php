@@ -179,7 +179,6 @@ ResultCode constructTracer( Tracer* tracer )
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConfigManager( &tracer->configManager ) );
 
-    ELASTIC_APM_LOG_DEBUG( "Constructed Tracer successfully. Version of agent C part: " PHP_ELASTIC_APM_VERSION );
     resultCode = resultSuccess;
     tracer->isInited = true;
     tracer->isFailed = false;

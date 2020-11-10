@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -38,7 +39,7 @@ final class TestProperties implements LoggableInterface
     public function __construct()
     {
         $this->agentConfigSetter = new AgentConfigSetterEnvVars();
-        $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, 'DEBUG');
+        $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, LogLevel::intToName(LogLevel::DEBUG));
 
         $this->sharedDataPerRequest = new SharedDataPerRequest();
     }
