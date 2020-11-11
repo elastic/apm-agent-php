@@ -29,13 +29,20 @@ trait InterceptedCallTrackerTrait
     protected static function endSpan(
         int $numberOfStackFramesToSkip,
         SpanInterface $span,
-        /** @noinspection PhpUnusedParameterInspection */
         bool $hasExitedByException,
-        /** @noinspection PhpUnusedParameterInspection */
         $returnValueOrThrown,
         ?float $duration = null
     ): void {
-        $span->endSpanEx($numberOfStackFramesToSkip + 1, $duration);
+        if ($hasExitedByException && is_object($returnValueOrThrown) && ($returnValueOrThrown instanceof Throwable)) {
+            $span->createError($returnValueOrThrown);
+        }
+        // endSpanEx() is a public API so by default it will appear on the stacktrace
+        // because it assumes that it was called by the application and
+        // it is important to know from where in the application.
+        // But in this case endSpanEx() is called by agent's code so there's no point for it
+        // to appear on the stack trace.
+        // That is the reason to +1 to the usual $numberOfStackFramesToSkip + 1
+        $span->endSpanEx($numberOfStackFramesToSkip + 2, $duration);
     }
 
     /**

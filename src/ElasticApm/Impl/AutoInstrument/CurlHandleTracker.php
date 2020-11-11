@@ -12,6 +12,7 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
@@ -37,7 +38,7 @@ use const CURLOPT_URL;
  *
  * @internal
  */
-final class CurlHandleTracker
+final class CurlHandleTracker implements LoggableInterface
 {
     use InterceptedCallTrackerTrait;
     use LoggableTrait;
@@ -55,9 +56,6 @@ final class CurlHandleTracker
 
     /** @var resource */
     private $curlHandle;
-
-    /** @var bool */
-    private $shouldGatherContext = true;
 
     /** @var string|null */
     private $url = null;
