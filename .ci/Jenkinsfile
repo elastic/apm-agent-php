@@ -208,9 +208,9 @@ pipeline {
               }
             }
             stages {
-              stage("PHP=${PHP_VERSION},Dist=${DIST}") {
+              stage('Lifecycle Testing') {
                 steps {
-                  withGithubNotify(context: "Package-Test-${PHP_VERSION}-${DIST}") {
+                  withGithubNotify(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}") {
                     deleteDir()
                     unstash 'source'
                     dir("${BASE_DIR}"){
