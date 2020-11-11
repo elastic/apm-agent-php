@@ -161,3 +161,7 @@ deb-uninstall: prepare-deb  ## Uninstallation testing for the deb installer
 .PHONY: rpm-uninstall
 rpm-uninstall: prepare-rpm  ## Uninstallation testing for the rpm installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm-uninstall -e PACKAGE=$(NAME) prepare-rpm
+
+.PHONY: tar-uninstall
+tar-uninstall: prepare-tar  ## Install the tar installer to run some smoke tests
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar-uninstall prepare-tar

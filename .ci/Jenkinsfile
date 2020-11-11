@@ -137,20 +137,6 @@ pipeline {
                   }
                 }
               }
-              stage('Component Tests') {
-                steps {
-                  withGithubNotify(context: "Component-Tests-${PHP_VERSION}", tab: 'tests') {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile component-test", label: 'component-test'
-                    }
-                  }
-                }
-                post {
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
             }
           }
         }
@@ -216,16 +202,20 @@ pipeline {
                 name 'PHP_VERSION'
                 values '7.2', '7.3', '7.4'
               }
+              axis {
+                name 'DIST'
+                values 'apk', 'deb', 'rpm', 'tar'
+              }
             }
             stages {
               stage('Uninstallation testing') {
                 steps {
-                  withGithubNotify(context: "Package-Test-${PHP_VERSION}") {
+                  withGithubNotify(context: "Package-Test-${PHP_VERSION}-${DIST}") {
                     deleteDir()
                     unstash 'source'
                     dir("${BASE_DIR}"){
                       unstash 'package'
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging uninstall", label: 'package uninstall'
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-uninstall", label: "package uninstall ${PHP_VERSION}-${DIST}"
                     }
                   }
                 }
