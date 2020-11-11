@@ -444,10 +444,10 @@ def prepareRelease() {
   def actions = """### Actions
 * If changes are fine then:
   1. [Approve](${env.BUILD_URL}input) it. The pipeline will take care of the release.
-  1. Close this PR since it's not required anymore.
+  1. Close this PR since it is not required anymore.
   1. Delete branch ${branchName}.
 * If changes are not correct then:
-  1. [abort](${env.BUILD_URL}input) it
+  1. [abort](${env.BUILD_URL}input) it.
   1. Change and commit changes to this PR.
   1. Merge this PR.
   1. Delete branch ${branchName}.
