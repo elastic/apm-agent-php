@@ -148,7 +148,7 @@ tar-install-release-github: prepare-tar  ## Install the tar installer from a giv
 install-release-github: apk-install-release-github deb-install-release-github rpm-install-release-github tar-install-release-github  ## Install all the distributions for a given release using the downloaded binaries
 
 .PHONY: uninstall
-uninstall: apk-uninstall deb-uninstall rpm-uninstall  ## Uninstall all the distributions
+uninstall: apk-uninstall deb-uninstall rpm-uninstall tar-uninstall ## Uninstall all the distributions
 
 .PHONY: apk-uninstall
 apk-uninstall: prepare-apk  ## Uninstallation testing for the apk installer
@@ -163,5 +163,5 @@ rpm-uninstall: prepare-rpm  ## Uninstallation testing for the rpm installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm-uninstall -e PACKAGE=$(NAME) prepare-rpm
 
 .PHONY: tar-uninstall
-tar-uninstall: prepare-tar  ## Install the tar installer to run some smoke tests
+tar-uninstall: prepare-tar  ## Uninstallation testing for the tar installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar-uninstall prepare-tar
