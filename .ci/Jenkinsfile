@@ -188,7 +188,7 @@ pipeline {
             }
           }
         }
-        stage('Package-Test') {
+        stage('Package lifecycle testing') {
           when {
             beforeAgent true
             expression { return env.ONLY_DOCS == "false" }
@@ -208,14 +208,14 @@ pipeline {
               }
             }
             stages {
-              stage('Uninstallation testing') {
+              stage("PHP=${PHP_VERSION},Dist=${DIST}") {
                 steps {
                   withGithubNotify(context: "Package-Test-${PHP_VERSION}-${DIST}") {
                     deleteDir()
                     unstash 'source'
                     dir("${BASE_DIR}"){
                       unstash 'package'
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-uninstall", label: "package uninstall ${PHP_VERSION}-${DIST}"
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
                     }
                   }
                 }
