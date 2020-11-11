@@ -21,6 +21,28 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.0.0-beta1]]
+=== v1.0.0-beta1
+
+[float]
+==== Breaking changes
+* setLabel() have been moved to under context(): {pull}276[#276]
+
+[float]
+==== Bug fixes
+* Exclude query string from a transaction name: {pull}285[#285]
+* Added check that the corresponding extension is loaded before instrumenting it: {pull}228[#228]
+
+[float]
+==== Features
+* Added support for distributed tracing: {pull}283[#283]
+* Added Error events: {pull}282[#282]
+* Add support for TRANSACTION_MAX_SPANS configuration option : {pull}260[#260]
+* Added SERVER_TIMEOUT configuration option: {pull}245[#245]
+* Automatically capture stack trace for spans: {pull}232[#232]
+* Added VERIFY_SERVER_CERT configuration option: {pull}225[#225]
+* Implemented sampling (TRANSACTION_SAMPLE_RATE): {pull}216[#216]
+
 [[release-notes-v0.3]]
 === v0.3
 

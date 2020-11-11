@@ -11,4 +11,4 @@
 
 #pragma once
 
-#define PHP_ELASTIC_APM_VERSION "0.3"
+#define PHP_ELASTIC_APM_VERSION "1.0.0-beta1"
