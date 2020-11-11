@@ -42,12 +42,12 @@ elif [ "${TYPE}" == "release-tar-github" ] ; then
     ## Install tar package and configure the agent accordingly
     tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
-    source /opt/elastic/apm-agent-php/bin/post-install
+    source /opt/elastic/apm-agent-php/bin/post-install.sh
 else
     ## Install tar package and configure the agent accordingly
     tar -xf build/packages/*.tar -C /
     # shellcheck disable=SC1091
-    source /opt/elastic/apm-agent-php/bin/post-install
+    source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi
 
 ## Verify if the elastic php agent is enabled
@@ -77,7 +77,7 @@ if [ "${TYPE}" == "rpm-uninstall" ] ; then
     fi
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
-    source /opt/elastic/apm-agent-php/bin/before-uninstall
+    source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
     ## Verify if the elastic php agent has been uninstalled
     php -m > /dev/null 2>&1
     if php -m | grep -q 'elastic' ; then
