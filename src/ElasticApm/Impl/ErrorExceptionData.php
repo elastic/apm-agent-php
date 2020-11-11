@@ -75,7 +75,11 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
     {
         $result = new ErrorExceptionData();
 
-        $result->code = $throwable->getCode();
+        $code = $throwable->getCode();
+        if (is_int($code) || is_string($code) || is_null($code)) {
+            $result->code = $code;
+        }
+
         $result->message = $tracer->limitNonKeywordString($throwable->getMessage());
 
         $namespace = '';

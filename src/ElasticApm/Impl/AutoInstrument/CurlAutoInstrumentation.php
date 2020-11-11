@@ -9,6 +9,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
@@ -19,7 +20,7 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  *
  * @internal
  */
-final class CurlAutoInstrumentation
+final class CurlAutoInstrumentation implements LoggableInterface
 {
     use LoggableTrait;
 
