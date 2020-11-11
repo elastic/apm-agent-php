@@ -147,17 +147,21 @@ tar-install-release-github: prepare-tar  ## Install the tar installer from a giv
 .PHONY: install-release-github
 install-release-github: apk-install-release-github deb-install-release-github rpm-install-release-github tar-install-release-github  ## Install all the distributions for a given release using the downloaded binaries
 
-.PHONY: uninstall
-uninstall: apk-uninstall deb-uninstall rpm-uninstall  ## Uninstall all the distributions
+.PHONY: lifecycle-testing
+lifecycle-testing: apk-lifecycle-testing deb-lifecycle-testing rpm-lifecycle-testing tar-lifecycle-testing ## Lifecycle testing all the distributions
 
-.PHONY: apk-uninstall
-apk-uninstall: prepare-apk  ## Uninstallation testing for the apk installer
+.PHONY: apk-lifecycle-testing
+apk-lifecycle-testing: prepare-apk  ## Lifecycle testing for the apk installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=apk-uninstall -e PACKAGE=$(NAME) prepare-apk
 
-.PHONY: deb-uninstall
-deb-uninstall: prepare-deb  ## Uninstallation testing for the deb installer
+.PHONY: deb-lifecycle-testing
+deb-lifecycle-testing: prepare-deb  ## Lifecycle testing for the deb installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) prepare-deb
 
-.PHONY: rpm-uninstall
-rpm-uninstall: prepare-rpm  ## Uninstallation testing for the rpm installer
+.PHONY: rpm-lifecycle-testing
+rpm-lifecycle-testing: prepare-rpm  ## Lifecycle testing for the rpm installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm-uninstall -e PACKAGE=$(NAME) prepare-rpm
+
+.PHONY: tar-lifecycle-testing
+tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar-uninstall prepare-tar
