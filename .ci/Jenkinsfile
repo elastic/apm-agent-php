@@ -470,8 +470,7 @@ def prepareRelease() {
       // Update branch.
       sh(label: "Git branch ${env.BRANCH_NAME}", script: """git checkout ${env.BRANCH_NAME}""")
       sh(label: 'Git rebase', script: """git rebase ${branchName}""")
-      sh(label: 'Git push', script: """git push origin ${env.BRANCH_NAME}""")
-      gitPush()
+      gitPush(args: "${env.BRANCH_NAME}")
       gitCreateTag(tag: "${tagName}")
     } else {
       log(level: 'WARN', text: "Please review the PR ${pr}")
