@@ -52,7 +52,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     private static function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
         try {
-            self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan);
+            self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan, /* forceEnableFlakyAssertions: */ true);
         } catch (Throwable $throwable) {
             if ($throwable instanceof PhpUnitException || $throwable instanceof InvalidEventDataException) {
                 return;

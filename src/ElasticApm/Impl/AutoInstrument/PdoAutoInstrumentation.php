@@ -11,6 +11,8 @@ use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\SpanInterface;
@@ -21,8 +23,10 @@ use PDOStatement;
  *
  * @internal
  */
-final class PdoAutoInstrumentation
+final class PdoAutoInstrumentation implements LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var Tracer */
     private $tracer;
 
@@ -139,18 +143,43 @@ final class PdoAutoInstrumentation
             'PDO',
             'query',
             function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
+                return new class ($this->tracer) implements InterceptedCallTrackerInterface {
                     use InterceptedCallTrackerTrait;
+
+                    /** @var Logger */
+                    private $logger;
 
                     /** @var SpanInterface */
                     private $span;
 
+                    public function __construct(Tracer $tracer)
+                    {
+                        $this->logger = $tracer->loggerFactory()->loggerForClass(
+                            LogCategory::AUTO_INSTRUMENTATION,
+                            __NAMESPACE__,
+                            __CLASS__,
+                            __FILE__
+                        )->addContext('this', $this);
+                    }
+
                     public function preHook($thisObj, array $interceptedCallArgs): void
                     {
+                        // ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
+                        // && $loggerProxy->log(
+                        //     'Entered',
+                        //     [
+                        //         'DbgUtil::getType($thisObj)'  => DbgUtil::getType($thisObj),
+                        //         'count($interceptedCallArgs)' => count($interceptedCallArgs),
+                        //     ]
+                        // );
+
                         $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                             count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO->query',
                             Constants::SPAN_TYPE_DB
                         );
+
+                        // ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
+                        // && $loggerProxy->log('Exiting...');
                     }
 
                     public function postHook(
@@ -291,5 +320,13 @@ final class PdoAutoInstrumentation
                 };
             }
         );
+    }
+
+    /**
+     * @return string[]
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return ['logger', 'tracer'];
     }
 }

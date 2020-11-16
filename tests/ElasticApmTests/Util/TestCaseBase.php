@@ -97,28 +97,15 @@ class TestCaseBase extends TestCase
     /**
      * @param TransactionData         $transaction
      * @param array<string, SpanData> $idToSpan
+     * @param bool                    $forceEnableFlakyAssertions
      */
     public static function assertValidTransactionAndItsSpans(
         TransactionData $transaction,
-        array $idToSpan
+        array $idToSpan,
+        bool $forceEnableFlakyAssertions = false
     ): void {
         ValidationUtil::assertValidTransactionData($transaction);
 
-        FlakyAssertions::run(
-            function () use ($transaction, $idToSpan): void {
-                self::assertValidTransactionAndItsSpansFlakyPart($transaction, $idToSpan);
-            }
-        );
-    }
-
-    /**
-     * @param TransactionData         $transaction
-     * @param array<string, SpanData> $idToSpan
-     */
-    private static function assertValidTransactionAndItsSpansFlakyPart(
-        TransactionData $transaction,
-        array $idToSpan
-    ): void {
         /** @var SpanData $span */
         foreach ($idToSpan as $span) {
             ValidationUtil::assertValidSpanData($span);
@@ -133,6 +120,22 @@ class TestCaseBase extends TestCase
             }
         }
 
+        FlakyAssertions::run(
+            function () use ($transaction, $idToSpan): void {
+                self::assertValidTransactionAndItsSpansFlakyPart($transaction, $idToSpan);
+            },
+            $forceEnableFlakyAssertions
+        );
+    }
+
+    /**
+     * @param TransactionData         $transaction
+     * @param array<string, SpanData> $idToSpan
+     */
+    private static function assertValidTransactionAndItsSpansFlakyPart(
+        TransactionData $transaction,
+        array $idToSpan
+    ): void {
         self::assertCount($transaction->startedSpansCount, $idToSpan);
 
         $spanIdToParentId = [];
@@ -239,9 +242,13 @@ class TestCaseBase extends TestCase
     /**
      * @param array<string, TransactionData> $idToTransaction
      * @param array<string, SpanData>        $idToSpan
+     * @param bool                           $forceEnableFlakyAssertions
      */
-    public static function assertValidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
-    {
+    public static function assertValidTransactionsAndSpans(
+        array $idToTransaction,
+        array $idToSpan,
+        bool $forceEnableFlakyAssertions = false
+    ): void {
         self::assertTransactionsGraphIsTree($idToTransaction, $idToSpan);
 
         $rootTransaction = self::findRootTransaction($idToTransaction);
@@ -290,7 +297,11 @@ class TestCaseBase extends TestCase
                     $idToSpanOnlyCurrentTransaction[$spanId] = $span;
                 }
             }
-            self::assertValidTransactionAndItsSpans($transaction, $idToSpanOnlyCurrentTransaction);
+            self::assertValidTransactionAndItsSpans(
+                $transaction,
+                $idToSpanOnlyCurrentTransaction,
+                $forceEnableFlakyAssertions
+            );
         }
     }
 
