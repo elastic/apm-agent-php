@@ -6,9 +6,8 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Config\BoolOptionParser;
-use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\ExpectationFailedException;
 
 final class FlakyAssertions
@@ -20,9 +19,6 @@ final class FlakyAssertions
 
     /** @var bool */
     private static $areEnabled;
-
-    /** @var Logger */
-    private static $logger;
 
     private static function areEnabled(): bool
     {
@@ -38,38 +34,28 @@ final class FlakyAssertions
         return self::$areEnabled;
     }
 
-    private static function getLogger(): Logger
-    {
-        if (!isset(self::$logger)) {
-            self::$logger = AmbientContext::loggerFactory()->loggerForClass(
-                LogCategoryForTests::TEST_UTIL,
-                __NAMESPACE__,
-                __CLASS__,
-                __FILE__
-            );
-        }
-
-        return self::$logger;
-    }
-
     /**
      * @param Closure $assertionCall
+     * @param bool    $forceEnableFlakyAssertions
      *
      * @phpstan-param Closure(): void $assertionCall
      */
-    public static function run(Closure $assertionCall): void
+    public static function run(Closure $assertionCall, bool $forceEnableFlakyAssertions = false): void
     {
         try {
             $assertionCall();
         } catch (ExpectationFailedException $ex) {
-            if (self::areEnabled()) {
+            if ($forceEnableFlakyAssertions || self::areEnabled()) {
                 throw $ex;
             }
 
-            ($loggerProxy = self::getLogger()->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->includeStacktrace()->logThrowable(
-                $ex,
-                'Flaky assertions are disabled but one has just failed'
+            fwrite(
+                STDERR,
+                PHP_EOL . __METHOD__ . ': ' . 'Flaky assertions are disabled but one has just failed' . PHP_EOL
+                . '+-> Exception:' . PHP_EOL
+                . LoggableToEncodedJson::convert($ex) . PHP_EOL
+                . '+-> Stack trace:' . PHP_EOL
+                . $ex->getTraceAsString() . PHP_EOL
             );
         }
     }
