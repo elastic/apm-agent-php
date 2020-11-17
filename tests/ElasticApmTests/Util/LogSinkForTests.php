@@ -6,7 +6,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
-use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\TestOsUtil;
 
 /**

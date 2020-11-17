@@ -12,15 +12,15 @@ namespace Elastic\Apm\Impl\Log;
 interface SinkInterface
 {
     /**
-     * @param int                         $statementLevel
-     * @param string                      $message
-     * @param array<array<string, mixed>> $contextsStack
-     * @param string                      $category
-     * @param string                      $srcCodeFile
-     * @param int                         $srcCodeLine
-     * @param string                      $srcCodeFunc
-     * @param bool|null                   $includeStacktrace
-     * @param int                         $numberOfStackFramesToSkip
+     * @param int                    $statementLevel
+     * @param string                 $message
+     * @param array<string, mixed>[] $contextsStack
+     * @param string                 $category
+     * @param string                 $srcCodeFile
+     * @param int                    $srcCodeLine
+     * @param string                 $srcCodeFunc
+     * @param bool|null              $includeStacktrace
+     * @param int                    $numberOfStackFramesToSkip
      */
     public function consume(
         int $statementLevel,
