@@ -89,7 +89,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
+                values '7.2', '7.3', '7.4', '8.0-rc'
               }
               axis {
                 name 'DOCKERFILE'
@@ -200,7 +200,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
+                values '7.2', '7.3', '7.4', '8.0-rc'
               }
               axis {
                 name 'DIST'
@@ -300,7 +300,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
+                values '7.2', '7.3', '7.4', '8.0-rc'
               }
             }
             stages {
@@ -357,7 +357,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
+                values '7.2', '7.3', '7.4', '8.0-rc'
               }
             }
             stages {
