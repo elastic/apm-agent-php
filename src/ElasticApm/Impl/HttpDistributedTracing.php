@@ -23,6 +23,10 @@ final class HttpDistributedTracing
     public const INVALID_PARENT_ID = '0000000000000000';
     private const SAMPLED_FLAG = 0b00000001;
 
+    public const UBER_TRACE_ID_HEADER_NAME = 'uber-trace-id';
+
+    private const UBER_64_BIT_TRACE_ID_SIZE_IN_BYTES = 8;
+
     /** @var Logger */
     private $logger;
 
@@ -119,6 +123,100 @@ final class HttpDistributedTracing
         $result->parentId = strtolower($parentId);
 
         $flagsAsString = $parts[3];
+        if (!IdValidationUtil::isValidHexNumberString($flagsAsString, /* $expectedSizeInBytes */ 1)) {
+            $logParsingFailedMessage(
+                'flagsAsString is not a valid 1 byte hex number',
+                ['$flagsAsString' => $flagsAsString, 'parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+        $flagsAsInt = hexdec($flagsAsString);
+        $result->isSampled = ($flagsAsInt & self::SAMPLED_FLAG) === 1;
+
+        return $result;
+    }
+
+    public function parseUberTraceIdHeader(string $headerValue): ?DistributedTracingData
+    {
+        // 8448eb211c80319c:b9c7c989f97918e1:0af7651916cd43dd:1
+        // ^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^ ^
+        // |||||||||||||||| |||||||||||||||| |||||||||||||||| - - flagsAsString
+        // |||||||||||||||| |||||||||||||||| ---------------- - parent-span-id (deprecated and ignored)
+        // |||||||||||||||| ---------------- - span-id
+        // ---------------- - trace-id
+
+        $parentFunc = __FUNCTION__;
+        $logParsingFailedMessage = function (
+            string $reason,
+            array $context,
+            int $srcCodeLineNumber
+        ) use (
+            $parentFunc,
+            $headerValue
+        ): void {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled($srcCodeLineNumber, $parentFunc))
+            && $loggerProxy->log(
+                "Failed to parse HTTP header used for distributed tracing: $reason",
+                array_merge($context, ['headerValue' => $headerValue])
+            );
+        };
+
+        $result = new DistributedTracingData();
+
+        $expectedNumberOfParts = 4;
+        $parts = explode(/* delimiter: */ ':', $headerValue, /* limit: */ $expectedNumberOfParts);
+        if (count($parts) < $expectedNumberOfParts) {
+            $logParsingFailedMessage(
+                "there are less than $expectedNumberOfParts delimited parts",
+                ['parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+
+        $traceId = $parts[0];
+        if (
+            !IdValidationUtil::isValidHexNumberString($traceId, self::UBER_64_BIT_TRACE_ID_SIZE_IN_BYTES) &&
+            !IdValidationUtil::isValidHexNumberString($traceId, Constants::TRACE_ID_SIZE_IN_BYTES)
+        ) {
+            $logParsingFailedMessage(
+                'traceId is not a valid ' . self::UBER_64_BIT_TRACE_ID_SIZE_IN_BYTES . ' or ' . Constants::TRACE_ID_SIZE_IN_BYTES . ' bytes hex ID',
+                ['traceId' => $traceId, 'parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+        if (str_pad($traceId, 2 * Constants::TRACE_ID_SIZE_IN_BYTES, '0', STR_PAD_LEFT)  === self::INVALID_TRACE_ID) {
+            $logParsingFailedMessage(
+                'traceId that is all bytes as zero (0000000000000000 or 00000000000000000000000000000000) is considered an invalid value',
+                ['traceId' => $traceId, 'parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+        $result->traceId = strtolower($traceId);
+
+        $spanId = $parts[1];
+        if (!IdValidationUtil::isValidHexNumberString($spanId, Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)) {
+            $logParsingFailedMessage(
+                'spanId is not a valid ' . Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES . ' bytes hex ID',
+                ['spanId' => $spanId, 'parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+        if ($spanId === self::INVALID_PARENT_ID) {
+            $logParsingFailedMessage(
+                'spanId that is all bytes as zero (0000000000000000) is considered an invalid value',
+                ['spanId' => $spanId, 'parts' => $parts],
+                __LINE__
+            );
+            return null;
+        }
+        $result->parentId = strtolower($spanId);
+
+        $flagsAsString = str_pad($parts[3], 2, '0', STR_PAD_LEFT);
         if (!IdValidationUtil::isValidHexNumberString($flagsAsString, /* $expectedSizeInBytes */ 1)) {
             $logParsingFailedMessage(
                 'flagsAsString is not a valid 1 byte hex number',

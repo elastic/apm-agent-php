@@ -20,7 +20,7 @@ class HttpDistributedTracingTest extends TestCaseBase
      * @return array<string|DistributedTracingData|null>
      * @phpstan-return array{string, ?DistributedTracingData}
      */
-    private static function buildValidInput(string $traceId, string $parentId, bool $isSampled): array
+    private static function buildValidTraceParentInput(string $traceId, string $parentId, bool $isSampled): array
     {
         $data = new DistributedTracingData();
         $data->traceId = strtolower($traceId);
@@ -30,15 +30,33 @@ class HttpDistributedTracingTest extends TestCaseBase
     }
 
     /**
+     * @param string $traceId
+     * @param string $spanId
+     * @param string $parentSpanId
+     * @param bool   $isSampled
+     *
+     * @return array<string|DistributedTracingData|null>
+     * @phpstan-return array{string, ?DistributedTracingData}
+     */
+    private static function buildValidUberTraceIdInput(string $traceId, string $spanId, string $parentSpanId, bool $isSampled): array
+    {
+        $data = new DistributedTracingData();
+        $data->traceId = strtolower($traceId);
+        $data->parentId = strtolower($spanId);
+        $data->isSampled = $isSampled;
+        return [$traceId . ':' . $spanId . ':' . $parentSpanId . ':' . ($isSampled ? '1' : '0'), $data];
+    }
+
+    /**
      * @return iterable<array<string|DistributedTracingData|null>>
      * @phpstan-return iterable<array{string, ?DistributedTracingData}>
      */
     public function dataProviderForTestParseTraceParentHeader(): iterable
     {
-        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', true);
-        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', false);
-        yield self::buildValidInput('11111111111111111111111111111111', '2222222222222222', true);
-        yield self::buildValidInput('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBB', true);
+        yield self::buildValidTraceParentInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', true);
+        yield self::buildValidTraceParentInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', false);
+        yield self::buildValidTraceParentInput('11111111111111111111111111111111', '2222222222222222', true);
+        yield self::buildValidTraceParentInput('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBB', true);
 
         // Erroneous input:
 
@@ -75,6 +93,52 @@ class HttpDistributedTracingTest extends TestCaseBase
     {
         $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
         $actualData = $httpDistributedTracing->parseTraceParentHeader($headerValue);
+        self::assertEquals($expectedData, $actualData);
+    }
+
+    /**
+     * @return iterable<array<string|DistributedTracingData|null>>
+     * @phpstan-return iterable<array{string, ?DistributedTracingData}>
+     */
+    public function dataProviderForTestParseUberTraceIdHeader(): iterable
+    {
+        yield self::buildValidUberTraceIdInput('8448eb211c80319c', 'f758ac25fcc17047', 'b9c7c989f97918e1', true);
+        yield self::buildValidUberTraceIdInput('8448eb211c80319c', 'f758ac25fcc17047', 'b9c7c989f97918e1', false);
+        yield self::buildValidUberTraceIdInput('0af7651916cd43dd8448eb211c80319c', 'f758ac25fcc17047', 'b9c7c989f97918e1', true);
+        yield self::buildValidUberTraceIdInput('0af7651916cd43dd8448eb211c80319c', 'f758ac25fcc17047', 'b9c7c989f97918e1', false);
+        yield self::buildValidUberTraceIdInput('11111111111111111111111111111111', '2222222222222222', '3333333333333333', true);
+        yield self::buildValidUberTraceIdInput('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBB', 'CCCCCCCCCCCCCCCC', true);
+
+        // Erroneous input:
+
+        yield ['', null]; // empty string
+        yield ['0af7651916cd43dd8448eb211c80319cf758ac25fcc17047b9c7c989f97918e11', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319c:f758ac25fcc17047b9c7c989f97918e11', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319cf758ac25fcc17047:b9c7c989f97918e11', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319cf758ac25fcc17047b9c7c989f97918e1:1', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319c:f758ac25fcc17047:b9c7c989f97918e11', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319c:f758ac25fcc17047b9c7c989f97918e1:1', null]; // delimiters are missing
+        yield ['0af7651916cd43dd8448eb211c80319cf758ac25fcc17047:b9c7c989f97918e1:1', null]; // delimiters are missing
+
+        yield ['0000000000000000:f758ac25fcc17047:b9c7c989f97918e1:1', null]; // traceId: invalid
+        yield ['8448eb211c80319cc:f758ac25fcc17047:b9c7c989f97918e1:1', null]; // traceId too long
+        yield ['00000000000000000000000000000000:f758ac25fcc17047:b9c7c989f97918e1:1', null]; // traceId: invalid
+        yield ['0af7651916cd43dd8448eb211c80319cc:f758ac25fcc17047:b9c7c989f97918e1:1', null]; // traceId too long
+
+        yield ['0af7651916cd43dd8448eb211c80319c:0000000000000000:b9c7c989f97918e1:1', null]; // spanId: invalid
+        yield ['0af7651916cd43dd8448eb211c80319c:f758ac25fcc170477:b9c7c989f97918e1:1', null]; // spanId: too long
+    }
+
+    /**
+     * @dataProvider dataProviderForTestParseUberTraceIdHeader
+     *
+     * @param string                      $headerValue
+     * @param DistributedTracingData|null $expectedData
+     */
+    public function testParseUberTraceIdHeader(string $headerValue, ?DistributedTracingData $expectedData): void
+    {
+        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
+        $actualData = $httpDistributedTracing->parseUberTraceIdHeader($headerValue);
         self::assertEquals($expectedData, $actualData);
     }
 

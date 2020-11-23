@@ -151,12 +151,23 @@ final class TransactionForExtensionRequest
 
     private function discoverIncomingDistributedTracingData(): ?DistributedTracingData
     {
-        $headerName = HttpDistributedTracing::TRACE_PARENT_HEADER_NAME;
-        $traceParentHeaderKey = 'HTTP_' . strtoupper($headerName);
+        $traceParentHeaderKey = 'HTTP_' . strtoupper(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME);
         if (!array_key_exists($traceParentHeaderKey, $_SERVER)) {
+            $uberTraceIdHeaderKey = 'HTTP_' . str_replace('-', '_', strtoupper(HttpDistributedTracing::UBER_TRACE_ID_HEADER_NAME));
+            if (!array_key_exists($uberTraceIdHeaderKey, $_SERVER)) {
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Incoming ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' or ' . HttpDistributedTracing::UBER_TRACE_ID_HEADER_NAME . ' HTTP request header not found');
+                return null;
+            }
+
+            $uberTraceIdHeaderValue = $_SERVER[$uberTraceIdHeaderKey];
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Incoming ' . $headerName . ' HTTP request header not found');
-            return null;
+            && $loggerProxy->log(
+                'Incoming ' . HttpDistributedTracing::UBER_TRACE_ID_HEADER_NAME . ' HTTP request header found',
+                ['uberTraceIdHeaderValue' => $uberTraceIdHeaderValue]
+            );
+
+            return $this->tracer->httpDistributedTracing()->parseUberTraceIdHeader($uberTraceIdHeaderValue);
         }
 
         $traceParentHeaderValue = $_SERVER[$traceParentHeaderKey];
