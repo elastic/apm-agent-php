@@ -6,7 +6,11 @@ PATH=${PATH}:/usr/local/bin
 ################################################################################
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
+PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 BACKUP_EXTENSION=".agent.uninstall.bck"
+CUSTOM_INI_FILE_NAME="elastic-custom.ini"
+ELASTIC_INI_FILE_NAME="elastic.ini"
+EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################
@@ -35,6 +39,16 @@ function php_api() {
     php_command -i \
         | grep 'PHP API' \
         | sed -e 's#.* =>##g' \
+        | awk '{print $1}'
+}
+
+################################################################################
+#### Function php_config_d_path ################################################
+function php_config_d_path() {
+    php_command -i \
+        | grep 'Scan this dir for additional .ini files =>' \
+        | sed -e 's#Scan this dir for additional .ini files =>##g' \
+        | head -n 1 \
         | awk '{print $1}'
 }
 
@@ -102,11 +116,57 @@ function manual_extension_agent_uninstallation() {
 }
 
 ################################################################################
+#### Function uninstall_conf_d_files ###########=###############################
+function uninstall_conf_d_files() {
+    PHP_CONFIG_D_PATH=$1
+    INI_FILE_PATH="${EXTENSION_CFG_DIR}/$ELASTIC_INI_FILE_NAME"
+    CUSTOM_INI_FILE_PATH="${EXTENSION_CFG_DIR}/${CUSTOM_INI_FILE_NAME}"
+
+    echo "Uninstalling ${ELASTIC_INI_FILE_NAME} for supported SAPI's"
+
+    # Detect installed SAPI's
+    SAPI_DIR=${PHP_CONFIG_D_PATH%/*/conf.d}/
+    SAPI_CONFIG_DIRS=()
+    if [ "${PHP_CONFIG_D_PATH}" != "${SAPI_DIR}" ]; then
+        # CLI
+        CLI_CONF_D_PATH="${SAPI_DIR}cli/conf.d"
+        if [ -d "${CLI_CONF_D_PATH}" ]; then
+            SAPI_CONFIG_DIRS+=("${CLI_CONF_D_PATH}")
+        fi
+        ## TODO: support apache and fpm
+    fi
+
+    if [ ${#SAPI_CONFIG_DIRS[@]} -eq 0 ]; then
+        SAPI_CONFIG_DIRS+=("$PHP_CONFIG_D_PATH")
+    fi
+
+    for SAPI_CONFIG_D_PATH in "${SAPI_CONFIG_DIRS[@]}" ; do
+        echo "Found SAPI config directory: ${SAPI_CONFIG_D_PATH}"
+
+        unlink_files "${INI_FILE_PATH}" "${SAPI_CONFIG_D_PATH}/98-${ELASTIC_INI_FILE_NAME}"
+        unlink_files "${CUSTOM_INI_FILE_PATH}" "${SAPI_CONFIG_D_PATH}/99-${CUSTOM_INI_FILE_NAME}"
+    done
+}
+
+################################################################################
+#### Function unlink_file ######################################################
+function unlink_files() {
+    echo "Unlinking ${1} to ${2}"
+    test -f "${1}" && rm "${1}"
+    test -f "${2}" && rm "${2}"
+}
+
+################################################################################
 ############################### MAIN ###########################################
 ################################################################################
 echo 'Uninstalling Elastic PHP agent'
 EXTENSION_FILENAME=$(get_extension_filename)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
+PHP_CONFIG_D_PATH="$(php_config_d_path)"
+
+if [ -e "${PHP_CONFIG_D_PATH}" ]; then
+    uninstall_conf_d_files "${PHP_CONFIG_D_PATH}"
+fi
 if [ -e "${PHP_INI_FILE_PATH}" ] ; then
     if grep -q "${EXTENSION_FILENAME}" "${PHP_INI_FILE_PATH}" ; then
         remove_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
