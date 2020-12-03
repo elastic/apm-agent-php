@@ -1,0 +1,2 @@
+[elastic]
+extension=/opt/elastic/apm-agent-php/extensions/elastic_apm-12345.so

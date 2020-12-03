@@ -50,6 +50,7 @@ fpm --input-type dir \
 		--directories ${PHP_AGENT_DIR}/etc \
 		--config-files ${PHP_AGENT_DIR}/etc \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
+		packaging/elastic.ini.example=${PHP_AGENT_DIR}/etc/ \
 		packaging/before-uninstall.sh=${PHP_AGENT_DIR}/bin/before-uninstall.sh \
 		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
