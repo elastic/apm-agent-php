@@ -25,6 +25,19 @@ function download() {
     cd -
 }
 
+function verify_uninstalled() {
+    ## Verify if the elastic php agent has been uninstalled
+    php -m > /dev/null 2>&1
+    if php -m | grep -v -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+}
+
 ##############
 #### MAIN ####
 ##############
@@ -67,22 +80,11 @@ if ! composer run-script run_component_tests ; then
 fi
 
 ## Validate the uninstallation works as expected
-set -x
+set -ex
 if [ "${TYPE}" == "deb-uninstall" ] ; then
     dpkg --remove "${PACKAGE}"
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
-        exit 1
-    fi
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
-        exit 1
-    fi
+    verify_uninstalled
 fi
