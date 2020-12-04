@@ -142,18 +142,16 @@ function uninstall_conf_d_files() {
 
     for SAPI_CONFIG_D_PATH in "${SAPI_CONFIG_DIRS[@]}" ; do
         echo "Found SAPI config directory: ${SAPI_CONFIG_D_PATH}"
-        remove_files "${INI_FILE_PATH}" "${SAPI_CONFIG_D_PATH}/98-${ELASTIC_INI_FILE_NAME}"
-        remove_files "${CUSTOM_INI_FILE_PATH}" "${SAPI_CONFIG_D_PATH}/99-${CUSTOM_INI_FILE_NAME}"
+        remove_file "${SAPI_CONFIG_D_PATH}/98-${ELASTIC_INI_FILE_NAME}"
+        remove_file "${SAPI_CONFIG_D_PATH}/99-${CUSTOM_INI_FILE_NAME}"
     done
 }
 
 ################################################################################
-#### Function remove_files ######################################################
-function remove_files() {
+#### Function remove_file ######################################################
+function remove_file() {
     echo "Removing ${1}"
     test -f "${1}" && rm "${1}"
-    echo "Removing ${1}"
-    test -f "${2}" && rm "${2}"
 }
 
 ################################################################################
