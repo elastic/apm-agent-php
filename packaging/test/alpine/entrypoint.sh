@@ -9,8 +9,8 @@ BUILD_RELEASES_FOLDER=build/releases
 ###################
 #### FUNCTIONS ####
 ###################
-verify_uninstalled() {
-    ## Verify if the elastic php agent has been uninstalled
+validate_if_agent_is_uninstalled() {
+    ## Validate if the elastic php agent has been uninstalled
     php -m > /dev/null 2>&1
     if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
         echo 'Extension has not been uninstalled.'
@@ -22,8 +22,8 @@ verify_uninstalled() {
     fi
 }
 
-verify_agent_is_enabled() {
-    ## Verify if the elastic php agent is enabled
+validate_if_agent_is_enabled() {
+    ## Validate if the elastic php agent is enabled
     if ! php -m | grep -q 'elastic' ; then
         echo 'Extension has not been installed.'
         exit 1
@@ -58,7 +58,7 @@ else
     apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
 fi
 
-verify_agent_is_enabled
+validate_if_agent_is_enabled
 
 validate_installation
 
@@ -66,5 +66,5 @@ validate_installation
 set -ex
 if [ "${TYPE}" = "apk-uninstall" ] ; then
     apk del --verbose --no-cache "${PACKAGE}"
-    verify_uninstalled
+    validate_if_agent_is_uninstalled
 fi

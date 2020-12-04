@@ -25,8 +25,8 @@ function download() {
     cd -
 }
 
-function verify_uninstalled() {
-    ## Verify if the elastic php agent has been uninstalled
+function validate_if_agent_is_uninstalled() {
+    ## Validate if the elastic php agent has been uninstalled
     php -m > /dev/null 2>&1
     if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
         echo 'Extension has not been uninstalled.'
@@ -38,8 +38,8 @@ function verify_uninstalled() {
     fi
 }
 
-function verify_agent_is_enabled() {
-    ## Verify if the elastic php agent is enabled
+function validate_if_agent_is_enabled() {
+    ## Validate if the elastic php agent is enabled
     if ! php -m | grep -q 'elastic' ; then
         echo 'Extension has not been installed.'
         exit 1
@@ -82,7 +82,7 @@ else
     source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi
 
-verify_agent_is_enabled
+validate_if_agent_is_enabled
 
 validate_installation
 
@@ -90,9 +90,9 @@ validate_installation
 set -ex
 if [ "${TYPE}" == "rpm-uninstall" ] ; then
     rpm -e "${PACKAGE}"
-    verify_uninstalled
+    validate_if_agent_is_uninstalled
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
-    verify_uninstalled
+    validate_if_agent_is_uninstalled
 fi
