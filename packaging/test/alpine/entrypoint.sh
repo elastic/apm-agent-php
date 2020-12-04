@@ -22,6 +22,25 @@ verify_uninstalled() {
     fi
 }
 
+verify_agent_is_enabled() {
+    ## Verify if the elastic php agent is enabled
+    if ! php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been installed.'
+        exit 1
+    fi
+}
+
+validate_installation() {
+    ## Validate the installation works as expected with composer
+    composer install
+    syslogd
+    if ! composer run-script run_component_tests ; then
+        echo 'Something bad happened when running the tests, see the output from the syslog'
+        cat /var/log/messages
+        exit 1
+    fi
+}
+
 ##############
 #### MAIN ####
 ##############
@@ -39,20 +58,9 @@ else
     apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
 fi
 
-## Verify if the elastic php agent is enabled
-if ! php -m | grep -q 'elastic' ; then
-    echo 'Extension has not been installed.'
-    exit 1
-fi
+verify_agent_is_enabled
 
-## Validate the installation works as expected with composer
-composer install
-syslogd
-if ! composer run-script run_component_tests ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
-    cat /var/log/messages
-    exit 1
-fi
+validate_installation
 
 ## Validate the uninstallation works as expected
 set -ex
