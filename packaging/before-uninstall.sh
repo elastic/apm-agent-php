@@ -133,7 +133,18 @@ function uninstall_conf_d_files() {
         if [ -d "${CLI_CONF_D_PATH}" ]; then
             SAPI_CONFIG_DIRS+=("${CLI_CONF_D_PATH}")
         fi
-        ## TODO: support apache and fpm
+        # Apache old location
+        APACHE_CONF_D_PATH="${SAPI_DIR}apache2/conf.d"
+        if [ -d "${APACHE_CONF_D_PATH}" ]; then
+            SAPI_CONFIG_DIRS+=("${APACHE_CONF_D_PATH}")
+        fi
+        ## TODO: support fpm
+    fi
+
+    # Apache new location
+    APACHE_CONF_D_PATH="/etc/apache2/conf-available"
+    if [ -d "${APACHE_CONF_D_PATH}" ]; then
+        SAPI_CONFIG_DIRS+=("${APACHE_CONF_D_PATH}")
     fi
 
     if [ ${#SAPI_CONFIG_DIRS[@]} -eq 0 ]; then
