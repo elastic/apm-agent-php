@@ -11,7 +11,7 @@ BUILD_RELEASES_FOLDER=build/releases
 ###################
 validate_if_agent_is_uninstalled() {
     ## Validate if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
+    php -m
     if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
         echo 'Extension has not been uninstalled.'
         exit 1
