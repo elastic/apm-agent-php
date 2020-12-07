@@ -11,8 +11,8 @@ EXTENSION_DIR="${PHP_AGENT_DIR}/extensions"
 EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
 BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
 BACKUP_EXTENSION=".agent.bck"
-ELASTIC_INI_FILE_NAME="elastic.ini"
-CUSTOM_INI_FILE_NAME="elastic-custom.ini"
+ELASTIC_INI_FILE_NAME="elastic-apm.ini"
+CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################

@@ -8,8 +8,8 @@ PATH=${PATH}:/usr/local/bin
 ################################################################################
 PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 BACKUP_EXTENSION=".agent.uninstall.bck"
-CUSTOM_INI_FILE_NAME="elastic-custom.ini"
-ELASTIC_INI_FILE_NAME="elastic.ini"
+CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
+ELASTIC_INI_FILE_NAME="elastic-apm.ini"
 EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
 
 ################################################################################
@@ -119,8 +119,6 @@ function manual_extension_agent_uninstallation() {
 #### Function uninstall_conf_d_files ###########=###############################
 function uninstall_conf_d_files() {
     PHP_CONFIG_D_PATH=$1
-    INI_FILE_PATH="${EXTENSION_CFG_DIR}/$ELASTIC_INI_FILE_NAME"
-    CUSTOM_INI_FILE_PATH="${EXTENSION_CFG_DIR}/${CUSTOM_INI_FILE_NAME}"
 
     echo "Uninstalling ${ELASTIC_INI_FILE_NAME} for supported SAPI's"
 
