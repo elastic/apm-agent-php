@@ -413,7 +413,9 @@ zend_ast* transformAst( zend_ast* ast, int nestingDepth )
     switch ( ast->kind )
     {
         case ZEND_AST_ZVAL:
+        #ifdef ZEND_AST_CONSTANT
         case ZEND_AST_CONSTANT:
+        #endif
             transformedAst = ast;
             goto finally;
 
