@@ -11,6 +11,7 @@
 
 #include "AST_instrumentation.h"
 #include "log.h"
+#include <php_version.h>
 #include <zend_ast.h>
 #include <zend_compile.h>
 #include <zend_arena.h>
@@ -32,13 +33,17 @@ String zendAstKindToString( zend_ast_kind kind )
     switch ( kind )
     {
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ZVAL )
+        #ifdef ZEND_AST_CONSTANT
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONSTANT )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ZNODE )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_FUNC_DECL )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CLOSURE )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_METHOD )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CLASS )
+        #ifdef ZEND_AST_ARROW_FUNC
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ARROW_FUNC )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ARG_LIST )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ARRAY )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ENCAPS_LIST )
@@ -57,7 +62,9 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_USE )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_MAGIC_CONST )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_TYPE )
+        #ifdef ZEND_AST_CONSTANT_CLASS
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONSTANT_CLASS )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_VAR )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONST )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_UNPACK )
@@ -78,7 +85,9 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_POST_INC )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_POST_DEC )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_YIELD_FROM )
+        #ifdef ZEND_AST_CLASS_NAME
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CLASS_NAME )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_GLOBAL )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_UNSET )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_RETURN )
@@ -108,7 +117,9 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_INSTANCEOF )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_YIELD )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_COALESCE )
+        #ifdef ZEND_AST_ASSIGN_COALESCE
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ASSIGN_COALESCE )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_STATIC )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_WHILE )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_DO_WHILE )
@@ -123,7 +134,9 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_USE_ELEM )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_TRAIT_ALIAS )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_GROUP_USE )
+        #ifdef ZEND_AST_PROP_GROUP
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_PROP_GROUP )
+        #endif
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_METHOD_CALL )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_STATIC_CALL )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONDITIONAL )
@@ -148,36 +161,48 @@ size_t calcAstListAllocSize( uint32_t children )
 }
 
 static
-zend_ast* createStringAst( char* str, size_t len, uint32_t attr )
+zend_ast* createZvalAst( zval* zv, uint32_t attr, uint32_t lineno )
 {
-    zval zv;
-    zend_ast * ast;
-    ZVAL_NEW_STR( &zv, zend_string_init( str, len, 0 ) );
-    ast = zend_ast_create_zval_with_lineno( &zv, 0 );
+    #if PHP_VERSION_ID >= 70300 /* if PHP version is 7.3.0 and later */
+    zend_ast* ast = zend_ast_create_zval_with_lineno( zv, lineno );
     ast->attr = attr;
+    #else
+    zend_ast* ast = zend_ast_create_zval_with_lineno( zv, attr, lineno );
+    #endif
+
     return ast;
 }
 
 static
-zend_ast* createCatchTypeAst()
+zend_ast* createStringAst( char* str, size_t len, uint32_t attr, uint32_t lineno )
 {
-    zend_ast * name = createStringAst( "Throwable", sizeof( "Throwable" ) - 1, ZEND_NAME_FQ );
+    zval zv;
+    zend_ast* ast;
+    ZVAL_NEW_STR( &zv, zend_string_init( str, len, 0 ) );
+    ast = createZvalAst( &zv, attr, /* lineno */ 0 );
+    return ast;
+}
+
+static
+zend_ast* createCatchTypeAst( uint32_t lineno )
+{
+    zend_ast * name = createStringAst( "Throwable", sizeof( "Throwable" ) - 1, ZEND_NAME_FQ, lineno );
     return zend_ast_create_list( 1, ZEND_AST_NAME_LIST, name );
 }
 
 static
 zend_ast* createCatchAst( uint32_t lineno )
 {
-    zend_ast * exVarNameAst = createStringAst( "ex", sizeof( "ex" ) - 1, 0 );
-    zend_ast * catchTypeAst = createCatchTypeAst();
+    zend_ast * exVarNameAst = createStringAst( "ex", sizeof( "ex" ) - 1, /* attr: */ 0, lineno );
+    zend_ast * catchTypeAst = createCatchTypeAst( lineno );
 
     zend_ast * instrumentationPostHookCallAst =
             zend_ast_create( ZEND_AST_CALL
-                             , createStringAst( "instrumentationPostHookException", sizeof( "instrumentationPostHookException" ) - 1, ZEND_NAME_FQ )
+                             , createStringAst( "instrumentationPostHookException", sizeof( "instrumentationPostHookException" ) - 1, ZEND_NAME_FQ, lineno )
                              , zend_ast_create_list( 1
                                                      , ZEND_AST_ARG_LIST
                                                      , zend_ast_create( ZEND_AST_VAR
-                                                                        , createStringAst( "ex", sizeof( "ex" ) - 1, 0 ) )
+                                                                        , createStringAst( "ex", sizeof( "ex" ) - 1, /* attr: */ 0, lineno ) )
             ) );
 
     zend_ast * throwAst = zend_ast_create( ZEND_AST_THROW, instrumentationPostHookCallAst );
@@ -215,14 +240,14 @@ static
 zend_ast* transformAst( zend_ast* ast, int nestingDepth );
 
 static
-zend_ast* transformFunctionAst( zend_ast* ast, int nestingDepth )
+zend_ast* transformFunctionAst( zend_ast* originalAst, int nestingDepth )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( ast->kind ) );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( originalAst->kind ) );
 
     zend_ast * transformedAst;
-    zend_ast_decl* funcDeclAst = (zend_ast_decl*) ast;
+    zend_ast_decl* funcDeclAst = (zend_ast_decl*) originalAst;
 
     TransformContext savedTransformCtx = makeTransformContext(
             &g_transformContext
@@ -232,7 +257,7 @@ zend_ast* transformFunctionAst( zend_ast* ast, int nestingDepth )
     if ( ! isStringViewPrefixIgnoringCase( stringToView( ZSTR_VAL( funcDeclAst->name ) )
                                            , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "functionToInstrument" ) ) )
     {
-        transformedAst = ast;
+        transformedAst = originalAst;
         goto finally;
     }
 
@@ -245,18 +270,18 @@ zend_ast* transformFunctionAst( zend_ast* ast, int nestingDepth )
     zend_ast * callInstrumentationPreHookAst =
             zend_ast_create(
                     ZEND_AST_CALL
-                    , createStringAst( "instrumentationPreHook", sizeof( "instrumentationPreHook" ) - 1, ZEND_NAME_FQ )
+                    , createStringAst( "instrumentationPreHook", sizeof( "instrumentationPreHook" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
                     , zend_ast_create_list( 1
                                             , ZEND_AST_ARG_LIST
                                             , zend_ast_create( ZEND_AST_CALL
-                                                               , createStringAst( "func_get_args", sizeof( "func_get_args" ) - 1, ZEND_NAME_FQ )
+                                                               , createStringAst( "func_get_args", sizeof( "func_get_args" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
                                                                , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) )
             ) );
 
     zend_ast * callInstrumentationPostHookAst =
             zend_ast_create(
                     ZEND_AST_CALL
-                    , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ )
+                    , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
                     , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) );
 
     zend_ast * catchAst = createCatchAst( funcStmtEndLineNumber );
@@ -272,7 +297,7 @@ zend_ast* transformFunctionAst( zend_ast* ast, int nestingDepth )
     newFuncBodyAst->child[ 1 ] = tryCatchAst;
     newFuncBodyAst->child[ 2 ] = callInstrumentationPostHookAst;
     funcDeclAst->child[ 2 ] = (zend_ast*) newFuncBodyAst;
-    transformedAst = ast;
+    transformedAst = originalAst;
 
     finally:
     g_transformContext = savedTransformCtx;
@@ -282,11 +307,11 @@ zend_ast* transformFunctionAst( zend_ast* ast, int nestingDepth )
 }
 
 static
-zend_ast* transformReturnAst( zend_ast* ast, int nestingDepth )
+zend_ast* transformReturnAst( zend_ast* originalAst, int nestingDepth )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( ast->kind ) );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( originalAst->kind ) );
 
     zend_ast * transformedAst;
 
@@ -294,19 +319,19 @@ zend_ast* transformReturnAst( zend_ast* ast, int nestingDepth )
     // e.g. return at file scope
     if ( ! g_transformContext.isInsideFunction )
     {
-        transformedAst = ast;
+        transformedAst = originalAst;
         goto finally;
     }
 
-    zend_ast * returnExprAst = ast->child[ 0 ];
+    zend_ast * returnExprAst = originalAst->child[ 0 ];
     // If it's an empty return;
     if ( returnExprAst == NULL )
     {
         zend_ast * callInstrumentationPostHookAst = zend_ast_create(
                 ZEND_AST_CALL
-                , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ )
+                , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
                 , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) );
-        transformedAst = zend_ast_create_list( 2, ZEND_AST_STMT_LIST, callInstrumentationPostHookAst, ast );
+        transformedAst = zend_ast_create_list( 2, ZEND_AST_STMT_LIST, callInstrumentationPostHookAst, originalAst );
         goto finally;
     }
 
@@ -325,10 +350,10 @@ zend_ast* transformReturnAst( zend_ast* ast, int nestingDepth )
     }
     zend_ast * callInstrumentationPostHookAst = zend_ast_create(
             ZEND_AST_CALL
-            , createStringAst( name, len, ZEND_NAME_FQ )
+            , createStringAst( name, len, ZEND_NAME_FQ, originalAst->lineno )
             , zend_ast_create_list( 1, ZEND_AST_ARG_LIST, returnExprAst ) );
-    ast->child[ 0 ] = callInstrumentationPostHookAst;
-    transformedAst = ast;
+    originalAst->child[ 0 ] = callInstrumentationPostHookAst;
+    transformedAst = originalAst;
 
     finally:
     textOutputStreamRewind( &txtOutStream );
