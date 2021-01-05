@@ -6,11 +6,9 @@ PATH=${PATH}:/usr/local/bin
 ################################################################################
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
-PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 BACKUP_EXTENSION=".agent.uninstall.bck"
 CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
 ELASTIC_INI_FILE_NAME="elastic-apm.ini"
-EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################
