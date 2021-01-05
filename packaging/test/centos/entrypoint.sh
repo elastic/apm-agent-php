@@ -60,7 +60,7 @@ function validate_installation() {
 ##############
 #### MAIN ####
 ##############
-if [[ "${TYPE}" == "rpm" || "${TYPE}" == "rpm-uninstall" ]] ; then
+if [[ "${TYPE}" == "rpm" || "${TYPE}" == "rpm-uninstall" || "${TYPE}" == "php-upgrade" ]] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release-github" ] ; then
@@ -95,4 +95,23 @@ elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
     validate_if_agent_is_uninstalled
+elif [ "${TYPE}" == "php-upgrade" ] ; then
+    ## Copy existing configuration file to compare with
+    cp /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini
+
+    ## Uninstall existing installation
+    rpm -e "${PACKAGE}"
+
+    ## Upgrade PHP version
+    yum-config-manager --enable remi-php74
+    yum install -y php php-mbstring php-mysql php-xml
+
+    ## Install rpm package and configure the agent accordingly
+    rpm -ivh build/packages/*.rpm
+    if diff --report-identical-files /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini ; then
+        echo 'Configuration file has not been updated and still point to the previous installation.'
+        exit 1
+    fi
+    ## Validate agent is enabled
+    validate_if_agent_is_enabled
 fi

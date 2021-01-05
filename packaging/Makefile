@@ -91,7 +91,7 @@ prepare-apk:  ## Build the docker image for the apk smoke tests
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
 
-.PHONY: prepare-deeb
+.PHONY: prepare-deb
 prepare-deb:  ## Build the docker image for the deb smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
@@ -106,7 +106,7 @@ prepare-tar:  ## Build the docker image for the tar smoke tests
 .PHONY: prepare-rpm
 prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
+	docker build --build-arg PHP_VERSION=${PHP_VERSION} -t $@ . ;\
 	cd -
 
 .PHONY: apk-install
@@ -165,3 +165,8 @@ rpm-lifecycle-testing: prepare-rpm  ## Lifecycle testing for the rpm installer
 .PHONY: tar-lifecycle-testing
 tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar-uninstall prepare-tar
+
+.PHONY: rpm-php-upgrade-testing
+rpm-php-upgrade-testing: PHP_VERSION="7.2"  ### Force the PHP version to start with.
+rpm-php-upgrade-testing: prepare-rpm  ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=php-upgrade -e PACKAGE=$(NAME) prepare-rpm

@@ -225,6 +225,25 @@ pipeline {
                   }
                 }
               }
+              stage('PHP Upgrade Testing') {
+                when {
+                  beforeAgent true
+                  allOf {
+                    expression { return env.PHP_VERSION == "7.2" }
+                    expression { return env.DIST == "rpm" }
+                  }
+                }
+                steps {
+                  withGithubNotify(context: "PHP-Upgrade-Testing-${DIST}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      unstash 'package'
+                      sh script: "make -C packaging ${DIST}-php-upgrade-testing", label: "${DIST}-php-upgrade-testing"
+                    }
+                  }
+                }
+              }
             }
           }
         }
