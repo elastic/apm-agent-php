@@ -90,8 +90,12 @@ validate_installation
 ## Validate the uninstallation works as expected
 set -ex
 if [ "${TYPE}" == "deb-uninstall" ] ; then
-    dpkg --remove "${PACKAGE}"
+    dpkg --purge "${PACKAGE}"
     validate_if_agent_is_uninstalled
+    if [ -d /opt/elastic/apm-agent-php/etc ] ; then
+        echo 'Extension has not been uninstalled correctly.'
+        exit 1
+    fi
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
