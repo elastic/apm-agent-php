@@ -100,6 +100,8 @@ function generate_configuration_files() {
     INI_FILE_PATH="${1}"
     CUSTOM_INI_FILE_PATH="${2}"
 
+    ## IMPORTANT: This file will be always override if already exists for a
+    ##            previous installation.
     echo "Creating ${INI_FILE_PATH}"
     CONTENT=$(add_extension_configuration)
     tee "${INI_FILE_PATH}" <<EOF
