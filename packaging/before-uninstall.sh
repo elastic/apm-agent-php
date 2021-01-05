@@ -6,6 +6,9 @@ PATH=${PATH}:/usr/local/bin
 ################################################################################
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
+####### IMPORTANT: PHP_AGENT_DIR is needed otherwise fpm will fail when generating
+#######            the apk distribution with an Invalid tar stream error.
+PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 BACKUP_EXTENSION=".agent.uninstall.bck"
 CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
 ELASTIC_INI_FILE_NAME="elastic-apm.ini"
