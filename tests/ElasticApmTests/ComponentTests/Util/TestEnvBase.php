@@ -302,7 +302,11 @@ abstract class TestEnvBase implements LoggableInterface
     ): SharedDataPerProcess {
         $result = new SharedDataPerProcess();
 
-        $result->rootProcessId = getmypid();
+        $currentProcessId = getmypid();
+        if ($currentProcessId === false) {
+            throw new RuntimeException('Failed to get current process ID');
+        }
+        $result->rootProcessId = $currentProcessId;
 
         $result->resourcesCleanerServerId = $this->resourcesCleanerServerId;
         $result->resourcesCleanerPort = $this->resourcesCleanerPort;

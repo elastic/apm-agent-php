@@ -95,7 +95,7 @@ final class Tracer implements TracerInterface, LoggableInterface
                                ? new EventSender($this->config, $this->loggerFactory)
                                : NoopEventSink::singletonInstance());
 
-        $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config);
+        $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config, $this->loggerFactory);
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
 
