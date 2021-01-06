@@ -226,6 +226,7 @@ pipeline {
                 }
               }
               stage('PHP Upgrade Testing') {
+                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
                 when {
                   beforeAgent true
                   allOf {
