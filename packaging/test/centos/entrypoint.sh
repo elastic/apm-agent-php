@@ -25,10 +25,42 @@ function download() {
     cd -
 }
 
+function validate_if_agent_is_uninstalled() {
+    ## Validate if the elastic php agent has been uninstalled
+    php -m
+    if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+}
+
+function validate_if_agent_is_enabled() {
+    ## Validate if the elastic php agent is enabled
+    if ! php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been installed.'
+        exit 1
+    fi
+}
+
+function validate_installation() {
+    ## Validate the installation works as expected with composer
+    composer install
+    /usr/sbin/rsyslogd
+    if ! composer run-script run_component_tests ; then
+        echo 'Something bad happened when running the tests, see the output from the syslog'
+        cat /var/log/syslog
+        exit 1
+    fi
+}
+
 ##############
 #### MAIN ####
 ##############
-if [[ "${TYPE}" == "rpm" || "${TYPE}" == "rpm-uninstall" ]] ; then
+if [[ "${TYPE}" == "rpm" || "${TYPE}" == "rpm-uninstall" || "${TYPE}" == "php-upgrade" ]] ; then
     ## Install rpm package and configure the agent accordingly
     rpm -ivh build/packages/*.rpm
 elif [ "${TYPE}" == "release-github" ] ; then
@@ -50,38 +82,36 @@ else
     source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi
 
-## Verify if the elastic php agent is enabled
-if ! php -m | grep -q 'elastic' ; then
-    echo 'Extension has not been installed.'
-    exit 1
-fi
+validate_if_agent_is_enabled
 
-## Validate the installation works as expected with composer
-composer install
-/usr/sbin/rsyslogd
-if ! composer run-script run_component_tests ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
-    cat /var/log/syslog
-    exit 1
-fi
+validate_installation
 
 ## Validate the uninstallation works as expected
-set -x
+set -ex
 if [ "${TYPE}" == "rpm-uninstall" ] ; then
     rpm -e "${PACKAGE}"
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
-        exit 1
-    fi
+    validate_if_agent_is_uninstalled
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
+    validate_if_agent_is_uninstalled
+elif [ "${TYPE}" == "php-upgrade" ] ; then
+    ## Copy existing configuration file to compare with
+    cp /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini
+
+    ## Uninstall existing installation
+    rpm -e "${PACKAGE}"
+
+    ## Upgrade PHP version
+    yum-config-manager --enable remi-php74
+    yum install -y php php-mbstring php-mysql php-xml
+
+    ## Install rpm package and configure the agent accordingly
+    rpm -ivh build/packages/*.rpm
+    if diff --report-identical-files /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini ; then
+        echo 'Configuration file has not been updated and still point to the previous installation.'
         exit 1
     fi
+    ## Validate agent is enabled
+    validate_if_agent_is_enabled
 fi

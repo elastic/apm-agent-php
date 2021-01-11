@@ -6,6 +6,41 @@ set -x
 ###################
 BUILD_RELEASES_FOLDER=build/releases
 
+###################
+#### FUNCTIONS ####
+###################
+validate_if_agent_is_uninstalled() {
+    ## Validate if the elastic php agent has been uninstalled
+    php -m
+    if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+}
+
+validate_if_agent_is_enabled() {
+    ## Validate if the elastic php agent is enabled
+    if ! php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been installed.'
+        exit 1
+    fi
+}
+
+validate_installation() {
+    ## Validate the installation works as expected with composer
+    composer install
+    syslogd
+    if ! composer run-script run_component_tests ; then
+        echo 'Something bad happened when running the tests, see the output from the syslog'
+        cat /var/log/messages
+        exit 1
+    fi
+}
+
 ##############
 #### MAIN ####
 ##############
@@ -23,29 +58,13 @@ else
     apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
 fi
 
-## Verify if the elastic php agent is enabled
-if ! php -m | grep -q 'elastic' ; then
-    echo 'Extension has not been installed.'
-    exit 1
-fi
+validate_if_agent_is_enabled
 
-## Validate the installation works as expected with composer
-composer install
-syslogd
-if ! composer run-script run_component_tests ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
-    cat /var/log/messages
-    exit 1
-fi
+validate_installation
 
 ## Validate the uninstallation works as expected
 set -ex
 if [ "${TYPE}" = "apk-uninstall" ] ; then
     apk del --verbose --no-cache "${PACKAGE}"
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
-        exit 1
-    fi
+    validate_if_agent_is_uninstalled
 fi

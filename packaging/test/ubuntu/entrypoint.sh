@@ -25,6 +25,38 @@ function download() {
     cd -
 }
 
+function validate_if_agent_is_uninstalled() {
+    ## Validate if the elastic php agent has been uninstalled
+    php -m
+    if php -m | grep -q "Unable to load dynamic library '/opt/elastic/apm-agent-php/extensions"  ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+    if php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been uninstalled.'
+        exit 1
+    fi
+}
+
+function validate_if_agent_is_enabled() {
+    ## Validate if the elastic php agent is enabled
+    if ! php -m | grep -q 'elastic' ; then
+        echo 'Extension has not been installed.'
+        exit 1
+    fi
+}
+
+function validate_installation() {
+    ## Validate the installation works as expected with composer
+    composer install
+    /usr/sbin/rsyslogd
+    if ! composer run-script run_component_tests ; then
+        echo 'Something bad happened when running the tests, see the output from the syslog'
+        cat /var/log/syslog
+        exit 1
+    fi
+}
+
 ##############
 #### MAIN ####
 ##############
@@ -51,38 +83,21 @@ else
     source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi
 
-## Verify if the elastic php agent is enabled
-if ! php -m | grep -q 'elastic' ; then
-    echo 'Extension has not been installed.'
-    exit 1
-fi
+validate_if_agent_is_enabled
 
-## Validate the installation works as expected with composer
-composer install
-/usr/sbin/rsyslogd
-if ! composer run-script run_component_tests ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
-    cat /var/log/syslog
-    exit 1
-fi
+validate_installation
 
 ## Validate the uninstallation works as expected
-set -x
+set -ex
 if [ "${TYPE}" == "deb-uninstall" ] ; then
-    dpkg --remove "${PACKAGE}"
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
+    dpkg --purge "${PACKAGE}"
+    validate_if_agent_is_uninstalled
+    if [ -d /opt/elastic/apm-agent-php/etc ] ; then
+        echo 'Extension has not been uninstalled correctly.'
         exit 1
     fi
 elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
-    ## Verify if the elastic php agent has been uninstalled
-    php -m > /dev/null 2>&1
-    if php -m | grep -q 'elastic' ; then
-        echo 'Extension has not been uninstalled.'
-        exit 1
-    fi
+    validate_if_agent_is_uninstalled
 fi
