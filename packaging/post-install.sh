@@ -11,8 +11,8 @@ EXTENSION_DIR="${PHP_AGENT_DIR}/extensions"
 EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
 BOOTSTRAP_FILE_PATH="${PHP_AGENT_DIR}/src/bootstrap_php_part.php"
 BACKUP_EXTENSION=".agent.bck"
-ELASTIC_INI_FILE_NAME="elastic.ini"
-CUSTOM_INI_FILE_NAME="elastic-custom.ini"
+ELASTIC_INI_FILE_NAME="elastic-apm.ini"
+CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################
@@ -111,6 +111,8 @@ function generate_configuration_files() {
     INI_FILE_PATH="${1}"
     CUSTOM_INI_FILE_PATH="${2}"
 
+    ## IMPORTANT: This file will be always override if already exists for a
+    ##            previous installation.
     echo "Creating ${INI_FILE_PATH}"
     CONTENT=$(add_extension_configuration)
     tee "${INI_FILE_PATH}" <<EOF

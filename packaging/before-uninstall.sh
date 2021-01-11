@@ -6,11 +6,12 @@ PATH=${PATH}:/usr/local/bin
 ################################################################################
 ############################ GLOBAL VARIABLES ##################################
 ################################################################################
+####### IMPORTANT: PHP_AGENT_DIR is needed otherwise fpm will fail when generating
+#######            the apk distribution with an Invalid tar stream error.
 PHP_AGENT_DIR=/opt/elastic/apm-agent-php
 BACKUP_EXTENSION=".agent.uninstall.bck"
-CUSTOM_INI_FILE_NAME="elastic-custom.ini"
-ELASTIC_INI_FILE_NAME="elastic.ini"
-EXTENSION_CFG_DIR="${PHP_AGENT_DIR}/etc"
+CUSTOM_INI_FILE_NAME="elastic-apm-custom.ini"
+ELASTIC_INI_FILE_NAME="elastic-apm.ini"
 
 ################################################################################
 ########################## FUNCTION CALLS BELOW ################################
@@ -119,8 +120,6 @@ function manual_extension_agent_uninstallation() {
 #### Function uninstall_conf_d_files ###########=###############################
 function uninstall_conf_d_files() {
     PHP_CONFIG_D_PATH=$1
-    INI_FILE_PATH="${EXTENSION_CFG_DIR}/$ELASTIC_INI_FILE_NAME"
-    CUSTOM_INI_FILE_PATH="${EXTENSION_CFG_DIR}/${CUSTOM_INI_FILE_NAME}"
 
     echo "Uninstalling ${ELASTIC_INI_FILE_NAME} for supported SAPI's"
 
@@ -153,16 +152,16 @@ function uninstall_conf_d_files() {
 
     for SAPI_CONFIG_D_PATH in "${SAPI_CONFIG_DIRS[@]}" ; do
         echo "Found SAPI config directory: ${SAPI_CONFIG_D_PATH}"
-        remove_file "${SAPI_CONFIG_D_PATH}/98-${ELASTIC_INI_FILE_NAME}"
-        remove_file "${SAPI_CONFIG_D_PATH}/99-${CUSTOM_INI_FILE_NAME}"
+        unlink_file "${SAPI_CONFIG_D_PATH}/98-${ELASTIC_INI_FILE_NAME}"
+        unlink_file "${SAPI_CONFIG_D_PATH}/99-${CUSTOM_INI_FILE_NAME}"
     done
 }
 
 ################################################################################
-#### Function remove_file ######################################################
-function remove_file() {
+#### Function unlink_file ######################################################
+function unlink_file() {
     echo "Removing ${1}"
-    test -f "${1}" && rm "${1}"
+    test -L "${1}" && unlink "${1}"
 }
 
 ################################################################################

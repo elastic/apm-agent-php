@@ -32,6 +32,8 @@ if [ -e ${IGNORE_FILE} ] ; then
 	rm ${IGNORE_FILE} || true
 fi
 
+touch build/elastic-apm.ini build/elastic-apm-custom.ini
+
 ## Create package
 fpm --input-type dir \
 		--output-type "${TYPE}" \
@@ -50,7 +52,8 @@ fpm --input-type dir \
 		--directories ${PHP_AGENT_DIR}/etc \
 		--config-files ${PHP_AGENT_DIR}/etc \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
-		packaging/elastic.ini.example=${PHP_AGENT_DIR}/etc/ \
+		build/elastic-apm.ini=${PHP_AGENT_DIR}/etc/ \
+		build/elastic-apm-custom.ini=${PHP_AGENT_DIR}/etc/ \
 		packaging/before-uninstall.sh=${PHP_AGENT_DIR}/bin/before-uninstall.sh \
 		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \

@@ -190,6 +190,7 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
 }
 
 #define ELASTIC_APM_LOG_CATEGORY_ASSERT "Assert"
+#define ELASTIC_APM_LOG_CATEGORY_AUTO_INSTRUMENT "Auto-Instrument"
 #define ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM "Backend-Comm"
 #define ELASTIC_APM_LOG_CATEGORY_CONFIG "Configuration"
 #define ELASTIC_APM_LOG_CATEGORY_C_TO_PHP "C-to-PHP"

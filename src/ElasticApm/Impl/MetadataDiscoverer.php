@@ -6,6 +6,9 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
+use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -18,12 +21,29 @@ final class MetadataDiscoverer
     public const LANGUAGE_NAME = 'PHP';
     public const DEFAULT_SERVICE_NAME = 'Unnamed PHP service';
 
-    public static function discoverMetadata(ConfigSnapshot $config): Metadata
+    /** @var ConfigSnapshot */
+    private $config;
+
+    /** @var Logger */
+    private $logger;
+
+    private function __construct(ConfigSnapshot $config, LoggerFactory $loggerFactory)
+    {
+        $this->config = $config;
+        $this->logger = $loggerFactory->loggerForClass(LogCategory::BACKEND_COMM, __NAMESPACE__, __CLASS__, __FILE__);
+    }
+
+    public static function discoverMetadata(ConfigSnapshot $config, LoggerFactory $loggerFactory): Metadata
+    {
+        return (new MetadataDiscoverer($config, $loggerFactory))->doDiscoverMetadata();
+    }
+
+    public function doDiscoverMetadata(): Metadata
     {
         $result = new Metadata();
 
         $result->process = MetadataDiscoverer::discoverProcessData();
-        $result->service = MetadataDiscoverer::discoverServiceData($config);
+        $result->service = MetadataDiscoverer::discoverServiceData($this->config);
 
         return $result;
     }
@@ -40,7 +60,7 @@ final class MetadataDiscoverer
             : Tracer::limitKeywordString($charsAdaptedName);
     }
 
-    public static function discoverServiceData(ConfigSnapshot $config): ServiceData
+    public function discoverServiceData(ConfigSnapshot $config): ServiceData
     {
         $result = new ServiceData();
 
@@ -60,14 +80,14 @@ final class MetadataDiscoverer
         $result->agent->name = self::AGENT_NAME;
         $result->agent->version = ElasticApm::VERSION;
 
-        $result->language = self::buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
+        $result->language = $this->buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
 
         $result->runtime = $result->language;
 
         return $result;
     }
 
-    public static function buildNameVersionData(?string $name, ?string $version): NameVersionData
+    public function buildNameVersionData(?string $name, ?string $version): NameVersionData
     {
         $result = new NameVersionData();
 
@@ -77,11 +97,18 @@ final class MetadataDiscoverer
         return $result;
     }
 
-    public static function discoverProcessData(): ProcessData
+    public function discoverProcessData(): ProcessData
     {
         $result = new ProcessData();
 
-        $result->pid = getmypid();
+        $currentProcessId = getmypid();
+        if ($currentProcessId === false) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Failed to get current process ID - setting it to 0 instead');
+            $result->pid = 0;
+        } else {
+            $result->pid = $currentProcessId;
+        }
 
         return $result;
     }

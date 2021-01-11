@@ -283,7 +283,7 @@ static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawV
     ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
 
-    ResultCode parseResultCode = parseDuration( stringToStringView( rawValue )
+    ResultCode parseResultCode = parseDuration( stringToView( rawValue )
                                                 , optMeta->additionalData.durationData.defaultUnits
                                                 , /* out */ &parsedValue->u.durationValue );
     if ( parseResultCode == resultSuccess ) parsedValue->type = parsedOptionValueType_duration;
@@ -321,11 +321,11 @@ ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* ou
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
 
     int foundMatch = -1;
-    StringView rawValueStrView = stringToStringView( rawValue );
+    StringView rawValueStrView = stringToView( rawValue );
 
     ELASTIC_APM_FOR_EACH_INDEX( i, optMeta->additionalData.enumData.enumElementsCount )
     {
-        StringView currentEnumName = stringToStringView( optMeta->additionalData.enumData.names[ i ] );
+        StringView currentEnumName = stringToView( optMeta->additionalData.enumData.names[ i ] );
         if ( ! isStringViewPrefixIgnoringCase( currentEnumName, rawValueStrView ) ) continue;
 
         // If match is exact (i.e., not just prefix) then we return immediately
