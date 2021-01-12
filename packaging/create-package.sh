@@ -53,7 +53,7 @@ fpm --input-type dir \
 		--config-files ${PHP_AGENT_DIR}/etc \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
 		build/elastic-apm.ini=${PHP_AGENT_DIR}/etc/ \
-		packaging/elastic-apm-template.ini=${PHP_AGENT_DIR}/etc/elastic-apm-custom.ini \
+		packaging/elastic-apm-custom-template.ini=${PHP_AGENT_DIR}/etc/elastic-apm-custom.ini \
 		packaging/before-uninstall.sh=${PHP_AGENT_DIR}/bin/before-uninstall.sh \
 		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
