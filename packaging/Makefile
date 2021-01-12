@@ -125,6 +125,11 @@ tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
 rpm-install: prepare-rpm  ## Install the rpm installer to run some smoke tests
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm prepare-rpm
 
+.PHONY: deb-install-in-apache
+deb-install-in-apache: PHP_TOOL="apache"  ### Force the PHP tool to be used.
+deb-install-in-apache: prepare-deb  ## Install the deb installer to run some smoke tests in apache
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb prepare-deb
+
 .PHONY: install
 install: apk-install deb-install rpm-install tar-install  ## Install all the distributions
 
