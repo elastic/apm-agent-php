@@ -245,6 +245,25 @@ pipeline {
                   }
                 }
               }
+              stage('PHP Apache Testing') {
+                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+                when {
+                  beforeAgent true
+                  allOf {
+                    expression { return env.DIST == "deb" }
+                  }
+                }
+                steps {
+                  withGithubNotify(context: "PHP-Apache-Testing-${DIST}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      unstash 'package'
+                      sh script: "make -C packaging ${DIST}-install-in-apache", label: "${DIST}-install-in-apache"
+                    }
+                  }
+                }
+              }
             }
           }
         }
