@@ -23,6 +23,10 @@ clean: ## Clean the generated packages
 prepare: ## Build docker image for the packaging
 	@docker build -t $(IMAGE) .
 
+.PHONY: build-docker-images
+build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache ## Build all the docker images
+	@echo 'Build docker images'
+
 create-%: prepare  ## Create the specific package
 	@echo "Creating package $* ..."
 	@mkdir -p $(PWD)/$(OUTPUT)
