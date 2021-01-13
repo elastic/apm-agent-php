@@ -259,7 +259,7 @@ pipeline {
                     unstash 'source'
                     dir("${BASE_DIR}"){
                       unstash 'package'
-                      sh script: "make -C packaging ${DIST}-install-in-apache", label: "${DIST}-install-in-apache"
+                      sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
                     }
                   }
                 }
