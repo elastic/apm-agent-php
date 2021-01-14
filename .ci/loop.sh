@@ -13,8 +13,8 @@ for (( c=1; c<=LOOPS; c++ ))
 do  
     echo "Loop $c"
     OUTPUT_FILE="$OUTPUT_FOLDER/$c.txt"
-    PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile test | tee "$OUTPUT_FILE"
-    PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile composer | tee -a "$OUTPUT_FILE"
+    PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test | tee "$OUTPUT_FILE"
+    PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile component-test | tee -a "$OUTPUT_FILE"
 
     ## Store test results with the iteration
     if [ -e $TEST_REPORT_TEST ] ; then
