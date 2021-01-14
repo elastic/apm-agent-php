@@ -101,6 +101,12 @@ prepare-deb-apache:  ## Build the docker image for the deb smoke tests for apach
 	docker build --file apache/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . ;\
 	cd -
 
+.PHONY: prepare-deb-fpm
+prepare-deb-fpm:  ## Build the docker image for the deb smoke tests for fpm
+	@cd $(PWD)/packaging/test/ubuntu ;\
+	docker build --file fpm/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . ;\
+	cd -
+
 .PHONY: prepare-deb
 prepare-deb:  ## Build the docker image for the deb smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
@@ -139,6 +145,10 @@ rpm-install: prepare-rpm  ## Install the rpm installer to run some smoke tests
 deb-install-in-apache: prepare-deb-apache  ## Install the deb installer to run some smoke tests in apache
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb prepare-deb-apache
 
+.PHONY: deb-install-in-fpm
+deb-install-in-fpm: prepare-deb-fpm  ## Install the deb installer to run some smoke tests in fpm
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb prepare-deb-fpm
+
 .PHONY: install
 install: apk-install deb-install rpm-install tar-install  ## Install all the distributions
 
@@ -175,6 +185,10 @@ deb-lifecycle-testing: prepare-deb  ## Lifecycle testing for the deb installer
 .PHONY: deb-lifecycle-testing-in-apache
 deb-lifecycle-testing-in-apache: prepare-deb-apache  ## Lifecycle testing for the deb installer with apache
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) prepare-deb-apache
+
+.PHONY: deb-lifecycle-testing-in-fpm
+deb-lifecycle-testing-in-fpm: prepare-deb-fpm  ## Lifecycle testing for the deb installer with fpm
+	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) prepare-deb-fpm
 
 .PHONY: rpm-lifecycle-testing
 rpm-lifecycle-testing: prepare-rpm  ## Lifecycle testing for the rpm installer
