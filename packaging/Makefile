@@ -4,7 +4,6 @@ VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 |
 OUTPUT:=build/packages
 PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
-COMPOSER_VERSION?=1.10.10
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
@@ -89,25 +88,25 @@ tar-info:  ## Show the tar package metadata
 .PHONY: prepare-apk
 prepare-apk:  ## Build the docker image for the apk smoke tests
 	@cd $(PWD)/packaging/test/alpine ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg COMPOSER_VERSION=${COMPOSER_VERSION} -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
 
 .PHONY: prepare-deb
 prepare-deb:  ## Build the docker image for the deb smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg COMPOSER_VERSION=${COMPOSER_VERSION} -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
 
 .PHONY: prepare-tar
 prepare-tar:  ## Build the docker image for the tar smoke tests
 	@cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg COMPOSER_VERSION=${COMPOSER_VERSION} -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
 	cd -
 
 .PHONY: prepare-rpm
 prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	@cd $(PWD)/packaging/test/centos ;\
-	docker build --build-arg PHP_VERSION=${PHP_VERSION} --build-arg COMPOSER_VERSION=${COMPOSER_VERSION} -t $@ . ;\
+	docker build --build-arg PHP_VERSION=${PHP_VERSION} -t $@ . ;\
 	cd -
 
 .PHONY: apk-install

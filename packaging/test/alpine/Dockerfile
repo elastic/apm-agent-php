@@ -12,8 +12,7 @@ RUN apk update \
     unzip \
     wget
 
-ARG COMPOSER_VERSION=1.10.10
-COPY --from=composer:${COMPOSER_VERSION} /usr/bin/composer /usr/bin/composer
+COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
 
 RUN php -v
 

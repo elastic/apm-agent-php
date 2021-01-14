@@ -15,8 +15,7 @@ RUN apt-get -qq update \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
-ARG COMPOSER_VERSION=1.10.10
-COPY --from=composer:${COMPOSER_VERSION} /usr/bin/composer /usr/bin/composer
+COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
 
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
       && mkdir /usr/bin/cmake \
