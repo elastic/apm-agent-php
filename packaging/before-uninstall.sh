@@ -137,7 +137,11 @@ function uninstall_conf_d_files() {
         if [ -d "${APACHE_CONF_D_PATH}" ]; then
             SAPI_CONFIG_DIRS+=("${APACHE_CONF_D_PATH}")
         fi
-        ## TODO: support fpm
+        ## FPM
+        FPM_CONF_D_PATH="${SAPI_DIR}fpm/conf.d"
+        if [ -d "${FPM_CONF_D_PATH}" ]; then
+            SAPI_CONFIG_DIRS+=("${FPM_CONF_D_PATH}")
+        fi
     fi
 
     if [ ${#SAPI_CONFIG_DIRS[@]} -eq 0 ]; then
