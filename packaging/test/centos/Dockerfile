@@ -15,7 +15,8 @@ RUN yum update -y \
     && yum install -y git gnupg2 perl-Digest-SHA unzip wget \
     && yum clean all
 
-COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
+ARG COMPOSER_VERSION=1.10.10
+COPY --from=composer:${COMPOSER_VERSION} /usr/bin/composer /usr/bin/composer
 
 # To support tar and rpm packages
 ENV TYPE=rpm

@@ -2,6 +2,7 @@
 SHELL=/bin/bash -o pipefail
 IMAGE := test-php
 PHP_VERSION ?= 7.2
+COMPOSER_VERSION?=1.10.10
 DOCKERFILE ?= Dockerfile
 LOOPS ?= 50
 SUFFIX := 
@@ -22,6 +23,7 @@ help: ## Display this help text
 prepare:  ## Build docker image for building and testing the project
 	@docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
+		--build-arg COMPOSER_VERSION=${COMPOSER_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
 

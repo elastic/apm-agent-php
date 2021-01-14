@@ -1,7 +1,8 @@
 ARG PHP_VERSION=7.2
 FROM php:${PHP_VERSION}-fpm
 
-COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
+ARG COMPOSER_VERSION=1.10.10
+COPY --from=composer:${COMPOSER_VERSION} /usr/bin/composer /usr/bin/composer
 
 # sh: 1: ps: not found
 # sh: 1: git: not found
