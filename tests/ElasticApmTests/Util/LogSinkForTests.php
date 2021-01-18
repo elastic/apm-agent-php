@@ -74,9 +74,6 @@ final class LogSinkForTests extends SinkBase
             case Level::WARNING:
                 return 'WARNING';
 
-            case Level::NOTICE:
-                return 'NOTICE';
-
             case Level::INFO:
                 return 'INFO';
 
@@ -103,9 +100,6 @@ final class LogSinkForTests extends SinkBase
 
             case Level::WARNING:
                 return LOG_WARNING;
-
-            case Level::NOTICE:
-                return LOG_NOTICE;
 
             case Level::INFO:
             default:

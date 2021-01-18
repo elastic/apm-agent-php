@@ -81,11 +81,6 @@ final class Logger
         return $this->ifLevelEnabled(Level::WARNING, $srcCodeLine, $srcCodeFunc);
     }
 
-    public function ifNoticeLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
-    {
-        return $this->ifLevelEnabled(Level::NOTICE, $srcCodeLine, $srcCodeFunc);
-    }
-
     public function ifInfoLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
         return $this->ifLevelEnabled(Level::INFO, $srcCodeLine, $srcCodeFunc);

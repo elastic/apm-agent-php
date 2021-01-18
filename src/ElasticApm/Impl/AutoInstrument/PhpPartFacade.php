@@ -152,7 +152,7 @@ final class PhpPartFacade
         BootstrapStageLogger::logDebug('Starting shutdown sequence...', __LINE__, __FUNCTION__);
 
         if (is_null(self::$singletonInstance)) {
-            BootstrapStageLogger::logNotice(
+            BootstrapStageLogger::logWarning(
                 'Shutdown sequence is invoked even though singleton instance is not created'
                 . ' (probably because bootstrap sequence failed)',
                 __LINE__,

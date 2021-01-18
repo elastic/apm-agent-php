@@ -27,7 +27,7 @@
 
 String logLevelNames[numberOfLogLevels] =
         {
-                [logLevel_off] = "OFF", [logLevel_critical] = "CRITICAL", [logLevel_error] = "ERROR", [logLevel_warning] = "WARNING", [logLevel_notice] = "NOTICE", [logLevel_info] = "INFO", [logLevel_debug] = "DEBUG", [logLevel_trace] = "TRACE"
+                [logLevel_off] = "OFF", [logLevel_critical] = "CRITICAL", [logLevel_error] = "ERROR", [logLevel_warning] = "WARNING", [logLevel_info] = "INFO", [logLevel_debug] = "DEBUG", [logLevel_trace] = "TRACE"
         };
 
 enum
@@ -449,9 +449,6 @@ int logLevelToSyslog( LogLevel level )
 
         case logLevel_info:
             return LOG_INFO;
-
-        case logLevel_notice:
-            return LOG_NOTICE;
 
         case logLevel_warning:
             return LOG_WARNING;

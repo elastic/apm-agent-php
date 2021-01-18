@@ -198,7 +198,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
         $handleId = intval($curlHandle);
 
         if (!array_key_exists($handleId, $this->handleIdToTracker)) {
-            ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Not found in curl handle ID to CurlHandleTracker map', ['handleId' => $handleId]);
             return null;
         }

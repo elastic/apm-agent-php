@@ -60,7 +60,6 @@ OFF
 CRITICAL
 ERROR
 WARNING
-NOTICE
 INFO
 DEBUG
 TRACE
@@ -77,19 +76,19 @@ You can control the level of logging for individual sinks with the
 When a sink-specific logging level is not set explicitly, the fallback setting,
 <<config-log-level>>, will be used.
 
-For example, the following configuration sets the log level to `NOTICE` for all the sinks:
+For example, the following configuration sets the log level to `WARNING` for all the sinks:
 
 [source,ini]
 ----
-elastic_apm.log_level=NOTICE
+elastic_apm.log_level=WARNING
 ----
 
-Alternatively, the following configuration sets log level to `NOTICE` for all the sinks
+Alternatively, the following configuration sets log level to `WARNING` for all the sinks
 except for `syslog`, which log level is set to `TRACE`.
 
 [source,ini]
 ----
-elastic_apm.log_level=NOTICE
+elastic_apm.log_level=WARNING
 elastic_apm.log_level_syslog=TRACE
 ----
 

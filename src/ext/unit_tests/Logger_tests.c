@@ -291,8 +291,6 @@ void statements_filtered_according_to_current_level( void** testFixtureState )
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_error, msg );
         ELASTIC_APM_LOG_WARNING( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_warning, msg );
-        ELASTIC_APM_LOG_NOTICE( "%s", msg );
-        statements_filtered_according_to_current_level_helper( currentLevel, logLevel_notice, msg );
         ELASTIC_APM_LOG_INFO( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_info, msg );
         ELASTIC_APM_LOG_DEBUG( "%s", msg );
