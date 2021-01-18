@@ -117,7 +117,7 @@ abstract class TestEnvBase implements LoggableInterface
                 }
 
                 if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
-                    ($loggerProxy = $logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+                    ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
                         'Received non-OK status code in response to status check',
                         ['receivedStatusCode' => $response->getStatusCode()]
@@ -244,7 +244,7 @@ abstract class TestEnvBase implements LoggableInterface
                 return;
             }
 
-            ($loggerProxy = $logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Failed to start HTTP server');
         }
 

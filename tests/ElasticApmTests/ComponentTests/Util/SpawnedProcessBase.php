@@ -92,7 +92,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
             $level = Level::CRITICAL;
             $throwableToLog = $throwable;
             if ($throwable instanceof WrappedAppCodeException) {
-                $level = Level::NOTICE;
+                $level = Level::INFO;
                 $throwableToLog = $throwable->wrappedException();
             }
             $logger = isset($thisObj) ? $thisObj->logger : self::buildLogger();

@@ -148,7 +148,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return true;
         }
 
-        ($loggerProxy = $this->logger->ifNoticeLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->includeStacktrace()->log('A mutating method has been called on already ended event');
 
         return true;

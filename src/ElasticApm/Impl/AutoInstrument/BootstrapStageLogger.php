@@ -59,7 +59,7 @@ final class BootstrapStageLogger
         );
     }
 
-    public static function logNotice(
+    public static function logWarning(
         string $message,
         int $srcCodeLine,
         string $srcCodeFunc
@@ -71,7 +71,7 @@ final class BootstrapStageLogger
          *
          * @phpstan-ignore-next-line
          */
-            ELASTIC_APM_LOG_LEVEL_NOTICE,
+            ELASTIC_APM_LOG_LEVEL_WARNING,
             $message,
             $srcCodeLine,
             $srcCodeFunc

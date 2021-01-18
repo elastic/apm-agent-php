@@ -4,7 +4,7 @@ Configuration values of type LogLevel are case insensitive
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=oFF
-ELASTIC_APM_LOG_LEVEL=notice
+ELASTIC_APM_LOG_LEVEL=warning
 ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=TRaCe
 --INI--
 elastic_apm.log_level_syslog=INFO
@@ -14,7 +14,7 @@ elastic_apm.log_level_file=dEbUg
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
 
-elasticApmAssertSame("elastic_apm_get_config_option_by_name('log_level')", elastic_apm_get_config_option_by_name('log_level'), ELASTIC_APM_LOG_LEVEL_NOTICE);
+elasticApmAssertSame("elastic_apm_get_config_option_by_name('log_level')", elastic_apm_get_config_option_by_name('log_level'), ELASTIC_APM_LOG_LEVEL_WARNING);
 
 elasticApmAssertSame("elastic_apm_get_config_option_by_name('log_level_stderr')", elastic_apm_get_config_option_by_name('log_level_stderr'), ELASTIC_APM_LOG_LEVEL_OFF);
 

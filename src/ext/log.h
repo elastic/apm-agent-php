@@ -37,7 +37,6 @@ enum LogLevel
     logLevel_critical,
     logLevel_error,
     logLevel_warning,
-    logLevel_notice,
     logLevel_info,
     logLevel_debug,
     logLevel_trace,
@@ -143,7 +142,6 @@ Logger* getGlobalLogger();
 #define ELASTIC_APM_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_critical, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_ERROR( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_error, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_warning, fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_LOG_NOTICE( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_notice, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_INFO( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_info, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_TRACE( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )

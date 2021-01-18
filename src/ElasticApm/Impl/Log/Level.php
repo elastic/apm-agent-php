@@ -19,8 +19,7 @@ final class Level
     public const CRITICAL = self::OFF + 1;
     public const ERROR = self::CRITICAL + 1;
     public const WARNING = self::ERROR + 1;
-    public const NOTICE = self::WARNING + 1;
-    public const INFO = self::NOTICE + 1;
+    public const INFO = self::WARNING + 1;
     public const DEBUG = self::INFO + 1;
     public const TRACE = self::DEBUG + 1;
 
@@ -34,7 +33,6 @@ final class Level
             ['CRITICAL', Level::CRITICAL],
             ['ERROR', Level::ERROR],
             ['WARNING', Level::WARNING],
-            ['NOTICE', Level::NOTICE],
             ['INFO', Level::INFO],
             ['DEBUG', Level::DEBUG],
             ['TRACE', Level::TRACE],
