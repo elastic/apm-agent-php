@@ -15,10 +15,7 @@ RUN apt-get -qq update \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
-RUN php -r "copy('https://raw.githubusercontent.com/composer/getcomposer.org/baecae060ee7602a9908f2259f7460b737839972/web/installer', 'composer-setup.php');" \
- && php -r "if (hash_file('sha384', 'composer-setup.php') === '572cb359b56ad9ae52f9c23d29d4b19a040af10d6635642e646a7caa7b96de717ce683bd797a92ce99e5929cc51e7d5f') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" \
- && php composer-setup.php --install-dir=/usr/bin --filename=composer --version=1.10.10 \
- && php -r "unlink('composer-setup.php');"
+COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
 
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
       && mkdir /usr/bin/cmake \
