@@ -189,12 +189,28 @@ function get_extension_file() {
 }
 
 ################################################################################
+#### Function is_php_supported #################################################
+function is_php_supported() {
+    PHP_MAJOR_MINOR=$(php_command -r 'echo PHP_MAJOR_VERSION;').$(php_command -r 'echo PHP_MINOR_VERSION;')
+    if  [ "${PHP_MAJOR_MINOR}" == "7.2" ] || [ "${PHP_MAJOR_MINOR}" == "7.3" ] || [ "${PHP_MAJOR_MINOR}" == "7.4" ] ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+################################################################################
 ############################### MAIN ###########################################
 ################################################################################
 echo 'Installing Elastic PHP agent'
 EXTENSION_FILE_PATH=$(get_extension_file)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 PHP_CONFIG_D_PATH="$(php_config_d_path)"
+
+if ! is_php_supported ; then
+    echo 'Failed. Elastic PHP agent extension is not supported for the existing PHP installation.'
+    exit 1
+fi
 
 if [ -e "${PHP_CONFIG_D_PATH}" ]; then
     install_conf_d_files "${PHP_CONFIG_D_PATH}"
