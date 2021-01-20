@@ -264,6 +264,25 @@ pipeline {
                   }
                 }
               }
+              stage('PHP FPM Testing') {
+                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+                when {
+                  beforeAgent true
+                  allOf {
+                    expression { return env.DIST == "deb" }
+                  }
+                }
+                steps {
+                  withGithubNotify(context: "PHP-FPM-Testing-${DIST}") {
+                    deleteDir()
+                    unstash 'source'
+                    dir("${BASE_DIR}"){
+                      unstash 'package'
+                      sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
+                    }
+                  }
+                }
+              }
             }
           }
         }
