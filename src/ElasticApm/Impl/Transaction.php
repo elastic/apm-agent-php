@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -284,7 +285,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         try {
             return $callback($newSpan);
         } catch (Throwable $throwable) {
-            $newSpan->createError($throwable);
+            $newSpan->createErrorFromThrowable($throwable);
             throw $throwable;
         } finally {
             // Since endSpanEx was not called directly it should not be kept in the stack trace
@@ -293,13 +294,13 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
-    public function createError(Throwable $throwable): ?string
+    public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
     {
         if (is_null($this->currentSpan)) {
-            return $this->tracer->doCreateError($throwable, /* transaction: */ $this, /* span */ null);
+            return $this->tracer->doCreateError($errorExceptionData, /* transaction: */ $this, /* span */ null);
         }
 
-        return $this->currentSpan->createError($throwable);
+        return $this->currentSpan->dispatchCreateError($errorExceptionData);
     }
 
     /** @inheritDoc */

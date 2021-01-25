@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -33,7 +34,7 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L56
      */
-    public $code;
+    public $code = null;
 
     /**
      * @var string|null
@@ -42,7 +43,7 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L61
      */
-    public $message;
+    public $message = null;
 
     /**
      * @var string|null
@@ -53,14 +54,14 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L65
      */
-    public $module;
+    public $module = null;
 
     /**
      * @var StacktraceFrame[]|null
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
-    public $stacktrace;
+    public $stacktrace = null;
 
     /**
      * @var string|null
@@ -69,28 +70,44 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L80
      */
-    public $type;
+    public $type = null;
 
-    public static function build(Tracer $tracer, Throwable $throwable): ErrorExceptionData
+    public static function buildFromCustomData(Tracer $tracer, CustomErrorData $customErrorData): ErrorExceptionData
     {
         $result = new ErrorExceptionData();
 
+        $result->code = is_string($customErrorData->code)
+            ? Tracer::limitKeywordString($customErrorData->code)
+            : $customErrorData->code;
+
+        $result->message = $tracer->limitNullableNonKeywordString($customErrorData->message);
+        $result->module = Tracer::limitNullableKeywordString($customErrorData->module);
+        $result->type = Tracer::limitNullableKeywordString($customErrorData->type);
+
+        return $result;
+    }
+
+    public static function buildFromThrowable(Tracer $tracer, Throwable $throwable): ErrorExceptionData
+    {
+        $customErrorData = new CustomErrorData();
+
         $code = $throwable->getCode();
-        if (is_int($code) || is_string($code) || is_null($code)) {
-            $result->code = $code;
+        if (is_int($code) || is_string($code)) {
+            $customErrorData->code = $code;
         }
 
-        $result->message = $tracer->limitNonKeywordString($throwable->getMessage());
+        $message = $throwable->getMessage();
+        if (is_string($message)) {
+            $customErrorData->message = $message;
+        }
 
         $namespace = '';
         $shortName = '';
         ClassNameUtil::splitFqClassName(get_class($throwable), /* ref */ $namespace, /* ref */ $shortName);
-        if (!empty($namespace)) {
-            $result->module = Tracer::limitKeywordString($namespace);
-        }
-        if (!empty($shortName)) {
-            $result->type = Tracer::limitKeywordString($shortName);
-        }
+        $customErrorData->module = empty($namespace) ? null : $namespace;
+        $customErrorData->type = empty($shortName) ? null : $shortName;
+
+        $result = self::buildFromCustomData($tracer, $customErrorData);
 
         $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
 

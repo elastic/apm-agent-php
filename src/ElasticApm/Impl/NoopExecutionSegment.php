@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -104,7 +105,13 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     }
 
     /** @inheritDoc */
-    public function createError(Throwable $throwable): ?string
+    public function createErrorFromThrowable(Throwable $throwable): ?string
+    {
+        return null;
+    }
+
+    /** @inheritDoc */
+    public function createCustomError(CustomErrorData $customErrorData): ?string
     {
         return null;
     }

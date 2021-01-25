@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionInterface;
@@ -68,7 +69,13 @@ final class NoopTracer implements TracerInterface
     }
 
     /** @inheritDoc */
-    public function createError(Throwable $throwable): ?string
+    public function createErrorFromThrowable(Throwable $throwable): ?string
+    {
+        return null;
+    }
+
+    /** @inheritDoc */
+    public function createCustomError(CustomErrorData $customErrorData): ?string
     {
         return null;
     }
