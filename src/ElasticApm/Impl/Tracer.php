@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
@@ -175,7 +176,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
-            $newTransaction->createError($throwable);
+            $newTransaction->createErrorFromThrowable($throwable);
             throw $throwable;
         } finally {
             $newTransaction->end();
@@ -220,7 +221,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
-            $newTransaction->createError($throwable);
+            $newTransaction->createErrorFromThrowable($throwable);
             /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwable;
         } finally {
@@ -229,17 +230,31 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /** @inheritDoc */
-    public function createError(Throwable $throwable): ?string
+    public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        if (is_null($this->currentTransaction)) {
-            return $this->doCreateError($throwable, /* transaction */ null, /* span */ null);
-        }
-
-        return $this->currentTransaction->createError($throwable);
+        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this, $throwable));
     }
 
-    public function doCreateError(?Throwable $throwable, ?Transaction $transaction, ?Span $span): ?string
+    /** @inheritDoc */
+    public function createCustomError(CustomErrorData $customErrorData): ?string
     {
+        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this, $customErrorData));
+    }
+
+    private function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    {
+        if (is_null($this->currentTransaction)) {
+            return $this->doCreateError($errorExceptionData, /* transaction */ null, /* span */ null);
+        }
+
+        return $this->currentTransaction->dispatchCreateError($errorExceptionData);
+    }
+
+    public function doCreateError(
+        ?ErrorExceptionData $errorExceptionData,
+        ?Transaction $transaction,
+        ?Span $span
+    ): ?string {
         if (!$this->isRecording) {
             return null;
         }
@@ -253,7 +268,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             return null;
         }
 
-        $newError = ErrorData::build(/* tracer: */ $this, $throwable, $transaction, $span);
+        $newError = ErrorData::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
 
         if ($isGoingToBeSentWithTransaction) {
             // PHPStan cannot deduce that $transaction is not null
@@ -286,12 +301,22 @@ final class Tracer implements TracerInterface, LoggableInterface
         if (is_null($keywordString)) {
             return null;
         }
+
         return self::limitKeywordString($keywordString);
     }
 
     public function limitNonKeywordString(string $nonKeywordString): string
     {
         return TextUtil::ensureMaxLength($nonKeywordString, Constants::NON_KEYWORD_STRING_MAX_LENGTH);
+    }
+
+    public function limitNullableNonKeywordString(?string $nonKeywordString): ?string
+    {
+        if (is_null($nonKeywordString)) {
+            return null;
+        }
+
+        return $this->limitNonKeywordString($nonKeywordString);
     }
 
     public function loggerFactory(): LoggerFactory

@@ -107,7 +107,7 @@ class ErrorData implements JsonSerializable, LoggableInterface
 
     public static function build(
         Tracer $tracer,
-        ?Throwable $throwable,
+        ?ErrorExceptionData $errorExceptionData,
         ?Transaction $transaction,
         ?Span $span
     ): ErrorData {
@@ -124,9 +124,7 @@ class ErrorData implements JsonSerializable, LoggableInterface
             $result->parentId = is_null($span) ? $transaction->getId() : $span->getId();
         }
 
-        if (!is_null($throwable)) {
-            $result->exception = ErrorExceptionData::build($tracer, $throwable);
-        }
+        $result->exception = $errorExceptionData;
 
         return $result;
     }

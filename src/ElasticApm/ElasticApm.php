@@ -160,9 +160,25 @@ final class ElasticApm
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
      */
-    public static function createError(Throwable $throwable): ?string
+    public static function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return GlobalTracerHolder::get()->createError($throwable);
+        return GlobalTracerHolder::get()->createErrorFromThrowable($throwable);
+    }
+
+    /**
+     * Creates an error based on the given data
+     * with the current execution segment (if there is one) as the parent.
+     *
+     * @param CustomErrorData $customErrorData
+     *
+     * @return string|null ID of the reported error event or null if no event was reported
+     *                      (for example, because recording is disabled)
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+     */
+    public static function createCustomError(CustomErrorData $customErrorData): ?string
+    {
+        return GlobalTracerHolder::get()->createCustomError($customErrorData);
     }
 
     /**

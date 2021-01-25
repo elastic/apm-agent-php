@@ -34,7 +34,7 @@ trait InterceptedCallTrackerTrait
         ?float $duration = null
     ): void {
         if ($hasExitedByException && is_object($returnValueOrThrown) && ($returnValueOrThrown instanceof Throwable)) {
-            $span->createError($returnValueOrThrown);
+            $span->createErrorFromThrowable($returnValueOrThrown);
         }
         // endSpanEx() is a public API so by default it will appear on the stacktrace
         // because it assumes that it was called by the application and

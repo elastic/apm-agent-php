@@ -153,12 +153,25 @@ interface ExecutionSegmentInterface
      * Creates an error based on the given Throwable instance with this execution segment as the parent.
      *
      * @param Throwable $throwable
+     *
      * @return string|null ID of the reported error event or null if no event was reported
      *                      (for example, because recording is disabled)
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
      */
-    public function createError(Throwable $throwable): ?string;
+    public function createErrorFromThrowable(Throwable $throwable): ?string;
+
+    /**
+     * Creates an error based on the given Throwable instance with this execution segment as the parent.
+     *
+     * @param CustomErrorData $customErrorData
+     *
+     * @return string|null ID of the reported error event or null if no event was reported
+     *                      (for example, because recording is disabled)
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+     */
+    public function createCustomError(CustomErrorData $customErrorData): ?string;
 
     /**
      * Returns true if this execution segment is a no-op (for example when recording is disabled).

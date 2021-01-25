@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\TransactionInterface;
@@ -106,9 +107,20 @@ interface TracerInterface
      *
      * @return string|null
      *
-     * @see ElasticApm::createError
+     * @see ElasticApm::createErrorFromThrowable
      */
-    public function createError(Throwable $throwable): ?string;
+    public function createErrorFromThrowable(Throwable $throwable): ?string;
+
+    /**
+     * Reports error event based on the given
+     *
+     * @param CustomErrorData $customErrorData
+     *
+     * @return string|null
+     *
+     * @see ElasticApm::createCustomError
+     */
+    public function createCustomError(CustomErrorData $customErrorData): ?string;
 
     /**
      * Returns true if this Tracer is a no-op (for example because Elastic APM is disabled)

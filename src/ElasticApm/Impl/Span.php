@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
@@ -201,10 +202,10 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function createError(Throwable $throwable): ?string
+    public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
     {
         $spanForError = $this->shouldBeSentToApmServer() ? $this : null;
-        return $this->tracer->doCreateError($throwable, $this->containingTransaction, $spanForError);
+        return $this->tracer->doCreateError($errorExceptionData, $this->containingTransaction, $spanForError);
     }
 
     /** @inheritDoc */

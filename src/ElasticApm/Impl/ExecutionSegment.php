@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -78,15 +79,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         return ['tracer', 'logger'];
     }
 
-    /**
-     * @return bool
-     */
     abstract public function isSampled(): bool;
 
     public function getTracer(): Tracer
     {
         return $this->tracer;
     }
+
     /**
      * Begins a new span with this execution segment as the new span's parent,
      * runs the provided callback as the new span and automatically ends the new span.
@@ -129,13 +128,32 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         try {
             return $callback($newSpan);
         } catch (Throwable $throwable) {
-            $newSpan->createError($throwable);
+            $newSpan->createErrorFromThrowable($throwable);
             /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwable;
         } finally {
             // Since endSpanEx was not called directly it should not be kept in the stack trace
             $newSpan->endSpanEx(/* numberOfStackFramesToSkip: */ $numberOfStackFramesToSkip + 1);
         }
+    }
+
+    /**
+     * @param ErrorExceptionData|null $errorExceptionData
+     *
+     * @return string|null
+     */
+    abstract public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string;
+
+    /** @inheritDoc */
+    public function createErrorFromThrowable(Throwable $throwable): ?string
+    {
+        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this->tracer, $throwable));
+    }
+
+    /** @inheritDoc */
+    public function createCustomError(CustomErrorData $customErrorData): ?string
+    {
+        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this->tracer, $customErrorData));
     }
 
     public function beforeMutating(): bool
