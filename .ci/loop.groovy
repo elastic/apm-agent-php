@@ -28,7 +28,7 @@ pipeline {
     cron('@midnight')
   }
   parameters {
-    string(name: 'LOOPS', defaultValue: '200', description: 'How many test loops?')
+    string(name: 'LOOPS', defaultValue: '60', description: 'How many test loops?')
   }
   stages {
     stage('Filter build') {
