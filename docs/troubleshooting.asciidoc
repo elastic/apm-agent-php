@@ -12,3 +12,22 @@ Other users can post in the https://discuss.elastic.co/c/apm[APM discuss forum].
 IMPORTANT: *Please upload your complete debug logs* to a service like https://gist.github.com[GitHub Gist]
 so that we can analyze the problem.
 Logs should include everything from when the application starts up until the first request executes.
+
+[float]
+[[disable-agent]]
+=== Disable the Agent
+
+In the unlikely event the agent causes disruptions to a production application,
+you can disable the agent while you troubleshoot.
+
+Disable the agent by setting <<config-enabled,`enabled`>> to `false`.
+You'll need to restart your application for the changes to apply.
+
+// ****This is the boilerplate disable text. Until dynamic config is supported, it's commented out.****
+// If you have access to <<dynamic-configuration,dynamic configuration>>,
+// you can disable the recording of events by setting <<config-recording,`recording`>> to `false`.
+// When changed at runtime from a supported source, there's no need to restart your application.
+
+// If that doesn't work, or you don't have access to dynamic configuration, you can disable the agent by setting
+// <<config-enabled,`enabled`>> to `false`.
+// You'll need to restart your application for the changes to apply.
