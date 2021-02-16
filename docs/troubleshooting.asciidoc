@@ -1,0 +1,14 @@
+[[troubleshooting]]
+== Troubleshooting
+
+Is something not working as expected?
+Don't worry if you can't figure out what the problem is; we’re here to help!
+As a first step, ensure your app is compatible with the agent's <<supported-technologies,supported technologies>>.
+
+If you're an existing Elastic customer with a support contract, please create a ticket in the
+https://support.elastic.co/customers/s/login/[Elastic Support portal].
+Other users can post in the https://discuss.elastic.co/c/apm[APM discuss forum].
+
+IMPORTANT: *Please upload your complete debug logs* to a service like https://gist.github.com[GitHub Gist]
+so that we can analyze the problem.
+Logs should include everything from when the application starts up until the first request executes.
