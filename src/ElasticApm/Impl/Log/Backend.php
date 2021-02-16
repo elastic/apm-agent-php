@@ -44,7 +44,6 @@ final class Backend
     {
         $result = [];
 
-        /** @var LoggerData $currentLoggerData */
         for (
             $currentLoggerData = $loggerData;
             !is_null($currentLoggerData);
