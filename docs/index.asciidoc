@@ -24,7 +24,7 @@ include::./public-api.asciidoc[]
 
 // include::./performance-tuning.asciidoc[]
 
-// include::./troubleshooting.asciidoc[]
+include::./troubleshooting.asciidoc[]
 
 // include::./upgrading.asciidoc[]
 
