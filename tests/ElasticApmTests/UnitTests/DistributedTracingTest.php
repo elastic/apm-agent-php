@@ -38,6 +38,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         // On the sending side: get and serialize DistributedTracingData
         $senderDistData = ElasticApm::getCurrentTransaction()->getDistributedTracingData();
         $serializedDistData = json_encode($senderDistData);
+        self::assertIsString($serializedDistData);
 
         // Pass DistributedTracingData to the recievinging side
 
