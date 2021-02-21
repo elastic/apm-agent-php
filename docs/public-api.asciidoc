@@ -70,10 +70,11 @@ For example:
 [source,php]
 ----
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\TransactionInterface;
 
 ElasticApm::captureCurrentTransaction(
     'transaction_name',
-    'transaction_type'
+    'transaction_type',
     function (TransactionInterface $transaction) {
         // do your thing...
     }
@@ -167,7 +168,7 @@ For example:
 ----
 $parentSpan->captureCurrentSpan(
     'span_name',
-    'span_type'
+    'span_type',
     function (SpanInterface $childSpan) {
         // do your thing...
     },
@@ -219,7 +220,7 @@ For example:
 ----
 $transaction->captureChildSpan(
     'span_name',
-    'span_type'
+    'span_type',
     function (SpanInterface $span) {
         // do your thing...
     },
@@ -540,7 +541,7 @@ For example:
 ----
 $parentSpan->captureChildSpan(
     'span_name',
-    'span_type'
+    'span_type',
     function (SpanInterface $childSpan) {
         // do your thing...
     },
