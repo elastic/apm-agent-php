@@ -131,13 +131,23 @@ final class Tracer implements TracerInterface, LoggableInterface
         string $name,
         string $type,
         ?float $timestamp,
-        ?DistributedTracingData $distributedTracingData
+        ?string $serializedDistTracingData
     ): ?Transaction {
         if (!$this->isRecording) {
             return null;
         }
 
+        $distributedTracingData = $serializedDistTracingData !== null
+            ? $this->unserializeDistributedTracingDataFromString($serializedDistTracingData)
+            : null;
+
         return new Transaction($this, $name, $type, $timestamp, $distributedTracingData);
+    }
+
+    public function unserializeDistributedTracingDataFromString(
+        string $serializedDistTracingData
+    ): ?DistributedTracingData {
+        return $this->httpDistributedTracing->parseTraceParentHeader($serializedDistTracingData);
     }
 
     /** @inheritDoc */
@@ -145,7 +155,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
         if (!is_null($this->currentTransaction)) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
@@ -156,7 +166,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             );
         }
 
-        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $distributedTracingData);
+        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
         if (is_null($this->currentTransaction)) {
             return NoopTransaction::singletonInstance();
         }
@@ -170,9 +180,9 @@ final class Tracer implements TracerInterface, LoggableInterface
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
+        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
@@ -198,9 +208,9 @@ final class Tracer implements TracerInterface, LoggableInterface
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $distributedTracingData);
+        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
 
         if (is_null($newTransaction)) {
             return NoopTransaction::singletonInstance();
@@ -215,9 +225,9 @@ final class Tracer implements TracerInterface, LoggableInterface
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginTransaction($name, $type, $timestamp, $distributedTracingData);
+        $newTransaction = $this->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
@@ -329,16 +339,19 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->httpDistributedTracing;
     }
 
+    /** @inheritDoc */
     public function pauseRecording(): void
     {
         $this->isRecording = false;
     }
 
+    /** @inheritDoc */
     public function resumeRecording(): void
     {
         $this->isRecording = true;
     }
 
+    /** @inheritDoc */
     public function isRecording(): bool
     {
         return $this->isRecording;
@@ -354,10 +367,23 @@ final class Tracer implements TracerInterface, LoggableInterface
         $this->eventSink->consume($this->currentMetadata, $spansData, $errorsData, $transactionData);
     }
 
+    /** @inheritDoc */
     public function setAgentEphemeralId(?string $ephemeralId): void
     {
         assert(isset($this->currentMetadata->service->agent));
         $this->currentMetadata->service->agent->ephemeralId = $this->limitNullableKeywordString($ephemeralId);
+    }
+
+    /** @inheritDoc */
+    public function getSerializedCurrentDistributedTracingData(): string
+    {
+        $distTracingData = $this->currentTransaction !== null
+            ? $this->currentTransaction->getDistributedTracingData()
+            : null;
+
+        return $distTracingData !== null
+            ? $distTracingData->serializeToString()
+            : NoopDistributedTracingData::serializedToString();
     }
 
     public function toLog(LogStreamInterface $stream): void

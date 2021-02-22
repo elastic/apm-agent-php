@@ -397,8 +397,6 @@ zend_ast* transformAst( zend_ast* ast, int nestingDepth )
     {
         zend_ast_list* list = zend_ast_get_list( ast );
         uint32_t i;
-        // TODO: Sergey Kleyman: process list itself somehow?
-        // from original code (https://github.com/morrisonlevi/ddastrace/blob/master/process.c#L173)
         for ( i = 0 ; i < list->children ; i ++ )
         {
             if ( list->child[ i ] )

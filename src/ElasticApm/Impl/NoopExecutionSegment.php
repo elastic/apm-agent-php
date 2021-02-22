@@ -33,9 +33,6 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     /** @var string */
     public const TYPE = 'noop';
 
-    /** @var DistributedTracingData */
-    private static $noopDistributedTracingData;
-
     /** @inheritDoc */
     public function getTimestamp(): float
     {

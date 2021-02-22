@@ -133,7 +133,7 @@ final class HttpDistributedTracing
         return $result;
     }
 
-    public function buildTraceParentHeader(DistributedTracingData $data): string
+    public static function buildTraceParentHeader(DistributedTracingData $data): string
     {
         return self::SUPPORTED_FORMAT_VERSION
            . '-' . $data->traceId

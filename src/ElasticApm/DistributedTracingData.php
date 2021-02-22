@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm;
 
+use Elastic\Apm\Impl\HttpDistributedTracing;
+
 final class DistributedTracingData
 {
     /** @var string */
@@ -14,4 +16,9 @@ final class DistributedTracingData
 
     /** @var bool */
     public $isSampled;
+
+    public function serializeToString(): string
+    {
+        return HttpDistributedTracing::buildTraceParentHeader($this);
+    }
 }
