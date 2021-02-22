@@ -16,10 +16,10 @@ interface TracerInterface
     /**
      * Begins a new transaction and sets the new transaction as the current transaction for this tracer.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return TransactionInterface New transaction
      */
@@ -27,31 +27,28 @@ interface TracerInterface
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface;
 
     /**
      * Begins a new transaction, sets as the current transaction for this tracer,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param Closure                     $callback  Callback to execute as the new transaction
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
-     *
-     * @template        T
-     * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
-     * @phpstan-return  T
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param Closure     $callback  Callback to execute as the new transaction
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return mixed The return value of $callback
+     * @template        T
      */
     public function captureCurrentTransaction(
         string $name,
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     );
 
     /**
@@ -62,10 +59,10 @@ interface TracerInterface
     /**
      * Begins a new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return TransactionInterface New transaction
      */
@@ -73,31 +70,28 @@ interface TracerInterface
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface;
 
     /**
      * Begins a new transaction, runs the provided callback as the new transaction
      * and automatically ends the new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param Closure                     $callback  Callback to execute as the new transaction
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
-     *
-     * @template        T
-     * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
-     * @phpstan-return  T
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param Closure     $callback  Callback to execute as the new transaction
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return mixed The return value of $callback
+     * @template        T
      */
     public function captureTransaction(
         string $name,
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     );
 
     /**
@@ -148,4 +142,9 @@ interface TracerInterface
      * @see ServiceAgentData::ephemeralId
      */
     public function setAgentEphemeralId(?string $ephemeralId): void;
+
+    /**
+     * Returns distributed tracing data for the current span/transaction
+     */
+    public function getSerializedCurrentDistributedTracingData(): string;
 }

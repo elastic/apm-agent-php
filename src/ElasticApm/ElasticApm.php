@@ -22,10 +22,10 @@ final class ElasticApm
     /**
      * Begins a new transaction and sets it as the current transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return TransactionInterface New transaction
      *
@@ -38,27 +38,24 @@ final class ElasticApm
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        return GlobalTracerHolder::get()->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
+        return GlobalTracerHolder::get()->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
     }
 
     /**
      * Begins a new transaction, sets as the current transaction,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param Closure                     $callback  Callback to execute as the new transaction
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param Closure     $callback  Callback to execute as the new transaction
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return mixed The return value of $callback
      *
      * @template        T
-     * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
-     * @phpstan-return  T
-     *
      * @see             TransactionInterface::setName() For the description.
      * @see             TransactionInterface::setType() For the description.
      * @see             TransactionInterface::getTimestamp() For the description.
@@ -68,14 +65,14 @@ final class ElasticApm
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
         return GlobalTracerHolder::get()->captureCurrentTransaction(
             $name,
             $type,
             $callback,
             $timestamp,
-            $distributedTracingData
+            $serializedDistTracingData
         );
     }
 
@@ -92,43 +89,39 @@ final class ElasticApm
     /**
      * Begins a new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return TransactionInterface New transaction
      *
      * @see TransactionInterface::setName() For the description.
      * @see TransactionInterface::setType() For the description.
      * @see TransactionInterface::getTimestamp() For the description.
-     *
      */
     public static function beginTransaction(
         string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        return GlobalTracerHolder::get()->beginTransaction($name, $type, $timestamp, $distributedTracingData);
+        return GlobalTracerHolder::get()->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
     }
 
     /**
      * Begins a new transaction,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
-     * @param string                      $name      New transaction's name
-     * @param string                      $type      New transaction's type
-     * @param Closure                     $callback  Callback to execute as the new transaction
-     * @param float|null                  $timestamp Start time of the new transaction
-     * @param DistributedTracingData|null $distributedTracingData
+     * @param string      $name      New transaction's name
+     * @param string      $type      New transaction's type
+     * @param Closure     $callback  Callback to execute as the new transaction
+     * @param float|null  $timestamp Start time of the new transaction
+     * @param string|null $serializedDistTracingData
      *
      * @return mixed The return value of $callback
      *
      * @template        T
-     * @phpstan-param   Closure(TransactionInterface $newTransaction): T $callback
-     * @phpstan-return  T
-     *
      * @see             TransactionInterface::setName() For the description.
      * @see             TransactionInterface::setType() For the description.
      * @see             TransactionInterface::getTimestamp() For the description.
@@ -138,14 +131,14 @@ final class ElasticApm
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
         return GlobalTracerHolder::get()->captureTransaction(
             $name,
             $type,
             $callback,
             $timestamp,
-            $distributedTracingData
+            $serializedDistTracingData
         );
     }
 
@@ -195,5 +188,13 @@ final class ElasticApm
     public static function resumeRecording(): void
     {
         GlobalTracerHolder::get()->resumeRecording();
+    }
+
+    /**
+     * Returns distributed tracing data for the current span/transaction
+     */
+    public static function getSerializedCurrentDistributedTracingData(): string
+    {
+        return GlobalTracerHolder::get()->getSerializedCurrentDistributedTracingData();
     }
 }

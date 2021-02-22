@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -149,7 +148,7 @@ final class TransactionForExtensionRequest
         return $requestInitStartTime;
     }
 
-    private function discoverIncomingDistributedTracingData(): ?DistributedTracingData
+    private function discoverIncomingDistributedTracingData(): ?string
     {
         $headerName = HttpDistributedTracing::TRACE_PARENT_HEADER_NAME;
         $traceParentHeaderKey = 'HTTP_' . strtoupper($headerName);
@@ -166,7 +165,7 @@ final class TransactionForExtensionRequest
             ['traceParentHeaderValue' => $traceParentHeaderValue]
         );
 
-        return $this->tracer->httpDistributedTracing()->parseTraceParentHeader($traceParentHeaderValue);
+        return $traceParentHeaderValue;
     }
 
     private function discoverHttpResult(): ?string

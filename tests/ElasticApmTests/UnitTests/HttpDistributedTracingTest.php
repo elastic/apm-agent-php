@@ -101,8 +101,7 @@ class HttpDistributedTracingTest extends TestCaseBase
      */
     public function testBuildHeader(DistributedTracingData $data, string $expectedHeaderValue): void
     {
-        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
-        $builtHeaderValue = $httpDistributedTracing->buildTraceParentHeader($data);
+        $builtHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
         self::assertEquals($expectedHeaderValue, $builtHeaderValue);
     }
 }

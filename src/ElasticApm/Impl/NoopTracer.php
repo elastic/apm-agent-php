@@ -6,7 +6,6 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
@@ -25,7 +24,7 @@ final class NoopTracer implements TracerInterface
         ?string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
         return NoopTransaction::singletonInstance();
     }
@@ -36,7 +35,7 @@ final class NoopTracer implements TracerInterface
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
         return $callback(NoopTransaction::singletonInstance());
     }
@@ -52,7 +51,7 @@ final class NoopTracer implements TracerInterface
         ?string $name,
         string $type,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ): TransactionInterface {
         return NoopTransaction::singletonInstance();
     }
@@ -63,7 +62,7 @@ final class NoopTracer implements TracerInterface
         string $type,
         Closure $callback,
         ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
+        ?string $serializedDistTracingData = null
     ) {
         return $callback(NoopTransaction::singletonInstance());
     }
@@ -99,5 +98,11 @@ final class NoopTracer implements TracerInterface
     /** @inheritDoc */
     public function setAgentEphemeralId(?string $ephemeralId): void
     {
+    }
+
+    /** @inheritDoc */
+    public function getSerializedCurrentDistributedTracingData(): string
+    {
+        return NoopDistributedTracingData::serializedToString();
     }
 }

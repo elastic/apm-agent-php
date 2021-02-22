@@ -471,7 +471,7 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function injectDistributedTracingHeader(DistributedTracingData $data): void
     {
-        $traceParentHeaderValue = $this->tracer->httpDistributedTracing()->buildTraceParentHeader($data);
+        $traceParentHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
         $headers = array_merge(
             $this->headersSetByApp,
             [HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ': ' . $traceParentHeaderValue]
