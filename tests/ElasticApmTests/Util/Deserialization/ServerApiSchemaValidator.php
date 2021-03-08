@@ -34,8 +34,28 @@ use JsonSchema\Validator;
 
 final class ServerApiSchemaValidator
 {
+    private const ERROR_SCHEMA_INDEX = 0;
+    private const METADATA_SCHEMA_INDEX = 1;
+    private const SPAN_SCHEMA_INDEX = 2;
+    private const TRANSACTION_SCHEMA_INDEX = 3;
+
     private const EARLIEST_SUPPORTED_SPEC_DIR = 'earliest_supported/docs/spec';
-    private const LATEST_USED_SPEC_DIR = 'latest_used/docs/spec';
+    private const EARLIEST_SUPPORTED_SCHEMAS_REL_PATHS
+        = [
+            self::ERROR_SCHEMA_INDEX       => 'errors/error.json',
+            self::METADATA_SCHEMA_INDEX    => 'metadata.json',
+            self::SPAN_SCHEMA_INDEX        => 'spans/span.json',
+            self::TRANSACTION_SCHEMA_INDEX => 'transactions/transaction.json',
+        ];
+
+    private const LATEST_USED_SPEC_DIR = 'latest_used';
+    private const LATEST_USED_SCHEMAS_REL_PATHS
+        = [
+            self::ERROR_SCHEMA_INDEX       => 'error.json',
+            self::METADATA_SCHEMA_INDEX    => 'metadata.json',
+            self::SPAN_SCHEMA_INDEX        => 'span.json',
+            self::TRANSACTION_SCHEMA_INDEX => 'transaction.json',
+        ];
 
     /** @var array<string, null> */
     private static $additionalPropertiesCandidateNodesKeys;
@@ -58,36 +78,37 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param string $relativePath
+     * @param int $schemaIndex
      *
      * @return Closure(bool): string
      */
-    public static function buildPathToSchemaSupplier(string $relativePath): Closure
+    public static function buildPathToSchemaSupplier(int $schemaIndex): Closure
     {
-        return function (bool $isEarliestVariant) use ($relativePath) {
-            return ($isEarliestVariant ? self::EARLIEST_SUPPORTED_SPEC_DIR : self::LATEST_USED_SPEC_DIR)
-                   . '/' . $relativePath;
+        return function (bool $isEarliestVariant) use ($schemaIndex) {
+            return $isEarliestVariant
+                ? self::EARLIEST_SUPPORTED_SPEC_DIR . '/' . self::EARLIEST_SUPPORTED_SCHEMAS_REL_PATHS[$schemaIndex]
+                : self::LATEST_USED_SPEC_DIR . '/' . self::LATEST_USED_SCHEMAS_REL_PATHS[$schemaIndex];
         };
     }
 
     public static function validateMetadata(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier('metadata.json'));
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::METADATA_SCHEMA_INDEX));
     }
 
     public static function validateTransactionData(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier('transactions/transaction.json'));
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::TRANSACTION_SCHEMA_INDEX));
     }
 
     public static function validateSpanData(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier('spans/span.json'));
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::SPAN_SCHEMA_INDEX));
     }
 
     public static function validateErrorData(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier('errors/error.json'));
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
     }
 
     private static function validateEventData(string $serializedData, Closure $pathToSchemaSupplier): void
@@ -294,6 +315,7 @@ final class ServerApiSchemaValidator
     private static function doMergeAllOfFromRef(array &$decodedSchemaNode): void
     {
         foreach ($decodedSchemaNode['allOf'] as $childNode) {
+            /** @var string $key */
             foreach ($childNode as $key => $value) {
                 if ($key === '$ref' || $key === '$id' || $key === 'title') {
                     continue;
@@ -414,8 +436,8 @@ final class ServerApiSchemaValidator
                 'Serialized data failed APM Server Intake API JSON schema validation',
                 [
                     'relativePathToSchema' => $relativePathToSchema,
-                    'errors' => $allErrorsToLoggable(),
-                    'serializedData' => $serializedData,
+                    'errors'               => $allErrorsToLoggable(),
+                    'serializedData'       => $serializedData,
                 ]
             )
         );
