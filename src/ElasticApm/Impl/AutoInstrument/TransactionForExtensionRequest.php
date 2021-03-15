@@ -111,73 +111,98 @@ final class TransactionForExtensionRequest
         return self::DEFAULT_NAME;
     }
 
-    private function discoverHttpName(): string
+    /**
+     * @param string $key
+     *
+     * @return mixed
+     */
+    private function getServerVarElement(string $key)
     {
-        if (!is_null($requestUri = ArrayUtil::getValueIfKeyExistsElse('REQUEST_URI', $_SERVER, null))) {
-            $name = '';
-            if (!is_null($requestMethod = ArrayUtil::getValueIfKeyExistsElse('REQUEST_METHOD', $_SERVER, null))) {
-                $name = $requestMethod . ' ';
-            }
-            $urlPath = UrlUtil::extractPathPart($requestUri);
-            if (is_null($urlPath)) {
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log(
-                    'Failed to extract path part from request URL - using default transaction name',
-                    ['requestUri' => $requestUri, 'DEFAULT_NAME' => self::DEFAULT_NAME]
-                );
-                return self::DEFAULT_NAME;
-            }
-            $name .= $urlPath;
-
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);
-
-            return $name;
+        /**
+         * Sometimes $_SERVER is defined. It seems related to auto_globals_jit
+         * but it's not easily reproducible even with auto_globals_jit=On
+         * See also https://bugs.php.net/bug.php?id=69081
+         *
+         * Disable PHPStan complaining:
+         *      Variable $_SERVER in isset() always exists and is not nullable.
+         *
+         * @phpstan-ignore-next-line
+         */
+        if (!isset($_SERVER)) {
+            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('$_SERVER variable is not set');
+            return null;
         }
 
-        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Could not discover HTTP data to derive transaction name - using default transaction name',
-            ['DEFAULT_NAME' => self::DEFAULT_NAME]
-        );
-        return self::DEFAULT_NAME;
+        return ArrayUtil::getValueIfKeyExistsElse($key, $_SERVER, null);
+    }
+
+    private function discoverHttpName(): string
+    {
+        if (($requestUri = self::getServerVarElement('REQUEST_URI')) === null) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Could not discover HTTP data to derive transaction name - using default transaction name',
+                ['DEFAULT_NAME' => self::DEFAULT_NAME]
+            );
+            return self::DEFAULT_NAME;
+        }
+
+        $urlPath = UrlUtil::extractPathPart($requestUri);
+        if ($urlPath === null) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Failed to extract path part from request URL - using default transaction name',
+                ['requestUri' => $requestUri, 'DEFAULT_NAME' => self::DEFAULT_NAME]
+            );
+            return self::DEFAULT_NAME;
+        }
+
+        $requestMethod = self::getServerVarElement('REQUEST_METHOD');
+        $name = ($requestMethod === null) ? $urlPath : ($requestMethod . ' ' . $urlPath);
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);
+
+        return $name;
     }
 
     private function discoverTimestamp(float $requestInitStartTime): float
     {
-        $serverRequestTimeAsString = ArrayUtil::getValueIfKeyExistsElse('REQUEST_TIME_FLOAT', $_SERVER, null);
-        if (!is_null($serverRequestTimeAsString)) {
-            $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
-            $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * 1000000;
-
+        $serverRequestTimeAsString = self::getServerVarElement('REQUEST_TIME_FLOAT');
+        if ($serverRequestTimeAsString === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Using $_SERVER[\'REQUEST_TIME_FLOAT\'] for transaction serverRequestTimeInMicroseconds',
-                ['serverRequestTimeInMicroseconds' => $serverRequestTimeInMicroseconds]
+                'Using requestInitStartTime for transaction serverRequestTimeInMicroseconds',
+                ['requestInitStartTime' => $requestInitStartTime]
             );
-
-            return $serverRequestTimeInMicroseconds;
+            return $requestInitStartTime;
         }
+
+        $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
+        $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * 1000000;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Using requestInitStartTime for transaction serverRequestTimeInMicroseconds',
-            ['requestInitStartTime' => $requestInitStartTime]
+            'Using $_SERVER[\'REQUEST_TIME_FLOAT\'] for transaction serverRequestTimeInMicroseconds',
+            ['serverRequestTimeInMicroseconds' => $serverRequestTimeInMicroseconds]
         );
-        return $requestInitStartTime;
+
+        return $serverRequestTimeInMicroseconds;
     }
 
     private function discoverIncomingDistributedTracingData(): ?string
     {
         $headerName = HttpDistributedTracing::TRACE_PARENT_HEADER_NAME;
         $traceParentHeaderKey = 'HTTP_' . strtoupper($headerName);
-        if (!array_key_exists($traceParentHeaderKey, $_SERVER)) {
+
+        $traceParentHeaderValue = self::getServerVarElement($traceParentHeaderKey);
+        if ($traceParentHeaderValue === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Incoming ' . $headerName . ' HTTP request header not found');
             return null;
         }
 
-        $traceParentHeaderValue = $_SERVER[$traceParentHeaderKey];
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Incoming ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header found',
