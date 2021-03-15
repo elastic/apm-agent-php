@@ -42,18 +42,29 @@ class SpanContextData extends ExecutionSegmentContextData
     public $http = null;
 
     /**
-     * @return bool
+     * @var SpanContextDestinationData|null
+     *
+     * An object containing contextual data about the destination for spans
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
      */
+    public $destination = null;
+
+    /** @inheritDoc */
     public function isEmpty(): bool
     {
-        return parent::isEmpty() && (is_null($this->http) || $this->http->isEmpty());
+        return parent::isEmpty()
+               && SerializationUtil::isNullOrEmpty($this->http)
+               && SerializationUtil::isNullOrEmpty($this->destination);
     }
 
-    public function jsonSerialize()
+    /** @inheritDoc */
+    public function jsonSerialize(): array
     {
         $result = parent::jsonSerialize();
 
-        SerializationUtil::addNameValueIfNotNull('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNullOrEmpty('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNullOrEmpty('destination', $this->destination, /* ref */ $result);
 
         return $result;
     }

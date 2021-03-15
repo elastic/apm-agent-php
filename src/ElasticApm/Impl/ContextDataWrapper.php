@@ -31,14 +31,25 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @template        T of ExecutionSegment
  */
 abstract class ContextDataWrapper implements LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var ExecutionSegment */
-    private $owner;
+    /**
+     * @var ExecutionSegment
+     * @phpstan-var T
+     */
+    protected $owner;
 
+    /**
+     * @param ExecutionSegment $owner
+     *
+     * @phpstan-param   T      $owner
+     *
+     */
     protected function __construct(ExecutionSegment $owner)
     {
         $this->owner = $owner;

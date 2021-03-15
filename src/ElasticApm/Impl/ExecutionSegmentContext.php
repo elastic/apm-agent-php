@@ -32,6 +32,10 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @template        T of ExecutionSegment
+ *
+ * @extends         ContextDataWrapper<T>
  */
 abstract class ExecutionSegmentContext extends ContextDataWrapper implements ExecutionSegmentContextInterface
 {

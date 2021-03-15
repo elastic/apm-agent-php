@@ -23,23 +23,22 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\TransactionContextInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextDestinationInterface;
+use Elastic\Apm\SpanContextDestinationServiceInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends         ExecutionSegmentContext<Transaction>
  */
-final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
+final class NoopSpanContextDestination implements SpanContextDestinationInterface, LoggableInterface
 {
-    /** @var TransactionContextData */
-    private $data;
+    use NoopObjectTrait;
 
-    public function __construct(Transaction $owner, TransactionContextData $data)
+    /** @inheritDoc */
+    public function setService(string $name, string $resource, string $type): void
     {
-        parent::__construct($owner, $data);
-        $this->data = $data;
     }
 }

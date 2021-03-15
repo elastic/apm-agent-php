@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\SpanContextDestinationInterface;
 use Elastic\Apm\SpanContextHttpInterface;
 use Elastic\Apm\SpanContextInterface;
 
@@ -31,17 +31,19 @@ use Elastic\Apm\SpanContextInterface;
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends         ExecutionSegmentContext<Span>
  */
 final class SpanContext extends ExecutionSegmentContext implements SpanContextInterface
 {
-    /** @var Span */
-    private $owner;
-
     /** @var SpanContextData */
     private $data;
 
     /** @var SpanContextHttp|null */
     private $http = null;
+
+    /** @var SpanContextDestination|null */
+    private $destination = null;
 
     public function __construct(Span $owner, SpanContextData $data)
     {
@@ -50,9 +52,10 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
         $this->data = $data;
     }
 
+    /** @inheritDoc */
     public function http(): SpanContextHttpInterface
     {
-        if (is_null($this->http)) {
+        if ($this->http === null) {
             $this->data->http = new SpanContextHttpData();
             $this->http = new SpanContextHttp($this->owner, $this->data->http);
         }
@@ -60,11 +63,22 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
         return $this->http;
     }
 
+    /** @inheritDoc */
+    public function destination(): SpanContextDestinationInterface
+    {
+        if ($this->destination === null) {
+            $this->data->destination = new SpanContextDestinationData();
+            $this->destination = new SpanContextDestination($this->owner, $this->data->destination);
+        }
+
+        return $this->destination;
+    }
+
     /**
      * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['http']);
+        return array_merge(parent::propertiesExcludedFromLog(), ['http', 'destination']);
     }
 }

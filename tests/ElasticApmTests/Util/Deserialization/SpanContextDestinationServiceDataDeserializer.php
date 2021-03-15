@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\SpanContextData;
+use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use ElasticApmTests\Util\ValidationUtil;
 
 /**
@@ -31,14 +31,13 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class SpanContextDataDeserializer extends ExecutionSegmentContextDataDeserializer
+final class SpanContextDestinationServiceDataDeserializer extends DataDeserializer
 {
-    /** @var SpanContextData */
+    /** @var SpanContextDestinationServiceData */
     private $result;
 
-    private function __construct(SpanContextData $result)
+    private function __construct(SpanContextDestinationServiceData $result)
     {
-        parent::__construct($result);
         $this->result = $result;
     }
 
@@ -46,13 +45,13 @@ final class SpanContextDataDeserializer extends ExecutionSegmentContextDataDeser
      *
      * @param array<string, mixed> $deserializedRawData
      *
-     * @return SpanContextData
+     * @return SpanContextDestinationServiceData
      */
-    public static function deserialize(array $deserializedRawData): SpanContextData
+    public static function deserialize(array $deserializedRawData): SpanContextDestinationServiceData
     {
-        $result = new SpanContextData();
+        $result = new SpanContextDestinationServiceData();
         (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidSpanContextData($result);
+        ValidationUtil::assertValidSpanContextDestinationServiceData($result);
         return $result;
     }
 
@@ -64,17 +63,17 @@ final class SpanContextDataDeserializer extends ExecutionSegmentContextDataDeser
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        if (parent::deserializeKeyValue($key, $value)) {
-            return true;
-        }
-
         switch ($key) {
-            case 'http':
-                $this->result->http = SpanContextHttpDataDeserializer::deserialize($value);
+            case 'name':
+                $this->result->name = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
-            case 'destination':
-                $this->result->destination = SpanContextDestinationDataDeserializer::deserialize($value);
+            case 'resource':
+                $this->result->resource = ValidationUtil::assertValidKeywordString($value);
+                return true;
+
+            case 'type':
+                $this->result->type = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
             default:

@@ -26,24 +26,51 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
+ * Destination service context
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
+ *
  * @internal
  */
-class ExecutionSegmentContextData implements ContextDataInterface, LoggableInterface
+class SpanContextDestinationServiceData implements ContextDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
-    /** @var array<string, string|bool|int|float|null> */
-    public $labels = [];
+    /**
+     * @var string
+     *
+     * "Identifier for the destination service (e.g. 'http://elastic.co', 'elasticsearch', 'rabbitmq')
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L113
+     */
+    public $name;
 
-    /** @inheritDoc */
+    /**
+     * @var string
+     *
+     * Identifier for the destination service resource being operated on
+     * e.g. 'http://elastic.co:80', 'elasticsearch', 'rabbitmq/queue_name'
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L118
+     */
+    public $resource;
+
+    /**
+     * @var string
+     *
+     * Type of the destination service (e.g. 'db', 'elasticsearch'). Should typically be the same as span.type.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L123
+     */
+    public $type;
+
     public function isEmpty(): bool
     {
-        return empty($this->labels);
+        return false;
     }
 
     /** @inheritDoc */
@@ -51,10 +78,9 @@ class ExecutionSegmentContextData implements ContextDataInterface, LoggableInter
     {
         $result = [];
 
-        // APM Server Intake API expects 'tags' key for labels
-        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
-        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
-        SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
+        SerializationUtil::addNameValue('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValue('resource', $this->resource, /* ref */ $result);
+        SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
 
         return $result;
     }

@@ -23,53 +23,52 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\SpanContextDestinationInterface;
+use Elastic\Apm\SpanContextDestinationServiceInterface;
 use Elastic\Apm\SpanContextHttpInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
+ * An object containing contextual data about the destination for spans
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
+ *
  * @internal
  *
  * @extends         ContextDataWrapper<Span>
  */
-final class SpanContextHttp extends ContextDataWrapper implements SpanContextHttpInterface
+final class SpanContextDestination extends ContextDataWrapper implements SpanContextDestinationInterface
 {
-    /** @var SpanContextHttpData */
+    /** @var SpanContextDestinationData */
     private $data;
 
-    public function __construct(Span $owner, SpanContextHttpData $data)
+    public function __construct(Span $owner, SpanContextDestinationData $data)
     {
         parent::__construct($owner);
         $this->data = $data;
     }
 
-    /** @inheritDoc */
-    public function setUrl(?string $url): void
+    public function setService(string $name, string $resource, string $type): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        $this->data->url = $url;
+        if ($this->data->service === null) {
+            $this->data->service = new SpanContextDestinationServiceData();
+        }
+
+        $this->data->service->name = Tracer::limitKeywordString($name);
+        $this->data->service->resource = Tracer::limitKeywordString($resource);
+        $this->data->service->type = Tracer::limitKeywordString($type);
     }
 
-    /** @inheritDoc */
-    public function setStatusCode(?int $statusCode): void
+    /**
+     * @return string[]
+     */
+    protected static function propertiesExcludedFromLog(): array
     {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->data->statusCode = $statusCode;
-    }
-
-    /** @inheritDoc */
-    public function setMethod(?string $method): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->data->method = Tracer::limitNullableKeywordString($method);
+        return array_merge(parent::propertiesExcludedFromLog(), ['service']);
     }
 }

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\BackendComm;
 
+use Elastic\Apm\Impl\ContextDataInterface;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -89,9 +90,34 @@ final class SerializationUtil
      */
     public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
     {
-        if (is_null($value)) {
+        if ($value === null) {
             return;
         }
+
+        self::addNameValue($name, $value, /* ref */ $nameToValue);
+    }
+
+    public static function isNullOrEmpty(?ContextDataInterface $value): bool
+    {
+        return ($value === null) || $value->isEmpty();
+    }
+
+    /**
+     * @param string                    $name
+     * @param ContextDataInterface|null $value
+     * @param array<string, mixed>      $nameToValue
+     *
+     * @return void
+     */
+    public static function addNameValueIfNotNullOrEmpty(
+        string $name,
+        ?ContextDataInterface $value,
+        array &$nameToValue
+    ): void {
+        if (self::isNullOrEmpty($value)) {
+            return;
+        }
+        /** @phpstan-var ContextDataInterface $value */
 
         self::addNameValue($name, $value, /* ref */ $nameToValue);
     }
