@@ -21,25 +21,23 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
-
-use Elastic\Apm\TransactionContextInterface;
+namespace Elastic\Apm;
 
 /**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ * An object containing contextual data about the destination for spans
  *
- * @internal
- *
- * @extends         ExecutionSegmentContext<Transaction>
+ * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
  */
-final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
+interface SpanContextDestinationInterface
 {
-    /** @var TransactionContextData */
-    private $data;
-
-    public function __construct(Transaction $owner, TransactionContextData $data)
-    {
-        parent::__construct($owner, $data);
-        $this->data = $data;
-    }
+    /**
+     * Sets destination service context
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L106
+     *
+     * @param string $name
+     * @param string $resource
+     * @param string $type
+     */
+    public function setService(string $name, string $resource, string $type): void;
 }

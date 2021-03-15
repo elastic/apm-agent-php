@@ -238,4 +238,46 @@ class PublicApiTest extends TracerUnitTestCaseBase
     {
         $this->assertTrue(strlen(ElasticApm::VERSION) != 0);
     }
+
+    public function testSpanDestinationService(): void
+    {
+        foreach ([true, false] as $shouldSet) {
+            $this->mockEventSink->clear();
+
+            // Act
+            $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+            $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+
+            if ($shouldSet) {
+                $span->context()->destination()->setService(
+                    'test_span_destination_service_name',
+                    'test_span_destination_service_resource',
+                    'test_span_destination_service_type'
+                );
+            } else {
+                // Access context.destination without setting anything to verify that it's sent only when not empty
+                $span->context()->destination();
+            }
+
+            $span->end();
+            $tx->end();
+
+            // Assert
+            $spanData = $this->mockEventSink->singleSpan();
+
+            if ($shouldSet) {
+                self::assertNotNull($spanData->context);
+                self::assertNotNull($spanData->context->destination);
+                self::assertNotNull($spanData->context->destination->service);
+                self::assertSame('test_span_destination_service_name', $spanData->context->destination->service->name);
+                self::assertSame(
+                    'test_span_destination_service_resource',
+                    $spanData->context->destination->service->resource
+                );
+                self::assertSame('test_span_destination_service_type', $spanData->context->destination->service->type);
+            } else {
+                self::assertNull($spanData->context);
+            }
+        }
+    }
 }

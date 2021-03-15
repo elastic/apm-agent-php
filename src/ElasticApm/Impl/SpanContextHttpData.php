@@ -26,7 +26,6 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * An object containing contextual data of the related http request
@@ -37,7 +36,7 @@ use JsonSerializable;
  *
  * @internal
  */
-class SpanContextHttpData implements JsonSerializable, LoggableInterface
+class SpanContextHttpData implements ContextDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -70,15 +69,13 @@ class SpanContextHttpData implements JsonSerializable, LoggableInterface
      */
     public $method = null;
 
-    /**
-     * @return bool
-     */
     public function isEmpty(): bool
     {
-        return is_null($this->url) && is_null($this->statusCode) && is_null($this->method);
+        return ($this->url === null) && ($this->statusCode === null) && ($this->method === null);
     }
 
-    public function jsonSerialize()
+    /** @inheritDoc */
+    public function jsonSerialize(): array
     {
         $result = [];
 

@@ -55,4 +55,16 @@ final class UrlUtil
         return TextUtil::isPrefixOf('http://', $url, /* isCaseSensitive */ false)
                || TextUtil::isPrefixOf('https://', $url, /* isCaseSensitive */ false);
     }
+
+    public static function defaultPortForScheme(string $scheme): ?int
+    {
+        if (strcasecmp($scheme, 'http') === 0) {
+            return 80;
+        }
+        if (strcasecmp($scheme, 'https') === 0) {
+            return 443;
+        }
+
+        return null;
+    }
 }

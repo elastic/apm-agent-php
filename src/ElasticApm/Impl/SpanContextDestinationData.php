@@ -23,23 +23,44 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\TransactionContextInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
- * @internal
+ * An object containing contextual data about the destination for spans
  *
- * @extends         ExecutionSegmentContext<Transaction>
+ * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
+ *
+ * @internal
  */
-final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
+class SpanContextDestinationData implements ContextDataInterface, LoggableInterface
 {
-    /** @var TransactionContextData */
-    private $data;
+    use LoggableTrait;
 
-    public function __construct(Transaction $owner, TransactionContextData $data)
+    /**
+     * @var SpanContextDestinationServiceData|null
+     *
+     * Destination service context
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
+     */
+    public $service = null;
+
+    public function isEmpty(): bool
     {
-        parent::__construct($owner, $data);
-        $this->data = $data;
+        return SerializationUtil::isNullOrEmpty($this->service);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize(): array
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNullOrEmpty('service', $this->service, /* ref */ $result);
+
+        return $result;
     }
 }

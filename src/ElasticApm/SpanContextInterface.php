@@ -31,4 +31,11 @@ interface SpanContextInterface extends ExecutionSegmentContextInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L69
      */
     public function http(): SpanContextHttpInterface;
+
+    /**
+     * Returns an object containing contextual data about the destination for spans
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
+     */
+    public function destination(): SpanContextDestinationInterface;
 }

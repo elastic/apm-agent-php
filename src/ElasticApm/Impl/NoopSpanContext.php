@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextDestinationInterface;
 use Elastic\Apm\SpanContextHttpInterface;
 use Elastic\Apm\SpanContextInterface;
 
@@ -40,5 +41,10 @@ final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanC
     public function http(): SpanContextHttpInterface
     {
         return NoopSpanContextHttp::singletonInstance();
+    }
+
+    public function destination(): SpanContextDestinationInterface
+    {
+        return NoopSpanContextDestination::singletonInstance();
     }
 }

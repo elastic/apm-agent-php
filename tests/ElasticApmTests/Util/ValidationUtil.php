@@ -37,6 +37,8 @@ use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
 use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SpanContextData;
+use Elastic\Apm\Impl\SpanContextDestinationData;
+use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
@@ -365,12 +367,30 @@ final class ValidationUtil
         ValidationUtil::assertValidNullableKeywordString($obj->method);
     }
 
+    public static function assertValidSpanContextDestinationServiceData(SpanContextDestinationServiceData $obj): void
+    {
+        ValidationUtil::assertValidKeywordString($obj->name);
+        ValidationUtil::assertValidKeywordString($obj->resource);
+        ValidationUtil::assertValidKeywordString($obj->type);
+    }
+
+    public static function assertValidSpanContextDestinationData(SpanContextDestinationData $obj): void
+    {
+        if ($obj->service !== null) {
+            ValidationUtil::assertValidSpanContextDestinationServiceData($obj->service);
+        }
+    }
+
     public static function assertValidSpanContextData(SpanContextData $obj): void
     {
         self::assertValidExecutionSegmentContextData($obj);
 
-        if (!is_null($obj->http)) {
+        if ($obj->http !== null) {
             self::assertValidSpanContextHttpData($obj->http);
+        }
+
+        if ($obj->destination !== null) {
+            self::assertValidSpanContextDestinationData($obj->destination);
         }
     }
 

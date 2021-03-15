@@ -35,6 +35,7 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\EnabledAssertProxy;
@@ -88,8 +89,8 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var mixed[]|null */
     private $savedHeadersBeforeInjection = null;
 
-    /** @var SpanInterface|null */
-    private $span = null;
+    /** @var SpanInterface */
+    private $span;
 
     public function __construct(Tracer $tracer)
     {
@@ -331,8 +332,8 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param mixed   $optionId
-     * @param Closure $getOptionValue
+     * @param mixed                    $optionId
+     * @param Closure                  $getOptionValue
      *
      * @phpstan-param Closure(): mixed $getOptionValue
      */
@@ -432,18 +433,134 @@ final class CurlHandleTracker implements LoggableInterface
             $isHttp ? Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP : null
         );
 
-        if (!is_null($this->httpMethod)) {
-            $this->span->context()->http()->setMethod($this->httpMethod);
-        }
-        if (!is_null($this->url)) {
-            $this->span->context()->http()->setUrl($this->url);
-        }
+        $this->setContextPreHook();
 
         if ($isHttp) {
             $distributedTracingData = $this->span->getDistributedTracingData();
             if (!is_null($distributedTracingData)) {
                 $this->injectDistributedTracingHeader($distributedTracingData);
             }
+        }
+    }
+
+    private static function appendOrSetString(?string &$accumStr, ?string $substrToAppend): void
+    {
+        if ($substrToAppend === null) {
+            return;
+        }
+
+        if ($accumStr === null) {
+            $accumStr = $substrToAppend;
+        } else {
+            $accumStr .= $substrToAppend;
+        }
+    }
+
+    private function buildContextDestinationServiceName(
+        ?string $scheme,
+        ?string $host,
+        ?int $port,
+        ?int $defaultPortForScheme
+    ): ?string {
+        /** @var string|null */
+        $result = null;
+
+        if ($scheme !== null) {
+            $result = $scheme . '//';
+        }
+
+        self::appendOrSetString(/* ref */ $result, $host);
+
+        if ($port !== null && $port !== $defaultPortForScheme) {
+            self::appendOrSetString(/* ref */ $result, ':' . $port);
+        }
+
+        return $result;
+    }
+
+    private function buildContextDestinationServiceResource(
+        ?string $host,
+        ?int $port,
+        ?int $defaultPortForScheme
+    ): ?string {
+        /** @var string|null */
+        $result = null;
+
+        self::appendOrSetString(/* ref */ $result, $host);
+
+        /** @var string|null */
+        $portSuffix = null;
+        if ($port === null) {
+            if ($defaultPortForScheme !== null) {
+                $portSuffix = ':' . $defaultPortForScheme;
+            }
+        } else {
+            $portSuffix = ':' . $port;
+        }
+        self::appendOrSetString(/* ref */ $result, $portSuffix);
+
+        return $result;
+    }
+
+    private function setContextDestinationService(): void
+    {
+        if ($this->url === null) {
+            return;
+        }
+
+        $parsedUrl = parse_url($this->url);
+        if (!is_array($parsedUrl)) {
+            return;
+        }
+
+        $scheme = ArrayUtil::getValueIfKeyExistsElse('scheme', $parsedUrl, null);
+        if ($scheme !== null && !is_string($scheme)) {
+            $scheme = null;
+        }
+        $host = ArrayUtil::getValueIfKeyExistsElse('host', $parsedUrl, null);
+        if ($host !== null && !is_string($host)) {
+            $host = null;
+        }
+        $port = ArrayUtil::getValueIfKeyExistsElse('port', $parsedUrl, null);
+        if ($port !== null && !is_int($port)) {
+            $port = null;
+        }
+        $defaultPortForScheme = ($scheme === null) ? null : UrlUtil::defaultPortForScheme($scheme);
+
+        $name = $this->buildContextDestinationServiceName($scheme, $host, $port, $defaultPortForScheme);
+        $resource = $this->buildContextDestinationServiceResource($host, $port, $defaultPortForScheme);
+
+        if ($name !== null && $resource !== null) {
+            $this->span->context()->destination()->setService($name, $resource, Constants::SPAN_TYPE_EXTERNAL);
+        }
+    }
+
+    private function setContextDestination(): void
+    {
+        $this->setContextDestinationService();
+    }
+
+    private function setContextPreHook(): void
+    {
+        if ($this->httpMethod !== null) {
+            $this->span->context()->http()->setMethod($this->httpMethod);
+        }
+
+        if ($this->url !== null) {
+            $this->span->context()->http()->setUrl($this->url);
+        }
+
+        $this->setContextDestination();
+    }
+
+    private function setContextPostHook(): void
+    {
+        $statusCode = curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE);
+        if (is_int($statusCode)) {
+            $this->span->context()->http()->setStatusCode($statusCode);
+        } else {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Failed to get response status code');
         }
     }
 
@@ -468,14 +585,7 @@ final class CurlHandleTracker implements LoggableInterface
             }
         }
 
-        assert(!is_null($this->span));
-        $statusCode = curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE);
-        if (is_int($statusCode)) {
-            $this->span->context()->http()->setStatusCode($statusCode);
-        } else {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Failed to get response status code');
-        }
+        $this->setContextPostHook();
 
         self::endSpan(
             $numberOfStackFramesToSkip + 1,
