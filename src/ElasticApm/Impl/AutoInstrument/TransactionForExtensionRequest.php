@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\TransactionInterface;
 
@@ -134,7 +133,11 @@ final class TransactionForExtensionRequest
             return null;
         }
 
-        return ArrayUtil::getValueIfKeyExistsElse($key, $_SERVER, null);
+        if (!isset($_SERVER[$key])) {
+            return null;
+        }
+
+        return $_SERVER[$key];
     }
 
     private function discoverHttpName(): string
