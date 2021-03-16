@@ -19,7 +19,7 @@ pipeline {
     durabilityHint('PERFORMANCE_OPTIMIZED')
     rateLimitBuilds(throttle: [count: 60, durationName: 'hour', userBoost: true])
     quietPeriod(10)
-    timeout(time: 5, unit: 'HOURS')
+    timeout(time: 6, unit: 'HOURS')
   }
   triggers {
     issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?loop\\W+tests(?:\\W+please)?.*')
