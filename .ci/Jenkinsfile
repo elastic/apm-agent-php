@@ -459,8 +459,7 @@ pipeline {
       // Reporting disables in the `internal-ci` since credentials are not in place
       // OTOH it avoids duplicated notifications
       whenFalse(isInternalCI()){
-        notifyBuildResult(prComment: true, analyzeFlakey: true,
-                          flakyReportIdx: 'reporter-apm-agent-php-apm-agent-php-master')
+        notifyBuildResult(prComment: true, analyzeFlakey: true, jobName: getFlakyJobName(withBranch: 'master'))
       }
     }
   }
