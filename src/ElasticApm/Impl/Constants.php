@@ -45,7 +45,7 @@ final class Constants
     public const SPAN_TYPE_EXTERNAL = 'external';
 
     public const SPAN_TYPE_DB_SUBTYPE_SQLITE = 'sqlite';
-    // public const SPAN_TYPE_DB_SUBTYPE_MYSQL = 'mysql';
+    public const SPAN_TYPE_DB_SUBTYPE_MYSQL = 'mysql';
     // public const SPAN_TYPE_DB_SUBTYPE_ORACLE = 'oracle';
     // public const SPAN_TYPE_DB_SUBTYPE_POSTGRESQL = 'postgresql';
     // public const SPAN_TYPE_DB_SUBTYPE_MSSQL = 'mssql';

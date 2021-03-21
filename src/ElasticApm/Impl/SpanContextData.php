@@ -33,13 +33,13 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 class SpanContextData extends ExecutionSegmentContextData
 {
     /**
-     * @var SpanContextHttpData|null
+     * @var SpanContextDbData|null
      *
-     * An object containing contextual data of the related http request
+     * An object containing contextual data for database spans
      *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L69
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L47
      */
-    public $http = null;
+    public $db = null;
 
     /**
      * @var SpanContextDestinationData|null
@@ -50,12 +50,22 @@ class SpanContextData extends ExecutionSegmentContextData
      */
     public $destination = null;
 
+    /**
+     * @var SpanContextHttpData|null
+     *
+     * An object containing contextual data of the related http request
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L69
+     */
+    public $http = null;
+
     /** @inheritDoc */
     public function isEmpty(): bool
     {
         return parent::isEmpty()
-               && SerializationUtil::isNullOrEmpty($this->http)
-               && SerializationUtil::isNullOrEmpty($this->destination);
+               && SerializationUtil::isNullOrEmpty($this->db)
+               && SerializationUtil::isNullOrEmpty($this->destination)
+               && SerializationUtil::isNullOrEmpty($this->http);
     }
 
     /** @inheritDoc */
@@ -63,8 +73,9 @@ class SpanContextData extends ExecutionSegmentContextData
     {
         $result = parent::jsonSerialize();
 
-        SerializationUtil::addNameValueIfNotNullOrEmpty('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNullOrEmpty('db', $this->db, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNullOrEmpty('destination', $this->destination, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNullOrEmpty('http', $this->http, /* ref */ $result);
 
         return $result;
     }

@@ -9,7 +9,7 @@
  * not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     db://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -25,34 +25,19 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+final class NoopSpanContextDb implements SpanContextDbInterface
 {
     use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    public function setStatement(?string $statement): void
     {
-        return NoopSpanContextDb::singletonInstance();
-    }
-
-    /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
-    {
-        return NoopSpanContextDestination::singletonInstance();
-    }
-
-    /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
-    {
-        return NoopSpanContextHttp::singletonInstance();
+        // TODO: Implement setStatement() method.
     }
 }
