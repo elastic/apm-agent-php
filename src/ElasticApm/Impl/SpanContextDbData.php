@@ -23,36 +23,44 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
+ * An object containing contextual data for database spans
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L47
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+class SpanContextDbData implements ContextDataInterface, LoggableInterface
 {
-    use NoopObjectTrait;
+    use LoggableTrait;
 
-    /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    /**
+     * @var string|null
+     *
+     * A database statement (e.g. query) for the given database type
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L55
+     */
+    public $statement = null;
+
+    public function isEmpty(): bool
     {
-        return NoopSpanContextDb::singletonInstance();
+        return ($this->statement === null);
     }
 
     /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
+    public function jsonSerialize(): array
     {
-        return NoopSpanContextDestination::singletonInstance();
-    }
+        $result = [];
 
-    /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
-    {
-        return NoopSpanContextHttp::singletonInstance();
+        SerializationUtil::addNameValueIfNotNull('statement', $this->statement, /* ref */ $result);
+
+        return $result;
     }
 }

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\SpanContextDbInterface;
 use Elastic\Apm\SpanContextDestinationInterface;
 use Elastic\Apm\SpanContextHttpInterface;
 use Elastic\Apm\SpanContextInterface;
@@ -39,11 +40,14 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
     /** @var SpanContextData */
     private $data;
 
-    /** @var SpanContextHttp|null */
-    private $http = null;
+    /** @var SpanContextDb|null */
+    private $db = null;
 
     /** @var SpanContextDestination|null */
     private $destination = null;
+
+    /** @var SpanContextHttp|null */
+    private $http = null;
 
     public function __construct(Span $owner, SpanContextData $data)
     {
@@ -53,14 +57,14 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
     }
 
     /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
+    public function db(): SpanContextDbInterface
     {
-        if ($this->http === null) {
-            $this->data->http = new SpanContextHttpData();
-            $this->http = new SpanContextHttp($this->owner, $this->data->http);
+        if ($this->db === null) {
+            $this->data->db = new SpanContextDbData();
+            $this->db = new SpanContextDb($this->owner, $this->data->db);
         }
 
-        return $this->http;
+        return $this->db;
     }
 
     /** @inheritDoc */
@@ -74,11 +78,22 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
         return $this->destination;
     }
 
+    /** @inheritDoc */
+    public function http(): SpanContextHttpInterface
+    {
+        if ($this->http === null) {
+            $this->data->http = new SpanContextHttpData();
+            $this->http = new SpanContextHttp($this->owner, $this->data->http);
+        }
+
+        return $this->http;
+    }
+
     /**
      * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['http', 'destination']);
+        return array_merge(parent::propertiesExcludedFromLog(), ['db', 'destination', 'http']);
     }
 }

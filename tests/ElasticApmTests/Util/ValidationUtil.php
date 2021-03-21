@@ -37,6 +37,7 @@ use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
 use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SpanContextData;
+use Elastic\Apm\Impl\SpanContextDbData;
 use Elastic\Apm\Impl\SpanContextDestinationData;
 use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
@@ -360,6 +361,11 @@ final class ValidationUtil
         return $value;
     }
 
+    public static function assertValidSpanContextDbData(SpanContextDbData $obj): void
+    {
+        ValidationUtil::assertValidNullableNonKeywordString($obj->statement);
+    }
+
     public static function assertValidSpanContextHttpData(SpanContextHttpData $obj): void
     {
         ValidationUtil::assertValidNullableNonKeywordString($obj->url);
@@ -384,6 +390,10 @@ final class ValidationUtil
     public static function assertValidSpanContextData(SpanContextData $obj): void
     {
         self::assertValidExecutionSegmentContextData($obj);
+
+        if ($obj->db !== null) {
+            self::assertValidSpanContextDbData($obj->db);
+        }
 
         if ($obj->http !== null) {
             self::assertValidSpanContextHttpData($obj->http);

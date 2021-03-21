@@ -239,7 +239,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
         $this->assertTrue(strlen(ElasticApm::VERSION) != 0);
     }
 
-    public function testSpanDestinationService(): void
+    public function testSpanContextDestinationService(): void
     {
         foreach ([true, false] as $shouldSet) {
             $this->mockEventSink->clear();
@@ -275,6 +275,38 @@ class PublicApiTest extends TracerUnitTestCaseBase
                     $spanData->context->destination->service->resource
                 );
                 self::assertSame('test_span_destination_service_type', $spanData->context->destination->service->type);
+            } else {
+                self::assertNull($spanData->context);
+            }
+        }
+    }
+
+    public function testSpanContextDb(): void
+    {
+        foreach ([true, false] as $shouldSet) {
+            $this->mockEventSink->clear();
+
+            // Act
+            $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+            $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+
+            if ($shouldSet) {
+                $span->context()->db()->setStatement('test span ctx DB statement');
+            } else {
+                // Access context.db without setting anything to verify that it's sent only when not empty
+                $span->context()->db();
+            }
+
+            $span->end();
+            $tx->end();
+
+            // Assert
+            $spanData = $this->mockEventSink->singleSpan();
+
+            if ($shouldSet) {
+                self::assertNotNull($spanData->context);
+                self::assertNotNull($spanData->context->db);
+                self::assertSame('test span ctx DB statement', $spanData->context->db->statement);
             } else {
                 self::assertNull($spanData->context);
             }

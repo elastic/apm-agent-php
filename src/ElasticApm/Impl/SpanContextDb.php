@@ -23,36 +23,33 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends         ContextDataWrapper<Span>
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+final class SpanContextDb extends ContextDataWrapper implements SpanContextDbInterface
 {
-    use NoopObjectTrait;
+    /** @var SpanContextDbData */
+    private $data;
 
-    /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    public function __construct(Span $owner, SpanContextDbData $data)
     {
-        return NoopSpanContextDb::singletonInstance();
+        parent::__construct($owner);
+        $this->data = $data;
     }
 
     /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
+    public function setStatement(?string $statement): void
     {
-        return NoopSpanContextDestination::singletonInstance();
-    }
+        if ($this->beforeMutating()) {
+            return;
+        }
 
-    /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
-    {
-        return NoopSpanContextHttp::singletonInstance();
+        $this->data->statement = $statement;
     }
 }

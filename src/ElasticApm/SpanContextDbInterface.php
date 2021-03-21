@@ -21,32 +21,18 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace Elastic\Apm;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\SpanContextHttpInterface;
-
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class NoopSpanContextHttp implements SpanContextHttpInterface
+interface SpanContextDbInterface
 {
-    use NoopObjectTrait;
-
-    /** @inheritDoc */
-    public function setUrl(?string $url): void
-    {
-    }
-
-    /** @inheritDoc */
-    public function setStatusCode(?int $statusCode): void
-    {
-    }
-
-    /** @inheritDoc */
-    public function setMethod(?string $method): void
-    {
-    }
+    /**
+     * A database statement (e.g. query) for the given database type
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L55
+     *
+     * @param string|null $statement
+     *
+     * @return void
+     */
+    public function setStatement(?string $statement): void;
 }
