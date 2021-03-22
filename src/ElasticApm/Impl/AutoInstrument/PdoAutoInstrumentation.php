@@ -25,16 +25,12 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
-use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\SpanInterface;
 use PDOStatement;
 
 /**
@@ -44,7 +40,7 @@ use PDOStatement;
  */
 final class PdoAutoInstrumentation implements LoggableInterface
 {
-    use LoggableTrait;
+    use AutoInstrumentationTrait;
 
     /** @var Tracer */
     private $tracer;
@@ -70,273 +66,97 @@ final class PdoAutoInstrumentation implements LoggableInterface
             return;
         }
 
-        $this->pdoConstruct($ctx);
+        // $this->pdoConstruct($ctx);
         $this->pdoExec($ctx);
-        // $this->pdoQuery($ctx);
-        $this->pdoPrepare($ctx);
-        $this->pdoCommit($ctx);
+        $this->pdoQuery($ctx);
+        // $this->pdoPrepare($ctx);
+        // $this->pdoCommit($ctx);
         $this->pdoStatementExecute($ctx);
     }
 
-    public function pdoConstruct(RegistrationContextInterface $ctx): void
+    private function interceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
     {
         $ctx->interceptCallsToMethod(
             'PDO',
-            '__construct',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
+            $methodName,
+            /**
+             * @param object|null $interceptedCallThis Intercepted call $this
+             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             *
+             * @return callable
+             *
+             */
+            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
+                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+                    $statement ?? 'No name',
+                    Constants::SPAN_TYPE_DB
+                );
+                $span->context()->db()->setStatement($statement);
 
-                    /** @var SpanInterface */
-                    private $span;
-
-                    public function preHook(?object $interceptedCallThis, array $interceptedCallArgs): void
-                    {
-                        self::assertInterceptedCallThisIsNotNull($interceptedCallThis, $interceptedCallArgs);
-
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            'PDO->__construct('
-                            . (count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : '')
-                            . ')',
-                            Constants::SPAN_TYPE_DB
-                        );
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
+                return self::createPostHookFromEndSpan($span);
             }
         );
     }
 
-    public function pdoExec(RegistrationContextInterface $ctx): void
+    // private function pdoConstruct(RegistrationContextInterface $ctx): void
+    // {
+    //     $this->interceptCallToSpan($ctx, '__construct');
+    // }
+
+    private function pdoExec(RegistrationContextInterface $ctx): void
     {
-        $ctx->interceptCallsToMethod(
-            'PDO',
-            'exec',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
-
-                    /** @var SpanInterface */
-                    private $span;
-
-                    public function preHook($thisObj, array $interceptedCallArgs): void
-                    {
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO->exec',
-                            Constants::SPAN_TYPE_DB
-                        );
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
-            }
-        );
+        $this->interceptCallToSpan($ctx, 'exec');
     }
 
-    public function pdoQuery(RegistrationContextInterface $ctx): void
+    private function pdoQuery(RegistrationContextInterface $ctx): void
     {
-        $ctx->interceptCallsToMethod(
-            'PDO',
-            'query',
-            function (): InterceptedCallTrackerInterface {
-                return new class ($this->tracer) implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
-
-                    /** @var Logger */
-                    private $logger;
-
-                    /** @var SpanInterface */
-                    private $span;
-
-                    public function __construct(Tracer $tracer)
-                    {
-                        $this->logger = $tracer->loggerFactory()->loggerForClass(
-                            LogCategory::AUTO_INSTRUMENTATION,
-                            __NAMESPACE__,
-                            __CLASS__,
-                            __FILE__
-                        )->addContext('this', $this);
-                    }
-
-                    public function preHook($thisObj, array $interceptedCallArgs): void
-                    {
-                        // ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-                        // && $loggerProxy->log(
-                        //     'Entered',
-                        //     [
-                        //         'DbgUtil::getType($thisObj)'  => DbgUtil::getType($thisObj),
-                        //         'count($interceptedCallArgs)' => count($interceptedCallArgs),
-                        //     ]
-                        // );
-
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : 'PDO->query',
-                            Constants::SPAN_TYPE_DB
-                        );
-
-                        // ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-                        // && $loggerProxy->log('Exiting...');
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
-            }
-        );
+        $this->interceptCallToSpan($ctx, 'query');
     }
 
-    public function pdoCommit(RegistrationContextInterface $ctx): void
-    {
-        $ctx->interceptCallsToMethod(
-            'PDO',
-            'commit',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
+    // private function pdoCommit(RegistrationContextInterface $ctx): void
+    // {
+    //     $this->interceptCallToSpan($ctx, 'commit');
+    // }
 
-                    /** @var SpanInterface */
-                    private $span;
+    // private function pdoPrepare(RegistrationContextInterface $ctx): void
+    // {
+    //     $this->interceptCallToSpan($ctx, 'prepare');
+    // }
 
-                    public function preHook($thisObj, array $interceptedCallArgs): void
-                    {
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            'PDO->commit',
-                            Constants::SPAN_TYPE_DB
-                        );
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
-            }
-        );
-    }
-
-    public function pdoPrepare(RegistrationContextInterface $ctx): void
-    {
-        $ctx->interceptCallsToMethod(
-            'PDO',
-            'prepare',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
-
-                    /** @var SpanInterface */
-                    private $span;
-
-                    public function preHook($thisObj, array $interceptedCallArgs): void
-                    {
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            'PDO->prepare'
-                            . (count($interceptedCallArgs) > 0 ? (': ' . $interceptedCallArgs[0]) : ''),
-                            Constants::SPAN_TYPE_DB
-                        );
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
-            }
-        );
-    }
-
-    public function pdoStatementExecute(RegistrationContextInterface $ctx): void
+    private function pdoStatementExecute(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
             'PDOStatement',
             'execute',
-            function (): InterceptedCallTrackerInterface {
-                return new class implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
+            /**
+             * @param object|null $interceptedCallThis Intercepted call $this
+             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             *
+             * @return callable
+             *
+             */
+            function (
+                ?object $interceptedCallThis,
+                /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
+            ): ?callable {
+                $spanName
+                    = (
+                    !is_null($interceptedCallThis)
+                    && is_object($interceptedCallThis)
+                    && $interceptedCallThis instanceof PDOStatement
+                    && isset($interceptedCallThis->queryString)
+                    && is_string($interceptedCallThis->queryString)
+                )
+                    ? $interceptedCallThis->queryString
+                    : 'PDOStatement->execute';
 
-                    /** @var SpanInterface */
-                    private $span;
+                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+                    $spanName,
+                    Constants::SPAN_TYPE_DB
+                );
 
-                    public function preHook($thisObj, array $interceptedCallArgs): void
-                    {
-                        $spanName
-                            = (
-                            !is_null($thisObj)
-                            && is_object($thisObj)
-                            && $thisObj instanceof PDOStatement
-                            && isset($thisObj->queryString)
-                            && is_string($thisObj->queryString)
-                        )
-                            ? $thisObj->queryString
-                            : 'PDOStatement->execute';
-
-                        $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                            $spanName,
-                            Constants::SPAN_TYPE_DB
-                        );
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::endSpan(
-                            $numberOfStackFramesToSkip + 1,
-                            $this->span,
-                            $hasExitedByException,
-                            $returnValueOrThrown
-                        );
-                    }
-                };
+                return self::createPostHookFromEndSpan($span);
             }
         );
     }

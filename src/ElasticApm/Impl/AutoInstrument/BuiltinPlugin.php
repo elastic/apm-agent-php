@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\PluginInterface;
-use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Tracer;
 
 /**

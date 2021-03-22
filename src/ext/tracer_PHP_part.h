@@ -26,4 +26,6 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config );
 
-void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value );
+bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
+
+void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );

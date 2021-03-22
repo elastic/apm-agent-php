@@ -32,7 +32,6 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -60,8 +59,7 @@ use const CURLOPT_URL;
  */
 final class CurlHandleTracker implements LoggableInterface
 {
-    use InterceptedCallTrackerTrait;
-    use LoggableTrait;
+    use AutoInstrumentationTrait;
 
     private const GET_HTTP_METHOD = 'GET';
     private const HEAD_HTTP_METHOD = 'HEAD';
@@ -154,21 +152,22 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param string  $functionName
+     * @param string  $dbgFuncName
+     * @param int     $funcId
      * @param mixed[] $interceptedCallArgs
      */
-    public function preHook(string $functionName, array $interceptedCallArgs): void
+    public function preHook(string $dbgFuncName, int $funcId, array $interceptedCallArgs): void
     {
         ($assertProxy = Assert::ifEnabled())
-        && $this->assertCurlHandleInArgsMatches($assertProxy, $functionName, $interceptedCallArgs);
+        && $this->assertCurlHandleInArgsMatches($assertProxy, $dbgFuncName, $interceptedCallArgs);
 
-        switch ($functionName) {
-            case CurlAutoInstrumentation::CURL_SETOPT:
-            case CurlAutoInstrumentation::CURL_SETOPT_ARRAY:
+        switch ($funcId) {
+            case CurlAutoInstrumentation::CURL_SETOPT_ID:
+            case CurlAutoInstrumentation::CURL_SETOPT_ARRAY_ID:
                 // nothing to do until post-hook when we will know if the call succeeded
                 return;
 
-            case CurlAutoInstrumentation::CURL_EXEC:
+            case CurlAutoInstrumentation::CURL_EXEC_ID:
                 $this->curlExecPreHook();
                 return;
 
@@ -176,37 +175,39 @@ final class CurlHandleTracker implements LoggableInterface
                 throw new InternalFailureException(
                     ExceptionUtil::buildMessage(
                         'Unexpected function name',
-                        ['functionName' => $functionName, 'this' => $this]
+                        ['functionName' => $dbgFuncName, 'this' => $this]
                     )
                 );
         }
     }
 
     /**
-     * @param string  $functionName
+     * @param string  $dbgFuncName
+     * @param int     $funcId
      * @param int     $numberOfStackFramesToSkip
      * @param mixed[] $interceptedCallArgs
      * @param mixed   $returnValue
      */
     public function postHook(
-        string $functionName,
+        string $dbgFuncName,
+        int $funcId,
         int $numberOfStackFramesToSkip,
         array $interceptedCallArgs,
         $returnValue
     ): void {
         ($assertProxy = Assert::ifEnabled())
-        && $this->assertCurlHandleInArgsMatches($assertProxy, $functionName, $interceptedCallArgs);
+        && $this->assertCurlHandleInArgsMatches($assertProxy, $dbgFuncName, $interceptedCallArgs);
 
-        switch ($functionName) {
-            case CurlAutoInstrumentation::CURL_SETOPT:
+        switch ($funcId) {
+            case CurlAutoInstrumentation::CURL_SETOPT_ID:
                 $this->curlSetOptPostHook($interceptedCallArgs, $returnValue);
                 return;
 
-            case CurlAutoInstrumentation::CURL_SETOPT_ARRAY:
+            case CurlAutoInstrumentation::CURL_SETOPT_ARRAY_ID:
                 $this->curlSetOptArrayPostHook($interceptedCallArgs, $returnValue);
                 return;
 
-            case CurlAutoInstrumentation::CURL_EXEC:
+            case CurlAutoInstrumentation::CURL_EXEC_ID:
                 $this->curlExecPostHook($numberOfStackFramesToSkip + 1, $returnValue);
                 return;
 
@@ -214,7 +215,7 @@ final class CurlHandleTracker implements LoggableInterface
                 throw new InternalFailureException(
                     ExceptionUtil::buildMessage(
                         'Unexpected function name',
-                        ['functionName' => $functionName, 'this' => $this]
+                        ['funcId' => $funcId, 'this' => $this]
                     )
                 );
         }
@@ -222,18 +223,18 @@ final class CurlHandleTracker implements LoggableInterface
 
     /**
      * @param EnabledAssertProxy $assertProxy
-     * @param string             $dbgFunctionName
+     * @param string             $dbgFuncName
      * @param mixed[]            $interceptedCallArgs
      *
      * @return bool
      */
     private function assertCurlHandleInArgsMatches(
         EnabledAssertProxy $assertProxy,
-        string $dbgFunctionName,
+        string $dbgFuncName,
         array $interceptedCallArgs
     ): bool {
         $curlHandle
-            = CurlAutoInstrumentation::extractCurlHandleFromArgs($this->logger, $dbgFunctionName, $interceptedCallArgs);
+            = CurlAutoInstrumentation::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
 
         return
             $assertProxy->that(intval($curlHandle) === intval($this->curlHandle))

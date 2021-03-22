@@ -25,11 +25,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
-use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
@@ -41,17 +38,17 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  */
 final class CurlAutoInstrumentation implements LoggableInterface
 {
-    use LoggableTrait;
+    use AutoInstrumentationTrait;
 
     private const HANDLE_TRACKER_MAX_COUNT_HIGH_WATER_MARK = 2000;
     private const HANDLE_TRACKER_MAX_COUNT_LOW_WATER_MARK = 1000;
 
-    private const CURL_INIT = 'curl_init';
-    public const CURL_SETOPT = 'curl_setopt';
-    public const CURL_SETOPT_ARRAY = 'curl_setopt_array';
-    public const CURL_COPY_HANDLE = 'curl_copy_handle';
-    public const CURL_EXEC = 'curl_exec';
-    private const CURL_CLOSE = 'curl_close';
+    private const CURL_INIT_ID = 1;
+    public const CURL_SETOPT_ID = 2;
+    public const CURL_SETOPT_ARRAY_ID = 3;
+    public const CURL_COPY_HANDLE_ID = 4;
+    public const CURL_EXEC_ID = 5;
+    private const CURL_CLOSE_ID = 6;
 
     /** @var Tracer */
     private $tracer;
@@ -80,73 +77,116 @@ final class CurlAutoInstrumentation implements LoggableInterface
             return;
         }
 
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_INIT);
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_SETOPT);
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_SETOPT_ARRAY);
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_COPY_HANDLE);
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_EXEC);
-        $this->registerDelegatingToHandleTracker($ctx, self::CURL_CLOSE);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_init', self::CURL_INIT_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_setopt', self::CURL_SETOPT_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_setopt_array', self::CURL_SETOPT_ARRAY_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_copy_handle', self::CURL_COPY_HANDLE_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_exec', self::CURL_EXEC_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_close', self::CURL_CLOSE_ID);
     }
 
-    public function registerDelegatingToHandleTracker(RegistrationContextInterface $ctx, string $functionName): void
-    {
+    public function registerDelegatingToHandleTracker(
+        RegistrationContextInterface $ctx,
+        string $funcName,
+        int $funcId
+    ): void {
         $ctx->interceptCallsToFunction(
-            $functionName,
-            function () use ($functionName): InterceptedCallTrackerInterface {
-                return new class ($this, $functionName) implements InterceptedCallTrackerInterface {
-                    use InterceptedCallTrackerTrait;
-
-                    /** @var CurlAutoInstrumentation */
-                    private $owner;
-
-                    /** @var string */
-                    private $functionName;
-
-                    /** @var CurlHandleTracker|null */
-                    private $curlHandleTracker;
-
-                    /** @var mixed[] */
-                    private $interceptedCallArgs;
-
-                    public function __construct(CurlAutoInstrumentation $owner, string $functionName)
-                    {
-                        $this->owner = $owner;
-                        $this->functionName = $functionName;
-                    }
-
-                    public function preHook(?object $interceptedCallThis, $interceptedCallArgs): void
-                    {
-                        self::assertInterceptedCallThisIsNull($interceptedCallThis, $interceptedCallArgs);
-
-                        $this->curlHandleTracker = $this->owner->preHook($this->functionName, $interceptedCallArgs);
-                        if (!is_null($this->curlHandleTracker)) {
-                            $this->interceptedCallArgs = $interceptedCallArgs;
-                        }
-                    }
-
-                    public function postHook(
-                        int $numberOfStackFramesToSkip,
-                        bool $hasExitedByException,
-                        $returnValueOrThrown
-                    ): void {
-                        self::assertInterceptedCallNotExitedByException(
-                            $hasExitedByException,
-                            ['functionName' => $this->functionName]
-                        );
-
-                        if (!is_null($this->curlHandleTracker)) {
-                            $this->owner->postHook(
-                                $this->curlHandleTracker,
-                                $this->functionName,
-                                $numberOfStackFramesToSkip + 1,
-                                $this->interceptedCallArgs,
-                                $returnValueOrThrown
-                            );
-                        }
-                    }
-                };
+            $funcName,
+            /**
+             * @param mixed[] $interceptedCallArgs Intercepted call arguments
+             *
+             * @return callable
+             *
+             * @phpstan-return callable(int, bool, mixed): mixed
+             */
+            function (array $interceptedCallArgs) use ($funcName, $funcId): ?callable {
+                return $this->preHook($funcName, $funcId, $interceptedCallArgs);
             }
         );
+    }
+
+    /**
+     * @param string  $funcName
+     * @param int     $funcId
+     * @param mixed[] $interceptedCallArgs Intercepted call arguments
+     *
+     * @return callable
+     * @phpstan-return callable(int, bool, mixed): mixed
+     */
+    private function preHook(string $funcName, int $funcId, array $interceptedCallArgs): ?callable
+    {
+        $curlHandleTracker = $this->createHandleTracker($funcName, $funcId, $interceptedCallArgs);
+        if ($curlHandleTracker === null) {
+            return null;
+        }
+
+        /**
+         * @param int   $numberOfStackFramesToSkip
+         * @param bool  $hasExitedByException
+         * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         */
+        return function (
+            int $numberOfStackFramesToSkip,
+            bool $hasExitedByException,
+            $returnValueOrThrown
+        ) use (
+            $funcName,
+            $funcId,
+            $interceptedCallArgs,
+            $curlHandleTracker
+        ): void {
+            $this->postHook(
+                $funcName,
+                $funcId,
+                $interceptedCallArgs,
+                $curlHandleTracker,
+                $numberOfStackFramesToSkip + 1,
+                $hasExitedByException,
+                $returnValueOrThrown
+            );
+        };
+    }
+
+    /**
+     * @param string            $dbgFuncName
+     * @param int               $funcId
+     * @param mixed[]           $interceptedCallArgs
+     * @param CurlHandleTracker $curlHandleTracker
+     * @param int               $numberOfStackFramesToSkip
+     * @param bool              $hasExitedByException
+     * @param mixed             $returnValueOrThrown Return value of the intercepted call or thrown object
+     */
+    private function postHook(
+        string $dbgFuncName,
+        int $funcId,
+        array $interceptedCallArgs,
+        CurlHandleTracker $curlHandleTracker,
+        int $numberOfStackFramesToSkip,
+        bool $hasExitedByException,
+        $returnValueOrThrown
+    ): void {
+        self::assertInterceptedCallNotExitedByException(
+            $hasExitedByException,
+            ['functionName' => $dbgFuncName]
+        );
+
+        switch ($funcId) {
+            case self::CURL_INIT_ID:
+            case self::CURL_COPY_HANDLE_ID:
+                $this->setTrackerHandle($curlHandleTracker, $returnValueOrThrown);
+                return;
+
+            // no need to handle self::CURL_CLOSE because null is returned in preHook
+
+            default:
+                $curlHandleTracker->postHook(
+                    $dbgFuncName,
+                    $funcId,
+                    $numberOfStackFramesToSkip + 1,
+                    $interceptedCallArgs,
+                    $returnValueOrThrown
+                );
+        }
     }
 
     private function addToHandleIdToTracker(int $handleId, CurlHandleTracker $curlHandleTracker): void
@@ -173,14 +213,14 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     /**
      * @param Logger  $logger
-     * @param string  $dbgFunctionName
+     * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
      * @return resource|null
      */
     public static function extractCurlHandleFromArgs(
         Logger $logger,
-        string $dbgFunctionName,
+        string $dbgFuncName,
         array $interceptedCallArgs
     ) {
         if (count($interceptedCallArgs) !== 0 && is_resource($interceptedCallArgs[0])) {
@@ -188,7 +228,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
         }
 
         $ctxToLog = [
-            'functionName'                => $dbgFunctionName,
+            'functionName'                => $dbgFuncName,
             'count($interceptedCallArgs)' => count($interceptedCallArgs),
         ];
         if (count($interceptedCallArgs) !== 0) {
@@ -202,14 +242,14 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
 
     /**
-     * @param string  $dbgFunctionName
+     * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
      * @return int|null
      */
-    private function findHandleId(string $dbgFunctionName, array $interceptedCallArgs): ?int
+    private function findHandleId(string $dbgFuncName, array $interceptedCallArgs): ?int
     {
-        $curlHandle = self::extractCurlHandleFromArgs($this->logger, $dbgFunctionName, $interceptedCallArgs);
+        $curlHandle = self::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
         if (is_null($curlHandle)) {
             return null;
         }
@@ -226,75 +266,47 @@ final class CurlAutoInstrumentation implements LoggableInterface
     }
 
     /**
-     * @param string  $dbgFunctionName
+     * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
      * @return CurlHandleTracker|null
      */
-    private function findHandleTracker(string $dbgFunctionName, array $interceptedCallArgs): ?CurlHandleTracker
+    private function findHandleTracker(string $dbgFuncName, array $interceptedCallArgs): ?CurlHandleTracker
     {
-        $handleId = $this->findHandleId($dbgFunctionName, $interceptedCallArgs);
+        $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
 
         return is_null($handleId) ? null : $this->handleIdToTracker[$handleId];
     }
 
     /**
-     * @param string  $functionName
+     * @param string  $dbgFuncName
+     * @param int     $funcId
      * @param mixed[] $interceptedCallArgs
      *
      * @return CurlHandleTracker|null
      */
-    public function preHook(string $functionName, array $interceptedCallArgs): ?CurlHandleTracker
-    {
-        switch ($functionName) {
-            case self::CURL_INIT:
+    public function createHandleTracker(
+        string $dbgFuncName,
+        int $funcId,
+        array $interceptedCallArgs
+    ): ?CurlHandleTracker {
+        switch ($funcId) {
+            case self::CURL_INIT_ID:
                 return $this->curlInitPreHook($interceptedCallArgs);
 
-            case self::CURL_COPY_HANDLE:
-                return $this->curlCopyHandlePreHook($interceptedCallArgs);
+            case self::CURL_COPY_HANDLE_ID:
+                return $this->curlCopyHandlePreHook($dbgFuncName, $interceptedCallArgs);
 
-            case self::CURL_CLOSE:
-                $this->curlClosePreHook($interceptedCallArgs);
+            case self::CURL_CLOSE_ID:
+                $this->curlClosePreHook($dbgFuncName, $interceptedCallArgs);
                 return null;
 
             default:
-                $curlHandleTracker = $this->findHandleTracker($functionName, $interceptedCallArgs);
+                $curlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
                 if (!is_null($curlHandleTracker)) {
-                    $curlHandleTracker->preHook($functionName, $interceptedCallArgs);
+                    $curlHandleTracker->preHook($dbgFuncName, $funcId, $interceptedCallArgs);
                 }
                 return $curlHandleTracker;
-        }
-    }
-
-    /**
-     * @param CurlHandleTracker $curlHandleTracker
-     * @param string            $functionName
-     * @param int               $numberOfStackFramesToSkip
-     * @param mixed[]           $interceptedCallArgs
-     * @param mixed             $returnValueOrThrown
-     */
-    public function postHook(
-        CurlHandleTracker $curlHandleTracker,
-        string $functionName,
-        int $numberOfStackFramesToSkip,
-        array $interceptedCallArgs,
-        $returnValueOrThrown
-    ): void {
-        switch ($functionName) {
-            case self::CURL_INIT:
-            case self::CURL_COPY_HANDLE:
-                $this->setTrackerHandle($curlHandleTracker, $returnValueOrThrown);
-                return;
-
-            // no need to handle self::CURL_CLOSE because null is returned in preHook
-
-            default:
-                $curlHandleTracker->postHook(
-                    $functionName,
-                    $numberOfStackFramesToSkip + 1,
-                    $interceptedCallArgs,
-                    $returnValueOrThrown
-                );
         }
     }
 
@@ -323,13 +335,14 @@ final class CurlAutoInstrumentation implements LoggableInterface
     }
 
     /**
+     * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
      * @return CurlHandleTracker|null
      */
-    public function curlCopyHandlePreHook(array $interceptedCallArgs): ?CurlHandleTracker
+    public function curlCopyHandlePreHook(string $dbgFuncName, array $interceptedCallArgs): ?CurlHandleTracker
     {
-        $srcCurlHandleTracker = $this->findHandleTracker(self::CURL_COPY_HANDLE, $interceptedCallArgs);
+        $srcCurlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
         if (is_null($srcCurlHandleTracker)) {
             return null;
         }
@@ -338,11 +351,12 @@ final class CurlAutoInstrumentation implements LoggableInterface
     }
 
     /**
+     * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      */
-    public function curlClosePreHook(array $interceptedCallArgs): void
+    public function curlClosePreHook(string $dbgFuncName, array $interceptedCallArgs): void
     {
-        $handleId = $this->findHandleId(self::CURL_CLOSE, $interceptedCallArgs);
+        $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
         if (is_null($handleId)) {
             return;
         }

@@ -25,7 +25,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 
@@ -36,8 +35,11 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
  */
 final class Registration implements LoggableInterface
 {
-    /** @var callable */
-    public $factory;
+    /**
+     * @var callable
+     * @phpstan-var callable(object|null, mixed[]): ?callable
+     */
+    public $preHook;
 
     /** @var int */
     private $dbgPluginIndex;
@@ -52,22 +54,20 @@ final class Registration implements LoggableInterface
      * @param int      $dbgPluginIndex
      * @param string   $dbgPluginDesc
      * @param string   $dbgInterceptedCallDesc
-     * @param callable $interceptedCallTrackerFactory
+     * @param callable $preHook
      *
-     * @phpstan-param callable(): InterceptedCallTrackerInterface $interceptedCallTrackerFactory
-     *
-     * @see           InterceptedCallTrackerInterface
+     * @phpstan-param callable(object|null, mixed[]): ?callable $preHook
      */
     public function __construct(
         int $dbgPluginIndex,
         string $dbgPluginDesc,
         string $dbgInterceptedCallDesc,
-        callable $interceptedCallTrackerFactory
+        callable $preHook
     ) {
         $this->dbgPluginIndex = $dbgPluginIndex;
         $this->dbgPluginDesc = $dbgPluginDesc;
         $this->dbgInterceptedCallDesc = $dbgInterceptedCallDesc;
-        $this->factory = $interceptedCallTrackerFactory;
+        $this->preHook = $preHook;
     }
 
     public function toLog(LogStreamInterface $stream): void

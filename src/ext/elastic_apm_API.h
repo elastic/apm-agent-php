@@ -33,8 +33,6 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
 ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint32_t* interceptRegistrationId );
 
-void elasticApmCallInterceptedOriginal( zval* return_value );
-
 void resetCallInterceptionOnRequestShutdown();
 
 ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView serializedMetadata, StringView serializedEvents );
