@@ -292,21 +292,6 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_call_intercepted_original_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgsCount, IS_LONG, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, wrapperArgs, IS_ARRAY, /* allow_null: */ 0 )
-ZEND_END_ARG_INFO()
-/* {{{ elastic_apm_call_intercepted_original(): mixed
- */
-PHP_FUNCTION( elastic_apm_call_intercepted_original )
-{
-    zend_long wrapperArgsCount = 0;
-    zval* wrapperArgs = NULL;
-
-    elasticApmCallInterceptedOriginal( return_value );
-}
-/* }}} */
-
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 3 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serverTimeoutMilliseconds, IS_DOUBLE, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedMetadata, IS_STRING, /* allow_null: */ 0 )
@@ -416,7 +401,6 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_get_config_option_by_name, elastic_apm_get_config_option_by_name_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_method, elastic_apm_intercept_calls_to_internal_method_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
-    PHP_FE( elastic_apm_call_intercepted_original, elastic_apm_call_intercepted_original_arginfo )
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
     PHP_FE_END

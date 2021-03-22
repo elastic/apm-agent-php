@@ -21,26 +21,31 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\AutoInstrument;
+namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Throwable;
-
-interface InterceptedCallTrackerInterface
+interface RegistrationContextInterface
 {
     /**
-     * @param object|null $interceptedCallThis
-     * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+     * @param string   $className
+     * @param string   $methodName
+     * @param callable $preHook
      *
-     * @return void
+     * @phpstan-param callable(object|null, mixed[]): ?callable $preHook
      */
-    public function preHook(?object $interceptedCallThis, array $interceptedCallArgs): void;
+    public function interceptCallsToMethod(
+        string $className,
+        string $methodName,
+        callable $preHook
+    ): void;
 
     /**
-     * @param int             $numberOfStackFramesToSkip
-     * @param bool            $hasExitedByException
-     * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
+     * @param string   $functionName
+     * @param callable $preHook
      *
-     * @noinspection PhpMissingParamTypeInspection
+     * @phpstan-param callable(mixed[]): ?callable $preHook
      */
-    public function postHook(int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown): void;
+    public function interceptCallsToFunction(
+        string $functionName,
+        callable $preHook
+    ): void;
 }

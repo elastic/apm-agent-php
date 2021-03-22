@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\SpanInterface;
 use Throwable;
@@ -34,8 +35,10 @@ use Throwable;
  *
  * @internal
  */
-trait InterceptedCallTrackerTrait
+trait AutoInstrumentationTrait
 {
+    use LoggableTrait;
+
     /**
      * @param int             $numberOfStackFramesToSkip
      * @param SpanInterface   $span
@@ -62,6 +65,39 @@ trait InterceptedCallTrackerTrait
         // to appear on the stack trace.
         // That is the reason to +1 to the usual $numberOfStackFramesToSkip + 1
         $span->endSpanEx($numberOfStackFramesToSkip + 2, $duration);
+    }
+
+    /**
+     * @param SpanInterface $span
+     *
+     * @return callable
+     * @phpstan-return callable(int, bool, mixed): void
+     */
+    protected static function createPostHookFromEndSpan(SpanInterface $span): ?callable
+    {
+        if ($span->isNoop()) {
+            return null;
+        }
+
+        /**
+         * @param int   $numberOfStackFramesToSkip
+         * @param bool  $hasExitedByException
+         * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         */
+        return function (
+            int $numberOfStackFramesToSkip,
+            bool $hasExitedByException,
+            $returnValueOrThrown
+        ) use (
+            $span
+        ): void {
+            self::endSpan(
+                $numberOfStackFramesToSkip + 1,
+                $span,
+                $hasExitedByException,
+                $returnValueOrThrown
+            );
+        };
     }
 
     /**

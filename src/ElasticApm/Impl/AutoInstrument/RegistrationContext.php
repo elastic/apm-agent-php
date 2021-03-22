@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\RegistrationContextInterface;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -44,7 +42,7 @@ final class RegistrationContext implements RegistrationContextInterface
     public function interceptCallsToMethod(
         string $className,
         string $methodName,
-        callable $interceptedCallTrackerFactory
+        callable $preHook
     ): void {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -58,14 +56,14 @@ final class RegistrationContext implements RegistrationContextInterface
                 $this->dbgCurrentPluginIndex,
                 $this->dbgCurrentPluginDesc,
                 $className . '::' . $methodName /* <- dbgInterceptedCallDesc */,
-                $interceptedCallTrackerFactory
+                $preHook
             );
         }
     }
 
     public function interceptCallsToFunction(
         string $functionName,
-        callable $interceptedCallTrackerFactory
+        callable $preHook
     ): void {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -79,7 +77,12 @@ final class RegistrationContext implements RegistrationContextInterface
                 $this->dbgCurrentPluginIndex,
                 $this->dbgCurrentPluginDesc,
                 $functionName /* <- dbgInterceptedCallDesc */,
-                $interceptedCallTrackerFactory
+                function (
+                    /** @noinspection PhpUnusedParameterInspection */ ?object $interceptedCallThis,
+                    array $interceptedCallArgs
+                ) use ($preHook): ?callable {
+                    return $preHook($interceptedCallArgs);
+                }
             );
         }
     }

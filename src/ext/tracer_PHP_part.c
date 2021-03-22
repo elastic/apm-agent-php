@@ -28,14 +28,15 @@
 #define ELASTIC_APM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
 #define ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "bootstrap"
 #define ELASTIC_APM_PHP_PART_SHUTDOWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "shutdown"
-#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCall"
+#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPreHook"
+#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
-                                             , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
+                                              , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
 
     ResultCode resultCode;
     bool bootstrapTracerPhpPartRetVal;
@@ -57,7 +58,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
     ELASTIC_APM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
 
     ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel )
-    ZVAL_DOUBLE( &requestInitStartTimeZval, ((double)timePointToEpochMicroseconds( requestInitStartTime )) )
+    ZVAL_DOUBLE( &requestInitStartTimeZval, ( (double) timePointToEpochMicroseconds( requestInitStartTime ) ) )
     zval bootstrapTracerPhpPartArgs[] = { maxEnabledLevel, requestInitStartTimeZval };
     ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC )
@@ -119,11 +120,13 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     goto finally;
 }
 
-void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
+bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     ResultCode resultCode;
+    zval preHookRetVal;
+    bool shouldCallPostHook;
 
     zval interceptRegistrationIdAsZval;
     ZVAL_UNDEF( &interceptRegistrationIdAsZval );
@@ -134,12 +137,12 @@ void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execut
     };
     zval phpPartArgs[maxInterceptedCallArgsCount + 2];
 
-    // The first argument to PHP part's interceptedCall() is $interceptRegistrationId
+    // The first argument to PHP part's interceptedCallPreHook() is $interceptRegistrationId
     ZVAL_LONG( &interceptRegistrationIdAsZval, interceptRegistrationId )
     phpPartArgs[ 0 ] = interceptRegistrationIdAsZval;
 
-    // The second argument to PHP part's interceptedCall() is $thisObj
-    if (Z_TYPE(execute_data->This) == IS_UNDEF)
+    // The second argument to PHP part's interceptedCallPreHook() is $thisObj
+    if ( Z_TYPE( execute_data->This ) == IS_UNDEF )
     {
         ZVAL_NULL( &phpPartArgs[ 1 ] );
     }
@@ -152,12 +155,19 @@ void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execut
     getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC )
                     , logLevel_debug
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
-                    , /* out */ return_value ) );
-    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( return_value ) );
+                    , /* out */ &preHookRetVal ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+
+    if ( Z_TYPE( preHookRetVal ) != IS_FALSE && Z_TYPE( preHookRetVal ) != IS_TRUE )
+    {
+        ELASTIC_APM_LOG_ERROR( "Call to PHP part returned value that is not bool. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+        goto failure;
+    }
+    shouldCallPostHook = ( Z_TYPE( preHookRetVal ) == IS_TRUE );
 
     resultCode = resultSuccess;
 
@@ -165,8 +175,44 @@ void tracerPhpPartInterceptedCall( uint32_t interceptRegistrationId, zend_execut
     zval_dtor( &interceptRegistrationIdAsZval );
 
     ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
-                                                 , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-    ELASTIC_APM_UNUSED(resultCode);
+                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
+    return shouldCallPostHook;
+
+    failure:
+    goto finally;
+}
+
+void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
+{
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u"
+                                              , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
+
+    ResultCode resultCode;
+    zval phpPartArgs[ 2 ];
+
+    // The first argument to PHP part's interceptedCallPostHook() is $hasExitedByException (bool)
+    ZVAL_FALSE( &( phpPartArgs[ 0 ] ) );
+
+    // The second argument to PHP part's interceptedCallPreHook() is $returnValueOrThrown (mixed|Throwable)
+    phpPartArgs[ 1 ] = *interceptedCallRetValOrThrown;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+            callPhpFunctionRetVoid(
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
+                    , logLevel_debug
+                    // The only argument to PHP part's interceptedCallPostHook() is $returnValueOrThrown
+                    , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
+                    , phpPartArgs ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
+                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:

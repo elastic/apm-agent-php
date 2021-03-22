@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
+use Elastic\Apm\Impl\Util\TextUtil;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -62,5 +64,12 @@ final class BoolOptionParser extends EnumOptionParser
             false /* <- isCaseSensitive */,
             false /* <- isUnambiguousPrefixAllowed */
         );
+    }
+
+    /** @inheritDoc */
+    public function parse(string $rawValue)
+    {
+        $x = TextUtil::isEmptyString($rawValue);
+        return TextUtil::isEmptyString($rawValue) ? false : parent::parse($rawValue);
     }
 }

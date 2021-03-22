@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\BoolOptionParser;
 use Elastic\Apm\Impl\Config\DurationOptionMetadata;
 use Elastic\Apm\Impl\Config\DurationOptionParser;
 use Elastic\Apm\Impl\Config\DurationUnits;
@@ -57,6 +58,12 @@ class VariousOptionsParsingTest extends TestCaseBase
         OptionMetadata $optMeta
     ): OptionTestValuesGeneratorInterface {
         $optionParser = $optMeta->parser();
+        if ($optionParser instanceof BoolOptionParser) {
+            return new EnumOptionTestValuesGenerator(
+                $optionParser,
+                /* additionalValidValues: */ [new OptionTestValidValue('', false)]
+            );
+        }
         if ($optionParser instanceof DurationOptionParser) {
             return new DurationOptionTestValuesGenerator($optionParser);
         }
@@ -195,7 +202,15 @@ class VariousOptionsParsingTest extends TestCaseBase
                 function () use ($optParser, $invalidRawValue): void {
                     Parser::parseOptionRawValue($invalidRawValue, $optParser);
                 },
-                LoggableToString::convert(['optParser' => $optParser, 'invalidRawValue' => $invalidRawValue])
+                LoggableToString::convert(
+                    [
+                        'optParser'       => $optParser,
+                        'invalidRawValue' => $invalidRawValue,
+                        'strlen($invalidRawValue)' => strlen($invalidRawValue)
+                    ]
+                    +
+                    (strlen($invalidRawValue) === 0 ? [] : ['ord($invalidRawValue[0])' =>  ord($invalidRawValue[0])])
+                )
             );
         }
     }

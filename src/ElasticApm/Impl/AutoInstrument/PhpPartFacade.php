@@ -35,6 +35,10 @@ use Throwable;
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * Called by elastic_apm extension
+ *
+ * @noinspection PhpUnused
  */
 final class PhpPartFacade
 {
@@ -136,28 +140,44 @@ final class PhpPartFacade
      *
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
-     * @param mixed     ...$interceptedCallArgs
+     * @param mixed       ...$interceptedCallArgs
      *
-     * @return mixed
-     * @throws Throwable
+     * @return bool
      */
-    public static function interceptedCall(int $interceptRegistrationId, ?object $thisObj, ...$interceptedCallArgs)
-    {
-        if (is_null(self::singletonInstance()->interceptionManager)) {
-            /**
-             * elastic_apm_* functions are provided by the elastic_apm extension
-             *
-             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-             * @phpstan-ignore-next-line
-             */
-            return \elastic_apm_call_intercepted_original();
+    public static function interceptedCallPreHook(
+        int $interceptRegistrationId,
+        ?object $thisObj,
+        ...$interceptedCallArgs
+    ): bool {
+        $interceptionManager = self::singletonInstance()->interceptionManager;
+        if ($interceptionManager === null) {
+            return false;
         }
 
-        return self::singletonInstance()->interceptionManager->interceptedCall(
-            1 /* <- $numberOfStackFramesToSkip */,
+        return $interceptionManager->interceptedCallPreHook(
             $interceptRegistrationId,
             $thisObj,
             $interceptedCallArgs
+        );
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param bool  $hasExitedByException
+     * @param mixed $returnValueOrThrown
+     */
+    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    {
+        $interceptionManager = self::singletonInstance()->interceptionManager;
+        assert($interceptionManager !== null);
+
+        $interceptionManager->interceptedCallPostHook(
+            1 /* <- $numberOfStackFramesToSkip */,
+            $hasExitedByException,
+            $returnValueOrThrown
         );
     }
 

@@ -23,12 +23,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\AutoInstrument\InterceptedCallTrackerInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Throwable;
 
 /**
@@ -43,6 +41,21 @@ final class InterceptionManager
 
     /** @var Logger */
     private $logger;
+
+    /** @var int|null */
+    private $interceptedCallInProgressRegistrationId;
+
+    /** @var object|null */
+    private $interceptedCallInProgressThisObj;
+
+    /** @var mixed[]|null */
+    private $interceptedCallInProgressArgs;
+
+    /**
+     * @var null|callable
+     * @phpstan-var null|callable(int, bool, mixed): void
+     */
+    private $interceptedCallInProgressPreHookRetVal;
 
     public function __construct(Tracer $tracer)
     {
@@ -71,146 +84,99 @@ final class InterceptionManager
     }
 
     /**
-     * @param int         $numberOfStackFramesToSkip
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
      * @param mixed[]     $interceptedCallArgs
      *
-     * @return mixed
-     * @throws Throwable
+     * @return bool
      */
-    public function interceptedCall(
-        int $numberOfStackFramesToSkip,
+    public function interceptedCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         array $interceptedCallArgs
-    ) {
+    ): bool {
         $localLogger = $this->logger->inherit()->addContext('interceptRegistrationId', $interceptRegistrationId);
 
-        $callTracker = $this->interceptedCallPreHook(
-            $localLogger,
-            $interceptRegistrationId,
-            $thisObj,
-            $interceptedCallArgs
-        );
-
-        $hasExitedByException = false;
-        try {
-            /**
-             * elastic_apm_* functions are provided by the elastic_apm extension
-             *
-             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-             * @phpstan-ignore-next-line
-             */
-            $returnValueOrThrown = \elastic_apm_call_intercepted_original();
-        } catch (Throwable $throwable) {
-            $hasExitedByException = true;
-            $returnValueOrThrown = $throwable;
-        }
-
-        if (!is_null($callTracker)) {
-            $this->interceptedCallPostHook(
-                $numberOfStackFramesToSkip + 1,
-                $localLogger,
-                $callTracker,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
-        }
-
-        if ($hasExitedByException) {
-            throw $returnValueOrThrown;
-        }
-
-        return $returnValueOrThrown;
-    }
-
-    /**
-     * @param Logger      $localLogger
-     * @param int         $interceptRegistrationId
-     * @param object|null $thisObj
-     * @param mixed[]     $interceptedCallArgs
-     *
-     * @return InterceptedCallTrackerInterface|null
-     */
-    private function interceptedCallPreHook(
-        Logger $localLogger,
-        int $interceptRegistrationId,
-        ?object $thisObj,
-        array $interceptedCallArgs
-    ) {
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
 
         $registration
             = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
-        if (is_null($registration)) {
+        if ($registration === null) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('There is no registration with the given interceptRegistrationId - returning null');
-            return null;
+            && $loggerProxy->log('There is no registration with the given interceptRegistrationId');
+            return false;
         }
 
         $localLogger->addContext('registration', $registration);
 
         try {
-            /** @var InterceptedCallTrackerInterface $callTracker */
-            $callTracker = ($registration->factory)();
+            $preHookRetVal = ($registration->preHook)($thisObj, $interceptedCallArgs);
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
                 $throwable,
-                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
-                . ' factory has let a Throwable to escape - returning null'
+                'preHook has let a Throwable to escape'
             );
-            return null;
+            return false;
         }
 
-        try {
-            $callTracker->preHook($thisObj, $interceptedCallArgs);
-        } catch (Throwable $throwable) {
-            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->logThrowable(
-                $throwable,
-                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
-                . ' preHook() has let a Throwable to escape - returning null'
-            );
-            return null;
-        }
+        $this->interceptedCallInProgressRegistrationId = $interceptRegistrationId;
+        $this->interceptedCallInProgressThisObj = $thisObj;
+        $this->interceptedCallInProgressArgs = $interceptedCallArgs;
+        $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
 
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Exiting - returning non-null');
-        return $callTracker;
+        && $loggerProxy->log('Completed successfully');
+        return true;
     }
 
     /**
-     * @param int                             $numberOfStackFramesToSkip
-     * @param Logger                          $localLogger
-     * @param InterceptedCallTrackerInterface $callTracker
-     * @param bool                            $hasExitedByException
-     * @param mixed|Throwable                 $returnValueOrThrown Return value of the intercepted call
+     * @param int             $numberOfStackFramesToSkip
+     * @param bool            $hasExitedByException
+     * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
      *
      * @noinspection PhpMissingParamTypeInspection
      */
-    private function interceptedCallPostHook(
+    public function interceptedCallPostHook(
         int $numberOfStackFramesToSkip,
-        Logger $localLogger,
-        InterceptedCallTrackerInterface $callTracker,
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
 
-        try {
-            $callTracker->postHook($numberOfStackFramesToSkip + 1, $hasExitedByException, $returnValueOrThrown);
-        } catch (Throwable $throwable) {
+        if ($this->interceptedCallInProgressRegistrationId === null) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('There is no intercepted call in progress');
+            return;
+        }
+        assert($this->interceptedCallInProgressArgs !== null);
+        assert($this->interceptedCallInProgressPreHookRetVal !== null);
+
+        $localLogger = $this->logger->inherit()->addContext(
+            'interceptRegistrationId',
+            $this->interceptedCallInProgressRegistrationId
+        );
+
+        try {
+            ($this->interceptedCallInProgressPreHookRetVal)(
+                $numberOfStackFramesToSkip + 1,
+                $hasExitedByException,
+                $returnValueOrThrown
+            );
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
                 $throwable,
-                ClassNameUtil::fqToShort(InterceptedCallTrackerInterface::class)
-                . ' postHook() has let a Throwable to escape'
+                'postHook has let a Throwable to escape'
             );
         }
+
+        $this->interceptedCallInProgressRegistrationId = null;
+        $this->interceptedCallInProgressThisObj = null;
+        $this->interceptedCallInProgressArgs = null;
+        $this->interceptedCallInProgressPreHookRetVal = null;
     }
 }

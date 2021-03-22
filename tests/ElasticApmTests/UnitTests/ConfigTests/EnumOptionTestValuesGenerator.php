@@ -25,8 +25,8 @@ namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\Util\RangeUtilForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
 
 /**
  * @template   T
@@ -53,11 +53,11 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
     /**
      * EnumOptionTestValuesGenerator constructor.
      *
-     * @param EnumOptionParser<mixed>            $optionParser
-     * @param array<OptionTestValidValue<mixed>> $additionalValidValues
-     * @param array<string>                      $additionalInvalidRawValues
+     * @param EnumOptionParser<mixed>                $optionParser
+     * @param array<OptionTestValidValue<mixed>>     $additionalValidValues
+     * @param array<string>                          $additionalInvalidRawValues
      *
-     * @phpstan-param EnumOptionParser<T> $optionParser
+     * @phpstan-param EnumOptionParser<T>            $optionParser
      * @phpstan-param array<OptionTestValidValue<T>> $additionalValidValues
      */
     public function __construct(
@@ -163,6 +163,13 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
 
     private function isValidRawValue(string $rawValue): bool
     {
+        foreach ($this->additionalValidValues as $additionalValidValue) {
+            $trimmedRawValue = trim($rawValue);
+            if ($trimmedRawValue === $additionalValidValue->rawValue) {
+                return true;
+            }
+        }
+
         $foundAsPrefix = false;
         foreach ($this->optionParser->nameValuePairs() as $enumEntryNameAndValue) {
             if (TextUtil::isPrefixOf($rawValue, $enumEntryNameAndValue[0], $this->optionParser->isCaseSensitive())) {
@@ -178,7 +185,10 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
         return $foundAsPrefix;
     }
 
-    public function invalidRawValues(): iterable
+    /**
+     * @return iterable<string>
+     */
+    private function invalidRawValuesImpl(): iterable
     {
         /**
          * @param string $rawValue
@@ -209,6 +219,16 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
                     yield from $genIfNotValidRawValue($prefix . '_X');
                     yield from $genIfNotValidRawValue('X_' . $prefix);
                 }
+            }
+        }
+    }
+
+    /** @inheritDoc */
+    public function invalidRawValues(): iterable
+    {
+        foreach ($this->invalidRawValuesImpl() as $invalidRawValue) {
+            if (!$this->isValidRawValue($invalidRawValue)) {
+                yield $invalidRawValue;
             }
         }
     }
