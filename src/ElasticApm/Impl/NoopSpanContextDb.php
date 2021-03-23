@@ -38,6 +38,5 @@ final class NoopSpanContextDb implements SpanContextDbInterface
     /** @inheritDoc */
     public function setStatement(?string $statement): void
     {
-        // TODO: Implement setStatement() method.
     }
 }

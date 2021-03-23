@@ -45,6 +45,9 @@ final class InterceptionManager
     /** @var int|null */
     private $interceptedCallInProgressRegistrationId;
 
+    /** @var Registration|null */
+    private $interceptedCallInProgressRegistration;
+
     /** @var object|null */
     private $interceptedCallInProgressThisObj;
 
@@ -108,7 +111,7 @@ final class InterceptionManager
             return false;
         }
 
-        $localLogger->addContext('registration', $registration);
+        $localLogger->addContext('interceptRegistration', $registration);
 
         try {
             $preHookRetVal = ($registration->preHook)($thisObj, $interceptedCallArgs);
@@ -121,14 +124,18 @@ final class InterceptionManager
             return false;
         }
 
-        $this->interceptedCallInProgressRegistrationId = $interceptRegistrationId;
-        $this->interceptedCallInProgressThisObj = $thisObj;
-        $this->interceptedCallInProgressArgs = $interceptedCallArgs;
-        $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
+        $shouldCallPostHook = ($preHookRetVal !== null);
+        if ($shouldCallPostHook) {
+            $this->interceptedCallInProgressRegistrationId = $interceptRegistrationId;
+            $this->interceptedCallInProgressRegistration = $registration;
+            $this->interceptedCallInProgressThisObj = $thisObj;
+            $this->interceptedCallInProgressArgs = $interceptedCallArgs;
+            $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
+        }
 
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Completed successfully');
-        return true;
+        && $loggerProxy->log('Completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
+        return $shouldCallPostHook;
     }
 
     /**
@@ -153,11 +160,14 @@ final class InterceptionManager
             return;
         }
         assert($this->interceptedCallInProgressArgs !== null);
+        assert($this->interceptedCallInProgressRegistration !== null);
         assert($this->interceptedCallInProgressPreHookRetVal !== null);
 
-        $localLogger = $this->logger->inherit()->addContext(
-            'interceptRegistrationId',
-            $this->interceptedCallInProgressRegistrationId
+        $localLogger = $this->logger->inherit()->addAllContext(
+            [
+                'interceptRegistrationId' => $this->interceptedCallInProgressRegistrationId,
+                'interceptRegistration'   => $this->interceptedCallInProgressRegistration,
+            ]
         );
 
         try {
