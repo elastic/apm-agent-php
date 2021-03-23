@@ -43,7 +43,7 @@ apk add --allow-untrusted <package-file>.apk
 
 If you can’t find your distribution, you can install the agent by building it from the source.
 
-NOTE: The agent is currently only available for a unix-like operating system.
+NOTE: The agent is currently only available for Linux operating system.
 
 1. Download the agent source from https://github.com/elastic/apm-agent-php/.
 2. Execute the following commands to build the agent and install it:
