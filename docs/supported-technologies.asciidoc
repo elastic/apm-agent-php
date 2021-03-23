@@ -11,7 +11,68 @@ you can vote for it by participating in https://docs.google.com/forms/d/e/1FAIpQ
 We will use the results to add support for the most requested technologies.
 
 [float]
+[[supported-os]]
+=== Operating systems
+
+The agent supports Linux operating system.
+
+[float]
 [[supported-php-versions]]
 === PHP versions
 
 The agent supports PHP versions 7.2-7.4.
+
+[float]
+[[supported-web-frameworks]]
+=== Web frameworks
+
+Automatic instrumentation for a web framework means
+a transaction is automatically created for each incoming request and it is named after the registered route.
+
+We support automatic instrumentation for the following web frameworks.
+
+|===
+|Framework |Supported versions
+
+|Framework-less PHP application (i.e., application using PHP's built in web support)
+|
+
+|Laravel
+|6
+
+|===
+
+[float]
+[[supported-data-access-technologies]]
+=== Data access technologies
+
+We support automatic instrumentation for the following data access technologies.
+
+|===
+|Data access technology |Supported versions |Notes
+
+|PHP Data Objects (PDO)
+|
+|The agent automatically creates DB spans for all your PDO queries. This includes PDO queries executed by object relational mappers (ORM) like Doctrine.
+
+|===
+
+[float]
+[[supported-http-clients]]
+=== HTTP clients
+
+Automatic instrumentation for an HTTP client technology means
+an HTTP span is automatically created for each outgoing HTTP request
+and distributed tracing headers are propagated.
+The spans are named after the schema `<method> <host>`, for example `GET elastic.co`.
+
+|===
+|Framework |Supported versions
+
+|`curl` extension
+|
+
+|`Guzzle` library
+|
+
+|===
