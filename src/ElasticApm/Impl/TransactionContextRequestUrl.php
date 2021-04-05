@@ -54,23 +54,33 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
     }
 
     /** @inheritDoc */
-    public function setHostname(?string $hostname): void
+    public function setDomain(?string $domain): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        $this->data->hostname = Tracer::limitNullableKeywordString($hostname);
+        $this->data->domain = Tracer::limitNullableKeywordString($domain);
     }
 
     /** @inheritDoc */
-    public function setPathname(?string $pathname): void
+    public function setOriginal(?string $original): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        $this->data->pathname = Tracer::limitNullableKeywordString($pathname);
+        $this->data->original = Tracer::limitNullableKeywordString($original);
+    }
+
+    /** @inheritDoc */
+    public function setPath(?string $path): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->data->path = Tracer::limitNullableKeywordString($path);
     }
 
     /** @inheritDoc */
@@ -94,22 +104,12 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
     }
 
     /** @inheritDoc */
-    public function setRaw(?string $raw): void
+    public function setQuery(?string $query): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        $this->data->raw = Tracer::limitNullableKeywordString($raw);
-    }
-
-    /** @inheritDoc */
-    public function setSearch(?string $search): void
-    {
-        if ($this->beforeMutating()) {
-            return;
-        }
-
-        $this->data->search = Tracer::limitNullableKeywordString($search);
+        $this->data->query = Tracer::limitNullableKeywordString($query);
     }
 }

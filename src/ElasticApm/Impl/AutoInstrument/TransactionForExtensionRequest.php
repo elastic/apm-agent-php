@@ -174,26 +174,26 @@ final class TransactionForExtensionRequest
         }
 
         if ($this->urlParts !== null) {
-            if ($this->urlParts->scheme !== null) {
-                $this->transactionForRequest->context()->request()->url()->setProtocol($this->urlParts->scheme);
-            }
             if ($this->urlParts->host !== null) {
-                $this->transactionForRequest->context()->request()->url()->setHostname($this->urlParts->host);
+                $this->transactionForRequest->context()->request()->url()->setDomain($this->urlParts->host);
             }
             if ($this->urlParts->path !== null) {
-                $this->transactionForRequest->context()->request()->url()->setPathname($this->urlParts->path);
+                $this->transactionForRequest->context()->request()->url()->setPath($this->urlParts->path);
             }
             if ($this->urlParts->port !== null) {
                 $this->transactionForRequest->context()->request()->url()->setPort($this->urlParts->port);
             }
+            if ($this->urlParts->scheme !== null) {
+                $this->transactionForRequest->context()->request()->url()->setProtocol($this->urlParts->scheme);
+            }
             if ($this->urlParts->query !== null) {
-                $this->transactionForRequest->context()->request()->url()->setSearch($this->urlParts->query);
+                $this->transactionForRequest->context()->request()->url()->setQuery($this->urlParts->query);
             }
         }
 
         if ($this->fullUrl !== null) {
             $this->transactionForRequest->context()->request()->url()->setFull($this->fullUrl);
-            $this->transactionForRequest->context()->request()->url()->setRaw($this->fullUrl);
+            $this->transactionForRequest->context()->request()->url()->setOriginal($this->fullUrl);
         }
     }
 

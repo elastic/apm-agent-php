@@ -272,13 +272,13 @@ final class ValidationUtil
     public static function assertValidTransactionContextRequestUrlData(
         TransactionContextRequestUrlData $transactionContextRequestUrlData
     ): void {
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->domain);
         self::assertValidNullableKeywordString($transactionContextRequestUrlData->full);
-        self::assertValidNullableKeywordString($transactionContextRequestUrlData->hostname);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->original);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->path);
         self::assertValidNullablePort($transactionContextRequestUrlData->port);
-        self::assertValidNullableKeywordString($transactionContextRequestUrlData->pathname);
         self::assertValidNullableKeywordString($transactionContextRequestUrlData->protocol);
-        self::assertValidNullableKeywordString($transactionContextRequestUrlData->raw);
-        self::assertValidNullableKeywordString($transactionContextRequestUrlData->search);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->query);
     }
 
     public static function assertValidTransactionContextRequestData(
