@@ -45,7 +45,7 @@ final class TextUtil
 
     public static function isEmptyString(string $str): bool
     {
-        return strlen($str) === 0;
+        return $str === '';
     }
 
     public static function isNullOrEmptyString(?string $str): bool

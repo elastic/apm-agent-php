@@ -21,47 +21,71 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace Elastic\Apm\Impl\Util;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
- * An object containing contextual data about the destination for spans
- *
- * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
- *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class SpanContextDestinationData implements OptionalSerializableDataInterface, LoggableInterface
+final class UrlParts implements LoggableInterface
 {
     use LoggableTrait;
 
-    /**
-     * @var ?SpanContextDestinationServiceData
-     *
-     * Destination service context
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
-     */
-    public $service = null;
+    /** @var ?string */
+    public $scheme = null;
 
-    /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    /** @var ?string */
+    public $host = null;
+
+    /** @var ?int */
+    public $port = null;
+
+    /** @var ?string */
+    public $path = null;
+
+    /** @var ?string */
+    public $query = null;
+
+    public function scheme(?string $scheme): self
     {
-        return SerializationUtil::prepareForSerialization(/* ref */ $this->service);
+        $this->scheme = $scheme;
+        return $this;
     }
 
-    /** @inheritDoc */
-    public function jsonSerialize()
+    public function host(?string $host): self
     {
-        $result = [];
+        $this->host = $host;
+        return $this;
+    }
 
-        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
+    public function port(?int $port): self
+    {
+        $this->port = $port;
+        return $this;
+    }
 
-        return SerializationUtil::postProcessResult($result);
+    public function path(?string $path): self
+    {
+        $this->path = $path;
+        return $this;
+    }
+
+    public function query(?string $query): self
+    {
+        $this->query = $query;
+        return $this;
+    }
+
+    public function __toString(): string
+    {
+        return '{'
+               . 'path: ' . $this->path
+               . ', '
+               . 'query: ' . $this->query
+               . '}';
     }
 }

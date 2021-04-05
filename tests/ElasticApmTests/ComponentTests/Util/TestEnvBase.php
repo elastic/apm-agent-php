@@ -35,11 +35,13 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use Exception;
@@ -124,10 +126,9 @@ abstract class TestEnvBase implements LoggableInterface
                 )->addAllContext(['dbgServerDesc' => $dbgServerDesc, 'port' => $port, 'serverId' => $serverId]);
 
                 try {
-                    $response = TestHttpClientUtil::sendHttpRequest(
-                        $port,
+                    $response = TestHttpClientUtil::sendRequest(
                         HttpConsts::METHOD_GET,
-                        TestEnvBase::STATUS_CHECK_URI,
+                        (new UrlParts())->path(TestEnvBase::STATUS_CHECK_URI)->port($port),
                         SharedDataPerRequest::fromServerId($serverId)
                     );
                 } catch (Throwable $throwable) {
@@ -337,29 +338,8 @@ abstract class TestEnvBase implements LoggableInterface
     }
 
     /**
-     * @param array<string, string> $additionalEnvVars
-     *
-     * @return array<string, string>
-     */
-    protected function buildEnvVars(array $additionalEnvVars): array
-    {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['additionalEnvVars' => $additionalEnvVars]);
-
-        /** @var array<string, string> */
-        $result = getenv();
-
-        $result += $additionalEnvVars;
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Exiting', ['result' => $result]);
-
-        return $result;
-    }
-
-    /**
-     * @param TestProperties $testProperties
-     * @param Closure        $verifyFunc
+     * @param TestProperties                       $testProperties
+     * @param Closure                              $verifyFunc
      *
      * @return void
      *
@@ -412,10 +392,9 @@ abstract class TestEnvBase implements LoggableInterface
         );
 
         try {
-            TestHttpClientUtil::sendHttpRequest(
-                $this->resourcesCleanerPort,
+            TestHttpClientUtil::sendRequest(
                 HttpConsts::METHOD_POST,
-                ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH,
+                (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->resourcesCleanerPort),
                 SharedDataPerRequest::fromServerId($this->resourcesCleanerServerId)
             );
         } catch (GuzzleException $ex) {
@@ -430,9 +409,9 @@ abstract class TestEnvBase implements LoggableInterface
     }
 
     /**
-     * @param float          $timeBeforeRequestToApp
-     * @param TestProperties $testProperties
-     * @param Closure        $verifyFunc
+     * @param float                                $timeBeforeRequestToApp
+     * @param TestProperties                       $testProperties
+     * @param Closure                              $verifyFunc
      *
      * @return void
      *
@@ -563,8 +542,7 @@ abstract class TestEnvBase implements LoggableInterface
         $this->verifyMetadata($testProperties);
 
         $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
-        $this->verifyRootTransactionName($testProperties, $rootTransaction);
-        $this->verifyRootTransactionType($testProperties, $rootTransaction);
+        $this->verifyRootTransaction($testProperties, $rootTransaction);
 
         TestCaseBase::assertValidTransactionsAndSpans(
             $this->dataFromAgent->idToTransaction(),
@@ -660,22 +638,36 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
-    protected function verifyRootTransactionName(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
+    protected function verifyRootTransaction(TestProperties $testProperties, TransactionData $rootTransaction): void
+    {
+        $this->verifyRootTransactionName($testProperties, $rootTransaction->name);
+        $this->verifyRootTransactionType($testProperties, $rootTransaction->type);
+
+        if (!$rootTransaction->isSampled) {
+            TestCase::assertNull($rootTransaction->context);
+        }
+
+        $this->verifyRootTransactionContext($testProperties, $rootTransaction->context);
+    }
+
+    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    {
         if (!is_null($testProperties->expectedTransactionName)) {
-            TestCase::assertSame($testProperties->expectedTransactionName, $rootTransaction->name);
+            TestCase::assertSame($testProperties->expectedTransactionName, $rootTransactionName);
         }
     }
 
-    protected function verifyRootTransactionType(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
+    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    {
         if (!is_null($testProperties->transactionType)) {
-            TestCase::assertSame($testProperties->transactionType, $rootTransaction->type);
+            TestCase::assertSame($testProperties->transactionType, $rootTransactionType);
         }
+    }
+
+    protected function verifyRootTransactionContext(
+        TestProperties $testProperties,
+        ?TransactionContextData $rootTransactionContext
+    ): void {
     }
 
     /**
@@ -686,10 +678,11 @@ abstract class TestEnvBase implements LoggableInterface
         TestCase::assertNotNull($this->mockApmServerPort);
         TestCase::assertNotNull($this->mockApmServerId);
 
-        $response = TestHttpClientUtil::sendHttpRequest(
-            $this->mockApmServerPort,
+        $response = TestHttpClientUtil::sendRequest(
             HttpConsts::METHOD_GET,
-            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS,
+            (new UrlParts())
+                ->path(MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS)
+                ->port($this->mockApmServerPort),
             SharedDataPerRequest::fromServerId($this->mockApmServerId),
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->dataFromAgent->nextIntakeApiRequestIndexToFetch())]
         );

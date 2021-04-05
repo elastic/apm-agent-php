@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
+use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
@@ -141,5 +142,16 @@ class ComponentTestCaseBase extends TestCaseBase
             $testProperties->withAgentConfig($configSetter);
         }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent($testProperties, $verifyFunc);
+    }
+
+    protected function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionData
+    {
+        $this->assertEmpty($dataFromAgent->idToSpan());
+
+        $tx = $dataFromAgent->singleTransaction();
+        $this->assertSame(0, $tx->startedSpansCount);
+        $this->assertSame(0, $tx->droppedSpansCount);
+        $this->assertNull($tx->parentId);
+        return $tx;
     }
 }

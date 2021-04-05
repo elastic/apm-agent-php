@@ -23,38 +23,48 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionContextRequestInterface;
+use Elastic\Apm\TransactionContextRequestUrlInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @extends         ExecutionSegmentContext<Transaction>
+ * @extends         ContextDataWrapper<Transaction>
  */
-final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
+final class TransactionContextRequest extends ContextDataWrapper implements TransactionContextRequestInterface
 {
-    /** @var TransactionContextData */
+    /** @var TransactionContextRequestData */
     private $data;
 
-    /** @var TransactionContextRequest|null */
-    private $request = null;
+    /** @var TransactionContextRequestUrl|null */
+    private $url = null;
 
-    public function __construct(Transaction $owner, TransactionContextData $data)
+    public function __construct(Transaction $owner, TransactionContextRequestData $data)
     {
-        parent::__construct($owner, $data);
+        parent::__construct($owner);
         $this->data = $data;
     }
 
     /** @inheritDoc */
-    public function request(): TransactionContextRequestInterface
+    public function setMethod(string $method): void
     {
-        if ($this->request === null) {
-            $this->data->request = new TransactionContextRequestData();
-            $this->request = new TransactionContextRequest($this->owner, $this->data->request);
+        if ($this->beforeMutating()) {
+            return;
         }
 
-        return $this->request;
+        $this->data->method = Tracer::limitNullableKeywordString($method);
+    }
+
+    /** @inheritDoc */
+    public function url(): TransactionContextRequestUrlInterface
+    {
+        if ($this->url === null) {
+            $this->data->url = new TransactionContextRequestUrlData();
+            $this->url = new TransactionContextRequestUrl($this->owner, $this->data->url);
+        }
+
+        return $this->url;
     }
 }

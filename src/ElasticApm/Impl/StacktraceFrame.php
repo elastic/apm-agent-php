@@ -26,14 +26,13 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class StacktraceFrame implements JsonSerializable, LoggableInterface
+final class StacktraceFrame implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -70,6 +69,7 @@ final class StacktraceFrame implements JsonSerializable, LoggableInterface
         $this->lineno = $lineno;
     }
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -78,6 +78,6 @@ final class StacktraceFrame implements JsonSerializable, LoggableInterface
         SerializationUtil::addNameValueIfNotNull('function', $this->function, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('lineno', $this->lineno, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

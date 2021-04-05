@@ -23,45 +23,27 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\TransactionContextRequestInterface;
+use Elastic\Apm\TransactionContextRequestUrlInterface;
 
 /**
- * An object containing contextual data about the destination for spans
- *
- * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
- *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class SpanContextDestinationData implements OptionalSerializableDataInterface, LoggableInterface
+final class NoopTransactionContextRequest implements TransactionContextRequestInterface
 {
-    use LoggableTrait;
-
-    /**
-     * @var ?SpanContextDestinationServiceData
-     *
-     * Destination service context
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
-     */
-    public $service = null;
+    use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function setMethod(string $method): void
     {
-        return SerializationUtil::prepareForSerialization(/* ref */ $this->service);
     }
 
     /** @inheritDoc */
-    public function jsonSerialize()
+    public function url(): TransactionContextRequestUrlInterface
     {
-        $result = [];
-
-        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
-
-        return SerializationUtil::postProcessResult($result);
+        return NoopTransactionContextRequestUrl::singletonInstance();
     }
 }

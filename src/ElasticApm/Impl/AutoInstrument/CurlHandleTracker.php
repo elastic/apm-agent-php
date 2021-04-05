@@ -421,10 +421,14 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function curlExecPreHook(): void
     {
-        $spanName
-            = (is_null($this->httpMethod) ? '<' . 'HTTP METHOD UNKNOWN' . '>' : $this->httpMethod)
-              . ' '
-              . (is_null($this->url) ? ('<' . 'UNKNOWN HOST' . '>') : UrlUtil::extractHostPart($this->url));
+        $httpMethod = $this->httpMethod ?? ('<' . 'UNKNOWN HTTP METHOD' . '>');
+        $host = null;
+        if ($this->url !== null) {
+            $host = UrlUtil::extractHostPart($this->url);
+        }
+        $host = $host ?? ('<' . 'UNKNOWN HOST' . '>');
+
+        $spanName = $httpMethod . ' ' . $host;
 
         $isHttp = is_null($this->url) ? false : UrlUtil::isHttp($this->url);
         $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(

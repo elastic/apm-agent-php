@@ -44,6 +44,8 @@ use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\TransactionContextData;
+use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
@@ -267,9 +269,32 @@ final class ValidationUtil
         return $startedSpansCount;
     }
 
-    public static function assertValidTransactionContextData(TransactionContextData $transactionCtxData): void
+    public static function assertValidTransactionContextRequestUrlData(
+        TransactionContextRequestUrlData $transactionContextRequestUrlData
+    ): void {
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->full);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->hostname);
+        self::assertValidNullablePort($transactionContextRequestUrlData->port);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->pathname);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->protocol);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->raw);
+        self::assertValidNullableKeywordString($transactionContextRequestUrlData->search);
+    }
+
+    public static function assertValidTransactionContextRequestData(
+        TransactionContextRequestData $transactionContextRequestData
+    ): void {
+        if ($transactionContextRequestData->url !== null) {
+            self::assertValidTransactionContextRequestUrlData($transactionContextRequestData->url);
+        }
+    }
+
+    public static function assertValidTransactionContextData(TransactionContextData $transactionContextData): void
     {
-        self::assertValidExecutionSegmentContextData($transactionCtxData);
+        self::assertValidExecutionSegmentContextData($transactionContextData);
+        if ($transactionContextData->request !== null) {
+            self::assertValidTransactionContextRequestData($transactionContextData->request);
+        }
     }
 
     public static function assertValidTransactionData(TransactionData $transaction): void
@@ -349,8 +374,26 @@ final class ValidationUtil
 
     /**
      * @param mixed $value
+     *
+     * @return int|null
      */
     public static function assertValidNullableHttpStatusCode($value): ?int
+    {
+        if (is_null($value)) {
+            return null;
+        }
+
+        self::assertThat(is_int($value));
+        TestCase::assertIsInt($value);
+        return $value;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return int|null
+     */
+    public static function assertValidNullablePort($value): ?int
     {
         if (is_null($value)) {
             return null;

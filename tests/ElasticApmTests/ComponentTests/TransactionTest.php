@@ -24,11 +24,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\HttpConsts;
 use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class TransactionTest extends ComponentTestCaseBase
@@ -39,7 +36,6 @@ final class TransactionTest extends ComponentTestCaseBase
             (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpans']),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertNull($tx->context);
                 $this->assertGreaterThanOrEqual(200, $tx->duration);
             }
         );
@@ -48,17 +44,6 @@ final class TransactionTest extends ComponentTestCaseBase
     public static function appCodeForTransactionWithoutSpans(): void
     {
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
-    }
-
-    private function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionData
-    {
-        $this->assertEmpty($dataFromAgent->idToSpan());
-
-        $tx = $dataFromAgent->singleTransaction();
-        $this->assertSame(0, $tx->startedSpansCount);
-        $this->assertSame(0, $tx->droppedSpansCount);
-        $this->assertNull($tx->parentId);
-        return $tx;
     }
 
     public static function appCodeForTransactionWithoutSpansCustomProperties(): void
@@ -93,50 +78,6 @@ final class TransactionTest extends ComponentTestCaseBase
                 $this->assertNull(self::getLabel($tx, 'null_label_key'));
                 $this->assertSame('custom TX result', $tx->result);
                 $this->assertEquals(100, $tx->duration);
-            }
-        );
-    }
-
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForTransactionWithCustomHttpStatus(array $args): void
-    {
-        $customHttpStatus = ArrayUtil::getValueIfKeyExistsElse('customHttpStatus', $args, null);
-        if (!is_null($customHttpStatus)) {
-            http_response_code($customHttpStatus);
-        }
-    }
-
-    /**
-     * @return array<array<null|int|string>>
-     */
-    public function transactionWithCustomHttpStatusDataProvider(): array
-    {
-        return [
-            [null, 'HTTP 2xx'],
-            [200, 'HTTP 2xx'],
-            [404, 'HTTP 4xx'],
-            [599, 'HTTP 5xx'],
-        ];
-    }
-
-    /**
-     * @dataProvider transactionWithCustomHttpStatusDataProvider
-     *
-     * @param int|null $customHttpStatus
-     * @param string   $expectedTxResult
-     */
-    public function testTransactionWithCustomHttpStatus(?int $customHttpStatus, string $expectedTxResult): void
-    {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithCustomHttpStatus'])
-                ->withAppArgs(['customHttpStatus' => $customHttpStatus])
-                ->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
-            function (DataFromAgent $dataFromAgent) use ($expectedTxResult): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->result);
             }
         );
     }

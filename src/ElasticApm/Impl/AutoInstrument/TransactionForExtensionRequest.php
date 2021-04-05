@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\TransactionInterface;
 
@@ -46,6 +47,15 @@ final class TransactionForExtensionRequest
     /** @var Logger */
     private $logger;
 
+    /** @var ?string */
+    private $httpMethod = null;
+
+    /** @var ?string */
+    private $fullUrl = null;
+
+    /** @var ?UrlParts */
+    private $urlParts = null;
+
     /** @var TransactionInterface */
     private $transactionForRequest;
 
@@ -56,10 +66,14 @@ final class TransactionForExtensionRequest
                                ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
+        if (!self::isCliScript()) {
+            $this->setTxPropsBasedOnHttpRequestData();
+        }
     }
 
     private function beginTransaction(float $requestInitStartTime): TransactionInterface
     {
+        $this->discoverHttpRequestData();
         $name = self::isCliScript() ? $this->discoverCliName() : $this->discoverHttpName();
         $type = self::isCliScript() ? Constants::TRANSACTION_TYPE_CLI : Constants::TRANSACTION_TYPE_REQUEST;
         $timestamp = $this->discoverTimestamp($requestInitStartTime);
@@ -68,17 +82,139 @@ final class TransactionForExtensionRequest
         return $this->tracer->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
     }
 
+    private function discoverHttpRequestData(): void
+    {
+        /**
+         * Sometimes $_SERVER is defined. It seems related to auto_globals_jit
+         * but it's not easily reproducible even with auto_globals_jit=On
+         * See also https://bugs.php.net/bug.php?id=69081
+         *
+         * Disable PHPStan complaining:
+         *      Variable $_SERVER in isset() always exists and is not nullable.
+         *
+         * @phpstan-ignore-next-line
+         */
+        $isGlobalServerVarSet = isset($_SERVER);
+
+        /** @phpstan-ignore-next-line */
+        if (!$isGlobalServerVarSet) {
+            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('$_SERVER variable is not set');
+            return;
+        }
+
+        $this->httpMethod = self::getMandatoryServerVarElement('REQUEST_METHOD');
+
+        $this->urlParts = new UrlParts();
+
+        $serverHttps = self::getOptionalServerVarElement('HTTPS');
+        $this->urlParts->scheme = $serverHttps !== null && !empty($serverHttps) ? 'https' : 'http';
+
+        $hostPort = self::getMandatoryServerVarElement('HTTP_HOST');
+        if ($hostPort !== null) {
+            UrlUtil::splitHostPort($hostPort, /* ref */ $this->urlParts->host, /* ref */ $this->urlParts->port);
+            if ($this->urlParts->host === null) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Failed to extract host part from $_SERVER["HTTP_HOST"]',
+                    ['$_SERVER["HTTP_HOST"]' => $hostPort]
+                );
+            }
+        }
+
+        $pathQuery = self::getMandatoryServerVarElement('REQUEST_URI');
+        if ($pathQuery !== null) {
+            UrlUtil::splitPathQuery(
+                $pathQuery,
+                /* ref */ $this->urlParts->path,
+                /* ref */ $this->urlParts->query
+            );
+            if ($this->urlParts->path === null) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Failed to extract path part from $_SERVER["REQUEST_URI"]',
+                    ['$_SERVER["REQUEST_URI"]' => $pathQuery]
+                );
+            }
+        }
+
+        $queryString = self::getOptionalServerVarElement('QUERY_STRING');
+        if ($queryString !== null && is_string($queryString)) {
+            $this->urlParts->query = $queryString;
+        }
+
+        $this->fullUrl = self::buildFullUrl($this->urlParts->scheme, $hostPort, $pathQuery);
+    }
+
+    private static function buildFullUrl(?string $scheme, ?string $hostPort, ?string $pathQuery): ?string
+    {
+        if ($hostPort === null) {
+            return null;
+        }
+
+        $fullUrl = '';
+
+        if ($scheme !== null) {
+            $fullUrl .= $scheme . '://';
+        }
+
+        $fullUrl .= $hostPort;
+
+        if ($pathQuery !== null) {
+            $fullUrl .= $pathQuery;
+        }
+
+        return $fullUrl;
+    }
+
+    private function setTxPropsBasedOnHttpRequestData(): void
+    {
+        if ($this->httpMethod !== null) {
+            $this->transactionForRequest->context()->request()->setMethod($this->httpMethod);
+        }
+
+        if ($this->urlParts !== null) {
+            if ($this->urlParts->scheme !== null) {
+                $this->transactionForRequest->context()->request()->url()->setProtocol($this->urlParts->scheme);
+            }
+            if ($this->urlParts->host !== null) {
+                $this->transactionForRequest->context()->request()->url()->setHostname($this->urlParts->host);
+            }
+            if ($this->urlParts->path !== null) {
+                $this->transactionForRequest->context()->request()->url()->setPathname($this->urlParts->path);
+            }
+            if ($this->urlParts->port !== null) {
+                $this->transactionForRequest->context()->request()->url()->setPort($this->urlParts->port);
+            }
+            if ($this->urlParts->query !== null) {
+                $this->transactionForRequest->context()->request()->url()->setSearch($this->urlParts->query);
+            }
+        }
+
+        if ($this->fullUrl !== null) {
+            $this->transactionForRequest->context()->request()->url()->setFull($this->fullUrl);
+            $this->transactionForRequest->context()->request()->url()->setRaw($this->fullUrl);
+        }
+    }
+
+    private function beforeHttpEnd(): void
+    {
+        if ($this->transactionForRequest->getResult() === null) {
+            $discoveredResult = $this->discoverHttpResult();
+            if ($discoveredResult !== null) {
+                $this->transactionForRequest->setResult($discoveredResult);
+            }
+        }
+    }
+
     public function onShutdown(): void
     {
         if ($this->transactionForRequest->isNoop() || $this->transactionForRequest->hasEnded()) {
             return;
         }
 
-        if (is_null($this->transactionForRequest->getResult()) && !self::isCliScript()) {
-            $discoveredResult = $this->discoverHttpResult();
-            if (!is_null($discoveredResult)) {
-                $this->transactionForRequest->setResult($discoveredResult);
-            }
+        if (!self::isCliScript()) {
+            $this->beforeHttpEnd();
         }
 
         $this->transactionForRequest->end();
@@ -115,25 +251,22 @@ final class TransactionForExtensionRequest
      *
      * @return mixed
      */
-    private function getServerVarElement(string $key)
+    private function getOptionalServerVarElement(string $key)
     {
-        /**
-         * Sometimes $_SERVER is defined. It seems related to auto_globals_jit
-         * but it's not easily reproducible even with auto_globals_jit=On
-         * See also https://bugs.php.net/bug.php?id=69081
-         *
-         * Disable PHPStan complaining:
-         *      Variable $_SERVER in isset() always exists and is not nullable.
-         *
-         * @phpstan-ignore-next-line
-         */
-        if (!isset($_SERVER)) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('$_SERVER variable is not set');
-            return null;
-        }
+        return isset($_SERVER[$key]) ? $_SERVER[$key] : null;
+    }
 
-        if (!isset($_SERVER[$key])) {
+    /**
+     * @param string $key
+     *
+     * @return mixed
+     */
+    private function getMandatoryServerVarElement(string $key)
+    {
+        $val = $this->getOptionalServerVarElement($key);
+        if ($val === null) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('$_SERVER does not contain `' . $key . '\' key');
             return null;
         }
 
@@ -142,27 +275,18 @@ final class TransactionForExtensionRequest
 
     private function discoverHttpName(): string
     {
-        if (($requestUri = self::getServerVarElement('REQUEST_URI')) === null) {
+        if ($this->urlParts === null || $this->urlParts->path === null) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Could not discover HTTP data to derive transaction name - using default transaction name',
+                'Failed to  discover path part of URL to derive transaction name - using default transaction name',
                 ['DEFAULT_NAME' => self::DEFAULT_NAME]
             );
             return self::DEFAULT_NAME;
         }
 
-        $urlPath = UrlUtil::extractPathPart($requestUri);
-        if ($urlPath === null) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Failed to extract path part from request URL - using default transaction name',
-                ['requestUri' => $requestUri, 'DEFAULT_NAME' => self::DEFAULT_NAME]
-            );
-            return self::DEFAULT_NAME;
-        }
-
-        $requestMethod = self::getServerVarElement('REQUEST_METHOD');
-        $name = ($requestMethod === null) ? $urlPath : ($requestMethod . ' ' . $urlPath);
+        $name = ($this->httpMethod === null)
+            ? $this->urlParts->path
+            : ($this->httpMethod . ' ' . $this->urlParts->path);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);
@@ -172,7 +296,7 @@ final class TransactionForExtensionRequest
 
     private function discoverTimestamp(float $requestInitStartTime): float
     {
-        $serverRequestTimeAsString = self::getServerVarElement('REQUEST_TIME_FLOAT');
+        $serverRequestTimeAsString = self::getMandatoryServerVarElement('REQUEST_TIME_FLOAT');
         if ($serverRequestTimeAsString === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
@@ -199,7 +323,7 @@ final class TransactionForExtensionRequest
         $headerName = HttpDistributedTracing::TRACE_PARENT_HEADER_NAME;
         $traceParentHeaderKey = 'HTTP_' . strtoupper($headerName);
 
-        $traceParentHeaderValue = self::getServerVarElement($traceParentHeaderKey);
+        $traceParentHeaderValue = self::getOptionalServerVarElement($traceParentHeaderKey);
         if ($traceParentHeaderValue === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Incoming ' . $headerName . ' HTTP request header not found');

@@ -23,11 +23,44 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+
 /**
+ * Any arbitrary contextual information regarding the event, captured by the agent, optionally provided by the user
+ *
+ * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/context.json
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class TransactionContextData extends ExecutionSegmentContextData
+final class TransactionContextData extends ExecutionSegmentContextData
 {
+    /**
+     * @var ?TransactionContextRequestData
+     *
+     * If a log record was generated as a result of a http request,
+     * the http interface can be used to collect this information
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/context.json#L43
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json
+     */
+    public $request = null;
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return parent::prepareForSerialization()
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->request);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
+
+        SerializationUtil::addNameValueIfNotNull('request', $this->request, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
+    }
 }

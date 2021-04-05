@@ -241,9 +241,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             true /* <- hideElasticApmImpl */
         );
 
-        if ((!is_null($this->data->context)) && $this->data->context->isEmpty()) {
-            $this->data->context = null;
-        }
+        $this->data->prepareForSerialization();
 
         if ($this->shouldBeSentToApmServer()) {
             $this->containingTransaction->queueSpanDataToSend($this->data);

@@ -27,8 +27,6 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\IdGenerator;
-use JsonSerializable;
-use Throwable;
 
 /**
  * An error or a logged error message captured by an agent occurring in a monitored service
@@ -39,7 +37,7 @@ use Throwable;
  *
  * @internal
  */
-class ErrorData implements JsonSerializable, LoggableInterface
+class ErrorData implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -148,6 +146,7 @@ class ErrorData implements JsonSerializable, LoggableInterface
         return $result;
     }
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -186,6 +185,6 @@ class ErrorData implements JsonSerializable, LoggableInterface
             );
         }
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

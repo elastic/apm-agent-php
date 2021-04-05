@@ -27,7 +27,6 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\TransactionInterface;
-use JsonSerializable;
 
 /**
  * Data for correlating errors with transactions
@@ -38,7 +37,7 @@ use JsonSerializable;
  *
  * @internal
  */
-class ErrorTransactionData implements JsonSerializable, LoggableInterface
+class ErrorTransactionData implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -76,6 +75,7 @@ class ErrorTransactionData implements JsonSerializable, LoggableInterface
         return $result;
     }
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -87,6 +87,6 @@ class ErrorTransactionData implements JsonSerializable, LoggableInterface
         }
         SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

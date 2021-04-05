@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util;
 use Ds\Queue;
 use Ds\Set;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
@@ -564,5 +565,18 @@ class TestCaseBase extends TestCase
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
         /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         $execSegData->parentId = $newParentId;
+    }
+
+    public static function generateDummyMaxKeywordString(string $prefix = ''): string
+    {
+        $halfLen = Constants::KEYWORD_STRING_MAX_LENGTH / 2;
+        return
+            $prefix
+            . '['
+            . str_repeat('V', $halfLen - strlen($prefix) - 4)
+            . ','
+            . ';'
+            . str_repeat('W', $halfLen)
+            . ']';
     }
 }

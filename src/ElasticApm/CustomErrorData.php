@@ -23,21 +23,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\ErrorExceptionData;
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\StacktraceFrame;
-use Elastic\Apm\Impl\StacktraceUtil;
-use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\Util\ClassNameUtil;
-use JsonSerializable;
-use Throwable;
-
 /**
  * Data to create custom error event
  *
- * @see ElasticApm::createCustomError
+ * @see  ElasticApm::createCustomError
  *
  * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L53
  *
