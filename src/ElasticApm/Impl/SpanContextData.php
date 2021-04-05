@@ -26,14 +26,18 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 
 /**
+ * Any other arbitrary data captured by the agent, optionally provided by the user
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/spans/span.json#L43
  */
-class SpanContextData extends ExecutionSegmentContextData
+final class SpanContextData extends ExecutionSegmentContextData
 {
     /**
-     * @var SpanContextDbData|null
+     * @var ?SpanContextDbData
      *
      * An object containing contextual data for database spans
      *
@@ -42,7 +46,7 @@ class SpanContextData extends ExecutionSegmentContextData
     public $db = null;
 
     /**
-     * @var SpanContextDestinationData|null
+     * @var ?SpanContextDestinationData
      *
      * An object containing contextual data about the destination for spans
      *
@@ -51,7 +55,7 @@ class SpanContextData extends ExecutionSegmentContextData
     public $destination = null;
 
     /**
-     * @var SpanContextHttpData|null
+     * @var ?SpanContextHttpData
      *
      * An object containing contextual data of the related http request
      *
@@ -60,23 +64,23 @@ class SpanContextData extends ExecutionSegmentContextData
     public $http = null;
 
     /** @inheritDoc */
-    public function isEmpty(): bool
+    public function prepareForSerialization(): bool
     {
-        return parent::isEmpty()
-               && SerializationUtil::isNullOrEmpty($this->db)
-               && SerializationUtil::isNullOrEmpty($this->destination)
-               && SerializationUtil::isNullOrEmpty($this->http);
+        return parent::prepareForSerialization()
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->db)
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->destination)
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->http);
     }
 
     /** @inheritDoc */
-    public function jsonSerialize(): array
+    public function jsonSerialize()
     {
-        $result = parent::jsonSerialize();
+        $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
 
-        SerializationUtil::addNameValueIfNotNullOrEmpty('db', $this->db, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNullOrEmpty('destination', $this->destination, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNullOrEmpty('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('db', $this->db, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('destination', $this->destination, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('http', $this->http, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

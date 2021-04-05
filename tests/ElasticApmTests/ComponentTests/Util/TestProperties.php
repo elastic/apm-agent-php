@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
 use PHPUnit\Framework\TestCase;
 
 final class TestProperties implements LoggableInterface
@@ -37,8 +38,8 @@ final class TestProperties implements LoggableInterface
     /** @var string */
     public $httpMethod = 'GET';
 
-    /** @var string */
-    public $uriPath = '/';
+    /** @var UrlParts */
+    public $urlParts;
 
     /** @var int */
     public $expectedStatusCode = HttpConsts::STATUS_OK;
@@ -61,6 +62,12 @@ final class TestProperties implements LoggableInterface
         $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, LogLevel::intToName(LogLevel::DEBUG));
 
         $this->sharedDataPerRequest = new SharedDataPerRequest();
+        $this->urlParts = TestProperties::newDefaultUrlParts();
+    }
+
+    public static function newDefaultUrlParts(): UrlParts
+    {
+        return (new UrlParts())->scheme('http')->host('localhost')->path('/');
     }
 
     public function withRoutedAppCode(callable $appCodeClassMethod): self
@@ -106,9 +113,9 @@ final class TestProperties implements LoggableInterface
         return $this;
     }
 
-    public function withUriPath(string $uriPath): self
+    public function withUrlParts(UrlParts $urlParts): self
     {
-        $this->uriPath = $uriPath;
+        $this->urlParts = $urlParts;
         return $this;
     }
 

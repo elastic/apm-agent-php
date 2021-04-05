@@ -27,6 +27,8 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\UrlParts;
+use Elastic\Apm\Impl\Util\UrlUtil;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
@@ -37,9 +39,8 @@ final class TestHttpClientUtil
     use StaticClassTrait;
 
     /**
-     * @param int                   $port
      * @param string                $httpMethod
-     * @param string                $uriPath
+     * @param UrlParts              $urlParts
      * @param SharedDataPerRequest  $sharedDataPerRequest
      * @param array<string, string> $headers
      *
@@ -47,17 +48,16 @@ final class TestHttpClientUtil
      *
      * @throws GuzzleException
      */
-    public static function sendHttpRequest(
-        int $port,
+    public static function sendRequest(
         string $httpMethod,
-        string $uriPath,
+        UrlParts $urlParts,
         SharedDataPerRequest $sharedDataPerRequest,
         array $headers = []
     ): ResponseInterface {
-        $client = new Client(['base_uri' => "http://localhost:$port"]);
+        $client = new Client(['base_uri' => UrlUtil::buildRequestBaseUrl($urlParts)]);
         return $client->request(
             $httpMethod,
-            $uriPath,
+            UrlUtil::buildRequestMethodArg($urlParts),
             [
                 RequestOptions::HEADERS     =>
                     $headers

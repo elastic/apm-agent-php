@@ -36,7 +36,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  *
  * @internal
  */
-class SpanContextDestinationServiceData implements ContextDataInterface, LoggableInterface
+final class SpanContextDestinationServiceData implements OptionalSerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -68,13 +68,14 @@ class SpanContextDestinationServiceData implements ContextDataInterface, Loggabl
      */
     public $type;
 
-    public function isEmpty(): bool
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
     {
-        return false;
+        return true;
     }
 
     /** @inheritDoc */
-    public function jsonSerialize(): array
+    public function jsonSerialize()
     {
         $result = [];
 
@@ -82,6 +83,6 @@ class SpanContextDestinationServiceData implements ContextDataInterface, Loggabl
         SerializationUtil::addNameValue('resource', $this->resource, /* ref */ $result);
         SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

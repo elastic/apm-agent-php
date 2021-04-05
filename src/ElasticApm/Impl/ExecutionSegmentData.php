@@ -26,14 +26,13 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class ExecutionSegmentData implements JsonSerializable, LoggableInterface
+class ExecutionSegmentData implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -55,6 +54,7 @@ class ExecutionSegmentData implements JsonSerializable, LoggableInterface
     /** @var float */
     public $duration;
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -70,6 +70,6 @@ class ExecutionSegmentData implements JsonSerializable, LoggableInterface
         );
         SerializationUtil::addNameValue('duration', $this->duration, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

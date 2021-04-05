@@ -23,12 +23,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\BackendComm;
 
-use Elastic\Apm\Impl\ContextDataInterface;
+use Elastic\Apm\Impl\OptionalSerializableDataInterface;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Exception;
 use JsonSerializable;
+use stdClass;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -61,9 +62,9 @@ final class SerializationUtil
     }
 
     /**
-     * @param string                                              $name
-     * @param bool|int|float|string|JsonSerializable|array<mixed> $value
-     * @param array<string, mixed>                                $nameToValue
+     * @param string                                                       $name
+     * @param bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                         $nameToValue
      *
      * @return void
      */
@@ -82,54 +83,41 @@ final class SerializationUtil
     }
 
     /**
-     * @param string                                                   $name
-     * @param null|bool|int|float|string|JsonSerializable|array<mixed> $value
-     * @param array<string, mixed>                                     $nameToValue
+     * @param string                                                            $name
+     * @param null|bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                              $nameToValue
      *
      * @return void
      */
     public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
     {
-        if ($value === null) {
-            return;
+        if ($value !== null) {
+            self::addNameValue($name, $value, /* ref */ $nameToValue);
         }
-
-        self::addNameValue($name, $value, /* ref */ $nameToValue);
     }
 
-    public static function isNullOrEmpty(?ContextDataInterface $value): bool
+    public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): bool
     {
-        return ($value === null) || $value->isEmpty();
-    }
-
-    /**
-     * @param string                    $name
-     * @param ContextDataInterface|null $value
-     * @param array<string, mixed>      $nameToValue
-     *
-     * @return void
-     */
-    public static function addNameValueIfNotNullOrEmpty(
-        string $name,
-        ?ContextDataInterface $value,
-        array &$nameToValue
-    ): void {
-        if (self::isNullOrEmpty($value)) {
-            return;
+        if ($value === null) {
+            return false;
         }
-        /** @phpstan-var ContextDataInterface $value */
 
-        self::addNameValue($name, $value, /* ref */ $nameToValue);
+        if ($value->prepareForSerialization()) {
+            return true;
+        }
+
+        $value = null;
+        return false;
     }
 
     /**
-     * @param string               $name
-     * @param array<mixed, mixed>  $value
-     * @param array<string, mixed> $nameToValue
+     * @param string                       $name
+     * @param array<mixed, mixed>|stdClass $value
+     * @param array<string, mixed>         $nameToValue
      *
      * @return void
      */
-    public static function addNameValueIfNotEmpty(string $name, array $value, array &$nameToValue): void
+    public static function addNameValueIfNotEmpty(string $name, $value, array &$nameToValue): void
     {
         if (empty($value)) {
             return;
@@ -147,5 +135,25 @@ final class SerializationUtil
     {
         // If int type is large enough to hold 64-bit (8 bytes) use it instead of float
         return (PHP_INT_SIZE >= 8) ? intval($timestamp) : $timestamp;
+    }
+
+    /**
+     * @param array<string, mixed>|stdClass $nameToValue
+     *
+     * @return array<string, mixed>
+     */
+    public static function preProcessResult($nameToValue)
+    {
+        return is_array($nameToValue) ? $nameToValue : [];
+    }
+
+    /**
+     * @param array<string, mixed> $nameToValue
+     *
+     * @return array<string, mixed>|stdClass
+     */
+    public static function postProcessResult(array $nameToValue)
+    {
+        return empty($nameToValue) ? (new stdClass()) : $nameToValue;
     }
 }

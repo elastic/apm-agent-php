@@ -26,14 +26,13 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class ExecutionSegmentContextData implements ContextDataInterface, LoggableInterface
+class ExecutionSegmentContextData implements OptionalSerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -41,13 +40,13 @@ class ExecutionSegmentContextData implements ContextDataInterface, LoggableInter
     public $labels = [];
 
     /** @inheritDoc */
-    public function isEmpty(): bool
+    public function prepareForSerialization(): bool
     {
-        return empty($this->labels);
+        return !empty($this->labels);
     }
 
     /** @inheritDoc */
-    public function jsonSerialize(): array
+    public function jsonSerialize()
     {
         $result = [];
 
@@ -56,6 +55,6 @@ class ExecutionSegmentContextData implements ContextDataInterface, LoggableInter
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
         SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

@@ -26,7 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
@@ -79,25 +79,34 @@ final class CliScriptTestEnv extends TestEnvBase
         );
     }
 
-    protected function verifyRootTransactionName(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
-        parent::verifyRootTransactionName($testProperties, $rootTransaction);
+    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    {
+        parent::verifyRootTransactionName($testProperties, $rootTransactionName);
 
         if (is_null($testProperties->expectedTransactionName)) {
-            TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransaction->name);
+            TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransactionName);
         }
     }
 
-    protected function verifyRootTransactionType(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
-        parent::verifyRootTransactionType($testProperties, $rootTransaction);
+    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    {
+        parent::verifyRootTransactionType($testProperties, $rootTransactionType);
 
         if (is_null($testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransaction->type);
+            TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransactionType);
         }
+    }
+
+    protected function verifyRootTransactionContext(
+        TestProperties $testProperties,
+        ?TransactionContextData $rootTransactionContext
+    ): void {
+        parent::verifyRootTransactionContext($testProperties, $rootTransactionContext);
+
+        if ($rootTransactionContext === null) {
+            return;
+        }
+
+        TestCase::assertNull($rootTransactionContext->request);
     }
 }

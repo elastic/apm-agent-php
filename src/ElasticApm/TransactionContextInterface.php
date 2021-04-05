@@ -25,4 +25,11 @@ namespace Elastic\Apm;
 
 interface TransactionContextInterface extends ExecutionSegmentContextInterface
 {
+    /**
+     * Returns an object that can be used to collect information about HTTP request
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/context.json#L43
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json
+     */
+    public function request(): TransactionContextRequestInterface;
 }

@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -377,6 +376,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         $this->errorsDataToSend[] = $errorData;
     }
 
+    /** @inheritDoc */
     public function discard(): void
     {
         while (!is_null($this->currentSpan)) {
@@ -390,15 +390,14 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         parent::discard();
     }
 
+    /** @inheritDoc */
     public function end(?float $duration = null): void
     {
         if (!$this->endExecutionSegment($duration)) {
             return;
         }
 
-        if ((!is_null($this->data->context)) && $this->data->context->isEmpty()) {
-            $this->data->context = null;
-        }
+        $this->data->prepareForSerialization();
 
         $this->tracer->sendEventsToApmServer($this->spansDataToSend, $this->errorsDataToSend, $this->data);
 
@@ -426,8 +425,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $stream,
             /* customPropValues */
             [
-                'currentSpanId' => $currentSpanId,
-                'spansDataToSendCount' => count($this->spansDataToSend),
+                'currentSpanId'         => $currentSpanId,
+                'spansDataToSendCount'  => count($this->spansDataToSend),
                 'errorsDataToSendCount' => count($this->errorsDataToSend),
             ]
         );

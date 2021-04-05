@@ -34,6 +34,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -87,7 +88,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     }
 
     /**
-     * @param Closure $runImpl
+     * @param Closure                                   $runImpl
      *
      * @throws Throwable
      *
@@ -176,10 +177,11 @@ abstract class SpawnedProcessBase implements LoggableInterface
 
         TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort);
         TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId);
-        $response = TestHttpClientUtil::sendHttpRequest(
-            AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort,
+        $response = TestHttpClientUtil::sendRequest(
             HttpConsts::METHOD_POST,
-            ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH,
+            (new UrlParts())
+                ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
+                ->port(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
             SharedDataPerRequest::fromServerId(
                 AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId
             ),

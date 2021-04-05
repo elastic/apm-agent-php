@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\TransactionContextData;
+use Elastic\Apm\Impl\TransactionContextRequestData;
 use ElasticApmTests\Util\ValidationUtil;
 
 /**
@@ -31,14 +31,13 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class TransactionContextDataDeserializer extends ExecutionSegmentContextDataDeserializer
+final class TransactionContextRequestDataDeserializer extends DataDeserializer
 {
-    /** @var TransactionContextData */
+    /** @var TransactionContextRequestData */
     private $result;
 
-    private function __construct(TransactionContextData $result)
+    private function __construct(TransactionContextRequestData $result)
     {
-        parent::__construct($result);
         $this->result = $result;
     }
 
@@ -46,13 +45,13 @@ final class TransactionContextDataDeserializer extends ExecutionSegmentContextDa
      *
      * @param array<string, mixed> $deserializedRawData
      *
-     * @return TransactionContextData
+     * @return TransactionContextRequestData
      */
-    public static function deserialize(array $deserializedRawData): TransactionContextData
+    public static function deserialize(array $deserializedRawData): TransactionContextRequestData
     {
-        $result = new TransactionContextData();
+        $result = new TransactionContextRequestData();
         (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidTransactionContextData($result);
+        ValidationUtil::assertValidTransactionContextRequestData($result);
         return $result;
     }
 
@@ -64,13 +63,13 @@ final class TransactionContextDataDeserializer extends ExecutionSegmentContextDa
      */
     protected function deserializeKeyValue(string $key, $value): bool
     {
-        if (parent::deserializeKeyValue($key, $value)) {
-            return true;
-        }
-
         switch ($key) {
-            case 'request':
-                $this->result->request = TransactionContextRequestDataDeserializer::deserialize($value);
+            case 'method':
+                $this->result->method = ValidationUtil::assertValidNullableKeywordString($value);
+                return true;
+
+            case 'url':
+                $this->result->url = TransactionContextRequestUrlDataDeserializer::deserialize($value);
                 return true;
 
             default:

@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\TransactionContextRequestData;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
@@ -310,6 +311,172 @@ class PublicApiTest extends TracerUnitTestCaseBase
             } else {
                 self::assertNull($spanData->context);
             }
+        }
+    }
+
+    public function testTransactionContextRequest(): void
+    {
+        foreach ([true, false] as $shouldSetMethod) {
+            foreach ([true, false] as $shouldSetUrlFull) {
+                foreach ([true, false] as $shouldSetUrlHostname) {
+                    foreach ([true, false] as $shouldSetUrlPathname) {
+                        foreach ([true, false] as $shouldSetUrlPort) {
+                            foreach ([true, false] as $shouldSetUrlProtocol) {
+                                foreach ([true, false] as $shouldSetUrlRaw) {
+                                    foreach ([true, false] as $shouldSetUrlSearch) {
+                                        $this->mockEventSink->clear();
+
+                                        $this->implTestTransactionContextRequest(
+                                            $shouldSetMethod,
+                                            $shouldSetUrlFull,
+                                            $shouldSetUrlHostname,
+                                            $shouldSetUrlPathname,
+                                            $shouldSetUrlPort,
+                                            $shouldSetUrlProtocol,
+                                            $shouldSetUrlRaw,
+                                            $shouldSetUrlSearch
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public function implTestTransactionContextRequest(
+        bool $shouldSetMethod,
+        bool $shouldSetUrlFull,
+        bool $shouldSetUrlHostname,
+        bool $shouldSetUrlPathname,
+        bool $shouldSetUrlPort,
+        bool $shouldSetUrlProtocol,
+        bool $shouldSetUrlRaw,
+        bool $shouldSetUrlSearch
+    ): void {
+        // Act
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+
+        // Dummy call to test that nothing is serialized when nothing is set
+        $tx->context()->request()->url();
+
+        $method = self::generateDummyMaxKeywordString('my HTTP method');
+        if ($shouldSetMethod) {
+            $tx->context()->request()->setMethod($method . 'suffix that will be cut off');
+        }
+
+        $urlFull = self::generateDummyMaxKeywordString('my full URL');
+        if ($shouldSetUrlFull) {
+            $tx->context()->request()->url()->setFull($urlFull . 'suffix that will be cut off');
+        }
+
+        $urlHostname = self::generateDummyMaxKeywordString('my URL hostname');
+        if ($shouldSetUrlHostname) {
+            $tx->context()->request()->url()->setHostname($urlHostname . 'suffix that will be cut off');
+        }
+
+        $urlPathname = self::generateDummyMaxKeywordString('my URL pathname');
+        if ($shouldSetUrlPathname) {
+            $tx->context()->request()->url()->setPathname($urlPathname . 'suffix that will be cut off');
+        }
+
+        $urlPort = 54321;
+        if ($shouldSetUrlPort) {
+            $tx->context()->request()->url()->setPort($urlPort);
+        }
+
+        $urlProtocol = self::generateDummyMaxKeywordString('my URL protocol');
+        if ($shouldSetUrlProtocol) {
+            $tx->context()->request()->url()->setProtocol($urlProtocol . 'suffix that will be cut off');
+        }
+
+        $urlRaw = self::generateDummyMaxKeywordString('my raw URL');
+        if ($shouldSetUrlRaw) {
+            $tx->context()->request()->url()->setRaw($urlRaw . 'suffix that will be cut off');
+        }
+
+        $urlSearch = self::generateDummyMaxKeywordString('my URL search');
+        if ($shouldSetUrlSearch) {
+            $tx->context()->request()->url()->setSearch($urlSearch . 'suffix that will be cut off');
+        }
+
+        $tx->end();
+
+        // Assert
+        $txData = $this->mockEventSink->singleTransaction();
+
+        if (
+            !$shouldSetMethod
+            && !$shouldSetUrlFull
+            && !$shouldSetUrlHostname
+            && !$shouldSetUrlPathname
+            && !$shouldSetUrlPort
+            && !$shouldSetUrlProtocol
+            && !$shouldSetUrlRaw
+            && !$shouldSetUrlSearch
+        ) {
+            self::assertNull($txData->context);
+            return;
+        }
+
+        self::assertNotNull($txData->context);
+        self::assertNotNull($txData->context->request);
+
+        /**
+         * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L101
+         * "required": ["url", "method"]
+         */
+        self::assertNotNull($txData->context->request->method);
+        self::assertNotNull($txData->context->request->url);
+
+        if ($shouldSetMethod) {
+            self::assertSame($method, $txData->context->request->method);
+        } else {
+            self::assertSame(TransactionContextRequestData::UNKNOWN_METHOD, $txData->context->request->method);
+        }
+
+        if ($shouldSetUrlFull) {
+            self::assertSame($urlFull, $txData->context->request->url->full);
+        } else {
+            self::assertNull($txData->context->request->url->full);
+        }
+
+        if ($shouldSetUrlHostname) {
+            self::assertSame($urlHostname, $txData->context->request->url->hostname);
+        } else {
+            self::assertNull($txData->context->request->url->hostname);
+        }
+
+        if ($shouldSetUrlPathname) {
+            self::assertSame($urlPathname, $txData->context->request->url->pathname);
+        } else {
+            self::assertNull($txData->context->request->url->pathname);
+        }
+
+        if ($shouldSetUrlPort) {
+            self::assertSame($urlPort, $txData->context->request->url->port);
+        } else {
+            self::assertNull($txData->context->request->url->port);
+        }
+
+        if ($shouldSetUrlProtocol) {
+            self::assertSame($urlProtocol, $txData->context->request->url->protocol);
+        } else {
+            self::assertNull($txData->context->request->url->protocol);
+        }
+
+        if ($shouldSetUrlRaw) {
+            self::assertSame($urlRaw, $txData->context->request->url->raw);
+        } else {
+            self::assertNull($txData->context->request->url->raw);
+        }
+
+        if ($shouldSetUrlSearch) {
+            self::assertSame($urlSearch, $txData->context->request->url->search);
+        } else {
+            self::assertNull($txData->context->request->url->search);
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionContextInterface;
+use Elastic\Apm\TransactionContextRequestInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -34,4 +35,10 @@ use Elastic\Apm\TransactionContextInterface;
 final class NoopTransactionContext extends NoopExecutionSegmentContext implements TransactionContextInterface
 {
     use NoopObjectTrait;
+
+    /** @inheritDoc */
+    public function request(): TransactionContextRequestInterface
+    {
+        return NoopTransactionContextRequest::singletonInstance();
+    }
 }

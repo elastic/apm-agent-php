@@ -23,45 +23,50 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\TransactionContextRequestUrlInterface;
 
 /**
- * An object containing contextual data about the destination for spans
- *
- * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
- *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class SpanContextDestinationData implements OptionalSerializableDataInterface, LoggableInterface
+final class NoopTransactionContextRequestUrl implements TransactionContextRequestUrlInterface
 {
-    use LoggableTrait;
-
-    /**
-     * @var ?SpanContextDestinationServiceData
-     *
-     * Destination service context
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
-     */
-    public $service = null;
+    use NoopObjectTrait;
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function setFull(?string $full): void
     {
-        return SerializationUtil::prepareForSerialization(/* ref */ $this->service);
     }
 
     /** @inheritDoc */
-    public function jsonSerialize()
+    public function setHostname(?string $hostname): void
     {
-        $result = [];
+    }
 
-        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
+    /** @inheritDoc */
+    public function setPathname(?string $pathname): void
+    {
+    }
 
-        return SerializationUtil::postProcessResult($result);
+    /** @inheritDoc */
+    public function setPort(?int $port): void
+    {
+    }
+
+    /** @inheritDoc */
+    public function setProtocol(?string $protocol): void
+    {
+    }
+
+    /** @inheritDoc */
+    public function setRaw(?string $raw): void
+    {
+    }
+
+    /** @inheritDoc */
+    public function setSearch(?string $search): void
+    {
     }
 }

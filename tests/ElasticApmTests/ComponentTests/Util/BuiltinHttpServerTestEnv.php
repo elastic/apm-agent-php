@@ -49,7 +49,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
     protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
     {
         $this->ensureHttpServerIsRunning(
-            $this->appCodeHostServerPort /* <- ref */,
+            $testProperties->urlParts->port /* <- ref */,
             $this->appCodeHostServerId /* <- ref */,
             ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) /* <- dbgServerDesc */,
             /* cmdLineGenFunc: */

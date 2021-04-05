@@ -23,45 +23,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use JsonSerializable;
+use stdClass;
 
 /**
- * An object containing contextual data for database spans
- *
- * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L47
- *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class SpanContextDbData implements OptionalSerializableDataInterface, LoggableInterface
+interface OptionalSerializableDataInterface extends SerializableDataInterface
 {
-    use LoggableTrait;
-
     /**
-     * @var string|null
-     *
-     * A database statement (e.g. query) for the given database type
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L55
+     * @return bool
      */
-    public $statement = null;
-
-    /** @inheritDoc */
-    public function prepareForSerialization(): bool
-    {
-        return ($this->statement !== null);
-    }
-
-    /** @inheritDoc */
-    public function jsonSerialize()
-    {
-        $result = [];
-
-        SerializationUtil::addNameValueIfNotNull('statement', $this->statement, /* ref */ $result);
-
-        return SerializationUtil::postProcessResult($result);
-    }
+    public function prepareForSerialization(): bool;
 }

@@ -33,14 +33,6 @@ use ElasticApmTests\ComponentTests\Util\TestEnvBase;
 
 final class MetadataTest extends ComponentTestCaseBase
 {
-    private static function generateDummyMaxKeywordString(): string
-    {
-        return '[' . str_repeat('V', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
-               . ','
-               . ';'
-               . str_repeat('W', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']';
-    }
-
     private function environmentConfigTestImpl(
         ?AgentConfigSetter $configSetter,
         ?string $configured,

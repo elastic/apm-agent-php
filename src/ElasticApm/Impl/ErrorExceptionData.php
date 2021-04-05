@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use JsonSerializable;
 use Throwable;
 
 /**
@@ -40,7 +39,7 @@ use Throwable;
  *
  * @internal
  */
-class ErrorExceptionData implements JsonSerializable, LoggableInterface
+class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -133,6 +132,7 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
         return $result;
     }
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -143,6 +143,6 @@ class ErrorExceptionData implements JsonSerializable, LoggableInterface
         SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stacktrace, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('type', $this->type, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

@@ -47,12 +47,13 @@ class TransactionData extends ExecutionSegmentData
     /** @var bool */
     public $isSampled = true;
 
-    /** @var TransactionContextData|null */
+    /** @var ?TransactionContextData */
     public $context = null;
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
-        $result = parent::jsonSerialize();
+        $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
 
         SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
 
@@ -70,10 +71,13 @@ class TransactionData extends ExecutionSegmentData
             SerializationUtil::addNameValue('sampled', $this->isSampled, /* ref */ $result);
         }
 
-        if (!is_null($this->context)) {
-            SerializationUtil::addNameValueIfNotEmpty('context', $this->context->jsonSerialize(), /* ref */ $result);
-        }
+        SerializationUtil::addNameValueIfNotNull('context', $this->context, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
+    }
+
+    public function prepareForSerialization(): void
+    {
+        SerializationUtil::prepareForSerialization(/* ref */ $this->context);
     }
 }

@@ -26,14 +26,13 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-class ServiceData implements JsonSerializable, LoggableInterface
+class ServiceData implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -113,6 +112,7 @@ class ServiceData implements JsonSerializable, LoggableInterface
      */
     public $runtime = null;
 
+    /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
@@ -125,6 +125,6 @@ class ServiceData implements JsonSerializable, LoggableInterface
         SerializationUtil::addNameValueIfNotNull('language', $this->language, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('runtime', $this->runtime, /* ref */ $result);
 
-        return $result;
+        return SerializationUtil::postProcessResult($result);
     }
 }

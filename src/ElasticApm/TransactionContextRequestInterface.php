@@ -21,26 +21,27 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace Elastic\Apm;
 
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
-
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class ProcessData implements SerializableDataInterface, LoggableInterface
+interface TransactionContextRequestInterface
 {
-    use LoggableTrait;
+    /**
+     * HTTP method
+     *
+     * The length of a value is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L33
+     *
+     * @param string $method
+     *
+     * @return void
+     */
+    public function setMethod(string $method): void;
 
-    /** @var int */
-    public $pid;
-
-    /** @inheritDoc */
-    public function jsonSerialize()
-    {
-        return ['pid' => $this->pid];
-    }
+    /**
+     * Returns an object that can be used to collect information about HTTP request's URL
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/request.json#L50
+     */
+    public function url(): TransactionContextRequestUrlInterface;
 }

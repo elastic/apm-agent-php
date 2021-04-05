@@ -25,8 +25,12 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\TransactionContextData;
+use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\UrlUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -35,9 +39,6 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 {
     /** @var string|null */
     protected $appCodeHostServerId = null;
-
-    /** @var int|null */
-    protected $appCodeHostServerPort = null;
 
     /** @var Logger */
     private $logger;
@@ -62,20 +63,26 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
     {
         $this->ensureAppCodeHostServerRunning($testProperties);
-        TestCase::assertNotNull($this->appCodeHostServerPort);
+        TestCase::assertNotNull($testProperties->urlParts->port);
         TestCase::assertNotNull($this->appCodeHostServerId);
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        $localLogger = $this->logger->inherit()->addAllContext(
+            [
+                'method'           => $testProperties->httpMethod,
+                'urlParts'         => $testProperties->urlParts,
+                'requestMethodArg' => UrlUtil::buildRequestMethodArg($testProperties->urlParts),
+            ]
+        );
+
+        ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Sending HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
-            . ' to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
+            'Sending HTTP request to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
         /** @noinspection PhpUnhandledExceptionInspection */
-        $response = TestHttpClientUtil::sendHttpRequest(
-            $this->appCodeHostServerPort,
+        $response = TestHttpClientUtil::sendRequest(
             $testProperties->httpMethod,
-            $testProperties->uriPath,
+            $testProperties->urlParts,
             SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $testProperties->sharedDataPerRequest)
         );
         if ($response->getStatusCode() !== $testProperties->expectedStatusCode) {
@@ -86,37 +93,87 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             );
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Successfully sent HTTP request `' . $testProperties->httpMethod . ' ' . $testProperties->uriPath . '\''
-            . ' to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
+            'Successfully sent HTTP request to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class)
         );
     }
 
     abstract protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void;
 
-    protected function verifyRootTransactionName(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
-        parent::verifyRootTransactionName($testProperties, $rootTransaction);
+    protected function verifyRootTransaction(TestProperties $testProperties, TransactionData $rootTransaction): void
+    {
+        parent::verifyRootTransaction($testProperties, $rootTransaction);
+
+        if ($rootTransaction->isSampled) {
+            TestCase::assertNotNull($rootTransaction->context);
+        }
+    }
+
+    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    {
+        parent::verifyRootTransactionName($testProperties, $rootTransactionName);
 
         if (is_null($testProperties->expectedTransactionName)) {
             TestCase::assertSame(
-                $testProperties->httpMethod . ' ' . $testProperties->uriPath,
-                $rootTransaction->name
+                $testProperties->httpMethod . ' ' . ($testProperties->urlParts->path ?? '/'),
+                $rootTransactionName
             );
         }
     }
 
-    protected function verifyRootTransactionType(
-        TestProperties $testProperties,
-        TransactionData $rootTransaction
-    ): void {
-        parent::verifyRootTransactionType($testProperties, $rootTransaction);
+    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    {
+        parent::verifyRootTransactionType($testProperties, $rootTransactionType);
 
         if (is_null($testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransaction->type);
+            TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransactionType);
         }
+    }
+
+    protected function verifyRootTransactionContext(
+        TestProperties $testProperties,
+        ?TransactionContextData $rootTransactionContext
+    ): void {
+        parent::verifyRootTransactionContext($testProperties, $rootTransactionContext);
+
+        if ($rootTransactionContext === null) {
+            return;
+        }
+
+        TestCase::assertNotNull($rootTransactionContext->request);
+        $this->verifyRootTransactionContextRequest($testProperties, $rootTransactionContext->request);
+    }
+
+    protected function verifyRootTransactionContextRequest(
+        TestProperties $testProperties,
+        TransactionContextRequestData $rootTransactionContextRequest
+    ): void {
+        /**
+         * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L101
+         * "required": ["url", "method"]
+         */
+        TestCase::assertNotNull($rootTransactionContextRequest->method);
+        TestCase::assertNotNull($rootTransactionContextRequest->url);
+
+        TestCase::assertSame($testProperties->httpMethod, $rootTransactionContextRequest->method);
+        $this->verifyRootTransactionContextRequestUrl($testProperties, $rootTransactionContextRequest->url);
+    }
+
+    protected function verifyRootTransactionContextRequestUrl(
+        TestProperties $testProperties,
+        TransactionContextRequestUrlData $rootTransactionContextRequestUrl
+    ): void {
+        $fullUrl = UrlUtil::buildFullUrl($testProperties->urlParts);
+        TestCase::assertSame($fullUrl, $rootTransactionContextRequestUrl->full);
+        TestCase::assertSame($testProperties->urlParts->host, $rootTransactionContextRequestUrl->hostname);
+        TestCase::assertSame($testProperties->urlParts->path, $rootTransactionContextRequestUrl->pathname);
+        TestCase::assertSame($testProperties->urlParts->port, $rootTransactionContextRequestUrl->port);
+        TestCase::assertSame($testProperties->urlParts->scheme, $rootTransactionContextRequestUrl->protocol);
+        TestCase::assertSame($fullUrl, $rootTransactionContextRequestUrl->raw);
+        TestCase::assertSame(
+            $testProperties->urlParts->query,
+            $rootTransactionContextRequestUrl->search
+        );
     }
 }
