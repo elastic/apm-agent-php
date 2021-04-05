@@ -43,6 +43,17 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
     /**
      * @var ?string
      *
+     * The hostname of the request, e.g. 'example.com'
+     *
+     * The length of a value is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L69
+     */
+    public $domain = null;
+
+    /**
+     * @var ?string
+     *
      * The full, possibly agent-assembled URL of the request
      *
      * The length of a value is limited to 1024.
@@ -54,13 +65,15 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
     /**
      * @var ?string
      *
-     * The hostname of the request, e.g. 'example.com'
+     * The raw, unparsed URL of the HTTP request line, e.g https://example.com:443/search?q=elasticsearch.
+     * This URL may be absolute or relative.
+     * For more details, see https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.2
      *
      * The length of a value is limited to 1024.
      *
-     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L69
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L54
      */
-    public $hostname = null;
+    public $original = null;
 
     /**
      * @var ?string
@@ -71,7 +84,7 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L79
      */
-    public $pathname = null;
+    public $path = null;
 
     /**
      * @var ?int
@@ -96,19 +109,6 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
     /**
      * @var ?string
      *
-     * The raw, unparsed URL of the HTTP request line, e.g https://example.com:443/search?q=elasticsearch.
-     * This URL may be absolute or relative.
-     * For more details, see https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.2
-     *
-     * The length of a value is limited to 1024.
-     *
-     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L54
-     */
-    public $raw = null;
-
-    /**
-     * @var ?string
-     *
      * Contains the query string information of the request.
      * It is expected to have values delimited by ampersands.
      *
@@ -116,18 +116,18 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L84
      */
-    public $search = null;
+    public $query = null;
 
     /** @inheritDoc */
     public function prepareForSerialization(): bool
     {
-        return ($this->full !== null)
-               || ($this->hostname !== null)
-               || ($this->pathname !== null)
+        return ($this->domain !== null)
+               || ($this->full !== null)
+               || ($this->original !== null)
+               || ($this->path !== null)
                || ($this->port !== null)
                || ($this->protocol !== null)
-               || ($this->raw !== null)
-               || ($this->search !== null);
+               || ($this->query !== null);
     }
 
     /** @inheritDoc */
@@ -135,13 +135,13 @@ final class TransactionContextRequestUrlData implements OptionalSerializableData
     {
         $result = [];
 
+        SerializationUtil::addNameValueIfNotNull('hostname', $this->domain, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('full', $this->full, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('hostname', $this->hostname, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('pathname', $this->pathname, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('raw', $this->original, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('pathname', $this->path, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('port', $this->port, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('protocol', $this->protocol, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('raw', $this->raw, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('search', $this->search, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('search', $this->query, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

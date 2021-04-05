@@ -36,17 +36,22 @@ final class NoopTransactionContextRequestUrl implements TransactionContextReques
     use NoopObjectTrait;
 
     /** @inheritDoc */
+    public function setDomain(?string $domain): void
+    {
+    }
+
+    /** @inheritDoc */
     public function setFull(?string $full): void
     {
     }
 
     /** @inheritDoc */
-    public function setHostname(?string $hostname): void
+    public function setOriginal(?string $original): void
     {
     }
 
     /** @inheritDoc */
-    public function setPathname(?string $pathname): void
+    public function setPath(?string $path): void
     {
     }
 
@@ -61,12 +66,7 @@ final class NoopTransactionContextRequestUrl implements TransactionContextReques
     }
 
     /** @inheritDoc */
-    public function setRaw(?string $raw): void
-    {
-    }
-
-    /** @inheritDoc */
-    public function setSearch(?string $search): void
+    public function setQuery(?string $query): void
     {
     }
 }

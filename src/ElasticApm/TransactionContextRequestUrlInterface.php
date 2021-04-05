@@ -26,6 +26,19 @@ namespace Elastic\Apm;
 interface TransactionContextRequestUrlInterface
 {
     /**
+     * The domain of the request, e.g. 'example.com'
+     *
+     * The length of a value is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L69
+     *
+     * @param ?string $domain
+     *
+     * @return void
+     */
+    public function setDomain(?string $domain): void;
+
+    /**
      * The full, possibly agent-assembled URL of the request
      *
      * The length of a value is limited to 1024.
@@ -39,17 +52,19 @@ interface TransactionContextRequestUrlInterface
     public function setFull(?string $full): void;
 
     /**
-     * The hostname of the request, e.g. 'example.com'
+     * The raw, unparsed URL of the HTTP request line, e.g https://example.com:443/search?q=elasticsearch.
+     * This URL may be absolute or relative.
+     * For more details, see https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.2
      *
      * The length of a value is limited to 1024.
      *
-     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L69
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L54
      *
-     * @param ?string $hostname
+     * @param ?string $original
      *
      * @return void
      */
-    public function setHostname(?string $hostname): void;
+    public function setOriginal(?string $original): void;
 
     /**
      * The path of the request, e.g. '/search'
@@ -58,11 +73,11 @@ interface TransactionContextRequestUrlInterface
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L79
      *
-     * @param ?string $pathname
+     * @param ?string $path
      *
      * @return void
      */
-    public function setPathname(?string $pathname): void;
+    public function setPath(?string $path): void;
 
     /**
      * The port of the request, e.g. 443
@@ -89,21 +104,6 @@ interface TransactionContextRequestUrlInterface
     public function setProtocol(?string $protocol): void;
 
     /**
-     * The raw, unparsed URL of the HTTP request line, e.g https://example.com:443/search?q=elasticsearch.
-     * This URL may be absolute or relative.
-     * For more details, see https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.2
-     *
-     * The length of a value is limited to 1024.
-     *
-     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L54
-     *
-     * @param ?string $raw
-     *
-     * @return void
-     */
-    public function setRaw(?string $raw): void;
-
-    /**
      * Sets the query string information of the request.
      * It is expected to have values delimited by ampersands.
      *
@@ -111,9 +111,9 @@ interface TransactionContextRequestUrlInterface
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L84
      *
-     * @param ?string $search
+     * @param ?string $query
      *
      * @return void
      */
-    public function setSearch(?string $search): void;
+    public function setQuery(?string $query): void;
 }

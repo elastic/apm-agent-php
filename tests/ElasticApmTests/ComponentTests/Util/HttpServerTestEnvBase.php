@@ -165,15 +165,15 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         TransactionContextRequestUrlData $rootTransactionContextRequestUrl
     ): void {
         $fullUrl = UrlUtil::buildFullUrl($testProperties->urlParts);
+        TestCase::assertSame($testProperties->urlParts->host, $rootTransactionContextRequestUrl->domain);
         TestCase::assertSame($fullUrl, $rootTransactionContextRequestUrl->full);
-        TestCase::assertSame($testProperties->urlParts->host, $rootTransactionContextRequestUrl->hostname);
-        TestCase::assertSame($testProperties->urlParts->path, $rootTransactionContextRequestUrl->pathname);
+        TestCase::assertSame($fullUrl, $rootTransactionContextRequestUrl->original);
+        TestCase::assertSame($testProperties->urlParts->path, $rootTransactionContextRequestUrl->path);
         TestCase::assertSame($testProperties->urlParts->port, $rootTransactionContextRequestUrl->port);
         TestCase::assertSame($testProperties->urlParts->scheme, $rootTransactionContextRequestUrl->protocol);
-        TestCase::assertSame($fullUrl, $rootTransactionContextRequestUrl->raw);
         TestCase::assertSame(
             $testProperties->urlParts->query,
-            $rootTransactionContextRequestUrl->search
+            $rootTransactionContextRequestUrl->query
         );
     }
 }

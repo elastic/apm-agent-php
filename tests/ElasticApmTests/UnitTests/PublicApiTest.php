@@ -317,24 +317,24 @@ class PublicApiTest extends TracerUnitTestCaseBase
     public function testTransactionContextRequest(): void
     {
         foreach ([true, false] as $shouldSetMethod) {
-            foreach ([true, false] as $shouldSetUrlFull) {
-                foreach ([true, false] as $shouldSetUrlHostname) {
-                    foreach ([true, false] as $shouldSetUrlPathname) {
-                        foreach ([true, false] as $shouldSetUrlPort) {
-                            foreach ([true, false] as $shouldSetUrlProtocol) {
-                                foreach ([true, false] as $shouldSetUrlRaw) {
-                                    foreach ([true, false] as $shouldSetUrlSearch) {
+            foreach ([true, false] as $shouldSetUrlDomain) {
+                foreach ([true, false] as $shouldSetUrlFull) {
+                    foreach ([true, false] as $shouldSetUrlOriginal) {
+                        foreach ([true, false] as $shouldSetUrlPath) {
+                            foreach ([true, false] as $shouldSetUrlPort) {
+                                foreach ([true, false] as $shouldSetUrlProtocol) {
+                                    foreach ([true, false] as $shouldSetUrlQuery) {
                                         $this->mockEventSink->clear();
 
                                         $this->implTestTransactionContextRequest(
                                             $shouldSetMethod,
+                                            $shouldSetUrlDomain,
                                             $shouldSetUrlFull,
-                                            $shouldSetUrlHostname,
-                                            $shouldSetUrlPathname,
+                                            $shouldSetUrlOriginal,
+                                            $shouldSetUrlPath,
                                             $shouldSetUrlPort,
                                             $shouldSetUrlProtocol,
-                                            $shouldSetUrlRaw,
-                                            $shouldSetUrlSearch
+                                            $shouldSetUrlQuery
                                         );
                                     }
                                 }
@@ -348,13 +348,13 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
     public function implTestTransactionContextRequest(
         bool $shouldSetMethod,
+        bool $shouldSetUrlDomain,
         bool $shouldSetUrlFull,
-        bool $shouldSetUrlHostname,
-        bool $shouldSetUrlPathname,
+        bool $shouldSetUrlOriginal,
+        bool $shouldSetUrlPath,
         bool $shouldSetUrlPort,
         bool $shouldSetUrlProtocol,
-        bool $shouldSetUrlRaw,
-        bool $shouldSetUrlSearch
+        bool $shouldSetUrlQuery
     ): void {
         // Act
         $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
@@ -367,19 +367,24 @@ class PublicApiTest extends TracerUnitTestCaseBase
             $tx->context()->request()->setMethod($method . 'suffix that will be cut off');
         }
 
+        $urlDomain = self::generateDummyMaxKeywordString('my URL domain');
+        if ($shouldSetUrlDomain) {
+            $tx->context()->request()->url()->setDomain($urlDomain . 'suffix that will be cut off');
+        }
+
         $urlFull = self::generateDummyMaxKeywordString('my full URL');
         if ($shouldSetUrlFull) {
             $tx->context()->request()->url()->setFull($urlFull . 'suffix that will be cut off');
         }
 
-        $urlHostname = self::generateDummyMaxKeywordString('my URL hostname');
-        if ($shouldSetUrlHostname) {
-            $tx->context()->request()->url()->setHostname($urlHostname . 'suffix that will be cut off');
+        $urlOriginal = self::generateDummyMaxKeywordString('my original URL');
+        if ($shouldSetUrlOriginal) {
+            $tx->context()->request()->url()->setOriginal($urlOriginal . 'suffix that will be cut off');
         }
 
-        $urlPathname = self::generateDummyMaxKeywordString('my URL pathname');
-        if ($shouldSetUrlPathname) {
-            $tx->context()->request()->url()->setPathname($urlPathname . 'suffix that will be cut off');
+        $urlPath = self::generateDummyMaxKeywordString('my URL path');
+        if ($shouldSetUrlPath) {
+            $tx->context()->request()->url()->setPath($urlPath . 'suffix that will be cut off');
         }
 
         $urlPort = 54321;
@@ -392,14 +397,9 @@ class PublicApiTest extends TracerUnitTestCaseBase
             $tx->context()->request()->url()->setProtocol($urlProtocol . 'suffix that will be cut off');
         }
 
-        $urlRaw = self::generateDummyMaxKeywordString('my raw URL');
-        if ($shouldSetUrlRaw) {
-            $tx->context()->request()->url()->setRaw($urlRaw . 'suffix that will be cut off');
-        }
-
-        $urlSearch = self::generateDummyMaxKeywordString('my URL search');
-        if ($shouldSetUrlSearch) {
-            $tx->context()->request()->url()->setSearch($urlSearch . 'suffix that will be cut off');
+        $urlQuery = self::generateDummyMaxKeywordString('my URL query');
+        if ($shouldSetUrlQuery) {
+            $tx->context()->request()->url()->setQuery($urlQuery . 'suffix that will be cut off');
         }
 
         $tx->end();
@@ -409,13 +409,13 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
         if (
             !$shouldSetMethod
+            && !$shouldSetUrlDomain
             && !$shouldSetUrlFull
-            && !$shouldSetUrlHostname
-            && !$shouldSetUrlPathname
+            && !$shouldSetUrlOriginal
+            && !$shouldSetUrlPath
             && !$shouldSetUrlPort
             && !$shouldSetUrlProtocol
-            && !$shouldSetUrlRaw
-            && !$shouldSetUrlSearch
+            && !$shouldSetUrlQuery
         ) {
             self::assertNull($txData->context);
             return;
@@ -437,22 +437,28 @@ class PublicApiTest extends TracerUnitTestCaseBase
             self::assertSame(TransactionContextRequestData::UNKNOWN_METHOD, $txData->context->request->method);
         }
 
+        if ($shouldSetUrlDomain) {
+            self::assertSame($urlDomain, $txData->context->request->url->domain);
+        } else {
+            self::assertNull($txData->context->request->url->domain);
+        }
+
         if ($shouldSetUrlFull) {
             self::assertSame($urlFull, $txData->context->request->url->full);
         } else {
             self::assertNull($txData->context->request->url->full);
         }
 
-        if ($shouldSetUrlHostname) {
-            self::assertSame($urlHostname, $txData->context->request->url->hostname);
+        if ($shouldSetUrlOriginal) {
+            self::assertSame($urlOriginal, $txData->context->request->url->original);
         } else {
-            self::assertNull($txData->context->request->url->hostname);
+            self::assertNull($txData->context->request->url->original);
         }
 
-        if ($shouldSetUrlPathname) {
-            self::assertSame($urlPathname, $txData->context->request->url->pathname);
+        if ($shouldSetUrlPath) {
+            self::assertSame($urlPath, $txData->context->request->url->path);
         } else {
-            self::assertNull($txData->context->request->url->pathname);
+            self::assertNull($txData->context->request->url->path);
         }
 
         if ($shouldSetUrlPort) {
@@ -467,16 +473,10 @@ class PublicApiTest extends TracerUnitTestCaseBase
             self::assertNull($txData->context->request->url->protocol);
         }
 
-        if ($shouldSetUrlRaw) {
-            self::assertSame($urlRaw, $txData->context->request->url->raw);
+        if ($shouldSetUrlQuery) {
+            self::assertSame($urlQuery, $txData->context->request->url->query);
         } else {
-            self::assertNull($txData->context->request->url->raw);
-        }
-
-        if ($shouldSetUrlSearch) {
-            self::assertSame($urlSearch, $txData->context->request->url->search);
-        } else {
-            self::assertNull($txData->context->request->url->search);
+            self::assertNull($txData->context->request->url->query);
         }
     }
 }

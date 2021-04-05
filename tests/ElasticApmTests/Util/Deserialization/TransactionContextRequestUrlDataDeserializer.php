@@ -69,11 +69,11 @@ final class TransactionContextRequestUrlDataDeserializer extends DataDeserialize
                 return true;
 
             case 'hostname':
-                $this->result->hostname = ValidationUtil::assertValidNullableKeywordString($value);
+                $this->result->domain = ValidationUtil::assertValidNullableKeywordString($value);
                 return true;
 
             case 'pathname':
-                $this->result->pathname = ValidationUtil::assertValidNullableKeywordString($value);
+                $this->result->path = ValidationUtil::assertValidNullableKeywordString($value);
                 return true;
 
             case 'port':
@@ -85,11 +85,11 @@ final class TransactionContextRequestUrlDataDeserializer extends DataDeserialize
                 return true;
 
             case 'raw':
-                $this->result->raw = ValidationUtil::assertValidNullableKeywordString($value);
+                $this->result->original = ValidationUtil::assertValidNullableKeywordString($value);
                 return true;
 
             case 'search':
-                $this->result->search = ValidationUtil::assertValidNullableKeywordString($value);
+                $this->result->query = ValidationUtil::assertValidNullableKeywordString($value);
                 return true;
 
             default:
