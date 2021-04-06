@@ -82,10 +82,10 @@ final class TransactionForExtensionRequest
         return $this->tracer->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
     }
 
-    private function discoverHttpRequestData(): void
+    private static function isGlobalServerVarSet(): bool
     {
         /**
-         * Sometimes $_SERVER is defined. It seems related to auto_globals_jit
+         * Sometimes $_SERVER is not set. It seems related to auto_globals_jit
          * but it's not easily reproducible even with auto_globals_jit=On
          * See also https://bugs.php.net/bug.php?id=69081
          *
@@ -94,13 +94,31 @@ final class TransactionForExtensionRequest
          *
          * @phpstan-ignore-next-line
          */
-        $isGlobalServerVarSet = isset($_SERVER);
+        return isset($_SERVER) && !empty($_SERVER);
+    }
 
-        /** @phpstan-ignore-next-line */
-        if (!$isGlobalServerVarSet) {
+    private function discoverHttpRequestData(): void
+    {
+        if (!self::isGlobalServerVarSet()) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('$_SERVER variable is not set');
-            return;
+            && $loggerProxy->log('$_SERVER variable is not populated - forcing PHP engine to populate it...');
+
+            /**
+             * elastic_apm_* functions are provided by the elastic_apm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            \elastic_apm_force_init_server_global_var();
+
+            if (!self::isGlobalServerVarSet()) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    '$_SERVER variable is not populated even after forcing PHP engine to populate it'
+                    . ' - agent will have to fallback on defaults'
+                );
+                return;
+            }
         }
 
         $this->httpMethod = self::getMandatoryServerVarElement('REQUEST_METHOD');
