@@ -21,6 +21,25 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.0.1]]
+=== v1.0.1
+
+[float]
+==== Breaking changes
+* Simplify API for manual passing of distributed tracing data: {pull}357[#357]
+* Removed NOTICE log level: {pull}329[#329]
+* setLabel() have been moved to under context(): {pull}276[#276]
+
+[float]
+==== Bug fixes
+* Small fixes to examples in docs: {pull}355[#355]
+* Exclude query string from a transaction name: {pull}285[#285]
+
+[float]
+==== Features
+* Added support for distributed tracing: {pull}283[#283]
+* Added Error events: {pull}282[#282]
+
 [[release-notes-v1.0.0]]
 === v1.0.0
 
