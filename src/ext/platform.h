@@ -20,9 +20,11 @@
 #pragma once
 
 #ifndef PHP_WIN32
-#   include <features.h>
-#   ifdef __GLIBC__
-#       define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#   ifdef __GNUC__
+#       include <features.h>
+#       ifdef __GLIBC__
+#           define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#       endif
 #   endif
 #endif
 
