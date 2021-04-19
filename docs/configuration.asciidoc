@@ -1,13 +1,13 @@
 ifdef::env-github[]
 NOTE: For the best reading experience,
-please view this documentation at https://www.elastic.co/guide/en/apm/agent/php[elastic.co]
+please view this documentation at https://www.elastic.co/guide/en/apm/agent/php[elastic.co].
 endif::[]
 
 [[configuration]]
 == Configuration
 
-You can utilize configuration options to adapt the Elastic APM agent to your needs.
-One way to do this is to configure settings via the `php.ini` file:
+Utilize configuration options to adapt the Elastic APM agent to your needs.
+Configure settings via the `php.ini` file:
 
 [source,ini]
 ----
@@ -64,17 +64,17 @@ INFO
 DEBUG
 TRACE
 ----
-For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR` and `CRITICAL`
+For example, if you specify `WARNING` log level, only log records with levels `WARNING`, `ERROR`, and `CRITICAL`
 will be emitted.
 
 `OFF` is only used to disable agent logging.
-There cannot be log records with level `OFF`.
+Log records cannot use `OFF`.
 
-The agent supports logging to the following sinks: syslog and stderr.
-You can control the level of logging for individual sinks with the
+The {agent} supports logging to the following sinks: syslog and stderr.
+Control the level of logging for individual sinks with the
 <<config-log-level-syslog>> and <<config-log-level-stderr>> options.
-When a sink-specific logging level is not set explicitly, the fallback setting,
-<<config-log-level>>, will be used.
+When a sink-specific logging level is not explicitly set, the fallback setting
+<<config-log-level>> will be used.
 
 For example, the following configuration sets the log level to `WARNING` for all the sinks:
 
@@ -84,7 +84,7 @@ elastic_apm.log_level=WARNING
 ----
 
 Alternatively, the following configuration sets log level to `WARNING` for all the sinks
-except for `syslog`, which log level is set to `TRACE`.
+except for `syslog`, where the log level is set to `TRACE`.
 
 [source,ini]
 ----
@@ -111,11 +111,11 @@ elastic_apm.log_level_syslog=TRACE
 | None       | String
 |============
 
-This string is used to ensure that only your agents can send data to your APM Server.
-You must have created the API key using the APM Server's {apm-server-ref-v}/api-key.html[command line tool].
+This string is used to ensure that only your {agent}s can send data to your APM Server.
+You must have created the API key using the APM Servers {apm-server-ref-v}/api-key.html[command line tool].
 
 <<config-api-key>> is an alternative to <<config-secret-token>>.
-If both <<config-secret-token>> and <<config-api-key>> are configured
+If both <<config-secret-token>> and <<config-api-key>> are configured,
 then <<config-api-key>> has precedence and <<config-secret-token>> is ignored.
 
 NOTE: This feature is fully supported in the APM Server versions >= 7.6.
@@ -139,7 +139,7 @@ your communications using HTTPS. Unless you do so, your API Key could be observe
 | false       | Boolean
 |============
 
-Setting to false will completely disable the agent.
+Setting to false will completely disable the {agent}.
 
 [float]
 [[config-environment]]
@@ -182,8 +182,8 @@ You must use the query bar to filter for a specific environment in versions prio
 | None       | Log level
 |============
 
-Fallback configuration setting to control the logging level for the agent.
-This setting has effect for the sink when sink specific option is not set explicitly.
+The fallback configuration setting to control the logging level for the {agent}.
+This setting occurs when the sink specific option is not set explicitly.
 See <<configure-logging>> for details.
 
 [float]
@@ -240,8 +240,8 @@ See <<configure-logging>> for details.
 | None       | String
 |============
 
-This string is used to ensure that only your agents can send data to your APM Server.
-Both the agents and the APM Server have to be configured with the same secret token.
+This string is used to ensure that only your {agent}s can send data to your APM Server.
+Both the {agent}s and the APM Server have to be configured with the same secret token.
 
 See {apm-server-ref-v}/secret-token.html[the relevant APM Server's documentation]
 on how to configure APM Server's secret token.
@@ -272,7 +272,7 @@ your communications using HTTPS. Unless you do so, your secret token could be ob
 |============
 
 If a request sending events to the APM server takes longer than the configured timeout,
-the request is canceled, and the events are discarded.
+the request is canceled and the events are discarded.
 
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10s`.
@@ -280,7 +280,7 @@ This option's default unit is `s`, so `5` is interpreted as `5s`.
 
 If the value is `0` (or `0ms`, `0s`, etc.) the timeout for sending events to the APM Server is disabled.
 
-If the value is negative, it's invalid, and the default value is used instead.
+If the value is negative and invalid, the default value is used instead.
 
 [float]
 [[config-server-url]]
@@ -317,12 +317,12 @@ The URL for your APM Server. The URL must be fully qualified, including protocol
 |============
 
 This is used to keep all the errors and transactions of your service together
-and it is the primary filter in the Elastic APM user interface.
+and is the primary filter in the Elastic APM user interface.
 
 NOTE: The service name must conform to this regular expression: `^[a-zA-Z0-9 _-]+$`.
-In less regexy terms: your service name must only contain characters from the ASCII alphabet,
-numbers, dashes, underscores and spaces.
-Characters in service name which don't match regular expression will be replaced by `_` (underscore) character.
+Your service name must only contain characters from the ASCII alphabet,
+numbers, dashes, underscores, and spaces.
+Characters in service name that don't match regular expression will be replaced by `_` (underscore) character.
 
 [float]
 [[config-service-version]]
@@ -340,7 +340,7 @@ Characters in service name which don't match regular expression will be replaced
 | None       | String
 |============
 
-The version of the currently deployed service. If you don’t version your deployments,
+The version of the currently deployed service. If your deployments are not versioned, 
 the recommended value for this field is the commit identifier of the deployed revision, e.g.,
 the output of git rev-parse HEAD.
 
@@ -360,14 +360,14 @@ the output of git rev-parse HEAD.
 | 500       | Integer
 |============
 
-Limits the amount of spans that are recorded per transaction.
+This limits the amount of spans that are recorded per transaction.
 This is helpful in cases where a transaction creates a very high amount of spans,
 for example, thousands of SQL queries.
 Setting an upper limit helps prevent overloading the Agent and APM server in these edge cases.
 
 If the value is `0` no spans will be collected.
 
-If the value is negative, it's invalid, and the default value is used instead.
+If the value is negative and invalid, the default value is used.
 
 [float]
 [[config-transaction-sample-rate]]
@@ -386,9 +386,9 @@ If the value is negative, it's invalid, and the default value is used instead.
 |============
 
 By default, the agent will sample every transaction (e.g., a request to your service).
-To reduce overhead and storage requirements, you can set the sample rate to a value between 0.0 and 1.0.
-The agent will still record the overall time and result for unsampled transactions,
-but not context information, labels, or spans.
+To reduce overhead and storage requirements, set the sample rate to a value between `0.0` and `1.0`.
+The agent still records the overall time and result for unsampled transactions,
+but not for context information, labels, or spans.
 
 [float]
 [[config-verify-server-cert]]
