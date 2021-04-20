@@ -138,7 +138,7 @@ your communications using HTTPS. Unless you do so, your API Key could be observe
 | false       | Boolean
 |============
 
-Setting to false will completely disable the {agent}.
+Setting to false will completely disable the agent.
 
 [float]
 [[config-environment]]
