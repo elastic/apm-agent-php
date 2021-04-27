@@ -97,6 +97,8 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
 
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_VERBOSE, 1L );
+
     if ( serverTimeoutMillisecondsLong == 0 )
     {
         ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
