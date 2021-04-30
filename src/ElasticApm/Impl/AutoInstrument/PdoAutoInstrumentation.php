@@ -70,12 +70,17 @@ final class PdoAutoInstrumentation implements LoggableInterface
         $this->pdoExec($ctx);
         $this->pdoQuery($ctx);
         // $this->pdoPrepare($ctx);
-        // $this->pdoCommit($ctx);
+        $this->pdoBeginTransaction($ctx);
+        $this->pdoCommit($ctx);
+        $this->pdoRollBack($ctx);
         $this->pdoStatementExecute($ctx);
     }
 
-    private function interceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
-    {
+    private function interceptCallToSpan(
+        RegistrationContextInterface $ctx,
+        string $methodName,
+        string $spanName = 'No name'
+    ): void {
         $ctx->interceptCallsToMethod(
             'PDO',
             $methodName,
@@ -86,10 +91,10 @@ final class PdoAutoInstrumentation implements LoggableInterface
              * @return callable
              *
              */
-            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
+            function (?object $interceptedCallThis, array $interceptedCallArgs) use ($spanName): ?callable {
+                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : $spanName;
                 $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                    $statement ?? 'No name',
+                    $statement,
                     Constants::SPAN_TYPE_DB
                 );
                 $span->context()->db()->setStatement($statement);
@@ -114,10 +119,20 @@ final class PdoAutoInstrumentation implements LoggableInterface
         $this->interceptCallToSpan($ctx, 'query');
     }
 
-    // private function pdoCommit(RegistrationContextInterface $ctx): void
-    // {
-    //     $this->interceptCallToSpan($ctx, 'commit');
-    // }
+    private function pdoBeginTransaction(RegistrationContextInterface $ctx): void
+    {
+         $this->interceptCallToSpan($ctx, 'beginTransaction', 'Begin Transaction');
+    }
+
+    private function pdoCommit(RegistrationContextInterface $ctx): void
+    {
+         $this->interceptCallToSpan($ctx, 'commit', 'Commit Transaction');
+    }
+
+    private function pdoRollBack(RegistrationContextInterface $ctx): void
+    {
+        $this->interceptCallToSpan($ctx, 'rollBack', 'Rollback Transaction');
+    }
 
     // private function pdoPrepare(RegistrationContextInterface $ctx): void
     // {
