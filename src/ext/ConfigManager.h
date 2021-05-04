@@ -53,16 +53,17 @@
 
 enum OptionId
 {
+    optionId_abortOnMemoryLeak,
     #ifdef PHP_WIN32
     optionId_allowAbortDialog,
     #endif
-    optionId_abortOnMemoryLeak,
     optionId_apiKey,
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
     optionId_bootstrapPhpPartFile,
     optionId_enabled,
+    optionId_environment,
     optionId_internalChecksLevel,
     optionId_logFile,
     optionId_logLevel,
@@ -78,8 +79,12 @@ enum OptionId
     optionId_memoryTrackingLevel,
     #endif
     optionId_secretToken,
+    optionId_serverTimeout,
     optionId_serverUrl,
     optionId_serviceName,
+    optionId_serviceVersion,
+    optionId_transactionMaxSpans,
+    optionId_transactionSampleRate,
     optionId_verifyServerCert,
 
     numberOfOptions
@@ -100,6 +105,7 @@ struct ConfigSnapshot
     String apiKey;
     String bootstrapPhpPartFile;
     bool enabled;
+    String environment;
     InternalChecksLevel internalChecksLevel;
     String logFile;
     LogLevel logLevel;
@@ -116,7 +122,11 @@ struct ConfigSnapshot
         #endif
     String secretToken;
     String serverUrl;
+    String serverTimeout;
     String serviceName;
+    String serviceVersion;
+    String transactionMaxSpans;
+    String transactionSampleRate;
     bool verifyServerCert;
 };
 typedef struct ConfigSnapshot ConfigSnapshot;

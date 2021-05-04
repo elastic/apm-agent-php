@@ -197,8 +197,8 @@ void printIniEntries( StructuredTextPrinter* structTxtPrinter )
         String columns[ numberOfColumns ] =
                 {
                         streamStringView( getMetaRes.iniName, &txtOutStream )
-                        , originalRawValue
-                        , interpretedRawValue
+                        , redactIfSecret( originalRawValue, getMetaRes.isSecret )
+                        , redactIfSecret( interpretedRawValue, getMetaRes.isSecret )
                         , redactIfSecret( readRawOptionValueFromIni( cfgManager, optId, &currentValueExists ), getMetaRes.isSecret )
                 };
         structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
@@ -234,7 +234,7 @@ void printEnvVars( StructuredTextPrinter* structTxtPrinter )
         String columns[ numberOfColumns ] =
                 {
                         getMetaRes.envVarName
-                        , originalRawValue
+                        , redactIfSecret( originalRawValue, getMetaRes.isSecret )
                         , redactIfSecret( readRawOptionValueFromEnvVars( cfgManager, optId ), getMetaRes.isSecret )
                 };
         structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
