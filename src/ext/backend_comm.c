@@ -18,11 +18,13 @@
  */
 
 #include "backend_comm.h"
-#include "elastic_apm_version.h"
 #if defined(PHP_WIN32) && ! defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
 #endif
+#include <stdio.h>
 #include <curl/curl.h>
+#include "elastic_apm_alloc.h"
+#include "elastic_apm_version.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -51,6 +53,49 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     } while ( false ) \
     /**/
 
+
+#ifdef ELASTIC_APM_PLATFORM_HAS_GETLINE
+#   define ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+#endif // ELASTIC_APM_PLATFORM_HAS_GETLINE
+
+#ifdef ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+static void logLibCurlVerboseOutput( LogLevel logLevel, FILE* verbOutFile )
+{
+    int fflushRetVal = 0;
+    char* lineBuf = NULL;
+    size_t lineBufSize = 0;
+
+    fflushRetVal = fflush( verbOutFile );
+    if ( fflushRetVal != 0 )
+    {
+        int last_errno = errno;
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "Failed to flush file with libcurl verbose information - fflush() returned non-zero value."
+                               " fflushRetVal: %d. errno: %d (%s)", fflushRetVal, last_errno, streamErrNo( last_errno, &txtOutStream ) );
+        goto failure;
+    }
+
+    rewind( verbOutFile );
+
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "libcurl's verbose output BEGIN" );
+    while ( getline( /* in,out */ &lineBuf, /* in,out */ &lineBufSize, verbOutFile ) != -1 )
+    {
+        ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "libcurl's verbose output: %s", lineBuf );
+    }
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "libcurl's verbose output END" );
+
+    finally:
+
+    if ( lineBuf != NULL ) free( lineBuf );
+
+    return;
+
+    failure:
+    goto finally;
+}
+#endif // ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+
 ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents )
 {
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
@@ -63,6 +108,11 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     ResultCode resultCode;
     CURL* curl = NULL;
     CURLcode result;
+
+    #ifdef ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+    FILE* verbOutFile = NULL;
+    #endif // ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+
     enum
     {
         authBufferSize = 256
@@ -92,12 +142,27 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
         goto failure;
     }
 
+    #ifdef ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+    verbOutFile = tmpfile();
+    if ( verbOutFile == NULL )
+    {
+        int last_errno = errno;
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "Failed to open temporary file for libcurl's verbose information - tmpfile() returned NULL."
+                               " errno: %d (%s)", last_errno, streamErrNo( last_errno, &txtOutStream ) );
+        resultCode = resultFailure;
+        goto failure;
+    }
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_STDERR, verbOutFile );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_VERBOSE, 1L );
+    #endif // ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
 
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_VERBOSE, 1L );
 
     if ( serverTimeoutMillisecondsLong == 0 )
     {
@@ -168,7 +233,28 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        ELASTIC_APM_LOG_ERROR( "Sending events to APM Server failed. URL: `%s'. Error message: `%s'.", url, curl_easy_strerror( result ) );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "Sending events to APM Server failed."
+                               " URL: `%s'."
+                               " Error message: `%s'."
+                               " verify_server_cert: %s."
+                               " Is API key set: %s."
+                               " Is secret token set: %s."
+                               " serverTimeoutMilliseconds: %f (as integer: %"PRIu64")."
+                               " serializedEvents.length: %"PRIu64"."
+                               , url
+                               , curl_easy_strerror( result )
+                               , streamBool( config->verifyServerCert, &txtOutStream )
+                               , streamBool( isNullOrEmtpyString( config->apiKey ), &txtOutStream )
+                               , streamBool( isNullOrEmtpyString( config->secretToken ), &txtOutStream )
+                               , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+                               , (UInt64) serializedEvents.length );
+
+        #ifdef ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+        logLibCurlVerboseOutput( logLevel_error, verbOutFile );
+        #endif // ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+
         resultCode = resultFailure;
         goto failure;
     }
@@ -180,7 +266,20 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     resultCode = resultSuccess;
 
     finally:
-    if ( curl != NULL ) curl_easy_cleanup( curl );
+
+    #ifdef ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+    if ( verbOutFile != NULL )
+    {
+        fclose( verbOutFile );
+        verbOutFile = NULL;
+    }
+    #endif // ELASTIC_APM_SHOULD_LOG_LIBCURL_VERBOSE
+
+    if ( curl != NULL )
+    {
+        curl_easy_cleanup( curl );
+        curl = NULL;
+    }
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
     return resultCode;
