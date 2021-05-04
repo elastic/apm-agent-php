@@ -552,16 +552,17 @@ static void initOptionMetadataForId( OptionMetadata* optsMeta
         return (ParsedOptionValue){ .type = optMeta->defaultValue.type, .u.intValue = (int)( src->fieldName ) }; \
     }
 
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
 #   ifdef PHP_WIN32
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, allowAbortDialog )
 #   endif
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevel )
@@ -577,8 +578,12 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 
 #undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
@@ -649,6 +654,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     // The order of calls to ELASTIC_APM_INIT_METADATA below should be the same as in OptionId
     //
 
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            abortOnMemoryLeak,
+            ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK,
+            /* defaultValue: */ ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK );
+
     #ifdef PHP_WIN32
     ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
@@ -656,12 +667,6 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG,
             /* defaultValue: */ false );
     #endif
-
-    ELASTIC_APM_INIT_METADATA(
-            buildBoolOptionMetadata,
-            abortOnMemoryLeak,
-            ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK,
-            /* defaultValue: */ ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,
@@ -690,6 +695,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             enabled,
             ELASTIC_APM_CFG_OPT_NAME_ENABLED,
             /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            environment,
+            ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_ENUM_INIT_METADATA(
             /* fieldName: */ internalChecksLevel,
@@ -743,6 +754,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
+            serverTimeout,
+            ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
             serverUrl,
             ELASTIC_APM_CFG_OPT_NAME_SERVER_URL,
             /* defaultValue: */ "http://localhost:8200" );
@@ -752,6 +769,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             serviceName,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME,
             /* defaultValue: */ "Unknown PHP service" );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            serviceVersion,
+            ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            transactionMaxSpans,
+            ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            transactionSampleRate,
+            ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
@@ -1274,8 +1309,12 @@ void getConfigManagerOptionValueById(
     ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( &result->txtOutStream );
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
-    result->streamedParsedValue = optMeta->streamParsedValue(
-            optMeta, optMeta->getField( optMeta, &( cfgManager->current.snapshot ) ), &result->txtOutStream );
+    const ParsedOptionValue parsedOpVal = optMeta->getField( optMeta, &( cfgManager->current.snapshot ) );
+    result->streamedParsedValue =
+        ( parsedOpVal.type == parsedOptionValueType_string && parsedOpVal.u.stringValue == NULL )
+            ? NULL
+            : optMeta->streamParsedValue( optMeta, parsedOpVal, &result->txtOutStream );
+
     if ( cfgManager->current.rawData == NULL )
     {
         result->rawValue = NULL;
