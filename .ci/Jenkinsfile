@@ -205,7 +205,7 @@ pipeline {
                 }
               }
               stage('PHP Upgrade Testing') {
-                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+                agent { label 'ubuntu-18.04 && immutable' }
                 when {
                   beforeAgent true
                   allOf {
@@ -221,7 +221,7 @@ pipeline {
                 }
               }
               stage('PHP Apache Testing') {
-                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+                agent { label 'ubuntu-18.04 && immutable' }
                 when {
                   beforeAgent true
                   allOf {
@@ -236,7 +236,7 @@ pipeline {
                 }
               }
               stage('PHP FPM Testing') {
-                agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+                agent { label 'ubuntu-18.04 && immutable' }
                 when {
                   beforeAgent true
                   allOf {
