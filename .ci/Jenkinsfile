@@ -87,6 +87,7 @@ pipeline {
           }
           failFast false
           matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -180,6 +181,7 @@ pipeline {
           }
           failFast false
           matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -322,6 +324,7 @@ pipeline {
           options { skipDefaultCheckout() }
           failFast false
           matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -374,6 +377,7 @@ pipeline {
           options { skipDefaultCheckout() }
           failFast false
           matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
             axes {
               axis {
                 name 'PHP_VERSION'
