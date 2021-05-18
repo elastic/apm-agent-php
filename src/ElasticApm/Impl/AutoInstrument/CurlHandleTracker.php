@@ -148,7 +148,8 @@ final class CurlHandleTracker implements LoggableInterface
 
         $this->curlHandle = $curlHandle;
 
-        // Prior to PHP 8 $curlHandle is a resource, PHP 8+ $curlHandle is an instance of CurlHandle class
+        // Prior to PHP 8 $curlHandle is a resource
+        // For PHP 8+ $curlHandle is an instance of CurlHandle class
         return is_resource($curlHandle) ? intval($curlHandle) : spl_object_id($curlHandle);
     }
 
