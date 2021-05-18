@@ -3,7 +3,7 @@
 @Library('apm@current') _
 
 pipeline {
-  agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+  agent { label 'ubuntu-18.04 && immutable' }
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
@@ -80,14 +80,13 @@ pipeline {
           }
         }
         stage('BuildAndTest') {
+          options { skipDefaultCheckout() }
           when {
             beforeAgent true
             expression { return env.ONLY_DOCS == "false" }
           }
           failFast false
           matrix {
-            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-            options { skipDefaultCheckout() }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -183,14 +182,13 @@ pipeline {
           }
         }
         stage('Package lifecycle testing') {
+          options { skipDefaultCheckout() }
           when {
             beforeAgent true
             expression { return env.ONLY_DOCS == "false" }
           }
           failFast false
           matrix {
-            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-            options { skipDefaultCheckout() }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -279,7 +277,7 @@ pipeline {
           expression { isInternalCI() }
         }
       }
-      agent { label 'linux && docker && ubuntu-18.04 && immutable' }
+      agent { label 'ubuntu-18.04 && immutable' }
       environment {
         BUCKET_NAME = 'internal-ci-artifacts'
         BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
@@ -330,10 +328,9 @@ pipeline {
           }
         }
         stage('Test-Signed-Package') {
+          options { skipDefaultCheckout() }
           failFast false
           matrix {
-            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-            options { skipDefaultCheckout() }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -383,10 +380,9 @@ pipeline {
           }
         }
         stage('Test-Released-Package') {
+          options { skipDefaultCheckout() }
           failFast false
           matrix {
-            agent { label 'linux && docker && ubuntu-18.04 && immutable' }
-            options { skipDefaultCheckout() }
             axes {
               axis {
                 name 'PHP_VERSION'
