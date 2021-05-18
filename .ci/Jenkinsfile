@@ -441,7 +441,7 @@ pipeline {
   }
 }
 
-def initWorkspace(def args: [:], Closure body){
+def initWorkspace(def args = [:], Closure body){
     withGithubNotify(args) {
       deleteDir()
       unstash 'source'
