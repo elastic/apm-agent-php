@@ -324,11 +324,11 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     /**
      * @param CurlHandleTracker $curlHandleTracker
-     * @param mixed             $returnValueOrThrown
+     * @param mixed             $curlHandle
      */
-    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $returnValueOrThrown): void
+    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle): void
     {
-        $handleId = $curlHandleTracker->setHandle($returnValueOrThrown);
+        $handleId = $curlHandleTracker->setHandle($curlHandle);
         if (!is_null($handleId)) {
             $this->addToHandleIdToTracker($handleId, $curlHandleTracker);
         }
