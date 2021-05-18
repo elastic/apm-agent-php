@@ -228,8 +228,8 @@ static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOption
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
-    if ( parsedValue.u.stringValue == NULL ) RETURN_NULL()
-    RETURN_STRING( parsedValue.u.stringValue )
+    if ( parsedValue.u.stringValue == NULL ) RETURN_NULL();
+    RETURN_STRING( parsedValue.u.stringValue );
 }
 
 static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
@@ -280,7 +280,7 @@ static void parsedBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
-    RETURN_BOOL( parsedValue.u.boolValue )
+    RETURN_BOOL( parsedValue.u.boolValue );
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
@@ -316,7 +316,7 @@ static void parsedDurationValueToZval( const OptionMetadata* optMeta, ParsedOpti
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
-    RETURN_DOUBLE( durationToMilliseconds( parsedValue.u.durationValue ) )
+    RETURN_DOUBLE( durationToMilliseconds( parsedValue.u.durationValue ) );
 }
 
 static
@@ -380,7 +380,7 @@ static void parsedEnumValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
-    RETURN_LONG( (long)( parsedValue.u.intValue ) )
+    RETURN_LONG( (long)( parsedValue.u.intValue ) );
 }
 
 static String streamParsedLogLevel( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )

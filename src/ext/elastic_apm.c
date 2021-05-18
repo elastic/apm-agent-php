@@ -222,7 +222,7 @@ PHP_FUNCTION( elastic_apm_is_enabled )
 {
     ZEND_PARSE_PARAMETERS_NONE();
 
-    RETURN_BOOL( elasticApmIsEnabled() )
+    RETURN_BOOL( elasticApmIsEnabled() );
 }
 /* }}} */
 
@@ -241,7 +241,7 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
         Z_PARAM_STRING( optionName, optionNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmGetConfigOption( optionName, return_value ) != resultSuccess ) RETURN_NULL()
+    if ( elasticApmGetConfigOption( optionName, return_value ) != resultSuccess ) RETURN_NULL();
 }
 /* }}} */
 
@@ -265,9 +265,9 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
     ZEND_PARSE_PARAMETERS_END();
 
     if ( elasticApmInterceptCallsToInternalMethod( className, methodName, &interceptRegistrationId ) != resultSuccess )
-        RETURN_LONG( -1 )
+        RETURN_LONG( -1 );
 
-    RETURN_LONG( interceptRegistrationId )
+    RETURN_LONG( interceptRegistrationId );
 }
 /* }}} */
 
@@ -287,9 +287,9 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
     ZEND_PARSE_PARAMETERS_END();
 
     if ( elasticApmInterceptCallsToInternalFunction( functionName, &interceptRegistrationId ) != resultSuccess )
-        RETURN_LONG( -1 )
+        RETURN_LONG( -1 );
 
-    RETURN_LONG( interceptRegistrationId )
+    RETURN_LONG( interceptRegistrationId );
 }
 /* }}} */
 
@@ -322,11 +322,11 @@ PHP_FUNCTION( elastic_apm_send_to_server )
                                  , makeStringView( serializedMetadata, serializedMetadataLength )
                                  , makeStringView( serializedEvents, serializedEventsLength ) ) == resultSuccess )
     {
-        RETURN_TRUE
+        RETURN_TRUE;
     }
     else
     {
-        RETURN_FALSE
+        RETURN_FALSE;
     }
 }
 /* }}} */
