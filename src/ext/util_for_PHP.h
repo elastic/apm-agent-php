@@ -54,7 +54,7 @@ const zval* findInZarrayByStringKey( const zend_array* zArray, StringView key )
     return zend_hash_str_find( zArray, key.begin, key.length );
 }
 
-ResultCode loadPhpFile( const char* filename TSRMLS_DC );
+ResultCode loadPhpFile( const char* filename );
 ResultCode callPhpFunctionRetBool( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], bool* retVal );
 ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[] );
 ResultCode callPhpFunctionRetZval( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], zval* retVal );
