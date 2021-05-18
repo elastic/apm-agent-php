@@ -25,7 +25,7 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
-ResultCode loadPhpFile( const char* filename TSRMLS_DC )
+ResultCode loadPhpFile( const char* filename )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
 
@@ -139,7 +139,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
             , /* function_name: */ &phpFunctionNameAsZval
             , /* retval_ptr: */ &phpFunctionRetVal
             , argsCount
-            , args TSRMLS_CC );
+            , args );
     if ( callUserFunctionRetVal != SUCCESS )
     {
         ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."

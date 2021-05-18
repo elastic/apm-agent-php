@@ -72,7 +72,7 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var resource */
+    /** @var mixed */
     private $curlHandle;
 
     /** @var string|null */
@@ -136,19 +136,21 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param mixed $returnValue
+     * @param mixed $curlHandle
      *
      * @return int|null
      */
-    public function setHandle($returnValue): ?int
+    public function setHandle($curlHandle): ?int
     {
-        if (!is_resource($returnValue)) {
+        if ($curlHandle === false) {
             return null;
         }
 
-        $this->curlHandle = $returnValue;
+        $this->curlHandle = $curlHandle;
 
-        return intval($this->curlHandle);
+        // Prior to PHP 8 $curlHandle is a resource
+        // For PHP 8+ $curlHandle is an instance of CurlHandle class
+        return is_resource($curlHandle) ? intval($curlHandle) : spl_object_id($curlHandle);
     }
 
     /**

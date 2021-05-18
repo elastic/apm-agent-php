@@ -104,6 +104,6 @@ void getSystemMetrics( const SystemMetricsReading* startReading, const SystemMet
     result->machineMemoryFree = sysInfo.freeram;
 #endif
 
-    result->processMemorySize = zend_memory_peak_usage( 0 TSRMLS_CC );
-    result->processMemoryRss = zend_memory_peak_usage( 1 TSRMLS_CC );
+    result->processMemorySize = zend_memory_peak_usage( /* real_usage (bool): */ 0 );
+    result->processMemoryRss = zend_memory_peak_usage( /* real_usage (bool): */ 1 );
 }

@@ -8,7 +8,7 @@
         { "name": "Sergey Kleyman" }
     ],
     "require": {
-        "php": "^7.2",
+        "php": "^7.2||^8.0",
         "ext-json": "*",
         "psr/log": "^1.0"
     },

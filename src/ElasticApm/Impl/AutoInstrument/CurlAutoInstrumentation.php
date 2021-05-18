@@ -223,8 +223,15 @@ final class CurlAutoInstrumentation implements LoggableInterface
         string $dbgFuncName,
         array $interceptedCallArgs
     ) {
-        if (count($interceptedCallArgs) !== 0 && is_resource($interceptedCallArgs[0])) {
-            return $interceptedCallArgs[0];
+        if (count($interceptedCallArgs) !== 0) {
+            // Prior to PHP 8 $curlHandle is a resource
+            // For PHP 8+ $curlHandle is an instance of CurlHandle class
+            $isValidCurlHandle = (PHP_MAJOR_VERSION < 8)
+                ? is_resource($interceptedCallArgs[0])
+                : is_object($interceptedCallArgs[0]);
+            if ($isValidCurlHandle) {
+                return $interceptedCallArgs[0];
+            }
         }
 
         $ctxToLog = [
@@ -236,7 +243,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
             $ctxToLog['interceptedCallArgs'] = $logger->possiblySecuritySensitive($interceptedCallArgs);
         }
         ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Expected curl handle to be the first argument but it not', $ctxToLog);
+        && $loggerProxy->log('Expected curl handle to be the first argument but it is not', $ctxToLog);
         return null;
     }
 
@@ -324,11 +331,11 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     /**
      * @param CurlHandleTracker $curlHandleTracker
-     * @param mixed             $returnValueOrThrown
+     * @param mixed             $curlHandle
      */
-    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $returnValueOrThrown): void
+    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle): void
     {
-        $handleId = $curlHandleTracker->setHandle($returnValueOrThrown);
+        $handleId = $curlHandleTracker->setHandle($curlHandle);
         if (!is_null($handleId)) {
             $this->addToHandleIdToTracker($handleId, $curlHandleTracker);
         }

@@ -71,7 +71,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4'
+                values '7.2', '7.3', '7.4', '8.0'
               }
               axis {
                 name 'DOCKERFILE'
