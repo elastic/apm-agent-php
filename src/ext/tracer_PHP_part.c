@@ -57,8 +57,8 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
 
-    ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel )
-    ZVAL_DOUBLE( &requestInitStartTimeZval, ( (double) timePointToEpochMicroseconds( requestInitStartTime ) ) )
+    ZVAL_LONG( &maxEnabledLevel, getGlobalTracer()->logger.maxEnabledLevel );
+    ZVAL_DOUBLE( &requestInitStartTimeZval, ( (double) timePointToEpochMicroseconds( requestInitStartTime ) ) );
     zval bootstrapTracerPhpPartArgs[] = { maxEnabledLevel, requestInitStartTimeZval };
     ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetBool(
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC )
