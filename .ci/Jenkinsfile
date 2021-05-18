@@ -436,7 +436,7 @@ pipeline {
 * A function to simplify the pipeline and the too large issue in groovy
 */
 def packageGeneration(def args = [:]) {
-    args.versions { version ->
+    args.versions.each { version ->
       unstash "generate-for-package-${version}-Dockerfile"
       unstash "generate-for-package-${version}-Dockerfile.alpine"
     }
