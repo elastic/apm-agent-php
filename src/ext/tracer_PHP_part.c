@@ -138,7 +138,7 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     zval phpPartArgs[maxInterceptedCallArgsCount + 2];
 
     // The first argument to PHP part's interceptedCallPreHook() is $interceptRegistrationId
-    ZVAL_LONG( &interceptRegistrationIdAsZval, interceptRegistrationId )
+    ZVAL_LONG( &interceptRegistrationIdAsZval, interceptRegistrationId );
     phpPartArgs[ 0 ] = interceptRegistrationIdAsZval;
 
     // The second argument to PHP part's interceptedCallPreHook() is $thisObj
