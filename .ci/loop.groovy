@@ -19,7 +19,7 @@ pipeline {
     durabilityHint('PERFORMANCE_OPTIMIZED')
     rateLimitBuilds(throttle: [count: 60, durationName: 'hour', userBoost: true])
     quietPeriod(10)
-    timeout(time: 6, unit: 'HOURS')
+    timeout(time: 7, unit: 'HOURS')
   }
   triggers {
     issueCommentTrigger('(?i).*jenkins\\W+run\\W+(?:the\\W+)?loop\\W+tests(?:\\W+please)?.*')
@@ -28,7 +28,7 @@ pipeline {
     cron('@midnight')
   }
   parameters {
-    string(name: 'LOOPS', defaultValue: '60', description: 'How many test loops?')
+    string(name: 'LOOPS', defaultValue: '50', description: 'How many test loops?')
   }
   stages {
     stage('Filter build') {
