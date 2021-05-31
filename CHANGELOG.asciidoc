@@ -21,9 +21,13 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
-[[release-notes-ci-tag]]
-=== ci-tag
-*No changelog for this release.*
+[[release-notes-v1.1]]
+=== v1.1
+
+[float]
+===== Features
+* Support for PHP 8.0: {pull}365[#365]
+* Support for Central (AKA Remote) Agents Configuration {pull}134[#134]
 
 [[release-notes-v1.0.1]]
 === v1.0.1
