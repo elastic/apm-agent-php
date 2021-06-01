@@ -20,7 +20,7 @@ The agent supports Linux operating system.
 [[supported-php-versions]]
 === PHP versions
 
-The agent supports PHP versions 7.2-7.4.
+The agent supports PHP versions 7.2-8.0.
 
 [float]
 [[supported-web-frameworks]]
