@@ -91,10 +91,12 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
 
         // Assert
 
-        $idToTx = $this->mockEventSink->idToTransaction();
+        $actualTxIds = array_keys($this->mockEventSink->idToTransaction());
+        self::assertTrue(sort(/* ref */ $actualTxIds));
+        self::assertCount(2, $actualTxIds);
         $expectedTxIds = [$senderTransaction->getId(), $receiverTransaction->getId()];
-        self::assertCount(2, $idToTx);
-        self::assertEqualsCanonicalizing($expectedTxIds, array_keys($idToTx));
+        self::assertTrue(sort(/* ref */ $expectedTxIds));
+        self::assertEqualsCanonicalizing($expectedTxIds, $actualTxIds);
         $idToSpan = $this->mockEventSink->idToSpan();
         self::assertCount($isSentFromSpan ? 1 : 0, $idToSpan);
         $expectedParentId = $isSentFromSpan ? $senderSpan->getId() : $senderTransaction->getId();
