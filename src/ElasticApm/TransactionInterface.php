@@ -131,4 +131,13 @@ interface TransactionInterface extends ExecutionSegmentInterface
      * @see setResult() For the description
      */
     public function getResult(): ?string;
+
+    /**
+     * If the transaction does not have a parent ID yet,
+     * calling this method generates a new ID,
+     * sets it as the parent ID of this transaction, and returns it as a string.
+     *
+     * @return string
+     */
+    public function ensureParentId(): string;
 }
