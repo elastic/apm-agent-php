@@ -26,8 +26,14 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
+use ElasticApmTests\UnitTests\Util\MockLogSink;
+use ElasticApmTests\UnitTests\Util\MockLogSinkStatement;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
 class DistributedTracingTest extends TracerUnitTestCaseBase
@@ -201,6 +207,118 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         } else {
             self::assertEmpty($receiverEventSink->idToTransaction());
             self::assertEmpty($receiverEventSink->idToSpan());
+        }
+    }
+
+    public function testEnsureParentId(): void
+    {
+        foreach ([false, true] as $isTracerEnabled) {
+            foreach ([false, true] as $doesTxHaveParentAlready) {
+                $this->implEnsureParentId(
+                    $isTracerEnabled,
+                    $doesTxHaveParentAlready
+                );
+            }
+        }
+    }
+
+    public function implEnsureParentId(bool $isTracerEnabled, bool $doesTxHaveParentAlready): void
+    {
+        // Arrange
+
+        $webFrontEventSink = new MockEventSink();
+        $webFrontTracer = self::buildTracerForTests($webFrontEventSink)->withEnabled($isTracerEnabled)->build();
+        $backendServiceLogSink = new MockLogSink();
+        $backendServiceEventSink = new MockEventSink();
+        $backendServiceTracer = self::buildTracerForTests($backendServiceEventSink)
+                                    ->withEnabled($isTracerEnabled)
+                                    ->withLogSink($backendServiceLogSink)
+                                    ->withConfigRawSnapshotSource(
+                                        (new MockConfigRawSnapshotSource())->set(OptionNames::LOG_LEVEL, 'DEBUG')
+                                    )->build();
+
+        // Act
+
+        /** @var ?TransactionInterface */
+        $webFrontTx = null;
+
+        /** @var ?string */
+        $distTracingData = null;
+
+        if ($doesTxHaveParentAlready) {
+            GlobalTracerHolder::set($webFrontTracer);
+            $webFrontTx = ElasticApm::beginCurrentTransaction('web front end TX', 'web front end TX type');
+            $distTracingData = ElasticApm::getSerializedCurrentDistributedTracingData();
+        }
+
+        GlobalTracerHolder::set($backendServiceTracer);
+        $backendServiceTx = ElasticApm::beginCurrentTransaction(
+            'backend service TX',
+            'backend service TX type',
+            /* timestamp: */ null,
+            $distTracingData
+        );
+        $parentId = ElasticApm::getCurrentTransaction()->ensureParentId();
+        $backendServiceTx->end();
+
+        if ($webFrontTx !== null) {
+            GlobalTracerHolder::set($webFrontTracer);
+            $webFrontTx->end();
+        }
+
+        // Assert
+
+        self::assertEmpty($this->mockEventSink->idToTransaction());
+        self::assertEmpty($this->mockEventSink->idToSpan());
+
+        self::assertEmpty($webFrontEventSink->idToSpan());
+        self::assertEmpty($backendServiceEventSink->idToSpan());
+
+        if (!$isTracerEnabled) {
+            self::assertEmpty($webFrontEventSink->idToTransaction());
+            self::assertEmpty($backendServiceEventSink->idToTransaction());
+            return;
+        }
+
+        self::assertCount(1, $backendServiceEventSink->idToTransaction());
+        self::assertSame($backendServiceTx->getId(), $backendServiceEventSink->singleTransaction()->id);
+
+        if ($doesTxHaveParentAlready) {
+            self::assertCount(1, $webFrontEventSink->idToTransaction());
+            self::assertNotNull($webFrontTx);
+            self::assertSame($webFrontTx->getId(), $webFrontEventSink->singleTransaction()->id);
+
+            self::assertSame(
+                $webFrontEventSink->singleTransaction()->id,
+                $backendServiceEventSink->singleTransaction()->parentId
+            );
+        } else {
+            self::assertEmpty($webFrontEventSink->idToTransaction());
+
+            self::assertSame($parentId, $backendServiceEventSink->singleTransaction()->parentId);
+
+            $logStatements = array_filter(
+                $backendServiceLogSink->consumed,
+                function (MockLogSinkStatement $logStatement): bool {
+                    return TextUtil::isSuffixOf('Transaction.php', $logStatement->srcCodeFile)
+                           && $logStatement->srcCodeFunc === 'ensureParentId';
+                }
+            );
+            $this->assertCount(1, $logStatements);
+            $logStatement = array_values($logStatements)[0];
+            $this->assertGreaterThanOrEqual(1, count($logStatement->contextsStack));
+            $ctxsWithParentId = array_filter(
+                $logStatement->contextsStack,
+                /**
+                 * @param array<string, mixed> $context
+                 */
+                function (array $context): bool {
+                    return array_key_exists('parentId', $context);
+                }
+            );
+            $this->assertCount(1, $ctxsWithParentId);
+            $ctxWithParentId = array_values($ctxsWithParentId)[0];
+            $this->assertSame($parentId, $ctxWithParentId['parentId']);
         }
     }
 }

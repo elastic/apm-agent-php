@@ -312,6 +312,21 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
+    public function ensureParentId(): string
+    {
+        if ($this->data->parentId === null) {
+            $this->data->parentId = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Setting parent ID for already existing transaction',
+                ['parentId' => $this->data->parentId]
+            );
+        }
+
+        return $this->data->parentId;
+    }
+
+    /** @inheritDoc */
     public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
     {
         if (is_null($this->currentSpan)) {
