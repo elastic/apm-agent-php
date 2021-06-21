@@ -138,8 +138,12 @@ your communications using HTTPS. Unless you do so, your API Key could be observe
 | true       | Boolean
 |============
 
-If it is set to `false` it disables the collection and reporting of
+If this configuration option is set to `true` the agent will collect and report
 breakdown metrics (`span.self_time`) used for "Time spent by span type" chart.
+Set it to `false` to disables the collection and reporting of
+breakdown metrics, which can reduce the overhead of the agent.
+
+NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 [float]
 [[config-enabled]]
