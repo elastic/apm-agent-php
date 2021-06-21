@@ -123,6 +123,25 @@ WARNING: The `api_key` value is sent as plain-text in every request to the serve
 your communications using HTTPS. Unless you do so, your API Key could be observed by an attacker.
 
 [float]
+[[config-breakdown-metrics]]
+==== `breakdown_metrics`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_BREAKDOWN_METRICS` | `elastic_apm.breakdown_metrics`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+If it is set to `false` it disables the collection and reporting of
+breakdown metrics (`span.self_time`) used for "Time spent by span type" chart.
+
+[float]
 [[config-enabled]]
 ==== `enabled`
 
@@ -135,7 +154,7 @@ your communications using HTTPS. Unless you do so, your API Key could be observe
 [options="header"]
 |============
 | Default                          | Type
-| false       | Boolean
+| true       | Boolean
 |============
 
 Setting to false will completely disable the agent.
@@ -339,7 +358,7 @@ Characters in service name that don't match regular expression will be replaced 
 | None       | String
 |============
 
-The version of the currently deployed service. If your deployments are not versioned, 
+The version of the currently deployed service. If your deployments are not versioned,
 the recommended value for this field is the commit identifier of the deployed revision, e.g.,
 the output of git rev-parse HEAD.
 
