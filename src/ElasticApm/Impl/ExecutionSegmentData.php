@@ -51,7 +51,7 @@ class ExecutionSegmentData implements SerializableDataInterface, LoggableInterfa
     /** @var float UTC based and in microseconds since Unix epoch */
     public $timestamp;
 
-    /** @var float */
+    /** @var float  In milliseconds with 3 decimal points */
     public $duration;
 
     /** @inheritDoc */

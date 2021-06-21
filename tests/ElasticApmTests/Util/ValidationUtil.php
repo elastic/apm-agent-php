@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
 use Elastic\Apm\Impl\ServiceData;
@@ -47,6 +48,7 @@ use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -73,7 +75,7 @@ final class ValidationUtil
         }
 
         return new InvalidEventDataException(
-            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 1),
+            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 2),
             $code,
             $previous
         );
@@ -471,7 +473,7 @@ final class ValidationUtil
     /**
      * @param mixed $value
      *
-     * @return mixed
+     * @return int|string|null
      */
     public static function assertValidErrorExceptionCode($value)
     {
@@ -522,6 +524,43 @@ final class ValidationUtil
         if (!is_null($error->exception)) {
             ValidationUtil::assertValidErrorExceptionData($error->exception);
         }
+    }
+
+    /**
+     * @param mixed $samples
+     *
+     * @return array<string, array<string, float|int>>
+     */
+    public static function assertValidMetricSetDataSamples($samples): array
+    {
+        self::assertThat(is_array($samples));
+        self::assertThat(!empty($samples));
+
+        foreach ($samples as $key => $valueArr) {
+            self::assertValidKeywordString($key);
+            self::assertThat(is_array($valueArr));
+            self::assertThat(count($valueArr) === 1);
+            self::assertThat(array_key_exists('value', $valueArr));
+            $value = $valueArr['value'];
+            self::assertThat(is_int($value) || is_float($value));
+        }
+        return $samples;
+    }
+
+    public static function assertValidMetricSetData(MetricSetData $metricSet): void
+    {
+        ValidationUtil::assertValidTimestamp($metricSet->timestamp);
+
+        self::assertValidNullableKeywordString($metricSet->transactionName);
+        self::assertValidNullableKeywordString($metricSet->transactionType);
+        self::assertValidNullableKeywordString($metricSet->spanType);
+        self::assertValidNullableKeywordString($metricSet->spanSubtype);
+
+        self::assertThat(($metricSet->transactionName === null) === ($metricSet->transactionType === null));
+        self::assertThat(BoolUtil::ifThen($metricSet->spanType !== null, $metricSet->transactionName !== null));
+        self::assertThat(BoolUtil::ifThen($metricSet->spanSubtype !== null, $metricSet->spanType !== null));
+
+        self::assertValidMetricSetDataSamples($metricSet->samples);
     }
 
     /**

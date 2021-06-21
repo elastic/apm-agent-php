@@ -33,15 +33,15 @@ final class ArrayUtil
     use StaticClassTrait;
 
     /**
-     * @param string       $key
-     * @param array<mixed> $array
-     * @param mixed        $valueDst
+     * @param string        $key
+     * @param array<mixed>  $array
+     * @param mixed         $valueDst
      *
      * @return bool
      *
      * @template        T
      * @phpstan-param   T[] $array
-     * @phpstan-param   T $valueDst
+     * @phpstan-param   T   $valueDst
      */
     public static function getValueIfKeyExists(string $key, array $array, &$valueDst): bool
     {
@@ -54,21 +54,41 @@ final class ArrayUtil
     }
 
     /**
-     * @param string|int   $key
-     * @param array<mixed> $array
-     * @param mixed        $fallbackValue
+     * @param string|int    $key
+     * @param array<mixed>  $array
+     * @param mixed         $fallbackValue
      *
      * @return mixed
      *
      * @template        T
      * @phpstan-param   T[] $array
-     * @phpstan-param   T $fallbackValue
+     * @phpstan-param   T   $fallbackValue
      * @phpstan-return  T
      */
     public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
         if (!array_key_exists($key, $array)) {
             return $fallbackValue;
+        }
+
+        return $array[$key];
+    }
+
+    /**
+     * @param string        $key
+     * @param mixed         $defaultValue
+     * @param array<mixed>  $array
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T   $defaultValue
+     * @phpstan-param   T[] $array
+     * @phpstan-return  T
+     */
+    public static function &getOrAdd(string $key, $defaultValue, array $array)
+    {
+        if (!array_key_exists($key, $array)) {
+            $array[$key] = $defaultValue;
         }
 
         return $array[$key];

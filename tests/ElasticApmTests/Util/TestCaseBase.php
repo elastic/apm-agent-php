@@ -579,4 +579,13 @@ class TestCaseBase extends TestCase
             . str_repeat('W', $halfLen)
             . ']';
     }
+
+    /**
+     * @return iterable<array<bool>>
+     */
+    public function boolDataProvider(): iterable
+    {
+        yield [true];
+        yield [false];
+    }
 }

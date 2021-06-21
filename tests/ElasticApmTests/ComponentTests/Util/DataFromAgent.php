@@ -79,7 +79,7 @@ final class DataFromAgent implements LoggableInterface
      */
     public function metadata(): array
     {
-        return $this->eventsFromAgent->metadata;
+        return $this->eventsFromAgent->metadatas;
     }
 
     /**
@@ -196,7 +196,7 @@ final class DataFromAgent implements LoggableInterface
      */
     private function processMetadata(array $metadataAsDecodedJson): void
     {
-        $this->eventsFromAgent->metadata[]
+        $this->eventsFromAgent->metadatas[]
             = $this->validateAndDeserializeMetadata(self::decodedJsonToString($metadataAsDecodedJson));
     }
 
@@ -210,7 +210,7 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
 
         $newTransaction = $this->validateAndDeserializeTransactionData(
             self::decodedJsonToString($transactionDecodedJson)
@@ -237,7 +237,7 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
 
         $newSpan = $this->validateAndDeserializeSpanData(self::decodedJsonToString($spanDecodedJson));
 
@@ -264,7 +264,7 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadata));
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
 
         // TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newEvent->timestamp);
         // TestCaseBase::assertLessThanOrEqualTimestamp(

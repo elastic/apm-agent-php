@@ -25,9 +25,11 @@ namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
@@ -53,20 +55,20 @@ class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @param object $data
-     * @param Closure(object): void $assertValid
-     * @param Closure(object): string $serialize
-     * @param Closure(string): object $validateAndDeserialize
+     * @param object                        $data
+     * @param Closure(object): void         $assertValid
+     * @param Closure(object): string       $serialize
+     * @param Closure(string): object       $validateAndDeserialize
      * @param Closure(object, object): void $assertEquals
      *
      * @return object
      *
      * @template        T of object
      *
-     * @phpstan-param   T $data
-     * @phpstan-param   Closure(T): void $assertValid
-     * @phpstan-param   Closure(T): string $serialize
-     * @phpstan-param   Closure(string): T $validateAndDeserialize
+     * @phpstan-param   T                   $data
+     * @phpstan-param   Closure(T): void    $assertValid
+     * @phpstan-param   Closure(T): string  $serialize
+     * @phpstan-param   Closure(string): T  $validateAndDeserialize
      * @phpstan-param   Closure(T, T): void $assertEquals
      *
      * @phpstan-return  T
@@ -91,6 +93,7 @@ class MockEventSink implements EventSinkInterface
         Metadata $metadata,
         array $spansData,
         array $errorsData,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
         ?TransactionData $transactionData
     ): void {
         $this->consumeMetadata($metadata);
@@ -103,14 +106,22 @@ class MockEventSink implements EventSinkInterface
             $this->consumeErrorData($error);
         }
 
-        if (!is_null($transactionData)) {
+        if ($breakdownMetricsPerTransaction !== null) {
+            $breakdownMetricsPerTransaction->forEachMetricSet(
+                function (MetricSetData $metricSetData) {
+                    $this->consumeMetricSetData($metricSetData);
+                }
+            );
+        }
+
+        if ($transactionData !== null) {
             $this->consumeTransactionData($transactionData);
         }
     }
 
     private function consumeMetadata(Metadata $metadata): void
     {
-        $this->eventsFromAgent->metadata[] = self::passThroughSerialization(
+        $this->eventsFromAgent->metadatas[] = self::passThroughSerialization(
             $metadata,
             /* assertValid: */
             function (Metadata $data): void {
@@ -208,6 +219,32 @@ class MockEventSink implements EventSinkInterface
         );
         TestCase::assertArrayNotHasKey($newError->id, $this->eventsFromAgent->idToError);
         $this->eventsFromAgent->idToError[$newError->id] = $newError;
+    }
+
+    private function consumeMetricSetData(MetricSetData $metricSetData): void
+    {
+        /** @var MetricSetData $newMetricSetData */
+        $newMetricSetData = self::passThroughSerialization(
+            $metricSetData,
+            /* assertValid: */
+            function (MetricSetData $data): void {
+                ValidationUtil::assertValidMetricSetData($data);
+            },
+            /* serialize: */
+            function (MetricSetData $data): string {
+                return SerializationUtil::serializeAsJson($data);
+            },
+            /* validateAndDeserialize: */
+            function (string $serializedErrorData): MetricSetData {
+                return $this->validateAndDeserializeMetricSetData($serializedErrorData);
+            },
+            /* assertEquals: */
+            function ($data, $deserializedData): void {
+                TestCase::assertEquals($data, $deserializedData);
+            }
+        );
+
+        $this->eventsFromAgent->metricSetDatas[] = $newMetricSetData;
     }
 
     public static function additionalMetadataValidation(Metadata $metadata): void

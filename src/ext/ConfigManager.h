@@ -49,7 +49,7 @@
 //          ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( <!!! myNewOption Type !!!>Value, myNewOption )
 //
 //      6) Add to section of ELASTIC_APM_INIT_METADATA in initOptionsMetadata() in ConfigManager.c:
-//          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_MY_NEW_OPTION_OPTION_NAME, /* defaultValue: */ <!!! myNewOption default value !!!> );
+//          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION, /* defaultValue: */ <!!! myNewOption default value !!!> );
 
 enum OptionId
 {
@@ -62,6 +62,7 @@ enum OptionId
     optionId_assertLevel,
     #endif
     optionId_bootstrapPhpPartFile,
+    optionId_breakdownMetrics,
     optionId_enabled,
     optionId_environment,
     optionId_internalChecksLevel,
@@ -104,6 +105,7 @@ struct ConfigSnapshot
         #endif
     String apiKey;
     String bootstrapPhpPartFile;
+    bool breakdownMetrics;
     bool enabled;
     String environment;
     InternalChecksLevel internalChecksLevel;
@@ -220,6 +222,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
+#define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
 #define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"

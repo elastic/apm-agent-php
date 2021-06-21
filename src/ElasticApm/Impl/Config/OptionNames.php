@@ -35,6 +35,7 @@ final class OptionNames
     use StaticClassTrait;
 
     public const API_KEY = 'api_key';
+    public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
     public const LOG_LEVEL = 'log_level';
