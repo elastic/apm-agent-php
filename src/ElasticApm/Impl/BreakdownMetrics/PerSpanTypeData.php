@@ -21,61 +21,50 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace Elastic\Apm\Impl\BreakdownMetrics;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
+ * An error or a logged error message captured by an agent occurring in a monitored service
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @template        T of ExecutionSegment
  */
-abstract class ContextDataWrapper implements LoggableInterface
+class PerSpanTypeData implements LoggableInterface
 {
     use LoggableTrait;
 
     /**
-     * @var ExecutionSegment
-     * @phpstan-var T
+     * @var ?LeafData
      */
-    protected $owner;
+    public $noSubtypeData = null;
 
     /**
-     * @param ExecutionSegment $owner
-     *
-     * @phpstan-param   T      $owner
-     *
+     * @var array<string, LeafData>
      */
-    protected function __construct(ExecutionSegment $owner)
-    {
-        $this->owner = $owner;
-    }
+    public $perSubtypeData = [];
 
-    protected function beforeMutating(): bool
+    public function add(?string $subtype, float $selfTimeInMicroseconds): void
     {
-        return $this->owner->beforeMutating();
-    }
+        if ($subtype === null) {
+            if ($this->noSubtypeData === null) {
+                $this->noSubtypeData = new LeafData();
+            }
+            $leafData = $this->noSubtypeData;
+        } else {
+            if (array_key_exists($subtype, $this->perSubtypeData)) {
+                $leafData = $this->perSubtypeData[$subtype];
+            } else {
+                $leafData = new LeafData();
+                $this->perSubtypeData[$subtype] = $leafData;
+            }
+        }
 
-    protected function tracer(): Tracer
-    {
-        return $this->owner->containingTransaction()->tracer();
-    }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return ['owner'];
-    }
-
-    /** @inheritDoc */
-    public function toLog(LogStreamInterface $stream): void
-    {
-        $this->toLogLoggableTraitImpl($stream, ['ownerId' => $this->owner->getId()]);
+        $leafData->add($selfTimeInMicroseconds);
     }
 }

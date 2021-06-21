@@ -24,13 +24,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
-use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -48,8 +46,8 @@ final class Span extends ExecutionSegment implements SpanInterface
     /** @var Transaction */
     private $containingTransaction;
 
-    /** @var Span|null */
-    private $parentSpan;
+    /** @var ExecutionSegment */
+    private $parentExecutionSegment;
 
     /** @var bool */
     private $isDropped;
@@ -60,7 +58,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     public function __construct(
         Tracer $tracer,
         Transaction $containingTransaction,
-        ?Span $parentSpan,
+        ExecutionSegment $parentExecutionSegment,
         string $name,
         string $type,
         ?string $subtype,
@@ -69,10 +67,13 @@ final class Span extends ExecutionSegment implements SpanInterface
         bool $isDropped
     ) {
         $this->data = new SpanData();
+        $this->parentExecutionSegment = $parentExecutionSegment;
+        $this->containingTransaction = $containingTransaction;
 
         parent::__construct(
             $this->data,
             $tracer,
+            $this->parentExecutionSegment,
             $containingTransaction->getTraceId(),
             $name,
             $type,
@@ -82,15 +83,13 @@ final class Span extends ExecutionSegment implements SpanInterface
         $this->setSubtype($subtype);
         $this->setAction($action);
 
-        $this->containingTransaction = $containingTransaction;
         $this->data->transactionId = $containingTransaction->getId();
 
-        $this->parentSpan = $parentSpan;
-        $this->data->parentId = is_null($parentSpan) ? $containingTransaction->getId() : $parentSpan->getId();
+        $this->data->parentId = $this->parentExecutionSegment->getId();
 
-        $this->logger = $this->tracer->loggerFactory()
-                                     ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
-                                     ->addContext('this', $this);
+        $this->logger = $this->containingTransaction()->tracer()->loggerFactory()
+                             ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
+                             ->addContext('this', $this);
 
         $this->isDropped = $isDropped;
 
@@ -110,14 +109,15 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function isSampled(): bool
+    public function containingTransaction(): Transaction
     {
-        return $this->containingTransaction->isSampled();
+        return $this->containingTransaction;
     }
 
-    public function parentSpan(): ?Span
+    /** @inheritDoc */
+    public function parentExecutionSegment(): ?ExecutionSegment
     {
-        return $this->parentSpan;
+        return $this->parentExecutionSegment;
     }
 
     private function shouldBeSentToApmServer(): bool
@@ -159,7 +159,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             return;
         }
 
-        $this->data->action = $this->tracer->limitNullableKeywordString($action);
+        $this->data->action = $this->containingTransaction->tracer()->limitNullableKeywordString($action);
     }
 
     /** @inheritDoc */
@@ -169,7 +169,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             return;
         }
 
-        $this->data->subtype = $this->tracer->limitNullableKeywordString($subtype);
+        $this->data->subtype = $this->containingTransaction->tracer()->limitNullableKeywordString($subtype);
     }
 
     /** @inheritDoc */
@@ -189,7 +189,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     ): SpanInterface {
         return
             $this->containingTransaction->beginSpan(
-                $this /* <- parentSpan */,
+                $this /* <- parentExecutionSegment */,
                 $name,
                 $type,
                 $subtype,
@@ -224,7 +224,11 @@ final class Span extends ExecutionSegment implements SpanInterface
     public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
     {
         $spanForError = $this->shouldBeSentToApmServer() ? $this : null;
-        return $this->tracer->doCreateError($errorExceptionData, $this->containingTransaction, $spanForError);
+        return $this->containingTransaction->tracer()->doCreateError(
+            $errorExceptionData,
+            $this->containingTransaction,
+            $spanForError
+        );
     }
 
     /** @inheritDoc */
@@ -248,8 +252,21 @@ final class Span extends ExecutionSegment implements SpanInterface
         }
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
-            $this->containingTransaction->setCurrentSpan($this->parentSpan);
+            $this->containingTransaction->setCurrentSpan($this->parentIfSpan());
         }
+    }
+
+    public function parentIfSpan(): ?Span
+    {
+        /**
+         * parentExecutionSegment is either a parent span or a containing transaction ($this)
+         *
+         * @phpstan-ignore-next-line
+         * @noinspection PhpIncompatibleReturnTypeInspection
+         */
+        return $this->parentExecutionSegment === $this->containingTransaction
+            ? null
+            : $this->parentExecutionSegment;
     }
 
     /** @inheritDoc */
@@ -257,5 +274,11 @@ final class Span extends ExecutionSegment implements SpanInterface
     {
         // Since endSpanEx was not called directly it should not be kept in the stack trace
         $this->endSpanEx(/* numberOfStackFramesToSkip: */ 1, $duration);
+    }
+
+    /** @inheritDoc */
+    protected function updateBreakdownMetricsOnEnd(float $monotonicClockNow): void
+    {
+        $this->doUpdateBreakdownMetricsOnEnd($monotonicClockNow, $this->data->type, $this->data->subtype);
     }
 }

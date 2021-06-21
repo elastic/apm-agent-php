@@ -28,6 +28,7 @@ use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
@@ -288,7 +289,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             return null;
         }
 
-        $isGoingToBeSentWithTransaction = !is_null($transaction) && !$transaction->hasEnded();
+        $isGoingToBeSentWithTransaction = $transaction !== null && !($transaction->hasEnded());
 
         // PHPStan cannot deduce that $transaction is not null
         // if $isGoingToBeSentWithTransaction is true
@@ -302,10 +303,15 @@ final class Tracer implements TracerInterface, LoggableInterface
         if ($isGoingToBeSentWithTransaction) {
             // PHPStan cannot deduce that $transaction is not null
             // if $isGoingToBeSentWithTransaction is true
-            assert(!is_null($transaction));
+            // @phpstan-ignore-next-line
             $transaction->queueErrorDataToSend($newError);
         } else {
-            $this->sendEventsToApmServer(/* spansData */ [], [$newError], /* transaction: */ null);
+            $this->sendEventsToApmServer(
+                [] /* <- spansData */,
+                [$newError],
+                null /* <- breakdownMetricsPerTransaction */,
+                null /* <- transactionData */
+            );
         }
         return $newError->id;
     }
@@ -377,13 +383,24 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /**
-     * @param SpanData[]           $spansData
-     * @param ErrorData[]          $errorsData
-     * @param TransactionData|null $transactionData
+     * @param SpanData[]                      $spansData
+     * @param ErrorData[]                     $errorsData
+     * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
+     * @param ?TransactionData                $transactionData
      */
-    public function sendEventsToApmServer(array $spansData, array $errorsData, ?TransactionData $transactionData): void
-    {
-        $this->eventSink->consume($this->currentMetadata, $spansData, $errorsData, $transactionData);
+    public function sendEventsToApmServer(
+        array $spansData,
+        array $errorsData,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        ?TransactionData $transactionData
+    ): void {
+        $this->eventSink->consume(
+            $this->currentMetadata,
+            $spansData,
+            $errorsData,
+            $breakdownMetricsPerTransaction,
+            $transactionData
+        );
     }
 
     /** @inheritDoc */

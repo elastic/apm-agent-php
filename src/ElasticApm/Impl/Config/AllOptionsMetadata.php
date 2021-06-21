@@ -42,6 +42,7 @@ final class AllOptionsMetadata
     public static function build(): array
     {
         return [
+            OptionNames::BREAKDOWN_METRICS       => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
             OptionNames::LOG_LEVEL               => new NullableLogLevelOptionMetadata(),

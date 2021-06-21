@@ -56,7 +56,7 @@ final class LoggablePhpStacktrace
         $index = 0;
         foreach ($stackFrames as $stackFrame) {
             ++$index;
-            if ($index >= $numberOfStackFramesToSkip) {
+            if ($index > $numberOfStackFramesToSkip) {
                 $result[] = self::buildStackFrame($stackFrame);
             }
         }

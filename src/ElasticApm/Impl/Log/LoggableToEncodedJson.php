@@ -50,7 +50,7 @@ final class LoggableToEncodedJson
         /** @noinspection PhpUnusedParameterInspection */ int $lengthLimit = LoggableToString::DEFAULT_LENGTH_LIMIT
     ): string {
         try {
-            $jsonEncodable = LoggableToJsonEncodable::convert($value);
+            $jsonEncodable = LoggableToJsonEncodable::convert($value, /* depth: */ 0);
         } catch (Exception $ex) {
             return LoggingSubsystem::onInternalFailure(
                 'LoggableToJsonEncodable::convert() failed',

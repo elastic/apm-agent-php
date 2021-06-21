@@ -38,6 +38,9 @@ final class Snapshot implements LoggableInterface
     use LoggableTrait;
 
     /** @var bool */
+    private $breakdownMetrics;
+
+    /** @var bool */
     private $enabled;
 
     /** @var string|null */
@@ -78,6 +81,11 @@ final class Snapshot implements LoggableInterface
     public function __construct(array $optNameToParsedValue)
     {
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
+    }
+
+    public function breakdownMetrics(): bool
+    {
+        return $this->breakdownMetrics;
     }
 
     public function enabled(): bool

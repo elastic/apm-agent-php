@@ -21,29 +21,33 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace Elastic\Apm\Impl\BreakdownMetrics;
 
-use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
+ * An error or a logged error message captured by an agent occurring in a monitored service
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-interface EventSinkInterface
+class LeafData implements LoggableInterface
 {
-    /**
-     * @param Metadata                        $metadata
-     * @param SpanData[]                      $spansData
-     * @param ErrorData[]                     $errorsData
-     * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
-     * @param TransactionData|null            $transactionData
-     */
-    public function consume(
-        Metadata $metadata,
-        array $spansData,
-        array $errorsData,
-        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
-    ): void;
+    use LoggableTrait;
+
+    /** @var int */
+    public $count;
+
+    /** @var float */
+    public $sumMicroseconds;
+
+    public function add(float $selfTimeInMicroseconds): void
+    {
+        ++$this->count;
+        $this->sumMicroseconds += $selfTimeInMicroseconds;
+    }
 }
