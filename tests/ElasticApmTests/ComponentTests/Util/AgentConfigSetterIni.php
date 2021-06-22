@@ -75,7 +75,7 @@ final class AgentConfigSetterIni extends AgentConfigSetter
 
     /**
      * @param resource $handle
-     * @param string $str
+     * @param string   $str
      */
     private static function writeToFile($handle, string $str): void
     {
@@ -95,22 +95,26 @@ final class AgentConfigSetterIni extends AgentConfigSetter
 
     /**
      * @param resource $tempIniFileHandle
-     * @param string   $baseIniFileFullPath
+     * @param ?string  $baseIniFileFullPath
      */
-    private function appendOptionsTempIni($tempIniFileHandle, string $baseIniFileFullPath): void
+    private function writeOptionsTempIni($tempIniFileHandle, ?string $baseIniFileFullPath): void
     {
-        $baseIniContent = parse_ini_file(
-            $baseIniFileFullPath,
-            /* process_sections: */ false,
-            /* scanner_mode: */ INI_SCANNER_RAW
-        );
-        if ($baseIniContent === false) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Failed to parse the base INI file',
-                    ['baseIniFileFullPath' => $baseIniFileFullPath]
-                )
+        if ($baseIniFileFullPath === null) {
+            $baseIniContent = [];
+        } else {
+            $baseIniContent = parse_ini_file(
+                $baseIniFileFullPath,
+                /* process_sections: */ false,
+                /* scanner_mode: */ INI_SCANNER_RAW
             );
+            if ($baseIniContent === false) {
+                throw new RuntimeException(
+                    ExceptionUtil::buildMessage(
+                        'Failed to parse the base INI file',
+                        ['baseIniFileFullPath' => $baseIniFileFullPath]
+                    )
+                );
+            }
         }
 
         self::writeToFile($tempIniFileHandle, PHP_EOL);
@@ -140,19 +144,21 @@ final class AgentConfigSetterIni extends AgentConfigSetter
     {
         $baseIniFileFullPath = AmbientContext::testConfig()->appCodePhpIni ?? php_ini_loaded_file();
         if ($baseIniFileFullPath === false) {
-            throw new RuntimeException('Failed to find the base INI file');
+            $baseIniFileFullPath = null;
+        } else {
+            if (!copy($baseIniFileFullPath, $tempIniFileFullPath)) {
+                throw new RuntimeException(
+                    ExceptionUtil::buildMessage(
+                        'Failed to create a copy of base INI file as temporary INI file',
+                        ['baseIniFileFullPath' => $baseIniFileFullPath, 'tempIniFileFullPath' => $tempIniFileFullPath]
+                    )
+                );
+            }
         }
 
-        if (!copy($baseIniFileFullPath, $tempIniFileFullPath)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Failed to create a copy of base INI file as temporary INI file',
-                    ['baseIniFileFullPath' => $baseIniFileFullPath, 'tempIniFileFullPath' => $tempIniFileFullPath]
-                )
-            );
-        }
-
-        $tempIniFileHandle = fopen($tempIniFileFullPath, /* mode: writes are always appended */ 'a');
+        /* w - write from scratch | a - appended */
+        $mode = $baseIniFileFullPath === null ? 'w' : 'a';
+        $tempIniFileHandle = fopen($tempIniFileFullPath, $mode);
         if ($tempIniFileHandle === false) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
@@ -165,7 +171,7 @@ final class AgentConfigSetterIni extends AgentConfigSetter
         try {
             /** @noinspection PhpUnusedLocalVariableInspection */
             $isWriteSuccessful = false;
-            $this->appendOptionsTempIni($tempIniFileHandle, $baseIniFileFullPath);
+            $this->writeOptionsTempIni($tempIniFileHandle, $baseIniFileFullPath);
             $isWriteSuccessful = true;
         } finally {
             if (!fclose($tempIniFileHandle)) {

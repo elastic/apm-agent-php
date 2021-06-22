@@ -47,24 +47,6 @@ function validate_if_agent_is_enabled() {
 }
 
 function validate_installation() {
-    #####################################################
-    # TODO: Sergey Kleyman: Remove
-    #
-
-    php -r "echo '[' . php_ini_loaded_file() . ']' . PHP_EOL;"
-
-    php -i | grep '.ini'
-
-    echo '' > /tmp/elastic_apm_empty_php.ini
-
-    php -c /tmp/elastic_apm_empty_php.ini -r "echo '[' . php_ini_loaded_file() . ']' . PHP_EOL;"
-
-    php -c /tmp/elastic_apm_empty_php.ini -i | grep '.ini'
-
-    #
-    # TODO: Sergey Kleyman: Remove
-    #####################################################
-
     ## Validate the installation works as expected with composer
     composer install
     /usr/sbin/rsyslogd
