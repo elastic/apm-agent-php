@@ -46,6 +46,9 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var string|null */
     public $appCodePhpIni;
 
+    /** @var bool */
+    public $deleteTempPhpIni;
+
     /** @var int */
     public $logLevel;
 

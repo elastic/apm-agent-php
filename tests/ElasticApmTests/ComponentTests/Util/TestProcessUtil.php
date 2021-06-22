@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
@@ -99,7 +100,15 @@ final class TestProcessUtil
 
         $newProcessInfo = proc_get_status($openedProc);
 
-        proc_close($openedProc);
+        $exitCode = proc_close($openedProc);
+        if ($exitCode !== 0) {
+            throw new RuntimeException(
+                ExceptionUtil::buildMessage(
+                    'Process exited with an exit code meaning failure',
+                    ['exitCode' => $exitCode]
+                )
+            );
+        }
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('External process started', ['newProcessInfo' => $newProcessInfo]);

@@ -69,33 +69,22 @@ final class ApiKeyTest extends ComponentTestCaseBase
         );
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testCustomApiKey(AgentConfigSetter $configSetter): void
+    public function testCustomApiKey(): void
     {
-        $this->apiKeyConfigTestImpl($configSetter, 'custom API Key 9.8 @CI#!?', /* configuredSecretToken: */ null);
+        $this->apiKeyConfigTestImpl(
+            $this->randomConfigSetter(),
+            'custom API Key 9.8 @CI#!?', /* configuredSecretToken: */
+            null
+        );
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testApiKeyTakesPrecedenceOverSecretToken(AgentConfigSetter $configSetter): void
+    public function testApiKeyTakesPrecedenceOverSecretToken(): void
     {
-        $this->apiKeyConfigTestImpl($configSetter, 'custom API Key', 'custom Secret TOKEN');
+        $this->apiKeyConfigTestImpl($this->randomConfigSetter(), 'custom API Key', 'custom Secret TOKEN');
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testSecretTokenIsUsedIfNoApiKey(AgentConfigSetter $configSetter): void
+    public function testSecretTokenIsUsedIfNoApiKey(): void
     {
-        $this->apiKeyConfigTestImpl($configSetter, /* configuredApiKey */ null, 'custom Secret TOKEN');
+        $this->apiKeyConfigTestImpl($this->randomConfigSetter(), /* configuredApiKey */ null, 'custom Secret TOKEN');
     }
 }

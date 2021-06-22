@@ -2,7 +2,7 @@
 
 <phpunit
     beStrictAboutTestsThatDoNotTestAnything="true"
-    beStrictAboutOutputDuringTests= "false"
+    beStrictAboutOutputDuringTests="false"
     bootstrap="tests/bootstrap.php"
     colors="true"
     failOnRisky="true"
@@ -12,10 +12,12 @@
     stopOnIncomplete="true"
     stopOnRisky="true"
     stopOnWarning="true"
-    verbose= "true"
+    verbose="true"
+    testdox="true"
+    noInteraction="true"
 >
     <php>
-        <ini name="memory_limit" value="2G" />
+        <ini name="memory_limit" value="2G"/>
     </php>
 
     <logging>
@@ -33,6 +35,6 @@
         </whitelist>
     </filter>
     <extensions>
-        <extension class="\ElasticApmTests\ComponentTests\Util\PhpUnitExtension" />
+        <extension class="\ElasticApmTests\ComponentTests\Util\PhpUnitExtension"/>
     </extensions>
 </phpunit>

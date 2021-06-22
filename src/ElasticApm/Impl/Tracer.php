@@ -138,7 +138,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         $parsingLoggerFactory
             = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
         $parser = new ConfigParser($parsingLoggerFactory);
-        $allOptsMeta = AllOptionsMetadata::build();
+        $allOptsMeta = AllOptionsMetadata::get();
         return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
     }
 

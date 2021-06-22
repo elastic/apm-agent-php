@@ -37,6 +37,12 @@ final class Snapshot implements LoggableInterface
     use SnapshotTrait;
     use LoggableTrait;
 
+    /** @var array<string, mixed> */
+    private $optNameToParsedValue;
+
+    /** @var string */
+    private $apiKey;
+
     /** @var bool */
     private $breakdownMetrics;
 
@@ -54,6 +60,9 @@ final class Snapshot implements LoggableInterface
 
     /** @var int|null */
     private $logLevelSyslog;
+
+    /** @var string */
+    private $secretToken;
 
     /** @var float - In milliseconds */
     private $serverTimeout;
@@ -80,7 +89,18 @@ final class Snapshot implements LoggableInterface
      */
     public function __construct(array $optNameToParsedValue)
     {
+        $this->optNameToParsedValue = $optNameToParsedValue;
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
+    }
+
+    /**
+     * @param string $optName
+     *
+     * @return mixed
+     */
+    public function parsedValueFor(string $optName)
+    {
+        return $this->optNameToParsedValue[$optName];
     }
 
     public function breakdownMetrics(): bool

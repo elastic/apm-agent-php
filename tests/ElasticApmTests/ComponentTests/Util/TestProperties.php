@@ -59,7 +59,7 @@ final class TestProperties implements LoggableInterface
     public function __construct()
     {
         $this->agentConfigSetter = new AgentConfigSetterEnvVars();
-        $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, LogLevel::intToName(LogLevel::DEBUG));
+        $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, LogLevel::intToName(LogLevel::TRACE));
 
         $this->sharedDataPerRequest = new SharedDataPerRequest();
         $this->urlParts = TestProperties::newDefaultUrlParts();
@@ -100,7 +100,7 @@ final class TestProperties implements LoggableInterface
      *
      * @return TestProperties
      */
-    public function withAppArgs(array $appCodeArgs): self
+    public function withAppCodeArgs(array $appCodeArgs): self
     {
         $this->sharedDataPerRequest->appCodeArguments = $appCodeArgs;
 
@@ -135,6 +135,14 @@ final class TestProperties implements LoggableInterface
     {
         $this->transactionType = $transactionType;
         return $this;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getAllConfiguredAgentOptions(): array
+    {
+        return $this->agentConfigSetter->optionNameToValue;
     }
 
     public function getConfiguredAgentOption(string $optName): ?string
