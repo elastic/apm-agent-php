@@ -55,6 +55,12 @@ function validate_installation() {
 
     php -i | grep '.ini'
 
+    cp /usr/local/etc/php/php.ini /tmp/elastic_apm_temp_php.ini
+
+    php -c /tmp/elastic_apm_temp_php.ini -r "echo '[' . php_ini_loaded_file() . ']' . PHP_EOL;"
+
+    php -c /tmp/elastic_apm_temp_php.ini -i | grep '.ini'
+
     #
     # TODO: Sergey Kleyman: Remove
     #####################################################
