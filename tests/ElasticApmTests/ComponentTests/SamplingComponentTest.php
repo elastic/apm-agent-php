@@ -44,10 +44,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
                 continue;
             }
 
-            foreach ($this->configSetterTestDataProvider() as $arrayWithConfigSetter) {
-                self::assertCount(1, $arrayWithConfigSetter);
-                yield [$arrayWithConfigSetter[0], $rate];
-            }
+            yield [$this->randomConfigSetter(), $rate];
         }
     }
 
@@ -70,7 +67,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     {
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTwoNestedSpansTest'])
-            ->withAppArgs(['transactionSampleRate' => $transactionSampleRate]);
+            ->withAppCodeArgs(['transactionSampleRate' => $transactionSampleRate]);
         if (is_null($transactionSampleRate)) {
             self::assertNull($configSetter);
         } else {

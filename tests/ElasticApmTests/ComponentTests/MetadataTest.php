@@ -55,26 +55,16 @@ final class MetadataTest extends ComponentTestCaseBase
         $this->environmentConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testCustomEnvironment(AgentConfigSetter $configSetter): void
+    public function testCustomEnvironment(): void
     {
         $configured = 'custom service environment 9.8 @CI#!?';
-        $this->environmentConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
+        $this->environmentConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testInvalidEnvironmentTooLong(AgentConfigSetter $configSetter): void
+    public function testInvalidEnvironmentTooLong(): void
     {
         $expected = self::generateDummyMaxKeywordString();
-        $this->environmentConfigTestImpl($configSetter, /* configured: */ $expected . '_tail', $expected);
+        $this->environmentConfigTestImpl($this->randomConfigSetter(), /* configured: */ $expected . '_tail', $expected);
     }
 
     private function serviceNameConfigTestImpl(
@@ -103,40 +93,25 @@ final class MetadataTest extends ComponentTestCaseBase
         );
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testCustomServiceName(AgentConfigSetter $configSetter): void
+    public function testCustomServiceName(): void
     {
         $configured = 'custom service name';
-        $this->serviceNameConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
+        $this->serviceNameConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testInvalidServiceNameChars(AgentConfigSetter $configSetter): void
+    public function testInvalidServiceNameChars(): void
     {
         $this->serviceNameConfigTestImpl(
-            $configSetter,
+            $this->randomConfigSetter(),
             /* configured: */ '1CUSTOM -@- sErvIcE -+- NaMe9',
             /* expected:   */ '1CUSTOM -_- sErvIcE -_- NaMe9'
         );
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testInvalidServiceNameTooLong(AgentConfigSetter $configSetter): void
+    public function testInvalidServiceNameTooLong(): void
     {
         $this->serviceNameConfigTestImpl(
-            $configSetter,
+            $this->randomConfigSetter(),
             /* configured: */ '[' . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
                               . ','
                               . ';'
@@ -170,25 +145,19 @@ final class MetadataTest extends ComponentTestCaseBase
         $this->serviceVersionConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testCustomServiceVersion(AgentConfigSetter $configSetter): void
+    public function testCustomServiceVersion(): void
     {
         $configured = 'v1.5.4-alpha@CI#.!?.';
-        $this->serviceVersionConfigTestImpl($configSetter, $configured, /* expected: */ $configured);
+        $this->serviceVersionConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testInvalidServiceVersionTooLong(AgentConfigSetter $configSetter): void
+    public function testInvalidServiceVersionTooLong(): void
     {
         $expected = self::generateDummyMaxKeywordString();
-        $this->serviceVersionConfigTestImpl($configSetter, /* configured: */ $expected . '_tail', $expected);
+        $this->serviceVersionConfigTestImpl(
+            $this->randomConfigSetter(),
+            /* configured: */ $expected . '_tail',
+            $expected
+        );
     }
 }

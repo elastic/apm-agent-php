@@ -133,8 +133,8 @@ class VariousOptionsParsingTest extends TestCaseBase
     private function snapshotClassToOptionsMeta(): array
     {
         return [
-            Snapshot::class           => AllOptionsMetadata::build(),
-            TestConfigSnapshot::class => AllComponentTestsOptionsMetadata::build(),
+            Snapshot::class           => AllOptionsMetadata::get(),
+            TestConfigSnapshot::class => AllComponentTestsOptionsMetadata::get(),
             null                      => self::additionalOptionMetas(),
         ];
     }

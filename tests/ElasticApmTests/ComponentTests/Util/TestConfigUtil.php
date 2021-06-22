@@ -68,7 +68,7 @@ final class TestConfigUtil
         $parser = new Parser(
             new LoggerFactory(new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName)))
         );
-        $allOptsMeta = AllComponentTestsOptionsMetadata::build();
+        $allOptsMeta = AllComponentTestsOptionsMetadata::get();
         return new TestConfigSnapshot(
             $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta))
         );

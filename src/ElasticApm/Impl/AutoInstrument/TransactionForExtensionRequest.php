@@ -73,7 +73,9 @@ final class TransactionForExtensionRequest
 
     private function beginTransaction(float $requestInitStartTime): TransactionInterface
     {
-        $this->discoverHttpRequestData();
+        if (!self::isCliScript()) {
+            $this->discoverHttpRequestData();
+        }
         $name = self::isCliScript() ? $this->discoverCliName() : $this->discoverHttpName();
         $type = self::isCliScript() ? Constants::TRANSACTION_TYPE_CLI : Constants::TRANSACTION_TYPE_REQUEST;
         $timestamp = $this->discoverTimestamp($requestInitStartTime);

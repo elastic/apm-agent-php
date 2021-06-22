@@ -54,13 +54,8 @@ final class SecretTokenTest extends ComponentTestCaseBase
         $this->secretTokenConfigTestImpl(/* configSetter: */ null, /* configured: */ null);
     }
 
-    /**
-     * @dataProvider configSetterTestDataProvider
-     *
-     * @param AgentConfigSetter $configSetter
-     */
-    public function testCustomSecretToken(AgentConfigSetter $configSetter): void
+    public function testCustomSecretToken(): void
     {
-        $this->secretTokenConfigTestImpl($configSetter, 'custom Secret TOKEN 9.8 @CI#!?');
+        $this->secretTokenConfigTestImpl($this->randomConfigSetter(), 'custom Secret TOKEN 9.8 @CI#!?');
     }
 }
