@@ -62,7 +62,7 @@ final class AgentConfigSetterIni extends AgentConfigSetter
     public function tearDown(): void
     {
         if (AmbientContext::testConfig()->deleteTempPhpIni && $this->tempIniFileFullPath !== null) {
-            if (!unlink($this->tempIniFileFullPath)) {
+            if (file_exists($this->tempIniFileFullPath) && !unlink($this->tempIniFileFullPath)) {
                 throw new RuntimeException(
                     ExceptionUtil::buildMessage(
                         'Failed to delete temporary INI file',
