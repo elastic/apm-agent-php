@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
@@ -478,5 +479,63 @@ class PublicApiTest extends TracerUnitTestCaseBase
         } else {
             self::assertNull($txData->context->request->url->query);
         }
+    }
+
+    /**
+     * @return iterable<array<?string>>
+     */
+    public function dataProviderForSetOutcome(): iterable
+    {
+        $validValues = [null, Constants::OUTCOME_SUCCESS, Constants::OUTCOME_FAILURE, Constants::OUTCOME_UNKNOWN];
+        foreach ($validValues as $validValue) {
+            yield [$validValue, $validValue];
+        }
+
+        $invalidValues = ['', 'dummy', Constants::OUTCOME_SUCCESS . '1', '2' . Constants::OUTCOME_FAILURE];
+        foreach ($invalidValues as $invalidValue) {
+            yield [$invalidValue, null];
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForSetOutcome
+     *
+     * @param ?string $valueToSet
+     * @param ?string $expected
+     */
+    public function testTransactionSetOutcome(?string $valueToSet, ?string $expected): void
+    {
+        // Act
+
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->setOutcome($valueToSet);
+        $tx->end();
+
+        // Assert
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertSame($expected, $reportedTx->outcome);
+    }
+
+    /**
+     * @dataProvider dataProviderForSetOutcome
+     *
+     * @param ?string $valueToSet
+     * @param ?string $expected
+     */
+    public function testSpanSetOutcome(?string $valueToSet, ?string $expected): void
+    {
+        // Act
+
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+        $span->setOutcome($valueToSet);
+        $span->end();
+        $tx->end();
+
+        // Assert
+
+        $reportedSpan = $this->mockEventSink->singleSpan();
+        $this->assertSame($expected, $reportedSpan->outcome);
     }
 }

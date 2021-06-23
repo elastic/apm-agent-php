@@ -432,7 +432,7 @@ final class CurlHandleTracker implements LoggableInterface
 
         $spanName = $httpMethod . ' ' . $host;
 
-        $isHttp = is_null($this->url) ? false : UrlUtil::isHttp($this->url);
+        $isHttp = ($this->url !== null) && UrlUtil::isHttp($this->url);
         $this->span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
             $spanName,
             Constants::SPAN_TYPE_EXTERNAL,
@@ -565,6 +565,10 @@ final class CurlHandleTracker implements LoggableInterface
         $statusCode = curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE);
         if (is_int($statusCode)) {
             $this->span->context()->http()->setStatusCode($statusCode);
+            $outcome = (400 <= $statusCode && $statusCode < 600)
+                ? Constants::OUTCOME_FAILURE
+                : Constants::OUTCOME_SUCCESS;
+            $this->span->setOutcome($outcome);
         } else {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Failed to get response status code');

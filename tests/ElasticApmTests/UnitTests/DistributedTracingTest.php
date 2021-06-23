@@ -39,20 +39,7 @@ use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 class DistributedTracingTest extends TracerUnitTestCaseBase
 {
     /**
-     * @return iterable<array<bool>>
-     */
-    public function dataProviderForTestManualPassDistTracingData(): iterable
-    {
-        yield [/* isSentFromSpan: */
-               false,
-        ];
-        yield [/* isSentFromSpan: */
-               true,
-        ];
-    }
-
-    /**
-     * @dataProvider dataProviderForTestManualPassDistTracingData
+     * @dataProvider boolDataProvider
      *
      * @param bool $isSentFromSpan
      */

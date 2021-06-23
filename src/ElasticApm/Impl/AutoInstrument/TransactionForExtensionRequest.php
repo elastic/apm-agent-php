@@ -220,10 +220,11 @@ final class TransactionForExtensionRequest
     private function beforeHttpEnd(): void
     {
         if ($this->transactionForRequest->getResult() === null) {
-            $discoveredResult = $this->discoverHttpResult();
-            if ($discoveredResult !== null) {
-                $this->transactionForRequest->setResult($discoveredResult);
-            }
+            $this->discoverHttpResult();
+        }
+
+        if ($this->transactionForRequest->getOutcome() === null) {
+            $this->discoverHttpOutcome();
         }
     }
 
@@ -273,6 +274,7 @@ final class TransactionForExtensionRequest
      */
     private function getOptionalServerVarElement(string $key)
     {
+        /** @noinspection PhpIssetCanBeReplacedWithCoalesceInspection */
         return isset($_SERVER[$key]) ? $_SERVER[$key] : null;
     }
 
@@ -359,7 +361,7 @@ final class TransactionForExtensionRequest
         return $traceParentHeaderValue;
     }
 
-    private function discoverHttpResult(): ?string
+    private function discoverHttpStatusCode(): ?int
     {
         $statusCode = http_response_code();
         if (!is_int($statusCode)) {
@@ -371,14 +373,43 @@ final class TransactionForExtensionRequest
             return null;
         }
 
-        $statusCode100s = intdiv($statusCode, 100);
+        return $statusCode;
+    }
+
+    private function discoverHttpResult(): void
+    {
+        $httpStatusCode = $this->discoverHttpStatusCode();
+        if ($httpStatusCode === null) {
+            return;
+        }
+
+        $httpStatusCode100s = intdiv($httpStatusCode, 100);
+        $result = 'HTTP ' . $httpStatusCode100s . 'xx';
+        $this->transactionForRequest->setResult($result);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Discovered result for HTTP transaction',
-            ['statusCode' => $statusCode, '$statusCode100s' => $statusCode100s]
+            ['httpStatusCode' => $httpStatusCode, 'result' => $result, 'httpStatusCode100s' => $httpStatusCode100s]
         );
+    }
 
-        return 'HTTP ' . $statusCode100s . 'xx';
+    private function discoverHttpOutcome(): void
+    {
+        $httpStatusCode = $this->discoverHttpStatusCode();
+        if ($httpStatusCode === null) {
+            return;
+        }
+
+        $outcome = (500 <= $httpStatusCode && $httpStatusCode < 600)
+            ? Constants::OUTCOME_FAILURE
+            : Constants::OUTCOME_SUCCESS;
+        $this->transactionForRequest->setOutcome($outcome);
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Discovered outcome for HTTP transaction',
+            ['httpStatusCode' => $httpStatusCode, 'outcome' => $outcome]
+        );
     }
 }

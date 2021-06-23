@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ErrorExceptionData;
 use Elastic\Apm\Impl\ErrorTransactionData;
+use Elastic\Apm\Impl\ExecutionSegment;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
@@ -230,6 +231,18 @@ final class ValidationUtil
         return $labels;
     }
 
+    /**
+     * @param mixed $outcome
+     *
+     * @return ?string
+     */
+    public static function assertValidOutcome($outcome): ?string
+    {
+        self::assertThat($outcome === null || is_string($outcome));
+        self::assertThat(ExecutionSegment::isValidOutcome($outcome));
+        return $outcome;
+    }
+
     public static function assertValidExecutionSegmentData(ExecutionSegmentData $execSegData): void
     {
         self::assertValidDuration($execSegData->duration);
@@ -238,6 +251,7 @@ final class ValidationUtil
         self::assertValidTimestamp($execSegData->timestamp);
         self::assertValidTraceId($execSegData->traceId);
         self::assertValidKeywordString($execSegData->type);
+        self::assertValidOutcome($execSegData->outcome);
     }
 
     public static function assertValidExecutionSegmentContextData(ExecutionSegmentContextData $execSegCtxData): void
