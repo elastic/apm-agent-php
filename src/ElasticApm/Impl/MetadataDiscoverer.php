@@ -63,6 +63,7 @@ final class MetadataDiscoverer
 
         $result->process = MetadataDiscoverer::discoverProcessData();
         $result->service = MetadataDiscoverer::discoverServiceData($this->config);
+        $result->system = MetadataDiscoverer::discoverSystemData($this->config);
 
         return $result;
     }
@@ -83,7 +84,7 @@ final class MetadataDiscoverer
     {
         $result = new ServiceData();
 
-        if (!is_null($config->environment())) {
+        if ($config->environment() !== null) {
             $result->environment = Tracer::limitKeywordString($config->environment());
         }
 
@@ -102,6 +103,24 @@ final class MetadataDiscoverer
         $result->language = $this->buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
 
         $result->runtime = $result->language;
+
+        return $result;
+    }
+
+    public function discoverSystemData(ConfigSnapshot $config): SystemData
+    {
+        $result = new SystemData();
+
+        if ($config->hostname() !== null) {
+            $result->configuredHostname = Tracer::limitKeywordString($config->hostname());
+            $result->hostname = $result->configuredHostname;
+        } else {
+            $detectedHostname = gethostname();
+            if ($detectedHostname !== false) {
+                $result->detectedHostname = Tracer::limitKeywordString($detectedHostname);
+                $result->hostname = $result->detectedHostname;
+            }
+        }
 
         return $result;
     }

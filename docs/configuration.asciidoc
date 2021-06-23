@@ -189,6 +189,25 @@ NOTE: This feature is fully supported in the APM app in Kibana versions >= 7.2.
 You must use the query bar to filter for a specific environment in versions prior to 7.2.
 
 [float]
+[[config-hostname]]
+==== `hostname`
+
+[options="header"]
+|============
+| Hostname variable name      | Option name in `php.ini`
+| `ELASTIC_APM_HOSTNAME` | `elastic_apm.hostname`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| the local machine's host name       | String
+|============
+
+This option allows for the reported host name to be configured.
+If this option is not set the local machine's host name is used.
+
+[float]
 [[config-log-level]]
 ==== `log_level`
 

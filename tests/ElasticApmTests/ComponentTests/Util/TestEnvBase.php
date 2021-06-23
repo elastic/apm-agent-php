@@ -625,6 +625,11 @@ abstract class TestEnvBase implements LoggableInterface
             $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
         );
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+
+        self::verifyHostname(
+            Tracer::limitNullableKeywordString($testProperties->getConfiguredAgentOption(OptionNames::HOSTNAME)),
+            $this->dataFromAgent
+        );
     }
 
     public static function verifyAgentEphemeralId(TestProperties $testProperties, DataFromAgent $dataFromAgent): void
@@ -642,6 +647,27 @@ abstract class TestEnvBase implements LoggableInterface
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service->environment);
+        }
+    }
+
+    public static function verifyHostname(?string $configured, DataFromAgent $dataFromAgent): void
+    {
+        $detected = gethostname();
+        if ($detected === false) {
+            $detected = null;
+        } else {
+            $detected = Tracer::limitNullableKeywordString($detected);
+        }
+
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            if ($configured === null) {
+                TestCase::assertSame($detected, $metadata->system->detectedHostname);
+                TestCase::assertSame($detected, $metadata->system->hostname);
+            } else {
+                TestCase::assertSame(Tracer::limitKeywordString($configured), $metadata->system->configuredHostname);
+                TestCase::assertSame(Tracer::limitKeywordString($configured), $metadata->system->hostname);
+                TestCase::assertNull($metadata->system->detectedHostname);
+            }
         }
     }
 

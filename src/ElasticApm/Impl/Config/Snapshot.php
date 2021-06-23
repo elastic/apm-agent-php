@@ -34,6 +34,55 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  */
 final class Snapshot implements LoggableInterface
 {
+    //
+    // Steps to add new configuration option (let's assume new option name is `my_new_option'):
+    //
+    //      1) Follow the steps in <repo root>/src/ext/ConfigManager.h to add the new option for C part of the agent.
+    //         NOTE: Build C part of the agent after making the changes above and before proceeding to the steps below.
+    //
+    //
+    //      2) Add
+    //
+    //              public const MY_NEW_OPTION = 'my_new_option';
+    //
+    //         to class \Elastic\Apm\Impl\Config\OptionNames
+    //
+    //
+    //      3) Add
+    //
+    //              OptionNames::MY_NEW_OPTION => new <my_new_option type>OptionMetadata(),
+    //
+    //         to class \Elastic\Apm\Impl\Config\AllOptionsMetadata
+    //
+    //
+    //      4) Add
+    //
+    //              /** @var <my_new_option type> */
+    //              private $myNewOption;
+    //
+    //         to \Elastic\Apm\Impl\Config\Snapshot class
+    //
+    //
+    //      5) Add
+    //
+    //             public function myNewOption(): <my_new_option type>
+    //             {
+    //                 return $this->myNewOption;
+    //             }
+    //
+    //         to \Elastic\Apm\Impl\Config\Snapshot class
+    //
+    //
+    //      6) Add
+    //
+    //             OptionNames::MY_NEW_OPTION => <my_new_option type>RawToParsedValues,
+    //
+    //         to $optNameToRawToParsedValue in \ElasticApmTests\ComponentTests\ConfigSettingTest class
+    //
+    //
+    //      7) Optionally add option specific test such as \ElasticApmTests\ComponentTests\ApiKeyTest
+    //
+    //
     use SnapshotTrait;
     use LoggableTrait;
 
@@ -49,16 +98,19 @@ final class Snapshot implements LoggableInterface
     /** @var bool */
     private $enabled;
 
-    /** @var string|null */
+    /** @var ?string */
     private $environment;
 
-    /** @var int|null */
+    /** @var ?string */
+    private $hostname;
+
+    /** @var ?int */
     private $logLevel;
 
-    /** @var int|null */
+    /** @var ?int */
     private $logLevelStderr;
 
-    /** @var int|null */
+    /** @var ?int */
     private $logLevelSyslog;
 
     /** @var string */
@@ -67,10 +119,10 @@ final class Snapshot implements LoggableInterface
     /** @var float - In milliseconds */
     private $serverTimeout;
 
-    /** @var string|null */
+    /** @var ?string */
     private $serviceName;
 
-    /** @var string|null */
+    /** @var ?string */
     private $serviceVersion;
 
     /** @var int */
@@ -116,6 +168,11 @@ final class Snapshot implements LoggableInterface
     public function environment(): ?string
     {
         return $this->environment;
+    }
+
+    public function hostname(): ?string
+    {
+        return $this->hostname;
     }
 
     public function effectiveLogLevel(): int
