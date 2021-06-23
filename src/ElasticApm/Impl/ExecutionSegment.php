@@ -278,6 +278,32 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->data->type = Tracer::limitKeywordString($type);
     }
 
+    public static function isValidOutcome(?string $outcome): bool
+    {
+        return $outcome === null
+               || $outcome === Constants::OUTCOME_SUCCESS
+               || $outcome === Constants::OUTCOME_FAILURE
+               || $outcome === Constants::OUTCOME_UNKNOWN;
+    }
+
+    /** @inheritDoc */
+    public function setOutcome(?string $outcome): void
+    {
+        if (!self::isValidOutcome($outcome)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Given outcome value is invalid', ['outcome' => $outcome]);
+            return;
+        }
+
+        $this->data->outcome = $outcome;
+    }
+
+    /** @inheritDoc */
+    public function getOutcome(): ?string
+    {
+        return $this->data->outcome;
+    }
+
     /** @inheritDoc */
     public function discard(): void
     {
@@ -331,9 +357,6 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
      */
     abstract protected function updateBreakdownMetricsOnEnd(float $monotonicClockNow): void;
 
-    /**
-     * @param float $monotonicClockNow
-     */
     protected function doUpdateBreakdownMetricsOnEnd(
         float $monotonicClockNow,
         string $spanType,

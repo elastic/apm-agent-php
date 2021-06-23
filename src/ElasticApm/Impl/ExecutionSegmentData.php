@@ -54,6 +54,9 @@ class ExecutionSegmentData implements SerializableDataInterface, LoggableInterfa
     /** @var float  In milliseconds with 3 decimal points */
     public $duration;
 
+    /** @var string|null */
+    public $outcome = null;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
@@ -69,6 +72,7 @@ class ExecutionSegmentData implements SerializableDataInterface, LoggableInterfa
             /* ref */ $result
         );
         SerializationUtil::addNameValue('duration', $this->duration, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('outcome', $this->outcome, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

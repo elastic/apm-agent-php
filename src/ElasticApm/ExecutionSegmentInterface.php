@@ -193,6 +193,27 @@ interface ExecutionSegmentInterface
     public function createCustomError(CustomErrorData $customErrorData): ?string;
 
     /**
+     * The outcome of the transaction/span: success, failure, or unknown.
+     * Outcome may be one of a limited set of permitted values
+     * describing the success or failure of the transaction/span.
+     * This field can be used for calculating error rates for incoming/outgoing requests.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/transactions/transaction.json#L59
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/spans/span.json#L54
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/outcome.json
+     *
+     * @param string|null $outcome
+     *
+     * @return void
+     */
+    public function setOutcome(?string $outcome): void;
+
+    /**
+     * @see setOutcome() For the description
+     */
+    public function getOutcome(): ?string;
+
+    /**
      * Returns true if this execution segment is a no-op (for example when recording is disabled).
      */
     public function isNoop(): bool;

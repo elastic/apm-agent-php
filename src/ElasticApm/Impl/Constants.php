@@ -54,4 +54,8 @@ final class Constants
 
     public const SPAN_TYPE_DB_ACTION_EXEC = 'exec';
     public const SPAN_TYPE_DB_ACTION_QUERY = 'query';
+
+    public const OUTCOME_SUCCESS = 'success';
+    public const OUTCOME_FAILURE = 'failure';
+    public const OUTCOME_UNKNOWN = 'unknown';
 }

@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\Util\RangeUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -204,8 +203,9 @@ final class MockApmServer extends StatefulHttpServerProcessBase
 
     private function fulfillTimedOutPendingDataRequest(int $pendingDataRequestId): void
     {
-        $pendingDataRequest = $this->pendingDataRequests->remove($pendingDataRequestId, /* default */ null);
-        if (is_null($pendingDataRequest)) {
+        /** @noinspection PhpRedundantOptionalArgumentInspection */
+        $pendingDataRequest = $this->pendingDataRequests->remove($pendingDataRequestId, /* default: */ null);
+        if ($pendingDataRequest === null) {
             // If request is already fulfilled then just return
             return;
         }
