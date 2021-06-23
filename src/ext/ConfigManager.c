@@ -706,14 +706,14 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
-            hostname,
-            ELASTIC_APM_CFG_OPT_NAME_HOSTNAME,
+            environment,
+            ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
-            environment,
-            ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
+            hostname,
+            ELASTIC_APM_CFG_OPT_NAME_HOSTNAME,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_ENUM_INIT_METADATA(
