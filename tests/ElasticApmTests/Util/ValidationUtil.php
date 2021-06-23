@@ -44,6 +44,7 @@ use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\SystemData;
 use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use Elastic\Apm\Impl\TransactionContextRequestUrlData;
@@ -53,7 +54,6 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
-use PHPUnit\Framework\TestCase;
 use Throwable;
 
 final class ValidationUtil
@@ -386,7 +386,7 @@ final class ValidationUtil
         }
 
         self::assertThat(is_int($value));
-        TestCase::assertIsInt($value);
+        assert(is_int($value));
         return $value;
     }
 
@@ -402,7 +402,7 @@ final class ValidationUtil
         }
 
         self::assertThat(is_int($value));
-        TestCase::assertIsInt($value);
+        assert(is_int($value));
         return $value;
     }
 
@@ -610,7 +610,7 @@ final class ValidationUtil
         self::assertValidNullableKeywordString($serviceData->environment);
 
         self::assertValidNameVersionData($serviceData->agent);
-        TestCase::assertNotNull($serviceData->agent);
+        assert($serviceData->agent != null);
         self::assertThat($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
         self::assertThat($serviceData->agent->version === ElasticApm::VERSION);
         self::assertValidNullableKeywordString($serviceData->agent->ephemeralId);
@@ -618,13 +618,28 @@ final class ValidationUtil
         self::assertValidNameVersionData($serviceData->framework);
 
         self::assertValidNameVersionData($serviceData->language);
-        TestCase::assertNotNull($serviceData->language);
+        assert($serviceData->language != null);
         self::assertThat($serviceData->language->name === MetadataDiscoverer::LANGUAGE_NAME);
 
         self::assertValidNameVersionData($serviceData->runtime);
-        TestCase::assertNotNull($serviceData->runtime);
+        self::assertThat($serviceData->runtime !== null);
+        assert($serviceData->runtime !== null);
         self::assertThat($serviceData->runtime->name === MetadataDiscoverer::LANGUAGE_NAME);
         self::assertThat($serviceData->runtime->version === $serviceData->language->version);
+    }
+
+    public static function assertValidSystemData(SystemData $systemData): void
+    {
+        self::assertValidNullableKeywordString($systemData->hostname);
+        self::assertValidNullableKeywordString($systemData->configuredHostname);
+        self::assertValidNullableKeywordString($systemData->detectedHostname);
+
+        if ($systemData->configuredHostname !== null) {
+            self::assertThat($systemData->detectedHostname === null);
+            self::assertThat($systemData->hostname === $systemData->configuredHostname);
+        } else {
+            self::assertThat($systemData->hostname === $systemData->detectedHostname);
+        }
     }
 
     public static function assertValidMetadata(Metadata $metadata): void

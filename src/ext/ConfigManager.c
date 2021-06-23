@@ -564,6 +564,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, hostname )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevel )
@@ -702,6 +703,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             enabled,
             ELASTIC_APM_CFG_OPT_NAME_ENABLED,
             /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            hostname,
+            ELASTIC_APM_CFG_OPT_NAME_HOSTNAME,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

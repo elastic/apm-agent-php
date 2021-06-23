@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\SystemData;
 use ElasticApmTests\Util\ValidationUtil;
 
 /**
@@ -31,12 +31,12 @@ use ElasticApmTests\Util\ValidationUtil;
  *
  * @internal
  */
-final class MetadataDeserializer extends DataDeserializer
+final class SystemDataDeserializer extends DataDeserializer
 {
-    /** @var Metadata */
+    /** @var SystemData */
     private $result;
 
-    private function __construct(Metadata $result)
+    private function __construct(SystemData $result)
     {
         $this->result = $result;
     }
@@ -45,13 +45,13 @@ final class MetadataDeserializer extends DataDeserializer
      *
      * @param array<string, mixed> $deserializedRawData
      *
-     * @return Metadata
+     * @return SystemData
      */
-    public static function deserialize(array $deserializedRawData): Metadata
+    public static function deserialize(array $deserializedRawData): SystemData
     {
-        $result = new Metadata();
+        $result = new SystemData();
         (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidMetadata($result);
+        ValidationUtil::assertValidSystemData($result);
         return $result;
     }
 
@@ -64,16 +64,16 @@ final class MetadataDeserializer extends DataDeserializer
     protected function deserializeKeyValue(string $key, $value): bool
     {
         switch ($key) {
-            case 'process':
-                $this->result->process = ProcessDataDeserializer::deserialize($value);
+            case 'hostname':
+                $this->result->hostname = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
-            case 'service':
-                $this->result->service = ServiceDataDeserializer::deserialize($value);
+            case 'detected_hostname':
+                $this->result->detectedHostname = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
-            case 'system':
-                $this->result->system = SystemDataDeserializer::deserialize($value);
+            case 'configured_hostname':
+                $this->result->configuredHostname = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
             default:

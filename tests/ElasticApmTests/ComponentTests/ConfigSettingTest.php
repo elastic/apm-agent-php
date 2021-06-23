@@ -42,9 +42,9 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     private const APP_CODE_ARGS_KEY_OPTION_PARSED_VALUE = 'OPTION_PARSED_VALUE';
 
     /**
-     * @return iterable<array<AgentConfigSetter|string|mixed>>
+     * @return array<string, array<mixed>>
      */
-    public function dataProvider(): iterable
+    private static function buildOptionNameToRawToParsedValue(): array
     {
         $stringRawToParsedValues = function (array $rawValues) {
             $rawToParsedValues = [];
@@ -77,7 +77,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         ];
 
         $durationRawToParsedValues = [
-            '10s'       => 10 * 1000.0/* <- in milliseconds */,
+            '10s'       => 10 * 1000.0 /* <- in milliseconds */,
             '3m'        => 3 * 60 * 1000.0 /* <- in milliseconds */,
             'not valid' => null,
         ];
@@ -92,11 +92,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             'not valid' => null,
         ];
 
-        $optNameToRawToParsedValue = [
+        return [
             OptionNames::API_KEY                 => $stringRawToParsedValues(['my_api_key']),
             OptionNames::BREAKDOWN_METRICS       => $boolRawToParsedValues(),
             OptionNames::ENABLED                 => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::ENVIRONMENT             => $stringRawToParsedValues(['my_environment']),
+            OptionNames::HOSTNAME                => $stringRawToParsedValues(['my_hostname']),
             OptionNames::LOG_LEVEL               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR        => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG        => $logLevelRawToParsedValues,
@@ -108,6 +109,27 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::TRANSACTION_SAMPLE_RATE => $doubleRawToParsedValues,
             OptionNames::VERIFY_SERVER_CERT      => $boolRawToParsedValues(),
         ];
+    }
+
+    public function testOptionNameToRawToParsedValue(): void
+    {
+        $optNamesFromAllOptionsMetadata = array_keys(AllOptionsMetadata::get());
+        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToParsedValue());
+        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        self::assertEqualsCanonicalizing(
+            $optNamesFromAllOptionsMetadata,
+            $optNamesFromBuildOptionNameToRawToParsedValue
+        );
+    }
+
+    /**
+     * @return iterable<array<AgentConfigSetter|mixed>>
+     */
+    public function dataProvider(): iterable
+    {
+
+        $optNameToRawToParsedValue = self::buildOptionNameToRawToParsedValue();
 
         foreach ($this->allConfigSetters as $configSetter) {
             foreach ($optNameToRawToParsedValue as $optName => $optRawToParsedValue) {

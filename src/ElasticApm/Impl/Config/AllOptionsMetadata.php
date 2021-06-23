@@ -54,6 +54,7 @@ final class AllOptionsMetadata
                 OptionNames::BREAKDOWN_METRICS       => new BoolOptionMetadata(/* defaultValue: */ true),
                 OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
                 OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
+                OptionNames::HOSTNAME                => new NullableStringOptionMetadata(),
                 OptionNames::LOG_LEVEL               => new NullableLogLevelOptionMetadata(),
                 OptionNames::LOG_LEVEL_STDERR        => new NullableLogLevelOptionMetadata(),
                 OptionNames::LOG_LEVEL_SYSLOG        => new NullableLogLevelOptionMetadata(),

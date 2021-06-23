@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
@@ -33,6 +34,23 @@ use ElasticApmTests\ComponentTests\Util\TestEnvBase;
 
 final class MetadataTest extends ComponentTestCaseBase
 {
+    /**
+     * @return iterable<array{string}>
+     */
+    public function configOptionValueTestDataProvider(): iterable
+    {
+        yield ['custom value 1.2,3 @CI#!?'];
+        yield [
+            '['
+            . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+            . ','
+            . ';'
+            . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+            . ']'
+            . '_tail',
+        ];
+    }
+
     private function environmentConfigTestImpl(
         ?AgentConfigSetter $configSetter,
         ?string $configured,
@@ -55,10 +73,18 @@ final class MetadataTest extends ComponentTestCaseBase
         $this->environmentConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
     }
 
-    public function testCustomEnvironment(): void
+    /**
+     * @dataProvider configOptionValueTestDataProvider
+     *
+     * @param string $configured
+     */
+    public function testCustomEnvironment(string $configured): void
     {
-        $configured = 'custom service environment 9.8 @CI#!?';
-        $this->environmentConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
+        $this->environmentConfigTestImpl(
+            $this->randomConfigSetter(),
+            $configured, /* expected: */
+            Tracer::limitKeywordString($configured)
+        );
     }
 
     public function testInvalidEnvironmentTooLong(): void
@@ -159,5 +185,34 @@ final class MetadataTest extends ComponentTestCaseBase
             /* configured: */ $expected . '_tail',
             $expected
         );
+    }
+
+    private function hostnameConfigTestImpl(?AgentConfigSetter $configSetter, ?string $configured): void
+    {
+        $this->configTestImpl(
+            $configSetter,
+            $configured,
+            function (AgentConfigSetter $configSetter, string $configured): void {
+                $configSetter->set(OptionNames::HOSTNAME, $configured);
+            },
+            function (DataFromAgent $dataFromAgent) use ($configured): void {
+                TestEnvBase::verifyHostname($configured, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testDefaultHostname(): void
+    {
+        $this->hostnameConfigTestImpl(/* configSetter: */ null, /* configured: */ null);
+    }
+
+    /**
+     * @dataProvider configOptionValueTestDataProvider
+     *
+     * @param string $configured
+     */
+    public function testCustomHostname(string $configured): void
+    {
+        $this->hostnameConfigTestImpl($this->randomConfigSetter(), $configured);
     }
 }

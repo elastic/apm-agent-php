@@ -36,8 +36,9 @@
 
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
 //      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
-//          If the option is used only in PHP part of the agent then the type of field can be String
-//          thus not parsing it in C part of the agent.
+//          If the option is used only in PHP part of the agent
+//          then the type of field can be String
+//          which will skip parsing the value by the C part of the agent.
 //
 //      2) Add to the list of ELASTIC_APM_CFG_OPT_NAME_XYZ-s in ConfigManager.h:
 //          #define ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION "my_new_option"
@@ -67,6 +68,7 @@ enum OptionId
     optionId_breakdownMetrics,
     optionId_enabled,
     optionId_environment,
+    optionId_hostname,
     optionId_internalChecksLevel,
     optionId_logFile,
     optionId_logLevel,
@@ -110,6 +112,7 @@ struct ConfigSnapshot
     bool breakdownMetrics;
     bool enabled;
     String environment;
+    String hostname;
     InternalChecksLevel internalChecksLevel;
     String logFile;
     LogLevel logLevel;
@@ -227,6 +230,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
+#define ELASTIC_APM_CFG_OPT_NAME_HOSTNAME "hostname"
 #define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_FILE "log_file"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL "log_level"
