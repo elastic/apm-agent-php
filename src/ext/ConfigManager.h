@@ -36,6 +36,8 @@
 
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
 //      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
+//          If the option is used only in PHP part of the agent then the type of field can be String
+//          thus not parsing it in C part of the agent.
 //
 //      2) Add to the list of ELASTIC_APM_CFG_OPT_NAME_XYZ-s in ConfigManager.h:
 //          #define ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION "my_new_option"
