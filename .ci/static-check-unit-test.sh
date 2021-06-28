@@ -10,7 +10,7 @@ make test
 
 ## Run cmocka tests
 cd /app/src/ext/unit_tests
-cmake .
+cmake --build .
 make
 set +e
 make test
