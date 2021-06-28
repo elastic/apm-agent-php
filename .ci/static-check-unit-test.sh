@@ -10,10 +10,10 @@ make test
 
 ## Run cmocka tests
 cd /app/src/ext/unit_tests
-cmake --build .
+cmake .
 make
 set +e
-make test
+./unit_tests
 
 ## Save errorlevel to be reported later on
 ret=$?
