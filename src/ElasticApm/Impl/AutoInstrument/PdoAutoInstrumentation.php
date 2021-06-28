@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use PDO;
 use PDOStatement;
 
 /**
@@ -41,6 +42,8 @@ use PDOStatement;
 final class PdoAutoInstrumentation implements LoggableInterface
 {
     use AutoInstrumentationTrait;
+
+    private const ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY = 'elastic_apm_DB_span_subtype';
 
     /** @var Tracer */
     private $tracer;
@@ -66,15 +69,82 @@ final class PdoAutoInstrumentation implements LoggableInterface
             return;
         }
 
-        // $this->pdoConstruct($ctx);
+        $this->pdoConstruct($ctx);
         $this->pdoExec($ctx);
         $this->pdoQuery($ctx);
-        // $this->pdoPrepare($ctx);
+        $this->pdoPrepare($ctx);
         // $this->pdoCommit($ctx);
         $this->pdoStatementExecute($ctx);
     }
 
-    private function interceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
+    private function pdoConstruct(RegistrationContextInterface $ctx): void
+    {
+        $ctx->interceptCallsToMethod(
+            'PDO',
+            '__construct',
+            /**
+             * @param object|null $interceptedCallThis Intercepted call $this
+             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             *
+             * @return callable
+             */
+            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+                if (!($interceptedCallThis instanceof PDO)) {
+                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'interceptedCallThis is not an instance of class PDO',
+                        ['interceptedCallThis' => $interceptedCallThis]
+                    );
+                    return null; // no post-hook
+                }
+
+                if (count($interceptedCallArgs) < 1) {
+                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'Number of received arguments for PDO::__construct call is less than expected.'
+                        . 'PDO::__construct is expected to have at least one argument (Data Source Name - DSN)',
+                        ['interceptedCallThis' => $interceptedCallThis]
+                    );
+                    return null; // no post-hook
+                }
+
+                $dsn = $interceptedCallArgs[0];
+                if (!is_string($dsn)) {
+                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'The first received arguments for PDO::__construct call is not a string'
+                        . ' but PDO::__construct is expected to have Data Source Name (DSN) as the first argument ',
+                        ['interceptedCallThis' => $interceptedCallThis]
+                    );
+                    return null; // no post-hook
+                }
+
+                /** var string */
+                $dbSpanSubtype = '';
+                DataSourceNameParser::parse($dsn, /* ref */ $dbSpanSubtype);
+                /** @phpstan-ignore-next-line */
+                $interceptedCallThis->{self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY} = $dbSpanSubtype;
+
+                return null; // no post-hook
+            }
+        );
+    }
+
+    /**
+     * @param ?object $obj
+     * @param string  $propName
+     * @param mixed   $defaultValue
+     *
+     * @return mixed
+     */
+    private function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
+    {
+        return ($obj !== null) && isset($obj->{$propName})
+            ? $obj->{$propName}
+            : $defaultValue;
+    }
+
+    private function pdoInterceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
     {
         $ctx->interceptCallsToMethod(
             'PDO',
@@ -84,34 +154,46 @@ final class PdoAutoInstrumentation implements LoggableInterface
              * @param mixed[]     $interceptedCallArgs Intercepted call arguments
              *
              * @return callable
-             *
              */
             function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+                if (!($interceptedCallThis instanceof PDO)) {
+                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'interceptedCallThis is not an instance of class PDO',
+                        ['interceptedCallThis' => $interceptedCallThis]
+                    );
+                    return null; // no post-hook
+                }
+
+                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                );
+
                 $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
                 $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                     $statement ?? 'No name',
-                    Constants::SPAN_TYPE_DB
+                    Constants::SPAN_TYPE_DB,
+                    $spanSubtype,
+                    Constants::SPAN_ACTION_DB_QUERY
                 );
                 $span->context()->db()->setStatement($statement);
+                $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
 
                 return self::createPostHookFromEndSpan($span);
             }
         );
     }
 
-    // private function pdoConstruct(RegistrationContextInterface $ctx): void
-    // {
-    //     $this->interceptCallToSpan($ctx, '__construct');
-    // }
-
     private function pdoExec(RegistrationContextInterface $ctx): void
     {
-        $this->interceptCallToSpan($ctx, 'exec');
+        $this->pdoInterceptCallToSpan($ctx, 'exec');
     }
 
     private function pdoQuery(RegistrationContextInterface $ctx): void
     {
-        $this->interceptCallToSpan($ctx, 'query');
+        $this->pdoInterceptCallToSpan($ctx, 'query');
     }
 
     // private function pdoCommit(RegistrationContextInterface $ctx): void
@@ -119,10 +201,72 @@ final class PdoAutoInstrumentation implements LoggableInterface
     //     $this->interceptCallToSpan($ctx, 'commit');
     // }
 
-    // private function pdoPrepare(RegistrationContextInterface $ctx): void
-    // {
-    //     $this->interceptCallToSpan($ctx, 'prepare');
-    // }
+
+    private function pdoPrepare(RegistrationContextInterface $ctx): void
+    {
+        $ctx->interceptCallsToMethod(
+            'PDO',
+            'prepare',
+            /**
+             * Pre-hook
+             *
+             * @param object|null $interceptedCallThis Intercepted call $this
+             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             *
+             * @return callable
+             */
+            function (
+                ?object $interceptedCallThis,
+                /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
+            ): ?callable {
+                if (!($interceptedCallThis instanceof PDO)) {
+                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log(
+                        'interceptedCallThis is not an instance of class PDO',
+                        ['interceptedCallThis' => $interceptedCallThis]
+                    );
+                    return null; // no post-hook
+                }
+
+                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                );
+
+                /**
+                 * Post-hook
+                 *
+                 * @param int   $numberOfStackFramesToSkip
+                 * @param bool  $hasExitedByException
+                 * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+                 */
+                return function (
+                    int $numberOfStackFramesToSkip,
+                    bool $hasExitedByException,
+                    $returnValueOrThrown
+                ) use (
+                    $spanSubtype
+                ): void {
+                    if ($hasExitedByException || $returnValueOrThrown === false) {
+                        return;
+                    }
+
+                    if (!($returnValueOrThrown instanceof PDOStatement)) {
+                        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                        && $loggerProxy->log(
+                            'returnValueOrThrown is not an instance of class PDOStatement',
+                            ['returnValueOrThrown' => $returnValueOrThrown]
+                        );
+                        return;
+                    }
+
+                    /** @phpstan-ignore-next-line */
+                    $returnValueOrThrown->{self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY} = $spanSubtype;
+                };
+            }
+        );
+    }
 
     private function pdoStatementExecute(RegistrationContextInterface $ctx): void
     {
@@ -140,8 +284,7 @@ final class PdoAutoInstrumentation implements LoggableInterface
                 ?object $interceptedCallThis,
                 /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
             ): ?callable {
-                $spanName
-                    = (
+                $statement = (
                     !is_null($interceptedCallThis)
                     && is_object($interceptedCallThis)
                     && $interceptedCallThis instanceof PDOStatement
@@ -149,12 +292,26 @@ final class PdoAutoInstrumentation implements LoggableInterface
                     && is_string($interceptedCallThis->queryString)
                 )
                     ? $interceptedCallThis->queryString
-                    : 'PDOStatement->execute';
+                    : null;
+
+                $spanName = $statement ?? 'PDOStatement->execute';
+
+                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                );
 
                 $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
                     $spanName,
-                    Constants::SPAN_TYPE_DB
+                    Constants::SPAN_TYPE_DB,
+                    $spanSubtype,
+                    Constants::SPAN_ACTION_DB_QUERY
                 );
+                if ($statement !== null) {
+                    $span->context()->db()->setStatement($statement);
+                }
+                $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
 
                 return self::createPostHookFromEndSpan($span);
             }
