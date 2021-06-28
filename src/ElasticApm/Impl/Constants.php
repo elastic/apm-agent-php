@@ -46,9 +46,17 @@ final class Constants
 
     public const SPAN_TYPE_DB_SUBTYPE_SQLITE = 'sqlite';
     public const SPAN_TYPE_DB_SUBTYPE_MYSQL = 'mysql';
-    // public const SPAN_TYPE_DB_SUBTYPE_ORACLE = 'oracle';
-    // public const SPAN_TYPE_DB_SUBTYPE_POSTGRESQL = 'postgresql';
-    // public const SPAN_TYPE_DB_SUBTYPE_MSSQL = 'mssql';
+    public const SPAN_TYPE_DB_SUBTYPE_ORACLE = 'oracle';
+    public const SPAN_TYPE_DB_SUBTYPE_POSTGRESQL = 'postgresql';
+    public const SPAN_TYPE_DB_SUBTYPE_MSSQL = 'mssql';
+    public const SPAN_TYPE_DB_SUBTYPE_IBM_DB2 = 'db2';
+    public const SPAN_TYPE_DB_SUBTYPE_ODBC = 'odbc';
+    public const SPAN_TYPE_DB_SUBTYPE_CUBRID = 'cubrid';
+    public const SPAN_TYPE_DB_SUBTYPE_FIREBIRD = 'firebird';
+    public const SPAN_TYPE_DB_SUBTYPE_INFORMIX = 'informix';
+    public const SPAN_TYPE_DB_SUBTYPE_UNKNOWN = 'unknown_DB';
+
+    public const SPAN_ACTION_DB_QUERY = 'query';
 
     public const SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP = 'http';
 
