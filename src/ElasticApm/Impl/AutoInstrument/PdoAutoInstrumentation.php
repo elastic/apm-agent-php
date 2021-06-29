@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\SpanInterface;
 use PDO;
 use PDOStatement;
 
@@ -155,7 +156,7 @@ final class PdoAutoInstrumentation implements LoggableInterface
              *
              * @return callable
              */
-            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+            function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName): ?callable {
                 if (!($interceptedCallThis instanceof PDO)) {
                     ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
@@ -165,25 +166,37 @@ final class PdoAutoInstrumentation implements LoggableInterface
                     return null; // no post-hook
                 }
 
+                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
+
                 $spanSubtype = $this->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
                     self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
-                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
-                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                    $statement ?? 'No name',
-                    Constants::SPAN_TYPE_DB,
-                    $spanSubtype,
-                    Constants::SPAN_ACTION_DB_QUERY
-                );
-                $span->context()->db()->setStatement($statement);
-                $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
+                $span = $this->beginDbSpan($statement ?? ('PDO->' . $methodName), $spanSubtype, $statement);
 
                 return self::createPostHookFromEndSpan($span);
             }
         );
+    }
+
+    private function beginDbSpan(string $name, string $subtype, ?string $statement): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+            $name,
+            Constants::SPAN_TYPE_DB,
+            $subtype,
+            Constants::SPAN_ACTION_DB_QUERY
+        );
+
+        if ($statement !== null) {
+            $span->context()->db()->setStatement($statement);
+        }
+
+        $span->context()->destination()->setService($subtype, $subtype, $subtype);
+
+        return $span;
     }
 
     private function pdoExec(RegistrationContextInterface $ctx): void
@@ -294,24 +307,13 @@ final class PdoAutoInstrumentation implements LoggableInterface
                     ? $interceptedCallThis->queryString
                     : null;
 
-                $spanName = $statement ?? 'PDOStatement->execute';
-
                 $spanSubtype = $this->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
                     self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
-                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                    $spanName,
-                    Constants::SPAN_TYPE_DB,
-                    $spanSubtype,
-                    Constants::SPAN_ACTION_DB_QUERY
-                );
-                if ($statement !== null) {
-                    $span->context()->db()->setStatement($statement);
-                }
-                $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
+                $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $spanSubtype, $statement);
 
                 return self::createPostHookFromEndSpan($span);
             }

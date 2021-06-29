@@ -180,6 +180,11 @@ abstract class TestEnvBase implements LoggableInterface
     protected function inheritedEnvVars(bool $keepElasticApmEnvVars): array
     {
         $envVars = getenv();
+
+        if ($keepElasticApmEnvVars) {
+            return $envVars;
+        }
+
         foreach (array_keys($this->testProperties->getAllConfiguredAgentOptions()) as $optName) {
             $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
                 EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
@@ -188,10 +193,6 @@ abstract class TestEnvBase implements LoggableInterface
             if (array_key_exists($envVarName, $envVars)) {
                 unset($envVars[$envVarName]);
             }
-        }
-
-        if ($keepElasticApmEnvVars) {
-            return $envVars;
         }
 
         return array_filter(
@@ -309,7 +310,7 @@ abstract class TestEnvBase implements LoggableInterface
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) use ($runScriptName) {
                 return self::runScriptNameToCmdLine($runScriptName);
             },
-            true /* $keepElasticApmEnvVars */
+            true /* <- keepElasticApmEnvVars */
         );
     }
 

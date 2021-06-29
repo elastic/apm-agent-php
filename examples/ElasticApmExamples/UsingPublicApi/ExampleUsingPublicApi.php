@@ -25,9 +25,9 @@ declare(strict_types=1);
 
 namespace ElasticApmExamples\UsingPublicApi;
 
-use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class ExampleUsingPublicApi extends TracerUnitTestCaseBase
 {
@@ -35,7 +35,7 @@ class ExampleUsingPublicApi extends TracerUnitTestCaseBase
     {
         // Arrange
         $mockEventSink = new MockEventSink();
-        $tracer = TracerBuilder::startNew()->withEventSink($mockEventSink)->build();
+        $tracer = TracerBuilderForTests::startNew()->withEventSink($mockEventSink)->build();
 
         // Act
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');

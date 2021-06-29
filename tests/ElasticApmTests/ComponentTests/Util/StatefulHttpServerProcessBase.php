@@ -141,9 +141,8 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
     {
     }
 
-    protected function shouldRequestHaveServerId(
-        /** @noinspection PhpUnusedParameterInspection */ ServerRequestInterface $request
-    ): bool {
+    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
+    {
         return true;
     }
 
