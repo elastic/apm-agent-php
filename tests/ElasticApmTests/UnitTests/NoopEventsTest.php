@@ -27,17 +27,17 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
 use Elastic\Apm\Impl\NoopTransaction;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class NoopEventsTest extends TracerUnitTestCaseBase
 {
     public function setUp(): void
     {
         $this->setUpTestEnv(
-            function (TracerBuilder $builder): void {
+            function (TracerBuilderForTests $builder): void {
                 $builder->withEnabled(false);
             }
         );

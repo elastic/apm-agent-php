@@ -27,11 +27,10 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockClock;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class BreakdownMetricsTest extends TracerUnitTestCaseBase
 {
@@ -167,12 +166,11 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
     private function setUpTestEnvEx(array $testInputData): void
     {
         $this->setUpTestEnv(
-            function (TracerBuilder $builder) use ($testInputData): void {
-                $mockConfig = new MockConfigRawSnapshotSource();
+            function (TracerBuilderForTests $builder) use ($testInputData): void {
                 $breakdownMetricsConfig = $testInputData[self::TEST_INPUT_DATA_BREAKDOWN_METRICS_CONFIG];
                 $this->assertIsBool($breakdownMetricsConfig);
-                $mockConfig->set(OptionNames::BREAKDOWN_METRICS, $breakdownMetricsConfig ? 'true' : 'false');
-                $builder->withClock($this->mockClock)->withConfigRawSnapshotSource($mockConfig);
+                $builder->withClock($this->mockClock)
+                        ->withBoolConfig(OptionNames::BREAKDOWN_METRICS, $breakdownMetricsConfig);
             }
         );
     }

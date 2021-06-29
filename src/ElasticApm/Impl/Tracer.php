@@ -29,11 +29,6 @@ use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
-use Elastic\Apm\Impl\Config\AllOptionsMetadata;
-use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
-use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
-use Elastic\Apm\Impl\Config\Parser as ConfigParser;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
@@ -87,11 +82,10 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var HttpDistributedTracing */
     private $httpDistributedTracing;
 
-    public function __construct(TracerDependencies $providedDependencies)
+    public function __construct(TracerDependencies $providedDependencies, ConfigSnapshot $config)
     {
         $this->providedDependencies = $providedDependencies;
-
-        $this->config = $this->buildConfig();
+        $this->config = $config;
 
         $this->logBackend = new LogBackend($this->config->effectiveLogLevel(), $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
@@ -122,24 +116,6 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Constructed Tracer successfully');
-    }
-
-    private function buildConfig(): ConfigSnapshot
-    {
-        $rawSnapshotSource
-            = $this->providedDependencies->configRawSnapshotSource
-              ?? new CompositeRawSnapshotSource(
-                  [
-                      new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX),
-                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX),
-                  ]
-              );
-
-        $parsingLoggerFactory
-            = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
-        $parser = new ConfigParser($parsingLoggerFactory);
-        $allOptsMeta = AllOptionsMetadata::get();
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
     }
 
     public function getConfig(): ConfigSnapshot

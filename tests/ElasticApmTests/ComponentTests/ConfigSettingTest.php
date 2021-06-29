@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
@@ -124,11 +125,10 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array<AgentConfigSetter|mixed>>
+     * @return iterable<array<int|AgentConfigSetter|mixed>>
      */
-    public function dataProvider(): iterable
+    public function dataProviderForTestAllWaysToSetConfig(): iterable
     {
-
         $optNameToRawToParsedValue = self::buildOptionNameToRawToParsedValue();
 
         foreach ($this->allConfigSetters as $configSetter) {
@@ -144,7 +144,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     /**
      * @param array<string, mixed> $appCodeArgs
      */
-    public static function appCode(array $appCodeArgs): void
+    public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
         $expectedOptParsedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_PARSED_VALUE);
@@ -174,21 +174,21 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider dataProvider
+     * @dataProvider dataProviderForTestAllWaysToSetConfig
      *
      * @param AgentConfigSetter $configSetter
      * @param string            $optName
      * @param string            $optRawVal
      * @param mixed             $optParsedVal
      */
-    public function test(
+    public function testAllWaysToSetConfig(
         AgentConfigSetter $configSetter,
         string $optName,
         string $optRawVal,
         $optParsedVal
     ): void {
         $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCode'])
+            ->withRoutedAppCode([__CLASS__, 'appCodeForTestAllWaysToSetConfig'])
             ->withAppCodeArgs(
                 [
                     self::APP_CODE_ARGS_KEY_OPTION_NAME         => $optName,

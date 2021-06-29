@@ -30,7 +30,6 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
 use ElasticApmTests\UnitTests\Util\MockLogSink;
 use ElasticApmTests\UnitTests\Util\MockLogSinkStatement;
@@ -222,9 +221,8 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $backendServiceTracer = self::buildTracerForTests($backendServiceEventSink)
                                     ->withEnabled($isTracerEnabled)
                                     ->withLogSink($backendServiceLogSink)
-                                    ->withConfigRawSnapshotSource(
-                                        (new MockConfigRawSnapshotSource())->set(OptionNames::LOG_LEVEL, 'DEBUG')
-                                    )->build();
+                                    ->withConfig(OptionNames::LOG_LEVEL, 'DEBUG')
+                                    ->build();
 
         // Act
 
