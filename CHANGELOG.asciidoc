@@ -5,44 +5,53 @@ endif::[]
 
 ////
 [[release-notes-x.x.x]]
-==== x.x.x - YYYY/MM/DD
+=== x.x.x - YYYY/MM/DD
 
 [float]
-===== Breaking changes
+==== Breaking changes
 
 [float]
-===== Features
+==== Features
 * Cool new feature: {pull}2526[#2526]
 
 [float]
-===== Bug fixes
+==== Bug fixes
 ////
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
-[[release-notes-ci-tag]]
-=== ci-tag
-*No changelog for this release.*
-
-[[release-notes-v1.1]]
-=== v1.1
+[[release-notes-v1.2]]
+=== v1.2 - 2021/06/29
 
 [float]
-===== Features
+==== Features
+* Collecting data for `Error rate` chart: {pull}441[#441]
+* HOSTNAME configuration option: {pull}440[#440]
+* Collecting data for `Time spent by span type` chart: {pull}436[#436]
+* `ensureParentId()` API: {pull}431[#431]
+
+==== Bug fixes
+* Fixed missing subtype and action for DB spans and DB not showing on `Service Map`: {pull}443[#443]
+
+[[release-notes-v1.1]]
+=== v1.1 - 2021/06/01
+
+[float]
+==== Features
 * Support for PHP 8.0: {pull}365[#365]
 * Support for Central (AKA Remote) Agents Configuration {pull}134[#134]
 
 [[release-notes-v1.0.1]]
-=== v1.0.1
+=== v1.0.1 - 2021/04/01
 
 [float]
 ==== Bug fixes
 * Fixed missing query string: {pull}390[#390]
 * Fixed $_SERVER not set when auto_globals_jit = On: {pull}392[#392]
 
-[[release-notes-v1.0.0]]
-=== v1.0.0
+[[release-notes-v1.0]]
+=== v1.0 - 2021/03/23
 
 [float]
 ==== Breaking changes
