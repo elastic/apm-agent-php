@@ -21,6 +21,10 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-ci-tag]]
+=== ci-tag
+*No changelog for this release.*
+
 [[release-notes-v1.1]]
 === v1.1
 
