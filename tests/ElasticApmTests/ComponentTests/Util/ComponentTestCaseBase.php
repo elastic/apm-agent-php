@@ -109,8 +109,7 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     public function randomConfigSetter(): AgentConfigSetter
     {
-        $selectedConfigSetterIndex = RandomUtilForTests::generateIntInRange(0, count($this->allConfigSetters) - 1);
-        $selectedConfigSetter = $this->allConfigSetters[$selectedConfigSetterIndex];
+        $selectedConfigSetter = RandomUtilForTests::getRandomValueFromArray($this->allConfigSetters);
 
         $logger = AmbientContext::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST,
