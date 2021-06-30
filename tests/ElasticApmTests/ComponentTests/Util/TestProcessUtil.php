@@ -105,7 +105,7 @@ final class TestProcessUtil
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Process exited with an exit code meaning failure',
-                    ['exitCode' => $exitCode]
+                    ['exitCode' => $exitCode, 'adaptedCmd' => $adaptedCmd, 'envVars' => $envVars]
                 )
             );
         }
