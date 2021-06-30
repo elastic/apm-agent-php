@@ -33,9 +33,7 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use ElasticApmTests\ComponentTests\Util\TestProperties;
-use ElasticApmTests\Util\RandomUtilForTests;
 use RuntimeException;
 
 final class ConfigSettingTest extends ComponentTestCaseBase
@@ -94,7 +92,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             'not valid' => null,
         ];
 
-        $optionNameToRawToParsedValue = [
+        return [
             OptionNames::API_KEY                 => $stringRawToParsedValues(['my_api_key']),
             OptionNames::BREAKDOWN_METRICS       => $boolRawToParsedValues(),
             OptionNames::ENABLED                 => $boolRawToParsedValues(/* valueToExclude: */ false),
@@ -111,26 +109,18 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::TRANSACTION_SAMPLE_RATE => $doubleRawToParsedValues,
             OptionNames::VERIFY_SERVER_CERT      => $boolRawToParsedValues(),
         ];
-
-        return FlakyAssertions::areEnabled()
-            ? $optionNameToRawToParsedValue
-            : RandomUtilForTests::getRandomKeyValueFromArray($optionNameToRawToParsedValue);
     }
 
     public function testOptionNameToRawToParsedValue(): void
     {
-        if (FlakyAssertions::areEnabled()) {
-            $optNamesFromAllOptionsMetadata = array_keys(AllOptionsMetadata::get());
-            self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
-            $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToParsedValue());
-            self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
-            self::assertEqualsCanonicalizing(
-                $optNamesFromAllOptionsMetadata,
-                $optNamesFromBuildOptionNameToRawToParsedValue
-            );
-        } else {
-            self::assertCount(1, self::buildOptionNameToRawToParsedValue());
-        }
+        $optNamesFromAllOptionsMetadata = array_keys(AllOptionsMetadata::get());
+        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToParsedValue());
+        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        self::assertEqualsCanonicalizing(
+            $optNamesFromAllOptionsMetadata,
+            $optNamesFromBuildOptionNameToRawToParsedValue
+        );
     }
 
     /**

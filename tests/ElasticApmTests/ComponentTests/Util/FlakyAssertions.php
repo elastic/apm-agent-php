@@ -39,7 +39,7 @@ final class FlakyAssertions
     /** @var bool */
     private static $areEnabled;
 
-    public static function areEnabled(): bool
+    private static function areEnabled(): bool
     {
         if (!isset(self::$areEnabled)) {
             $envVarValue = getenv(self::ENABLED_ENV_VAR_NAME);
