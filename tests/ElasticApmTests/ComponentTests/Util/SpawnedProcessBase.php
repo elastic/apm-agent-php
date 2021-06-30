@@ -44,6 +44,8 @@ abstract class SpawnedProcessBase implements LoggableInterface
 {
     use LoggableTrait;
 
+    public const FAILURE_PROCESS_EXIT_CODE = 234;
+
     /** @var Logger */
     private $logger;
 
@@ -113,16 +115,22 @@ abstract class SpawnedProcessBase implements LoggableInterface
             $runImpl($thisObj);
         } catch (Throwable $throwable) {
             $level = Level::CRITICAL;
+            $isExpected = false;
             $throwableToLog = $throwable;
             if ($throwable instanceof WrappedAppCodeException) {
+                $isExpected = true;
                 $level = Level::INFO;
                 $throwableToLog = $throwable->wrappedException();
             }
             $logger = isset($thisObj) ? $thisObj->logger : self::buildLogger();
             ($loggerProxy = $logger->ifLevelEnabled($level, __LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($throwableToLog, 'Throwable escaped to the top of the script');
-            /** @noinspection PhpUnhandledExceptionInspection */
-            throw $throwableToLog;
+            if ($isExpected) {
+                /** @noinspection PhpUnhandledExceptionInspection */
+                throw $throwableToLog;
+            } else {
+                exit(self::FAILURE_PROCESS_EXIT_CODE);
+            }
         }
     }
 

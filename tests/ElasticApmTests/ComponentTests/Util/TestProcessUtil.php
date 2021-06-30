@@ -48,7 +48,7 @@ final class TestProcessUtil
             ? "taskkill /F /PID $pid >NUL"
             : "kill $pid > /dev/null";
 
-        exec($cmd, $cmdOutput, $cmdExitCode);
+        exec($cmd, /* ref */ $cmdOutput, /* ref */ $cmdExitCode);
         return $cmdExitCode === 0;
     }
 
@@ -101,10 +101,10 @@ final class TestProcessUtil
         $newProcessInfo = proc_get_status($openedProc);
 
         $exitCode = proc_close($openedProc);
-        if ($exitCode !== 0) {
+        if ($exitCode === SpawnedProcessBase::FAILURE_PROCESS_EXIT_CODE) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
-                    'Process exited with an exit code meaning failure',
+                    'Process exited with the failure exit code',
                     ['exitCode' => $exitCode, 'adaptedCmd' => $adaptedCmd, 'envVars' => $envVars]
                 )
             );
