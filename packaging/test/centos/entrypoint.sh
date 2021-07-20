@@ -75,6 +75,11 @@ elif [ "${TYPE}" == "release-tar-github" ] ; then
     tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
+elif [ "${TYPE}" == "agent-upgrade" ] ; then
+    ## fpm replaces - with _ in the version for rpms.
+    PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 else
     ## Install tar package and configure the agent accordingly
     tar -xf build/packages/*.tar -C /
@@ -84,7 +89,11 @@ fi
 
 validate_if_agent_is_enabled
 
-validate_installation
+if [ "${TYPE}" == "agent-upgrade" ] ; then
+    echo 'Validate installation runs after the agent upgrade.'
+else
+    validate_installation
+fi
 
 ## Validate the uninstallation works as expected
 set -ex
@@ -115,20 +124,12 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
     ## Validate agent is enabled
     validate_if_agent_is_enabled
 elif [ "${TYPE}" == "agent-upgrade" ] ; then
-
-    ## fpm replaces - with _ in the version for rpms.
-    PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
-    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
-    rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
-
-    validate_if_agent_is_enabled
-
     ## Upgrade the agent version with the rpm package and configure the agent accordingly
     rpm -Uvh build/packages/*.rpm
 
-    ## Run some tests
-    validate_installation
-
     ## Validate agent is enabled
     validate_if_agent_is_enabled
+
+    ## Run some tests
+    validate_installation
 fi
