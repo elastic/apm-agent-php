@@ -99,15 +99,12 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
     ## Copy existing configuration file to compare with
     cp /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini
 
-    ## Uninstall existing installation
-    rpm -e "${PACKAGE}"
-
     ## Upgrade PHP version
     yum-config-manager --enable remi-php74
     yum install -y php php-mbstring php-mysql php-xml
 
-    ## Install rpm package and configure the agent accordingly
-    rpm -ivh build/packages/*.rpm
+    ## Update rpm package and configure the agent accordingly
+    rpm -Uvh build/packages/*.rpm
     if diff --report-identical-files /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini ; then
         echo 'Configuration file has not been updated and still point to the previous installation.'
         exit 1
