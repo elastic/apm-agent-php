@@ -116,11 +116,9 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
     validate_if_agent_is_enabled
 elif [ "${TYPE}" == "agent-upgrade" ] ; then
 
-    ## Install an old version
-    OLD_VERSION=1.0.0
     ## fpm replaces - with _ in the version for rpms.
-    PACKAGE=apm-agent-php-${OLD_VERSION/-/_}-1.noarch.rpm
-    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${OLD_VERSION}"
+    PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 
     validate_if_agent_is_enabled

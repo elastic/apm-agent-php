@@ -205,4 +205,4 @@ rpm-php-upgrade-testing: prepare-rpm  ## PHP upgrade, from 7.2 to 7.4, testing f
 
 .PHONY: rpm-agent-upgrade-testing
 rpm-agent-upgrade-testing: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-rpm
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-rpm

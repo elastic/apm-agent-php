@@ -234,7 +234,7 @@ pipeline {
                 steps {
                   initWorkspace(context: "Agent-Upgrade-Testing-${DIST}") {
                     unstash 'package'
-                    sh script: "make -C packaging ${DIST}-agent-upgrade-testing", label: "${DIST}-agent-upgrade-testing"
+                    sh script: "RELEASE_VERSION=1.0.0 make -C packaging ${DIST}-agent-upgrade-testing", label: "${DIST}-agent-upgrade-testing"
                   }
                 }
               }
