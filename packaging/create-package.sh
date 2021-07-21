@@ -49,6 +49,7 @@ fpm --input-type dir \
 		--chdir /app ${FPM_FLAGS} \
 		--after-install=packaging/post-install.sh \
 		--before-remove=packaging/before-uninstall.sh \
+		--before-upgrade=packaging/before-uninstall.sh \
 		--directories ${PHP_AGENT_DIR}/etc \
 		--config-files ${PHP_AGENT_DIR}/etc \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
