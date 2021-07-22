@@ -170,8 +170,11 @@ EXTENSION_FILENAME=$(get_extension_filename)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 PHP_CONFIG_D_PATH="$(php_config_d_path)"
 
-## Let's debug the parameter then we can act accordingly for the upgrade
 echo "DEBUG: before-remove parameter is '$1'"
+if [ "$1" = "1" ]; then
+    echo "The action is an upgrade in RPM, therefore this is not required"
+    exit 0
+fi
 
 if [ -e "${PHP_CONFIG_D_PATH}" ]; then
     uninstall_conf_d_files "${PHP_CONFIG_D_PATH}"
