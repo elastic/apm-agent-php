@@ -213,6 +213,8 @@ EXTENSION_FILE_PATH=$(get_extension_file)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 PHP_CONFIG_D_PATH="$(php_config_d_path)"
 
+echo "DEBUG: after-install parameter is '$1'"
+
 if ! is_php_supported ; then
     echo 'Failed. Elastic PHP agent extension is not supported for the existing PHP installation.'
     exit 1
