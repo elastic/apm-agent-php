@@ -114,6 +114,11 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
                                " - disabling SSL/TLS certificate verification for communication with APM Server..." );
         ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_SSL_VERIFYPEER, 0L );
     }
+    else if ( ! isNullOrEmtpyString( config->serverCaCert ) )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Using CA from the server_ca_cert configuration option" );
+        ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_CAINFO, config->serverCaCert );
+    }
 
     // Authorization with API key or secret token if present
     if ( ! isNullOrEmtpyString( config->apiKey ) )
