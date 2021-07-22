@@ -211,10 +211,6 @@ rpm-agent-upgrade-testing: prepare-rpm  ## Agent upgrade, from 1.0.0 to the curr
 deb-agent-upgrade-testing: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
 	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-deb
 
-.PHONY: apk-agent-upgrade-testing
-apk-agent-upgrade-testing: prepare-apk  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the apk installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-apk
-
 .PHONY: rpm-agent-upgrade-testing-local
 rpm-agent-upgrade-testing-local: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
 	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) prepare-rpm
@@ -222,7 +218,3 @@ rpm-agent-upgrade-testing-local: prepare-rpm  ## Agent upgrade, from 1.0.0 to th
 .PHONY: deb-agent-upgrade-testing-local
 deb-agent-upgrade-testing-local: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
 	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) prepare-deb
-
-.PHONY: apk-agent-upgrade-testing-local
-apk-agent-upgrade-testing-local: prepare-apk  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the apk installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) prepare-apk

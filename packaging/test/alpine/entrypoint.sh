@@ -60,12 +60,6 @@ if [ "${TYPE}" = "release-github" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.apk
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     apk add --allow-untrusted --verbose --no-cache "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
-elif [ "${TYPE}" == "agent-upgrade" ] ; then
-    PACKAGE=apm-agent-php_${VERSION}_all.apk
-    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
-    apk add --allow-untrusted --verbose --no-cache "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
-elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
-    apk add --allow-untrusted --verbose --no-cache build/local/*.ap
 else
     ## Install apk package and configure the agent accordingly
     apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
@@ -73,24 +67,11 @@ fi
 
 validate_if_agent_is_enabled
 
-if case $TYPE in agent-upgrade*) ;; *) false;; esac; then
-    echo 'Validate installation runs after the agent upgrade.'
-else
-    validate_installation
-fi
+validate_installation
 
 ## Validate the uninstallation works as expected
 set -ex
 if [ "${TYPE}" = "apk-uninstall" ] ; then
     apk del --verbose --no-cache "${PACKAGE}"
     validate_if_agent_is_uninstalled
-elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
-    ## Upgrade the agent version with the apk package and configure the agent accordingly
-    apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
-
-    ## Validate agent is enabled
-    validate_if_agent_is_enabled
-
-    ## Run some tests
-    validate_installation
 fi
