@@ -228,7 +228,7 @@ pipeline {
                   beforeAgent true
                   allOf {
                     expression { return env.PHP_VERSION == "7.4" }
-                    expression { return env.DIST == "rpm" }
+                    expression { return (env.DIST == "rpm" || env.DIST == "deb") }
                   }
                 }
                 steps {
