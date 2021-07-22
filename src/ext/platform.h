@@ -19,7 +19,7 @@
 
 #pragma once
 
-#ifndef PHP_WIN32
+#if ! defined( PHP_WIN32 ) && defined( __GNUC__ ) && ! defined( __APPLE__ )
 #   include <features.h>
 #   ifdef __GLIBC__
 #       define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
