@@ -458,8 +458,11 @@ def packageGeneration(def args = [:]) {
       unstash "generate-for-package-${version}-Dockerfile"
       unstash "generate-for-package-${version}-Dockerfile.alpine"
     }
-    sh script: "make -C packaging package", label: 'package'
     if (local) {
+      // VERSION=1.0.0 is needed to override the current version.
+      // current version is >1.0.0, and this is the way we can
+      // run the agent upgrade testing with some local cached
+      // agent distributions, this one and the current version one.
       sh script: "VERSION=1.0.0 make -C packaging package", label: 'package'
       sh script: "mv build/packages build/local", label: 'prepare-local-upgrade-agent'
     } else {
