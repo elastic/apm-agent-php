@@ -80,6 +80,8 @@ elif [ "${TYPE}" == "agent-upgrade" ] ; then
     PACKAGE=apm-agent-php-${VERSION/-/_}-1.noarch.rpm
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
+elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
+    rpm -ivh build/local/*.rpm
 else
     ## Install tar package and configure the agent accordingly
     tar -xf build/packages/*.tar -C /
@@ -89,7 +91,7 @@ fi
 
 validate_if_agent_is_enabled
 
-if [ "${TYPE}" == "agent-upgrade" ] ; then
+if case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     echo 'Validate installation runs after the agent upgrade.'
 else
     validate_installation
@@ -123,7 +125,7 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
     fi
     ## Validate agent is enabled
     validate_if_agent_is_enabled
-elif [ "${TYPE}" == "agent-upgrade" ] ; then
+elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     ## Upgrade the agent version with the rpm package and configure the agent accordingly
     rpm -Uvh build/packages/*.rpm
 
