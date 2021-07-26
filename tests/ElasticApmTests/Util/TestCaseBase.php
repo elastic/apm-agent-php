@@ -43,7 +43,6 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
-use ElasticApmTests\UnitTests\Util\EmptyConfigRawSnapshotSource;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -585,6 +584,11 @@ class TestCaseBase extends TestCase
 
     public static function printMessage(string $srcMethod, string $msg): void
     {
-        fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        if (defined('STDERR')) {
+            fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+        }
     }
 }

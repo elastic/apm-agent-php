@@ -264,6 +264,11 @@ abstract class TestEnvBase implements LoggableInterface
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting HTTP server...');
 
+            TestCaseBase::printMessage(
+                __METHOD__,
+                "Starting HTTP server. cmdLine: `${cmdLine}', currentTryPort: ${currentTryPort} ..."
+            );
+
             $sharedDataPerProcessOptName = AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME;
             $sharedDataPerProcess = $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort);
             TestProcessUtil::startBackgroundProcess(
