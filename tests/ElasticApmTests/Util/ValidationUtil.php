@@ -620,6 +620,7 @@ final class ValidationUtil
     public static function assertValidServiceData(ServiceData $serviceData): void
     {
         self::assertValidServiceName($serviceData->name);
+        self::assertValidNullableKeywordString($serviceData->nodeConfiguredName);
         self::assertValidNullableKeywordString($serviceData->version);
         self::assertValidNullableKeywordString($serviceData->environment);
 

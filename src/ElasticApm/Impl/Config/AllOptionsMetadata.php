@@ -66,6 +66,7 @@ final class AllOptionsMetadata
                     30 * 1000.0 /* <- defaultValueInMilliseconds - 30s */
                 ),
                 OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
+                OptionNames::SERVICE_NODE_NAME       => new NullableStringOptionMetadata(),
                 OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
                 OptionNames::TRANSACTION_MAX_SPANS   => new IntOptionMetadata(
                     0 /* <- minValidValue */,

@@ -87,6 +87,7 @@ enum OptionId
     optionId_serverTimeout,
     optionId_serverUrl,
     optionId_serviceName,
+    optionId_serviceNodeName,
     optionId_serviceVersion,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -131,6 +132,7 @@ struct ConfigSnapshot
     String serverUrl;
     String serverTimeout;
     String serviceName;
+    String serviceNodeName;
     String serviceVersion;
     String transactionMaxSpans;
     String transactionSampleRate;
@@ -249,6 +251,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"

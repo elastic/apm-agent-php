@@ -64,20 +64,12 @@ final class ServiceDataDeserializer extends DataDeserializer
     protected function deserializeKeyValue(string $key, $value): bool
     {
         switch ($key) {
-            case 'name':
-                $this->result->name = ValidationUtil::assertValidServiceName($value);
-                return true;
-
-            case 'version':
-                $this->result->version = ValidationUtil::assertValidKeywordString($value);
+            case 'agent':
+                $this->result->agent = ServiceAgentDataDeserializer::deserialize($value);
                 return true;
 
             case 'environment':
                 $this->result->environment = ValidationUtil::assertValidKeywordString($value);
-                return true;
-
-            case 'agent':
-                $this->result->agent = ServiceAgentDataDeserializer::deserialize($value);
                 return true;
 
             case 'framework':
@@ -88,12 +80,41 @@ final class ServiceDataDeserializer extends DataDeserializer
                 $this->result->language = NameVersionDataDeserializer::deserialize($value);
                 return true;
 
+            case 'name':
+                $this->result->name = ValidationUtil::assertValidServiceName($value);
+                return true;
+
+            case 'node':
+                $this->deserializeNodeSubObject($value);
+                return true;
+
             case 'runtime':
                 $this->result->runtime = NameVersionDataDeserializer::deserialize($value);
                 return true;
 
+            case 'version':
+                $this->result->version = ValidationUtil::assertValidKeywordString($value);
+                return true;
+
             default:
                 return false;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $deserializedRawData
+     */
+    private function deserializeNodeSubObject(array $deserializedRawData): void
+    {
+        foreach ($deserializedRawData as $key => $value) {
+            switch ($key) {
+                case 'configured_name':
+                    $this->result->nodeConfiguredName = ValidationUtil::assertValidKeywordString($value);
+                    break;
+
+                default:
+                    throw DataDeserializer::buildException("Unknown key: node->`$key'");
+            }
         }
     }
 }
