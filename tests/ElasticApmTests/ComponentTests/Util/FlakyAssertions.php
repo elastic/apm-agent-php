@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\Config\BoolOptionParser;
 use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\ExpectationFailedException;
 
 final class FlakyAssertions
@@ -68,13 +69,13 @@ final class FlakyAssertions
                 throw $ex;
             }
 
-            fwrite(
-                STDERR,
-                PHP_EOL . __METHOD__ . ': ' . 'Flaky assertions are disabled but one has just failed' . PHP_EOL
+            TestCaseBase::printMessage(
+                __METHOD__,
+                'Flaky assertions are disabled but one has just failed' . PHP_EOL
                 . '+-> Exception:' . PHP_EOL
                 . LoggableToEncodedJson::convert($ex) . PHP_EOL
                 . '+-> Stack trace:' . PHP_EOL
-                . $ex->getTraceAsString() . PHP_EOL
+                . $ex->getTraceAsString()
             );
         }
     }

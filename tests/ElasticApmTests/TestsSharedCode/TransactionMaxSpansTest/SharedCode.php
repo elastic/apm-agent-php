@@ -26,7 +26,6 @@ namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 use Ds\Set;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
@@ -153,8 +152,8 @@ final class SharedCode
      */
     public static function testArgsVariants(bool $isFullTestingMode): iterable
     {
-        /** @var ?int */
-        $limitVariousCombinationsToVariantIndex = null;
+        // /** @var ?int */
+        // $limitVariousCombinationsToVariantIndex = null;
 
         $variantIndex = 1;
         foreach ([true, false] as $isSampled) {
@@ -190,7 +189,7 @@ final class SharedCode
                 $msg = 'LIMITED to variant #'
                        . self::LIMIT_TO_VARIANT_INDEX . ' out of '
                        . $testArgsVariantsCount;
-                fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
+                TestCaseBase::printMessage(__METHOD__, $msg);
             }
         }
 
@@ -206,7 +205,7 @@ final class SharedCode
         if ($shouldPrintProgress) {
             $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . $testArgsVariantsCount
                    . ': ' . LoggableToString::convert($testArgs);
-            fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
+            TestCaseBase::printMessage(__METHOD__, $msg);
         }
 
         return $isThisVariantEnabled;
@@ -241,10 +240,6 @@ final class SharedCode
         TestCase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
         TestCase::assertCount($expectedStartedSpansCount, $eventsFromAgent->idToSpan, $msg);
 
-        /** @var ?SpanData $spanMissingChildren */
-        $spanMissingChildren = null;
-
-        /** @var SpanData $span */
         foreach ($eventsFromAgent->idToSpan as $span) {
             $msg2 = $msg . ' spanId: ' . $span->id . '.';
             TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $msg2);
