@@ -104,6 +104,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::SECRET_TOKEN            => $stringRawToParsedValues(['my_secret_token']),
             OptionNames::SERVER_TIMEOUT          => $durationRawToParsedValues,
             OptionNames::SERVICE_NAME            => $stringRawToParsedValues(['my_service_name']),
+            OptionNames::SERVICE_NODE_NAME       => $stringRawToParsedValues(['my_service_node_name']),
             OptionNames::SERVICE_VERSION         => $stringRawToParsedValues(['my_service_version']),
             OptionNames::TRANSACTION_MAX_SPANS   => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE => $doubleRawToParsedValues,

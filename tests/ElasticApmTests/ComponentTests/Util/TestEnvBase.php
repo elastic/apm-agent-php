@@ -622,6 +622,11 @@ abstract class TestEnvBase implements LoggableInterface
             : MetadataDiscoverer::adaptServiceName($configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
+        $expectedServiceNodeName = Tracer::limitNullableKeywordString(
+            $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_NODE_NAME)
+        );
+        self::verifyServiceNodeName($expectedServiceNodeName, $this->dataFromAgent);
+
         $expectedServiceVersion = Tracer::limitNullableKeywordString(
             $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
         );
@@ -676,6 +681,13 @@ abstract class TestEnvBase implements LoggableInterface
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service->name);
+        }
+    }
+
+    public static function verifyServiceNodeName(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
         }
     }
 

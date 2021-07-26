@@ -123,6 +123,9 @@ final class Snapshot implements LoggableInterface
     private $serviceName;
 
     /** @var ?string */
+    private $serviceNodeName;
+
+    /** @var ?string */
     private $serviceVersion;
 
     /** @var int */
@@ -190,6 +193,11 @@ final class Snapshot implements LoggableInterface
     public function serviceName(): ?string
     {
         return $this->serviceName;
+    }
+
+    public function serviceNodeName(): ?string
+    {
+        return $this->serviceNodeName;
     }
 
     public function serviceVersion(): ?string
