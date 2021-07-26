@@ -583,8 +583,8 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
-    public static function printMessage(string $msg): void
+    public static function printMessage(string $srcMethod, string $msg): void
     {
-        fwrite(STDERR, PHP_EOL . $msg . PHP_EOL);
+        fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
     }
 }

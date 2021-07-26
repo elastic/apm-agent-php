@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
 final class TestProcessUtil
@@ -84,7 +85,9 @@ final class TestProcessUtil
         )->addAllContext(['adaptedCmd' => $adaptedCmd, 'envVars' => $envVars]);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Starting an external process...');
+        && $loggerProxy->log('Starting process...');
+
+        TestCaseBase::printMessage(__METHOD__, "Starting process: `$adaptedCmd'...");
 
         $pipes = [];
         $openedProc = proc_open(
@@ -95,6 +98,7 @@ final class TestProcessUtil
             $envVars
         );
         if ($openedProc === false) {
+            TestCaseBase::printMessage(__METHOD__, "Failed to start process. adaptedCmd: `$adaptedCmd'");
             throw new RuntimeException("Failed to start process. adaptedCmd: `$adaptedCmd'");
         }
 
@@ -102,6 +106,7 @@ final class TestProcessUtil
 
         $exitCode = proc_close($openedProc);
         if ($exitCode === SpawnedProcessBase::FAILURE_PROCESS_EXIT_CODE) {
+            TestCaseBase::printMessage(__METHOD__, "Process exited with the failure exit code: $exitCode");
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Process exited with the failure exit code',
@@ -110,7 +115,9 @@ final class TestProcessUtil
             );
         }
 
+        TestCaseBase::printMessage(__METHOD__, "Process started");
+
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('External process started', ['newProcessInfo' => $newProcessInfo]);
+        && $loggerProxy->log('Process started', ['newProcessInfo' => $newProcessInfo]);
     }
 }
