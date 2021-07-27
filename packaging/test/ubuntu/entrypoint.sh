@@ -75,6 +75,12 @@ elif [ "${TYPE}" == "release-tar-github" ] ; then
     tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
+elif [ "${TYPE}" == "agent-upgrade" ] ; then
+    PACKAGE=apm-agent-php_${VERSION}_all.deb
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
+    dpkg -i "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
+elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
+    dpkg -i build/local/*.deb
 else
     ## Install tar package and configure the agent accordingly
     tar -xf build/packages/*.tar -C /
@@ -85,7 +91,11 @@ fi
 
 validate_if_agent_is_enabled
 
-validate_installation
+if case $TYPE in agent-upgrade*) ;; *) false;; esac; then
+    echo 'Validate installation runs after the agent upgrade.'
+else
+    validate_installation
+fi
 
 ## Validate the uninstallation works as expected
 set -ex
@@ -100,4 +110,13 @@ elif [ "${TYPE}" == "tar-uninstall" ] ; then
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/before-uninstall.sh
     validate_if_agent_is_uninstalled
+elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
+    ## Upgrade the agent version with the deb package and configure the agent accordingly
+    dpkg -i build/packages/*.deb
+
+    ## Validate agent is enabled
+    validate_if_agent_is_enabled
+
+    ## Run some tests
+    validate_installation
 fi
