@@ -23,43 +23,31 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use ElasticApmTests\Util\LogCategoryForTests;
 
 final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
 {
     private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToCliBuiltinHttpServerAppCodeHost.php';
 
-    /** @var Logger */
-    private $logger;
-
     public function __construct()
     {
         parent::__construct();
-
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
     }
 
-    protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
+    protected function ensureAppCodeHostServerRunning(): void
     {
         $this->ensureHttpServerIsRunning(
-            $testProperties->urlParts->port /* <- ref */,
+            $this->testProperties->urlParts->port /* <- ref */,
             $this->appCodeHostServerId /* <- ref */,
             ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) /* <- dbgServerDesc */,
             /* cmdLineGenFunc: */
-            function (int $port) use ($testProperties) {
-                return $testProperties->agentConfigSetter->appCodePhpCmd()
+            function (int $port) {
+                return $this->testProperties->agentConfigSetter->appCodePhpCmd()
                        . " -S localhost:$port"
                        . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"';
             },
-            false /* $keepElasticApmEnvVars */,
-            $testProperties->agentConfigSetter->additionalEnvVars()
+            false /* <- $keepElasticApmEnvVars */,
+            $this->testProperties->agentConfigSetter->additionalEnvVars()
         );
     }
 }

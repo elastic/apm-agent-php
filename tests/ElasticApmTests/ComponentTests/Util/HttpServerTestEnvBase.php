@@ -60,17 +60,19 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         return true;
     }
 
-    protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
+    protected function sendRequestToInstrumentedApp(): void
     {
-        $this->ensureAppCodeHostServerRunning($testProperties);
-        TestCase::assertNotNull($testProperties->urlParts->port);
+        TestCase::assertTrue(isset($this->testProperties));
+
+        $this->ensureAppCodeHostServerRunning();
+        TestCase::assertNotNull($this->testProperties->urlParts->port);
         TestCase::assertNotNull($this->appCodeHostServerId);
 
         $localLogger = $this->logger->inherit()->addAllContext(
             [
-                'method'           => $testProperties->httpMethod,
-                'urlParts'         => $testProperties->urlParts,
-                'requestMethodArg' => UrlUtil::buildRequestMethodArg($testProperties->urlParts),
+                'method'           => $this->testProperties->httpMethod,
+                'urlParts'         => $this->testProperties->urlParts,
+                'requestMethodArg' => UrlUtil::buildRequestMethodArg($this->testProperties->urlParts),
             ]
         );
 
@@ -81,14 +83,14 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
         /** @noinspection PhpUnhandledExceptionInspection */
         $response = TestHttpClientUtil::sendRequest(
-            $testProperties->httpMethod,
-            $testProperties->urlParts,
-            SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $testProperties->sharedDataPerRequest)
+            $this->testProperties->httpMethod,
+            $this->testProperties->urlParts,
+            SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $this->testProperties->sharedDataPerRequest)
         );
-        if ($response->getStatusCode() !== $testProperties->expectedStatusCode) {
+        if ($response->getStatusCode() !== $this->testProperties->expectedStatusCode) {
             throw new RuntimeException(
                 'HTTP status code does not match the expected one.'
-                . ' Expected: ' . $testProperties->expectedStatusCode
+                . ' Expected: ' . $this->testProperties->expectedStatusCode
                 . ', actual: ' . $response->getStatusCode()
             );
         }
@@ -99,54 +101,51 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         );
     }
 
-    abstract protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void;
+    abstract protected function ensureAppCodeHostServerRunning(): void;
 
-    protected function verifyRootTransaction(TestProperties $testProperties, TransactionData $rootTransaction): void
+    protected function verifyRootTransaction(TransactionData $rootTransaction): void
     {
-        parent::verifyRootTransaction($testProperties, $rootTransaction);
+        parent::verifyRootTransaction($rootTransaction);
 
         if ($rootTransaction->isSampled) {
             TestCase::assertNotNull($rootTransaction->context);
         }
     }
 
-    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    protected function verifyRootTransactionName(string $rootTransactionName): void
     {
-        parent::verifyRootTransactionName($testProperties, $rootTransactionName);
+        parent::verifyRootTransactionName($rootTransactionName);
 
-        if (is_null($testProperties->expectedTransactionName)) {
+        if (is_null($this->testProperties->expectedTransactionName)) {
             TestCase::assertSame(
-                $testProperties->httpMethod . ' ' . ($testProperties->urlParts->path ?? '/'),
+                $this->testProperties->httpMethod . ' ' . ($this->testProperties->urlParts->path ?? '/'),
                 $rootTransactionName
             );
         }
     }
 
-    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    protected function verifyRootTransactionType(string $rootTransactionType): void
     {
-        parent::verifyRootTransactionType($testProperties, $rootTransactionType);
+        parent::verifyRootTransactionType($rootTransactionType);
 
-        if (is_null($testProperties->transactionType)) {
+        if (is_null($this->testProperties->transactionType)) {
             TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransactionType);
         }
     }
 
-    protected function verifyRootTransactionContext(
-        TestProperties $testProperties,
-        ?TransactionContextData $rootTransactionContext
-    ): void {
-        parent::verifyRootTransactionContext($testProperties, $rootTransactionContext);
+    protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void
+    {
+        parent::verifyRootTransactionContext($rootTransactionContext);
 
         if ($rootTransactionContext === null) {
             return;
         }
 
         TestCase::assertNotNull($rootTransactionContext->request);
-        $this->verifyRootTransactionContextRequest($testProperties, $rootTransactionContext->request);
+        $this->verifyRootTransactionContextRequest($rootTransactionContext->request);
     }
 
     protected function verifyRootTransactionContextRequest(
-        TestProperties $testProperties,
         TransactionContextRequestData $rootTransactionContextRequest
     ): void {
         /**
@@ -156,8 +155,8 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
         TestCase::assertNotNull($rootTransactionContextRequest->method);
         TestCase::assertNotNull($rootTransactionContextRequest->url);
 
-        TestCase::assertSame($testProperties->httpMethod, $rootTransactionContextRequest->method);
-        $this->verifyRootTransactionContextRequestUrl($testProperties, $rootTransactionContextRequest->url);
+        TestCase::assertSame($this->testProperties->httpMethod, $rootTransactionContextRequest->method);
+        $this->verifyRootTransactionContextRequestUrl($this->testProperties, $rootTransactionContextRequest->url);
     }
 
     protected function verifyRootTransactionContextRequestUrl(

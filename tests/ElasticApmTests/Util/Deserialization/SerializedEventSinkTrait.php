@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\JsonUtil;
@@ -57,8 +58,10 @@ trait SerializedEventSinkTrait
         Closure $assertValid
     ) {
         $validateAgainstSchema($serializedData);
+        /** @var array<string, mixed> $deserializedJson */
         $deserializedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
         $deserializedData = $deserialize($deserializedJson);
+        /** @noinspection PsalmAdvanceCallableParamsInspection */
         $assertValid($deserializedData);
         return $deserializedData;
     }
@@ -122,9 +125,9 @@ trait SerializedEventSinkTrait
     {
         return self::validateAndDeserialize(
             $serializedErrorData,
-            function (string $serializedSpanData): void {
+            function (string $serializedData): void {
                 if ($this->shouldValidateAgainstSchema) {
-                    ServerApiSchemaValidator::validateErrorData($serializedSpanData);
+                    ServerApiSchemaValidator::validateErrorData($serializedData);
                 }
             },
             function ($deserializedRawData): ErrorData {
@@ -132,6 +135,24 @@ trait SerializedEventSinkTrait
             },
             function (ErrorData $data): void {
                 ValidationUtil::assertValidErrorData($data);
+            }
+        );
+    }
+
+    protected function validateAndDeserializeMetricSetData(string $serializedMetricSetData): MetricSetData
+    {
+        return self::validateAndDeserialize(
+            $serializedMetricSetData,
+            function (string $serializedSpanData): void {
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateMetricSetData($serializedSpanData);
+                }
+            },
+            function ($deserializedRawData): MetricSetData {
+                return MetricSetDataDeserializer::deserialize($deserializedRawData);
+            },
+            function (MetricSetData $data): void {
+                ValidationUtil::assertValidMetricSetData($data);
             }
         );
     }

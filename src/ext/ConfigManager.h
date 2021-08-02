@@ -36,6 +36,9 @@
 
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
 //      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
+//          If the option is used only in PHP part of the agent
+//          then the type of field can be String
+//          which will skip parsing the value by the C part of the agent.
 //
 //      2) Add to the list of ELASTIC_APM_CFG_OPT_NAME_XYZ-s in ConfigManager.h:
 //          #define ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION "my_new_option"
@@ -49,7 +52,7 @@
 //          ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( <!!! myNewOption Type !!!>Value, myNewOption )
 //
 //      6) Add to section of ELASTIC_APM_INIT_METADATA in initOptionsMetadata() in ConfigManager.c:
-//          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_MY_NEW_OPTION_OPTION_NAME, /* defaultValue: */ <!!! myNewOption default value !!!> );
+//          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION, /* defaultValue: */ <!!! myNewOption default value !!!> );
 
 enum OptionId
 {
@@ -62,8 +65,10 @@ enum OptionId
     optionId_assertLevel,
     #endif
     optionId_bootstrapPhpPartFile,
+    optionId_breakdownMetrics,
     optionId_enabled,
     optionId_environment,
+    optionId_hostname,
     optionId_internalChecksLevel,
     optionId_logFile,
     optionId_logLevel,
@@ -82,6 +87,7 @@ enum OptionId
     optionId_serverTimeout,
     optionId_serverUrl,
     optionId_serviceName,
+    optionId_serviceNodeName,
     optionId_serviceVersion,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -104,8 +110,10 @@ struct ConfigSnapshot
         #endif
     String apiKey;
     String bootstrapPhpPartFile;
+    bool breakdownMetrics;
     bool enabled;
     String environment;
+    String hostname;
     InternalChecksLevel internalChecksLevel;
     String logFile;
     LogLevel logLevel;
@@ -124,6 +132,7 @@ struct ConfigSnapshot
     String serverUrl;
     String serverTimeout;
     String serviceName;
+    String serviceNodeName;
     String serviceVersion;
     String transactionMaxSpans;
     String transactionSampleRate;
@@ -220,8 +229,10 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
+#define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
+#define ELASTIC_APM_CFG_OPT_NAME_HOSTNAME "hostname"
 #define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_FILE "log_file"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL "log_level"
@@ -240,6 +251,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
+#define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"

@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Util\TextUtil;
  */
 abstract class SinkBase implements SinkInterface
 {
+    /** @inheritDoc */
     public function consume(
         int $statementLevel,
         string $message,

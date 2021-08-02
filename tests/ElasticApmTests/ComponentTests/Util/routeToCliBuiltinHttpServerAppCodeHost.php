@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 
 require __DIR__ . '/../../../bootstrap.php';
 require __DIR__ . '/defineTopLevelCodeIdGlobalVar.php';

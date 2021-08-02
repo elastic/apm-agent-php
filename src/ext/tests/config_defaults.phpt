@@ -103,7 +103,7 @@ elasticApmAssertSame("getenv('ELASTIC_APM_SERVICE_NAME')", getenv('ELASTIC_APM_S
 
 elasticApmAssertEqual("ini_get('elastic_apm.service_name')", ini_get('elastic_apm.service_name'), false);
 
-elasticApmAssertSame("elastic_apm_get_config_option_by_name('service_name')", elastic_apm_get_config_option_by_name('service_name'), 'Unknown PHP service');
+elasticApmAssertSame("elastic_apm_get_config_option_by_name('service_name')", elastic_apm_get_config_option_by_name('service_name'), null);
 
 echo 'Test completed'
 ?>

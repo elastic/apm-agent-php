@@ -26,11 +26,10 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 {
@@ -42,15 +41,14 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         // Arrange
 
         $this->setUpTestEnv(
-            function (TracerBuilder $builder) use ($testArgs): void {
-                $mockConfig = new MockConfigRawSnapshotSource();
+            function (TracerBuilderForTests $builder) use ($testArgs): void {
                 if (!$testArgs->isSampled) {
-                    $mockConfig->set(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
+                    $builder->withConfig(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
                 }
-                if (!is_null($testArgs->configTransactionMaxSpans)) {
-                    $mockConfig->set(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
+                if ($testArgs->configTransactionMaxSpans !== null) {
+                    $builder
+                        ->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
                 }
-                $builder->withConfigRawSnapshotSource($mockConfig);
                 $this->mockEventSink->shouldValidateAgainstSchema = false;
             }
         );

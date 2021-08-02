@@ -35,34 +35,50 @@ final class AllOptionsMetadata
     use StaticClassTrait;
 
     /**
+     * @var array<string, OptionMetadata>
+     *
+     * @phpstan-var array<string, OptionMetadata<mixed>>
+     */
+    private static $vaLue;
+
+    /**
      * @return array<string, OptionMetadata> Option name to metadata
      *
      * @phpstan-return array<string, OptionMetadata<mixed>> Option name to metadata
      */
-    public static function build(): array
+    public static function get(): array
     {
-        return [
-            OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
-            OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
-            OptionNames::LOG_LEVEL               => new NullableLogLevelOptionMetadata(),
-            OptionNames::LOG_LEVEL_STDERR        => new NullableLogLevelOptionMetadata(),
-            OptionNames::LOG_LEVEL_SYSLOG        => new NullableLogLevelOptionMetadata(),
-            OptionNames::SERVER_TIMEOUT          => new DurationOptionMetadata(
-                0.0 /* minValidValueInMilliseconds */,
-                null /* maxValidValueInMilliseconds */,
-                DurationUnits::SECONDS /* <- defaultUnits: */,
-                30 * 1000 /* <- defaultValueInMilliseconds - 30s */
-            ),
-            OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
-            OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
-            OptionNames::TRANSACTION_MAX_SPANS   => new IntOptionMetadata(
-                0 /* <- minValidValue */,
-                null /* <- maxValidValue */,
-                OptionDefaultValues::TRANSACTION_MAX_SPANS
-            ),
-            OptionNames::TRANSACTION_SAMPLE_RATE =>
-                new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
-            OptionNames::VERIFY_SERVER_CERT      => new BoolOptionMetadata(/* defaultValue: */ true),
-        ];
+        if (!isset(self::$vaLue)) {
+            self::$vaLue = [
+                OptionNames::API_KEY                 => new NullableStringOptionMetadata(),
+                OptionNames::BREAKDOWN_METRICS       => new BoolOptionMetadata(/* defaultValue: */ true),
+                OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
+                OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
+                OptionNames::HOSTNAME                => new NullableStringOptionMetadata(),
+                OptionNames::LOG_LEVEL               => new NullableLogLevelOptionMetadata(),
+                OptionNames::LOG_LEVEL_STDERR        => new NullableLogLevelOptionMetadata(),
+                OptionNames::LOG_LEVEL_SYSLOG        => new NullableLogLevelOptionMetadata(),
+                OptionNames::SECRET_TOKEN            => new NullableStringOptionMetadata(),
+                OptionNames::SERVER_TIMEOUT          => new DurationOptionMetadata(
+                    0.0 /* <- minValidValueInMilliseconds */,
+                    null /* <- maxValidValueInMilliseconds */,
+                    DurationUnits::SECONDS /* <- defaultUnits */,
+                    30 * 1000.0 /* <- defaultValueInMilliseconds - 30s */
+                ),
+                OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
+                OptionNames::SERVICE_NODE_NAME       => new NullableStringOptionMetadata(),
+                OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
+                OptionNames::TRANSACTION_MAX_SPANS   => new IntOptionMetadata(
+                    0 /* <- minValidValue */,
+                    null /* <- maxValidValue */,
+                    OptionDefaultValues::TRANSACTION_MAX_SPANS
+                ),
+                OptionNames::TRANSACTION_SAMPLE_RATE =>
+                    new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
+                OptionNames::VERIFY_SERVER_CERT      => new BoolOptionMetadata(/* defaultValue: */ true),
+            ];
+        }
+
+        return self::$vaLue;
     }
 }

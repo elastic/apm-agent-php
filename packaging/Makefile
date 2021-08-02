@@ -202,3 +202,19 @@ tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
 rpm-php-upgrade-testing: PHP_VERSION="7.2"  ### Force the PHP version to start with.
 rpm-php-upgrade-testing: prepare-rpm  ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
 	@docker run --rm -v $(PWD):/src -w /src -e TYPE=php-upgrade -e PACKAGE=$(NAME) prepare-rpm
+
+.PHONY: rpm-agent-upgrade-testing
+rpm-agent-upgrade-testing: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-rpm
+
+.PHONY: deb-agent-upgrade-testing
+deb-agent-upgrade-testing: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) prepare-deb
+
+.PHONY: rpm-agent-upgrade-testing-local
+rpm-agent-upgrade-testing-local: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) prepare-rpm
+
+.PHONY: deb-agent-upgrade-testing-local
+deb-agent-upgrade-testing-local: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
+	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) prepare-deb

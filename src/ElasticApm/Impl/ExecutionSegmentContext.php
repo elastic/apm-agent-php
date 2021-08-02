@@ -49,7 +49,7 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
     {
         parent::__construct($owner);
         $this->data = $data;
-        $this->logger = $this->getTracer()->loggerFactory()
+        $this->logger = $this->tracer()->loggerFactory()
                              ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                              ->addContext('this', $this);
     }

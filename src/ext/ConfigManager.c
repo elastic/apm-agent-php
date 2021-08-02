@@ -561,8 +561,10 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, hostname )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevel )
@@ -581,6 +583,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
@@ -692,6 +695,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 
     ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
+            breakdownMetrics,
+            ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
             enabled,
             ELASTIC_APM_CFG_OPT_NAME_ENABLED,
             /* defaultValue: */ true );
@@ -700,6 +709,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             environment,
             ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            hostname,
+            ELASTIC_APM_CFG_OPT_NAME_HOSTNAME,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_ENUM_INIT_METADATA(
@@ -768,7 +783,13 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             serviceName,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME,
-            /* defaultValue: */ "Unknown PHP service" );
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            serviceNodeName,
+            ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

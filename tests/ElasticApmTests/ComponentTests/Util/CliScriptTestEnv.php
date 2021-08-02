@@ -55,53 +55,53 @@ final class CliScriptTestEnv extends TestEnvBase
         return false;
     }
 
-    protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void
+    protected function sendRequestToInstrumentedApp(): void
     {
+        TestCase::assertTrue(isset($this->testProperties));
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Running ' . ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '...',
-            ['testProperties' => $testProperties]
+            ['testProperties' => $this->testProperties]
         );
 
         TestProcessUtil::startProcessAndWaitUntilExit(
-            $testProperties->agentConfigSetter->appCodePhpCmd()
+            $this->testProperties->agentConfigSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
-            self::inheritedEnvVars(/* keepElasticApmEnvVars */ false)
+            $this->inheritedEnvVars(/* keepElasticApmEnvVars */ false)
             + [
                 TestConfigUtil::envVarNameForTestOption(
                     AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
                 ) => SerializationUtil::serializeAsJson($this->buildSharedDataPerProcess()),
                 TestConfigUtil::envVarNameForTestOption(
                     AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                ) => SerializationUtil::serializeAsJson($testProperties->sharedDataPerRequest),
+                ) => SerializationUtil::serializeAsJson($this->testProperties->sharedDataPerRequest),
             ]
-            + $testProperties->agentConfigSetter->additionalEnvVars()
+            + $this->testProperties->agentConfigSetter->additionalEnvVars()
         );
     }
 
-    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    protected function verifyRootTransactionName(string $rootTransactionName): void
     {
-        parent::verifyRootTransactionName($testProperties, $rootTransactionName);
+        parent::verifyRootTransactionName($rootTransactionName);
 
-        if (is_null($testProperties->expectedTransactionName)) {
+        if (is_null($this->testProperties->expectedTransactionName)) {
             TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransactionName);
         }
     }
 
-    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    protected function verifyRootTransactionType(string $rootTransactionType): void
     {
-        parent::verifyRootTransactionType($testProperties, $rootTransactionType);
+        parent::verifyRootTransactionType($rootTransactionType);
 
-        if (is_null($testProperties->transactionType)) {
+        if (is_null($this->testProperties->transactionType)) {
             TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransactionType);
         }
     }
 
-    protected function verifyRootTransactionContext(
-        TestProperties $testProperties,
-        ?TransactionContextData $rootTransactionContext
-    ): void {
-        parent::verifyRootTransactionContext($testProperties, $rootTransactionContext);
+    protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void
+    {
+        parent::verifyRootTransactionContext($rootTransactionContext);
 
         if ($rootTransactionContext === null) {
             return;

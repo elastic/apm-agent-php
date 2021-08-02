@@ -44,13 +44,14 @@ abstract class SpawnedProcessBase implements LoggableInterface
 {
     use LoggableTrait;
 
+    public const FAILURE_PROCESS_EXIT_CODE = 234;
+
     /** @var Logger */
     private $logger;
 
     protected function __construct()
     {
         $this->logger = self::buildLogger()->addContext('this', $this);
-
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -88,11 +89,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
     }
 
     /**
-     * @param Closure                                   $runImpl
+     * @param Closure(SpawnedProcessBase): void $runImpl
      *
      * @throws Throwable
-     *
-     * @phpstan-param Closure(SpawnedProcessBase): void $runImpl
      */
     protected static function runSkeleton(Closure $runImpl): void
     {
@@ -101,25 +100,37 @@ abstract class SpawnedProcessBase implements LoggableInterface
         try {
             AmbientContext::init(/* dbgProcessName */ ClassNameUtil::fqToShort(get_called_class()));
             $thisObj = new static(); // @phpstan-ignore-line
+
+            if (!$thisObj->shouldAgentBeEnabled()) {
+                TestConfigUtil::assertAgentDisabled();
+            }
+
             $thisObj->processConfig();
 
             if ($thisObj->shouldRegisterThisProcessWithResourcesCleaner()) {
                 $thisObj->registerWithResourcesCleaner();
             }
 
+            /** @noinspection PsalmAdvanceCallableParamsInspection */
             $runImpl($thisObj);
         } catch (Throwable $throwable) {
             $level = Level::CRITICAL;
+            $isExpected = false;
             $throwableToLog = $throwable;
             if ($throwable instanceof WrappedAppCodeException) {
+                $isExpected = true;
                 $level = Level::INFO;
                 $throwableToLog = $throwable->wrappedException();
             }
             $logger = isset($thisObj) ? $thisObj->logger : self::buildLogger();
             ($loggerProxy = $logger->ifLevelEnabled($level, __LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($throwableToLog, 'Throwable escaped to the top of the script');
-            /** @noinspection PhpUnhandledExceptionInspection */
-            throw $throwableToLog;
+            if ($isExpected) {
+                /** @noinspection PhpUnhandledExceptionInspection */
+                throw $throwableToLog;
+            } else {
+                exit(self::FAILURE_PROCESS_EXIT_CODE);
+            }
         }
     }
 
@@ -149,18 +160,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
         return $optValue;
     }
 
-    protected static function verifyRequiredSharedDataPropertyIsSet(
-        SharedData $sharedData,
-        string $propName
-    ): void {
-        if (is_null($sharedData->$propName)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Required shared data property is not set',
-                    ['sharedData' => $sharedData, '. $propName' => $propName]
-                )
-            );
-        }
+    protected function shouldAgentBeEnabled(): bool
+    {
+        return false;
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool

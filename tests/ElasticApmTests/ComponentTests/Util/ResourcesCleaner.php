@@ -93,7 +93,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting...');
-        exit(1);
+        exit(0);
     }
 
     private function cleanSpawnedProcesses(): void

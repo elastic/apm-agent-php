@@ -60,9 +60,9 @@ abstract class ContextDataWrapper implements LoggableInterface
         return $this->owner->beforeMutating();
     }
 
-    protected function getTracer(): Tracer
+    protected function tracer(): Tracer
     {
-        return $this->owner->getTracer();
+        return $this->owner->containingTransaction()->tracer();
     }
 
     /**

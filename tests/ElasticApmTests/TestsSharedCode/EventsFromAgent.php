@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -40,7 +41,7 @@ final class EventsFromAgent implements LoggableInterface
     use LoggableTrait;
 
     /** @var Metadata[] */
-    public $metadata = [];
+    public $metadatas = [];
 
     /** @var array<string, TransactionData> */
     public $idToTransaction = [];
@@ -51,9 +52,12 @@ final class EventsFromAgent implements LoggableInterface
     /** @var ErrorData[] */
     public $idToError = [];
 
+    /** @var MetricSetData[] */
+    public $metricSetDatas = [];
+
     public function clear(): void
     {
-        $this->metadata = [];
+        $this->metadatas = [];
         $this->idToTransaction = [];
         $this->idToSpan = [];
         $this->idToError = [];

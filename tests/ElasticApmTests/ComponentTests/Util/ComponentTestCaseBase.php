@@ -25,11 +25,13 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\Util\TestCaseBase;
+use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -37,8 +39,8 @@ class ComponentTestCaseBase extends TestCaseBase
     /** @var TestEnvBase */
     protected $testEnv;
 
-    /** @var Logger */
-    private $logger;
+    /** @var AgentConfigSetter[] */
+    protected $allConfigSetters;
 
     /**
      * @param mixed        $name
@@ -51,14 +53,9 @@ class ComponentTestCaseBase extends TestCaseBase
 
         self::init();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        );
-
         $this->testEnv = $this->selectTestEnv();
+
+        $this->allConfigSetters = [new AgentConfigSetterIni(), new AgentConfigSetterEnvVars()];
     }
 
     public static function init(): void
@@ -73,8 +70,8 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param TestProperties $testProperties
-     * @param Closure        $verifyFunc
+     * @param TestProperties                       $testProperties
+     * @param Closure                              $verifyFunc
      *
      * @return void
      *
@@ -108,26 +105,35 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @return array<array<AgentConfigSetter>>
+     * @return AgentConfigSetter
      */
-    public function configSetterTestDataProvider(): iterable
+    public function randomConfigSetter(): AgentConfigSetter
     {
-        return [
-            // [new ConfigSetterIni()],
-            [new AgentConfigSetterEnvVars()],
-        ];
+        $selectedConfigSetter = RandomUtilForTests::getRandomValueFromArray($this->allConfigSetters);
+
+        $logger = AmbientContext::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        );
+
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Randomly selected agent config setter type: ' . DbgUtil::getType($selectedConfigSetter));
+
+        return $selectedConfigSetter;
     }
 
     /**
-     * @param AgentConfigSetter|null $configSetter
-     * @param string|null            $configured
-     * @param Closure                $setConfigFunc
-     * @param Closure                $verifyFunc
+     * @param AgentConfigSetter|null                           $configSetter
+     * @param string|null                                      $configured
+     * @param Closure                                          $setConfigFunc
+     * @param Closure                                          $verifyFunc
      *
      * @return void
      *
      * @phpstan-param Closure(AgentConfigSetter, string): void $setConfigFunc
-     * @phpstan-param Closure(DataFromAgent): void $verifyFunc
+     * @phpstan-param Closure(DataFromAgent): void             $verifyFunc
      */
     protected function configTestImpl(
         ?AgentConfigSetter $configSetter,
@@ -153,5 +159,24 @@ class ComponentTestCaseBase extends TestCaseBase
         $this->assertSame(0, $tx->droppedSpansCount);
         $this->assertNull($tx->parentId);
         return $tx;
+    }
+
+    /**
+     * @param array<string, mixed> $appCodeArgs
+     * @param string               $appArgNameKey
+     *
+     * @return mixed
+     */
+    protected static function getMandatoryAppCodeArg(array $appCodeArgs, string $appArgNameKey)
+    {
+        if (!array_key_exists($appArgNameKey, $appCodeArgs)) {
+            throw new RuntimeException(
+                ExceptionUtil::buildMessage(
+                    'Expected key is not found in app code args',
+                    ['appArgNameKey' => $appArgNameKey, 'appCodeArgs' => $appCodeArgs]
+                )
+            );
+        }
+        return $appCodeArgs[$appArgNameKey];
     }
 }

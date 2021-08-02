@@ -35,8 +35,10 @@ final class OptionNames
     use StaticClassTrait;
 
     public const API_KEY = 'api_key';
+    public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
+    public const HOSTNAME = 'hostname';
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
     public const LOG_LEVEL_STDERR = 'log_level_stderr';
@@ -44,6 +46,7 @@ final class OptionNames
     public const SERVER_TIMEOUT = 'server_timeout';
     public const SERVER_URL = 'server_url';
     public const SERVICE_NAME = 'service_name';
+    public const SERVICE_NODE_NAME = 'service_node_name';
     public const SERVICE_VERSION = 'service_version';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';

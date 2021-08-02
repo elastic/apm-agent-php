@@ -141,9 +141,8 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
     {
     }
 
-    protected function shouldRequestHaveServerId(
-        /** @noinspection PhpUnusedParameterInspection */ ServerRequestInterface $request
-    ): bool {
+    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
+    {
         return true;
     }
 
@@ -183,7 +182,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
                 'processRequest() exited by exception - terminating this process',
                 ['$throwable' => $throwable]
             );
-            exit(1);
+            exit(self::FAILURE_PROCESS_EXIT_CODE);
         }
     }
 

@@ -116,4 +116,32 @@ final class RandomUtilForTests
         }
         return $randSelectedSubsetValues;
     }
+
+    /**
+     * @template T
+     *
+     * @param array<T> $arr
+     *
+     * @return T
+     */
+    public static function getRandomValueFromArray(array $arr)
+    {
+        TestCase::assertGreaterThan(0, count($arr));
+        return $arr[RandomUtilForTests::generateIntInRange(0, count($arr) - 1)];
+    }
+
+    /**
+     * @template TKey of string|int
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $arr
+     *
+     * @return array<TKey, TValue>
+     */
+    public static function getRandomKeyValueFromArray(array $arr)
+    {
+        TestCase::assertGreaterThan(0, count($arr));
+        $selectedIndex = RandomUtilForTests::generateIntInRange(0, count($arr) - 1);
+        return array_slice($arr, /* offset: */ $selectedIndex, /* length: */ 1, /* preserve_keys: */ true);
+    }
 }

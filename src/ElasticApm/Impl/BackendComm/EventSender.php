@@ -23,12 +23,14 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\BackendComm;
 
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Metadata;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\TransactionData;
 
 /**
@@ -56,6 +58,7 @@ final class EventSender implements EventSinkInterface
         Metadata $metadata,
         array $spansData,
         array $errorsData,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
         ?TransactionData $transactionData
     ): void {
         $serializedMetadata = '{"metadata":';
@@ -78,14 +81,24 @@ final class EventSender implements EventSinkInterface
             $serializedEvents .= '}';
         }
 
-        if (!is_null($transactionData)) {
+        if ($breakdownMetricsPerTransaction !== null) {
+            $breakdownMetricsPerTransaction->forEachMetricSet(
+                function (MetricSetData $metricSet) use (&$serializedEvents) {
+                    $serializedEvents .= "\n";
+                    $serializedEvents .= '{"metricset":';
+                    $serializedEvents .= SerializationUtil::serializeAsJson($metricSet);
+                    $serializedEvents .= '}';
+                }
+            );
+        }
+
+        if ($transactionData !== null) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"transaction":';
             $serializedEvents .= SerializationUtil::serializeAsJson($transactionData);
             $serializedEvents .= "}";
         }
 
-        /** @noinspection SpellCheckingInspection */
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Calling elastic_apm_send_to_server...',

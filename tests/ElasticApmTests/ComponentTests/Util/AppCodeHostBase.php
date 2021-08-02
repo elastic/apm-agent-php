@@ -63,6 +63,11 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         && $loggerProxy->log('Done', ['Environment variables' => getenv()]);
     }
 
+    protected function shouldAgentBeEnabled(): bool
+    {
+        return true;
+    }
+
     abstract protected function runImpl(): void;
 
     public static function run(?string &$topLevelCodeId): void

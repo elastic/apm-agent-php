@@ -75,13 +75,19 @@ int main( int argc, char* argv[] )
 
 static const String cmockaAbortOnFailEnvVarName = "CMOCKA_TEST_ABORT";
 
-void printInfo()
+void printInfo( int argc, char* argv[] )
 {
     puts( "#####################################################################" );
     puts( "##################################" );
     puts( "################" );
     puts( "####" );
     puts( "" );
+
+    printf( "argc: %d\n", argc );
+    for ( int i = 0 ; i < argc ; ++i)
+    {
+        printf( "argv[%d]: %s\n", i, argv[i] );
+    }
 
     String NDEBUG_defined =
     #ifdef NDEBUG

@@ -19,7 +19,12 @@
  * under the License.
  */
 
-/** @noinspection PhpDocMissingThrowsInspection, PhpUnhandledExceptionInspection, PhpUndefinedClassInspection */
+/**
+ * @noinspection PhpDocMissingThrowsInspection
+ * @noinspection PhpMultipleClassDeclarationsInspection
+ * @noinspection PhpUnhandledExceptionInspection
+ * @noinspection PhpUndefinedClassInspection
+ */
 
 declare(strict_types=1);
 
@@ -76,6 +81,9 @@ abstract class TestEnvBase implements LoggableInterface
 
     /** @var string|null */
     protected $mockApmServerId = null;
+
+    /** @var TestProperties */
+    protected $testProperties;
 
     /** @var int|null */
     private $mockApmServerPort = null;
@@ -169,14 +177,26 @@ abstract class TestEnvBase implements LoggableInterface
      *
      * @return array<string, string>
      */
-    protected static function inheritedEnvVars(bool $keepElasticApmEnvVars): array
+    protected function inheritedEnvVars(bool $keepElasticApmEnvVars): array
     {
+        $envVars = getenv();
+
         if ($keepElasticApmEnvVars) {
-            return getenv();
+            return $envVars;
+        }
+
+        foreach (array_keys($this->testProperties->getAllConfiguredAgentOptions()) as $optName) {
+            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
+                EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
+                $optName
+            );
+            if (array_key_exists($envVarName, $envVars)) {
+                unset($envVars[$envVarName]);
+            }
         }
 
         return array_filter(
-            getenv(),
+            $envVars,
             function (string $envVarName): bool {
                 return
                     TextUtil::isPrefixOf(
@@ -207,7 +227,6 @@ abstract class TestEnvBase implements LoggableInterface
      * @param bool                  $keepElasticApmEnvVars
      * @param array<string, string> $additionalEnvVars
      *
-     * @phpstan-param   Closure(int $port): string $cmdLineGenFunc
      */
     protected function ensureHttpServerIsRunning(
         ?int &$port,
@@ -223,6 +242,7 @@ abstract class TestEnvBase implements LoggableInterface
         }
         TestCase::assertNull($serverId);
 
+        /** @noinspection PhpUnusedLocalVariableInspection */
         /** @var int|null */
         $currentTryPort = null;
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
@@ -244,11 +264,16 @@ abstract class TestEnvBase implements LoggableInterface
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting HTTP server...');
 
+            TestCaseBase::printMessage(
+                __METHOD__,
+                "Starting HTTP server. cmdLine: `${cmdLine}', currentTryPort: ${currentTryPort} ..."
+            );
+
             $sharedDataPerProcessOptName = AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME;
             $sharedDataPerProcess = $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort);
             TestProcessUtil::startBackgroundProcess(
                 $cmdLine,
-                self::inheritedEnvVars($keepElasticApmEnvVars)
+                $this->inheritedEnvVars($keepElasticApmEnvVars)
                 + [
                     TestConfigUtil::envVarNameForTestOption($sharedDataPerProcessOptName) =>
                         SerializationUtil::serializeAsJson($sharedDataPerProcess),
@@ -290,7 +315,7 @@ abstract class TestEnvBase implements LoggableInterface
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) use ($runScriptName) {
                 return self::runScriptNameToCmdLine($runScriptName);
             },
-            true /* $keepElasticApmEnvVars */
+            true /* <- keepElasticApmEnvVars */
         );
     }
 
@@ -349,6 +374,8 @@ abstract class TestEnvBase implements LoggableInterface
         TestProperties $testProperties,
         Closure $verifyFunc
     ): void {
+        $this->testProperties = $testProperties;
+
         try {
             $this->dataFromAgent->clearAdded();
             $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
@@ -362,14 +389,14 @@ abstract class TestEnvBase implements LoggableInterface
 
             TestCase::assertTrue(!isset($testProperties->sharedDataPerRequest->agentEphemeralId));
             $testProperties->sharedDataPerRequest->agentEphemeralId = $this->generateSecondaryIdFromTestEnvId();
-            $this->sendRequestToInstrumentedApp($testProperties);
+            $this->sendRequestToInstrumentedApp();
             $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
         } finally {
             $testProperties->tearDown();
         }
     }
 
-    abstract protected function sendRequestToInstrumentedApp(TestProperties $testProperties): void;
+    abstract protected function sendRequestToInstrumentedApp(): void;
 
     public function shutdown(): void
     {
@@ -542,7 +569,7 @@ abstract class TestEnvBase implements LoggableInterface
         $this->verifyMetadata($testProperties);
 
         $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
-        $this->verifyRootTransaction($testProperties, $rootTransaction);
+        $this->verifyRootTransaction($rootTransaction);
 
         TestCaseBase::assertValidTransactionsAndSpans(
             $this->dataFromAgent->idToTransaction(),
@@ -600,10 +627,20 @@ abstract class TestEnvBase implements LoggableInterface
             : MetadataDiscoverer::adaptServiceName($configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
+        $expectedServiceNodeName = Tracer::limitNullableKeywordString(
+            $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_NODE_NAME)
+        );
+        self::verifyServiceNodeName($expectedServiceNodeName, $this->dataFromAgent);
+
         $expectedServiceVersion = Tracer::limitNullableKeywordString(
             $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
         );
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+
+        self::verifyHostname(
+            Tracer::limitNullableKeywordString($testProperties->getConfiguredAgentOption(OptionNames::HOSTNAME)),
+            $this->dataFromAgent
+        );
     }
 
     public static function verifyAgentEphemeralId(TestProperties $testProperties, DataFromAgent $dataFromAgent): void
@@ -624,10 +661,38 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
+    public static function verifyHostname(?string $configured, DataFromAgent $dataFromAgent): void
+    {
+        $detected = gethostname();
+        if ($detected === false) {
+            $detected = null;
+        } else {
+            $detected = Tracer::limitNullableKeywordString($detected);
+        }
+
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            if ($configured === null) {
+                TestCase::assertSame($detected, $metadata->system->detectedHostname);
+                TestCase::assertSame($detected, $metadata->system->hostname);
+            } else {
+                TestCase::assertSame(Tracer::limitKeywordString($configured), $metadata->system->configuredHostname);
+                TestCase::assertSame(Tracer::limitKeywordString($configured), $metadata->system->hostname);
+                TestCase::assertNull($metadata->system->detectedHostname);
+            }
+        }
+    }
+
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
         foreach ($dataFromAgent->metadata() as $metadata) {
             TestCase::assertSame($expected, $metadata->service->name);
+        }
+    }
+
+    public static function verifyServiceNodeName(?string $expected, DataFromAgent $dataFromAgent): void
+    {
+        foreach ($dataFromAgent->metadata() as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
         }
     }
 
@@ -638,36 +703,34 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
-    protected function verifyRootTransaction(TestProperties $testProperties, TransactionData $rootTransaction): void
+    protected function verifyRootTransaction(TransactionData $rootTransaction): void
     {
-        $this->verifyRootTransactionName($testProperties, $rootTransaction->name);
-        $this->verifyRootTransactionType($testProperties, $rootTransaction->type);
+        $this->verifyRootTransactionName($rootTransaction->name);
+        $this->verifyRootTransactionType($rootTransaction->type);
 
         if (!$rootTransaction->isSampled) {
             TestCase::assertNull($rootTransaction->context);
         }
 
-        $this->verifyRootTransactionContext($testProperties, $rootTransaction->context);
+        $this->verifyRootTransactionContext($rootTransaction->context);
     }
 
-    protected function verifyRootTransactionName(TestProperties $testProperties, string $rootTransactionName): void
+    protected function verifyRootTransactionName(string $rootTransactionName): void
     {
-        if (!is_null($testProperties->expectedTransactionName)) {
-            TestCase::assertSame($testProperties->expectedTransactionName, $rootTransactionName);
+        if (!is_null($this->testProperties->expectedTransactionName)) {
+            TestCase::assertSame($this->testProperties->expectedTransactionName, $rootTransactionName);
         }
     }
 
-    protected function verifyRootTransactionType(TestProperties $testProperties, string $rootTransactionType): void
+    protected function verifyRootTransactionType(string $rootTransactionType): void
     {
-        if (!is_null($testProperties->transactionType)) {
-            TestCase::assertSame($testProperties->transactionType, $rootTransactionType);
+        if (!is_null($this->testProperties->transactionType)) {
+            TestCase::assertSame($this->testProperties->transactionType, $rootTransactionType);
         }
     }
 
-    protected function verifyRootTransactionContext(
-        TestProperties $testProperties,
-        ?TransactionContextData $rootTransactionContext
-    ): void {
+    protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void
+    {
     }
 
     /**
