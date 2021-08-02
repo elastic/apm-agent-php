@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -45,11 +46,11 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
 {
     use LoggableTrait;
 
-    /** @var Tracer */
-    protected $tracer;
-
     /** @var bool */
     protected $isDiscarded = false;
+
+    /** @var ?BreakdownMetricsSelfTimeTracker */
+    protected $breakdownMetricsSelfTimeTracker = null;
 
     /** @var float */
     private $durationOnBegin;
@@ -69,25 +70,39 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     protected function __construct(
         ExecutionSegmentData $data,
         Tracer $tracer,
+        ?ExecutionSegment $parentExecutionSegment,
         string $traceId,
         string $name,
         string $type,
         ?float $timestamp = null
     ) {
-        $systemClockCurrentTime = $tracer->getClock()->getSystemClockCurrentTime();
+        $monotonicClockNow = $tracer->getClock()->getMonotonicClockCurrentTime();
+        $systemClockNow = $tracer->getClock()->getSystemClockCurrentTime();
         $this->data = $data;
-        $this->data->timestamp = $timestamp ?? $systemClockCurrentTime;
+        $this->data->timestamp = $timestamp ?? $systemClockNow;
         $this->durationOnBegin
-            = TimeUtil::calcDuration($this->data->timestamp, $systemClockCurrentTime);
-        $this->monotonicBeginTime = $tracer->getClock()->getMonotonicClockCurrentTime();
-        $this->tracer = $tracer;
+            = TimeUtil::calcDuration($this->data->timestamp, $systemClockNow);
+        $this->monotonicBeginTime = $monotonicClockNow;
         $this->data->traceId = $traceId;
         $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
-        $this->logger = $this->tracer->loggerFactory()
-                                     ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
-                                     ->addContext('this', $this);
+
+        if ($this->containingTransaction()->isSelfTimeEnabled()) {
+            $this->breakdownMetricsSelfTimeTracker = new BreakdownMetricsSelfTimeTracker($monotonicClockNow);
+            if ($parentExecutionSegment !== null) {
+                /**
+                 * If isSelfTimeEnabled is true then breakdownMetricsSelfTimeTracker should not be null
+                 *
+                 * @phpstan-ignore-next-line
+                 */
+                $parentExecutionSegment->breakdownMetricsSelfTimeTracker->onChildBegin($monotonicClockNow);
+            }
+        }
+
+        $this->logger = $tracer->loggerFactory()
+                               ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
+                               ->addContext('this', $this);
     }
 
     /**
@@ -98,11 +113,29 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         return ['tracer', 'logger'];
     }
 
-    abstract public function isSampled(): bool;
-
-    public function getTracer(): Tracer
+    public function isSampled(): bool
     {
-        return $this->tracer;
+        return $this->containingTransaction()->isSampled();
+    }
+
+    /**
+     * @return Transaction
+     */
+    abstract public function containingTransaction(): Transaction;
+
+    /**
+     * @return ExecutionSegment|null
+     */
+    abstract public function parentExecutionSegment(): ?ExecutionSegment;
+
+    public function getName(): string
+    {
+        return $this->data->name;
+    }
+
+    public function getType(): string
+    {
+        return $this->data->type;
     }
 
     /**
@@ -166,13 +199,23 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this->tracer, $throwable));
+        return $this->dispatchCreateError(
+            ErrorExceptionData::buildFromThrowable(
+                $this->containingTransaction()->tracer(),
+                $throwable
+            )
+        );
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this->tracer, $customErrorData));
+        return $this->dispatchCreateError(
+            ErrorExceptionData::buildFromCustomData(
+                $this->containingTransaction()->tracer(),
+                $customErrorData
+            )
+        );
     }
 
     public function beforeMutating(): bool
@@ -235,6 +278,32 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->data->type = Tracer::limitKeywordString($type);
     }
 
+    public static function isValidOutcome(?string $outcome): bool
+    {
+        return $outcome === null
+               || $outcome === Constants::OUTCOME_SUCCESS
+               || $outcome === Constants::OUTCOME_FAILURE
+               || $outcome === Constants::OUTCOME_UNKNOWN;
+    }
+
+    /** @inheritDoc */
+    public function setOutcome(?string $outcome): void
+    {
+        if (!self::isValidOutcome($outcome)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Given outcome value is invalid', ['outcome' => $outcome]);
+            return;
+        }
+
+        $this->data->outcome = $outcome;
+    }
+
+    /** @inheritDoc */
+    public function getOutcome(): ?string
+    {
+        return $this->data->outcome;
+    }
+
     /** @inheritDoc */
     public function discard(): void
     {
@@ -257,8 +326,9 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return false;
         }
 
-        if (is_null($duration)) {
-            $monotonicEndTime = $this->tracer->getClock()->getMonotonicClockCurrentTime();
+        $monotonicClockNow = $this->containingTransaction()->tracer()->getClock()->getMonotonicClockCurrentTime();
+        if ($duration === null) {
+            $monotonicEndTime = $monotonicClockNow;
             $calculatedDuration = $this->durationOnBegin
                                   + TimeUtil::calcDuration($this->monotonicBeginTime, $monotonicEndTime);
             if ($calculatedDuration < 0) {
@@ -269,11 +339,52 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             $this->data->duration = $duration;
         }
 
+        if ($this->breakdownMetricsSelfTimeTracker !== null && !$this->containingTransaction()->hasEnded()) {
+            $this->updateBreakdownMetricsOnEnd($monotonicClockNow);
+        }
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(ClassNameUtil::fqToShort(get_class($this)) . ' ended', []);
 
         $this->isEnded = true;
         return true;
+    }
+
+    /**
+     * @param float $monotonicClockNow
+     *
+     * @return void
+     */
+    abstract protected function updateBreakdownMetricsOnEnd(float $monotonicClockNow): void;
+
+    protected function doUpdateBreakdownMetricsOnEnd(
+        float $monotonicClockNow,
+        string $spanType,
+        ?string $spanSubtype
+    ): void {
+        /**
+         * @var BreakdownMetricsSelfTimeTracker
+         *
+         * doUpdateBreakdownMetricsOnEnd is called only if breakdownMetricsSelfTimeTracker is not null
+         */
+        $breakdownMetricsSelfTimeTracker = $this->breakdownMetricsSelfTimeTracker;
+
+        $breakdownMetricsSelfTimeTracker->end($monotonicClockNow);
+        $this->containingTransaction()->addSpanSelfTime(
+            $spanType,
+            $spanSubtype,
+            $breakdownMetricsSelfTimeTracker->accumulatedSelfTimeInMicroseconds()
+        );
+
+        $parentExecutionSegment = $this->parentExecutionSegment();
+        if ($parentExecutionSegment !== null) {
+            /**
+             * doUpdateBreakdownMetricsOnEnd is called only if breakdownMetricsSelfTimeTracker is not null
+             *
+             * @phpstan-ignore-next-line
+             */
+            $parentExecutionSegment->breakdownMetricsSelfTimeTracker->onChildEnd($monotonicClockNow);
+        }
     }
 
     /** @inheritDoc */

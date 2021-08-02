@@ -25,13 +25,16 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
+use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogSinkForTests;
+use RuntimeException;
 
 final class TestConfigUtil
 {
@@ -68,9 +71,25 @@ final class TestConfigUtil
         $parser = new Parser(
             new LoggerFactory(new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName)))
         );
-        $allOptsMeta = AllComponentTestsOptionsMetadata::build();
+        $allOptsMeta = AllComponentTestsOptionsMetadata::get();
         return new TestConfigSnapshot(
             $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta))
         );
+    }
+
+    public static function assertAgentDisabled(): void
+    {
+        $envVarName = TestConfigUtil::envVarNameForAgentOption(OptionNames::ENABLED);
+        $envVarValue = getenv($envVarName);
+        if ($envVarValue !== 'false') {
+            throw new RuntimeException(
+                "Environment variable $envVarName should be set to `false'."
+                . ' Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'") . '.'
+            );
+        }
+
+        if (GlobalTracerHolder::get()->isRecording()) {
+            throw new RuntimeException('Tracer should not be recording component tests auxiliary processes');
+        }
     }
 }

@@ -3,6 +3,9 @@
 [[release-notes]]
 == Release notes
 
-* <<release-notes-alpha>> (Coming soon)
+* <<release-notes-v1.2>>
+* <<release-notes-v1.1>>
+* <<release-notes-v1.0.1>>
+* <<release-notes-v1.0>>
 
 include::../CHANGELOG.asciidoc[]

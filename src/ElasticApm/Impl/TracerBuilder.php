@@ -23,7 +23,18 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
+use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
+use Elastic\Apm\Impl\Config\Parser as ConfigParser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface as ConfigRawSnapshotSourceInterface;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Log\SinkInterface as LogSinkInterface;
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 
 /**
@@ -38,26 +49,21 @@ final class TracerBuilder
      */
     use HiddenConstructorTrait;
 
-    /** @var bool */
-    private $isEnabled = true;
-
     /** @var TracerDependencies */
     private $tracerDependencies;
 
-    private function __construct()
+    /** @var bool */
+    private $shouldCheckExtension = true;
+
+    private function __construct(bool $shouldCheckExtension)
     {
         $this->tracerDependencies = new TracerDependencies();
+        $this->shouldCheckExtension = $shouldCheckExtension;
     }
 
-    public static function startNew(): self
+    public static function startNew(bool $shouldCheckExtension = true): self
     {
-        return new self();
-    }
-
-    public function withEnabled(bool $isEnabled): self
-    {
-        $this->isEnabled = $isEnabled;
-        return $this;
+        return new self($shouldCheckExtension);
     }
 
     public function withClock(ClockInterface $clock): self
@@ -72,7 +78,7 @@ final class TracerBuilder
         return $this;
     }
 
-    public function withLogSink(Log\SinkInterface $logSink): self
+    public function withLogSink(LogSinkInterface $logSink): self
     {
         $this->tracerDependencies->logSink = $logSink;
         return $this;
@@ -86,10 +92,33 @@ final class TracerBuilder
 
     public function build(): TracerInterface
     {
-        if (!$this->isEnabled) {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        if ($this->shouldCheckExtension && (!ElasticApmExtensionUtil::isLoaded() || !\elastic_apm_is_enabled())) {
             return NoopTracer::singletonInstance();
         }
 
-        return new Tracer($this->tracerDependencies);
+        $config = self::buildConfig($this->tracerDependencies);
+        return $config->enabled() ? new Tracer($this->tracerDependencies, $config) : NoopTracer::singletonInstance();
+    }
+
+    private static function buildConfig(TracerDependencies $providedDependencies): ConfigSnapshot
+    {
+        $rawSnapshotSource = $providedDependencies->configRawSnapshotSource
+                             ?? new CompositeRawSnapshotSource(
+                                 [
+                                     new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX),
+                                     new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX),
+                                 ]
+                             );
+
+        $parsingLoggerFactory = new LoggerFactory(new LogBackend(LogLevel::TRACE, $providedDependencies->logSink));
+        $parser = new ConfigParser($parsingLoggerFactory);
+        $allOptsMeta = AllOptionsMetadata::get();
+        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
     }
 }

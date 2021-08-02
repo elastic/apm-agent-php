@@ -44,9 +44,7 @@ trait AutoInstrumentationTrait
      * @param SpanInterface   $span
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown Return value of the intercepted call or thrown object
-     * @param float|null      $duration
-     *
-     * @noinspection PhpMissingParamTypeInspection
+     * @param ?float          $duration
      */
     protected static function endSpan(
         int $numberOfStackFramesToSkip,
@@ -113,27 +111,6 @@ trait AutoInstrumentationTrait
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!is_null($interceptedCallThis))
         && $assertProxy->withContext('!is_null($interceptedCallThis)', ['interceptedCallArgs' => $interceptedCallArgs]);
-    }
-
-    /**
-     * @param object|null $interceptedCallThis
-     * @param mixed[]     $interceptedCallArgs Intercepted call arguments
-     *
-     * @return void
-     */
-    protected static function assertInterceptedCallThisIsNull(
-        ?object $interceptedCallThis,
-        array $interceptedCallArgs
-    ): void {
-        ($assertProxy = Assert::ifEnabled())
-        && $assertProxy->that(is_null($interceptedCallThis))
-        && $assertProxy->withContext(
-            'is_null($interceptedCallThis)',
-            [
-                'interceptedCallThis' => $interceptedCallThis,
-                'interceptedCallArgs' => $interceptedCallArgs,
-            ]
-        );
     }
 
     /**

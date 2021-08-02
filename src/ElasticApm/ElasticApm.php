@@ -36,7 +36,7 @@ final class ElasticApm
     use StaticClassTrait;
 
     /** @var string */
-    public const VERSION = '1.0.1';
+    public const VERSION = '1.2';
 
     /**
      * Begins a new transaction and sets it as the current transaction.

@@ -62,13 +62,13 @@ final class SerializationUtil
     }
 
     /**
-     * @param string                                                       $name
-     * @param bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
-     * @param array<string, mixed>                                         $nameToValue
+     * @param string                                                            $name
+     * @param null|bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                              $nameToValue
      *
      * @return void
      */
-    public static function addNameValue(string $name, $value, array &$nameToValue): void
+    private static function assertNotExists(string $name, $value, array $nameToValue): void
     {
         if (self::$isInTestingContext && array_key_exists($name, $nameToValue)) {
             throw new SerializationException(
@@ -78,6 +78,18 @@ final class SerializationUtil
                 )
             );
         }
+    }
+
+    /**
+     * @param string                                                       $name
+     * @param bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                         $nameToValue
+     *
+     * @return void
+     */
+    public static function addNameValue(string $name, $value, array &$nameToValue): void
+    {
+        self::assertNotExists($name, $value, $nameToValue);
 
         $nameToValue[$name] = $value;
     }
@@ -91,8 +103,26 @@ final class SerializationUtil
      */
     public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
     {
+        self::assertNotExists($name, $value, $nameToValue);
+
         if ($value !== null) {
-            self::addNameValue($name, $value, /* ref */ $nameToValue);
+            $nameToValue[$name] = $value;
+        }
+    }
+
+    /**
+     * @param string                       $name
+     * @param array<mixed, mixed>|stdClass $value
+     * @param array<string, mixed>         $nameToValue
+     *
+     * @return void
+     */
+    public static function addNameValueIfNotEmpty(string $name, $value, array &$nameToValue): void
+    {
+        self::assertNotExists($name, $value, $nameToValue);
+
+        if (!empty($value)) {
+            $nameToValue[$name] = $value;
         }
     }
 
@@ -108,22 +138,6 @@ final class SerializationUtil
 
         $value = null;
         return false;
-    }
-
-    /**
-     * @param string                       $name
-     * @param array<mixed, mixed>|stdClass $value
-     * @param array<string, mixed>         $nameToValue
-     *
-     * @return void
-     */
-    public static function addNameValueIfNotEmpty(string $name, $value, array &$nameToValue): void
-    {
-        if (empty($value)) {
-            return;
-        }
-
-        self::addNameValue($name, $value, /* ref */ $nameToValue);
     }
 
     /**
@@ -152,8 +166,18 @@ final class SerializationUtil
      *
      * @return array<string, mixed>|stdClass
      */
-    public static function postProcessResult(array $nameToValue)
+    public static function ensureObject(array $nameToValue)
     {
         return empty($nameToValue) ? (new stdClass()) : $nameToValue;
+    }
+
+    /**
+     * @param array<string, mixed> $nameToValue
+     *
+     * @return array<string, mixed>|stdClass
+     */
+    public static function postProcessResult(array $nameToValue)
+    {
+        return self::ensureObject($nameToValue);
     }
 }

@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -32,6 +33,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\RandomUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
@@ -44,13 +46,16 @@ use Throwable;
  */
 final class Transaction extends ExecutionSegment implements TransactionInterface
 {
+    /** @var Tracer */
+    protected $tracer;
+
     /** @var TransactionData */
     private $data;
 
     /** @var ConfigSnapshot */
     private $config;
 
-    /** @var Span|null */
+    /** @var ?Span */
     private $currentSpan = null;
 
     /** @var Logger */
@@ -65,6 +70,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var TransactionContext|null */
     private $context = null;
 
+    /** @var BreakdownMetricsPerTransaction */
+    private $breakdownMetricsPerTransaction;
+
     public function __construct(
         Tracer $tracer,
         string $name,
@@ -72,9 +80,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?float $timestamp = null,
         ?DistributedTracingData $distributedTracingData = null
     ) {
+        $this->tracer = $tracer;
         $this->data = new TransactionData();
+        $this->breakdownMetricsPerTransaction
+            = new BreakdownMetricsPerTransaction($this, $tracer->getConfig()->breakdownMetrics());
 
-        if (is_null($distributedTracingData)) {
+        if ($distributedTracingData == null) {
             $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
         } else {
             $traceId = $distributedTracingData->traceId;
@@ -84,6 +95,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         parent::__construct(
             $this->data,
             $tracer,
+            null /* <- parentExecutionSegment */,
             $traceId,
             $name,
             $type,
@@ -110,11 +122,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->data->parentId;
     }
 
-    public function getType(): string
-    {
-        return $this->data->type;
-    }
-
     private function makeSamplingDecision(): bool
     {
         if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
@@ -127,10 +134,27 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
     }
 
+    public function tracer(): Tracer
+    {
+        return $this->tracer;
+    }
+
     /** @inheritDoc */
     public function isSampled(): bool
     {
         return $this->data->isSampled;
+    }
+
+    /** @inheritDoc */
+    public function containingTransaction(): Transaction
+    {
+        return $this;
+    }
+
+    /** @inheritDoc */
+    public function parentExecutionSegment(): ?ExecutionSegment
+    {
+        return null;
     }
 
     /** @inheritDoc */
@@ -184,7 +208,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     public function beginSpan(
-        ?Span $parentSpan,
+        ExecutionSegment $parentExecutionSegment,
         string $name,
         string $type,
         ?string $subtype,
@@ -218,8 +242,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         return new Span(
             $this->tracer,
-            $this /* <- containingTransaction*/,
-            $parentSpan,
+            $this /* <- containingTransaction */,
+            $parentExecutionSegment,
             $name,
             $type,
             $subtype,
@@ -239,7 +263,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     ): SpanInterface {
         return
             $this->beginSpan(
-                null /* <- parentSpan */,
+                $this /* <- parentExecutionSegment */,
                 $name,
                 $type,
                 $subtype,
@@ -279,7 +303,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?float $timestamp = null
     ): SpanInterface {
         $this->currentSpan = $this->beginSpan(
-            $this->currentSpan,
+            $this->currentSpan ?? $this /* <- parentExecutionSegment */,
             $name,
             $type,
             $subtype,
@@ -309,6 +333,21 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             // Since endSpanEx was not called directly it should not be kept in the stack trace
             $newSpan->endSpanEx(/* numberOfStackFramesToSkip: */ 1);
         }
+    }
+
+    /** @inheritDoc */
+    public function ensureParentId(): string
+    {
+        if ($this->data->parentId === null) {
+            $this->data->parentId = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Setting parent ID for already existing transaction',
+                ['parentId' => $this->data->parentId]
+            );
+        }
+
+        return $this->data->parentId;
     }
 
     /** @inheritDoc */
@@ -347,7 +386,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function queueSpanDataToSend(SpanData $spanData): void
     {
         if ($this->hasEnded()) {
-            $this->tracer->sendEventsToApmServer([$spanData], /* errorsData */ [], /* transaction: */ null);
+            $this->tracer->sendEventsToApmServer(
+                [$spanData],
+                [] /* <- errorsData */,
+                null /* <- breakdownMetricsPerTransaction */,
+                null /* <- transactionData */
+            );
             return;
         }
 
@@ -379,9 +423,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function discard(): void
     {
-        while (!is_null($this->currentSpan)) {
+        while ($this->currentSpan !== null) {
             $spanToDiscard = $this->currentSpan;
-            $this->currentSpan = $spanToDiscard->parentSpan();
+            $this->currentSpan = $this->currentSpan->parentIfSpan();
             if (!$spanToDiscard->hasEnded()) {
                 $spanToDiscard->discard();
             }
@@ -397,13 +441,50 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
+        $this->breakdownMetricsPerTransaction->finalize(
+            TimeUtil::millisecondsToMicroseconds($this->data->duration)
+        );
+
         $this->data->prepareForSerialization();
 
-        $this->tracer->sendEventsToApmServer($this->spansDataToSend, $this->errorsDataToSend, $this->data);
+        $this->tracer->sendEventsToApmServer(
+            $this->spansDataToSend,
+            $this->errorsDataToSend,
+            $this->breakdownMetricsPerTransaction,
+            $this->data
+        );
 
         if ($this->tracer->getCurrentTransaction() === $this) {
             $this->tracer->resetCurrentTransaction();
         }
+    }
+
+    public function isSelfTimeEnabled(): bool
+    {
+        return $this->breakdownMetricsPerTransaction->isSelfTimeEnabled();
+    }
+
+    public function addSpanSelfTime(string $spanType, ?string $spanSubtype, float $spanSelfTimeInMicroseconds): void
+    {
+        if ($this->beforeMutating() || !$this->tracer->isRecording()) {
+            return;
+        }
+
+        $this->breakdownMetricsPerTransaction->addSpanSelfTime(
+            $spanType,
+            $spanSubtype,
+            $spanSelfTimeInMicroseconds
+        );
+    }
+
+    /** @inheritDoc */
+    protected function updateBreakdownMetricsOnEnd(float $monotonicClockNow): void
+    {
+        $this->doUpdateBreakdownMetricsOnEnd(
+            $monotonicClockNow,
+            BreakdownMetricsPerTransaction::TRANSACTION_SPAN_TYPE,
+            /* subtype: */ null
+        );
     }
 
     /**

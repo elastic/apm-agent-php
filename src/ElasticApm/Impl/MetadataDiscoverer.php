@@ -63,6 +63,7 @@ final class MetadataDiscoverer
 
         $result->process = MetadataDiscoverer::discoverProcessData();
         $result->service = MetadataDiscoverer::discoverServiceData($this->config);
+        $result->system = MetadataDiscoverer::discoverSystemData($this->config);
 
         return $result;
     }
@@ -79,21 +80,25 @@ final class MetadataDiscoverer
             : Tracer::limitKeywordString($charsAdaptedName);
     }
 
+    private static function setKeywordStringIfNotNull(?string $srcCfgVal, ?string &$dstProp): void
+    {
+        if ($srcCfgVal !== null) {
+            $dstProp = Tracer::limitKeywordString($srcCfgVal);
+        }
+    }
+
     public function discoverServiceData(ConfigSnapshot $config): ServiceData
     {
         $result = new ServiceData();
 
-        if (!is_null($config->environment())) {
-            $result->environment = Tracer::limitKeywordString($config->environment());
-        }
+        self::setKeywordStringIfNotNull($config->environment(), /* ref */ $result->environment);
 
-        $result->name = is_null($config->serviceName())
+        $result->name = $config->serviceName() === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($config->serviceName());
 
-        if (!is_null($config->serviceVersion())) {
-            $result->version = Tracer::limitKeywordString($config->serviceVersion());
-        }
+        self::setKeywordStringIfNotNull($config->serviceNodeName(), /* ref */ $result->nodeConfiguredName);
+        self::setKeywordStringIfNotNull($config->serviceVersion(), /* ref */ $result->version);
 
         $result->agent = new ServiceAgentData();
         $result->agent->name = self::AGENT_NAME;
@@ -102,6 +107,24 @@ final class MetadataDiscoverer
         $result->language = $this->buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
 
         $result->runtime = $result->language;
+
+        return $result;
+    }
+
+    public function discoverSystemData(ConfigSnapshot $config): SystemData
+    {
+        $result = new SystemData();
+
+        if ($config->hostname() !== null) {
+            $result->configuredHostname = Tracer::limitKeywordString($config->hostname());
+            $result->hostname = $result->configuredHostname;
+        } else {
+            $detectedHostname = gethostname();
+            if ($detectedHostname !== false) {
+                $result->detectedHostname = Tracer::limitKeywordString($detectedHostname);
+                $result->hostname = $result->detectedHostname;
+            }
+        }
 
         return $result;
     }

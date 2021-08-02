@@ -52,6 +52,14 @@ final class Metadata implements SerializableDataInterface, LoggableInterface
      */
     public $service;
 
+    /**
+     * @var SystemData
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/metadata.json#L25
+     * @link github.com/elastic/apm-server/blob/v7.0.0/docs/spec/system.json
+     */
+    public $system;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
@@ -59,6 +67,7 @@ final class Metadata implements SerializableDataInterface, LoggableInterface
 
         SerializationUtil::addNameValue('process', $this->process, /* ref */ $result);
         SerializationUtil::addNameValue('service', $this->service, /* ref */ $result);
+        SerializationUtil::addNameValue('system', $this->system, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

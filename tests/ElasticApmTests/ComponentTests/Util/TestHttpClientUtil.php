@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
+use ElasticApmTests\Util\TestCaseBase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
@@ -54,10 +55,15 @@ final class TestHttpClientUtil
         SharedDataPerRequest $sharedDataPerRequest,
         array $headers = []
     ): ResponseInterface {
-        $client = new Client(['base_uri' => UrlUtil::buildRequestBaseUrl($urlParts)]);
+        $baseUrl = UrlUtil::buildRequestBaseUrl($urlParts);
+        $urlRelPart = UrlUtil::buildRequestMethodArg($urlParts);
+
+        TestCaseBase::printMessage(__METHOD__, "Sending HTTP request to `${baseUrl}${urlRelPart}'...");
+
+        $client = new Client(['base_uri' => $baseUrl]);
         return $client->request(
             $httpMethod,
-            UrlUtil::buildRequestMethodArg($urlParts),
+            $urlRelPart,
             [
                 RequestOptions::HEADERS     =>
                     $headers

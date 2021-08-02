@@ -13,6 +13,8 @@
     stopOnRisky="true"
     stopOnWarning="true"
     verbose= "true"
+    testdox="true"
+    noInteraction="true"
 >
     <php>
         <ini name="memory_limit" value="2G" />

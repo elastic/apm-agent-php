@@ -24,15 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DummyExceptionForTests;
-use ElasticApmTests\Util\LogSinkForTests;
 
 class CapturePublicApiTest extends TracerUnitTestCaseBase
 {
@@ -42,7 +37,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
     // public function setUp(): void
     // {
     //     $this->setUpTestEnv(
-    //         function (TracerBuilder $builder): void {
+    //         function (TracerBuilderForTests $builder): void {
     //             $mockConfig = new MockConfigRawSnapshotSource();
     //             $mockConfig->set(OptionNames::LOG_LEVEL, LogLevel::intToName(LogLevel::TRACE));
     //             $builder->withLogSink(new LogSinkForTests(__CLASS__))
@@ -265,7 +260,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
         $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToSpan);
 
         $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToError);
-        foreach ($this->mockEventSink->eventsFromAgent->idToError as $_ => $error) {
+        foreach ($this->mockEventSink->eventsFromAgent->idToError as $error) {
             self::assertSame($throwingRunData['traceId'], $error->traceId);
             self::assertSame($throwingRunData['transactionId'], $error->transactionId);
             self::assertArrayHasKey($error->transactionId, $this->mockEventSink->eventsFromAgent->idToTransaction);

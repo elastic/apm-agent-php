@@ -72,6 +72,10 @@ final class MetadataDeserializer extends DataDeserializer
                 $this->result->service = ServiceDataDeserializer::deserialize($value);
                 return true;
 
+            case 'system':
+                $this->result->system = SystemDataDeserializer::deserialize($value);
+                return true;
+
             default:
                 return false;
         }

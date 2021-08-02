@@ -38,13 +38,11 @@ use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
-use ElasticApmTests\UnitTests\Util\EmptyConfigRawSnapshotSource;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -92,7 +90,7 @@ class TestCaseBase extends TestCase
 
     public static function assertLessThanOrEqualDuration(float $lhs, float $rhs): void
     {
-        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)), '');
+        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)));
     }
 
     public static function calcEndTime(ExecutionSegmentData $timedData): float
@@ -221,7 +219,7 @@ class TestCaseBase extends TestCase
     {
         /** @var TransactionData|null */
         $rootTransaction = null;
-        foreach ($idToTransaction as $transactionId => $transaction) {
+        foreach ($idToTransaction as $transaction) {
             if (is_null($transaction->parentId)) {
                 self::assertNull($rootTransaction, 'Found more than one root transaction');
                 $rootTransaction = $transaction;
@@ -274,12 +272,12 @@ class TestCaseBase extends TestCase
         $rootTransaction = self::findRootTransaction($idToTransaction);
 
         // Assert that all transactions have the same traceId
-        foreach ($idToTransaction as $transactionId => $transaction) {
+        foreach ($idToTransaction as $transaction) {
             self::assertSame($rootTransaction->traceId, $transaction->traceId);
         }
 
         // Assert that each transaction did not start before its parent
-        foreach ($idToTransaction as $transactionId => $transaction) {
+        foreach ($idToTransaction as $transaction) {
             if (is_null($transaction->parentId)) {
                 continue;
             }
@@ -299,7 +297,7 @@ class TestCaseBase extends TestCase
         }
 
         // Assert that all spans have the same traceId
-        foreach ($idToSpan as $spanId => $span) {
+        foreach ($idToSpan as $span) {
             self::assertSame($rootTransaction->traceId, $span->traceId);
         }
 
@@ -521,16 +519,11 @@ class TestCaseBase extends TestCase
         self::assertArrayNotHasKey($key, $context->labels);
     }
 
-    public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilder
+    public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
-        // Set empty config source to prevent config from default sources (env vars and php.ini) from being used
-        // since unit test cannot assume anything about the state of those config sources
-        $cfgSrc = new EmptyConfigRawSnapshotSource();
-
-        return TracerBuilder::startNew()
-                            ->withLogSink(NoopLogSink::singletonInstance())
-                            ->withConfigRawSnapshotSource($cfgSrc)
-                            ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
+        return TracerBuilderForTests::startNew()
+                                    ->withLogSink(NoopLogSink::singletonInstance())
+                                    ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
     }
 
     public static function noopLoggerFactory(): LoggerFactory
@@ -578,5 +571,24 @@ class TestCaseBase extends TestCase
             . ';'
             . str_repeat('W', $halfLen)
             . ']';
+    }
+
+    /**
+     * @return iterable<array<bool>>
+     */
+    public function boolDataProvider(): iterable
+    {
+        yield [true];
+        yield [false];
+    }
+
+    public static function printMessage(string $srcMethod, string $msg): void
+    {
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        if (defined('STDERR')) {
+            fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+        }
     }
 }

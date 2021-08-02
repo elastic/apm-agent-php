@@ -23,9 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\UnitTests\Util\MockClock;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class TimeRelatedApiUsingMockClockTest extends TracerUnitTestCaseBase
 {
@@ -36,7 +36,7 @@ class TimeRelatedApiUsingMockClockTest extends TracerUnitTestCaseBase
     {
         $this->mockClock = new MockClock();
         $this->setUpTestEnv(
-            function (TracerBuilder $builder): void {
+            function (TracerBuilderForTests $builder): void {
                 $builder->withClock($this->mockClock);
             }
         );

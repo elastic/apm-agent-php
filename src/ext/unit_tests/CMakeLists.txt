@@ -20,8 +20,6 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 
 PROJECT( unit_tests C )
 
-INCLUDE( CTest )
-
 SET( CMAKE_C_STANDARD 99 )
 
 # Always include srcdir and builddir in include path

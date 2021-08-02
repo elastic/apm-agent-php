@@ -40,11 +40,8 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     {
         yield [null, null];
 
-        foreach ($this->configSetterTestDataProvider() as $configSetter) {
-            self::assertCount(1, $configSetter);
-            foreach ([false, true] as $verifyServerCert) {
-                yield [$configSetter[0], $verifyServerCert];
-            }
+        foreach ([false, true] as $verifyServerCert) {
+            yield [$this->randomConfigSetter(), $verifyServerCert];
         }
     }
 
@@ -68,7 +65,7 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     {
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForConfigTest'])
-            ->withAppArgs(['verifyServerCert' => $verifyServerCert]);
+            ->withAppCodeArgs(['verifyServerCert' => $verifyServerCert]);
         if (is_null($verifyServerCert)) {
             self::assertNull($configSetter);
         } else {

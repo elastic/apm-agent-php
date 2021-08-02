@@ -38,6 +38,7 @@ final class ServerApiSchemaValidator
     private const METADATA_SCHEMA_INDEX = 1;
     private const SPAN_SCHEMA_INDEX = 2;
     private const TRANSACTION_SCHEMA_INDEX = 3;
+    private const METRIC_SET_SCHEMA_INDEX = 4;
 
     private const EARLIEST_SUPPORTED_SPEC_DIR = 'earliest_supported/docs/spec';
     private const EARLIEST_SUPPORTED_SCHEMAS_REL_PATHS
@@ -46,6 +47,7 @@ final class ServerApiSchemaValidator
             self::METADATA_SCHEMA_INDEX    => 'metadata.json',
             self::SPAN_SCHEMA_INDEX        => 'spans/span.json',
             self::TRANSACTION_SCHEMA_INDEX => 'transactions/transaction.json',
+            self::METRIC_SET_SCHEMA_INDEX  => 'metricsets/metricset.json',
         ];
 
     private const LATEST_USED_SPEC_DIR = 'latest_used';
@@ -55,6 +57,7 @@ final class ServerApiSchemaValidator
             self::METADATA_SCHEMA_INDEX    => 'metadata.json',
             self::SPAN_SCHEMA_INDEX        => 'span.json',
             self::TRANSACTION_SCHEMA_INDEX => 'transaction.json',
+            self::METRIC_SET_SCHEMA_INDEX  => 'metricset.json',
         ];
 
     /** @var array<string, null> */
@@ -109,6 +112,11 @@ final class ServerApiSchemaValidator
     public static function validateErrorData(string $serializedData): void
     {
         self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
+    }
+
+    public static function validateMetricSetData(string $serializedData): void
+    {
+        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::METRIC_SET_SCHEMA_INDEX));
     }
 
     private static function validateEventData(string $serializedData, Closure $pathToSchemaSupplier): void
@@ -351,7 +359,7 @@ final class ServerApiSchemaValidator
      */
     private static function atLeastOneChildFromRef(array $allOfArray): bool
     {
-        foreach ($allOfArray as $key => $value) {
+        foreach ($allOfArray as $value) {
             if (array_key_exists('$ref', $value)) {
                 return true;
             }

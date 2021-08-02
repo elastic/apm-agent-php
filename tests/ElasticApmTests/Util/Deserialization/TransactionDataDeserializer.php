@@ -81,7 +81,7 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
                 return true;
 
             case 'span_count':
-                $this->deserializeSpanCount($value);
+                $this->deserializeSpanCountSubObject($value);
                 return true;
 
             case 'sampled':
@@ -96,7 +96,7 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
     /**
      * @param array<string, mixed> $deserializedRawData
      */
-    public function deserializeSpanCount(array $deserializedRawData): void
+    private function deserializeSpanCountSubObject(array $deserializedRawData): void
     {
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {

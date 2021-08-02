@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
@@ -126,10 +128,12 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     public function dataProviderForHttpStatus(): array
     {
         return [
-            [null, 'HTTP 2xx'],
-            [200, 'HTTP 2xx'],
-            [404, 'HTTP 4xx'],
-            [599, 'HTTP 5xx'],
+            [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+            [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+            [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
+            [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
+            [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
+            [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
         ];
     }
 
@@ -138,17 +142,72 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      *
      * @param int|null $customHttpStatus
      * @param string   $expectedTxResult
+     * @param string   $expectedTxOutcome
      */
-    public function testHttpStatus(?int $customHttpStatus, string $expectedTxResult): void
+    public function testHttpStatus(?int $customHttpStatus, string $expectedTxResult, string $expectedTxOutcome): void
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForHttpStatus'])
-                ->withAppArgs(['customHttpStatus' => $customHttpStatus])
+                ->withAppCodeArgs(['customHttpStatus' => $customHttpStatus])
                 ->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
-            function (DataFromAgent $dataFromAgent) use ($expectedTxResult): void {
+            function (DataFromAgent $dataFromAgent) use ($expectedTxResult, $expectedTxOutcome): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->result);
+                self::assertSame($this->testEnv->isHttp() ? $expectedTxOutcome : null, $tx->outcome);
+            }
+        );
+    }
+
+    public static function appCodeForSetResultManually(): void
+    {
+        ElasticApm::getCurrentTransaction()->setResult('my manually set result');
+    }
+
+    public function testSetResultManually(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withRoutedAppCode([__CLASS__, 'appCodeForSetResultManually'])
+                ->withExpectedStatusCode(HttpConsts::STATUS_OK),
+            function (DataFromAgent $dataFromAgent): void {
+                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
+                self::assertSame('my manually set result', $tx->result);
+            }
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $appCodeArgs
+     */
+    public static function appCodeForSetOutcomeManually(array $appCodeArgs): void
+    {
+        $shouldSetOutcomeManually = self::getMandatoryAppCodeArg($appCodeArgs, 'shouldSetOutcomeManually');
+        if ($shouldSetOutcomeManually) {
+            ElasticApm::getCurrentTransaction()->setOutcome(Constants::OUTCOME_UNKNOWN);
+        }
+    }
+
+    /**
+     * @dataProvider boolDataProvider
+     *
+     * @param bool $shouldSetOutcomeManually
+     */
+    public function testSetOutcomeManually(bool $shouldSetOutcomeManually): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withRoutedAppCode([__CLASS__, 'appCodeForSetOutcomeManually'])
+                ->withAppCodeArgs(['shouldSetOutcomeManually' => $shouldSetOutcomeManually])
+                ->withExpectedStatusCode(HttpConsts::STATUS_OK),
+            function (DataFromAgent $dataFromAgent) use ($shouldSetOutcomeManually): void {
+                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
+                self::assertSame(
+                    $shouldSetOutcomeManually
+                        ? Constants::OUTCOME_UNKNOWN
+                        : ($this->testEnv->isHttp() ? Constants::OUTCOME_SUCCESS : null),
+                    $tx->outcome
+                );
             }
         );
     }

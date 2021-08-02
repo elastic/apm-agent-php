@@ -57,10 +57,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
             }
 
             if ($setsAnyConfig) {
-                foreach ($this->configSetterTestDataProvider() as $arrayWithConfigSetter) {
-                    self::assertCount(1, $arrayWithConfigSetter);
-                    yield [$arrayWithConfigSetter[0], $testArgs];
-                }
+                yield [$this->randomConfigSetter(), $testArgs];
             } else {
                 yield [null, $testArgs];
             }
@@ -95,7 +92,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTestVariousCombinations'])
-            ->withAppArgs(['testArgs' => $testArgs]);
+            ->withAppCodeArgs(['testArgs' => $testArgs]);
 
         if (is_null($configSetter)) {
             self::assertNull($testArgs->configTransactionMaxSpans);

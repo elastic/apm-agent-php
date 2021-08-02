@@ -153,13 +153,14 @@ final class AppCode implements LoggableInterface
     private function createSpan(): void
     {
         ++$this->numberOfSpansCreated;
+        /** @noinspection PhpExpressionResultUnusedInspection */
         ++$this->topSpanInfo()->childCount;
         /** @var ExecutionSegmentInterface */
         $topExecSegment = ($this->actualSpansDepth() === 0) ? $this->tx : $this->topSpanInfo()->span;
         /** @var ExecutionSegmentContextInterface */
         $context = $topExecSegment->context(); // @phpstan-ignore-line
         $context->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
-        $spanName = $this->topSpanInfo()->name . '_' . strval($this->topSpanInfo()->childCount);
+        $spanName = $this->topSpanInfo()->name . '_' . $this->topSpanInfo()->childCount;
 
         $recursiveCallback = function (SpanInterface $span) use ($spanName) {
             ++$this->currentRecursionDepth;

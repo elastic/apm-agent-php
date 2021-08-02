@@ -28,11 +28,13 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ErrorExceptionData;
 use Elastic\Apm\Impl\ErrorTransactionData;
+use Elastic\Apm\Impl\ExecutionSegment;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
 use Elastic\Apm\Impl\ServiceData;
@@ -43,15 +45,16 @@ use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\SystemData;
 use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
-use PHPUnit\Framework\TestCase;
 use Throwable;
 
 final class ValidationUtil
@@ -73,7 +76,7 @@ final class ValidationUtil
         }
 
         return new InvalidEventDataException(
-            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 1),
+            ExceptionUtil::buildMessage($msgStart, /* context: */ [], /* numberOfStackFramesToSkip */ 2),
             $code,
             $previous
         );
@@ -228,6 +231,18 @@ final class ValidationUtil
         return $labels;
     }
 
+    /**
+     * @param mixed $outcome
+     *
+     * @return ?string
+     */
+    public static function assertValidOutcome($outcome): ?string
+    {
+        self::assertThat($outcome === null || is_string($outcome));
+        self::assertThat(ExecutionSegment::isValidOutcome($outcome));
+        return $outcome;
+    }
+
     public static function assertValidExecutionSegmentData(ExecutionSegmentData $execSegData): void
     {
         self::assertValidDuration($execSegData->duration);
@@ -236,6 +251,7 @@ final class ValidationUtil
         self::assertValidTimestamp($execSegData->timestamp);
         self::assertValidTraceId($execSegData->traceId);
         self::assertValidKeywordString($execSegData->type);
+        self::assertValidOutcome($execSegData->outcome);
     }
 
     public static function assertValidExecutionSegmentContextData(ExecutionSegmentContextData $execSegCtxData): void
@@ -384,7 +400,7 @@ final class ValidationUtil
         }
 
         self::assertThat(is_int($value));
-        TestCase::assertIsInt($value);
+        assert(is_int($value));
         return $value;
     }
 
@@ -400,7 +416,7 @@ final class ValidationUtil
         }
 
         self::assertThat(is_int($value));
-        TestCase::assertIsInt($value);
+        assert(is_int($value));
         return $value;
     }
 
@@ -471,7 +487,7 @@ final class ValidationUtil
     /**
      * @param mixed $value
      *
-     * @return mixed
+     * @return int|string|null
      */
     public static function assertValidErrorExceptionCode($value)
     {
@@ -525,6 +541,43 @@ final class ValidationUtil
     }
 
     /**
+     * @param mixed $samples
+     *
+     * @return array<string, array<string, float|int>>
+     */
+    public static function assertValidMetricSetDataSamples($samples): array
+    {
+        self::assertThat(is_array($samples));
+        self::assertThat(!empty($samples));
+
+        foreach ($samples as $key => $valueArr) {
+            self::assertValidKeywordString($key);
+            self::assertThat(is_array($valueArr));
+            self::assertThat(count($valueArr) === 1);
+            self::assertThat(array_key_exists('value', $valueArr));
+            $value = $valueArr['value'];
+            self::assertThat(is_int($value) || is_float($value));
+        }
+        return $samples;
+    }
+
+    public static function assertValidMetricSetData(MetricSetData $metricSet): void
+    {
+        ValidationUtil::assertValidTimestamp($metricSet->timestamp);
+
+        self::assertValidNullableKeywordString($metricSet->transactionName);
+        self::assertValidNullableKeywordString($metricSet->transactionType);
+        self::assertValidNullableKeywordString($metricSet->spanType);
+        self::assertValidNullableKeywordString($metricSet->spanSubtype);
+
+        self::assertThat(($metricSet->transactionName === null) === ($metricSet->transactionType === null));
+        self::assertThat(BoolUtil::ifThen($metricSet->spanType !== null, $metricSet->transactionName !== null));
+        self::assertThat(BoolUtil::ifThen($metricSet->spanSubtype !== null, $metricSet->spanType !== null));
+
+        self::assertValidMetricSetDataSamples($metricSet->samples);
+    }
+
+    /**
      * @param mixed $pid
      *
      * @return int
@@ -567,11 +620,12 @@ final class ValidationUtil
     public static function assertValidServiceData(ServiceData $serviceData): void
     {
         self::assertValidServiceName($serviceData->name);
+        self::assertValidNullableKeywordString($serviceData->nodeConfiguredName);
         self::assertValidNullableKeywordString($serviceData->version);
         self::assertValidNullableKeywordString($serviceData->environment);
 
         self::assertValidNameVersionData($serviceData->agent);
-        TestCase::assertNotNull($serviceData->agent);
+        assert($serviceData->agent != null);
         self::assertThat($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
         self::assertThat($serviceData->agent->version === ElasticApm::VERSION);
         self::assertValidNullableKeywordString($serviceData->agent->ephemeralId);
@@ -579,13 +633,28 @@ final class ValidationUtil
         self::assertValidNameVersionData($serviceData->framework);
 
         self::assertValidNameVersionData($serviceData->language);
-        TestCase::assertNotNull($serviceData->language);
+        assert($serviceData->language != null);
         self::assertThat($serviceData->language->name === MetadataDiscoverer::LANGUAGE_NAME);
 
         self::assertValidNameVersionData($serviceData->runtime);
-        TestCase::assertNotNull($serviceData->runtime);
+        self::assertThat($serviceData->runtime !== null);
+        assert($serviceData->runtime !== null);
         self::assertThat($serviceData->runtime->name === MetadataDiscoverer::LANGUAGE_NAME);
         self::assertThat($serviceData->runtime->version === $serviceData->language->version);
+    }
+
+    public static function assertValidSystemData(SystemData $systemData): void
+    {
+        self::assertValidNullableKeywordString($systemData->hostname);
+        self::assertValidNullableKeywordString($systemData->configuredHostname);
+        self::assertValidNullableKeywordString($systemData->detectedHostname);
+
+        if ($systemData->configuredHostname !== null) {
+            self::assertThat($systemData->detectedHostname === null);
+            self::assertThat($systemData->hostname === $systemData->configuredHostname);
+        } else {
+            self::assertThat($systemData->hostname === $systemData->detectedHostname);
+        }
     }
 
     public static function assertValidMetadata(Metadata $metadata): void

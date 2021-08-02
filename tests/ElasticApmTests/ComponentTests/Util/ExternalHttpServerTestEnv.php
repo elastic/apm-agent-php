@@ -25,7 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 final class ExternalHttpServerTestEnv extends HttpServerTestEnvBase
 {
-    protected function ensureAppCodeHostServerRunning(TestProperties $testProperties): void
+    protected function ensureAppCodeHostServerRunning(): void
     {
     }
 }

@@ -29,25 +29,22 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\MockObject\RuntimeException;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
 use PHPUnit\Runner\AfterSuccessfulTestHook;
 use PHPUnit\Runner\AfterTestErrorHook;
 use PHPUnit\Runner\AfterTestFailureHook;
-use PHPUnit\Runner\AfterTestHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
 
 final class PhpUnitExtension implements
     BeforeTestHook,
-    AfterTestHook,
     AfterSuccessfulTestHook,
     AfterTestFailureHook,
     AfterTestErrorHook,
@@ -88,24 +85,16 @@ final class PhpUnitExtension implements
             ]
         );
 
-        $envVarName = TestConfigUtil::envVarNameForAgentOption(OptionNames::ENABLED);
-        $envVarValue = getenv($envVarName);
-        if ($envVarValue !== 'false') {
-            throw new RuntimeException(
-                "Environment variable $envVarName should be set to `false'."
-                . 'Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'") . '.'
-            );
-        }
+        TestCaseBase::printMessage(__METHOD__, 'Test starting... (' . $test . ')');
 
-        if (GlobalTracerHolder::get()->isRecording()) {
-            throw new RuntimeException('Tracer should not be recording component tests root process (i.e., PHPUnit).');
-        }
+        TestConfigUtil::assertAgentDisabled();
     }
 
-    public function executeAfterTest(string $test, float $time): void
+    public static function formatTime(float $durationInSeconds): string
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Test finished', ['test' => $test, 'time' => $time, 'testEnvId' => self::$testEnvId]);
+        // Round to milliseconds
+        $roundedDurationInSeconds = round($durationInSeconds, /* precision */ 3);
+        return TimeFormatUtil::formatDurationInMicroseconds(TimeUtil::secondsToMicroseconds($roundedDurationInSeconds));
     }
 
     public function executeAfterSuccessfulTest(string $test, float $time): void
@@ -115,6 +104,11 @@ final class PhpUnitExtension implements
             'Test finished successfully',
             ['test' => $test, 'time' => $time, 'testEnvId' => self::$testEnvId]
         );
+
+        TestCaseBase::printMessage(
+            __METHOD__,
+            'Test finished successfully (' . $test . '). Time: ' . self::formatTime($time)
+        );
     }
 
     private function testFinishedUnsuccessfully(string $issue, string $test, string $message, float $time): void
@@ -123,6 +117,12 @@ final class PhpUnitExtension implements
         && $loggerProxy->log(
             "Test finished $issue",
             ['test' => $test, 'message' => $message, 'time' => $time, 'testEnvId' => self::$testEnvId]
+        );
+
+        TestCaseBase::printMessage(
+            __METHOD__,
+            'Test finished ' . $issue . '(' . $test . ')'
+            . '. Message: ' . $message . '. Time: ' . self::formatTime($time)
         );
     }
 

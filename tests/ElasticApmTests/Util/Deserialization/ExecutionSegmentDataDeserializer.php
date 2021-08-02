@@ -62,6 +62,10 @@ abstract class ExecutionSegmentDataDeserializer extends DataDeserializer
                 $this->result->name = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
+            case 'outcome':
+                $this->result->outcome = ValidationUtil::assertValidOutcome($value);
+                return true;
+
             case 'timestamp':
                 $this->result->timestamp = ValidationUtil::assertValidTimestamp($value);
                 return true;
