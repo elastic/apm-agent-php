@@ -462,8 +462,8 @@ def initWorkspace(def args = [:], Closure body){
 */
 def packageWorkspace(def args = [:], Closure body){
   prepareWorkspace(args) {
-    unstash 'package'
     dir("${BASE_DIR}"){
+      unstash 'package'
       // When running in the CI sometimes the docker build might fail for
       // some environmental issues, let's retry
       retryWithSleep(retries: 3, seconds: 5, backoff: true) {
