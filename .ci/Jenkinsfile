@@ -197,6 +197,11 @@ pipeline {
                 steps {
                   initWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}") {
                       unstash 'package'
+                      // When running in the CI sometimes the docker build might fail for
+                      // some environmental issues, let's retry
+                      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging prepare-${DIST}", label: "prepare-${DIST} for ${PHP_VERSION}"
+                      }
                       sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
                   }
                 }
@@ -218,6 +223,11 @@ pipeline {
                 steps {
                   initWorkspace(context: "PHP-Upgrade-Testing-${DIST}") {
                     unstash 'package'
+                    // When running in the CI sometimes the docker build might fail for
+                    // some environmental issues, let's retry
+                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging prepare-${DIST}", label: "prepare-${DIST} for ${PHP_VERSION}"
+                    }
                     sh script: "make -C packaging ${DIST}-php-upgrade-testing", label: "${DIST}-php-upgrade-testing"
                   }
                 }
@@ -233,6 +243,11 @@ pipeline {
                 steps {
                   initWorkspace(context: "PHP-Apache-Testing-${DIST}") {
                       unstash 'package'
+                      // When running in the CI sometimes the docker build might fail for
+                      // some environmental issues, let's retry
+                      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging prepare-${DIST}-apache", label: "prepare-${DIST}-apache for ${PHP_VERSION}"
+                      }
                       sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
                   }
                 }
@@ -248,6 +263,11 @@ pipeline {
                 steps {
                   initWorkspace(context: "PHP-FPM-Testing-${DIST}") {
                       unstash 'package'
+                      // When running in the CI sometimes the docker build might fail for
+                      // some environmental issues, let's retry
+                      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging prepare-${DIST}-apache", label: "prepare-${DIST}-fpm for ${PHP_VERSION}"
+                      }
                       sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
                   }
                 }
