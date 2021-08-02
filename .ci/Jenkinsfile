@@ -195,8 +195,7 @@ pipeline {
             stages {
               stage('Lifecycle Testing') {
                 steps {
-                  initWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}") {
-                      unstash 'package'
+                  packageWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}") {
                       // When running in the CI sometimes the docker build might fail for
                       // some environmental issues, let's retry
                       retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -221,8 +220,7 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-Upgrade-Testing-${DIST}") {
-                    unstash 'package'
+                  packageWorkspace(context: "PHP-Upgrade-Testing-${DIST}") {
                     // When running in the CI sometimes the docker build might fail for
                     // some environmental issues, let's retry
                     retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -241,8 +239,7 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-Apache-Testing-${DIST}") {
-                      unstash 'package'
+                  packageWorkspace(context: "PHP-Apache-Testing-${DIST}") {
                       // When running in the CI sometimes the docker build might fail for
                       // some environmental issues, let's retry
                       retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -261,8 +258,7 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-FPM-Testing-${DIST}") {
-                      unstash 'package'
+                  packageWorkspace(context: "PHP-FPM-Testing-${DIST}") {
                       // When running in the CI sometimes the docker build might fail for
                       // some environmental issues, let's retry
                       retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -468,15 +464,40 @@ def packageGeneration(def args = [:]) {
 
 /**
 * Init function to
-* Send a GitHub Notification, clean the workspace and restore the source code.
+* Send a GitHub Notification, clean the workspace. restore the source code and run
+* the body in the BASE_DIR folder
 */
 def initWorkspace(def args = [:], Closure body){
-    withGithubNotify(args) {
-      deleteDir()
-      unstash 'source'
-      dir("${BASE_DIR}"){
-          body()
-      }
+  prepareWorkspace(args) {
+    dir("${BASE_DIR}"){
+      body()
+    }
+  }
+}
+
+/**
+* Package function to
+* Send a GitHub Notification, clean the workspace and restore the source, the package code
+* and run the body in the BASE_DIR folder
+*/
+def packageWorkspace(def args = [:], Closure body){
+  prepareWorkspace(args) {
+    unstash 'package'
+    dir("${BASE_DIR}"){
+      body()
+    }
+  }
+}
+
+/**
+* Prepare function to
+* Send a GitHub Notification, clean the workspace and restore the source code.
+*/
+def prepareWorkspace(def args = [:], Closure body){
+  withGithubNotify(args) {
+    deleteDir()
+    unstash 'source'
+    body()
   }
 }
 
