@@ -5,6 +5,7 @@ set -x
 #### VARIABLES ####
 ###################
 BUILD_RELEASES_FOLDER=build/releases
+BUILD_PACKAGES=build/packages
 
 ###################
 #### FUNCTIONS ####
@@ -61,8 +62,9 @@ if [ "${TYPE}" = "release-github" ] ; then
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     apk add --allow-untrusted --verbose --no-cache "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 else
+    ls -l $BUILD_PACKAGES
     ## Install apk package and configure the agent accordingly
-    apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
+    apk add --allow-untrusted --verbose --no-cache $BUILD_PACKAGES/*.apk
 fi
 
 validate_if_agent_is_enabled

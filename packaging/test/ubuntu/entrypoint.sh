@@ -5,6 +5,7 @@ set -xe
 #### VARIABLES ####
 ###################
 BUILD_RELEASES_FOLDER=build/releases
+BUILD_PACKAGES=build/packages
 
 ###################
 #### FUNCTIONS ####
@@ -61,8 +62,9 @@ function validate_installation() {
 #### MAIN ####
 ##############
 if [[ "${TYPE}" == "deb" || "${TYPE}" == "deb-uninstall" ]] ; then
+    ls -l $BUILD_PACKAGES
     ## Install debian package and configure the agent accordingly
-    dpkg -i build/packages/*.deb
+    dpkg -i $BUILD_PACKAGES/*.deb
 elif [ "${TYPE}" == "release-github" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.deb
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
@@ -83,7 +85,7 @@ elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
     dpkg -i build/local/*.deb
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf build/packages/*.tar -C /
+    tar -xf $BUILD_PACKAGES/*.tar -C /
     ls -ltrah /opt/elastic/apm-agent-php/bin
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
@@ -112,7 +114,7 @@ elif [ "${TYPE}" == "tar-uninstall" ] ; then
     validate_if_agent_is_uninstalled
 elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     ## Upgrade the agent version with the deb package and configure the agent accordingly
-    dpkg -i build/packages/*.deb
+    dpkg -i $BUILD_PACKAGES/*.deb
 
     ## Validate agent is enabled
     validate_if_agent_is_enabled

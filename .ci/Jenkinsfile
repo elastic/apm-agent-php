@@ -195,9 +195,8 @@ pipeline {
             stages {
               stage('Lifecycle Testing') {
                 steps {
-                  initWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}") {
-                      unstash 'package'
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
+                  packageWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}", prepareGoal: "prepare-${DIST}") {
+                    sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
                   }
                 }
                 post {
@@ -216,8 +215,7 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-Upgrade-Testing-${DIST}") {
-                    unstash 'package'
+                  packageWorkspace(context: "PHP-Upgrade-Testing-${DIST}", prepareGoal: "prepare-${DIST}") {
                     sh script: "make -C packaging ${DIST}-php-upgrade-testing", label: "${DIST}-php-upgrade-testing"
                   }
                 }
@@ -248,9 +246,8 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-Apache-Testing-${DIST}") {
-                      unstash 'package'
-                      sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
+                  packageWorkspace(context: "PHP-Apache-Testing-${DIST}", prepareGoal: "prepare-${DIST}-apache") {
+                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
                   }
                 }
               }
@@ -263,9 +260,8 @@ pipeline {
                   }
                 }
                 steps {
-                  initWorkspace(context: "PHP-FPM-Testing-${DIST}") {
-                      unstash 'package'
-                      sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
+                  packageWorkspace(context: "PHP-FPM-Testing-${DIST}", prepareGoal: "prepare-${DIST}-fpm") {
+                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
                   }
                 }
               }
@@ -477,15 +473,45 @@ def packageGeneration(def args = [:]) {
 
 /**
 * Init function to
-* Send a GitHub Notification, clean the workspace and restore the source code.
+* Send a GitHub Notification, clean the workspace. restore the source code and run
+* the body in the BASE_DIR folder
 */
 def initWorkspace(def args = [:], Closure body){
-    withGithubNotify(args) {
-      deleteDir()
-      unstash 'source'
-      dir("${BASE_DIR}"){
-          body()
+  prepareWorkspace(args) {
+    dir("${BASE_DIR}"){
+      body()
+    }
+  }
+}
+
+/**
+* Package function to
+* Send a GitHub Notification, clean the workspace and restore the source, the package code
+* and run the body in the BASE_DIR folder
+*/
+def packageWorkspace(def args = [:], Closure body){
+  prepareWorkspace(args) {
+    dir("${BASE_DIR}"){
+      unstash 'package'
+      // When running in the CI sometimes the docker build might fail for
+      // some environmental issues, let's retry
+      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
       }
+      body()
+    }
+  }
+}
+
+/**
+* Prepare function to
+* Send a GitHub Notification, clean the workspace and restore the source code.
+*/
+def prepareWorkspace(def args = [:], Closure body){
+  withGithubNotify(args) {
+    deleteDir()
+    unstash 'source'
+    body()
   }
 }
 
