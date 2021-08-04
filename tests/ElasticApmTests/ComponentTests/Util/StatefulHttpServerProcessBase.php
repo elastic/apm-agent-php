@@ -111,6 +111,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
     {
         $loop = Factory::create();
 
+        assert(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort !== null);
         $serverSocket = new ServerSocket(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort, $loop);
 
         $httpServer = new HttpServer(
