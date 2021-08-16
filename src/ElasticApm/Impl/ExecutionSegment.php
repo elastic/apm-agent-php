@@ -278,6 +278,16 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->data->type = Tracer::limitKeywordString($type);
     }
 
+    /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
+        /** @noinspection PhpDeprecationInspection */
+        $distTracingData = $this->getDistributedTracingData();
+        if ($distTracingData !== null) {
+            $distTracingData->injectTraceHeaders($headerInjector);
+        }
+    }
+
     public static function isValidOutcome(?string $outcome): bool
     {
         return $outcome === null

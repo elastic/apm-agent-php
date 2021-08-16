@@ -11,6 +11,7 @@ customize and manually create spans and transactions.
 * <<api-elasticapm-class>> - Public API entry point
 * <<api-transaction-interface>>
 * <<api-span-interface>>
+* <<api-manual-distributed-tracing>>
 
 [float]
 [[api-elasticapm-class]]
@@ -562,3 +563,16 @@ Example:
 ----
 $span->end();
 ----
+
+[float]
+[[api-manual-distributed-tracing]]
+=== Manual distributed tracing
+Elastic APM PHP agent automatically propagates distributed tracing context for <<supported-technologies,supported technologies>>.
+If your service communicates over a different, unsupported protocol,
+you can manually propagate distributed tracing context from a sending service
+to a receiving service using the agent's API.
+
+If the 
+In the context of the sending service you must add
+Add the traceparent header to outgoing requests
+Sending services must add the traceparent header to outgoing requests.
