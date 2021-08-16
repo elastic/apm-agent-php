@@ -25,9 +25,9 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\TransactionInterface;
+use Elastic\Apm\TransactionBuilderInterface;
 use Throwable;
 
 interface TracerInterface
@@ -38,7 +38,8 @@ interface TracerInterface
      * @param string      $name      New transaction's name
      * @param string      $type      New transaction's type
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return TransactionInterface New transaction
      */
@@ -57,10 +58,10 @@ interface TracerInterface
      * @param string      $type      New transaction's type
      * @param Closure     $callback  Callback to execute as the new transaction
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return mixed The return value of $callback
-     * @template        T
      */
     public function captureCurrentTransaction(
         string $name,
@@ -81,7 +82,8 @@ interface TracerInterface
      * @param string      $name      New transaction's name
      * @param string      $type      New transaction's type
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return TransactionInterface New transaction
      */
@@ -100,10 +102,14 @@ interface TracerInterface
      * @param string      $type      New transaction's type
      * @param Closure     $callback  Callback to execute as the new transaction
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return mixed The return value of $callback
-     * @template        T
+     *
+     * @template T
+     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @phpstan-return T The return value of $callback
      */
     public function captureTransaction(
         string $name,
@@ -112,6 +118,20 @@ interface TracerInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     );
+
+    /**
+     * Advanced API to begin a new transaction
+     *
+     * @param string $name New transaction's name
+     * @param string $type New transaction's type
+     *
+     * @return TransactionBuilderInterface New transaction builder
+     *
+     * @see TransactionInterface::setName() For the description.
+     * @see TransactionInterface::setType() For the description.
+     *
+     */
+    public function newTransaction(string $name, string $type): TransactionBuilderInterface;
 
     /**
      * Reports error event based on the given
@@ -163,7 +183,21 @@ interface TracerInterface
     public function setAgentEphemeralId(?string $ephemeralId): void;
 
     /**
+     * @deprecated      Deprecated since version 1.3 - use injectDistributedTracingHeaders() instead
+     * @see             injectDistributedTracingHeaders() Use it instead of this method
+     *
      * Returns distributed tracing data for the current span/transaction
      */
     public function getSerializedCurrentDistributedTracingData(): string;
+
+    /**
+     * Returns distributed tracing data for the current span/transaction
+     *
+     * $headerInjector is callback to inject headers with signature
+     *
+     *      (string $headerName, string $headerValue): void
+     *
+     * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
+     */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void;
 }

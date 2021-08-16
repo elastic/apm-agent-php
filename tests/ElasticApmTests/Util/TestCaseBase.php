@@ -436,7 +436,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         return $execSegData->context;
     }
 
@@ -519,6 +518,17 @@ class TestCaseBase extends TestCase
         self::assertArrayNotHasKey($key, $context->labels);
     }
 
+    /**
+     * @param mixed[] $expected
+     * @param mixed[] $actual
+     */
+    public static function assertEqualLists(array $expected, array $actual): void
+    {
+        self::assertTrue(sort(/* ref */ $expected));
+        self::assertTrue(sort(/* ref */ $actual));
+        self::assertEqualsCanonicalizing($expected, $actual);
+    }
+
     public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
         return TracerBuilderForTests::startNew()
@@ -543,7 +553,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         return $execSegData->parentId;
     }
 
@@ -556,7 +565,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         $execSegData->parentId = $newParentId;
     }
 

@@ -121,6 +121,11 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     }
 
     /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
+    }
+
+    /** @inheritDoc */
     public function end(?float $duration = null): void
     {
     }
