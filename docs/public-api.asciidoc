@@ -572,7 +572,34 @@ If your service communicates over a different, unsupported protocol,
 you can manually propagate distributed tracing context from a sending service
 to a receiving service using the agent's API.
 
-If the 
-In the context of the sending service you must add
-Add the traceparent header to outgoing requests
-Sending services must add the traceparent header to outgoing requests.
+Distributed tracing data consists of multiple key-value pairs.
+For example for HTTP protocol these pairs are passed as request headers.
+
+At the sending service you must add key-value pairs to the outgoing request.
+Use `injectDistributedTracingHeaders()` API to get the distributed tracing data
+from the corresponding instance of <<api-span-interface>> or <<api-transaction-interface>>
+
+For example assuming the outgoing request is associated with `$span`  :
+[source,php]
+----
+$span->injectDistributedTracingHeaders(
+    function (string $headerName, string $headerValue) use ($myRequest): void {
+        $myRequest->addHeader($headerName, $headerValue);
+    }
+);
+----
+
+At the receiving service you must pass key-value pairs from the sending side to `ElasticApm::newTransaction` API.
+
+Example:
+[source,php]
+----
+$myTransaction = ElasticApm::newTransaction('my TX name', 'my TX type')
+    ->distributedTracingHeaderExtractor(
+        function (string $headerName) use ($myRequest): ?string {
+            return $myRequest->hasHeader($headerName)
+                ? $myRequest->getHeader($headerName)
+                : null;
+        }
+    )->begin();
+----
