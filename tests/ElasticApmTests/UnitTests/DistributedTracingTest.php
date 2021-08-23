@@ -210,7 +210,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
             $senderDistTracingData = ElasticApm::getSerializedCurrentDistributedTracingData();
         } else {
             $senderDistTracingData = [];
-            ElasticApm::injectDistributedTracingHeaders(
+            ElasticApm::getCurrentExecutionSegment()->injectDistributedTracingHeaders(
                 function (string $headerName, string $headerValue) use (&$senderDistTracingData): void {
                     $senderDistTracingData[$headerName] = $headerValue;
                 }
@@ -318,7 +318,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
             self::assertIsString($senderDistTracingData);
         } else {
             $senderDistTracingData = [];
-            ElasticApm::injectDistributedTracingHeaders(
+            ElasticApm::getCurrentExecutionSegment()->injectDistributedTracingHeaders(
                 function (string $headerName, string $headerValue) use (&$senderDistTracingData): void {
                     $senderDistTracingData[$headerName] = $headerValue;
                 }
@@ -544,7 +544,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         if ($doesTxHaveParentAlready) {
             GlobalTracerHolder::set($webFrontTracer);
             $webFrontTx = ElasticApm::beginCurrentTransaction('web front end TX', 'web front end TX type');
-            ElasticApm::injectDistributedTracingHeaders(
+            ElasticApm::getCurrentExecutionSegment()->injectDistributedTracingHeaders(
                 function (string $headerName, string $headerValue) use (&$distTracingData): void {
                     $distTracingData[$headerName] = $headerValue;
                 }
