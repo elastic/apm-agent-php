@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -160,9 +161,20 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->captureTransactionWithBuilder($builder, $callback);
     }
 
+    /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
         return $this->currentTransaction ?? NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        if ($this->currentTransaction === null) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        return $this->currentTransaction->getCurrentExecutionSegment();
     }
 
     public function resetCurrentTransaction(): void
@@ -421,7 +433,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         /** @noinspection PhpDeprecationInspection */
         $distTracingData = $this->currentTransaction->getDistributedTracingData();
         if ($distTracingData !== null) {
-            $distTracingData->injectTraceHeaders($headerInjector);
+            $distTracingData->injectHeaders($headerInjector);
         }
     }
 

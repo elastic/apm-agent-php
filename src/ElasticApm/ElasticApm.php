@@ -51,7 +51,6 @@ final class ElasticApm
      * @see TransactionInterface::setName() For the description.
      * @see TransactionInterface::setType() For the description.
      * @see TransactionInterface::getTimestamp() For the description.
-     *
      */
     public static function beginCurrentTransaction(
         string $name,
@@ -107,6 +106,18 @@ final class ElasticApm
     public static function getCurrentTransaction(): TransactionInterface
     {
         return GlobalTracerHolder::get()->getCurrentTransaction();
+    }
+
+    /**
+     * If there is the current span then it returns the current span.
+     * Otherwise if there is the current transaction then it returns the current transaction.
+     * Otherwise it returns the noop execution segment.
+     *
+     * @return ExecutionSegmentInterface The current execution segment
+     */
+    public static function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return GlobalTracerHolder::get()->getCurrentExecutionSegment();
     }
 
     /**
@@ -245,19 +256,5 @@ final class ElasticApm
     {
         /** @noinspection PhpDeprecationInspection */
         return GlobalTracerHolder::get()->getSerializedCurrentDistributedTracingData();
-    }
-
-    /**
-     * Returns distributed tracing data for the current span/transaction
-     *
-     * $headerInjector is callback to inject headers with signature
-     *
-     *      (string $headerName, string $headerValue): void
-     *
-     * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
-     */
-    public static function injectDistributedTracingHeaders(Closure $headerInjector): void
-    {
-        GlobalTracerHolder::get()->injectDistributedTracingHeaders($headerInjector);
     }
 }

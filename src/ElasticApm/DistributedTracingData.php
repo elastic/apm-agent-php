@@ -38,8 +38,8 @@ final class DistributedTracingData
     public $isSampled;
 
     /**
-     * @deprecated Deprecated since version 1.3 - use ElasticApm::injectTraceHeaders() instead
-     * @see             injectTraceHeaders() Use it instead of this method
+     * @deprecated Deprecated since version 1.3 - use injectHeaders() instead
+     * @see             injectHeaders() Use it instead of this method
      *
      * Returns distributed tracing data for the current span/transaction
      */
@@ -49,15 +49,17 @@ final class DistributedTracingData
     }
 
     /**
-     * Returns distributed tracing data for the current span/transaction
+     * Gets distributed tracing data for the current span/transaction
      *
      * $headerInjector is callback to inject headers with signature
      *
      *      (string $headerName, string $headerValue): void
      *
      * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
+     *
+     * @phpstan-param Closure(string, string): void $headerInjector
      */
-    public function injectTraceHeaders(Closure $headerInjector): void
+    public function injectHeaders(Closure $headerInjector): void
     {
         $headerInjector(
             HttpDistributedTracing::TRACE_PARENT_HEADER_NAME,

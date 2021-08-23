@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -220,6 +221,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function getCurrentSpan(): SpanInterface
     {
         return $this->currentSpan ?? NoopSpan::singletonInstance();
+    }
+
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return $this->currentSpan ?? $this;
     }
 
     public function setCurrentSpan(?Span $newCurrentSpan): void

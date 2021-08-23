@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
@@ -62,6 +63,12 @@ final class NoopTracer implements TracerInterface
 
     /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
+    {
+        return NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
     {
         return NoopTransaction::singletonInstance();
     }

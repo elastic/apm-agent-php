@@ -284,7 +284,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         /** @noinspection PhpDeprecationInspection */
         $distTracingData = $this->getDistributedTracingData();
         if ($distTracingData !== null) {
-            $distTracingData->injectTraceHeaders($headerInjector);
+            $distTracingData->injectHeaders($headerInjector);
         }
     }
 

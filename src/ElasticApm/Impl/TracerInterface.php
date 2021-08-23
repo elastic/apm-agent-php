@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\TransactionInterface;
 use Elastic\Apm\TransactionBuilderInterface;
 use Throwable;
@@ -75,6 +76,8 @@ interface TracerInterface
      * @see ElasticApm::getCurrentTransaction()
      */
     public function getCurrentTransaction(): TransactionInterface;
+
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface;
 
     /**
      * Begins a new transaction.
@@ -198,6 +201,8 @@ interface TracerInterface
      *      (string $headerName, string $headerValue): void
      *
      * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
+     *
+     * @phpstan-param Closure(string, string): void $headerInjector
      */
     public function injectDistributedTracingHeaders(Closure $headerInjector): void;
 }
