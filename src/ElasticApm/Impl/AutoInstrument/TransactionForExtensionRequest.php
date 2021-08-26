@@ -306,9 +306,12 @@ final class TransactionForExtensionRequest
             return self::DEFAULT_NAME;
         }
 
+        $urlGroupsMatcher = $this->tracer->getConfig()->urlGroups();
+        $urlPath = $this->urlParts->path;
+        $urlPathGroup = $urlGroupsMatcher === null ? $urlPath : ($urlGroupsMatcher->match($urlPath) ?? $urlPath);
         $name = ($this->httpMethod === null)
-            ? $this->urlParts->path
-            : ($this->httpMethod . ' ' . $this->urlParts->path);
+            ? $urlPathGroup
+            : ($this->httpMethod . ' ' . $urlPathGroup);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Successfully discovered HTTP data to derive transaction name', ['name' => $name]);

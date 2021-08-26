@@ -68,6 +68,19 @@ void calcAlignedSize_test( void** testFixtureState )
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( calcAlignedSize( 16, 8 ), 16 );
 }
 
+static void trim_StringView_test( void** testFixtureState )
+{
+    ELASTIC_APM_UNUSED( testFixtureState );
+
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " ABC" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC\t" ) ), "ABC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " AB\tC\r\n" ) ), "AB\tC" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" ) ), "" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " " ) ), "" );
+    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " \n\r\t" ) ), "" );
+}
+
 int run_util_tests()
 {
     const struct CMUnitTest tests [] =
@@ -75,6 +88,7 @@ int run_util_tests()
         ELASTIC_APM_CMOCKA_UNIT_TEST( areStringViewsEqual_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( areStringsEqualIgnoringCase_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( calcAlignedSize_test ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( trim_StringView_test ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

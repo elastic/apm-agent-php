@@ -86,7 +86,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public function testVariousCombinations(?AgentConfigSetter $configSetter, Args $testArgs): void
     {
         if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
-            self::assertTrue(true);
+            self::dummyAssert();
             return;
         }
 

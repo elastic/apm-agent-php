@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
@@ -54,7 +55,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     public function testHttpMethod(string $httpMethod): void
     {
         if (!$this->testEnv->isHttp()) {
-            self::assertTrue(true);
+            self::dummyAssert();
             return;
         }
 
@@ -96,7 +97,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     public function testUrlParts(UrlParts $urlParts): void
     {
         if (!$this->testEnv->isHttp()) {
-            self::assertTrue(true);
+            self::dummyAssert();
             return;
         }
 
@@ -208,6 +209,106 @@ final class HttpTransactionTest extends ComponentTestCaseBase
                         : ($this->testEnv->isHttp() ? Constants::OUTCOME_SUCCESS : null),
                     $tx->outcome
                 );
+            }
+        );
+    }
+
+    /**
+     * @return iterable<array{string, UrlParts, string}>
+     */
+    public function dataProviderForTestUrlGroupsConfig(): iterable
+    {
+        yield [
+            '/foo/*/bar',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar'),
+            'GET /foo/*/bar',
+        ];
+
+        yield [
+            '/foo/*/bar',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765'),
+            'GET /foo/12345/bar/98765',
+        ];
+
+        yield [
+            '/foo/*/bar/*',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765'),
+            'GET /foo/*/bar/*',
+        ];
+
+        yield [
+            '/foo/*/bar/*',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765/4321'),
+            'GET /foo/*/bar/*',
+        ];
+
+        /////////////////////////////////
+        ///
+        /// Case sensitive
+        ///
+
+        yield [
+            '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
+            TestProperties::newDefaultUrlParts()->path('/foo_a/12345/bar_a/98765'),
+            'GET /foo_a/*/bar_a/*',
+        ];
+
+        yield [
+            '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
+            TestProperties::newDefaultUrlParts()->path('/FOO_A/12345/BAR_A/98765'),
+            'GET /FOO_A/12345/BAR_A/98765',
+        ];
+
+        yield [
+            '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
+            TestProperties::newDefaultUrlParts()->path('/FOO_B/12345/BAR_B/98765'),
+            'GET /foo_b/*/bar_b/*',
+        ];
+
+        /////////////////////////////////
+        ///
+        /// With query
+        ///
+
+        yield [
+            '/foo/*/bar?query_key=query_val',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            'GET /foo/12345/bar',
+        ];
+
+        yield [
+            '/foo/*/bar?query_key=query_val',
+            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            'GET /foo/12345/bar',
+        ];
+    }
+
+    /**
+     * @dataProvider dataProviderForTestUrlGroupsConfig
+     *
+     * @param string   $urlGroupsConfigVal
+     * @param UrlParts $urlParts
+     * @param string   $expectedTxName
+     */
+    public function testUrlGroupsConfig(
+        string $urlGroupsConfigVal,
+        UrlParts $urlParts,
+        string $expectedTxName
+    ): void {
+        if (!$this->testEnv->isHttp()) {
+            self::dummyAssert();
+            return;
+        }
+
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withAgentConfig($this->randomConfigSetter()->set(OptionNames::URL_GROUPS, $urlGroupsConfigVal))
+                ->withRoutedAppCode([__CLASS__, 'appCodeEmpty'])
+                ->withUrlParts($urlParts)
+                ->withExpectedTransactionName($expectedTxName),
+            function (DataFromAgent $dataFromAgent): void {
+                $this->verifyTransactionWithoutSpans($dataFromAgent);
+                /** @see HttpServerTestEnvBase::verifyRootTransactionName */
             }
         );
     }

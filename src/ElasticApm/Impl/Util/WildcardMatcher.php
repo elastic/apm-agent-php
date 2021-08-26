@@ -64,6 +64,7 @@ final class WildcardMatcher
             $nextWildcardPos = strpos($expr, self::WILDCARD, $exprPos);
             if ($nextWildcardPos === $exprPos) {
                 $lastPartWasWildcard = true;
+                /** @noinspection PhpConditionAlreadyCheckedInspection */
                 if ($this->literalParts === []) {
                     $this->startsWithWildcard = true;
                 }
@@ -136,5 +137,41 @@ final class WildcardMatcher
         }
 
         return true;
+    }
+
+    public function groupName(): string
+    {
+        $result = '';
+
+        if ($this->startsWithWildcard) {
+            $result .= self::WILDCARD;
+        }
+
+        $isFirstLiteralPart = true;
+        foreach ($this->literalParts as $literalPart) {
+            if ($isFirstLiteralPart) {
+                $isFirstLiteralPart = false;
+            } else {
+                $result .= self::WILDCARD;
+            }
+            $result .= $literalPart;
+        }
+
+        if ($this->endsWithWildcard) {
+            $result .= self::WILDCARD;
+        }
+
+        return $result;
+    }
+
+    public function __toString(): string
+    {
+        $result = $this->groupName();
+
+        if ($this->isCaseSensitive) {
+            $result = self::CASE_SENSITIVE_PREFIX . $result;
+        }
+
+        return $result;
     }
 }

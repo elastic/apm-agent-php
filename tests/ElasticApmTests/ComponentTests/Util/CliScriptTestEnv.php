@@ -85,7 +85,7 @@ final class CliScriptTestEnv extends TestEnvBase
     {
         parent::verifyRootTransactionName($rootTransactionName);
 
-        if (is_null($this->testProperties->expectedTransactionName)) {
+        if ($this->testProperties->expectedTransactionName === null) {
             TestCase::assertSame(self::SCRIPT_TO_RUN_APP_CODE_HOST, $rootTransactionName);
         }
     }

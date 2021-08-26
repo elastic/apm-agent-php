@@ -266,7 +266,7 @@ abstract class TestEnvBase implements LoggableInterface
 
             TestCaseBase::printMessage(
                 __METHOD__,
-                "Starting HTTP server. cmdLine: `${cmdLine}', currentTryPort: ${currentTryPort} ..."
+                "Starting HTTP server. cmdLine: `$cmdLine', currentTryPort: $currentTryPort ..."
             );
 
             $sharedDataPerProcessOptName = AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME;
@@ -579,13 +579,15 @@ abstract class TestEnvBase implements LoggableInterface
 
     protected function verifyHttpRequestHeaders(TestProperties $testProperties): void
     {
-        $configuredApiKey = $testProperties->getConfiguredAgentOption(OptionNames::API_KEY);
+        $configuredApiKey = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::API_KEY);
 
         $this->verifyAuthHttpRequestHeaders(
         /* expectedApiKey: */
             $configuredApiKey,
             /* expectedSecretToken: */
-            is_null($configuredApiKey) ? $testProperties->getConfiguredAgentOption(OptionNames::SECRET_TOKEN) : null,
+            $configuredApiKey === null
+                ? $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SECRET_TOKEN)
+                : null,
             $this->dataFromAgent
         );
     }
@@ -614,33 +616,31 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
+
     protected function verifyMetadata(TestProperties $testProperties): void
     {
+        $configuredEnvironment = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::ENVIRONMENT);
         self::verifyEnvironment(
-            Tracer::limitNullableKeywordString($testProperties->getConfiguredAgentOption(OptionNames::ENVIRONMENT)),
+            Tracer::limitNullableKeywordString($configuredEnvironment),
             $this->dataFromAgent
         );
 
-        $configuredServiceName = $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_NAME);
-        $expectedServiceName = is_null($configuredServiceName)
+        $configuredServiceName = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_NAME);
+        $expectedServiceName = $configuredServiceName === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($configuredServiceName);
         self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
 
-        $expectedServiceNodeName = Tracer::limitNullableKeywordString(
-            $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_NODE_NAME)
-        );
+        $configServiceNodeName = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_NODE_NAME);
+        $expectedServiceNodeName = Tracer::limitNullableKeywordString($configServiceNodeName);
         self::verifyServiceNodeName($expectedServiceNodeName, $this->dataFromAgent);
 
-        $expectedServiceVersion = Tracer::limitNullableKeywordString(
-            $testProperties->getConfiguredAgentOption(OptionNames::SERVICE_VERSION)
-        );
+        $configuredServiceVersion = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_VERSION);
+        $expectedServiceVersion = Tracer::limitNullableKeywordString($configuredServiceVersion);
         self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
 
-        self::verifyHostname(
-            Tracer::limitNullableKeywordString($testProperties->getConfiguredAgentOption(OptionNames::HOSTNAME)),
-            $this->dataFromAgent
-        );
+        $configuredHostname = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::HOSTNAME);
+        self::verifyHostname(Tracer::limitNullableKeywordString($configuredHostname), $this->dataFromAgent);
     }
 
     public static function verifyAgentEphemeralId(TestProperties $testProperties, DataFromAgent $dataFromAgent): void
@@ -717,7 +717,7 @@ abstract class TestEnvBase implements LoggableInterface
 
     protected function verifyRootTransactionName(string $rootTransactionName): void
     {
-        if (!is_null($this->testProperties->expectedTransactionName)) {
+        if ($this->testProperties->expectedTransactionName !== null) {
             TestCase::assertSame($this->testProperties->expectedTransactionName, $rootTransactionName);
         }
     }

@@ -53,7 +53,7 @@ final class TracerBuilder
     private $tracerDependencies;
 
     /** @var bool */
-    private $shouldCheckExtension = true;
+    private $shouldCheckExtension;
 
     private function __construct(bool $shouldCheckExtension)
     {
@@ -119,6 +119,7 @@ final class TracerBuilder
         $parsingLoggerFactory = new LoggerFactory(new LogBackend(LogLevel::TRACE, $providedDependencies->logSink));
         $parser = new ConfigParser($parsingLoggerFactory);
         $allOptsMeta = AllOptionsMetadata::get();
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
+        $rawSnapshot = $rawSnapshotSource->currentSnapshot($allOptsMeta);
+        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot));
     }
 }

@@ -142,9 +142,16 @@ final class UrlUtil
         return $result;
     }
 
+    public static function normalizeUrlPath(string $urlPath): string
+    {
+         return TextUtil::isPrefixOf('/', $urlPath) ? $urlPath : ('/' . $urlPath);
+    }
+
     public static function buildRequestMethodArg(UrlParts $urlParts): string
     {
-        $result = $urlParts->path ?? '/';
+        $result = $urlParts->path === null
+            ? '/'
+            : self::normalizeUrlPath($urlParts->path);
 
         if ($urlParts->query !== null) {
             $result .= '?' . $urlParts->query;

@@ -91,6 +91,7 @@ enum OptionId
     optionId_serviceVersion,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
+    optionId_urlGroups,
     optionId_verifyServerCert,
 
     numberOfOptions
@@ -136,6 +137,7 @@ struct ConfigSnapshot
     String serviceVersion;
     String transactionMaxSpans;
     String transactionSampleRate;
+    String urlGroups;
     bool verifyServerCert;
 };
 typedef struct ConfigSnapshot ConfigSnapshot;
@@ -255,6 +257,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
+#define ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS "url_groups"
 #define ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT "verify_server_cert"
 
 #define ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elastic_apm." optNameStringLiteral )

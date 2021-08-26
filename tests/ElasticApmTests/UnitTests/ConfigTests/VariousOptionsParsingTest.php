@@ -37,12 +37,15 @@ use Elastic\Apm\Impl\Config\OptionParser;
 use Elastic\Apm\Impl\Config\ParseException;
 use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\StringOptionParser;
+use Elastic\Apm\Impl\Config\WildcardListOptionParser;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
 use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
 use ElasticApmTests\ComponentTests\Util\TestConfigSnapshot;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 use SebastianBergmann\GlobalState\Snapshot;
@@ -78,6 +81,9 @@ class VariousOptionsParsingTest extends TestCaseBase
         }
         if ($optionParser instanceof StringOptionParser) {
             return StringOptionTestValuesGenerator::singletonInstance();
+        }
+        if ($optionParser instanceof WildcardListOptionParser) {
+            return WildcardListOptionTestValuesGenerator::singletonInstance();
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));
@@ -196,7 +202,14 @@ class VariousOptionsParsingTest extends TestCaseBase
         OptionTestValuesGeneratorInterface $testValuesGenerator,
         OptionParser $optParser
     ): void {
-        foreach ($testValuesGenerator->invalidRawValues() as $invalidRawValue) {
+        $invalidRawValues = $testValuesGenerator->invalidRawValues();
+        if ($invalidRawValues === []) {
+            self::dummyAssert();
+            return;
+        }
+
+        foreach ($invalidRawValues as $invalidRawValue) {
+            $invalidRawValue = self::genOptionalWhitespace() . $invalidRawValue . self::genOptionalWhitespace();
             self::assertThrows(
                 ParseException::class,
                 function () use ($optParser, $invalidRawValue): void {
@@ -204,12 +217,12 @@ class VariousOptionsParsingTest extends TestCaseBase
                 },
                 LoggableToString::convert(
                     [
-                        'optParser'       => $optParser,
-                        'invalidRawValue' => $invalidRawValue,
-                        'strlen($invalidRawValue)' => strlen($invalidRawValue)
+                        'optParser'                => $optParser,
+                        'invalidRawValue'          => $invalidRawValue,
+                        'strlen($invalidRawValue)' => strlen($invalidRawValue),
                     ]
                     +
-                    (strlen($invalidRawValue) === 0 ? [] : ['ord($invalidRawValue[0])' =>  ord($invalidRawValue[0])])
+                    (strlen($invalidRawValue) === 0 ? [] : ['ord($invalidRawValue[0])' => ord($invalidRawValue[0])])
                 )
             );
         }
@@ -228,6 +241,16 @@ class VariousOptionsParsingTest extends TestCaseBase
         self::parseInvalidValueTestImpl(self::selectTestValuesGenerator($optMeta), $optMeta->parser());
     }
 
+    private static function genOptionalWhitespace(): string
+    {
+        $whiteSpaceChars = [' ', "\t"];
+        $result = '';
+        foreach (RangeUtilForTests::generateUpTo(3) as $ignored) {
+            $result .= RandomUtilForTests::getRandomValueFromArray($whiteSpaceChars);
+        }
+        return $result;
+    }
+
     /**
      * @param OptionTestValuesGeneratorInterface<mixed> $testValuesGenerator
      * @param OptionParser<mixed>                       $optParser
@@ -236,6 +259,12 @@ class VariousOptionsParsingTest extends TestCaseBase
         OptionTestValuesGeneratorInterface $testValuesGenerator,
         OptionParser $optParser
     ): void {
+        $validValues = $testValuesGenerator->validValues();
+        if ($validValues === []) {
+            self::dummyAssert();
+            return;
+        }
+
         /**
          * @param mixed $value
          *
@@ -250,7 +279,9 @@ class VariousOptionsParsingTest extends TestCaseBase
         };
 
         /** @var OptionTestValidValue<mixed> $validValueData */
-        foreach ($testValuesGenerator->validValues() as $validValueData) {
+        foreach ($validValues as $validValueData) {
+            $validValueData->rawValue =
+                self::genOptionalWhitespace() . $validValueData->rawValue . self::genOptionalWhitespace();
             $actualParsedValue = Parser::parseOptionRawValue($validValueData->rawValue, $optParser);
             self::assertSame(
                 $validValueData->parsedValue,

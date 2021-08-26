@@ -599,4 +599,9 @@ class TestCaseBase extends TestCase
             fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
         }
     }
+
+    protected static function dummyAssert(): void
+    {
+        self::assertTrue(true);
+    }
 }

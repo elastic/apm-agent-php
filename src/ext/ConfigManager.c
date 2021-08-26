@@ -587,6 +587,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, urlGroups )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 
 #undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
@@ -810,6 +811,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            urlGroups,
+            ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             verifyServerCert,
             ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT,
@@ -968,7 +975,11 @@ ResultCode getRawOptionValueFromEnvVars(
 
     returnedRawValue = readRawOptionValueFromEnvVars( cfgManager, optId );
     if ( returnedRawValue != NULL )
-        ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
+    {
+        StringView processedRawValue;
+        processedRawValue = trimStringView( makeStringViewFromString( returnedRawValue ) );
+        ELASTIC_APM_PEMALLOC_DUP_STRING_VIEW_IF_FAILED_GOTO( processedRawValue.begin, processedRawValue.length, rawValue );
+    }
 
     resultCode = resultSuccess;
     *originalRawValue = rawValue;
@@ -1022,7 +1033,11 @@ ResultCode getRawOptionValueFromIni(
     returnedRawValue = readRawOptionValueFromIni( cfgManager,optId, &exists );
 
     if ( exists && ( returnedRawValue != NULL ) )
-        ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( returnedRawValue, rawValue );
+    {
+        StringView processedRawValue;
+        processedRawValue = trimStringView( makeStringViewFromString( returnedRawValue ) );
+        ELASTIC_APM_PEMALLOC_DUP_STRING_VIEW_IF_FAILED_GOTO( processedRawValue.begin, processedRawValue.length, rawValue );
+    }
 
     resultCode = resultSuccess;
     *originalRawValue = rawValue;

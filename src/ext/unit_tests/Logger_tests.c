@@ -25,11 +25,6 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_EXT_UNIT_TESTS
 
-static bool isWhiteSpace( char c )
-{
-    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
-}
-
 static bool hasNonWhiteSpace( StringView strView )
 {
     ELASTIC_APM_FOR_EACH_INDEX( i, strView.length )
@@ -37,29 +32,6 @@ static bool hasNonWhiteSpace( StringView strView )
         if ( ! isWhiteSpace( strView.begin[ i ] ) ) return true;
     }
     return false;
-}
-
-static StringView trimStringView( StringView src )
-{
-    size_t beginIndex = 0;
-    size_t endIndex = src.length;
-    for ( ; beginIndex < src.length && ( isWhiteSpace( src.begin[ beginIndex ] ) ) ; ++beginIndex );
-    for ( ; endIndex > beginIndex && ( isWhiteSpace( src.begin[ endIndex - 1 ] ) ) ; --endIndex );
-
-    return makeStringView( src.begin + beginIndex, endIndex - beginIndex );
-}
-
-static void trim_StringView_test( void** testFixtureState )
-{
-    ELASTIC_APM_UNUSED( testFixtureState );
-
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC" ) ), "ABC" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " ABC" ) ), "ABC" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "ABC\t" ) ), "ABC" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " AB\tC\r\n" ) ), "AB\tC" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" ) ), "" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " " ) ), "" );
-    ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL_LITERAL( trimStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( " \n\r\t" ) ), "" );
 }
 
 static size_t findCharIndexInStringView( char needle, StringView haystack )
@@ -319,7 +291,6 @@ int run_Logger_tests()
 {
     const struct CMUnitTest tests [] =
     {
-        ELASTIC_APM_CMOCKA_UNIT_TEST( trim_StringView_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( typical_statement ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( empty_message ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( statements_filtered_according_to_current_level ),

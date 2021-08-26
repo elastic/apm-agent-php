@@ -126,7 +126,6 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 #define ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( stringBufferSizeInclTermZero, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_ARRAY_IF_FAILED_GOTO( char, /* isString: */ true, stringBufferSizeInclTermZero, /* isPersistent */ true, outPtr )
 
-
 #define ELASTIC_APM_PHP_ALLOC_DUP_STRING_IF_FAILED_DO( srcStr, isPersistent, outPtr, doOnFailure ) \
     do { \
         ELASTIC_APM_ASSERT( (srcStr) != NULL, "" ); \
@@ -151,6 +150,24 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 #define ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( srcStr, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_DUP_STRING_IF_FAILED_GOTO( srcStr, /* isPersistent */ true,  outPtr )
 
+#define ELASTIC_APM_PHP_ALLOC_DUP_STRING_VIEW_IF_FAILED_DO( srcStrBegin, srcStrLen, isPersistent, outPtr, doOnFailure ) \
+    do { \
+        ELASTIC_APM_ASSERT( (srcStrBegin) != NULL, "" ); \
+        char* elasticApmPemallocDupStringTempPtr = NULL; \
+        ELASTIC_APM_PHP_ALLOC_ARRAY_IF_FAILED_DO( \
+            char, \
+            /* isString: */ true, \
+            (srcStrLen) + 1, \
+            isPersistent, \
+            elasticApmPemallocDupStringTempPtr, \
+            doOnFailure ); \
+        strncpy( elasticApmPemallocDupStringTempPtr, (srcStrBegin), (srcStrLen) ); \
+        elasticApmPemallocDupStringTempPtr[ (srcStrLen) ] = '\0'; \
+        (outPtr) = elasticApmPemallocDupStringTempPtr; \
+    } while ( 0 )
+
+#define ELASTIC_APM_PEMALLOC_DUP_STRING_VIEW_IF_FAILED_GOTO( srcStrBegin, srcStrLen, outPtr ) \
+    ELASTIC_APM_PHP_ALLOC_DUP_STRING_VIEW_IF_FAILED_DO( srcStrBegin, srcStrLen, /* isPersistent */ true,  outPtr, /* doOnFailure: */ goto failure )
 
 static const UInt32 poisonPattern = 0xDEADBEEF;
 

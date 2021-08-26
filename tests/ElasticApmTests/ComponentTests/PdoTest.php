@@ -34,6 +34,6 @@ final class PdoTest extends ComponentTestCaseBase
         // Act
 
         // Assert
-        $this->assertTrue(true);
+        self::dummyAssert();
     }
 }
