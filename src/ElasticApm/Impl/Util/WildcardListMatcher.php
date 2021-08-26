@@ -21,19 +21,41 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl\Util;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends OptionParser<string>
  */
-final class StringOptionParser extends OptionParser
+final class WildcardListMatcher
 {
-    public function parse(string $rawValue): string
+    /** @var WildcardMatcher[] */
+    private $matchers;
+
+    /**
+     * @param iterable<string> $wildcardExprs
+     */
+    public function __construct(iterable $wildcardExprs)
     {
-        return $rawValue;
+        $this->matchers = [];
+        foreach ($wildcardExprs as $wildcardExpr) {
+            $this->matchers[] = new WildcardMatcher($wildcardExpr);
+        }
+    }
+
+    public function match(string $text): ?string
+    {
+        foreach ($this->matchers as $matcher) {
+            if ($matcher->match($text)) {
+                return $matcher->groupName();
+            }
+        }
+        return null;
+    }
+
+    public function __toString(): string
+    {
+        return implode(', ', $this->matchers);
     }
 }

@@ -108,4 +108,35 @@ class WildcardMatcherTest extends TestCase
     {
         $this->testCaseImpl($expr, $text, $expectedResult);
     }
+
+    public function testToString(): void
+    {
+        $impl = function (string $expr, string $expectedToStringResult): void {
+            $actualToStringResult = strval((new WildcardMatcher($expr)));
+            $this->assertSame(
+                $expectedToStringResult,
+                $actualToStringResult,
+                LoggableToString::convert(
+                    [
+                        'expr' => $expr,
+                        'expectedToStringResult' => $expectedToStringResult,
+                        'actualToStringResult' => $actualToStringResult,
+                    ]
+                )
+            );
+        };
+
+        $impl(/* input: */ 'a', /* expected: */ 'a');
+        $impl(/* input: */ 'a*b', /* expected: */ 'a*b');
+        $impl(/* input: */ 'a**b', /* expected: */ 'a*b');
+        $impl(/* input: */ '(?-i)a', /* expected: */ '(?-i)a');
+        $impl(/* input: */ '(?-i) a', /* expected: */ '(?-i) a');
+        $impl(/* input: */ '(?-i) a ', /* expected: */ '(?-i) a ');
+
+        $impl(/* input: */ '', /* expected: */ '');
+        $impl(/* input: */ '(?-i)', /* expected: */ '(?-i)');
+        $impl(/* input: */ '(?-i) ', /* expected: */ '(?-i) ');
+        $impl(/* input: */ ' (?-i) ', /* expected: */ ' (?-i) ');
+        $impl(/* input: */ ' (?-i) ', /* expected: */ ' (?-i) ');
+    }
 }

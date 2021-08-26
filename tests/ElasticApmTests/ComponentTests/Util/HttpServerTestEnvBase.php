@@ -116,7 +116,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
     {
         parent::verifyRootTransactionName($rootTransactionName);
 
-        if (is_null($this->testProperties->expectedTransactionName)) {
+        if ($this->testProperties->expectedTransactionName === null) {
             TestCase::assertSame(
                 $this->testProperties->httpMethod . ' ' . ($this->testProperties->urlParts->path ?? '/'),
                 $rootTransactionName

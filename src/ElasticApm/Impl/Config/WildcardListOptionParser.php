@@ -23,17 +23,28 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @extends OptionParser<string>
+ * @extends OptionParser<WildcardListMatcher>
  */
-final class StringOptionParser extends OptionParser
+final class WildcardListOptionParser extends OptionParser
 {
-    public function parse(string $rawValue): string
+    public function parse(string $rawValue): WildcardListMatcher
     {
-        return $rawValue;
+        /**
+         * @return iterable<string>
+         */
+        $splitWildcardExpr = function () use ($rawValue): iterable {
+            foreach (explode(',', $rawValue) as $listElementRaw) {
+                yield trim($listElementRaw);
+            }
+        };
+
+        return new WildcardListMatcher($splitWildcardExpr());
     }
 }

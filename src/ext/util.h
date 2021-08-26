@@ -142,11 +142,6 @@ bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
     return true;
 }
 
-void genRandomIdAsHexString( UInt8 idSizeBytes, char* idAsHexStringBuffer, size_t idAsHexStringBufferSize );
-
-#define ELASTIC_APM_GEN_RANDOM_ID_AS_HEX_STRING( idSizeBytes, idAsHexStringBuffer ) \
-    genRandomIdAsHexString( (idSizeBytes), (idAsHexStringBuffer), ELASTIC_APM_STATIC_ARRAY_SIZE( (idAsHexStringBuffer) ) )
-
 static inline
 bool areEqualNullableStrings( String str1, String str2 )
 {
@@ -240,3 +235,11 @@ size_t calcAlignedSize( size_t size, size_t alignment )
     const size_t remainder = size % alignment;
     return ( remainder == 0 ) ? size : ( size - remainder + alignment );
 }
+
+static inline
+bool isWhiteSpace( char c )
+{
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+StringView trimStringView( StringView src );
