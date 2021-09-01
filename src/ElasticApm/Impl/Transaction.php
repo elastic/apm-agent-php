@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -73,18 +74,14 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var BreakdownMetricsPerTransaction */
     private $breakdownMetricsPerTransaction;
 
-    public function __construct(
-        Tracer $tracer,
-        string $name,
-        string $type,
-        ?float $timestamp = null,
-        ?DistributedTracingData $distributedTracingData = null
-    ) {
-        $this->tracer = $tracer;
+    public function __construct(TransactionBuilder $builder)
+    {
+        $this->tracer = $builder->tracer;
         $this->data = new TransactionData();
         $this->breakdownMetricsPerTransaction
-            = new BreakdownMetricsPerTransaction($this, $tracer->getConfig()->breakdownMetrics());
+            = new BreakdownMetricsPerTransaction($this, $builder->tracer->getConfig()->breakdownMetrics());
 
+        $distributedTracingData = self::extractDistributedTracingData($builder);
         if ($distributedTracingData == null) {
             $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
         } else {
@@ -94,15 +91,15 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         parent::__construct(
             $this->data,
-            $tracer,
+            $builder->tracer,
             null /* <- parentExecutionSegment */,
             $traceId,
-            $name,
-            $type,
-            $timestamp
+            $builder->name,
+            $builder->type,
+            $builder->timestamp
         );
 
-        $this->config = $tracer->getConfig();
+        $this->config = $builder->tracer->getConfig();
 
         $this->logger = $this->tracer->loggerFactory()
                                      ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
@@ -114,6 +111,30 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
+    }
+
+    public static function extractDistributedTracingData(TransactionBuilder $builder): ?DistributedTracingData
+    {
+        $traceParentHeaderValue = null;
+        if ($builder->serializedDistTracingData === null) {
+            if ($builder->headersExtractor !== null) {
+                $traceParentHeaderValues
+                    = ($builder->headersExtractor)(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME);
+                if (is_string($traceParentHeaderValues)) {
+                    $traceParentHeaderValue = $traceParentHeaderValues;
+                } elseif (is_array($traceParentHeaderValues) && count($traceParentHeaderValues) === 1) {
+                    $traceParentHeaderValue = $traceParentHeaderValues[0];
+                } else {
+                    return null;
+                }
+            }
+        } else {
+            $traceParentHeaderValue = $builder->serializedDistTracingData;
+        }
+
+        return $traceParentHeaderValue === null
+            ? null
+            : $builder->tracer->httpDistributedTracing()->parseTraceParentHeader($traceParentHeaderValue);
     }
 
     /** @inheritDoc */
@@ -200,6 +221,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function getCurrentSpan(): SpanInterface
     {
         return $this->currentSpan ?? NoopSpan::singletonInstance();
+    }
+
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return $this->currentSpan ?? $this;
     }
 
     public function setCurrentSpan(?Span $newCurrentSpan): void
@@ -367,6 +393,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return $this->doGetDistributedTracingData(/* span */ null);
         }
 
+        /** @noinspection PhpDeprecationInspection */
         return $this->currentSpan->getDistributedTracingData();
     }
 

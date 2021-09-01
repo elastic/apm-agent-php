@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl\Config;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -123,6 +124,9 @@ final class Snapshot implements LoggableInterface
     private $serviceName;
 
     /** @var ?string */
+    private $serviceNodeName;
+
+    /** @var ?string */
     private $serviceVersion;
 
     /** @var int */
@@ -130,6 +134,9 @@ final class Snapshot implements LoggableInterface
 
     /** @var float */
     private $transactionSampleRate;
+
+    /** @var ?WildcardListMatcher */
+    private $urlGroups = null;
 
     /** @var bool */
     private $verifyServerCert;
@@ -192,6 +199,11 @@ final class Snapshot implements LoggableInterface
         return $this->serviceName;
     }
 
+    public function serviceNodeName(): ?string
+    {
+        return $this->serviceNodeName;
+    }
+
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
@@ -205,5 +217,10 @@ final class Snapshot implements LoggableInterface
     public function transactionSampleRate(): float
     {
         return $this->transactionSampleRate;
+    }
+
+    public function urlGroups(): ?WildcardListMatcher
+    {
+        return $this->urlGroups;
     }
 }

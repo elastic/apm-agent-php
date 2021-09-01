@@ -85,7 +85,7 @@ final class PhpUnitExtension implements
             ]
         );
 
-        TestCaseBase::printMessage('Test starting... (' . $test . ')');
+        TestCaseBase::printMessage(__METHOD__, 'Test starting... (' . $test . ')');
 
         TestConfigUtil::assertAgentDisabled();
     }
@@ -105,7 +105,10 @@ final class PhpUnitExtension implements
             ['test' => $test, 'time' => $time, 'testEnvId' => self::$testEnvId]
         );
 
-        TestCaseBase::printMessage('Test finished successfully (' . $test . '). Time: ' . self::formatTime($time));
+        TestCaseBase::printMessage(
+            __METHOD__,
+            'Test finished successfully (' . $test . '). Time: ' . self::formatTime($time)
+        );
     }
 
     private function testFinishedUnsuccessfully(string $issue, string $test, string $message, float $time): void
@@ -117,6 +120,7 @@ final class PhpUnitExtension implements
         );
 
         TestCaseBase::printMessage(
+            __METHOD__,
             'Test finished ' . $issue . '(' . $test . ')'
             . '. Message: ' . $message . '. Time: ' . self::formatTime($time)
         );

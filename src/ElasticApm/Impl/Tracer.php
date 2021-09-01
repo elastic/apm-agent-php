@@ -25,8 +25,8 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
@@ -39,6 +39,7 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
 
@@ -123,27 +124,16 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->config;
     }
 
-    private function beginTransactionImpl(
+    private function newTransactionBuilder(
         string $name,
         string $type,
-        ?float $timestamp,
-        ?string $serializedDistTracingData
-    ): ?Transaction {
-        if (!$this->isRecording) {
-            return null;
-        }
-
-        $distributedTracingData = $serializedDistTracingData !== null
-            ? $this->unserializeDistributedTracingDataFromString($serializedDistTracingData)
-            : null;
-
-        return new Transaction($this, $name, $type, $timestamp, $distributedTracingData);
-    }
-
-    public function unserializeDistributedTracingDataFromString(
-        string $serializedDistTracingData
-    ): ?DistributedTracingData {
-        return $this->httpDistributedTracing->parseTraceParentHeader($serializedDistTracingData);
+        ?float $timestamp = null,
+        ?string $serializedDistTracingData = null
+    ): TransactionBuilder {
+        $builder = new TransactionBuilder($this, $name, $type);
+        $builder->timestamp = $timestamp;
+        $builder->serializedDistTracingData = $serializedDistTracingData;
+        return $builder;
     }
 
     /** @inheritDoc */
@@ -153,21 +143,9 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        if (!is_null($this->currentTransaction)) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Received request to begin a new current transaction'
-                . ' even though there is a current transaction that is still not ended',
-                ['this' => $this]
-            );
-        }
-
-        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
-        if (is_null($this->currentTransaction)) {
-            return NoopTransaction::singletonInstance();
-        }
-
-        return $this->currentTransaction;
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        $builder->asCurrent();
+        return $this->beginTransactionWithBuilder($builder);
     }
 
     /** @inheritDoc */
@@ -178,20 +156,25 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
-        try {
-            return $callback($newTransaction);
-        } catch (Throwable $throwable) {
-            $newTransaction->createErrorFromThrowable($throwable);
-            throw $throwable;
-        } finally {
-            $newTransaction->end();
-        }
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        $builder->asCurrent();
+        return $this->captureTransactionWithBuilder($builder, $callback);
     }
 
+    /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
         return $this->currentTransaction ?? NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        if ($this->currentTransaction === null) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        return $this->currentTransaction->getCurrentExecutionSegment();
     }
 
     public function resetCurrentTransaction(): void
@@ -206,13 +189,8 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
-
-        if (is_null($newTransaction)) {
-            return NoopTransaction::singletonInstance();
-        }
-
-        return $newTransaction;
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        return $this->beginTransactionWithBuilder($builder);
     }
 
     /** @inheritDoc */
@@ -223,12 +201,57 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        return $this->captureTransactionWithBuilder($builder, $callback);
+    }
+
+    /** @inheritDoc */
+    public function newTransaction(string $name, string $type): TransactionBuilderInterface
+    {
+        return new TransactionBuilder($this, $name, $type);
+    }
+
+    public function beginTransactionWithBuilder(TransactionBuilder $builder): TransactionInterface
+    {
+        if (!$this->isRecording) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        $newTransaction = new Transaction($builder);
+
+        if ($builder->asCurrent) {
+            if ($this->currentTransaction !== null) {
+                ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Received request to begin a new current transaction'
+                    . ' even though there is a current transaction that is still not ended',
+                    ['this' => $this]
+                );
+            }
+
+            $this->currentTransaction = $newTransaction;
+        }
+
+        return $newTransaction;
+    }
+
+    /**
+     * @param TransactionBuilder                       $builder
+     * @param Closure                                  $callback
+     *
+     * @return mixed The return value of $callback
+     *
+     * @template T
+     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @phpstan-return T The return value of $callback
+     */
+    public function captureTransactionWithBuilder(TransactionBuilder $builder, Closure $callback)
+    {
+        $newTransaction = $this->beginTransactionWithBuilder($builder);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
             $newTransaction->createErrorFromThrowable($throwable);
-            /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwable;
         } finally {
             $newTransaction->end();
@@ -389,13 +412,29 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @inheritDoc */
     public function getSerializedCurrentDistributedTracingData(): string
     {
+        /** @noinspection PhpDeprecationInspection */
         $distTracingData = $this->currentTransaction !== null
             ? $this->currentTransaction->getDistributedTracingData()
             : null;
 
+        /** @noinspection PhpDeprecationInspection */
         return $distTracingData !== null
             ? $distTracingData->serializeToString()
             : NoopDistributedTracingData::serializedToString();
+    }
+
+    /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
+        if ($this->currentTransaction === null) {
+            return;
+        }
+
+        /** @noinspection PhpDeprecationInspection */
+        $distTracingData = $this->currentTransaction->getDistributedTracingData();
+        if ($distTracingData !== null) {
+            $distTracingData->injectHeaders($headerInjector);
+        }
     }
 
     public function toLog(LogStreamInterface $stream): void

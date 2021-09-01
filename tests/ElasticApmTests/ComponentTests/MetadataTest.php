@@ -215,4 +215,42 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $this->hostnameConfigTestImpl($this->randomConfigSetter(), $configured);
     }
+
+    private function serviceNodeNameConfigTestImpl(
+        ?AgentConfigSetter $configSetter,
+        ?string $configured,
+        ?string $expected
+    ): void {
+        $this->configTestImpl(
+            $configSetter,
+            $configured,
+            function (AgentConfigSetter $configSetter, string $configured): void {
+                $configSetter->set(OptionNames::SERVICE_NODE_NAME, $configured);
+            },
+            function (DataFromAgent $dataFromAgent) use ($expected): void {
+                TestEnvBase::verifyServiceNodeName($expected, $dataFromAgent);
+            }
+        );
+    }
+
+    public function testDefaultServiceNodeName(): void
+    {
+        $this->serviceNodeNameConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
+    }
+
+    public function testCustomServiceNodeName(): void
+    {
+        $configured = 'alpha-centauri node@CI#.!?.';
+        $this->serviceNodeNameConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
+    }
+
+    public function testInvalidServiceNodeNameTooLong(): void
+    {
+        $expected = self::generateDummyMaxKeywordString();
+        $this->serviceNodeNameConfigTestImpl(
+            $this->randomConfigSetter(),
+            /* configured: */ $expected . '_tail',
+            $expected
+        );
+    }
 }

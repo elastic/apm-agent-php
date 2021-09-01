@@ -67,6 +67,9 @@ RELEASE_VERSION=0.1 make -C packaging deb-install-release-github
 ## To test the installation and uninstallation for all the packages
 make -C packaging lifecycle-testing
 
+## To test the agent upgrade from a given release version with the existing generated package
+RELEASE_VERSION=1.0.0 make -C packaging rpm-agent-upgrade-testing
+
 ## Help goal will provide further details
 make -C packaging help
 ```

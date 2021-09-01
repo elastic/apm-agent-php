@@ -111,6 +111,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
     {
         $loop = Factory::create();
 
+        assert(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort !== null);
         $serverSocket = new ServerSocket(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort, $loop);
 
         $httpServer = new HttpServer(
@@ -220,7 +221,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
         if (empty($headerValues)) {
             return null;
         }
-        if (count($headerValues) != 1) {
+        if (count($headerValues) !== 1) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'The header should not have more than one value',

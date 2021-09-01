@@ -21,19 +21,49 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl;
+
+use Closure;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\TransactionBuilderInterface;
+use Elastic\Apm\TransactionInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends OptionParser<string>
  */
-final class StringOptionParser extends OptionParser
+final class NoopTransactionBuilder implements TransactionBuilderInterface
 {
-    public function parse(string $rawValue): string
+    use NoopObjectTrait;
+
+    /** @inheritDoc */
+    public function asCurrent(): TransactionBuilderInterface
     {
-        return $rawValue;
+        return $this;
+    }
+
+    /** @inheritDoc */
+    public function timestamp(float $timestamp): TransactionBuilderInterface
+    {
+        return $this;
+    }
+
+    /** @inheritDoc */
+    public function distributedTracingHeaderExtractor(Closure $headerExtractor): TransactionBuilderInterface
+    {
+        return $this;
+    }
+
+    /** @inheritDoc */
+    public function begin(): TransactionInterface
+    {
+        return NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function capture(Closure $callback)
+    {
+        return $callback(NoopTransaction::singletonInstance());
     }
 }

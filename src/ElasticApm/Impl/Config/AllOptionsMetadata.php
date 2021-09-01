@@ -66,6 +66,7 @@ final class AllOptionsMetadata
                     30 * 1000.0 /* <- defaultValueInMilliseconds - 30s */
                 ),
                 OptionNames::SERVICE_NAME            => new NullableStringOptionMetadata(),
+                OptionNames::SERVICE_NODE_NAME       => new NullableStringOptionMetadata(),
                 OptionNames::SERVICE_VERSION         => new NullableStringOptionMetadata(),
                 OptionNames::TRANSACTION_MAX_SPANS   => new IntOptionMetadata(
                     0 /* <- minValidValue */,
@@ -74,6 +75,7 @@ final class AllOptionsMetadata
                 ),
                 OptionNames::TRANSACTION_SAMPLE_RATE =>
                     new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
+                OptionNames::URL_GROUPS              => new NullableWildcardListOptionMetadata(),
                 OptionNames::VERIFY_SERVER_CERT      => new BoolOptionMetadata(/* defaultValue: */ true),
             ];
         }

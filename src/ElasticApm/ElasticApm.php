@@ -35,23 +35,22 @@ final class ElasticApm
 {
     use StaticClassTrait;
 
-    /** @var string */
-    public const VERSION = '1.2';
+    public const VERSION = '1.3';
 
     /**
      * Begins a new transaction and sets it as the current transaction.
      *
-     * @param string      $name      New transaction's name
-     * @param string      $type      New transaction's type
-     * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string      $name                      New transaction's name
+     * @param string      $type                      New transaction's type
+     * @param float|null  $timestamp                 Start time of the new transaction
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return TransactionInterface New transaction
      *
      * @see TransactionInterface::setName() For the description.
      * @see TransactionInterface::setType() For the description.
      * @see TransactionInterface::getTimestamp() For the description.
-     *
      */
     public static function beginCurrentTransaction(
         string $name,
@@ -70,11 +69,15 @@ final class ElasticApm
      * @param string      $type      New transaction's type
      * @param Closure     $callback  Callback to execute as the new transaction
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return mixed The return value of $callback
      *
-     * @template        T
+     * @template T
+     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @phpstan-return T The return value of $callback
+     *
      * @see             TransactionInterface::setName() For the description.
      * @see             TransactionInterface::setType() For the description.
      * @see             TransactionInterface::getTimestamp() For the description.
@@ -106,12 +109,25 @@ final class ElasticApm
     }
 
     /**
+     * If there is the current span then it returns the current span.
+     * Otherwise if there is the current transaction then it returns the current transaction.
+     * Otherwise it returns the noop execution segment.
+     *
+     * @return ExecutionSegmentInterface The current execution segment
+     */
+    public static function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return GlobalTracerHolder::get()->getCurrentExecutionSegment();
+    }
+
+    /**
      * Begins a new transaction.
      *
      * @param string      $name      New transaction's name
      * @param string      $type      New transaction's type
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return TransactionInterface New transaction
      *
@@ -136,11 +152,15 @@ final class ElasticApm
      * @param string      $type      New transaction's type
      * @param Closure     $callback  Callback to execute as the new transaction
      * @param float|null  $timestamp Start time of the new transaction
-     * @param string|null $serializedDistTracingData
+     * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
+     *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
      *
      * @return mixed The return value of $callback
      *
-     * @template        T
+     * @template T
+     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @phpstan-return T The return value of $callback
+     *
      * @see             TransactionInterface::setName() For the description.
      * @see             TransactionInterface::setType() For the description.
      * @see             TransactionInterface::getTimestamp() For the description.
@@ -159,6 +179,23 @@ final class ElasticApm
             $timestamp,
             $serializedDistTracingData
         );
+    }
+
+    /**
+     * Advanced API to begin a new transaction
+     *
+     * @param string $name New transaction's name
+     * @param string $type New transaction's type
+     *
+     * @return TransactionBuilderInterface New transaction builder
+     *
+     * @see TransactionInterface::setName() For the description.
+     * @see TransactionInterface::setType() For the description.
+     *
+     */
+    public static function newTransaction(string $name, string $type): TransactionBuilderInterface
+    {
+        return GlobalTracerHolder::get()->newTransaction($name, $type);
     }
 
     /**
@@ -210,10 +247,14 @@ final class ElasticApm
     }
 
     /**
+     * @deprecated      Deprecated since version 1.3 - use injectDistributedTracingHeaders() instead
+     * @see             injectDistributedTracingHeaders() Use it instead of this method
+     *
      * Returns distributed tracing data for the current span/transaction
      */
     public static function getSerializedCurrentDistributedTracingData(): string
     {
+        /** @noinspection PhpDeprecationInspection */
         return GlobalTracerHolder::get()->getSerializedCurrentDistributedTracingData();
     }
 }

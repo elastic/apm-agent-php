@@ -21,19 +21,28 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace ElasticApmTests\UnitTests\ConfigTests;
+
+use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- *
- * @extends OptionParser<string>
+ * @implements OptionTestValuesGeneratorInterface<WildcardListMatcher>
  */
-final class StringOptionParser extends OptionParser
+final class WildcardListOptionTestValuesGenerator implements OptionTestValuesGeneratorInterface
 {
-    public function parse(string $rawValue): string
+    use SingletonInstanceTrait;
+
+    /**
+     * @return iterable<OptionTestValidValue<WildcardListMatcher>>
+     */
+    public function validValues(): iterable
     {
-        return $rawValue;
+        return [];
+    }
+
+    public function invalidRawValues(): iterable
+    {
+        return [];
     }
 }

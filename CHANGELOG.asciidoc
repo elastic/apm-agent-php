@@ -21,6 +21,14 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.3]]
+=== v1.3 - 2021/09/01
+
+[float]
+==== Features
+* SERVICE_NODE_NAME configuration option: {pull}458[#458]
+* URL_GROUPS configuration option: {pull}537[#537]
+
 [[release-notes-v1.2]]
 === v1.2 - 2021/06/29
 

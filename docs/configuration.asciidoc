@@ -366,6 +366,26 @@ numbers, dashes, underscores, and spaces.
 Characters in service name that don't match regular expression will be replaced by `_` (underscore) character.
 
 [float]
+[[config-service-node-name]]
+==== `service_node_name`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SERVICE_NODE_NAME` | `elastic_apm.service_node_name`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| None       | String
+|============
+
+If it's set, this name is used to distinguish between different nodes of a service.
+If it's not set, data aggregations will be done based on the reported
+hostname (automatically discovered or manually configured using <<config-hostname>>).
+
+[float]
 [[config-service-version]]
 ==== `service_version`
 
@@ -449,3 +469,35 @@ but not context information, labels, or spans.
 
 By default, the agent verifies the SSL certificate if you use an HTTPS connection to the APM server.
 The verification can be disabled by changing this setting to `false`.
+
+[float]
+[[config-url-groups]]
+==== `url_groups`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_URL_GROUPS` | `elastic_apm.url_groups`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| empty list       | List of wildcard expressions
+|============
+
+With this option, you can group several URL paths together by using a wildcard expression like `/user/*`.
+This option supports only the wildcard `*`, which matches zero or more characters.
+
+Examples: `/foo/*/bar/*/baz*`, `*foo*`.
+
+Matching is case insensitive by default.
+Prepending an element with `(?-i)` makes the matching case sensitive.
+For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
+on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
+but doesn't match neither `/BAR` nor `/FOO`.
+
+Whitespace around commas separating wildcard expressions in the list is ignored.
+For example `foo , bar` is the same as `foo,bar`.
+On the other hand whitespace inside wildcard expressions is significant.
+For example `*a b*` matches a string only if it contains `a` followed by space and then `b`.

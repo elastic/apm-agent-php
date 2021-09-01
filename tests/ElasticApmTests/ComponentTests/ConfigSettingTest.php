@@ -30,7 +30,9 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetterIni;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
 use ElasticApmTests\ComponentTests\Util\TestProperties;
@@ -38,84 +40,101 @@ use RuntimeException;
 
 final class ConfigSettingTest extends ComponentTestCaseBase
 {
-    private const APP_CODE_ARGS_KEY_OPTION_NAME = 'OPTION_NAME';
-    private const APP_CODE_ARGS_KEY_OPTION_PARSED_VALUE = 'OPTION_PARSED_VALUE';
+    private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';
+    private const APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE = 'APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE';
 
     /**
-     * @return array<string, array<mixed>>
+     * @return array<string, array<string|int, mixed>>
      */
-    private static function buildOptionNameToRawToParsedValue(): array
+    private static function buildOptionNameToRawToValue(): array
     {
-        $stringRawToParsedValues = function (array $rawValues) {
+        /**
+         * @param string[] $rawValues
+         *
+         * @return array<string|int, mixed>
+         */
+        $stringRawToParsedValues = function (array $rawValues): array {
             $rawToParsedValues = [];
             foreach ($rawValues as $rawVal) {
-                $rawToParsedValues[$rawVal] = $rawVal;
+                $rawToParsedValues[$rawVal] = trim($rawVal);
             }
             return $rawToParsedValues;
         };
 
-        $boolRawToParsedValues = function (?bool $valueToExclude = null) {
-            $rawToParsedValues = [
+        /**
+         * @param ?bool $valueToExclude
+         *
+         * @return array<string, ?bool>
+         */
+        $boolRawToParsedValues = function (?bool $valueToExclude = null): array {
+            /** @var array<string, ?bool> */
+            $result = [
                 'false'         => false,
                 'true'          => true,
                 'invalid value' => null,
             ];
 
             if ($valueToExclude !== null) {
-                foreach ($rawToParsedValues as $rawVal => $parsedVal) {
-                    if ($parsedVal === $valueToExclude) {
-                        unset($rawToParsedValues[$rawVal]);
+                foreach ($result as $rawVal => $expectedVal) {
+                    if ($expectedVal === $valueToExclude) {
+                        unset($result[$rawVal]);
                     }
                 }
             }
-            return $rawToParsedValues;
+            return $result;
         };
 
         $logLevelRawToParsedValues = [
-            'CRITICAL'  => LogLevel::CRITICAL,
-            'not valid' => null,
+            " \t CRITICAL \t\n" => LogLevel::CRITICAL,
+            'not valid'         => null,
         ];
 
         $durationRawToParsedValues = [
-            '10s'       => 10 * 1000.0 /* <- in milliseconds */,
-            '3m'        => 3 * 60 * 1000.0 /* <- in milliseconds */,
-            'not valid' => null,
+            "\t\n 10s \t " => 10 * 1000.0 /* <- in milliseconds */,
+            "\t  3m\n" => 3 * 60 * 1000.0 /* <- in milliseconds */,
+            'not valid'  => null,
         ];
 
         $intRawToParsedValues = [
-            '123'       => 123,
-            'not valid' => null,
+            "\n\t 123 " => 123,
+            'not valid'  => null,
         ];
 
         $doubleRawToParsedValues = [
-            '0.5'       => 0.5,
-            'not valid' => null,
+            " \t\n 0.5"           => 0.5,
+            "not valid \t 0.5" => null,
+        ];
+
+        $wildcardListRawToParsedValues = [
+            " /a/*, \t(?-i)/b1/ /b2 \t \n, (?-i) **c*\t * \t " => "/a/*, (?-i)/b1/ /b2, (?-i) *c*\t *",
         ];
 
         return [
-            OptionNames::API_KEY                 => $stringRawToParsedValues(['my_api_key']),
-            OptionNames::BREAKDOWN_METRICS       => $boolRawToParsedValues(),
+            OptionNames::API_KEY                 => $stringRawToParsedValues(['my_api_key', "\t\n  my api key "]),
             OptionNames::ENABLED                 => $boolRawToParsedValues(/* valueToExclude: */ false),
-            OptionNames::ENVIRONMENT             => $stringRawToParsedValues(['my_environment']),
-            OptionNames::HOSTNAME                => $stringRawToParsedValues(['my_hostname']),
+            OptionNames::ENVIRONMENT             => $stringRawToParsedValues([" my_environment \t "]),
+            OptionNames::BREAKDOWN_METRICS       => $boolRawToParsedValues(),
+            OptionNames::HOSTNAME                => $stringRawToParsedValues([" \t my_hostname"]),
             OptionNames::LOG_LEVEL               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR        => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG        => $logLevelRawToParsedValues,
-            OptionNames::SECRET_TOKEN            => $stringRawToParsedValues(['my_secret_token']),
+            OptionNames::SECRET_TOKEN            => $stringRawToParsedValues([" my_secret_token \t"]),
             OptionNames::SERVER_TIMEOUT          => $durationRawToParsedValues,
-            OptionNames::SERVICE_NAME            => $stringRawToParsedValues(['my_service_name']),
-            OptionNames::SERVICE_VERSION         => $stringRawToParsedValues(['my_service_version']),
+            OptionNames::SERVICE_NAME            => $stringRawToParsedValues([' \t my_service_name \t']),
+            OptionNames::SERVICE_NODE_NAME       => $stringRawToParsedValues([' my_service_node_name  \t ']),
+            OptionNames::SERVICE_VERSION         => $stringRawToParsedValues([" my_service_version"]),
             OptionNames::TRANSACTION_MAX_SPANS   => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE => $doubleRawToParsedValues,
+            OptionNames::URL_GROUPS              => $wildcardListRawToParsedValues,
             OptionNames::VERIFY_SERVER_CERT      => $boolRawToParsedValues(),
         ];
     }
 
-    public function testOptionNameToRawToParsedValue(): void
+    public function testBuildOptionNameToRawToValueIncludesAllOptions(): void
     {
         $optNamesFromAllOptionsMetadata = array_keys(AllOptionsMetadata::get());
         self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
-        $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToParsedValue());
+        $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToValue());
         self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
         self::assertEqualsCanonicalizing(
             $optNamesFromAllOptionsMetadata,
@@ -124,17 +143,20 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array<int|AgentConfigSetter|mixed>>
+     * @return iterable<array{AgentConfigSetter, string, string, mixed}>>
      */
     public function dataProviderForTestAllWaysToSetConfig(): iterable
     {
-        $optNameToRawToParsedValue = self::buildOptionNameToRawToParsedValue();
+        $optNameToRawToParsedValue = self::buildOptionNameToRawToValue();
 
         foreach ($this->allConfigSetters as $configSetter) {
-            foreach ($optNameToRawToParsedValue as $optName => $optRawToParsedValue) {
-                foreach ($optRawToParsedValue as $optRawVal => $optParsedVal) {
-                    $optParsedVal = $optParsedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
-                    yield [$configSetter, $optName, strval($optRawVal), $optParsedVal];
+            foreach ($optNameToRawToParsedValue as $optName => $optRawToValue) {
+                foreach ($optRawToValue as $optRawVal => $optExpectedVal) {
+                    if ($configSetter instanceof AgentConfigSetterIni) {
+                        $optRawToValue = str_replace("\n", "\t", $optRawToValue);
+                    }
+                    $optExpectedVal = $optExpectedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
+                    yield [$configSetter, $optName, strval($optRawVal), $optExpectedVal];
                 }
             }
         }
@@ -146,26 +168,35 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        $expectedOptParsedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_PARSED_VALUE);
+        $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
         $tracer = GlobalTracerHolder::get();
-        if (!$tracer instanceof Tracer) {
+        if (!($tracer instanceof Tracer)) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage('$tracer is not an instance of Tracer class', ['$tracer' => $tracer])
             );
         }
 
-        $actualOptParsedVal = $tracer->getConfig()->parsedValueFor($optName);
-        if ($expectedOptParsedVal != $actualOptParsedVal) {
+        $optActualVal = $tracer->getConfig()->parsedValueFor($optName);
+
+        if ($optActualVal instanceof WildcardListMatcher) {
+            $areValuesEqual = (strval($optActualVal) === $optExpectedVal);
+        } else {
+            $areValuesEqual = ($optActualVal == $optExpectedVal);
+        }
+
+        if ($areValuesEqual) {
+            http_response_code(234);
+        } else {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Expected option parsed value is not equal to the actual parsed value',
                     [
-                        'optName'                   => $optName,
-                        'expectedOptParsedVal'      => $expectedOptParsedVal,
-                        'expectedOptParsedVal type' => DbgUtil::getType($expectedOptParsedVal),
-                        'actualOptParsedVal'        => $actualOptParsedVal,
-                        'actualOptParsedVal type'   => DbgUtil::getType($actualOptParsedVal),
+                        'optName'             => $optName,
+                        'optExpectedVal'      => $optExpectedVal,
+                        'optExpectedVal type' => DbgUtil::getType($optExpectedVal),
+                        'optActualVal'        => $optActualVal,
+                        'optActualVal type'   => DbgUtil::getType($optActualVal),
                     ]
                 )
             );
@@ -178,22 +209,23 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param AgentConfigSetter $configSetter
      * @param string            $optName
      * @param string            $optRawVal
-     * @param mixed             $optParsedVal
+     * @param mixed             $optExpectedVal
      */
     public function testAllWaysToSetConfig(
         AgentConfigSetter $configSetter,
         string $optName,
         string $optRawVal,
-        $optParsedVal
+        $optExpectedVal
     ): void {
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTestAllWaysToSetConfig'])
             ->withAppCodeArgs(
                 [
-                    self::APP_CODE_ARGS_KEY_OPTION_NAME         => $optName,
-                    self::APP_CODE_ARGS_KEY_OPTION_PARSED_VALUE => $optParsedVal,
+                    self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
+                    self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal,
                 ]
-            );
+            )
+            ->withExpectedStatusCode(234);
         $configSetter->set($optName, $optRawVal);
         $testProperties->withAgentConfig($configSetter);
 

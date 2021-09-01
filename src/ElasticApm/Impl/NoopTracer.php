@@ -25,7 +25,9 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
 
@@ -66,6 +68,12 @@ final class NoopTracer implements TracerInterface
     }
 
     /** @inheritDoc */
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
     public function beginTransaction(
         ?string $name,
         string $type,
@@ -84,6 +92,12 @@ final class NoopTracer implements TracerInterface
         ?string $serializedDistTracingData = null
     ) {
         return $callback(NoopTransaction::singletonInstance());
+    }
+
+    /** @inheritDoc */
+    public function newTransaction(string $name, string $type): TransactionBuilderInterface
+    {
+        return NoopTransactionBuilder::singletonInstance();
     }
 
     /** @inheritDoc */
@@ -123,5 +137,10 @@ final class NoopTracer implements TracerInterface
     public function getSerializedCurrentDistributedTracingData(): string
     {
         return NoopDistributedTracingData::serializedToString();
+    }
+
+    /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
     }
 }

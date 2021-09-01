@@ -107,6 +107,7 @@ LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTr
 LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.c )
 LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
+LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.c )
 
 IF ( NOT WIN32 )
     ADD_LINK_OPTIONS( -rdynamic )

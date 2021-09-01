@@ -150,6 +150,12 @@ final class TestProperties implements LoggableInterface
         return ArrayUtil::getValueIfKeyExistsElse($optName, $this->agentConfigSetter->optionNameToValue, null);
     }
 
+    public function getConfiguredAgentOptionStringParsed(string $optName): ?string
+    {
+        $rawValue = $this->getConfiguredAgentOption($optName);
+        return $rawValue === null ? null : trim($rawValue);
+    }
+
     public function withAgentConfig(AgentConfigSetter $configSetter): self
     {
         $this->agentConfigSetter = $configSetter;

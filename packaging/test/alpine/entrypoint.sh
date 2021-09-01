@@ -5,10 +5,23 @@ set -x
 #### VARIABLES ####
 ###################
 BUILD_RELEASES_FOLDER=build/releases
+BUILD_PACKAGES=build/packages
 
 ###################
 #### FUNCTIONS ####
 ###################
+download() {
+    package=$1
+    folder=$2
+    url=$3
+    mkdir -p "${folder}"
+    wget -q "${url}/${package}" -O "${folder}/${package}"
+    wget -q "${url}/${package}.sha512" -O "${folder}/${package}.sha512"
+    cd "${folder}" || exit
+    shasum -a 512 -c "${package}.sha512"
+    cd - || exit
+}
+
 validate_if_agent_is_uninstalled() {
     ## Validate if the elastic php agent has been uninstalled
     php -m
@@ -45,17 +58,13 @@ validate_installation() {
 #### MAIN ####
 ##############
 if [ "${TYPE}" = "release-github" ] ; then
-    mkdir -p "${BUILD_RELEASES_FOLDER}"
     PACKAGE=apm-agent-php_${VERSION}_all.apk
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}" -O "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
-    wget -q "${GITHUB_RELEASES_URL}/v${VERSION}/${PACKAGE}.sha512" -O "${BUILD_RELEASES_FOLDER}/${PACKAGE}.sha512"
-    cd ${BUILD_RELEASES_FOLDER} || exit
-    shasum -a 512 -c "${PACKAGE}.sha512"
-    cd - || exit
+    download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     apk add --allow-untrusted --verbose --no-cache "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 else
+    ls -l $BUILD_PACKAGES
     ## Install apk package and configure the agent accordingly
-    apk add --allow-untrusted --verbose --no-cache build/packages/*.apk
+    apk add --allow-untrusted --verbose --no-cache $BUILD_PACKAGES/*.apk
 fi
 
 validate_if_agent_is_enabled

@@ -80,21 +80,25 @@ final class MetadataDiscoverer
             : Tracer::limitKeywordString($charsAdaptedName);
     }
 
+    private static function setKeywordStringIfNotNull(?string $srcCfgVal, ?string &$dstProp): void
+    {
+        if ($srcCfgVal !== null) {
+            $dstProp = Tracer::limitKeywordString($srcCfgVal);
+        }
+    }
+
     public function discoverServiceData(ConfigSnapshot $config): ServiceData
     {
         $result = new ServiceData();
 
-        if ($config->environment() !== null) {
-            $result->environment = Tracer::limitKeywordString($config->environment());
-        }
+        self::setKeywordStringIfNotNull($config->environment(), /* ref */ $result->environment);
 
-        $result->name = is_null($config->serviceName())
+        $result->name = $config->serviceName() === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($config->serviceName());
 
-        if (!is_null($config->serviceVersion())) {
-            $result->version = Tracer::limitKeywordString($config->serviceVersion());
-        }
+        self::setKeywordStringIfNotNull($config->serviceNodeName(), /* ref */ $result->nodeConfiguredName);
+        self::setKeywordStringIfNotNull($config->serviceVersion(), /* ref */ $result->version);
 
         $result->agent = new ServiceAgentData();
         $result->agent->name = self::AGENT_NAME;

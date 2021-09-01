@@ -43,7 +43,6 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
-use ElasticApmTests\UnitTests\Util\EmptyConfigRawSnapshotSource;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -437,7 +436,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         return $execSegData->context;
     }
 
@@ -520,6 +518,32 @@ class TestCaseBase extends TestCase
         self::assertArrayNotHasKey($key, $context->labels);
     }
 
+    /**
+     * @param mixed[] $expected
+     * @param mixed[] $actual
+     */
+    public static function assertEqualLists(array $expected, array $actual): void
+    {
+        self::assertTrue(sort(/* ref */ $expected));
+        self::assertTrue(sort(/* ref */ $actual));
+        self::assertEqualsCanonicalizing($expected, $actual);
+    }
+
+    /**
+     * @param array<string|int, mixed> $idToXyzMap
+     *
+     * @return string[]
+     */
+    public static function getIdsFromIdToMap(array $idToXyzMap): array
+    {
+        /** @var string[] */
+        $result = [];
+        foreach ($idToXyzMap as $id => $_) {
+            $result[] = strval($id);
+        }
+        return $result;
+    }
+
     public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
         return TracerBuilderForTests::startNew()
@@ -544,7 +568,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         return $execSegData->parentId;
     }
 
@@ -557,7 +580,6 @@ class TestCaseBase extends TestCase
         }
 
         TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         $execSegData->parentId = $newParentId;
     }
 
@@ -583,8 +605,18 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
-    public static function printMessage(string $msg): void
+    public static function printMessage(string $srcMethod, string $msg): void
     {
-        fwrite(STDERR, PHP_EOL . $msg . PHP_EOL);
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        if (defined('STDERR')) {
+            fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+        }
+    }
+
+    protected static function dummyAssert(): void
+    {
+        self::assertTrue(true);
     }
 }
