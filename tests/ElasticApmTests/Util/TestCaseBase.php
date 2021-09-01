@@ -529,6 +529,21 @@ class TestCaseBase extends TestCase
         self::assertEqualsCanonicalizing($expected, $actual);
     }
 
+    /**
+     * @param array<string|int, mixed> $idToXyzMap
+     *
+     * @return string[]
+     */
+    public static function getIdsFromIdToMap(array $idToXyzMap): array
+    {
+        /** @var string[] */
+        $result = [];
+        foreach ($idToXyzMap as $id => $_) {
+            $result[] = strval($id);
+        }
+        return $result;
+    }
+
     public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
         return TracerBuilderForTests::startNew()
