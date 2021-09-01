@@ -366,6 +366,26 @@ numbers, dashes, underscores, and spaces.
 Characters in service name that don't match regular expression will be replaced by `_` (underscore) character.
 
 [float]
+[[config-service-node-name]]
+==== `service_node_name`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SERVICE_NODE_NAME` | `elastic_apm.service_node_name`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| None       | String
+|============
+
+If it's set, this name is used to distinguish between different nodes of a service.
+If it's not set, data aggregations will be done based on the reported
+hostname (automatically discovered or manually configured using <<config-hostname>>).
+
+[float]
 [[config-service-version]]
 ==== `service_version`
 
