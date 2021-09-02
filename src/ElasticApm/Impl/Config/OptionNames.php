@@ -48,6 +48,7 @@ final class OptionNames
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_NODE_NAME = 'service_node_name';
     public const SERVICE_VERSION = 'service_version';
+    public const TRANSACTION_IGNORE_URLS = 'transaction_ignore_urls';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';
     public const URL_GROUPS = 'url_groups';

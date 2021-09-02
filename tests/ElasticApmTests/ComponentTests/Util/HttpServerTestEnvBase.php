@@ -103,10 +103,8 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     abstract protected function ensureAppCodeHostServerRunning(): void;
 
-    protected function verifyRootTransaction(TransactionData $rootTransaction): void
+    protected function verifyRootTransactionEx(TransactionData $rootTransaction): void
     {
-        parent::verifyRootTransaction($rootTransaction);
-
         if ($rootTransaction->isSampled) {
             TestCase::assertNotNull($rootTransaction->context);
         }
@@ -126,11 +124,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function verifyRootTransactionType(string $rootTransactionType): void
     {
-        parent::verifyRootTransactionType($rootTransactionType);
-
-        if (is_null($this->testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $rootTransactionType);
-        }
+        parent::verifyRootTransactionTypeImpl($rootTransactionType, Constants::TRANSACTION_TYPE_REQUEST);
     }
 
     protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void
