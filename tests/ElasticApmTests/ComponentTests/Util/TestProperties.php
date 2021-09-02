@@ -48,7 +48,10 @@ final class TestProperties implements LoggableInterface
     public $expectedTransactionName = null;
 
     /** @var ?string */
-    public $transactionType = null;
+    public $expectedTransactionType = null;
+
+    /** @var bool */
+    public $shouldVerifyRootTransaction = true;
 
     /** @var AgentConfigSetter */
     public $agentConfigSetter;
@@ -131,9 +134,15 @@ final class TestProperties implements LoggableInterface
         return $this;
     }
 
-    public function withTransactionType(string $transactionType): self
+    public function withExpectedTransactionType(string $expectedTransactionType): self
     {
-        $this->transactionType = $transactionType;
+        $this->expectedTransactionType = $expectedTransactionType;
+        return $this;
+    }
+
+    public function shouldVerifyRootTransaction(bool $shouldVerifyRootTransaction): self
+    {
+        $this->shouldVerifyRootTransaction = $shouldVerifyRootTransaction;
         return $this;
     }
 

@@ -129,6 +129,9 @@ final class Snapshot implements LoggableInterface
     /** @var ?string */
     private $serviceVersion;
 
+    /** @var ?WildcardListMatcher */
+    private $transactionIgnoreUrls;
+
     /** @var int */
     private $transactionMaxSpans;
 
@@ -207,6 +210,11 @@ final class Snapshot implements LoggableInterface
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
+    }
+
+    public function transactionIgnoreUrls(): ?WildcardListMatcher
+    {
+        return $this->transactionIgnoreUrls;
     }
 
     public function transactionMaxSpans(): int

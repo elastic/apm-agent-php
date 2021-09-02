@@ -53,6 +53,8 @@
 //
 //      6) Add to section of ELASTIC_APM_INIT_METADATA in initOptionsMetadata() in ConfigManager.c:
 //          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION, /* defaultValue: */ <!!! myNewOption default value !!!> );
+//
+//      7) Document the new configuration option at docs/configuration.asciidoc
 
 enum OptionId
 {
@@ -89,6 +91,7 @@ enum OptionId
     optionId_serviceName,
     optionId_serviceNodeName,
     optionId_serviceVersion,
+    optionId_transactionIgnoreUrls,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
     optionId_urlGroups,
@@ -135,6 +138,7 @@ struct ConfigSnapshot
     String serviceName;
     String serviceNodeName;
     String serviceVersion;
+    String transactionIgnoreUrls;
     String transactionMaxSpans;
     String transactionSampleRate;
     String urlGroups;
@@ -255,6 +259,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS "transaction_ignore_urls"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
 #define ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS "url_groups"

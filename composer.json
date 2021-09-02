@@ -86,9 +86,9 @@
         ],
         "run_component_tests": [
             "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
-            "composer run-script run_component_tests_configured",
             "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server",
+            "composer run-script run_component_tests_configured",
+            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
             "composer run-script run_component_tests_configured"
         ],
         "run_tests": [

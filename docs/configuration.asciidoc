@@ -91,6 +91,38 @@ elastic_apm.log_level=WARNING
 elastic_apm.log_level_syslog=TRACE
 ----
 
+[float]
+[[configure-wildcard]]
+=== Wildcard
+
+Some options (for example <<config-url-groups>>) support use of wildcard.
+A valid value for such configuration options is a comma separated list of wildcard expressions.
+Only the wildcard `*`, which matches zero or more characters, is supported.
+
+Examples: `*foo*`, `/foo/*/bar, /*/baz*`.
+
+Matching is case insensitive by default.
+Prepending an element with `(?-i)` makes the matching case sensitive.
+For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
+on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
+but doesn't match neither `/BAR` nor `/FOO`.
+
+Whitespace around commas separating wildcard expressions in the list is ignored.
+For example `foo , bar` is the same as `foo,bar`.
+On the other hand whitespace inside wildcard expressions is significant.
+For example `*a b*` matches a string only if it contains `a` followed by space and then `b`.
+
+The input string is matched against wildcard expressions in the order they are listed
+and the first expression that matches is selected.
+
+When configuration option is intended to matched against a input URL
+(for example <<config-url-groups>> and <<config-transaction-ignore-urls>>)
+only path part of the URL is tested against wildcard expressions.
+Other parts of the URL (such as query string, etc.) are not taken into account
+so including them in the wildcard expressions might lead to unexpected result.
+For example `/user/*` matches `http://my_site.com/user/Alice?lang=en`
+while `/user/*?lang=*` does not match `http://my_site.com/user/Alice?lang=en`
+
 [[configuration-reference]]
 === Configuration reference
 
@@ -406,6 +438,29 @@ the recommended value for this field is the commit identifier of the deployed re
 the output of git rev-parse HEAD.
 
 [float]
+[[config-transaction-ignore-urls]]
+==== `transaction_ignore_urls`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_TRANSACTION_IGNORE_URLS` | `elastic_apm.transaction_ignore_urls`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| empty list       | List of wildcard expressions
+|============
+
+This option instructs the agent to ignore requests with certain URLs
+by not to creating transactions for those requests.
+It only affects automatic creation of transactions by the agent
+but user can still create transactions manually by using <<public-api, agent's public API>>.
+
+See <<configure-wildcard>> section for more details on how to use wildcard expressions.
+
+[float]
 [[config-transaction-max-spans]]
 ==== `transaction_max_spans`
 
@@ -486,18 +541,7 @@ The verification can be disabled by changing this setting to `false`.
 | empty list       | List of wildcard expressions
 |============
 
-With this option, you can group several URL paths together by using a wildcard expression like `/user/*`.
-This option supports only the wildcard `*`, which matches zero or more characters.
+With this option, you can group several URL paths together by using wildcard expressions
+like `/user/*` - this way `/user/Alice` and `/user/Bob` will be mapped to transaction name `/user/*`.
 
-Examples: `/foo/*/bar/*/baz*`, `*foo*`.
-
-Matching is case insensitive by default.
-Prepending an element with `(?-i)` makes the matching case sensitive.
-For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
-on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
-but doesn't match neither `/BAR` nor `/FOO`.
-
-Whitespace around commas separating wildcard expressions in the list is ignored.
-For example `foo , bar` is the same as `foo,bar`.
-On the other hand whitespace inside wildcard expressions is significant.
-For example `*a b*` matches a string only if it contains `a` followed by space and then `b`.
+See <<configure-wildcard>> section for more details on how to use wildcard expressions.
