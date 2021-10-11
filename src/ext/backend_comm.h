@@ -23,4 +23,8 @@
 #include "ConfigManager.h"
 #include "ResultCode.h"
 
-ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents );
+ResultCode sendEventsToApmServer(
+        bool disableSend
+        , double serverTimeoutMilliseconds
+        , const ConfigSnapshot* config
+        , StringView serializedEvents );

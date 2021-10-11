@@ -52,6 +52,7 @@ final class AllOptionsMetadata
             self::$vaLue = [
                 OptionNames::API_KEY                 => new NullableStringOptionMetadata(),
                 OptionNames::BREAKDOWN_METRICS       => new BoolOptionMetadata(/* defaultValue: */ true),
+                OptionNames::DISABLE_SEND            => new BoolOptionMetadata(/* defaultValue: */ false),
                 OptionNames::ENABLED                 => new BoolOptionMetadata(/* defaultValue: */ true),
                 OptionNames::ENVIRONMENT             => new NullableStringOptionMetadata(),
                 OptionNames::HOSTNAME                => new NullableStringOptionMetadata(),
