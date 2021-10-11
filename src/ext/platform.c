@@ -18,6 +18,7 @@
  */
 
 #include "platform.h"
+#include <limits.h>
 #include <string.h>
 #ifdef PHP_WIN32
 #   ifndef WIN32_LEAN_AND_MEAN
@@ -32,6 +33,7 @@
 #   include <unistd.h>
 #   include <sys/syscall.h>
 #endif
+#include "util.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
@@ -83,7 +85,7 @@ bool getTimeZoneShiftOnWindows( long* secondsAheadUtc )
     // Bias is the difference, in minutes, between Coordinated Universal Time (UTC) and local time.
     // All translations between UTC and local time are based on the following formula:
     // UTC = local time + bias
-    // So negative value in Bias means that we are to the east of UTC so it is positive for our format
+    // So negative value in Bias means that we are to the east of UTC, so it is positive for our format
 
     *secondsAheadUtc = -( timeZoneInformation.Bias * 60 );
 
@@ -209,4 +211,99 @@ String streamStackTrace(
             streamStackTraceLinux( addresses, addressesCount, linePrefix, txtOutStream )
         #endif
             ;
+}
+
+#ifndef PHP_WIN32
+static
+String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE* procSelfCmdLineFile, TextOutputStream* txtOutStream )
+{
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+
+    txtOutStream->autoTermZero = false;
+
+    enum { auxBufferSize = 100 };
+    char auxBuffer[ auxBufferSize ];
+    bool reachedEndOfFile = false;
+    unsigned int partsCount = 0;
+    bool shouldPrefixWithSpace = false;
+    while ( ! reachedEndOfFile )
+    {
+        size_t actuallyReadBytes = fread( auxBuffer, /* data item size: */ 1, /* max data items count: */ auxBufferSize, procSelfCmdLineFile );
+        if ( actuallyReadBytes < auxBufferSize)
+        {
+            if ( ferror( procSelfCmdLineFile ) != 0 )
+            {
+                return "Failed to read from /proc/self/cmdline";
+            }
+
+            reachedEndOfFile = ( feof( procSelfCmdLineFile ) != 0 );
+            if ( ! reachedEndOfFile )
+            {
+                return "Failed to read full buffer from /proc/self/cmdline but feof() returned false";
+            }
+        }
+
+        ELASTIC_APM_FOR_EACH_INDEX( i, actuallyReadBytes )
+        {
+            if ( auxBuffer[ i ] == '\0' )
+            {
+                ++partsCount;
+                if ( partsCount == maxPartsCount )
+                {
+                    goto finally;
+                }
+                shouldPrefixWithSpace = true;
+                continue;
+            }
+
+            if ( shouldPrefixWithSpace )
+            {
+                streamChar( ' ', txtOutStream );
+                shouldPrefixWithSpace = false;
+            }
+
+            char bufferToEscape[ escapeNonPrintableCharBufferSize ];
+            streamPrintf( txtOutStream, "%s", escapeNonPrintableChar( auxBuffer[ i ], bufferToEscape ) );
+        }
+    }
+
+    finally:
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
+}
+#endif
+
+static
+String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutputStream* txtOutStream )
+{
+    if ( maxPartsCount == 0 )
+    {
+        return "";
+    }
+
+#ifdef PHP_WIN32
+    return "Not implemented on Windows";
+#else
+    FILE* procSelfCmdLineFile = procSelfCmdLineFile = fopen( "/proc/self/cmdline", "rb" );
+    if ( procSelfCmdLineFile == NULL )
+    {
+        return "Failed to open /proc/self/cmdline";
+    }
+
+    String retVal = streamCurrentProcessCommandLineExHelper( maxPartsCount, procSelfCmdLineFile, txtOutStream );
+    fclose( procSelfCmdLineFile );
+    return retVal;
+#endif
+}
+
+String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream )
+{
+    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ UINT_MAX, txtOutStream );
+}
+
+String streamCurrentProcessExeName( TextOutputStream* txtOutStream )
+{
+    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ 1, txtOutStream );
 }

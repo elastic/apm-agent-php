@@ -106,15 +106,76 @@ void capturing_stack_trace( void** testFixtureState )
 }
 #endif // ##if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
 
-int run_platform_tests()
+struct ElasticApmTestArgVC
 {
+    int argc;
+    const char* const* argv;
+};
+typedef struct ElasticApmTestArgVC ElasticApmTestArgVC;
+
+static
+String buildExpectedCommandLine( int argc, const char* const* argv, char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ] )
+{
+    TextOutputStream txtOutStream = makeTextOutputStream( txtOutStreamBuf, ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE );
+    txtOutStream.autoTermZero = false;
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    bool textOutputStreamStartEntryRetVal = textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart );
+    ELASTIC_APM_CMOCKA_ASSERT( textOutputStreamStartEntryRetVal );
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, argc )
+    {
+        if ( i != 0 )
+        {
+            streamChar( ' ', &txtOutStream );
+        }
+        streamPrintf( &txtOutStream, "%s", argv[ i ] );
+    }
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
+}
+
+void current_process_command_line( void** testFixtureState )
+{
+    const ElasticApmTestArgVC* const argVC = (ElasticApmTestArgVC*)(*testFixtureState);
+
+    {
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        String discoveredExeName = streamCurrentProcessExeName( &txtOutStream );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL(
+                argVC->argv[ 0 ], discoveredExeName
+                , "argv[ 0 ]: `%s'. discoveredExeName: `%s'."
+                , argVC->argv[ 0 ], discoveredExeName );
+    }
+
+    char expectedCmdLineOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    String expectedCmdLine = buildExpectedCommandLine( argVC->argc, argVC->argv, expectedCmdLineOutStreamBuf );
+
+    {
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        String discoveredCmdLine = streamCurrentProcessCommandLine( &txtOutStream );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL(
+                expectedCmdLine, discoveredCmdLine
+                , "expectedCmdLine: `%s'. discoveredCmdLine: `%s'."
+                , expectedCmdLine, discoveredCmdLine );
+    }
+}
+
+int run_platform_tests( int argc, const char* argv[] )
+{
+    const ElasticApmTestArgVC argVC = { .argc = argc, .argv = argv };
+
     const struct CMUnitTest tests [] =
     {
         ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( stream_errno_overflow ),
 #       if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
         ELASTIC_APM_CMOCKA_UNIT_TEST( capturing_stack_trace ),
-#       endif // ##if ( ELASTIC_APM_CAN_CAPTURE_STACK_TRACE_01 != 0 )
+#       endif
+#       ifndef PHP_WIN32
+        ELASTIC_APM_CMOCKA_UNIT_TEST_WITH_INITIAL_STATE( current_process_command_line, (void*)(&argVC) ),
+#       endif
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

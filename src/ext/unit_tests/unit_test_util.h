@@ -125,15 +125,18 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
 
 #define ELASTIC_APM_CMOCKA_FAIL() ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__, __LINE__, "" )
 
-#define ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, setupFunc, teardownFunc ) \
+#define ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, setupFunc, teardownFunc, initialState ) \
     ( struct CMUnitTest ) \
     { \
         .test_func = &(func), \
         .name = extractLastPartOfFilePathString( __FILE__  ": " ELASTIC_APM_PP_STRINGIZE( func ) ), \
-        .initial_state = NULL, \
-        .setup_func = setupFunc, \
-        .teardown_func = teardownFunc \
+        .initial_state = (initialState), \
+        .setup_func = (setupFunc), \
+        .teardown_func = (teardownFunc) \
     }
 
+#define ELASTIC_APM_CMOCKA_UNIT_TEST_WITH_INITIAL_STATE( func, initialState ) \
+    ELASTIC_APM_CMOCKA_UNIT_TEST_EX( (func), perTestDefaultSetup, perTestDefaultTeardown, /* initialState: */ (initialState) )
+
 #define ELASTIC_APM_CMOCKA_UNIT_TEST( func ) \
-    ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, perTestDefaultSetup, perTestDefaultTeardown )
+    ELASTIC_APM_CMOCKA_UNIT_TEST_WITH_INITIAL_STATE( func, /* initialState: */ NULL )
