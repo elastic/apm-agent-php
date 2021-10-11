@@ -23,6 +23,7 @@
 #   define CURL_STATICLIB
 #endif
 #include <curl/curl.h>
+#include "platform.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -179,7 +180,20 @@ ResultCode sendEventsToApmServer(
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        ELASTIC_APM_LOG_ERROR( "Sending events to APM Server failed. URL: `%s'. Error message: `%s'.", url, curl_easy_strerror( result ) );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        const bool canLogSecSensitive = canLogSecuritySensitive();
+        const String procCmdPartDesc = canLogSecSensitive ? "command line" : "exe name";
+        const String procCmdPart = canLogSecSensitive ? streamCurrentProcessCommandLine( &txtOutStream ) : streamCurrentProcessExeName( &txtOutStream );
+
+        ELASTIC_APM_LOG_ERROR(
+                "Sending events to APM Server failed."
+                " URL: `%s'."
+                " Error message: `%s'."
+                " Current process %s: `%s'"
+                , url
+                , curl_easy_strerror( result )
+                , procCmdPartDesc, procCmdPart );
         resultCode = resultFailure;
         goto failure;
     }

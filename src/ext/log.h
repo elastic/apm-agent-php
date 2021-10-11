@@ -195,6 +195,24 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
     return streamString( logLevelNames[ level ], txtOutStream );
 }
 
+static inline
+bool canLogSecuritySensitive()
+{
+    return getGlobalLogger()->maxEnabledLevel >= logLevel_debug;
+}
+
+static inline
+String logSecuritySensitiveOr( String securitySensitiveString, String notSecuritySensitiveAltString )
+{
+    return canLogSecuritySensitive() ? securitySensitiveString : notSecuritySensitiveAltString;
+}
+
+static inline
+String logSecuritySensitive( String securitySensitiveString )
+{
+    return logSecuritySensitiveOr( securitySensitiveString, /* notSecuritySensitiveAltString */ "REDACTED" );
+}
+
 #define ELASTIC_APM_LOG_CATEGORY_ASSERT "Assert"
 #define ELASTIC_APM_LOG_CATEGORY_AUTO_INSTRUMENT "Auto-Instrument"
 #define ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM "Backend-Comm"
