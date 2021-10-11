@@ -91,17 +91,17 @@ final class ConfigSettingTest extends ComponentTestCaseBase
 
         $durationRawToParsedValues = [
             "\t\n 10s \t " => 10 * 1000.0 /* <- in milliseconds */,
-            "\t  3m\n" => 3 * 60 * 1000.0 /* <- in milliseconds */,
-            'not valid'  => null,
+            "\t  3m\n"     => 3 * 60 * 1000.0 /* <- in milliseconds */,
+            'not valid'    => null,
         ];
 
         $intRawToParsedValues = [
             "\n\t 123 " => 123,
-            'not valid'  => null,
+            'not valid' => null,
         ];
 
         $doubleRawToParsedValues = [
-            " \t\n 0.5"           => 0.5,
+            " \t\n 0.5"        => 0.5,
             "not valid \t 0.5" => null,
         ];
 
@@ -112,8 +112,9 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         return [
             OptionNames::API_KEY                 => $stringRawToParsedValues(['my_api_key', "\t\n  my api key "]),
             OptionNames::ENABLED                 => $boolRawToParsedValues(/* valueToExclude: */ false),
-            OptionNames::ENVIRONMENT             => $stringRawToParsedValues([" my_environment \t "]),
             OptionNames::BREAKDOWN_METRICS       => $boolRawToParsedValues(),
+            OptionNames::DISABLE_SEND            => $boolRawToParsedValues(),
+            OptionNames::ENVIRONMENT             => $stringRawToParsedValues([" my_environment \t "]),
             OptionNames::HOSTNAME                => $stringRawToParsedValues([" \t my_hostname"]),
             OptionNames::LOG_LEVEL               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR        => $logLevelRawToParsedValues,

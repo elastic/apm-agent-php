@@ -97,6 +97,9 @@ final class Snapshot implements LoggableInterface
     private $breakdownMetrics;
 
     /** @var bool */
+    private $disableSend;
+
+    /** @var bool */
     private $enabled;
 
     /** @var ?string */
@@ -168,6 +171,11 @@ final class Snapshot implements LoggableInterface
     public function breakdownMetrics(): bool
     {
         return $this->breakdownMetrics;
+    }
+
+    public function disableSend(): bool
+    {
+        return $this->disableSend;
     }
 
     public function enabled(): bool

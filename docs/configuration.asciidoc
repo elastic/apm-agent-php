@@ -178,6 +178,31 @@ breakdown metrics, which can reduce the overhead of the agent.
 NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 [float]
+[[config-disable-send]]
+==== `disable_send`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_DISABLE_SEND` | `elastic_apm.disable_send`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| false       | Boolean
+|============
+
+If set to `true`, the agent will work as usual, except for any task requiring
+communication with the APM server. Events will be dropped and the agent won't be
+able to receive central configuration, which means that any other configuration
+cannot be changed in this state without restarting the service.  Example uses
+for this setting are: maintaining the ability to create traces and log
+trace/transaction/span IDs through the log correlation feature, and getting
+automatic distributed tracing via the https://w3c.github.io/trace-context/[W3C
+HTTP headers].
+
+[float]
 [[config-enabled]]
 ==== `enabled`
 

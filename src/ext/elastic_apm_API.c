@@ -207,7 +207,16 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
     goto finally;
 }
 
-ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView serializedMetadata, StringView serializedEvents )
+static inline bool longToBool( long longVal )
+{
+    return longVal != 0;
+}
+
+ResultCode elasticApmSendToServer(
+        long disableSend
+        , double serverTimeoutMilliseconds
+        , StringView serializedMetadata
+        , StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
@@ -215,7 +224,11 @@ ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView 
     Tracer* const tracer = getGlobalTracer();
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
-    sendEventsToApmServer( serverTimeoutMilliseconds, getTracerCurrentConfigSnapshot( tracer ), serializedEvents );
+    sendEventsToApmServer(
+            longToBool( disableSend )
+            , serverTimeoutMilliseconds
+            , getTracerCurrentConfigSnapshot( tracer )
+            , serializedEvents );
 
     resultCode = resultSuccess;
 
