@@ -182,18 +182,14 @@ ResultCode sendEventsToApmServer(
     {
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        const bool canLogSecSensitive = canLogSecuritySensitive();
-        const String procCmdPartDesc = canLogSecSensitive ? "command line" : "exe name";
-        const String procCmdPart = canLogSecSensitive ? streamCurrentProcessCommandLine( &txtOutStream ) : streamCurrentProcessExeName( &txtOutStream );
-
         ELASTIC_APM_LOG_ERROR(
                 "Sending events to APM Server failed."
                 " URL: `%s'."
                 " Error message: `%s'."
-                " Current process %s: `%s'"
+                " Current process command line: `%s'"
                 , url
                 , curl_easy_strerror( result )
-                , procCmdPartDesc, procCmdPart );
+                , streamCurrentProcessCommandLine( &txtOutStream ) );
         resultCode = resultFailure;
         goto failure;
     }
