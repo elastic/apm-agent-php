@@ -44,6 +44,9 @@ validate_if_agent_is_enabled() {
 }
 
 validate_installation() {
+    # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
+    export ELASTIC_APM_ENABLED=false
+
     ## Validate the installation works as expected with composer
     composer install
     syslogd
