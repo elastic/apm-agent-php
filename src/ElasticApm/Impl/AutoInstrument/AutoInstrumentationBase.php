@@ -19,10 +19,13 @@
  * under the License.
  */
 
+/** @noinspection PhpComposerExtensionStubsInspection */
+
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Tracer;
 
 /**
@@ -30,21 +33,44 @@ use Elastic\Apm\Impl\Tracer;
  *
  * @internal
  */
-final class BuiltinPlugin extends PluginBase
+abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, LoggableInterface
 {
+    use AutoInstrumentationTrait;
+
+    /** @var Tracer */
+    protected $tracer;
+
     public function __construct(Tracer $tracer)
     {
-        parent::__construct(
-            $tracer,
-            [
-                new CurlAutoInstrumentation($tracer),
-                new PdoAutoInstrumentation($tracer),
-            ]
-        );
+        $this->tracer = $tracer;
     }
 
-    public function getDescription(): string
+    /** @inheritDoc */
+    public function isEnabled(): bool
     {
-        return 'BUILT-IN';
+        $disabledInstrumentationsMatcher = $this->tracer->getConfig()->disableInstrumentations();
+        if ($disabledInstrumentationsMatcher === null) {
+            return true;
+        }
+
+        if ($disabledInstrumentationsMatcher->match($this->name()) !== null) {
+            return false;
+        }
+
+        foreach ($this->otherNames() as $otherName) {
+            if ($disabledInstrumentationsMatcher->match($otherName) !== null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return string[]
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return ['logger', 'tracer'];
     }
 }

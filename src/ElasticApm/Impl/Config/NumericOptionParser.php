@@ -61,8 +61,16 @@ abstract class NumericOptionParser extends OptionParser
         $this->maxValidValue = $maxValidValue;
     }
 
+    /**
+     * @return string
+     */
     abstract protected function dbgValueTypeDesc(): string;
 
+    /**
+     * @param string $rawValue
+     *
+     * @return bool
+     */
     abstract public static function isValidFormat(string $rawValue): bool;
 
     /**

@@ -36,6 +36,7 @@ final class OptionNames
 
     public const API_KEY = 'api_key';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
+    public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
     public const DISABLE_SEND = 'disable_send';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
