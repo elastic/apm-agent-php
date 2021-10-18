@@ -36,6 +36,9 @@ final class OptionNames
 
     public const API_KEY = 'api_key';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
+    public const DEV_INTERNAL = 'dev_internal';
+    public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
+    public const DISABLE_SEND = 'disable_send';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
     public const HOSTNAME = 'hostname';
@@ -48,6 +51,7 @@ final class OptionNames
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_NODE_NAME = 'service_node_name';
     public const SERVICE_VERSION = 'service_version';
+    public const TRANSACTION_IGNORE_URLS = 'transaction_ignore_urls';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';
     public const URL_GROUPS = 'url_groups';

@@ -35,4 +35,8 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
 void resetCallInterceptionOnRequestShutdown();
 
-ResultCode elasticApmSendToServer( double serverTimeoutMilliseconds, StringView serializedMetadata, StringView serializedEvents );
+ResultCode elasticApmSendToServer(
+        long disableSend
+        , double serverTimeoutMilliseconds
+        , StringView serializedMetadata
+        , StringView serializedEvents );

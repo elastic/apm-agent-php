@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -30,6 +32,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use Elastic\Apm\TransactionInterface;
 
 /**
@@ -56,7 +59,7 @@ final class TransactionForExtensionRequest
     /** @var ?UrlParts */
     private $urlParts = null;
 
-    /** @var TransactionInterface */
+    /** @var ?TransactionInterface */
     private $transactionForRequest;
 
     public function __construct(Tracer $tracer, float $requestInitStartTime)
@@ -66,22 +69,26 @@ final class TransactionForExtensionRequest
                                ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
-        if (!self::isCliScript()) {
-            $this->setTxPropsBasedOnHttpRequestData();
-        }
     }
 
-    private function beginTransaction(float $requestInitStartTime): TransactionInterface
+    private function beginTransaction(float $requestInitStartTime): ?TransactionInterface
     {
         if (!self::isCliScript()) {
-            $this->discoverHttpRequestData();
+            if (!$this->discoverHttpRequestData()) {
+                return null;
+            }
         }
         $name = self::isCliScript() ? $this->discoverCliName() : $this->discoverHttpName();
         $type = self::isCliScript() ? Constants::TRANSACTION_TYPE_CLI : Constants::TRANSACTION_TYPE_REQUEST;
         $timestamp = $this->discoverTimestamp($requestInitStartTime);
         $distributedTracingData = $this->discoverIncomingDistributedTracingData();
 
-        return $this->tracer->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
+        $tx = $this->tracer->beginCurrentTransaction($name, $type, $timestamp, $distributedTracingData);
+        if (!self::isCliScript() && !$tx->isNoop()) {
+            $this->setTxPropsBasedOnHttpRequestData($tx);
+        }
+
+        return $tx;
     }
 
     private static function isGlobalServerVarSet(): bool
@@ -99,7 +106,7 @@ final class TransactionForExtensionRequest
         return isset($_SERVER) && !empty($_SERVER);
     }
 
-    private function discoverHttpRequestData(): void
+    private function discoverHttpRequestData(): bool
     {
         if (!self::isGlobalServerVarSet()) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
@@ -119,16 +126,39 @@ final class TransactionForExtensionRequest
                     '$_SERVER variable is not populated even after forcing PHP engine to populate it'
                     . ' - agent will have to fallback on defaults'
                 );
-                return;
+                return true;
+            }
+        }
+
+        /** @var ?string */
+        $urlPath = null;
+        /** @var ?string */
+        $urlQuery = null;
+
+        $pathQuery = self::getMandatoryServerVarElement('REQUEST_URI');
+        if ($pathQuery !== null) {
+            UrlUtil::splitPathQuery($pathQuery, /* ref */ $urlPath, /* ref */ $urlQuery);
+            if ($urlPath === null) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Failed to extract path part from $_SERVER["REQUEST_URI"]',
+                    ['$_SERVER["REQUEST_URI"]' => $pathQuery]
+                );
+            } else {
+                if ($this->shouldHttpTransactionBeIgnored($urlPath)) {
+                    return false;
+                }
             }
         }
 
         $this->httpMethod = self::getMandatoryServerVarElement('REQUEST_METHOD');
 
         $this->urlParts = new UrlParts();
+        $this->urlParts->path = $urlPath;
+        $this->urlParts->query = $urlQuery;
 
         $serverHttps = self::getOptionalServerVarElement('HTTPS');
-        $this->urlParts->scheme = $serverHttps !== null && !empty($serverHttps) ? 'https' : 'http';
+        $this->urlParts->scheme = !empty($serverHttps) ? 'https' : 'http';
 
         $hostPort = self::getMandatoryServerVarElement('HTTP_HOST');
         if ($hostPort !== null) {
@@ -142,28 +172,34 @@ final class TransactionForExtensionRequest
             }
         }
 
-        $pathQuery = self::getMandatoryServerVarElement('REQUEST_URI');
-        if ($pathQuery !== null) {
-            UrlUtil::splitPathQuery(
-                $pathQuery,
-                /* ref */ $this->urlParts->path,
-                /* ref */ $this->urlParts->query
-            );
-            if ($this->urlParts->path === null) {
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log(
-                    'Failed to extract path part from $_SERVER["REQUEST_URI"]',
-                    ['$_SERVER["REQUEST_URI"]' => $pathQuery]
-                );
-            }
-        }
-
         $queryString = self::getOptionalServerVarElement('QUERY_STRING');
-        if ($queryString !== null && is_string($queryString)) {
+        if (is_string($queryString)) {
             $this->urlParts->query = $queryString;
         }
 
         $this->fullUrl = self::buildFullUrl($this->urlParts->scheme, $hostPort, $pathQuery);
+        return true;
+    }
+
+    private function shouldHttpTransactionBeIgnored(string $urlPath): bool
+    {
+        $ignoreMatcher = $this->tracer->getConfig()->transactionIgnoreUrls();
+        $matchedIgnoreExpr = WildcardListMatcher::matchNullable($ignoreMatcher, $urlPath);
+        if ($matchedIgnoreExpr !== null) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Transaction is ignored because its URL path matched ' . OptionNames::TRANSACTION_IGNORE_URLS
+                . ' configuration',
+                [
+                    'urlPath'                                               => $urlPath,
+                    'matched ignore expression'                             => $matchedIgnoreExpr,
+                    OptionNames::TRANSACTION_IGNORE_URLS . ' configuration' => $ignoreMatcher,
+                ]
+            );
+            return true;
+        }
+
+        return false;
     }
 
     private static function buildFullUrl(?string $scheme, ?string $hostPort, ?string $pathQuery): ?string
@@ -187,58 +223,96 @@ final class TransactionForExtensionRequest
         return $fullUrl;
     }
 
-    private function setTxPropsBasedOnHttpRequestData(): void
+    private function setTxPropsBasedOnHttpRequestData(TransactionInterface $tx): void
     {
         if ($this->httpMethod !== null) {
-            $this->transactionForRequest->context()->request()->setMethod($this->httpMethod);
+            $tx->context()->request()->setMethod($this->httpMethod);
         }
 
         if ($this->urlParts !== null) {
             if ($this->urlParts->host !== null) {
-                $this->transactionForRequest->context()->request()->url()->setDomain($this->urlParts->host);
+                $tx->context()->request()->url()->setDomain($this->urlParts->host);
             }
             if ($this->urlParts->path !== null) {
-                $this->transactionForRequest->context()->request()->url()->setPath($this->urlParts->path);
+                $tx->context()->request()->url()->setPath($this->urlParts->path);
             }
             if ($this->urlParts->port !== null) {
-                $this->transactionForRequest->context()->request()->url()->setPort($this->urlParts->port);
+                $tx->context()->request()->url()->setPort($this->urlParts->port);
             }
             if ($this->urlParts->scheme !== null) {
-                $this->transactionForRequest->context()->request()->url()->setProtocol($this->urlParts->scheme);
+                $tx->context()->request()->url()->setProtocol($this->urlParts->scheme);
             }
             if ($this->urlParts->query !== null) {
-                $this->transactionForRequest->context()->request()->url()->setQuery($this->urlParts->query);
+                $tx->context()->request()->url()->setQuery($this->urlParts->query);
             }
         }
 
         if ($this->fullUrl !== null) {
-            $this->transactionForRequest->context()->request()->url()->setFull($this->fullUrl);
-            $this->transactionForRequest->context()->request()->url()->setOriginal($this->fullUrl);
+            $tx->context()->request()->url()->setFull($this->fullUrl);
+            $tx->context()->request()->url()->setOriginal($this->fullUrl);
         }
     }
 
-    private function beforeHttpEnd(): void
+    private function beforeHttpEnd(TransactionInterface $tx): void
     {
-        if ($this->transactionForRequest->getResult() === null) {
-            $this->discoverHttpResult();
+        if ($tx->getResult() === null) {
+            $this->discoverHttpResult($tx);
         }
 
-        if ($this->transactionForRequest->getOutcome() === null) {
-            $this->discoverHttpOutcome();
+        if ($tx->getOutcome() === null) {
+            $this->discoverHttpOutcome($tx);
         }
+    }
+
+    private function logGcStatus(): void
+    {
+        if (!function_exists('gc_status')) {
+            return;
+        }
+
+        /** @phpstan-ignore-next-line */
+        $gcStatusRetVal = gc_status();
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Called gc_status()', ['gc_status() return value' => $gcStatusRetVal]);
     }
 
     public function onShutdown(): void
     {
-        if ($this->transactionForRequest->isNoop() || $this->transactionForRequest->hasEnded()) {
+        $tx = $this->transactionForRequest;
+        if ($tx === null || $tx->isNoop() || $tx->hasEnded()) {
             return;
         }
 
         if (!self::isCliScript()) {
-            $this->beforeHttpEnd();
+            $this->beforeHttpEnd($tx);
         }
 
-        $this->transactionForRequest->end();
+        $tx->end();
+
+        if ($this->tracer->getConfig()->devInternal()->gcCollectCyclesAfterEveryTransaction()) {
+            $this->logGcStatus();
+
+            $numberOfCollectedCycles = gc_collect_cycles();
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Called gc_collect_cycles() because ' . OptionNames::DEV_INTERNAL
+                . ' sub-option ' . DevInternalSubOptionNames::GC_COLLECT_CYCLES_AFTER_EVERY_TRANSACTION . ' is set',
+                ['numberOfCollectedCycles' => $numberOfCollectedCycles]
+            );
+
+            $this->logGcStatus();
+        }
+
+        if ($this->tracer->getConfig()->devInternal()->gcMemCachesAfterEveryTransaction()) {
+            $numberOfBytesFreed = gc_mem_caches();
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Called gc_mem_caches() because ' . OptionNames::DEV_INTERNAL
+                . ' sub-option ' . DevInternalSubOptionNames::GC_MEM_CACHES_AFTER_EVERY_TRANSACTION . ' is set',
+                ['numberOfBytesFreed' => $numberOfBytesFreed]
+            );
+        }
     }
 
     private static function isCliScript(): bool
@@ -308,7 +382,24 @@ final class TransactionForExtensionRequest
 
         $urlGroupsMatcher = $this->tracer->getConfig()->urlGroups();
         $urlPath = $this->urlParts->path;
-        $urlPathGroup = $urlGroupsMatcher === null ? $urlPath : ($urlGroupsMatcher->match($urlPath) ?? $urlPath);
+
+        $urlPathGroup = WildcardListMatcher::matchNullable($urlGroupsMatcher, $urlPath);
+        if ($urlPathGroup !== null) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'For transaction name URL path is mapped to matched URL group',
+                [
+                    'urlPath'                                  => $urlPath,
+                    'matched URL group'                        => $urlPathGroup,
+                    OptionNames::URL_GROUPS . ' configuration' => $urlGroupsMatcher,
+                ]
+            );
+        }
+
+        if ($urlPathGroup === null) {
+            $urlPathGroup = $urlPath;
+        }
+
         $name = ($this->httpMethod === null)
             ? $urlPathGroup
             : ($this->httpMethod . ' ' . $urlPathGroup);
@@ -379,7 +470,7 @@ final class TransactionForExtensionRequest
         return $statusCode;
     }
 
-    private function discoverHttpResult(): void
+    private function discoverHttpResult(TransactionInterface $tx): void
     {
         $httpStatusCode = $this->discoverHttpStatusCode();
         if ($httpStatusCode === null) {
@@ -388,7 +479,7 @@ final class TransactionForExtensionRequest
 
         $httpStatusCode100s = intdiv($httpStatusCode, 100);
         $result = 'HTTP ' . $httpStatusCode100s . 'xx';
-        $this->transactionForRequest->setResult($result);
+        $tx->setResult($result);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -397,7 +488,7 @@ final class TransactionForExtensionRequest
         );
     }
 
-    private function discoverHttpOutcome(): void
+    private function discoverHttpOutcome(TransactionInterface $tx): void
     {
         $httpStatusCode = $this->discoverHttpStatusCode();
         if ($httpStatusCode === null) {
@@ -407,7 +498,7 @@ final class TransactionForExtensionRequest
         $outcome = (500 <= $httpStatusCode && $httpStatusCode < 600)
             ? Constants::OUTCOME_FAILURE
             : Constants::OUTCOME_SUCCESS;
-        $this->transactionForRequest->setOutcome($outcome);
+        $tx->setOutcome($outcome);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(

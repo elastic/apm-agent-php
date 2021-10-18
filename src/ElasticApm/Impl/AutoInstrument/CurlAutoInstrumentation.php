@@ -26,7 +26,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Log\LogCategory;
-use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
@@ -36,10 +35,8 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  *
  * @internal
  */
-final class CurlAutoInstrumentation implements LoggableInterface
+final class CurlAutoInstrumentation extends AutoInstrumentationBase
 {
-    use AutoInstrumentationTrait;
-
     private const HANDLE_TRACKER_MAX_COUNT_HIGH_WATER_MARK = 2000;
     private const HANDLE_TRACKER_MAX_COUNT_LOW_WATER_MARK = 1000;
 
@@ -50,9 +47,6 @@ final class CurlAutoInstrumentation implements LoggableInterface
     public const CURL_EXEC_ID = 5;
     private const CURL_CLOSE_ID = 6;
 
-    /** @var Tracer */
-    private $tracer;
-
     /** @var Logger */
     private $logger;
 
@@ -61,7 +55,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     public function __construct(Tracer $tracer)
     {
-        $this->tracer = $tracer;
+        parent::__construct($tracer);
 
         $this->logger = $tracer->loggerFactory()->loggerForClass(
             LogCategory::AUTO_INSTRUMENTATION,
@@ -71,6 +65,19 @@ final class CurlAutoInstrumentation implements LoggableInterface
         )->addContext('this', $this);
     }
 
+    /** @inheritDoc */
+    public function name(): string
+    {
+        return InstrumentationNames::CURL;
+    }
+
+    /** @inheritDoc */
+    public function otherNames(): array
+    {
+        return [InstrumentationNames::HTTP_CLIENT];
+    }
+
+    /** @inheritDoc */
     public function register(RegistrationContextInterface $ctx): void
     {
         if (!extension_loaded('curl')) {
@@ -372,13 +379,5 @@ final class CurlAutoInstrumentation implements LoggableInterface
         && $loggerProxy->log('Removing from curl handle ID to CurlHandleTracker map...', ['handleId' => $handleId]);
 
         unset($this->handleIdToTracker[$handleId]);
-    }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return ['logger', 'tracer'];
     }
 }

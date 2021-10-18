@@ -67,7 +67,8 @@ final class TransactionTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties'])
-                ->withExpectedTransactionName('custom TX name')->withTransactionType('custom TX type'),
+                ->withExpectedTransactionName('custom TX name')
+                ->withExpectedTransactionType('custom TX type'),
             function (DataFromAgent $dataFromAgent): void {
                 $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
                 $this->assertLabelsCount(5, $tx);

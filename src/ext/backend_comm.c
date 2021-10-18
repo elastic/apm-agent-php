@@ -23,6 +23,7 @@
 #   define CURL_STATICLIB
 #endif
 #include <curl/curl.h>
+#include "platform.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -51,14 +52,27 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     } while ( false ) \
     /**/
 
-ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents )
+ResultCode sendEventsToApmServer(
+        bool disableSend
+        , double serverTimeoutMilliseconds
+        , const ConfigSnapshot* config
+        , StringView serializedEvents )
 {
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "Sending events to APM Server... serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "Sending events to APM Server..."
+            " disableSend: %s"
+            " serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
             " serializedEvents [length: %"PRIu64"]:\n%.*s"
+            , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+
+    if ( disableSend )
+    {
+        ELASTIC_APM_LOG_DEBUG( "disable_send (disableSend) configuration option is set to true - discarding events instead of sending" );
+        return resultSuccess;
+    }
 
     ResultCode resultCode;
     CURL* curl = NULL;
@@ -166,7 +180,16 @@ ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const Config
     result = curl_easy_perform( curl );
     if ( result != CURLE_OK )
     {
-        ELASTIC_APM_LOG_ERROR( "Sending events to APM Server failed. URL: `%s'. Error message: `%s'.", url, curl_easy_strerror( result ) );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR(
+                "Sending events to APM Server failed."
+                " URL: `%s'."
+                " Error message: `%s'."
+                " Current process command line: `%s'"
+                , url
+                , curl_easy_strerror( result )
+                , streamCurrentProcessCommandLine( &txtOutStream ) );
         resultCode = resultFailure;
         goto failure;
     }

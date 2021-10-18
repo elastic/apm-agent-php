@@ -703,8 +703,16 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
+    protected function verifyRootTransactionEx(TransactionData $rootTransaction): void
+    {
+    }
+
     protected function verifyRootTransaction(TransactionData $rootTransaction): void
     {
+        if (!$this->testProperties->shouldVerifyRootTransaction) {
+            return;
+        }
+
         $this->verifyRootTransactionName($rootTransaction->name);
         $this->verifyRootTransactionType($rootTransaction->type);
 
@@ -713,6 +721,8 @@ abstract class TestEnvBase implements LoggableInterface
         }
 
         $this->verifyRootTransactionContext($rootTransaction->context);
+
+        $this->verifyRootTransactionEx($rootTransaction);
     }
 
     protected function verifyRootTransactionName(string $rootTransactionName): void
@@ -722,11 +732,11 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
-    protected function verifyRootTransactionType(string $rootTransactionType): void
+    abstract protected function verifyRootTransactionType(string $rootTransactionType): void;
+
+    protected function verifyRootTransactionTypeImpl(string $rootTransactionType, string $default): void
     {
-        if (!is_null($this->testProperties->transactionType)) {
-            TestCase::assertSame($this->testProperties->transactionType, $rootTransactionType);
-        }
+        TestCase::assertSame($this->testProperties->expectedTransactionType ?? $default, $rootTransactionType);
     }
 
     protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void

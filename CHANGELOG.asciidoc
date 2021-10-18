@@ -21,6 +21,15 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.3.1]]
+=== v1.3.1 - 2021/10/18
+
+[float]
+==== Features
+* DISABLE_SEND configuration option: {pull}559[#559]
+* DISABLE_INSTRUMENTATIONS configuration option: {pull}565[#565]
+* DEV_INTERNAL configuration option: {pull}566[#566]
+
 [[release-notes-v1.3]]
 === v1.3 - 2021/09/01
 

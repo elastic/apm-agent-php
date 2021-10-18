@@ -59,7 +59,7 @@ int main( int argc, char* argv[] )
     failedTestsCount += run_util_tests();
     failedTestsCount += run_IntrusiveDoublyLinkedList_tests();
     failedTestsCount += run_TextOutputStream_tests();
-    failedTestsCount += run_platform_tests();
+    failedTestsCount += run_platform_tests( argc, argv );
     failedTestsCount += run_DynamicArray_tests();
     failedTestsCount += run_StringToStringMap_tests();
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )

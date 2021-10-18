@@ -104,6 +104,9 @@ PHP_INI_BEGIN()
     #endif
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND )
     ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENABLED )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_HOSTNAME )
@@ -127,6 +130,7 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS )
@@ -297,34 +301,42 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 3 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 4 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, disableSend, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serverTimeoutMilliseconds, IS_DOUBLE, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedMetadata, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedEvents, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 
 /* {{{ elastic_apm_send_to_server(
- *          float $serverTimeoutMilliseconds
- *          , string $serializedMetadata
- *          , string $serializedEvents ): bool
+ *          int $disableSend
+ *          float $serverTimeoutMilliseconds,
+ *          string $serializedMetadata,
+ *          string $serializedEvents ): bool
  */
 PHP_FUNCTION( elastic_apm_send_to_server )
 {
+    long disableSend = 0;
     double serverTimeoutMilliseconds = 0.0;
     char* serializedMetadata = NULL;
     size_t serializedMetadataLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
+    ResultCode resultCode;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 3, /* max_num_args: */ 3 )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 4, /* max_num_args: */ 4 )
+    Z_PARAM_LONG( disableSend )
     Z_PARAM_DOUBLE( serverTimeoutMilliseconds )
     Z_PARAM_STRING( serializedMetadata, serializedMetadataLength )
     Z_PARAM_STRING( serializedEvents, serializedEventsLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmSendToServer( serverTimeoutMilliseconds
-                                 , makeStringView( serializedMetadata, serializedMetadataLength )
-                                 , makeStringView( serializedEvents, serializedEventsLength ) ) == resultSuccess )
+    resultCode = elasticApmSendToServer(
+            disableSend
+            , serverTimeoutMilliseconds
+            , makeStringView( serializedMetadata, serializedMetadataLength )
+            , makeStringView( serializedEvents, serializedEventsLength ) );
+    if ( resultCode == resultSuccess )
     {
         RETURN_TRUE;
     }

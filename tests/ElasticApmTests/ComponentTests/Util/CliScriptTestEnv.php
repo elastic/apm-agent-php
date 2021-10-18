@@ -92,11 +92,7 @@ final class CliScriptTestEnv extends TestEnvBase
 
     protected function verifyRootTransactionType(string $rootTransactionType): void
     {
-        parent::verifyRootTransactionType($rootTransactionType);
-
-        if (is_null($this->testProperties->transactionType)) {
-            TestCase::assertSame(Constants::TRANSACTION_TYPE_CLI, $rootTransactionType);
-        }
+        parent::verifyRootTransactionTypeImpl($rootTransactionType, Constants::TRANSACTION_TYPE_CLI);
     }
 
     protected function verifyRootTransactionContext(?TransactionContextData $rootTransactionContext): void

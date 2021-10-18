@@ -562,6 +562,9 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, hostname )
@@ -585,6 +588,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionIgnoreUrls )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, urlGroups )
@@ -701,6 +705,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* defaultValue: */ true );
 
     ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            devInternal,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            disableInstrumentations,
+            ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            disableSend,
+            ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             enabled,
             ELASTIC_APM_CFG_OPT_NAME_ENABLED,
@@ -796,6 +818,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             serviceVersion,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            transactionIgnoreUrls,
+            ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(

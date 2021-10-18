@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -xe
 
+# Disable Elastic APM for any process outside the component tests to prevent noise in the logs
+export ELASTIC_APM_ENABLED=false
+
 PHP_INI=/usr/local/etc/php/php.ini
 make install
 echo 'extension=elastic_apm.so' > ${PHP_INI}

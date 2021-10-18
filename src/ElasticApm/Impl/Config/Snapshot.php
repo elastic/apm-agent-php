@@ -24,8 +24,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
@@ -78,7 +82,8 @@ final class Snapshot implements LoggableInterface
     //
     //             OptionNames::MY_NEW_OPTION => <my_new_option type>RawToParsedValues,
     //
-    //         to $optNameToRawToParsedValue in \ElasticApmTests\ComponentTests\ConfigSettingTest class
+    //         to return value of buildOptionNameToRawToValue()
+    //             in \ElasticApmTests\ComponentTests\ConfigSettingTest class
     //
     //
     //      7) Optionally add option specific test such as \ElasticApmTests\ComponentTests\ApiKeyTest
@@ -95,6 +100,18 @@ final class Snapshot implements LoggableInterface
 
     /** @var bool */
     private $breakdownMetrics;
+
+    /** @var ?WildcardListMatcher */
+    private $devInternal;
+
+    /** @var SnapshotDevInternal */
+    private $devInternalParsed;
+
+    /** @var ?WildcardListMatcher */
+    private $disableInstrumentations;
+
+    /** @var bool */
+    private $disableSend;
 
     /** @var bool */
     private $enabled;
@@ -129,6 +146,9 @@ final class Snapshot implements LoggableInterface
     /** @var ?string */
     private $serviceVersion;
 
+    /** @var ?WildcardListMatcher */
+    private $transactionIgnoreUrls;
+
     /** @var int */
     private $transactionMaxSpans;
 
@@ -146,10 +166,12 @@ final class Snapshot implements LoggableInterface
      *
      * @param array<string, mixed> $optNameToParsedValue
      */
-    public function __construct(array $optNameToParsedValue)
+    public function __construct(array $optNameToParsedValue, LoggerFactory $loggerFactory)
     {
         $this->optNameToParsedValue = $optNameToParsedValue;
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
+
+        $this->devInternalParsed = new SnapshotDevInternal($this->devInternal, $loggerFactory);
     }
 
     /**
@@ -165,6 +187,21 @@ final class Snapshot implements LoggableInterface
     public function breakdownMetrics(): bool
     {
         return $this->breakdownMetrics;
+    }
+
+    public function devInternal(): SnapshotDevInternal
+    {
+        return $this->devInternalParsed;
+    }
+
+    public function disableInstrumentations(): ?WildcardListMatcher
+    {
+        return $this->disableInstrumentations;
+    }
+
+    public function disableSend(): bool
+    {
+        return $this->disableSend;
     }
 
     public function enabled(): bool
@@ -207,6 +244,11 @@ final class Snapshot implements LoggableInterface
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
+    }
+
+    public function transactionIgnoreUrls(): ?WildcardListMatcher
+    {
+        return $this->transactionIgnoreUrls;
     }
 
     public function transactionMaxSpans(): int

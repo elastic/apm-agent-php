@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -16,6 +18,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.3.1"
+/** @noinspection PhpComposerExtensionStubsInspection */
+
+declare(strict_types=1);
+
+namespace Elastic\Apm\Impl\AutoInstrument;
+
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+interface AutoInstrumentationInterface
+{
+    /**
+     * @return string
+     */
+    public function name(): string;
+
+    /**
+     * @return string[]
+     */
+    public function otherNames(): array;
+
+    /**
+     * @return bool
+     */
+    public function isEnabled(): bool;
+
+    /**
+     * @param RegistrationContextInterface $ctx
+     */
+    public function register(RegistrationContextInterface $ctx): void;
+}

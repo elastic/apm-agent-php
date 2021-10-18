@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -412,6 +413,16 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function queueSpanDataToSend(SpanData $spanData): void
     {
+        if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Dropping span because '
+                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
+                . ' is set'
+            );
+            return;
+        }
+
         if ($this->hasEnded()) {
             $this->tracer->sendEventsToApmServer(
                 [$spanData],
@@ -474,12 +485,21 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $this->data->prepareForSerialization();
 
-        $this->tracer->sendEventsToApmServer(
-            $this->spansDataToSend,
-            $this->errorsDataToSend,
-            $this->breakdownMetricsPerTransaction,
-            $this->data
-        );
+        if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Dropping transaction because '
+                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
+                . ' is set'
+            );
+        } else {
+            $this->tracer->sendEventsToApmServer(
+                $this->spansDataToSend,
+                $this->errorsDataToSend,
+                $this->breakdownMetricsPerTransaction,
+                $this->data
+            );
+        }
 
         if ($this->tracer->getCurrentTransaction() === $this) {
             $this->tracer->resetCurrentTransaction();
