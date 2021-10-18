@@ -24,8 +24,12 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
@@ -98,6 +102,12 @@ final class Snapshot implements LoggableInterface
     private $breakdownMetrics;
 
     /** @var ?WildcardListMatcher */
+    private $devInternal;
+
+    /** @var SnapshotDevInternal */
+    private $devInternalParsed;
+
+    /** @var ?WildcardListMatcher */
     private $disableInstrumentations;
 
     /** @var bool */
@@ -156,10 +166,12 @@ final class Snapshot implements LoggableInterface
      *
      * @param array<string, mixed> $optNameToParsedValue
      */
-    public function __construct(array $optNameToParsedValue)
+    public function __construct(array $optNameToParsedValue, LoggerFactory $loggerFactory)
     {
         $this->optNameToParsedValue = $optNameToParsedValue;
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
+
+        $this->devInternalParsed = new SnapshotDevInternal($this->devInternal, $loggerFactory);
     }
 
     /**
@@ -175,6 +187,11 @@ final class Snapshot implements LoggableInterface
     public function breakdownMetrics(): bool
     {
         return $this->breakdownMetrics;
+    }
+
+    public function devInternal(): SnapshotDevInternal
+    {
+        return $this->devInternalParsed;
     }
 
     public function disableInstrumentations(): ?WildcardListMatcher

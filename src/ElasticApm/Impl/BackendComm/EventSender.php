@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\BackendComm;
 
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -110,18 +112,27 @@ final class EventSender implements EventSinkInterface
             ]
         );
 
-        /**
-         * elastic_apm_* functions are provided by the elastic_apm extension
-         *
-         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-         * @phpstan-ignore-next-line
-         */
-        \elastic_apm_send_to_server(
-            self::boolToInt($this->config->disableSend()),
-            $this->config->serverTimeout(),
-            $serializedMetadata,
-            $serializedEvents
-        );
+        if ($this->config->devInternal()->dropEventsBeforeSendCCode()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Dropping events because '
+                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENTS_BEFORE_SEND_C_CODE
+                . ' is set'
+            );
+        } else {
+            /**
+             * elastic_apm_* functions are provided by the elastic_apm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            \elastic_apm_send_to_server(
+                self::boolToInt($this->config->disableSend()),
+                $this->config->serverTimeout(),
+                $serializedMetadata,
+                $serializedEvents
+            );
+        }
     }
 
     private static function boolToInt(bool $boolVal): int

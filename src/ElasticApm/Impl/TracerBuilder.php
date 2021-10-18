@@ -120,6 +120,6 @@ final class TracerBuilder
         $parser = new ConfigParser($parsingLoggerFactory);
         $allOptsMeta = AllOptionsMetadata::get();
         $rawSnapshot = $rawSnapshotSource->currentSnapshot($allOptsMeta);
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot));
+        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $parsingLoggerFactory);
     }
 }

@@ -113,6 +113,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::API_KEY                  => $stringRawToParsedValues(['my_api_key', "\t\n  my api key "]),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
+            OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_INSTRUMENTATIONS => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND             => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT              => $stringRawToParsedValues([" my_environment \t "]),
