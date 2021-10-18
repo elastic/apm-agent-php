@@ -54,6 +54,15 @@ final class WildcardListMatcher
         return null;
     }
 
+    public static function matchNullable(?WildcardListMatcher $nullableMatcher, string $text): ?string
+    {
+        if ($nullableMatcher === null) {
+            return null;
+        }
+
+        return $nullableMatcher->match($text);
+    }
+
     public function __toString(): string
     {
         return implode(', ', $this->matchers);

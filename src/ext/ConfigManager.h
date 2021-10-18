@@ -68,6 +68,7 @@ enum OptionId
     #endif
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
+    optionId_devInternal,
     optionId_disableInstrumentations,
     optionId_disableSend,
     optionId_enabled,
@@ -117,6 +118,7 @@ struct ConfigSnapshot
     String apiKey;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
+    String devInternal;
     String disableInstrumentations;
     String disableSend;
     bool enabled;
@@ -240,6 +242,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
