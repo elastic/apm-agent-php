@@ -270,6 +270,7 @@ final class TransactionForExtensionRequest
             return;
         }
 
+        /** @phpstan-ignore-next-line */
         $gcStatusRetVal = gc_status();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
