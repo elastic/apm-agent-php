@@ -78,7 +78,8 @@ final class Snapshot implements LoggableInterface
     //
     //             OptionNames::MY_NEW_OPTION => <my_new_option type>RawToParsedValues,
     //
-    //         to $optNameToRawToParsedValue in \ElasticApmTests\ComponentTests\ConfigSettingTest class
+    //         to return value of buildOptionNameToRawToValue()
+    //             in \ElasticApmTests\ComponentTests\ConfigSettingTest class
     //
     //
     //      7) Optionally add option specific test such as \ElasticApmTests\ComponentTests\ApiKeyTest
@@ -95,6 +96,9 @@ final class Snapshot implements LoggableInterface
 
     /** @var bool */
     private $breakdownMetrics;
+
+    /** @var ?WildcardListMatcher */
+    private $disableInstrumentations;
 
     /** @var bool */
     private $disableSend;
@@ -171,6 +175,11 @@ final class Snapshot implements LoggableInterface
     public function breakdownMetrics(): bool
     {
         return $this->breakdownMetrics;
+    }
+
+    public function disableInstrumentations(): ?WildcardListMatcher
+    {
+        return $this->disableInstrumentations;
     }
 
     public function disableSend(): bool

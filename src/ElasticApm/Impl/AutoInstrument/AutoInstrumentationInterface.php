@@ -19,34 +19,36 @@
  * under the License.
  */
 
+/** @noinspection PhpComposerExtensionStubsInspection */
+
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl\AutoInstrument;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends NumericOptionParser<float>
  */
-final class FloatOptionParser extends NumericOptionParser
+interface AutoInstrumentationInterface
 {
-    /** @inheritDoc */
-    protected function dbgValueTypeDesc(): string
-    {
-        return 'float';
-    }
+    /**
+     * @return string
+     */
+    public function name(): string;
 
-    /** @inheritDoc */
-    public static function isValidFormat(string $rawValue): bool
-    {
-        return filter_var($rawValue, FILTER_VALIDATE_FLOAT) !== false;
-    }
+    /**
+     * @return string[]
+     */
+    public function otherNames(): array;
 
-    /** @inheritDoc */
-    protected function stringToNumber(string $rawValue)
-    {
-        return floatval($rawValue);
-    }
+    /**
+     * @return bool
+     */
+    public function isEnabled(): bool;
+
+    /**
+     * @param RegistrationContextInterface $ctx
+     */
+    public function register(RegistrationContextInterface $ctx): void;
 }

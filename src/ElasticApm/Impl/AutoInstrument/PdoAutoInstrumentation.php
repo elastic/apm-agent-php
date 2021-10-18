@@ -28,7 +28,6 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
-use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\SpanInterface;
@@ -40,21 +39,18 @@ use PDOStatement;
  *
  * @internal
  */
-final class PdoAutoInstrumentation implements LoggableInterface
+final class PdoAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
     private const ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY = 'elastic_apm_DB_span_subtype';
-
-    /** @var Tracer */
-    private $tracer;
 
     /** @var Logger */
     private $logger;
 
     public function __construct(Tracer $tracer)
     {
-        $this->tracer = $tracer;
+        parent::__construct($tracer);
 
         $this->logger = $tracer->loggerFactory()->loggerForClass(
             LogCategory::AUTO_INSTRUMENTATION,
@@ -64,6 +60,19 @@ final class PdoAutoInstrumentation implements LoggableInterface
         )->addContext('this', $this);
     }
 
+    /** @inheritDoc */
+    public function name(): string
+    {
+        return InstrumentationNames::PDO;
+    }
+
+    /** @inheritDoc */
+    public function otherNames(): array
+    {
+        return [InstrumentationNames::DB];
+    }
+
+    /** @inheritDoc */
     public function register(RegistrationContextInterface $ctx): void
     {
         if (!extension_loaded('pdo')) {
@@ -298,9 +307,7 @@ final class PdoAutoInstrumentation implements LoggableInterface
                 /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
             ): ?callable {
                 $statement = (
-                    !is_null($interceptedCallThis)
-                    && is_object($interceptedCallThis)
-                    && $interceptedCallThis instanceof PDOStatement
+                    $interceptedCallThis instanceof PDOStatement
                     && isset($interceptedCallThis->queryString)
                     && is_string($interceptedCallThis->queryString)
                 )
@@ -318,13 +325,5 @@ final class PdoAutoInstrumentation implements LoggableInterface
                 return self::createPostHookFromEndSpan($span);
             }
         );
-    }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return ['logger', 'tracer'];
     }
 }

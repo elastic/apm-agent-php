@@ -562,6 +562,7 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
@@ -701,6 +702,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             breakdownMetrics,
             ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS,
             /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            disableInstrumentations,
+            ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

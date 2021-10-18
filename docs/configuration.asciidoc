@@ -178,6 +178,30 @@ breakdown metrics, which can reduce the overhead of the agent.
 NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 [float]
+[[config-disable-instrumentations]]
+==== `disable_instrumentations`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_DISABLE_INSTRUMENTATIONS` | `elastic_apm.disable_instrumentations`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| empty list       | List of strings
+|============
+
+A comma-separated list of wildcard expressions to match
+instrumentation names which should be disabled.
+When an instrumentation is disabled, no spans will be created for that instrumentation.
+An instrumentation may match more than one name -
+for example PDO instrumentation matches both `db` and  `pdo`.
+
+Valid instrumentation names are `curl`, `db`, `http-client`, `pdo`.
+
+[float]
 [[config-disable-send]]
 ==== `disable_send`
 
@@ -199,8 +223,7 @@ able to receive central configuration, which means that any other configuration
 cannot be changed in this state without restarting the service.  Example uses
 for this setting are: maintaining the ability to create traces and log
 trace/transaction/span IDs through the log correlation feature, and getting
-automatic distributed tracing via the https://w3c.github.io/trace-context/[W3C
-HTTP headers].
+automatic distributed tracing via the https://w3c.github.io/trace-context/[W3C HTTP headers].
 
 [float]
 [[config-enabled]]

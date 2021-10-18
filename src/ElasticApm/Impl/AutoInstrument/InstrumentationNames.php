@@ -21,32 +21,21 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl\AutoInstrument;
+
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends NumericOptionParser<float>
  */
-final class FloatOptionParser extends NumericOptionParser
+final class InstrumentationNames
 {
-    /** @inheritDoc */
-    protected function dbgValueTypeDesc(): string
-    {
-        return 'float';
-    }
+    use StaticClassTrait;
 
-    /** @inheritDoc */
-    public static function isValidFormat(string $rawValue): bool
-    {
-        return filter_var($rawValue, FILTER_VALIDATE_FLOAT) !== false;
-    }
-
-    /** @inheritDoc */
-    protected function stringToNumber(string $rawValue)
-    {
-        return floatval($rawValue);
-    }
+    public const DB = 'db';
+    public const CURL = 'curl';
+    public const HTTP_CLIENT = 'http-client';
+    public const PDO = 'pdo';
 }
