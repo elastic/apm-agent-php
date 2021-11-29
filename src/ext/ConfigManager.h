@@ -66,6 +66,7 @@ enum OptionId
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
+    optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
     optionId_devInternal,
@@ -116,6 +117,7 @@ struct ConfigSnapshot
     AssertLevel assertLevel;
         #endif
     String apiKey;
+    bool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
     String devInternal;
@@ -240,6 +242,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
+#define ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM "async_backend_comm"
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"

@@ -47,7 +47,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
     if ( config->bootstrapPhpPartFile == NULL )
     {
-        // For now we don't consider `bootstrap_php_part_file' option not being set as a failure
+        // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
         ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
@@ -93,7 +93,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
 
     if ( config->bootstrapPhpPartFile == NULL )
     {
-        // For now we don't consider `bootstrap_php_part_file' option not being set as a failure
+        // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
         ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
@@ -201,7 +201,6 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
             callPhpFunctionRetVoid(
                     ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
                     , logLevel_debug
-                    // The only argument to PHP part's interceptedCallPostHook() is $returnValueOrThrown
                     , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
                     , phpPartArgs ) );
     ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
@@ -211,7 +210,10 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
     finally:
 
     ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( resultCode == resultSuccess ? logLevel_trace : logLevel_error
-                                                  , "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+                                                  , "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u."
+                                                    " resultCode: %s (%d)."
+                                                  , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown )
+                                                  , resultCodeToString( resultCode ), resultCode );
     ELASTIC_APM_UNUSED( resultCode );
     return;
 

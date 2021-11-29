@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
-use RuntimeException;
 
 final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {

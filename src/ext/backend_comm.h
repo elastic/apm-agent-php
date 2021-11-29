@@ -23,8 +23,12 @@
 #include "ConfigManager.h"
 #include "ResultCode.h"
 
+ResultCode startBackgroundBackendComm( const ConfigSnapshot* config );
+
 ResultCode sendEventsToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
         , const ConfigSnapshot* config
         , StringView serializedEvents );
+
+void stopBackgroundBackendComm();

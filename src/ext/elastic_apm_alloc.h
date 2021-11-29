@@ -82,7 +82,7 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 
 #define ELASTIC_APM_PHP_ALLOC_IF_FAILED_DO_EX( type, isString, requestedSize, isPersistent, outPtr, doOnFailure ) \
     do { \
-        size_t actuallyRequestedSize = requestedSize; \
+        size_t actuallyRequestedSize = (requestedSize); \
         \
         ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_BEFORE( requestedSize ) \
         \
@@ -240,3 +240,29 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
 
 #define ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( stringBufferSizeInclTermZero, ptr ) \
     ELASTIC_APM_PEFREE_ARRAY_AND_SET_TO_NULL( char, stringBufferSizeInclTermZero, ptr )
+
+#define ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSize, outPtr, doOnFailure ) \
+    do { \
+        void* mallocIfFailedDoExPtr = malloc( requestedSize ); \
+        if ( mallocIfFailedDoExPtr == NULL ) \
+        { \
+            resultCode = resultOutOfMemory; \
+            doOnFailure; \
+        } \
+        (outPtr) = (type*)(mallocIfFailedDoExPtr); \
+    } while ( 0 )
+
+#define ELASTIC_APM_MALLOC_IF_FAILED_GOTO_EX( type, requestedSize, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSize, outPtr, /* doOnFailure: */ goto failure )
+
+#define ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_GOTO_EX( type, sizeof( type ), outPtr )
+
+#define ELASTIC_APM_FREE_AND_SET_TO_NULL( type, requestedSize, ptr ) \
+    do { \
+        free( (void*)(ptr) ); \
+        (ptr) = (type*)(NULL); \
+    } while ( 0 )
+
+#define ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
+    ELASTIC_APM_FREE_AND_SET_TO_NULL( type, sizeof( type ), ptr )
