@@ -134,6 +134,8 @@ void elasticApmModuleInit( int type, int moduleNumber )
     }
     tracer->curlInited = true;
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( startBackgroundBackendComm( config ) );
+
     resultCode = resultSuccess;
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 
@@ -166,6 +168,8 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
         ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
+
+    stopBackgroundBackendComm();
 
     if ( tracer->curlInited )
     {

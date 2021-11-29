@@ -34,6 +34,7 @@
 #include "basic_macros.h"
 #include "TextOutputStream.h"
 #include "ResultCode.h"
+#include "platform_threads.h"
 
 #ifdef PHP_WIN32
 typedef int pid_t;

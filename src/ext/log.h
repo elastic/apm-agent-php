@@ -110,7 +110,7 @@ void logWithLogger(
         , StringView filePath
         , UInt lineNumber
         , StringView funcName
-        , String msgPrintfFmt /* <- printf format is argument #7 */
+        , String msgPrintfFmt /* <- printf format is argument #8 */
         , ...                /* <- arguments for printf format placeholders start from argument #9 */
 ) ELASTIC_APM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 8, /* printfFmtArgsPos: */ 9 );
 

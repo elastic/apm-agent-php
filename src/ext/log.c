@@ -631,7 +631,7 @@ void logWithLogger(
             va_end( msgPrintfFmtArgs );
 }
 
-void vLogWithLogger(
+void vLogWithLoggerImpl(
         Logger* logger
         , bool isForced
         , LogLevel statementLevel
@@ -707,6 +707,56 @@ void vLogWithLogger(
 
     ELASTIC_APM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
     -- logger->reentrancyDepth;
+}
+
+
+static Mutex* g_logMutex = NULL;
+static __thread bool g_isInLogContext = false;
+
+void vLogWithLogger(
+        Logger* logger
+        , bool isForced
+        , LogLevel statementLevel
+        , StringView category
+        , StringView filePath
+        , UInt lineNumber
+        , StringView funcName
+        , String msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+)
+{
+    if ( g_isInLogContext )
+    {
+        #ifndef PHP_WIN32
+        syslog( LOG_ERR, "Trying to re-enter logging" );
+        #endif
+        return;
+    }
+
+    g_isInLogContext = true;
+
+    if ( lockMutex( g_logMutex, __FUNCTION__ ) != resultSuccess )
+    {
+        goto finally;
+    }
+
+    vLogWithLoggerImpl( logger
+                        , isForced
+                        , statementLevel
+                        , category
+                        , filePath
+                        , lineNumber
+                        , funcName
+                        , msgPrintfFmt
+                        , msgPrintfFmtArgs );
+
+    if ( unlockMutex( g_logMutex, __FUNCTION__ ) != resultSuccess )
+    {
+        goto finally;
+    }
+
+    finally:
+    g_isInLogContext = false;
 }
 
 static
@@ -856,6 +906,11 @@ ResultCode constructLogger( Logger* logger )
 
     ResultCode resultCode;
 
+    if ( g_logMutex == NULL )
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &g_logMutex, "global logger" ) );
+    }
+
     setLoggerConfigToDefaults( &( logger->config ) );
     logger->maxEnabledLevel = calcMaxEnabledLogLevel( logger->config.levelPerSinkType );
     logger->messageBuffer = NULL;
@@ -881,6 +936,11 @@ void destructLogger( Logger* logger )
 
     ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
     ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
+
+    if ( g_logMutex != NULL )
+    {
+        deleteMutex( &g_logMutex );
+    }
 }
 
 Logger* getGlobalLogger()
