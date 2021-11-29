@@ -44,7 +44,12 @@ ResultCode loadPhpFile( const char* filename )
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
+    #if PHP_VERSION_ID >= 80100 /* if PHP version is 8.1.0 and later */
+        ret = php_stream_open_for_zend_ex( &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
+    #else
+        ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
+    #endif
+
     if ( ret != SUCCESS )
     {
         ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
