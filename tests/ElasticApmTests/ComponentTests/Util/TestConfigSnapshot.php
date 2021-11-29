@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Config\SnapshotTrait;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -49,6 +50,9 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var bool */
     public $deleteTempPhpIni;
 
+    /** @var ?WildcardListMatcher */
+    public $envVarsToPassThrough;
+
     /** @var int */
     public $logLevel;
 
@@ -69,5 +73,14 @@ final class TestConfigSnapshot implements LoggableInterface
         $this->sharedDataPerRequest = new SharedDataPerRequest();
 
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
+    }
+
+    public function isEnvVarToPassThrough(string $envVarName): bool
+    {
+        if ($this->envVarsToPassThrough === null) {
+            return false;
+        }
+
+        return $this->envVarsToPassThrough->match($envVarName) !== null;
     }
 }

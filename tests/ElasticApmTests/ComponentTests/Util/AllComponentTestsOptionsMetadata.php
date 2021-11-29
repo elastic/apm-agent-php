@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
 use Elastic\Apm\Impl\Config\LogLevelOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
+use Elastic\Apm\Impl\Config\NullableWildcardListOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionMetadata;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Util\JsonUtil;
@@ -65,6 +66,7 @@ final class AllComponentTestsOptionsMetadata
                 'app_code_php_exe'                        => new NullableStringOptionMetadata(),
                 self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
                 'delete_temp_php_ini'                     => new BoolOptionMetadata(true),
+                'env_vars_to_pass_through'                => new NullableWildcardListOptionMetadata(),
                 'log_level'                               => new LogLevelOptionMetadata(LogLevel::DEBUG),
                 self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                     function (string $rawValue): SharedDataPerProcess {
