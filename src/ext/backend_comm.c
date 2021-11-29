@@ -221,6 +221,8 @@ typedef struct DataToSendNode DataToSendNode;
 
 struct DataToSendNode
 {
+    UInt64 id;
+
     DataToSendNode* prev;
     DataToSendNode* next;
 
@@ -255,6 +257,7 @@ static void initBufferQueue( DataToSendQueue* dataQueue )
 }
 
 static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
+                                            , UInt64 id
                                             , bool disableSend
                                             , double serverTimeoutMilliseconds
                                             , StringView serializedEvents )
@@ -276,11 +279,13 @@ static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
     newNode->serializedEvents.begin = dataCopy;
     newNode->serializedEvents.length = serializedEvents.length;
 
+    newNode->id = id;
     newNode->disableSend = disableSend;
     newNode->serverTimeoutMilliseconds = serverTimeoutMilliseconds;
 
     newNode->next = &( dataQueue->tail );
     newNode->prev = dataQueue->tail.prev;
+    dataQueue->tail.prev->next = newNode;
     dataQueue->tail.prev = newNode;
 
     finally:
@@ -338,6 +343,7 @@ struct BackgroundBackendComm
     Thread* thread;
     DataToSendQueue dataToSendQueue;
     size_t dataToSendQueueSize;
+    size_t nextId;
     bool shouldExit;
 
 };
@@ -353,20 +359,50 @@ void* backgroundBackendCommThreadFunc( void* arg )
     ELASTIC_APM_ASSERT_VALID_PTR( arg );
 
     ResultCode resultCode;
+    bool shouldUnlockMutex = false;
     BackgroundBackendComm* backgroundBackendComm = (BackgroundBackendComm*)arg;
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( getGlobalTracer() );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( backgroundBackendComm->mutex, __FUNCTION__ ) );
+    shouldUnlockMutex = true;
 
     while ( true )
     {
+        ELASTIC_APM_LOG_TRACE( "Loop iteration."
+                               " dataToSendQueueSize: %"PRIu64
+                               "; isDataToSendQueueEmpty: %s"
+                               , (UInt64) backgroundBackendComm->dataToSendQueueSize
+                               , boolToString( isDataToSendQueueEmpty( &( backgroundBackendComm->dataToSendQueue ) ) ) );
+
         while ( ! isDataToSendQueueEmpty( &( backgroundBackendComm->dataToSendQueue ) ) )
         {
             const DataToSendNode* nodeToSend = getFirstInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
-            ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServer( nodeToSend->disableSend
-                                                                        , nodeToSend->serverTimeoutMilliseconds
-                                                                        , config
-                                                                        , nodeToSend->serializedEvents ) );
+
+            ELASTIC_APM_LOG_DEBUG(
+                    "First batch of events to send"
+                    "; batch ID: %"PRIu64
+                    "; batch size: %"PRIu64
+                    "; total size of queued events: %"PRIu64
+                    , (UInt64) nodeToSend->id
+                    , (UInt64) nodeToSend->serializedEvents.length
+                    , (UInt64) backgroundBackendComm->dataToSendQueueSize );
+
+            resultCode = syncSendEventsToApmServer( nodeToSend->disableSend
+                                                    , nodeToSend->serverTimeoutMilliseconds
+                                                    , config
+                                                    , nodeToSend->serializedEvents );
+            if ( resultCode != resultSuccess )
+            {
+                ELASTIC_APM_LOG_ERROR(
+                        "Failed to send batch of events - the batch will be dequeued and dropped"
+                        "; batch ID: %"PRIu64
+                        "; batch size: %"PRIu64
+                        "; total size of queued events: %"PRIu64
+                        , (UInt64) nodeToSend->id
+                        , (UInt64) nodeToSend->serializedEvents.length
+                        , (UInt64) backgroundBackendComm->dataToSendQueueSize );
+            }
+
             backgroundBackendComm->dataToSendQueueSize -= nodeToSend->serializedEvents.length;
             removeFirstFromDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
         }
@@ -380,8 +416,11 @@ void* backgroundBackendCommThreadFunc( void* arg )
     }
 
     finally:
-    unlockMutex( backgroundBackendComm->mutex, __FUNCTION__ );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Ended" );
+    if ( shouldUnlockMutex )
+    {
+        unlockMutex( backgroundBackendComm->mutex, __FUNCTION__ );
+    }
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
     return NULL;
 
     failure:
@@ -436,6 +475,7 @@ ResultCode startBackgroundBackendComm( const ConfigSnapshot* config )
     backgroundBackendComm->shouldExit = false;
     initBufferQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendQueueSize = 0;
+    backgroundBackendComm->nextId = 1;
     backgroundBackendComm->condVar = NULL;
     backgroundBackendComm->mutex = NULL;
     backgroundBackendComm->thread = NULL;
@@ -460,6 +500,8 @@ ResultCode startBackgroundBackendComm( const ConfigSnapshot* config )
 
 void stopBackgroundBackendComm()
 {
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendComm %s NULL", g_backgroundBackendComm == NULL ? "==" : "!=" );
+
     if ( g_backgroundBackendComm == NULL )
     {
         return;
@@ -510,7 +552,7 @@ ResultCode queueEventsToSendToApmServer(
 
     if ( g_backgroundBackendComm->dataToSendQueueSize >= ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES )
     {
-        ELASTIC_APM_LOG_DEBUG(
+        ELASTIC_APM_LOG_ERROR(
                 "Already queued events are above max queue size - dropping these events"
                 "; size of already queued events: %"PRIu64
                 , (UInt64) g_backgroundBackendComm->dataToSendQueueSize );
@@ -518,13 +560,25 @@ ResultCode queueEventsToSendToApmServer(
         goto failure;
     }
 
+    const UInt64 id = g_backgroundBackendComm->nextId;
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             addCopyToDataToSendQueue( &( g_backgroundBackendComm->dataToSendQueue )
+                                      , id
                                       , disableSend
                                       , serverTimeoutMilliseconds
                                       , serializedEvents ) );
 
+    ++g_backgroundBackendComm->nextId;
     g_backgroundBackendComm->dataToSendQueueSize += serializedEvents.length;
+
+    ELASTIC_APM_LOG_DEBUG(
+            "Queued a batch of events"
+            "; batch ID: %"PRIu64
+            "; batch size: %"PRIu64
+            "; total size of queued events: %"PRIu64
+            , (UInt64) id
+            , (UInt64) serializedEvents.length
+            , (UInt64) g_backgroundBackendComm->dataToSendQueueSize );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( signalConditionVariable( g_backgroundBackendComm->condVar, __FUNCTION__ ) );
 
@@ -559,6 +613,16 @@ ResultCode sendEventsToApmServer(
         , const ConfigSnapshot* config
         , StringView serializedEvents )
 {
+    long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
+    ELASTIC_APM_LOG_DEBUG(
+            "Handling request to send events..."
+            " disableSend: %s"
+            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            , boolToString( disableSend )
+            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+            , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+
     if ( ! config->asyncBackendComm )
     {
         ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is set to false - sending events synchronously" );

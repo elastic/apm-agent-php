@@ -198,6 +198,7 @@ abstract class TestEnvBase implements LoggableInterface
         return array_filter(
             $envVars,
             function (string $envVarName): bool {
+                // Return false for entries to be removed
                 return
                     TextUtil::isPrefixOf(
                         TestConfigUtil::ENV_VAR_NAME_PREFIX,
@@ -209,6 +210,7 @@ abstract class TestEnvBase implements LoggableInterface
                         $envVarName,
                         false /* <- isCaseSensitive */
                     )
+                    || AmbientContext::testConfig()->isEnvVarToPassThrough($envVarName)
                     || !TextUtil::isPrefixOf(
                         EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
                         $envVarName,

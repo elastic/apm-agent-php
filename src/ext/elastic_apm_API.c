@@ -224,11 +224,11 @@ ResultCode elasticApmSendToServer(
     Tracer* const tracer = getGlobalTracer();
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
-    sendEventsToApmServer(
-            longToBool( disableSend )
-            , serverTimeoutMilliseconds
-            , getTracerCurrentConfigSnapshot( tracer )
-            , serializedEvents );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+            sendEventsToApmServer( longToBool( disableSend )
+                                   , serverTimeoutMilliseconds
+                                   , getTracerCurrentConfigSnapshot( tracer )
+                                   , serializedEvents ) );
 
     resultCode = resultSuccess;
 

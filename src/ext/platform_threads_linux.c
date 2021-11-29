@@ -87,6 +87,8 @@ void joinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const 
     }
 
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( Thread, *threadOutPtr );
+
+    ELASTIC_APM_LOG_TRACE( "Joined thread. thread dbg desc %s; call dbg desc: %s", (*threadOutPtr)->dbgDesc, dbgDesc );
 }
 
 struct Mutex
@@ -151,7 +153,7 @@ ResultCode lockMutex( Mutex* mtx, const char* dbgDesc )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
 
-    ELASTIC_APM_LOG_TRACE( "Locking mutex... mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "Locking mutex... mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -166,6 +168,7 @@ ResultCode lockMutex( Mutex* mtx, const char* dbgDesc )
         return resultFailure;
     }
 
+    ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
     return resultSuccess;
 }
 
@@ -270,6 +273,7 @@ ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const 
         return resultFailure;
     }
 
+    ELASTIC_APM_LOG_TRACE( "Done waiting condition variable. condition variable dbg desc %s; call dbg desc: %s", condVar->dbgDesc, dbgDesc );
     return resultSuccess;
 }
 
