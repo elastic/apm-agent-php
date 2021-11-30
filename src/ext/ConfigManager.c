@@ -697,7 +697,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildBoolOptionMetadata,
             asyncBackendComm,
             ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM,
-            /* defaultValue: */ true );
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
