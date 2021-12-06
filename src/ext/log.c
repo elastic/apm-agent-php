@@ -887,6 +887,10 @@ void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel 
     LoggerConfig derivedNewConfig = *newConfig;
     deriveLoggerConfig( newConfig, generalLevel, &derivedNewConfig );
 
+    #ifndef PHP_WIN32
+    derivedNewConfig.levelPerSinkType[ logSink_syslog ] = logLevel_debug;
+    #endif
+
     if ( areEqualLoggerConfigs( &logger->config, &derivedNewConfig ) )
     {
         ELASTIC_APM_LOG_DEBUG( "Logger configuration did not change" );

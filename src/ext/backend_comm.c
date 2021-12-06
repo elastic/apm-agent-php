@@ -529,7 +529,7 @@ void stopBackgroundBackendComm()
 }
 
 static
-ResultCode queueEventsToSendToApmServer(
+ResultCode enqueueEventsToSendToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
         , StringView serializedEvents )
@@ -632,5 +632,5 @@ ResultCode sendEventsToApmServer(
                                           , serializedEvents );
     }
 
-    return queueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, serializedEvents );
+    return enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, serializedEvents );
 }
