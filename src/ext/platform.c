@@ -32,8 +32,11 @@
 #else
 #   include <unistd.h>
 #   include <sys/syscall.h>
+#   include <syslog.h>
+#   include <signal.h>
 #endif
 #include "util.h"
+#include "log.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
@@ -307,3 +310,92 @@ String streamCurrentProcessExeName( TextOutputStream* txtOutStream )
 {
     return streamCurrentProcessCommandLineEx( /* maxPartsCount */ 1, txtOutStream );
 }
+
+#ifndef PHP_WIN32
+static String osSignalIdToName( int signalId )
+{
+    #define ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( sigIdForSwitchCase ) case sigIdForSwitchCase: return #sigIdForSwitchCase;
+
+    switch ( signalId )
+    {
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGQUIT )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGABRT )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGBUS )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGKILL )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGSEGV )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGTERM )
+        ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE( SIGSTOP )
+        default: return "UNKNOWN OS SIGNAL ID";
+    }
+
+    #undef ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE
+}
+
+#define ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( fmt, ... ) \
+    do { \
+        syslog( LOG_CRIT, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[PID: %d] [CRITICAL] " fmt, getCurrentProcessId(), ##__VA_ARGS__ ); \
+    } while ( 0 )
+
+
+#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+void writeStackTraceToSyslog()
+{
+    enum { maxStackTraceAddressesCount = 100 };
+    void* stackTraceAddresses[ maxStackTraceAddressesCount ];
+    int stackTraceAddressesCount = backtrace( stackTraceAddresses, maxStackTraceAddressesCount );
+    if ( stackTraceAddressesCount == 0 )
+    {
+        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "backtrace returned 0 (i.e., failed to get any address on the stack)\n" );
+        return;
+    }
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
+        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d address: %p\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddresses[ i ] );
+
+    char** stackTraceAddressesAsSymbols = backtrace_symbols( stackTraceAddresses, stackTraceAddressesCount );
+    if ( stackTraceAddressesAsSymbols == NULL )
+    {
+        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
+        return;
+    }
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
+        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d: %s\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddressesAsSymbols[ i ] );
+
+    free( stackTraceAddressesAsSymbols );
+    stackTraceAddressesAsSymbols = NULL;
+}
+#endif
+
+void handleOsSignalLinux( int signalId )
+{
+    ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER(
+            "Received signal %d (%s). %s"
+            , signalId, osSignalIdToName( signalId )
+            ,
+#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+              "Call stack below:"
+#else
+              "Call stack is not supported"
+#endif
+        );
+
+#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+    writeStackTraceToSyslog();
+#endif
+
+    /* Call the default signal handler to have core dump generated... */
+    signal( signalId, 0 );
+    raise ( signalId );
+}
+
+#undef ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER
+#endif // #ifndef PHP_WIN32
+
+void registerOsSignalHandler()
+{
+#ifndef PHP_WIN32
+    signal( SIGSEGV, handleOsSignalLinux );
+#endif
+}
+

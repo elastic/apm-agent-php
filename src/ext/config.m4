@@ -95,6 +95,7 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     RequestScoped.c \
     supportability.c \
     SystemMetrics.c \
+    TextOutputStream.c \
     time_util.c \
     Tracer.c \
     tracer_PHP_part.c \

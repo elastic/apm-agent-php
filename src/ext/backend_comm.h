@@ -23,7 +23,9 @@
 #include "ConfigManager.h"
 #include "ResultCode.h"
 
-ResultCode startBackgroundBackendComm( const ConfigSnapshot* config );
+ResultCode backgroundBackendCommOnModuleInit( const ConfigSnapshot* config );
+
+ResultCode backgroundBackendCommOnRequestInit( const ConfigSnapshot* config );
 
 ResultCode sendEventsToApmServer(
         bool disableSend
@@ -31,4 +33,4 @@ ResultCode sendEventsToApmServer(
         , const ConfigSnapshot* config
         , StringView serializedEvents );
 
-void stopBackgroundBackendComm();
+void backgroundBackendCommOnModuleShutdown();
