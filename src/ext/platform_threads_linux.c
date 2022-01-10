@@ -215,7 +215,7 @@ ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, const char* dbgD
 
     if ( ! isInLogContext() )
     {
-        ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "Locking mutex... mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+        ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "Locking mutex... mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
 
     int pthreadResultCode;
@@ -226,14 +226,14 @@ ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, const char* dbgD
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_lock failed with error: `%s'; mutex dbg desc: `%s'; call dbg desc: `%s'"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx->dbgDesc, dbgDesc );
+                "pthread_mutex_lock failed with error: `%s'; mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx, mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
     if ( ! isInLogContext() )
     {
-        ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+        ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
     *shouldUnlock = true;
     return resultSuccess;
@@ -251,7 +251,7 @@ ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, const char*
 
     if ( ! isInLogContext() )
     {
-        ELASTIC_APM_LOG_TRACE( "Unlocking mutex... mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+        ELASTIC_APM_LOG_TRACE( "Unlocking mutex... mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
 
     int pthreadResultCode;
@@ -262,15 +262,15 @@ ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, const char*
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_unlock failed with error: `%s'; mutex dbg desc: `%s'; call dbg desc: `%s'"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx->dbgDesc, dbgDesc );
+                "pthread_mutex_unlock failed with error: `%s'; mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx, mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
 
     if ( ! isInLogContext() )
     {
-        ELASTIC_APM_LOG_TRACE( "Unlocked mutex. mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+        ELASTIC_APM_LOG_TRACE( "Unlocked mutex. mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
     *shouldUnlock = false;
     return resultSuccess;
@@ -348,7 +348,7 @@ ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const 
     ELASTIC_APM_ASSERT_VALID_PTR( condVar );
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
 
-    ELASTIC_APM_LOG_TRACE( "Waiting condition variable... condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Waiting condition variable... condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'", condVar, condVar->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -358,12 +358,12 @@ ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const 
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_wait failed with error: `%s'; condVar dbg desc: `%s'; mtx dbg desc: `%s'; call dbg desc: `%s'"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), condVar->dbgDesc, mtx->dbgDesc, dbgDesc );
+                "pthread_cond_wait failed with error: `%s'; condition variable address: %p, dbg desc: `%s'; mtx dbg desc: `%s'; call dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream ), condVar, condVar->dbgDesc, mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
-    ELASTIC_APM_LOG_TRACE( "Done waiting condition variable. condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Done waiting condition variable. condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'", condVar, condVar->dbgDesc, dbgDesc );
     return resultSuccess;
 }
 
@@ -382,8 +382,8 @@ ResultCode timedWaitConditionVariable( ConditionVariable* condVar
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
             "Wait on condition variable with timeout"
-            "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
-            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+            "; timeoutAbsUtc: %s; condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'"
+            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar, condVar->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
 
@@ -400,18 +400,18 @@ ResultCode timedWaitConditionVariable( ConditionVariable* condVar
     {
         ELASTIC_APM_LOG_ERROR(
                 "pthread_cond_timedwait failed with error: `%s'"
-                "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
+                "; timeoutAbsUtc: %s; condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream )
-                , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+                , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar, condVar->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG(
             "Wait on condition variable with timeout"
             "; hasTimedOut: %s"
-            "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
+            "; timeoutAbsUtc: %s; condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'"
             , boolToString( *hasTimedOut )
-            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar, condVar->dbgDesc, dbgDesc );
     return resultSuccess;
 }
 
@@ -419,7 +419,7 @@ ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgD
 {
     ELASTIC_APM_ASSERT_VALID_PTR( condVar );
 
-    ELASTIC_APM_LOG_TRACE( "Signaling condition variable... condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Signaling condition variable... condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'", condVar, condVar->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -429,10 +429,12 @@ ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgD
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_signal failed with error: `%s'; condVar dbg desc: `%s'; call dbg desc: `%s'"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+                "pthread_cond_signal failed with error: `%s'; condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream ), condVar, condVar->dbgDesc, dbgDesc );
         return resultFailure;
     }
+
+    ELASTIC_APM_LOG_TRACE( "Signaled condition variable... condition variable address: %p, dbg desc: `%s'; call dbg desc: `%s'", condVar, condVar->dbgDesc, dbgDesc );
 
     return resultSuccess;
 }
