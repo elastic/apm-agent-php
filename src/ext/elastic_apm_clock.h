@@ -37,12 +37,15 @@ struct timezone
     int tz_dsttime;
 };
 
-#   else
+#   else // #ifdef ELASTIC_APM_MOCK_CLOCK
 #       include <win32/time.h>
-#   endif
+#   endif // #ifdef ELASTIC_APM_MOCK_CLOCK
 #else
 #   include <sys/time.h>
-#endif
+#endif // #ifdef PHP_WIN32
+
+typedef struct timeval TimeVal;
+typedef struct timezone TimeZone;
 
 #ifdef PHP_WIN32
 #   include "platform.h"
@@ -81,14 +84,14 @@ bool convertUtcToLocalTimeDefaultImpl( time_t input, struct tm* output, long* se
 /**
  * @return 0 for success, or -1 for failure (in which case errno is set appropriately)
  */
-int getSystemClockCurrentTimeAsUtc( struct timeval* systemClockTime );
+int getSystemClockCurrentTimeAsUtc( TimeVal* systemClockTime );
 
 bool convertUtcToLocalTime( time_t input, struct tm* output, long* secondsAheadUtc );
 
 #else
 
 static inline
-int getSystemClockCurrentTimeAsUtc( struct timeval* systemClockTime )
+int getSystemClockCurrentTimeAsUtc( TimeVal* systemClockTime )
 {
     return gettimeofday( systemClockTime, /* timezoneInfo: */ NULL );
 }

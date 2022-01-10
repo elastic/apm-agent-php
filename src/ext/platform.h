@@ -34,6 +34,7 @@
 #include "basic_macros.h"
 #include "TextOutputStream.h"
 #include "ResultCode.h"
+#include "platform_threads.h"
 
 #ifdef PHP_WIN32
 typedef int pid_t;
@@ -77,3 +78,5 @@ String streamStackTrace( void* const* addresses, size_t addressesCount, String l
 String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream );
 
 String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
+
+void registerOsSignalHandler();

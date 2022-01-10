@@ -21,6 +21,13 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.4]]
+=== v1.4 - 2022/01/10
+
+[float]
+==== Features
+* Background (non-blocking) communication with APM Server: {pull}584[#584]
+
 [[release-notes-v1.3.1]]
 === v1.3.1 - 2021/10/18
 

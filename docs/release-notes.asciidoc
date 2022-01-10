@@ -3,6 +3,7 @@
 [[release-notes]]
 == Release notes
 
+* <<release-notes-v1.4>>
 * <<release-notes-v1.3.1>>
 * <<release-notes-v1.3>>
 * <<release-notes-v1.2>>

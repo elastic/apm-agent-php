@@ -20,9 +20,10 @@
 #include "log.h"
 #include <stdio.h>
 #include <stdarg.h>
-#include <math.h>
 #ifndef PHP_WIN32
 #   include <syslog.h>
+#   include <unistd.h>
+#   include <fcntl.h>
 #endif
 #include "elastic_apm_clock.h"
 #include "util.h"
@@ -38,63 +39,20 @@ String logLevelNames[numberOfLogLevels] =
                 [logLevel_off] = "OFF", [logLevel_critical] = "CRITICAL", [logLevel_error] = "ERROR", [logLevel_warning] = "WARNING", [logLevel_info] = "INFO", [logLevel_debug] = "DEBUG", [logLevel_trace] = "TRACE"
         };
 
+const char* logLevelToName( LogLevel level )
+{
+    if ( ELASTIC_APM_IS_IN_END_EXCLUDED_RANGE( logLevel_off, level, numberOfLogLevels ) )
+    {
+        return logLevelNames[ level ];
+    }
+
+    return "UNKNOWN";
+}
+
 enum
 {
     loggerMessageBufferSize = 1000 * 1000 + 1
 };
-
-struct TimeZoneShift
-{
-    bool isPositive;
-    UInt8 hours;
-    UInt8 minutes;
-};
-typedef struct TimeZoneShift TimeZoneShift;
-
-struct LocalTime
-{
-    UInt16 years;
-    UInt8 months;
-    UInt8 days;
-    UInt8 hours;
-    UInt8 minutes;
-    UInt8 seconds;
-    UInt32 microseconds;
-    TimeZoneShift timeZoneShift;
-};
-typedef struct LocalTime LocalTime;
-
-static void calcTimeZoneShift( long secondsAheadUtc, TimeZoneShift* timeZoneShift )
-{
-    const long secondsAheadUtcAbs = secondsAheadUtc >= 0 ? secondsAheadUtc : - secondsAheadUtc;
-    const unsigned long minutesAheadUtcAbs = (long) ( round( secondsAheadUtcAbs / 60.0 ) );
-
-    timeZoneShift->isPositive = secondsAheadUtc >= 0;
-    timeZoneShift->minutes = (UInt8) ( minutesAheadUtcAbs % 60 );
-    timeZoneShift->hours = (UInt8) ( minutesAheadUtcAbs / 60 );
-}
-
-static void getCurrentLocalTime( LocalTime* localCurrentTime )
-{
-    struct timeval currentTime_UTC_timeval = { 0 };
-    struct tm currentTime_local_tm = { 0 };
-    long secondsAheadUtc = 0;
-
-    if ( getSystemClockCurrentTimeAsUtc( &currentTime_UTC_timeval ) != 0 ) return;
-    if ( ! convertUtcToLocalTime( currentTime_UTC_timeval.tv_sec, &currentTime_local_tm, &secondsAheadUtc ) ) return;
-
-    // tm_year is years since 1900
-    localCurrentTime->years = (UInt16) ( 1900 + currentTime_local_tm.tm_year );
-    // tm_mon is months since January - [0, 11]
-    localCurrentTime->months = (UInt8) ( currentTime_local_tm.tm_mon + 1 );
-    localCurrentTime->days = (UInt8) currentTime_local_tm.tm_mday;
-    localCurrentTime->hours = (UInt8) currentTime_local_tm.tm_hour;
-    localCurrentTime->minutes = (UInt8) currentTime_local_tm.tm_min;
-    localCurrentTime->seconds = (UInt8) currentTime_local_tm.tm_sec;
-    localCurrentTime->microseconds = (UInt32) currentTime_UTC_timeval.tv_usec;
-
-    calcTimeZoneShift( secondsAheadUtc, &( localCurrentTime->timeZoneShift ) );
-}
 
 // 2020-02-15 21:51:32.123456+02:00 [ERROR]    [Ext-Infra]     [lifecycle.c:482] [sendEventsToApmServer] Couldn't connect to server blah blah blah blah blah blah blah blah | PID: 12345 | TID: 67890
 // 2020-02-15 21:51:32.123456+02:00 [WARNING]  [Configuration] [ConfigManager.c:45] [constructSnapshotUsingDefaults] Not found blah blah blah blah blah blah blah blah | PID: 12345 | TID: 67890
@@ -120,31 +78,6 @@ static void getCurrentLocalTime( LocalTime* localCurrentTime )
 // ^                                  ^          process ID (padded with spaces on the left to 5 chars)
 // ^                                  level (padded with spaces on the right to 8 chars)
 // timestamp (no padding)
-
-
-static void appendTimestamp( TextOutputStream* txtOutStream )
-{
-    // 2020-02-15 21:51:32.123456+02:00
-
-    ELASTIC_APM_ASSERT_VALID_PTR_TEXT_OUTPUT_STREAM( txtOutStream );
-
-    LocalTime timestamp = { 0 };
-    getCurrentLocalTime( &timestamp );
-
-    streamPrintf(
-            txtOutStream
-            , "%04d-%02d-%02d %02d:%02d:%02d.%06d%c%02d:%02d"
-            , timestamp.years
-            , timestamp.months
-            , timestamp.days
-            , timestamp.hours
-            , timestamp.minutes
-            , timestamp.seconds
-            , timestamp.microseconds
-            , timestamp.timeZoneShift.isPositive ? '+' : '-'
-            , timestamp.timeZoneShift.hours
-            , timestamp.timeZoneShift.minutes );
-}
 
 static const char logLinePartsSeparator[] = " ";
 
@@ -177,7 +110,7 @@ void appendLevel( LogLevel level, TextOutputStream* txtOutStream )
     if ( level < numberOfLogLevels )
     {
         // if it's a level with a name
-        streamPrintf( txtOutStream, "%s", logLevelNames[ level ] );
+        streamPrintf( txtOutStream, "%s", logLevelToName( level ) );
     }
     else
     {
@@ -200,14 +133,6 @@ void appendCategory( StringView category, TextOutputStream* txtOutStream )
     streamChar( ']', txtOutStream );
 }
 
-#ifndef ELASTIC_APM_HAS_THREADS_01
-#   ifdef ZTS
-#       define ELASTIC_APM_HAS_THREADS_01 1
-#   else
-#       define ELASTIC_APM_HAS_THREADS_01 0
-#   endif
-#endif
-
 static void appendProcessThreadIds( TextOutputStream* txtOutStream )
 {
     // [PID: 12345] [TID: 67890]
@@ -220,8 +145,6 @@ static void appendProcessThreadIds( TextOutputStream* txtOutStream )
     streamPrintf( txtOutStream, "%u", processId );
     streamChar( ']', txtOutStream );
 
-#   if ( ELASTIC_APM_HAS_THREADS_01 != 0 )
-
     appendSeparator( txtOutStream );
 
     pid_t threadId = getCurrentThreadId();
@@ -229,8 +152,6 @@ static void appendProcessThreadIds( TextOutputStream* txtOutStream )
     streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW("[TID: "), txtOutStream );
     streamPrintf( txtOutStream, "%u", threadId );
     streamChar( ']', txtOutStream );
-
-#   endif
 }
 
 static
@@ -256,7 +177,6 @@ static void appendFunctionName( StringView funcName, TextOutputStream* txtOutStr
     streamChar( ']', txtOutStream );
 }
 
-static
 StringView buildCommonPrefix(
         LogLevel statementLevel
         , StringView category
@@ -267,7 +187,7 @@ StringView buildCommonPrefix(
         , size_t bufferSize
 )
 {
-    // 2020-05-08 08:18:54.154244+02:00 [DEBUG]    [Configuration] [ConfigManager.c:1127] [ensureConfigManagerHasLatestConfig] Current configuration is already the latest [TransactionId: xyz] [namespace: Impl\AutoInstrument]
+    // 2020-05-08 08:18:54.154244+02:00 [PID:12345] [TID:12345] [DEBUG]    [Configuration] [ConfigManager.c:1127] [ensureConfigManagerHasLatestConfig] Current configuration is already the latest [TransactionId: xyz] [namespace: Impl\AutoInstrument]
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     TextOutputStream txtOutStream = makeTextOutputStream( buffer, bufferSize );
@@ -279,7 +199,9 @@ StringView buildCommonPrefix(
         return ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
     }
 
-    appendTimestamp( &txtOutStream );
+    streamCurrentLocalTime( &txtOutStream );
+    appendSeparator( &txtOutStream );
+    appendProcessThreadIds( &txtOutStream );
     appendSeparator( &txtOutStream );
     appendLevel( statementLevel, &txtOutStream );
     appendSeparator( &txtOutStream );
@@ -322,7 +244,6 @@ StringView findEndOfLineSequence( StringView text )
     return makeEmptyStringView();
 }
 
-static
 StringView insertPrefixAtEachNewLine(
         Logger* logger
         , StringView sinkSpecificPrefix
@@ -367,7 +288,6 @@ StringView insertPrefixAtEachNewLine(
     return textOutputStreamContentAsStringView( &txtOutStream );
 }
 
-static
 String concatPrefixAndMsg(
         Logger* logger
         , StringView sinkSpecificPrefix
@@ -388,7 +308,11 @@ String concatPrefixAndMsg(
         return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
     }
 
-    streamStringView( sinkSpecificPrefix, &txtOutStream );
+    if ( sinkSpecificPrefix.length != 0 )
+    {
+        streamStringView( sinkSpecificPrefix, &txtOutStream );
+        appendSeparator( &txtOutStream );
+    }
     streamStringView( commonPrefix, &txtOutStream );
     const char* messagePartBegin = textOutputStreamGetFreeSpaceBegin( &txtOutStream );
     streamVPrintf( &txtOutStream, msgFmt, msgArgs );
@@ -407,7 +331,6 @@ String concatPrefixAndMsg(
     return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
 }
 
-static
 void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
     String fullText = concatPrefixAndMsg(
@@ -420,25 +343,7 @@ void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPr
             , msgArgs );
 
     fprintf( stderr, "%s", fullText );
-
-    if ( statementLevel <= logLevel_info ) fflush( stderr );
-}
-
-static
-StringView buildPrefixForSinkMixedWithOtherProcesses( char* buffer, size_t bufferSize )
-{
-    TextOutputStream txtOutStream = makeTextOutputStream( buffer, bufferSize );
-    txtOutStream.autoTermZero = false;
-    TextOutputStreamState txtOutStreamStateOnEntryStart;
-    if ( ! textOutputStreamStartEntry( &txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER );
-
-    streamStringView(ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Elastic APM PHP Tracer " ), &txtOutStream);
-    appendProcessThreadIds( &txtOutStream );
-    streamStringView(ELASTIC_APM_STRING_LITERAL_TO_VIEW( " " ), &txtOutStream);
-
-    textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, &txtOutStream );
-    return textOutputStreamContentAsStringView( &txtOutStream );
+    fflush( stderr );
 }
 
 #ifndef PHP_WIN32 // syslog is not supported on Windows
@@ -446,7 +351,6 @@ StringView buildPrefixForSinkMixedWithOtherProcesses( char* buffer, size_t buffe
 //
 // syslog
 //
-static
 int logLevelToSyslog( LogLevel level )
 {
     switch ( level )
@@ -472,14 +376,13 @@ int logLevelToSyslog( LogLevel level )
     }
 }
 
-static
 void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
     char sinkSpecificPrefixBuffer[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART )
             , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
             , /* prefixNewLines: */ false
@@ -502,7 +405,7 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt,
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART )
             , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
             , /* prefixNewLines: */ true
@@ -511,19 +414,25 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt,
 
     writeToWindowsSystemDebugger( fullText );
 }
-
 #endif
 
-//static bool openAndAppendToFile( Logger* logger, StringView fullText )
-//{
+static void openAndAppendToFile( Logger* logger, String text )
+{
+    size_t textLen = strlen( text );
+
+// TODO: Sergey Kleyman: Uncomment: Fix lower level system calls - "open" and "write" to get stronger guarantee
 //#ifdef PHP_WIN32
-//
-//    FILE* file = fopen( logger->config.file, "a" );
-//
-//    fwrite(  );
-//
+    FILE* file = fopen( logger->config.file, "a" );
+    if ( file == NULL )
+    {
+        goto failure;
+    }
+    size_t numberOfElementsWritten = fwrite( text, sizeof( *text ), textLen, file );
+    if ( numberOfElementsWritten != textLen )
+    {
+        goto failure;
+    }
 //#else
-//
 //    // Use lower level system calls - "open" and "write" to get stronger guarantee:
 //    //
 //    //      O_APPEND
@@ -535,51 +444,58 @@ void writeToWinSysDebug( Logger* logger, StringView commonPrefix, String msgFmt,
 //    // http://man7.org/linux/man-pages/man2/open.2.html
 //    //
 //    int file = open( logger->config.file, O_WRONLY | O_APPEND | O_CREAT );
-//
-//
-//
+//    if ( file < 0 )
+//    {
+//        goto failure;
+//    }
+//    size_t numberOfBytesToWrite = ( (long) sizeof( *text ) ) * textLen;
+//    ssize_t numberOfBytesWritten = write( file, text, numberOfBytesToWrite );
+//    if ( numberOfBytesWritten != numberOfBytesToWrite )
+//    {
+//        goto failure;
+//    }
 //#endif
-//
-//    #ifdef PHP_WIN32
-//    #else
-//    write( , , fullLine );
-//    #endif
-//
-//    if ( file )
+
+    finally:
+//#ifdef PHP_WIN32
+    if ( file != NULL )
+    {
+        fclose( file );
+    }
+//#else
+//    if ( file >= 0 )
 //    {
-//
-//    }
-//
-//    finally:
-//    if ( file != NULL )
-//    {
-//        #ifdef PHP_WIN32
-//        fclose( file );
-//        #else
 //        close( file );
-//        #endif
-//        file = NULL;
 //    }
-//
-//    failure:
-//    logger->fileFailed = true;
-//    goto finally;
-//}
-//
-//static void writeToFile( Logger* logger, StringView prefix, String msgFmt, va_list msgArgs )
-//{
-//    if ( isNullOrEmtpyString( logger->config.file ) ) return;
-//    if ( logger->fileFailed ) return;
-//
-//    openAndAppendToFile(
-//            logger
-//            , concatPrefixAndMsg( logger
-//                                  , /* sinkPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
-//                                  , /* end-of-line: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
-//                                  , prefix
-//                                  , msgFmt
-//                                  , msgArgs ) );
-//}
+//#endif
+
+    return;
+
+    failure:
+    logger->fileFailed = true;
+    goto finally;
+}
+
+static bool isToLogToFileInGoodState( Logger* logger )
+{
+    return ( ! isNullOrEmtpyString( logger->config.file ) ) && ( ! logger->fileFailed );
+}
+
+void writeToFile( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
+{
+    ELASTIC_APM_ASSERT( isToLogToFileInGoodState( logger ), "" );
+
+    String fullText = concatPrefixAndMsg(
+            logger
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
+            , commonPrefix
+            , /* prefixNewLines: */ true
+            , msgFmt
+            , msgArgs );
+
+    openAndAppendToFile( logger, fullText );
+}
 
 #ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
 
@@ -593,7 +509,7 @@ void buildFullTextAndWriteToCustomSink( Logger* logger, StringView commonPrefix,
 
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ buildPrefixForSinkMixedWithOtherProcesses( sinkSpecificPrefixBuffer, ELASTIC_APM_STATIC_ARRAY_SIZE( sinkSpecificPrefixBuffer ) )
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART )
             , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
             , commonPrefix
             , /* prefixNewLines: */ false
@@ -631,7 +547,7 @@ void logWithLogger(
             va_end( msgPrintfFmtArgs );
 }
 
-void vLogWithLogger(
+void vLogWithLoggerImpl(
         Logger* logger
         , bool isForced
         , LogLevel statementLevel
@@ -663,8 +579,7 @@ void vLogWithLogger(
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
         writeToStderr( logger, statementLevel, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
-        fflush( stderr );
-                va_end( msgPrintfFmtArgsCopy );
+        va_end( msgPrintfFmtArgsCopy );
     }
 
     #ifndef PHP_WIN32
@@ -689,14 +604,14 @@ void vLogWithLogger(
     }
             #endif
 
-//    if ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel )
-//    {
-//        // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
-//        va_list msgPrintfFmtArgsCopy;
-//        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
-//        writeToFile( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
-//        va_end( msgPrintfFmtArgsCopy );
-//    }
+    if ( ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel ) && isToLogToFileInGoodState( logger ) )
+    {
+        // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
+        va_list msgPrintfFmtArgsCopy;
+        va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
+        writeToFile( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
+        va_end( msgPrintfFmtArgsCopy );
+    }
 
 #ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
         va_list msgPrintfFmtArgsCopy;
@@ -707,6 +622,66 @@ void vLogWithLogger(
 
     ELASTIC_APM_ASSERT_GT_UINT64( logger->reentrancyDepth, 0 );
     -- logger->reentrancyDepth;
+}
+
+
+static Mutex* g_logMutex = NULL;
+static __thread bool g_isInLogContext = false;
+
+bool isInLogContext()
+{
+    return g_isInLogContext;
+}
+
+void vLogWithLogger(
+        Logger* logger
+        , bool isForced
+        , LogLevel statementLevel
+        , StringView category
+        , StringView filePath
+        , UInt lineNumber
+        , StringView funcName
+        , String msgPrintfFmt
+        , va_list msgPrintfFmtArgs
+)
+{
+    if ( g_logMutex == NULL )
+    {
+        #ifndef PHP_WIN32
+        syslog( LOG_CRIT, "g_logMutex is NULL" );
+        #endif
+        return;
+    }
+
+    if ( g_isInLogContext )
+    {
+        #ifndef PHP_WIN32
+        syslog( LOG_CRIT, "Trying to re-enter logging" );
+        #endif
+        return;
+    }
+
+    g_isInLogContext = true;
+
+    bool shouldUnlockMutex = false;
+    if ( lockMutex( g_logMutex, &shouldUnlockMutex, __FUNCTION__ ) != resultSuccess )
+    {
+        goto finally;
+    }
+
+    vLogWithLoggerImpl( logger
+                        , isForced
+                        , statementLevel
+                        , category
+                        , filePath
+                        , lineNumber
+                        , funcName
+                        , msgPrintfFmt
+                        , msgPrintfFmtArgs );
+
+    finally:
+    unlockMutex( g_logMutex, &shouldUnlockMutex, __FUNCTION__ );
+    g_isInLogContext = false;
 }
 
 static
@@ -856,6 +831,11 @@ ResultCode constructLogger( Logger* logger )
 
     ResultCode resultCode;
 
+    if ( g_logMutex == NULL )
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &g_logMutex, "global logger" ) );
+    }
+
     setLoggerConfigToDefaults( &( logger->config ) );
     logger->maxEnabledLevel = calcMaxEnabledLogLevel( logger->config.levelPerSinkType );
     logger->messageBuffer = NULL;
@@ -881,6 +861,11 @@ void destructLogger( Logger* logger )
 
     ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
     ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
+
+    if ( g_logMutex != NULL )
+    {
+        deleteMutex( &g_logMutex );
+    }
 }
 
 Logger* getGlobalLogger()

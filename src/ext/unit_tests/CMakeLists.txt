@@ -105,6 +105,8 @@ LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/intern
 LIST( APPEND source_files ${src_ext_dir}/log.h ${src_ext_dir}/log.c )
 LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTracker.c )
 LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.c )
+LIST( APPEND source_files ${src_ext_dir}/platform_threads.h ${src_ext_dir}/platform_threads_linux.c )
+LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h ${src_ext_dir}/TextOutputStream.c )
 LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.c )
@@ -116,8 +118,8 @@ ENDIF()
 ADD_EXECUTABLE( unit_tests ${source_files} )
 
 IF ( NOT WIN32 )
-    # Link to library required by math.h
-    TARGET_LINK_LIBRARIES( unit_tests m )
+    # Link to library required by math.h and pthread.h
+    TARGET_LINK_LIBRARIES( unit_tests m pthread )
 ENDIF()
 
 TARGET_LINK_LIBRARIES( unit_tests ${cmocka_static_lib} )

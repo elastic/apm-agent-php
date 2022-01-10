@@ -41,16 +41,14 @@ ResultCode loadPhpFile( const char* filename )
     if ( filename_len == 0 )
     {
         ELASTIC_APM_LOG_ERROR( "filename_len == 0" );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
     if ( ret != SUCCESS )
     {
         ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( ! file_handle.opened_path )
@@ -63,8 +61,7 @@ ResultCode loadPhpFile( const char* filename )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. filename: %s", filename );
         zend_file_handle_dtor( &file_handle );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     new_op_array = zend_compile_file( &file_handle, ZEND_REQUIRE );
@@ -72,8 +69,7 @@ ResultCode loadPhpFile( const char* filename )
     if ( ! new_op_array )
     {
         ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. filename: %s", filename );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     ZVAL_UNDEF( &result );
@@ -96,7 +92,7 @@ ResultCode loadPhpFile( const char* filename )
         opened_path = NULL;
     }
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
@@ -120,10 +116,10 @@ void getArgsFromZendExecuteData( zend_execute_data* execute_data, size_t dstArra
 typedef void (* ConsumeZvalFunc)( void* ctx, const zval* pZval );
 
 static
-ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], ConsumeZvalFunc consumeRetVal, void* consumeRetValCtx )
+ResultCode callPhpFunction( StringView phpFunctionName, uint32_t argsCount, zval args[], ConsumeZvalFunc consumeRetVal, void* consumeRetValCtx )
 {
-    ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s', argsCount: %u"
-                                                  , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "phpFunctionName: `%.*s', argsCount: %u"
+                                              , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
 
     ResultCode resultCode;
     zval phpFunctionNameAsZval;
@@ -144,8 +140,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
     {
         ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."
                 , callUserFunctionRetVal, (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( consumeRetVal != NULL ) consumeRetVal( consumeRetValCtx, &phpFunctionRetVal );
@@ -156,7 +151,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
     zval_dtor( &phpFunctionNameAsZval );
     zval_dtor( &phpFunctionRetVal );
 
-    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel, "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
@@ -180,14 +175,14 @@ void consumeBoolRetVal( void* ctx, const zval* pZval )
     }
 }
 
-ResultCode callPhpFunctionRetBool( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], bool* retVal )
+ResultCode callPhpFunctionRetBool( StringView phpFunctionName, uint32_t argsCount, zval args[], bool* retVal )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, consumeBoolRetVal, /* consumeRetValCtx: */ retVal );
+    return callPhpFunction( phpFunctionName, argsCount, args, consumeBoolRetVal, /* consumeRetValCtx: */ retVal );
 }
 
-ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[] )
+ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, uint32_t argsCount, zval args[] )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, /* consumeRetValCtx: */ NULL, /* consumeRetValCtx: */ NULL );
+    return callPhpFunction( phpFunctionName, argsCount, args, /* consumeRetValCtx: */ NULL, /* consumeRetValCtx: */ NULL );
 }
 
 static
@@ -199,7 +194,7 @@ void consumeZvalRetVal( void* ctx, const zval* pZval )
     ZVAL_COPY( ((zval*)ctx), pZval );
 }
 
-ResultCode callPhpFunctionRetZval( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], zval* retVal )
+ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCount, zval args[], zval* retVal )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, consumeZvalRetVal, retVal );
+    return callPhpFunction( phpFunctionName, argsCount, args, consumeZvalRetVal, retVal );
 }

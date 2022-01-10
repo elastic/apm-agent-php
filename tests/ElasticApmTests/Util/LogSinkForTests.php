@@ -66,7 +66,7 @@ final class LogSinkForTests extends SinkBase
 
         $recordText = TextUtilForTests::prefixEachLine(
             $formattedRecord,
-            'Elastic APM PHP tests  [PID: ' . getmypid() . '] ' . $this->dbgProcessName
+            '[Elastic APM PHP tests] [PID: ' . getmypid() . '] ' . $this->dbgProcessName . ' '
         );
 
         if (TestOsUtil::isWindows()) {

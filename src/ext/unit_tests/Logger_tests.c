@@ -44,11 +44,12 @@ static size_t findCharIndexInStringView( char needle, StringView haystack )
     return haystack.length;
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
 static
 StringView getLogLinePart( size_t partIndex, StringView logLine )
 {
-    StringView logLineRemainder = logLine;
+    // It's not ELASTIC_APM_STATIC_ARRAY_SIZE( ... ) - 1 to account for the space char after the prefix
+    StringView logLineRemainder = stringViewSkipFirstNChars( logLine, ELASTIC_APM_STATIC_ARRAY_SIZE( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART ) );
     size_t currentPartIndex = 0;
     bool isInsideDelimitedPart = false;
     while ( true )
@@ -76,23 +77,16 @@ StringView getLogLinePart( size_t partIndex, StringView logLine )
     }
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 static StringView getTimestampPart( StringView logLine )
 {
-    return getLogLinePart( 2, logLine );
+    return getLogLinePart( 0, logLine );
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                                                                      ^^^^^
-static StringView getLevelPart( StringView logLine )
-{
-    return getLogLinePart( 3, logLine );
-}
-
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                        ^^^^^^^^^^
-static StringView getProcessThreadIdsPart( StringView logLine )
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                          ^^^^^^^^^
+static StringView getProcessIdPart( StringView logLine )
 {
     StringView part = getLogLinePart( 1, logLine );
     StringView pidPrefix = ELASTIC_APM_STRING_LITERAL_TO_VIEW( "PID: " );
@@ -101,22 +95,40 @@ static StringView getProcessThreadIdsPart( StringView logLine )
     return stringViewSkipFirstNChars( part, pidPrefix.length );
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                                                                                       ^^^^^^^^^^^^^^^^^^^
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                     ^^^^^^^^^
+static StringView getThreadIdPart( StringView logLine )
+{
+    StringView part = getLogLinePart( 2, logLine );
+    StringView tidPrefix = ELASTIC_APM_STRING_LITERAL_TO_VIEW( "TID: " );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewPrefixIgnoringCase(part, tidPrefix ) );
+
+    return stringViewSkipFirstNChars( part, tidPrefix.length );
+}
+
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                ^^^^^
+static StringView getLevelPart( StringView logLine )
+{
+    return getLogLinePart( 3, logLine );
+}
+
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                                  ^^^^^^^^^^^^^^^^^^^
 static StringView getFileNameLineNumberPart( StringView logLine )
 {
     return getLogLinePart( 5, logLine );
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                                                                                                             ^^^^^^^^^^^^^^^
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                                                        ^^^^^^^^^^^^^^^
 static StringView getFunctionNamePart( StringView logLine )
 {
     return getLogLinePart( 6, logLine );
 }
 
-// Elastic APM PHP Tracer [PID: 7669] 2020-05-31 08:33:14.985247+03:00 [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
-//                                                                                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// [Elastic APM PHP Tracer] 2020-05-31 08:33:14.985247+03:00 [PID: 7669][TID: 4321] [DEBUG]    [Util] [util_for_PHP.c:156] [callPhpFunction] Exiting: resultCode: resultSuccess (0)
+//                                                                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 static StringView getMessagePart( StringView logLine )
 {
     return getLogLinePart( 7, logLine );
@@ -150,7 +162,16 @@ void verify_log_output(
         const char* const ptrBeforeWrite = textOutputStreamGetFreeSpaceBegin( &txtOutStream );
         streamInt( getCurrentProcessId(), &txtOutStream );
         StringView writtenTxt = textOutputStreamViewFrom( &txtOutStream, ptrBeforeWrite );
-        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getProcessThreadIdsPart( logStatementText ), writtenTxt );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getProcessIdPart( logStatementText ), writtenTxt );
+    }
+
+    {
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        const char* const ptrBeforeWrite = textOutputStreamGetFreeSpaceBegin( &txtOutStream );
+        streamInt( getCurrentProcessId(), &txtOutStream );
+        StringView writtenTxt = textOutputStreamViewFrom( &txtOutStream, ptrBeforeWrite );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( getThreadIdPart( logStatementText ), writtenTxt );
     }
 
     {
@@ -192,7 +213,7 @@ void typical_statement( void** testFixtureState )
 
     verify_log_output(
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( "2123-07-28 14:37:19.987654-11:24" ),
-            makeStringViewFromString( logLevelNames[ logLevel_trace ] ),
+            makeStringViewFromString( logLevelToName( logLevel_trace ) ),
             logStatementLineNumber,
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Message and some context: 122333, 444455555" ) );
@@ -220,7 +241,7 @@ void empty_message( void** testFixtureState )
 
     verify_log_output(
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( "2019-11-17 07:23:60.999999+25:51" ),
-            makeStringViewFromString( logLevelNames[ logLevel_debug ] ),
+            makeStringViewFromString( logLevelToName( logLevel_debug ) ),
             logStatementLineNumber,
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ),
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" ) );
@@ -246,7 +267,7 @@ void statements_filtered_according_to_current_level_helper(
 
     ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL(
             getLevelPart( logStatementText ),
-            makeStringViewFromString( logLevelNames[ statementLevel ] ) );
+            makeStringViewFromString( logLevelToName( statementLevel ) ) );
 
     clearMockLogCustomSink( getGlobalMockLogCustomSink() );
 }

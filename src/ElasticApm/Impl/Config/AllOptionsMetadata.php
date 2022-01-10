@@ -48,41 +48,44 @@ final class AllOptionsMetadata
      */
     public static function get(): array
     {
-        if (!isset(self::$vaLue)) {
-            self::$vaLue = [
-                OptionNames::API_KEY                  => new NullableStringOptionMetadata(),
-                OptionNames::BREAKDOWN_METRICS        => new BoolOptionMetadata(/* defaultValue: */ true),
-                OptionNames::DEV_INTERNAL             => new NullableWildcardListOptionMetadata(),
-                OptionNames::DISABLE_INSTRUMENTATIONS => new NullableWildcardListOptionMetadata(),
-                OptionNames::DISABLE_SEND             => new BoolOptionMetadata(/* defaultValue: */ false),
-                OptionNames::ENABLED                  => new BoolOptionMetadata(/* defaultValue: */ true),
-                OptionNames::ENVIRONMENT              => new NullableStringOptionMetadata(),
-                OptionNames::HOSTNAME                 => new NullableStringOptionMetadata(),
-                OptionNames::LOG_LEVEL                => new NullableLogLevelOptionMetadata(),
-                OptionNames::LOG_LEVEL_STDERR         => new NullableLogLevelOptionMetadata(),
-                OptionNames::LOG_LEVEL_SYSLOG         => new NullableLogLevelOptionMetadata(),
-                OptionNames::SECRET_TOKEN             => new NullableStringOptionMetadata(),
-                OptionNames::SERVER_TIMEOUT           => new DurationOptionMetadata(
-                    0.0 /* <- minValidValueInMilliseconds */,
-                    null /* <- maxValidValueInMilliseconds */,
-                    DurationUnits::SECONDS /* <- defaultUnits */,
-                    30 * 1000.0 /* <- defaultValueInMilliseconds - 30s */
-                ),
-                OptionNames::SERVICE_NAME             => new NullableStringOptionMetadata(),
-                OptionNames::SERVICE_NODE_NAME        => new NullableStringOptionMetadata(),
-                OptionNames::SERVICE_VERSION          => new NullableStringOptionMetadata(),
-                OptionNames::TRANSACTION_IGNORE_URLS  => new NullableWildcardListOptionMetadata(),
-                OptionNames::TRANSACTION_MAX_SPANS    => new IntOptionMetadata(
-                    0 /* <- minValidValue */,
-                    null /* <- maxValidValue */,
-                    OptionDefaultValues::TRANSACTION_MAX_SPANS
-                ),
-                OptionNames::TRANSACTION_SAMPLE_RATE  =>
-                    new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
-                OptionNames::URL_GROUPS               => new NullableWildcardListOptionMetadata(),
-                OptionNames::VERIFY_SERVER_CERT       => new BoolOptionMetadata(/* defaultValue: */ true),
-            ];
+        if (isset(self::$vaLue)) {
+            return self::$vaLue;
         }
+
+        self::$vaLue = [
+            OptionNames::API_KEY                  => new NullableStringOptionMetadata(),
+            OptionNames::ASYNC_BACKEND_COMM       => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::BREAKDOWN_METRICS        => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::DEV_INTERNAL             => new NullableWildcardListOptionMetadata(),
+            OptionNames::DISABLE_INSTRUMENTATIONS => new NullableWildcardListOptionMetadata(),
+            OptionNames::DISABLE_SEND             => new BoolOptionMetadata(/* defaultValue: */ false),
+            OptionNames::ENABLED                  => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::ENVIRONMENT              => new NullableStringOptionMetadata(),
+            OptionNames::HOSTNAME                 => new NullableStringOptionMetadata(),
+            OptionNames::LOG_LEVEL                => new NullableLogLevelOptionMetadata(),
+            OptionNames::LOG_LEVEL_STDERR         => new NullableLogLevelOptionMetadata(),
+            OptionNames::LOG_LEVEL_SYSLOG         => new NullableLogLevelOptionMetadata(),
+            OptionNames::SECRET_TOKEN             => new NullableStringOptionMetadata(),
+            OptionNames::SERVER_TIMEOUT           => new DurationOptionMetadata(
+                0.0 /* <- minValidValueInMilliseconds */,
+                null /* <- maxValidValueInMilliseconds */,
+                DurationUnits::SECONDS /* <- defaultUnits */,
+                30 * 1000.0 /* <- defaultValueInMilliseconds - 30s */
+            ),
+            OptionNames::SERVICE_NAME             => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_NODE_NAME        => new NullableStringOptionMetadata(),
+            OptionNames::SERVICE_VERSION          => new NullableStringOptionMetadata(),
+            OptionNames::TRANSACTION_IGNORE_URLS  => new NullableWildcardListOptionMetadata(),
+            OptionNames::TRANSACTION_MAX_SPANS    => new IntOptionMetadata(
+                0 /* <- minValidValue */,
+                null /* <- maxValidValue */,
+                OptionDefaultValues::TRANSACTION_MAX_SPANS
+            ),
+            OptionNames::TRANSACTION_SAMPLE_RATE  =>
+                new FloatOptionMetadata(/* minValidValue */ 0.0, /* maxValidValue */ 1.0, /* defaultValue */ 1.0),
+            OptionNames::URL_GROUPS               => new NullableWildcardListOptionMetadata(),
+            OptionNames::VERIFY_SERVER_CERT       => new BoolOptionMetadata(/* defaultValue: */ true),
+        ];
 
         return self::$vaLue;
     }

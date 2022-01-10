@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContext;
 use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 

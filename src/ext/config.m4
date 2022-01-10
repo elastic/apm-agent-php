@@ -91,9 +91,11 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     MemoryTracker.c \
     php_error.c \
     platform.c \
+    platform_threads_linux.c \
     RequestScoped.c \
     supportability.c \
     SystemMetrics.c \
+    TextOutputStream.c \
     time_util.c \
     Tracer.c \
     tracer_PHP_part.c \
@@ -102,6 +104,8 @@ if test "$PHP_ELASTIC_APM" != "no"; then
   "
 
   PHP_NEW_EXTENSION(elastic_apm, $ELASTIC_APM_PHP_EXT_SOURCES, $ext_shared)
-  PHP_CHECK_LIBRARY(curl, curl_easy_setopt, [EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lcurl"])
+  EXTRA_CFLAGS="$EXTRA_CFLAGS -pthread"
+  PHP_SUBST(EXTRA_CFLAGS)
+  EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lcurl"
   PHP_SUBST(EXTRA_LDFLAGS)
 fi

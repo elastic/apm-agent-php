@@ -35,6 +35,7 @@ final class OptionNames
     use StaticClassTrait;
 
     public const API_KEY = 'api_key';
+    public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const DEV_INTERNAL = 'dev_internal';
     public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';

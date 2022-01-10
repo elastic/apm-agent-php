@@ -99,6 +99,9 @@ final class Snapshot implements LoggableInterface
     private $apiKey;
 
     /** @var bool */
+    private $asyncBackendComm;
+
+    /** @var bool */
     private $breakdownMetrics;
 
     /** @var ?WildcardListMatcher */

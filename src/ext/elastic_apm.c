@@ -102,6 +102,7 @@ PHP_INI_BEGIN()
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL )
@@ -144,17 +145,14 @@ PHP_INI_END()
 
 ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+
     ELASTIC_APM_ASSERT_VALID_PTR( iniEntriesRegistrationState );
 
     ResultCode resultCode;
     const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
 
-    resultCode = zendToResultCode( (ZEND_RESULT_CODE)REGISTER_INI_ENTRIES() );
-    if ( resultCode != resultSuccess )
-    {
-        ELASTIC_APM_LOG_ERROR( "REGISTER_INI_ENTRIES(...) failed. resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
-        goto failure;
-    }
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( zendToResultCode( (ZEND_RESULT_CODE)REGISTER_INI_ENTRIES() ) );
     iniEntriesRegistrationState->entriesRegistered = true;
 
     ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
@@ -162,21 +160,22 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
         if ( ! getMetaRes.isSecret ) continue;
-        resultCode = zend_ini_register_displayer( (char*) ( getMetaRes.iniName.begin )
+        int zendResultCode = zend_ini_register_displayer( (char*) ( getMetaRes.iniName.begin )
                                                   , (uint32_t) ( getMetaRes.iniName.length )
                                                   , displaySecretIniValue );
-        if ( resultCode != resultSuccess )
+        if ( zendResultCode != SUCCESS )
         {
-            ELASTIC_APM_LOG_ERROR( "REGISTER_INI_DISPLAYER(...) failed. resultCode: %s (%d). iniName: %.*s."
-                                  , resultCodeToString( resultCode ), resultCode
+            ELASTIC_APM_LOG_ERROR( "zend_ini_register_displayer() failed with result code: %d; iniName: %.*s."
+                                  , zendResultCode
                                   , (int) getMetaRes.iniName.length, getMetaRes.iniName.begin );
-            goto failure;
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
         }
     }
 
     resultCode = resultSuccess;
 
     finally:
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:

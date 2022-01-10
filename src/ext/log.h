@@ -21,6 +21,9 @@
 
 #include <stdbool.h>
 #include <stdarg.h>
+#ifndef PHP_WIN32
+#   include <syslog.h>
+#endif
 #include "ResultCode.h"
 #include "basic_types.h"
 #include "basic_macros.h" // ELASTIC_APM_PRINTF_ATTRIBUTE
@@ -110,7 +113,7 @@ void logWithLogger(
         , StringView filePath
         , UInt lineNumber
         , StringView funcName
-        , String msgPrintfFmt /* <- printf format is argument #7 */
+        , String msgPrintfFmt /* <- printf format is argument #8 */
         , ...                /* <- arguments for printf format placeholders start from argument #9 */
 ) ELASTIC_APM_PRINTF_ATTRIBUTE( /* printfFmtPos: */ 8, /* printfFmtArgsPos: */ 9 );
 
@@ -130,20 +133,46 @@ LogLevel calcMaxEnabledLogLevel( LogLevel levelPerSinkType[ numberOfLogSinkTypes
 
 Logger* getGlobalLogger();
 
+bool isInLogContext();
+
+const char* logLevelToName( LogLevel level );
+
+#ifdef PHP_WIN32
+#   define ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ... )
+#else
+int logLevelToSyslog( LogLevel level );
+pid_t getCurrentProcessId();
+pid_t getCurrentThreadId();
+#   define ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ... ) \
+        syslog                                                                   \
+        ( \
+            logLevelToSyslog( statementLevel ) \
+            , ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART " [PID: %d] [TID: %d] [%s] " fmt \
+            , getCurrentProcessId(), getCurrentThreadId(), logLevelToName( statementLevel ), ##__VA_ARGS__ \
+        )
+#endif
+
 #define ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, fmt, ... ) \
     do { \
         Logger* const globalStateLogger = getGlobalLogger(); \
         if ( globalStateLogger->maxEnabledLevel >= (statementLevel) ) \
         { \
-            logWithLogger( \
-                globalStateLogger, \
-                /* isForced: */ false, \
-                (statementLevel), \
-                ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CURRENT_LOG_CATEGORY ), \
-                ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FILE__ ), \
-                __LINE__, \
-                ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ), \
-                (fmt) , ##__VA_ARGS__ ); \
+            if ( isInLogContext() ) \
+            { \
+                ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ##__VA_ARGS__ ); \
+            } \
+            else \
+            { \
+                logWithLogger( \
+                    globalStateLogger, \
+                    /* isForced: */ false, \
+                    (statementLevel), \
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CURRENT_LOG_CATEGORY ), \
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FILE__ ), \
+                    __LINE__, \
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FUNCTION__ ), \
+                    (fmt) , ##__VA_ARGS__ ); \
+            } \
         } \
     } while ( 0 )
 
@@ -154,21 +183,40 @@ Logger* getGlobalLogger();
 #define ELASTIC_APM_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_TRACE( fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
 
-#define ELASTIC_APM_LOG_FUNCTION_ENTRY_WITH_LEVEL( statementLevel ) ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s", "Entered" )
-#define ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY() ELASTIC_APM_LOG_FUNCTION_ENTRY_WITH_LEVEL( logLevel_trace )
-#define ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY() ELASTIC_APM_LOG_FUNCTION_ENTRY_WITH_LEVEL( logLevel_debug )
+#define ELASTIC_APM_LOG_CONDITIONAL_CTX_SEPARATOR( separator, fmt ) \
+    ( ELASTIC_APM_STATIC_ARRAY_SIZE( fmt ) > 1 ? (separator) : "" )
 
-#define ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( statementLevel, fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s" fmt, "Entered: ", ##__VA_ARGS__ )
-#define ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_FUNCTION_PREFIX_MSG_WITH_LEVEL( statementLevel, prefix, fmt, ... ) \
+    ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s%s" fmt, prefix, ELASTIC_APM_LOG_CONDITIONAL_CTX_SEPARATOR( "; ", fmt ), ##__VA_ARGS__ )
+
+#define ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( statementLevel, fmt, ... ) \
+    ELASTIC_APM_LOG_FUNCTION_PREFIX_MSG_WITH_LEVEL( statementLevel, "Entered", fmt, ##__VA_ARGS__ )
+
 #define ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY() ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "" )
+#define ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY() ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "" )
 
-#define ELASTIC_APM_LOG_FUNCTION_EXIT_WITH_LEVEL( statementLevel ) ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s", "Exiting" )
-#define ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT() ELASTIC_APM_LOG_FUNCTION_EXIT_WITH_LEVEL( logLevel_trace )
-#define ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT() ELASTIC_APM_LOG_FUNCTION_EXIT_WITH_LEVEL( logLevel_debug )
-
-#define ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( statementLevel, fmt, ... ) ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s" fmt, "Exiting: ", ##__VA_ARGS__ )
-#define ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( statementLevel, fmt, ... ) \
+    ELASTIC_APM_LOG_FUNCTION_PREFIX_MSG_WITH_LEVEL( statementLevel, "Exiting...", fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( fmt, ... ) ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT() ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "" )
+#define ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT() ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "" )
+
+
+#define ELASTIC_APM_LOG_RESULT_CODE_FUNCTION_EXIT_MSG_WITH_LEVEL( successLevel, fmt, ... ) \
+    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL \
+    ( \
+        resultCode == resultSuccess ? (successLevel) : logLevel_error \
+        , "resultCode: %s (%d); " fmt \
+        , resultCodeToString( resultCode ), resultCode , ##__VA_ARGS__ \
+    )
+
+#define ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( fmt, ... ) ELASTIC_APM_LOG_RESULT_CODE_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_debug, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG( fmt, ... ) ELASTIC_APM_LOG_RESULT_CODE_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel_trace, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT() ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "" )
+#define ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT() ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG( "" )
 
 #define ELASTIC_APM_FORCE_LOG_CRITICAL( fmt, ... ) \
     do { \
@@ -192,7 +240,7 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
     if ( level >= numberOfLogLevels )
         return streamInt( level, txtOutStream );
 
-    return streamString( logLevelNames[ level ], txtOutStream );
+    return streamString( logLevelToName( level ), txtOutStream );
 }
 
 static inline
@@ -227,3 +275,5 @@ String logSecuritySensitive( String securitySensitiveString )
 #define ELASTIC_APM_LOG_CATEGORY_SUPPORT "Supportability"
 #define ELASTIC_APM_LOG_CATEGORY_SYS_METRICS "System-Metrics"
 #define ELASTIC_APM_LOG_CATEGORY_UTIL "Util"
+
+#define ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[Elastic APM PHP Tracer]"

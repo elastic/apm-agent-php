@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\EnabledLoggerProxy;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggerFactory;
@@ -42,6 +43,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContext;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
@@ -57,6 +59,9 @@ class TestCaseBase extends TestCase
 
     /** @var LoggerFactory */
     private static $noopLoggerFactory;
+
+    /** @var bool */
+    public static $isUnitTest = true;
 
     /**
      * @param mixed        $name
@@ -605,13 +610,35 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
+    private static function processSpecificPrefix(): string
+    {
+        return self::$isUnitTest ? '' : AmbientContext::dbgProcessName() . ' [PID: ' . getmypid() . '] ';
+    }
+
     public static function printMessage(string $srcMethod, string $msg): void
     {
         if (!defined('STDERR')) {
             define('STDERR', fopen('php://stderr', 'w'));
         }
+
         if (defined('STDERR')) {
-            fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+            fwrite(STDERR, self::processSpecificPrefix() . '[' . $srcMethod . ']' . ' ' . $msg . PHP_EOL);
+        }
+    }
+
+    public static function logAndPrintMessage(
+        ?EnabledLoggerProxy $loggerProxy,
+        string $msg
+    ): void {
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        if (defined('STDERR')) {
+            fwrite(STDERR, self::processSpecificPrefix() . $msg . PHP_EOL);
+        }
+
+        if ($loggerProxy !== null) {
+            $loggerProxy->log($msg);
         }
     }
 

@@ -50,9 +50,7 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
             , &getOptValueByNameRes );
     if ( resultCode == resultSuccess ) *return_value = getOptValueByNameRes.parsedValueAsZval;
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG(
-            "ResultCode: %s. Option's: name: `%s', value: %s"
-            , resultCodeToString( resultCode ), optionName, getOptValueByNameRes.streamedParsedValue );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG( "Option's: name: `%s', value: %s", optionName, getOptValueByNameRes.streamedParsedValue );
     return resultCode;
 }
 
@@ -145,8 +143,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     if ( classEntry == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     zend_function* funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
@@ -154,21 +151,19 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
                                " className: `%s'; methodName: `%s'", className, methodName );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
     {
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     resultCode = resultSuccess;
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
@@ -186,21 +181,19 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
                                " functionName: `%s'", functionName );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
     {
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     resultCode = resultSuccess;
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d). interceptRegistrationId: %u.", resultCodeToString( resultCode ), resultCode, *interceptRegistrationId );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", *interceptRegistrationId );
     return resultCode;
 
     failure:
@@ -224,16 +217,16 @@ ResultCode elasticApmSendToServer(
     Tracer* const tracer = getGlobalTracer();
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
-    sendEventsToApmServer(
-            longToBool( disableSend )
-            , serverTimeoutMilliseconds
-            , getTracerCurrentConfigSnapshot( tracer )
-            , serializedEvents );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+            sendEventsToApmServer( longToBool( disableSend )
+                                   , serverTimeoutMilliseconds
+                                   , getTracerCurrentConfigSnapshot( tracer )
+                                   , serializedEvents ) );
 
     resultCode = resultSuccess;
 
     finally:
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:

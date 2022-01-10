@@ -560,6 +560,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
@@ -691,6 +692,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             assertLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            asyncBackendComm,
+            ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM,
+            /* defaultValue: */ true );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

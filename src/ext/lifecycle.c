@@ -99,15 +99,16 @@ void elasticApmModuleInit( int type, int moduleNumber )
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
 
+    registerOsSignalHandler();
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     if ( ! tracer->isInited )
     {
-        resultCode = resultFailure;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
-        goto failure;
+        ELASTIC_APM_LOG_DEBUG( "Extension is not initialized" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
@@ -121,27 +122,27 @@ void elasticApmModuleInit( int type, int moduleNumber )
     if ( ! config->enabled )
     {
         resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        ELASTIC_APM_LOG_DEBUG( "Extension is disabled" );
         goto finally;
     }
 
-    CURLcode result = curl_global_init( CURL_GLOBAL_ALL );
-    if ( result != CURLE_OK )
+    CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
+    if ( curlCode != CURLE_OK )
     {
         resultCode = resultFailure;
-        ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "curl_global_init failed" );
+        ELASTIC_APM_LOG_ERROR( "curl_global_init failed: %s (%d)", curl_easy_strerror( curlCode ), (int)curlCode );
         goto finally;
     }
     tracer->curlInited = true;
 
-    resultCode = resultSuccess;
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnModuleInit( config ) );
 
+    resultCode = resultSuccess;
     finally:
 
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -166,6 +167,8 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
         ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
+
+    backgroundBackendCommOnModuleShutdown();
 
     if ( tracer->curlInited )
     {
@@ -201,17 +204,24 @@ void elasticApmRequestInit()
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnRequestInit( config ) );
+
     if ( ! tracer->isInited )
     {
-        resultCode = resultFailure;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Extension is not initialized" );
-        goto failure;
+        ELASTIC_APM_LOG_DEBUG( "Extension is not initialized" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( tracer->isFailed )
+    {
+        ELASTIC_APM_LOG_ERROR( "Extension is in failed state" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( ! config->enabled )
     {
+        ELASTIC_APM_LOG_DEBUG( "Not enabled" );
         resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
 
@@ -224,16 +234,14 @@ void elasticApmRequestInit()
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
-    readSystemMetrics( &tracer->startSystemMetricsReading );
+//    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     resultCode = resultSuccess;
 
     finally:
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
     return;
 
     failure:
@@ -270,8 +278,7 @@ static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
     if ( isEmptyStringView( tracer->requestScoped.lastMetadataFromPhpPart ) )
     {
         ELASTIC_APM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     getCurrentTime( &currentTime );
@@ -293,7 +300,7 @@ static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
     finally:
     ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
@@ -313,16 +320,15 @@ void elasticApmRequestShutdown()
 
     if ( ! tracer->isInited )
     {
-        resultCode = resultFailure;
-        ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "Extension is not initialized" );
-        goto failure;
+        ELASTIC_APM_LOG_TRACE( "Extension is not initialized" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( ! config->enabled )
     {
+        ELASTIC_APM_LOG_DEBUG( "Extension is not enabled" );
         resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
-        goto failure;
+        goto finally;
     }
 
     // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
@@ -337,9 +343,12 @@ void elasticApmRequestShutdown()
     resultCode = resultSuccess;
 
     finally:
-    if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestShutdown( &tracer->memTracker );
+    if ( tracer->isInited && isMemoryTrackingEnabled( &tracer->memTracker ) )
+    {
+        memoryTrackerRequestShutdown( &tracer->memTracker );
+    }
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
