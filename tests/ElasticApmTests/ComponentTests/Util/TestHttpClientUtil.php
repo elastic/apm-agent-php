@@ -26,9 +26,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\SourceClassLogContext;
 use ElasticApmTests\Util\TestCaseBase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -38,6 +41,23 @@ use Psr\Http\Message\ResponseInterface;
 final class TestHttpClientUtil
 {
     use StaticClassTrait;
+
+    /** @var Logger */
+    private static $logger;
+
+    public static function getLogger(): Logger
+    {
+        if (!isset(self::$logger)) {
+            self::$logger = AmbientContext::loggerFactory()->loggerForClass(
+                LogCategoryForTests::TEST_UTIL,
+                __NAMESPACE__,
+                __CLASS__,
+                __FILE__
+            );
+        }
+
+        return self::$logger;
+    }
 
     /**
      * @param string                $httpMethod
@@ -58,10 +78,14 @@ final class TestHttpClientUtil
         $baseUrl = UrlUtil::buildRequestBaseUrl($urlParts);
         $urlRelPart = UrlUtil::buildRequestMethodArg($urlParts);
 
-        TestCaseBase::printMessage(__METHOD__, "Sending HTTP request to `${baseUrl}${urlRelPart}'...");
+        TestCaseBase::logAndPrintMessage(
+            self::getLogger()->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
+            "Sending HTTP request to `${baseUrl}${urlRelPart}'..."
+        );
 
         $client = new Client(['base_uri' => $baseUrl]);
-        return $client->request(
+
+        $response = $client->request(
             $httpMethod,
             $urlRelPart,
             [
@@ -83,5 +107,12 @@ final class TestHttpClientUtil
                 RequestOptions::HTTP_ERRORS => false,
             ]
         );
+
+        TestCaseBase::logAndPrintMessage(
+            self::getLogger()->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
+            "Sent HTTP request to `${baseUrl}${urlRelPart}' - response status code: " . $response->getStatusCode()
+        );
+
+        return $response;
     }
 }

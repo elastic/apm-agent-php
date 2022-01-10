@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\EnabledLoggerProxy;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggerFactory;
@@ -42,6 +43,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContext;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\IsEqual;
@@ -611,7 +613,34 @@ class TestCaseBase extends TestCase
             define('STDERR', fopen('php://stderr', 'w'));
         }
         if (defined('STDERR')) {
-            fwrite(STDERR, PHP_EOL . $srcMethod . ': ' . $msg . PHP_EOL);
+            fwrite(
+                STDERR,
+                AmbientContext::dbgProcessName()
+                . ' [PID: ' . getmypid() . ']'
+                . ' [' . $srcMethod . ']'
+                . ' ' . $msg . PHP_EOL
+            );
+        }
+    }
+
+    public static function logAndPrintMessage(
+        ?EnabledLoggerProxy $loggerProxy,
+        string $msg
+    ): void {
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        if (defined('STDERR')) {
+            fwrite(
+                STDERR,
+                AmbientContext::dbgProcessName()
+                . ' [PID: ' . getmypid() . ']'
+                . ' ' . $msg . PHP_EOL
+            );
+        }
+
+        if ($loggerProxy !== null) {
+            $loggerProxy->log($msg);
         }
     }
 

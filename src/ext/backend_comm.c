@@ -442,46 +442,54 @@ void* backgroundBackendCommThreadFunc( void* arg )
                                , boolToString( sharedStateSnapshot.shouldExit )
                                , sharedStateSnapshot.shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot.shouldExitBy, &txtOutStream ) : "N/A" );
 
+        ELASTIC_APM_ASSERT( (sharedStateSnapshot.dataToSendTotalSize == 0) == ( sharedStateSnapshot.firstDataToSendNode == NULL )
+                            , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (size: %"PRIu64 ")"
+                            , (UInt64) sharedStateSnapshot.dataToSendTotalSize
+                            , sharedStateSnapshot.firstDataToSendNode
+                            , (UInt64)( sharedStateSnapshot.firstDataToSendNode == NULL ? 0 : sharedStateSnapshot.firstDataToSendNode->serializedEvents.length ) );
+
+        const bool isDataToSendQueueEmpty = sharedStateSnapshot.firstDataToSendNode == NULL;
         TimeSpec now;
         ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ &now ) );
 
-        if ( sharedStateSnapshot.shouldExit && compareAbsTimeSpecs( &sharedStateSnapshot.shouldExitBy, &now ) < 0 )
+        if ( sharedStateSnapshot.shouldExit && ( isDataToSendQueueEmpty || compareAbsTimeSpecs( &sharedStateSnapshot.shouldExitBy, &now ) < 0 ) )
         {
             break;
         }
 
-        if ( sharedStateSnapshot.firstDataToSendNode != NULL )
+        if ( isDataToSendQueueEmpty )
         {
-            ELASTIC_APM_LOG_DEBUG(
-                    "About to send batch of events"
+            ELASTIC_APM_CALL_IF_FAILED_GOTO( waitForChangesInSharedState( backgroundBackendComm ) );
+            continue;
+        }
+
+        ELASTIC_APM_LOG_DEBUG(
+                "About to send batch of events"
+                "; batch ID: %"PRIu64
+                "; batch size: %"PRIu64
+                "; total size of queued events: %"PRIu64
+                , (UInt64) sharedStateSnapshot.firstDataToSendNode->id
+                , (UInt64) sharedStateSnapshot.firstDataToSendNode->serializedEvents.length
+                , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
+
+        resultCode = syncSendEventsToApmServer( sharedStateSnapshot.firstDataToSendNode->disableSend
+                                                , sharedStateSnapshot.firstDataToSendNode->serverTimeoutMilliseconds
+                                                , config
+                                                , sharedStateSnapshot.firstDataToSendNode->serializedEvents );
+        if ( resultCode != resultSuccess )
+        {
+            ELASTIC_APM_LOG_ERROR(
+                    "Failed to send batch of events - the batch will be dequeued and dropped"
                     "; batch ID: %"PRIu64
                     "; batch size: %"PRIu64
                     "; total size of queued events: %"PRIu64
                     , (UInt64) sharedStateSnapshot.firstDataToSendNode->id
                     , (UInt64) sharedStateSnapshot.firstDataToSendNode->serializedEvents.length
                     , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
-
-            resultCode = syncSendEventsToApmServer( sharedStateSnapshot.firstDataToSendNode->disableSend
-                                                    , sharedStateSnapshot.firstDataToSendNode->serverTimeoutMilliseconds
-                                                    , config
-                                                    , sharedStateSnapshot.firstDataToSendNode->serializedEvents );
-            if ( resultCode != resultSuccess )
-            {
-                ELASTIC_APM_LOG_ERROR(
-                        "Failed to send batch of events - the batch will be dequeued and dropped"
-                        "; batch ID: %"PRIu64
-                        "; batch size: %"PRIu64
-                        "; total size of queued events: %"PRIu64
-                        , (UInt64) sharedStateSnapshot.firstDataToSendNode->id
-                        , (UInt64) sharedStateSnapshot.firstDataToSendNode->serializedEvents.length
-                        , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
-            }
-
-            // We remove the node even if we have just failed to send the data
-            ELASTIC_APM_CALL_IF_FAILED_GOTO( removeFirstInDataToSendQueueUnderLock( backgroundBackendComm ) );
         }
 
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( waitForChangesInSharedState( backgroundBackendComm ) );
+        // We remove the node even if we have just failed to send the data
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( removeFirstInDataToSendQueueUnderLock( backgroundBackendComm ) );
     }
 
     resultCode = resultSuccess;
