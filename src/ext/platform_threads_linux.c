@@ -18,7 +18,11 @@
  */
 
 #include "platform_threads.h"
+//#ifndef PHP_WIN32
+//#   include <features.h>
+//#endif
 #include <pthread.h>
+#include <errno.h>
 #include "elastic_apm_assert.h"
 #include "elastic_apm_alloc.h"
 #include "log.h"
@@ -49,10 +53,9 @@ ResultCode newThread( Thread** threadOutPtr
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_create failed with error: `%s'; dbgDesc: %s"
+                "pthread_create failed with error: `%s'; dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), dbgDesc );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     thread->dbgDesc = dbgDesc;
@@ -67,28 +70,71 @@ ResultCode newThread( Thread** threadOutPtr
     goto finally;
 }
 
-void joinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const char* dbgDesc )
+ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, const char* dbgDesc )
 {
     ELASTIC_APM_ASSERT_VALID_IN_PTR_TO_PTR( threadOutPtr );
     ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( threadFuncRetVal );
+    // ELASTIC_APM_ASSERT_VALID_PTR( timeoutAbsUtc ); <- timeoutAbsUtc can be NULL
+    ELASTIC_APM_ASSERT_VALID_PTR( hasTimedOut );
 
-    ELASTIC_APM_LOG_TRACE( "Joining thread... thread dbg desc %s; call dbg desc: %s", (*threadOutPtr)->dbgDesc, dbgDesc );
-
-    int pthreadResultCode;
+    ResultCode resultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    const char* dbgFuncDescSuffix = ( timeoutAbsUtc == NULL ? "" : " with timeout" );
+    const char* dbgTimeoutAsLocal = ( timeoutAbsUtc == NULL ? "NULL" : streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ) );
+    const char* dbgPThreadsFuncDesc = ( timeoutAbsUtc == NULL ? "pthread_join" : "pthread_timedjoin_np" );
 
-    pthreadResultCode = pthread_join( (*threadOutPtr)->thread, threadFuncRetVal );
-    if ( pthreadResultCode != 0 )
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
+            "Join and delete thread%s"
+            "; timeoutAbsUtc: %s; thread dbg desc: `%s'; call dbg desc: `%s'"
+            , dbgFuncDescSuffix
+            , dbgTimeoutAsLocal, ( *threadOutPtr )->dbgDesc, dbgDesc );
+
+//    int pthreadResultCode = ( timeoutAbsUtc == NULL
+//                              ? pthread_join( (*threadOutPtr)->thread, threadFuncRetVal )
+//                              : pthread_timedjoin_np( (*threadOutPtr)->thread, threadFuncRetVal, timeoutAbsUtc ) );
+    int pthreadResultCode = pthread_join( (*threadOutPtr)->thread, threadFuncRetVal );
+
+    if ( pthreadResultCode == 0 )
+    {
+        *hasTimedOut = false;
+    }
+    else if ( pthreadResultCode == ETIMEDOUT )
+    {
+        *hasTimedOut = true;
+    }
+    else
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_join failed with error: `%s'; dbgDesc: %s"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), (*threadOutPtr)->dbgDesc );
+                "%s failed with error: `%s'"
+                "; timeoutAbsUtc: %s; thread dbg desc: `%s'; call dbg desc: `%s'"
+                , dbgPThreadsFuncDesc , streamErrNo( pthreadResultCode, &txtOutStream )
+                , dbgTimeoutAsLocal, (*threadOutPtr)->dbgDesc, dbgDesc );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
+    resultCode = resultSuccess;
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( Thread, *threadOutPtr );
 
-    ELASTIC_APM_LOG_TRACE( "Joined thread. thread dbg desc %s; call dbg desc: %s", (*threadOutPtr)->dbgDesc, dbgDesc );
+    finally:
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG(
+            "Join and delete thread%s"
+            "; hasTimedOut: %s"
+            "; timeoutAbsUtc: %s; call dbg desc: `%s'"
+            , dbgFuncDescSuffix
+            , resultCode == resultSuccess ? boolToString( *hasTimedOut ) : "N/A"
+            , dbgTimeoutAsLocal, dbgDesc );
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+UInt64 getThreadId( Thread* thread )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( thread );
+
+    return (UInt) thread->thread;
 }
 
 struct Mutex
@@ -112,10 +158,9 @@ ResultCode newMutex( Mutex** mtxOutPtr, const char* dbgDesc )
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_init failed with error: `%s'; dbgDesc: %s"
+                "pthread_mutex_init failed with error: `%s'; dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), dbgDesc );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     mtx->dbgDesc = dbgDesc;
@@ -130,30 +175,48 @@ ResultCode newMutex( Mutex** mtxOutPtr, const char* dbgDesc )
     goto finally;
 }
 
-void deleteMutex( Mutex** mtxOutPtr )
+ResultCode deleteMutex( Mutex** mtxOutPtr )
 {
     ELASTIC_APM_ASSERT_VALID_IN_PTR_TO_PTR( mtxOutPtr );
+    Mutex* mtx = *mtxOutPtr;
 
+    ResultCode resultCode;
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    pthreadResultCode = pthread_mutex_destroy( &((*mtxOutPtr)->mutex) );
+    pthreadResultCode = pthread_mutex_destroy( &( mtx->mutex ) );
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_destroy failed with error: `%s'; dbgDesc: %s"
-                , streamErrNo( pthreadResultCode, &txtOutStream ), (*mtxOutPtr)->dbgDesc );
+                "pthread_mutex_destroy failed with error: `%s'; dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx->dbgDesc );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
+    resultCode = resultSuccess;
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( Mutex, *mtxOutPtr );
+    mtx = NULL;
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
 }
 
-ResultCode lockMutex( Mutex* mtx, const char* dbgDesc )
+ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, const char* dbgDesc )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
+    ELASTIC_APM_ASSERT_VALID_PTR( shouldUnlock );
+    ELASTIC_APM_ASSERT( ! *shouldUnlock, "" );
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "Locking mutex... mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
+    *shouldUnlock = false;
+
+    if ( ! isInLogContext() )
+    {
+        ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "Locking mutex... mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+    }
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -163,20 +226,33 @@ ResultCode lockMutex( Mutex* mtx, const char* dbgDesc )
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_lock failed with error: `%s'; mutex dbgDesc: %s; call dbgDesc: %s"
+                "pthread_mutex_lock failed with error: `%s'; mutex dbg desc: `%s'; call dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
-    ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
+    if ( ! isInLogContext() )
+    {
+        ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+    }
+    *shouldUnlock = true;
     return resultSuccess;
 }
 
-ResultCode unlockMutex( Mutex* mtx, const char* dbgDesc )
+ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, const char* dbgDesc )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
+    ELASTIC_APM_ASSERT_VALID_PTR( shouldUnlock );
 
-    ELASTIC_APM_LOG_TRACE( "Unlocking mutex... mutex dbg desc %s; call dbg desc: %s", mtx->dbgDesc, dbgDesc );
+    if ( ! *shouldUnlock )
+    {
+        return resultSuccess;
+    }
+
+    if ( ! isInLogContext() )
+    {
+        ELASTIC_APM_LOG_TRACE( "Unlocking mutex... mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+    }
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -186,11 +262,17 @@ ResultCode unlockMutex( Mutex* mtx, const char* dbgDesc )
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_mutex_unlock failed with error: `%s'; mutex dbgDesc: %s; call dbgDesc: %s"
+                "pthread_mutex_unlock failed with error: `%s'; mutex dbg desc: `%s'; call dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
+
+    if ( ! isInLogContext() )
+    {
+        ELASTIC_APM_LOG_TRACE( "Unlocked mutex. mutex dbg desc: `%s'; call dbg desc: `%s'", mtx->dbgDesc, dbgDesc );
+    }
+    *shouldUnlock = false;
     return resultSuccess;
 }
 
@@ -216,10 +298,9 @@ ResultCode newConditionVariable( ConditionVariable** condVarOutPtr, const char* 
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_init failed with error: `%s'; dbgDesc: %s"
+                "pthread_cond_init failed with error: `%s'; dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), dbgDesc );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     condVar->dbgDesc = dbgDesc;
@@ -234,10 +315,11 @@ ResultCode newConditionVariable( ConditionVariable** condVarOutPtr, const char* 
     goto finally;
 }
 
-void deleteConditionVariable( ConditionVariable** condVarOutPtr )
+ResultCode deleteConditionVariable( ConditionVariable** condVarOutPtr )
 {
     ELASTIC_APM_ASSERT_VALID_IN_PTR_TO_PTR( condVarOutPtr );
 
+    ResultCode resultCode;
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
@@ -246,11 +328,19 @@ void deleteConditionVariable( ConditionVariable** condVarOutPtr )
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_destroy failed with error: `%s'; dbgDesc: %s"
+                "pthread_cond_destroy failed with error: `%s'; dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), (*condVarOutPtr)->dbgDesc );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
+    resultCode = resultSuccess;
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( ConditionVariable, *condVarOutPtr );
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
 }
 
 ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const char* dbgDesc )
@@ -258,7 +348,7 @@ ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const 
     ELASTIC_APM_ASSERT_VALID_PTR( condVar );
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
 
-    ELASTIC_APM_LOG_TRACE( "Waiting condition variable... condition variable dbg desc %s; call dbg desc: %s", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Waiting condition variable... condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -268,12 +358,60 @@ ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const 
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_wait failed with error: `%s'; condVar dbgDesc: %s; mtx dbgDesc: %s; call dbgDesc: %s"
+                "pthread_cond_wait failed with error: `%s'; condVar dbg desc: `%s'; mtx dbg desc: `%s'; call dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), condVar->dbgDesc, mtx->dbgDesc, dbgDesc );
         return resultFailure;
     }
 
-    ELASTIC_APM_LOG_TRACE( "Done waiting condition variable. condition variable dbg desc %s; call dbg desc: %s", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Done waiting condition variable. condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
+    return resultSuccess;
+}
+
+ResultCode timedWaitConditionVariable( ConditionVariable* condVar
+                                       , Mutex* mtx
+                                       , const TimeSpec* timeoutAbsUtc
+                                       , /* out */ bool* hasTimedOut
+                                       , const char* dbgDesc )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( condVar );
+    ELASTIC_APM_ASSERT_VALID_PTR( mtx );
+    ELASTIC_APM_ASSERT_VALID_PTR( hasTimedOut );
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
+            "Wait on condition variable with timeout"
+            "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
+            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+
+    int pthreadResultCode;
+
+    pthreadResultCode = pthread_cond_timedwait( &( condVar->conditionVariable ), &( mtx->mutex ), timeoutAbsUtc );
+    if ( pthreadResultCode == 0 )
+    {
+        *hasTimedOut = false;
+    }
+    else if ( pthreadResultCode == ETIMEDOUT )
+    {
+        *hasTimedOut = true;
+    }
+    else
+    {
+        ELASTIC_APM_LOG_ERROR(
+                "pthread_cond_timedwait failed with error: `%s'"
+                "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
+                , streamErrNo( pthreadResultCode, &txtOutStream )
+                , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
+        return resultFailure;
+    }
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG(
+            "Wait on condition variable with timeout"
+            "; hasTimedOut: %s"
+            "; timeoutAbsUtc: %s; condition variable dbg desc: `%s'; call dbg desc: `%s'"
+            , boolToString( *hasTimedOut )
+            , streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ), condVar->dbgDesc, dbgDesc );
     return resultSuccess;
 }
 
@@ -281,7 +419,7 @@ ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgD
 {
     ELASTIC_APM_ASSERT_VALID_PTR( condVar );
 
-    ELASTIC_APM_LOG_TRACE( "Signaling condition variable... condition variable dbg desc %s; call dbg desc: %s", condVar->dbgDesc, dbgDesc );
+    ELASTIC_APM_LOG_TRACE( "Signaling condition variable... condition variable dbg desc: `%s'; call dbg desc: `%s'", condVar->dbgDesc, dbgDesc );
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -291,7 +429,7 @@ ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgD
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR(
-                "pthread_cond_signal failed with error: `%s'; condVar dbgDesc: %s; call dbgDesc: %s"
+                "pthread_cond_signal failed with error: `%s'; condVar dbg desc: `%s'; call dbg desc: `%s'"
                 , streamErrNo( pthreadResultCode, &txtOutStream ), condVar->dbgDesc, dbgDesc );
         return resultFailure;
     }

@@ -28,10 +28,12 @@
 
 struct TimePoint
 {
-    struct timeval systemClockTime;
+    TimeVal systemClockTime;
 };
 
 typedef struct TimePoint TimePoint;
+
+typedef struct timespec TimeSpec;
 
 static inline void getCurrentTime( TimePoint* result )
 {
@@ -89,3 +91,13 @@ ResultCode parseDuration( StringView valueAsString, DurationUnits defaultUnits, 
 String streamDuration( Duration duration, TextOutputStream* txtOutStream );
 
 double durationToMilliseconds( Duration duration );
+
+ResultCode getCurrentAbsTimeSpec( /* out */ TimeSpec* currentAbsTimeSpec );
+
+void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNanoseconds );
+
+String streamCurrentLocalTime( TextOutputStream* txtOutStream );
+
+String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* txtOutStream );
+
+int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b );

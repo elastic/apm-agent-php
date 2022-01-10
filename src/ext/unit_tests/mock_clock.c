@@ -35,7 +35,7 @@
 #endif
 #include <windows.h>
 
-static int getfilesystemtime(struct timeval *tv)
+static int getfilesystemtime( TimeVal* tv )
 {/*{{{*/
     FILETIME ft;
     unsigned __int64 ff = 0;
@@ -61,7 +61,7 @@ static int getfilesystemtime(struct timeval *tv)
     return 0;
 }/*}}}*/
 
-int gettimeofday(struct timeval *time_Info, struct timezone *timezone_Info)
+int gettimeofday( TimeVal* time_Info, TimeZone* timezone_Info )
 {/*{{{*/
     /* Get the time, if they want it */
     if (time_Info != NULL) {
@@ -138,7 +138,7 @@ void setMockCurrentTime(
 /**
  * @return 0 for success, or -1 for failure (in which case errno is set appropriately)
  */
-int getSystemClockCurrentTimeAsUtc( struct timeval* systemClockTime )
+int getSystemClockCurrentTimeAsUtc( TimeVal* systemClockTime )
 {
     if ( ! g_isCurrentTimeMocked ) return gettimeofday( systemClockTime, /* timezoneInfo: */ NULL );
 

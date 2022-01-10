@@ -58,3 +58,11 @@ static inline String resultCodeToString( ResultCode resultCode )
         resultCode = (expr); \
         if ( resultCode != resultSuccess ) goto failure; \
     } while ( 0 )
+
+#define ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( failureResultCode ) \
+    do { \
+        resultCode = (failureResultCode); \
+        goto failure; \
+    } while ( 0 )
+
+#define ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE() ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure )

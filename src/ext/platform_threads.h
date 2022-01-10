@@ -21,6 +21,8 @@
 
 #include "ResultCode.h"
 #include "platform_threads.h"
+#include "elastic_apm_clock.h"
+#include "time_util.h"
 
 struct Thread;
 typedef struct Thread Thread;
@@ -28,18 +30,20 @@ ResultCode newThread( Thread** threadOutPtr
                       , void* (* threadFunc )( void* )
                       , void* threadFuncArg
                       , const char* dbgDesc );
-void joinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const char* dbgDesc );
+ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, const char* dbgDesc );
+UInt64 getThreadId( Thread* thread );
 
 struct Mutex;
 typedef struct Mutex Mutex;
 ResultCode newMutex( Mutex** mtxOutPtr, const char* dbgDesc );
-ResultCode lockMutex( Mutex* mtx, const char* dbgDesc );
-ResultCode unlockMutex( Mutex* mtx, const char* dbgDesc );
-void deleteMutex( Mutex** mtxOutPtr );
+ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, const char* dbgDesc );
+ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, const char* dbgDesc );
+ResultCode deleteMutex( Mutex** mtxOutPtr );
 
 struct ConditionVariable;
 typedef struct ConditionVariable ConditionVariable;
 ResultCode newConditionVariable( ConditionVariable** condVarOutPtr, const char* dbgDesc );
-ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx , const char* dbgDesc );
+ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const char* dbgDesc );
+ResultCode timedWaitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, const char* dbgDesc );
 ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgDesc );
-void deleteConditionVariable( ConditionVariable** condVarOutPtr );
+ResultCode deleteConditionVariable( ConditionVariable** condVarOutPtr );

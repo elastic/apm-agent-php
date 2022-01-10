@@ -78,3 +78,5 @@ String streamStackTrace( void* const* addresses, size_t addressesCount, String l
 String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream );
 
 String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
+
+void registerOsSignalHandler();
