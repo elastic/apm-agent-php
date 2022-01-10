@@ -60,6 +60,9 @@ class TestCaseBase extends TestCase
     /** @var LoggerFactory */
     private static $noopLoggerFactory;
 
+    /** @var bool */
+    public static $isUnitTest = true;
+
     /**
      * @param mixed        $name
      * @param array<mixed> $data
@@ -607,19 +610,19 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
+    private static function processSpecificPrefix(): string
+    {
+        return self::$isUnitTest ? '' : AmbientContext::dbgProcessName() . ' [PID: ' . getmypid() . '] ';
+    }
+
     public static function printMessage(string $srcMethod, string $msg): void
     {
         if (!defined('STDERR')) {
             define('STDERR', fopen('php://stderr', 'w'));
         }
+
         if (defined('STDERR')) {
-            fwrite(
-                STDERR,
-                AmbientContext::dbgProcessName()
-                . ' [PID: ' . getmypid() . ']'
-                . ' [' . $srcMethod . ']'
-                . ' ' . $msg . PHP_EOL
-            );
+            fwrite(STDERR, self::processSpecificPrefix() . '[' . $srcMethod . ']' . ' ' . $msg . PHP_EOL);
         }
     }
 
@@ -631,12 +634,7 @@ class TestCaseBase extends TestCase
             define('STDERR', fopen('php://stderr', 'w'));
         }
         if (defined('STDERR')) {
-            fwrite(
-                STDERR,
-                AmbientContext::dbgProcessName()
-                . ' [PID: ' . getmypid() . ']'
-                . ' ' . $msg . PHP_EOL
-            );
+            fwrite(STDERR, self::processSpecificPrefix() . $msg . PHP_EOL);
         }
 
         if ($loggerProxy !== null) {

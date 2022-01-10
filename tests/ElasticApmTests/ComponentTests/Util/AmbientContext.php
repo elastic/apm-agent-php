@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogSinkForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -74,6 +75,8 @@ final class AmbientContext
                 . self::testConfig()->appCodePhpIni
             );
         }
+
+        TestCaseBase::$isUnitTest = false;
     }
 
     public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
