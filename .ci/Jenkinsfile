@@ -95,10 +95,8 @@ pipeline {
               }
               stage('Static check and Unit Tests') {
                 steps {
-                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
-                    }
+                  githubNotifyWithDir(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
+                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                   }
                 }
                 post {
@@ -109,11 +107,9 @@ pipeline {
               }
               stage('Generate for package') {
                 steps {
-                  withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-                      stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
-                    }
+                  githubNotifyWithDir(context: "Generate-For-Package-${PHP_VERSION}") {
+                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                    stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
                   }
                 }
               }
@@ -522,6 +518,18 @@ def prepareWorkspace(def args = [:], Closure body){
     deleteDir()
     unstash 'source'
     body()
+  }
+}
+
+/**
+* Prepare function to
+* Send a GitHub Notification, and run the body in the BASE_DIR folder
+*/
+def githubNotifyWithDir(def args = [:], Closure body){
+  withGithubNotify(args) {
+    dir("${BASE_DIR}"){
+      body()
+    }
   }
 }
 
