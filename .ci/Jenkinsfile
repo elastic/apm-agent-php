@@ -173,9 +173,10 @@ pipeline {
             stages {
               stage('Lifecycle Testing') {
                 steps {
-                  packageWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}", prepareGoal: "prepare-${DIST}") {
-                    sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
-                  }
+                  packageWorkspaceWithSh(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}",
+                                         prepareGoal: "prepare-${DIST}",
+                                         script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing",
+                                         label: "${DIST}-lifecycle-testing for ${PHP_VERSION}")
                 }
                 post {
                   always {
@@ -193,9 +194,10 @@ pipeline {
                   }
                 }
                 steps {
-                  packageWorkspace(context: "PHP-Upgrade-Testing-${DIST}", prepareGoal: "prepare-${DIST}") {
-                    sh script: "make -C packaging ${DIST}-php-upgrade-testing", label: "${DIST}-php-upgrade-testing"
-                  }
+                  packageWorkspaceWithSh(context: "PHP-Upgrade-Testing-${DIST}",
+                                         prepareGoal: "prepare-${DIST}",
+                                         sript: "make -C packaging ${DIST}-php-upgrade-testing",
+                                         label: "${DIST}-php-upgrade-testing")
                 }
               }
               stage('Agent Upgrade Testing') {
@@ -224,9 +226,10 @@ pipeline {
                   }
                 }
                 steps {
-                  packageWorkspace(context: "PHP-Apache-Testing-${DIST}", prepareGoal: "prepare-${DIST}-apache") {
-                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
-                  }
+                  packageWorkspaceWithSh(context: "PHP-Apache-Testing-${DIST}",
+                                         prepareGoal: "prepare-${DIST}-apache",
+                                         script: "make -C packaging ${DIST}-lifecycle-testing-in-apache",
+                                         label: "${DIST}-lifecycle-testing-in-apache")
                 }
               }
               stage('PHP FPM Testing') {
@@ -238,9 +241,10 @@ pipeline {
                   }
                 }
                 steps {
-                  packageWorkspace(context: "PHP-FPM-Testing-${DIST}", prepareGoal: "prepare-${DIST}-fpm") {
-                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
-                  }
+                  packageWorkspaceWithSh(context: "PHP-FPM-Testing-${DIST}",
+                                         prepareGoal: "prepare-${DIST}-fpm",
+                                         script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm",
+                                         label: "${DIST}-lifecycle-testing-in-fpm")
                 }
               }
             }
@@ -524,12 +528,28 @@ def prepareWorkspace(def args = [:], Closure body){
 /**
 * Prepare function to
 * Send a GitHub Notification, and run the body in the BASE_DIR folder
+* It was required to bypass the existing issue with the Declarative
+* pipelines when they are huge -> Method code too large!
+* See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
 def githubNotifyWithDir(def args = [:], Closure body){
   withGithubNotify(args) {
     dir("${BASE_DIR}"){
       body()
     }
+  }
+}
+
+/**
+* Prepare function to
+* packageWorkspace and run the body in the BASE_DIR folder
+* It was required to bypass the existing issue with the Declarative
+* pipelines when they are huge -> Method code too large!
+* See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
+*/
+def packageWorkspaceWithSh(def args = [:], Closure body){
+  packageWorkspace(args) {
+    sh script: args.script, label: args.label
   }
 }
 
