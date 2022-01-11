@@ -83,12 +83,12 @@ pipeline {
             stages {
               stage('Build') {
                 steps {
-                  build()
+                  runBuild()
                 }
               }
               stage('Static check and Unit Tests') {
                 steps {
-                  unitTest()
+                  runUnitTest()
                 }
                 post {
                   always {
@@ -98,7 +98,7 @@ pipeline {
               }
               stage('Generate for package') {
                 steps {
-                  generatePackage()
+                  runGeneratePackage()
                 }
               }
             }
@@ -198,7 +198,7 @@ pipeline {
                   }
                 }
                 steps {
-                  agentUpgradeTest()
+                  runAgentUpgradeTest()
                 }
               }
               stage('PHP Apache Testing') {
@@ -313,7 +313,7 @@ pipeline {
             stages {
               stage('Release Test') {
                 steps {
-                  signedTest()
+                  runSignedTest()
                 }
                 post {
                   unsuccessful {
@@ -363,7 +363,7 @@ pipeline {
             stages {
               stage('Release Test') {
                 steps {
-                  releaseTest()
+                  runReleaseTest()
                 }
                 post {
                   unsuccessful {
@@ -412,7 +412,7 @@ pipeline {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def build() {
+def runBuild() {
   initWorkspace(context: "Build-${PHP_VERSION}") {
     // When running in the CI with multiple parallel stages
     // the access could be considered as a DDOS attack.
@@ -429,7 +429,7 @@ def build() {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def unitTest() {
+def runUnitTest() {
   githubNotifyWithDir(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
     sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
   }
@@ -441,7 +441,7 @@ def unitTest() {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def generatePackage() {
+def runGeneratePackage() {
   githubNotifyWithDir(context: "Generate-For-Package-${PHP_VERSION}") {
     sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
     stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
@@ -454,7 +454,7 @@ def generatePackage() {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def agentUpgradeTest() {
+def runAgentUpgradeTest() {
   initWorkspace(context: "Agent-Upgrade-Testing-${DIST}") {
     packageGeneration(versions: [env.PHP_VERSION], local: true)
     unstash 'package'
@@ -468,7 +468,7 @@ def agentUpgradeTest() {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def releaseTest() {
+def runReleaseTest() {
   initWorkspace(context: "Release-Test-${PHP_VERSION}") {
     sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
   }
@@ -480,7 +480,7 @@ def releaseTest() {
 * pipelines when they are huge -> Method code too large!
 * See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
 */
-def signedTest() {
+def runSignedTest() {
   initWorkspace(context: "Signed-Test-${PHP_VERSION}") {
                 unstash "${env.SIGNED_ARTIFACTS}"
                 sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
