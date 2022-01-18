@@ -434,7 +434,7 @@ pipeline {
       // Reporting disables in the `internal-ci` since credentials are not in place
       // OTOH it avoids duplicated notifications
       whenFalse(isInternalCI()){
-        notifyBuildResult(prComment: true, analyzeFlakey: true, jobName: getFlakyJobName(withBranch: 'master'))
+        notifyBuildResult(prComment: true, analyzeFlakey: true, jobName: getFlakyJobName(withBranch: 'main'))
       }
     }
     failure {

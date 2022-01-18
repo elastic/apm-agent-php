@@ -113,7 +113,7 @@ function get_extension_filename() {
 #### Function manual_extension_agent_uninstallation ############################
 function manual_extension_agent_uninstallation() {
     echo 'Uninstall the Agent manually as explained in:'
-    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    echo 'https://github.com/elastic/apm-agent-php/blob/main/docs/setup.asciidoc'
 }
 
 ################################################################################
