@@ -165,7 +165,7 @@ EOF
 #### Function manual_extension_agent_setup #####################################
 function manual_extension_agent_setup() {
     echo 'Set up the Agent manually as explained in:'
-    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    echo 'https://github.com/elastic/apm-agent-php/blob/main/docs/setup.asciidoc'
     if [ -e "${EXTENSION_FILE_PATH}" ] ; then
         echo 'Enable the extension by adding the following to your php.ini file:'
         echo "extension=${EXTENSION_FILE_PATH}"

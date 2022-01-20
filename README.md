@@ -2,7 +2,7 @@
 
 This is the official PHP agent for [Elastic APM](https://www.elastic.co/products/apm).
 
-[![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmaster)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/master/)
+[![Build Status](https://apm-ci.elastic.co/buildStatus/icon?job=apm-agent-php%2Fapm-agent-php-mbp%2Fmain)](https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/main/)
 [![Releases](https://img.shields.io/github/v/release/elastic/apm-agent-php?color=blue&include_prereleases&sort=semver)](https://github.com/elastic/apm-agent-php/releases)
 [![Downloads-Releases](https://img.shields.io/github/downloads/elastic/apm-agent-php/total)]()
 [![Download-Latest](https://img.shields.io/github/downloads-pre/elastic/apm-agent-php/latest/total)]()
