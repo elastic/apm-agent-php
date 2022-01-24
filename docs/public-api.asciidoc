@@ -105,7 +105,7 @@ A transaction describes an event captured by an Elastic APM agent monitoring a s
 Transactions help combine multiple <<api-span-interface,Spans>> into logical groups,
 and they are the first <<api-span-interface,Span>> of a service.
 More information on Transactions and Spans is available
-in the {apm-overview-ref-v}/apm-data-model.html[APM data model] documentation.
+in the {apm-guide-ref}/data-model.html[APM data model] documentation.
 
 See <<api-elasticapm-class-get-current-transaction>> on how to get a reference to the current transaction.
 
