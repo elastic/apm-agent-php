@@ -143,7 +143,7 @@ while `/user/*?lang=*` does not match `http://my_site.com/user/Alice?lang=en`
 |============
 
 This string is used to ensure that only your agents can send data to your APM Server.
-You must have created the API key using the APM Server {apm-server-ref-v}/api-key.html[command line tool].
+You must have created the API key using the APM Server {apm-guide-ref}/api-key.html[command line tool].
 
 <<config-api-key>> is an alternative to <<config-secret-token>>.
 If both <<config-secret-token>> and <<config-api-key>> are configured,
@@ -364,7 +364,7 @@ See <<configure-logging>> for details.
 This string is used to ensure that only your agents can send data to your APM Server.
 Both the agents and the APM Server have to be configured with the same secret token.
 
-See {apm-server-ref-v}/secret-token.html[the relevant APM Server's documentation]
+See {apm-guide-ref}/secret-token.html[the relevant APM Server's documentation]
 on how to configure APM Server's secret token.
 
 Use this setting if the APM Server requires a token, like in {ess}.
