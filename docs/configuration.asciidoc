@@ -31,11 +31,8 @@ NOTE: If you use environment variables to configure the agent, make sure the pro
 === {ess} on {ecloud}
 
 The agent can be configured to send data to an {ess-product}[{ess} APM instance] by
-setting <<config-server-url>> and <<config-secret-token>> options
-to the corresponding values found in the APM section of {ecloud}:
-
-[role="screenshot"]
-image::./images/elastic_cloud_apm_config.png[Example view of Elastic Cloud host and secret_token]
+setting the <<config-server-url>> and <<config-secret-token>> options
+to the corresponding values found in the APM & Fleet section of {ecloud}.
 
 Configure the agent, for example via `php.ini`:
 
