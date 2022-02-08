@@ -72,15 +72,17 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var TransactionContext|null */
     private $context = null;
 
-    /** @var BreakdownMetricsPerTransaction */
-    private $breakdownMetricsPerTransaction;
+    /** @var ?BreakdownMetricsPerTransaction */
+    private $breakdownMetricsPerTransaction = null;
 
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
         $this->data = new TransactionData();
-        $this->breakdownMetricsPerTransaction
-            = new BreakdownMetricsPerTransaction($this, $builder->tracer->getConfig()->breakdownMetrics());
+        $this->config = $builder->tracer->getConfig();
+        if ($this->config->breakdownMetrics()) {
+            $this->breakdownMetricsPerTransaction = new BreakdownMetricsPerTransaction($this);
+        }
 
         $distributedTracingData = self::extractDistributedTracingData($builder);
         if ($distributedTracingData == null) {
@@ -99,8 +101,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $builder->type,
             $builder->timestamp
         );
-
-        $this->config = $builder->tracer->getConfig();
 
         $this->logger = $this->tracer->loggerFactory()
                                      ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
@@ -411,6 +411,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $result;
     }
 
+    public function getConfig(): ConfigSnapshot
+    {
+        return $this->config;
+    }
+
     public function queueSpanDataToSend(SpanData $spanData): void
     {
         if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
@@ -479,10 +484,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        $this->breakdownMetricsPerTransaction->finalize(
-            TimeUtil::millisecondsToMicroseconds($this->data->duration)
-        );
-
         $this->data->prepareForSerialization();
 
         if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
@@ -506,17 +507,17 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
     }
 
-    public function isSelfTimeEnabled(): bool
-    {
-        return $this->breakdownMetricsPerTransaction->isSelfTimeEnabled();
-    }
-
     public function addSpanSelfTime(string $spanType, ?string $spanSubtype, float $spanSelfTimeInMicroseconds): void
     {
         if ($this->beforeMutating() || !$this->tracer->isRecording()) {
             return;
         }
 
+        /**
+         * if addSpanSelfTime is called that means $this->breakdownMetricsPerTransaction is not null
+         *
+         * @phpstan-ignore-next-line
+         */
         $this->breakdownMetricsPerTransaction->addSpanSelfTime(
             $spanType,
             $spanSubtype,

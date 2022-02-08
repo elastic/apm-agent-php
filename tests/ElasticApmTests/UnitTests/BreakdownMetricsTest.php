@@ -47,9 +47,6 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
     private const EXPECTED_SPAN_TYPE = 'EXPECTED_SPAN_TYPE';
     private const EXPECTED_SPAN_SUBTYPE = 'EXPECTED_SPAN_SUBTYPE';
 
-    private const EXPECTED_TRANSACTION_DURATION_COUNT_SAMPLE_KEY = 'transaction.duration.count';
-    private const EXPECTED_TRANSACTION_DURATION_SUM_US_SAMPLE_KEY = 'transaction.duration.sum.us';
-
     private const EXPECTED_TRANSACTION_BREAKDOWN_COUNT_SAMPLE_KEY = 'transaction.breakdown.count';
     private const EXPECTED_SPAN_SELF_TIME_COUNT_SAMPLE_KEY = 'span.self_time.count';
     private const EXPECTED_SPAN_SELF_TIME_SUM_US_SAMPLE_KEY = 'span.self_time.sum.us';
@@ -91,30 +88,38 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
         $this->assertSame(floatval($expectedTxDuration), TimeUtil::millisecondsToMicroseconds($tx->duration));
 
         $metricSets = $this->mockEventSink->eventsFromAgent->metricSetDatas;
-        $this->assertCount($breakdownMetricsConfig ? count($expectedSelfTimes) + 1 : 1, $metricSets);
+        // +1 is for the metric-set with "transaction.breakdown.count"
+        $this->assertCount($breakdownMetricsConfig ? count($expectedSelfTimes) + 1 : 0, $metricSets);
 
+        $metricSetWithTxBreakdownCountFound = false;
         foreach ($metricSets as $metricSet) {
             $this->assertSame($expectedTxTimestamp, $metricSet->timestamp);
             $this->assertSame($expectedTxName, $metricSet->transactionName);
             $this->assertSame($expectedTxType, $metricSet->transactionType);
 
-            $txDurationCountVal = $metricSet->getSample(self::EXPECTED_TRANSACTION_DURATION_COUNT_SAMPLE_KEY);
-            if ($txDurationCountVal !== null) {
+            $txBreakdownCountVal = $metricSet->getSample(self::EXPECTED_TRANSACTION_BREAKDOWN_COUNT_SAMPLE_KEY);
+            // if it's the metric-set with "transaction.breakdown.count"
+            if ($txBreakdownCountVal !== null) {
+                // There should be exactly one metric-set with "transaction.breakdown.count"
+                $this->assertFalse($metricSetWithTxBreakdownCountFound);
+                $metricSetWithTxBreakdownCountFound = true;
+
+                // PHP Agent sends metric sets for Breakdown Metrics feature after each transaction
+                // so "transaction.breakdown.count" should 1
+                $this->assertSame(1, $txBreakdownCountVal);
+
                 $this->assertNull($metricSet->spanType);
                 $this->assertNull($metricSet->spanSubtype);
-                $this->assertSame(1, $txDurationCountVal);
-                $txDurationSumVal = $metricSet->getSample(self::EXPECTED_TRANSACTION_DURATION_SUM_US_SAMPLE_KEY);
-                $this->assertSame(floatval($expectedTxDuration), floatval($txDurationSumVal));
 
-                $this->assertSame($breakdownMetricsConfig ? 3 : 2, $metricSet->samplesCount());
-                if ($breakdownMetricsConfig) {
-                    $txBreakdownCountVal = $metricSet->getSample(self::EXPECTED_TRANSACTION_BREAKDOWN_COUNT_SAMPLE_KEY);
-                    $this->assertSame(1, $txBreakdownCountVal);
-                }
+                // span self-time metric-set should contain exactly 2 samples:
+                // "span.self_time.count" and "span.self_time.sum.us"
+                $this->assertSame(1, $metricSet->samplesCount());
 
                 continue;
             }
 
+            // span self-time metric-set should contain exactly 2 samples:
+            // "span.self_time.count" and "span.self_time.sum.us"
             $this->assertSame(2, $metricSet->samplesCount());
 
             $this->assertNotNull($metricSet->spanType);
@@ -146,6 +151,10 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
             }
             $this->assertTrue($found, LoggableToString::convert($metricSet));
         }
+
+        // There should be exactly one metric-set with "transaction.breakdown.count" if and only if
+         // breakdown_metrics config is true
+        $this->assertSame($breakdownMetricsConfig, $metricSetWithTxBreakdownCountFound);
     }
 
     /**
