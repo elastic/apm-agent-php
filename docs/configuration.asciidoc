@@ -431,7 +431,7 @@ The URL for your APM Server. The URL must be fully qualified, including protocol
 [options="header"]
 |============
 | Default                          | Type
-| `Unnamed PHP service`       | String
+| `unknown-php-service`       | String
 |============
 
 This is used to keep all the errors and transactions of your service together

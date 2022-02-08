@@ -38,7 +38,9 @@ final class MetadataDiscoverer
 {
     public const AGENT_NAME = 'php';
     public const LANGUAGE_NAME = 'PHP';
-    public const DEFAULT_SERVICE_NAME = 'Unnamed PHP service';
+    // https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#zero-configuration-support
+    // ... the default value: unknown-${service.agent.name}-service ...
+    public const DEFAULT_SERVICE_NAME = 'unknown-php-service';
 
     /** @var ConfigSnapshot */
     private $config;
