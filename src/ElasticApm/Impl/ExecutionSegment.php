@@ -88,11 +88,12 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->setName($name);
         $this->setType($type);
 
-        if ($this->containingTransaction()->isSelfTimeEnabled()) {
+        if ($this->containingTransaction()->getConfig()->breakdownMetrics()) {
             $this->breakdownMetricsSelfTimeTracker = new BreakdownMetricsSelfTimeTracker($monotonicClockNow);
             if ($parentExecutionSegment !== null) {
                 /**
-                 * If isSelfTimeEnabled is true then breakdownMetricsSelfTimeTracker should not be null
+                 * If breakdownMetrics config is true then all transaction's spans
+                 * breakdownMetricsSelfTimeTracker should not be null
                  *
                  * @phpstan-ignore-next-line
                  */
