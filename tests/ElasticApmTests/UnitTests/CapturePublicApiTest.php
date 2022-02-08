@@ -225,7 +225,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
         $throwingRunData = [];
         $captureTx = function (bool $shouldThrow) use ($throwingFunc, &$throwingRunData): bool {
             return ElasticApm::captureCurrentTransaction(
-                'test_TX_name',
+                $shouldThrow ? 'test_throwing_TX_name' : 'test_TX_name',
                 $shouldThrow ? 'test_throwing_TX_type' : 'test_TX_type',
                 function (TransactionInterface $tx) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {
                     $throwingRunData['traceId'] = $tx->getTraceId();
@@ -272,6 +272,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             );
 
             self::assertNotNull($error->transaction);
+            self::assertSame('test_throwing_TX_name', $error->transaction->name);
             self::assertSame('test_throwing_TX_type', $error->transaction->type);
             self::assertTrue($error->transaction->isSampled);
 
