@@ -92,7 +92,6 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     php_error.c \
     platform.c \
     platform_threads_linux.c \
-    RequestScoped.c \
     supportability.c \
     SystemMetrics.c \
     TextOutputStream.c \

@@ -38,5 +38,5 @@ void resetCallInterceptionOnRequestShutdown();
 ResultCode elasticApmSendToServer(
         long disableSend
         , double serverTimeoutMilliseconds
-        , StringView serializedMetadata
+        , StringView userAgentHttpHeader
         , StringView serializedEvents );

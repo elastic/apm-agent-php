@@ -208,7 +208,7 @@ static inline bool longToBool( long longVal )
 ResultCode elasticApmSendToServer(
         long disableSend
         , double serverTimeoutMilliseconds
-        , StringView serializedMetadata
+        , StringView userAgentHttpHeader
         , StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
@@ -216,11 +216,11 @@ ResultCode elasticApmSendToServer(
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( saveMetadataFromPhpPart( &tracer->requestScoped, serializedMetadata ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             sendEventsToApmServer( longToBool( disableSend )
                                    , serverTimeoutMilliseconds
                                    , getTracerCurrentConfigSnapshot( tracer )
+                                   , userAgentHttpHeader
                                    , serializedEvents ) );
 
     resultCode = resultSuccess;

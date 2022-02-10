@@ -31,6 +31,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
@@ -72,6 +73,7 @@ abstract class TestEnvBase implements LoggableInterface
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
+    private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
 
     /** @var int|null */
     protected $resourcesCleanerPort = null;
@@ -583,7 +585,7 @@ abstract class TestEnvBase implements LoggableInterface
     {
         $configuredApiKey = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::API_KEY);
 
-        $this->verifyAuthHttpRequestHeaders(
+        self::verifyAuthHttpRequestHeaders(
         /* expectedApiKey: */
             $configuredApiKey,
             /* expectedSecretToken: */
@@ -592,6 +594,12 @@ abstract class TestEnvBase implements LoggableInterface
                 : null,
             $this->dataFromAgent
         );
+
+        $expectedUserAgentHttpRequestHeaderValue = EventSender::buildUserAgentHttpHeader(
+            self::deriveExpectedServiceName($testProperties),
+            self::deriveExpectedServiceVersion($testProperties)
+        );
+        self::verifyUserAgentHttpRequestHeader($expectedUserAgentHttpRequestHeaderValue, $this->dataFromAgent);
     }
 
     public static function verifyAuthHttpRequestHeaders(
@@ -618,6 +626,30 @@ abstract class TestEnvBase implements LoggableInterface
         }
     }
 
+    public static function verifyUserAgentHttpRequestHeader(
+        string $expectedHeaderValue,
+        DataFromAgent $dataFromAgent
+    ): void {
+        foreach ($dataFromAgent->intakeApiRequests as $intakeApiRequest) {
+            $actualHeaderValue = $intakeApiRequest->headers[self::USER_AGENT_HTTP_HEADER_NAME];
+            TestCase::assertCount(1, $actualHeaderValue);
+            TestCase::assertSame($expectedHeaderValue, $actualHeaderValue[0]);
+        }
+    }
+
+    private static function deriveExpectedServiceName(TestProperties $testProperties): string
+    {
+        $configuredServiceName = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_NAME);
+        return $configuredServiceName === null
+            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            : MetadataDiscoverer::adaptServiceName($configuredServiceName);
+    }
+
+    private static function deriveExpectedServiceVersion(TestProperties $testProperties): ?string
+    {
+        $configuredServiceVersion = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_VERSION);
+        return Tracer::limitNullableKeywordString($configuredServiceVersion);
+    }
 
     protected function verifyMetadata(TestProperties $testProperties): void
     {
@@ -627,19 +659,13 @@ abstract class TestEnvBase implements LoggableInterface
             $this->dataFromAgent
         );
 
-        $configuredServiceName = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_NAME);
-        $expectedServiceName = $configuredServiceName === null
-            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
-            : MetadataDiscoverer::adaptServiceName($configuredServiceName);
-        self::verifyServiceName($expectedServiceName, $this->dataFromAgent);
+        self::verifyServiceName(self::deriveExpectedServiceName($testProperties), $this->dataFromAgent);
 
         $configServiceNodeName = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_NODE_NAME);
         $expectedServiceNodeName = Tracer::limitNullableKeywordString($configServiceNodeName);
         self::verifyServiceNodeName($expectedServiceNodeName, $this->dataFromAgent);
 
-        $configuredServiceVersion = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::SERVICE_VERSION);
-        $expectedServiceVersion = Tracer::limitNullableKeywordString($configuredServiceVersion);
-        self::verifyServiceVersion($expectedServiceVersion, $this->dataFromAgent);
+        self::verifyServiceVersion(self::deriveExpectedServiceVersion($testProperties), $this->dataFromAgent);
 
         $configuredHostname = $testProperties->getConfiguredAgentOptionStringParsed(OptionNames::HOSTNAME);
         self::verifyHostname(Tracer::limitNullableKeywordString($configuredHostname), $this->dataFromAgent);

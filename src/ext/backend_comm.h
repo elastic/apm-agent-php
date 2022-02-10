@@ -31,6 +31,7 @@ ResultCode sendEventsToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
         , const ConfigSnapshot* config
+        , StringView userAgentHttpHeader
         , StringView serializedEvents );
 
 void backgroundBackendCommOnModuleShutdown();
