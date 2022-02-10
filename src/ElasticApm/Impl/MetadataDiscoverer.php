@@ -59,7 +59,7 @@ final class MetadataDiscoverer
         return (new MetadataDiscoverer($config, $loggerFactory))->doDiscoverMetadata();
     }
 
-    public function doDiscoverMetadata(): Metadata
+    private function doDiscoverMetadata(): Metadata
     {
         $result = new Metadata();
 

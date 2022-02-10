@@ -225,8 +225,6 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
-
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
@@ -268,48 +266,6 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
             , timePointToEpochMicroseconds( currentTime ) );
 }
 
-static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
-{
-    ResultCode resultCode;
-    TimePoint currentTime;
-    enum { serializedEventsBufferSize = 1000 * 1000 };
-    char* serializedEventsBuffer = NULL;
-
-    if ( isEmptyStringView( tracer->requestScoped.lastMetadataFromPhpPart ) )
-    {
-        ELASTIC_APM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-
-    getCurrentTime( &currentTime );
-
-    ELASTIC_APM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
-    TextOutputStream serializedEventsTxtOutStream =
-            makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
-    serializedEventsTxtOutStream.autoTermZero = false;
-
-    streamStringView( tracer->requestScoped.lastMetadataFromPhpPart, &serializedEventsTxtOutStream );
-    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" ), &serializedEventsTxtOutStream );
-    serializedEventsTxtOutStream.autoTermZero = true;
-    appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
-
-//    sendEventsToApmServer( config, textOutputStreamContentAsStringView( &serializedEventsTxtOutStream ) );
-
-    resultCode = resultSuccess;
-
-    finally:
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
-
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
-    return;
-
-    failure:
-    goto finally;
-}
-
 void elasticApmRequestShutdown()
 {
     ResultCode resultCode;
@@ -337,8 +293,6 @@ void elasticApmRequestShutdown()
     // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
-
-    destructRequestScoped( &tracer->requestScoped );
 
     resultCode = resultSuccess;
 
