@@ -38,6 +38,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
@@ -258,44 +259,6 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
-    private static function getPhpErrorTypeName(int $type): ?string
-    {
-        switch ($type) {
-            case E_ERROR:
-                return 'E_ERROR';
-            case E_WARNING:
-                return 'E_WARNING';
-            case E_PARSE:
-                return 'E_PARSE';
-            case E_NOTICE:
-                return 'E_NOTICE';
-            case E_CORE_ERROR:
-                return 'E_CORE_ERROR';
-            case E_CORE_WARNING:
-                return 'E_CORE_WARNING';
-            case E_COMPILE_ERROR:
-                return 'E_COMPILE_ERROR';
-            case E_COMPILE_WARNING:
-                return 'E_COMPILE_WARNING';
-            case E_USER_ERROR:
-                return 'E_USER_ERROR';
-            case E_USER_WARNING:
-                return 'E_USER_WARNING';
-            case E_USER_NOTICE:
-                return 'E_USER_NOTICE';
-            case E_STRICT:
-                return 'E_STRICT';
-            case E_RECOVERABLE_ERROR:
-                return 'E_RECOVERABLE_ERROR';
-            case E_DEPRECATED:
-                return 'E_DEPRECATED';
-            case E_USER_DEPRECATED:
-                return 'E_USER_DEPRECATED';
-            default:
-                return null;
-        }
-    }
-
     public function onPhpError(
         int $type,
         string $fileName,
@@ -320,7 +283,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         $customErrorData->message = TextUtil::contains($message, $fileName)
             ? $message
             : ($message . ' in ' . $fileName . ':' . $lineNumber);
-        $customErrorData->type = self::getPhpErrorTypeName($type);
+        $customErrorData->type = PhpErrorUtil::getTypeName($type);
 
         $this->createError($customErrorData, $relatedThrowable);
     }

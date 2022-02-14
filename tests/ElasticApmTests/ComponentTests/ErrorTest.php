@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
 use ElasticApmTests\ComponentTests\Util\HttpConsts;
@@ -118,8 +119,14 @@ final class ErrorTest extends ComponentTestCaseBase
 
                 $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
                 self::assertNotNull($err->exception);
-                self::assertSame(E_NOTICE, $err->exception->code);
-                self::assertSame('E_NOTICE', $err->exception->type);
+                // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
+                // was converted from notice to warning
+                // https://www.php.net/manual/en/migration80.incompatible.php
+                $expectedCode = (version_compare(PHP_VERSION, '8.0.0') >= 0) ? E_WARNING : E_NOTICE;
+                $expectedType = PhpErrorUtil::getTypeName($expectedCode);
+                self::assertNotNull($expectedType, '$expectedCode: ' . $expectedCode);
+                self::assertSame($expectedType, $err->exception->type);
+                self::assertSame($expectedCode, $err->exception->code);
                 $expectedMessage
                     = 'Undefined variable: undefinedVariable in '
                       . $appCodeFile . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
