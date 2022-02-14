@@ -19,16 +19,24 @@
  * under the License.
  */
 
+/** @noinspection PhpUnhandledExceptionInspection */
+
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\UnitTests;
 
-final class HttpConsts
+use Elastic\Apm\Impl\MetadataDiscoverer;
+use ElasticApmTests\Util\TestCaseBase;
+
+class MetadataTest extends TestCaseBase
 {
-    public const STATUS_OK = 200;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_INTERNAL_SERVE_ERROR = 500;
-
-    public const METHOD_GET = 'GET';
-    public const METHOD_POST = 'POST';
+    public function testDefaultServiceNameUsesAgentName(): void
+    {
+        // https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#zero-configuration-support
+        // ... the default value: unknown-${service.agent.name}-service ...
+        self::assertSame(
+            'unknown-' . MetadataDiscoverer::AGENT_NAME . '-service',
+            MetadataDiscoverer::DEFAULT_SERVICE_NAME
+        );
+    }
 }

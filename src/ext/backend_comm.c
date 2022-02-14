@@ -31,6 +31,68 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
 
+struct StringBuffer
+{
+    char* begin;
+    size_t size;
+};
+typedef struct StringBuffer StringBuffer;
+
+static ResultCode dupMallocStringView( StringView src, StringBuffer* dst )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( src.begin );
+    ELASTIC_APM_ASSERT_VALID_PTR( dst );
+    ELASTIC_APM_ASSERT_PTR_IS_NULL( dst->begin );
+    ELASTIC_APM_ASSERT( dst->size == 0, "" );
+
+    ResultCode resultCode;
+    char* memBlockForDup = NULL;
+    const size_t memBlockForDupSize = src.length + 1;
+
+    // +1 for terminating '\0'
+    ELASTIC_APM_MALLOC_IF_FAILED_GOTO( char, memBlockForDupSize, /* out */ memBlockForDup );
+
+    resultCode = resultSuccess;
+
+    memcpy( memBlockForDup, src.begin, src.length );
+    memBlockForDup[ memBlockForDupSize - 1 ] = '\0';
+
+    dst->begin = memBlockForDup;
+    memBlockForDup = NULL;
+    dst->size = memBlockForDupSize;
+
+    finally:
+    return resultCode;
+
+    failure:
+    ELASTIC_APM_FREE_AND_SET_TO_NULL( char, memBlockForDupSize, /* out */ memBlockForDup );
+    goto finally;
+}
+
+static void freeMallocedStringBuffer( /* in,out */ StringBuffer* strBuf )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( strBuf );
+    if ( strBuf->begin != NULL )
+    {
+        ELASTIC_APM_FREE_AND_SET_TO_NULL( char, strBuf->size, /* in,out */ strBuf->begin );
+        ELASTIC_APM_ZERO_STRUCT( strBuf );
+    }
+    else
+    {
+        ELASTIC_APM_ASSERT( strBuf->size == 0, "" );
+    }
+}
+
+StringView viewStringBuffer( StringBuffer strBuf )
+{
+    // -1 since terminating '\0' is counted in buffer's size but not in string's length
+    return (StringView)
+    {
+        .begin = strBuf.begin,
+        .length = (strBuf.begin == NULL) ? 0 : (strBuf.size - 1)
+    };
+}
+
 // Log response
 static
 size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* unusedUserDataParam )
@@ -55,20 +117,38 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     } while ( false ) \
     /**/
 
-ResultCode syncSendEventsToApmServer(
-        bool disableSend
-        , double serverTimeoutMilliseconds
-        , const ConfigSnapshot* config
-        , StringView serializedEvents )
+ResultCode addToCurlStringList( /* in,out */ struct curl_slist** pList, const char* strToAdd )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( pList );
+    ELASTIC_APM_ASSERT_VALID_PTR( strToAdd );
+
+    struct curl_slist* newList = curl_slist_append( *pList, strToAdd );
+    if ( newList == NULL )
+    {
+        ELASTIC_APM_LOG_ERROR( "Failed to curl_slist_append(); strToAdd: %s", strToAdd );
+        return resultFailure;
+    }
+
+    *pList = newList;
+    return resultSuccess;
+}
+
+ResultCode syncSendEventsToApmServer( bool disableSend
+                                      , double serverTimeoutMilliseconds
+                                      , const ConfigSnapshot* config
+                                      , String userAgentHttpHeader
+                                      , StringView serializedEvents )
 {
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Sending events to APM Server..."
-            " disableSend: %s"
-            " serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
-            " serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; disableSend: %s"
+            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "; userAgentHttpHeader: `%s'"
+            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
             , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+            , userAgentHttpHeader
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     if ( disableSend )
@@ -87,15 +167,10 @@ ResultCode syncSendEventsToApmServer(
     char auth[authBufferSize];
     enum
     {
-        userAgentBufferSize = 100
-    };
-    char userAgent[userAgentBufferSize];
-    enum
-    {
         urlBufferSize = 256
     };
     char url[urlBufferSize];
-    struct curl_slist* chunk = NULL;
+    struct curl_slist* requestHeaders = NULL;
     int snprintfRetVal;
     const char* authKind = NULL;
     const char* authValue = NULL;
@@ -153,20 +228,12 @@ ResultCode syncSendEventsToApmServer(
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
         }
         ELASTIC_APM_LOG_TRACE( "Adding header: %s", auth );
-        chunk = curl_slist_append( chunk, auth );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, auth ) );
     }
-    chunk = curl_slist_append( chunk, "Content-Type: application/x-ndjson" );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, chunk );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, "Content-Type: application/x-ndjson" ) );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, requestHeaders );
 
-    // User agent - "elasticapm-<language>/<version>" (no separators between "elastic" and "apm" is on purpose)
-    // For example, "elasticapm-java/1.2.3" or "elasticapm-dotnet/1.2.3"
-    snprintfRetVal = snprintf( userAgent, userAgentBufferSize, "elasticapm-php/%s", PHP_ELASTIC_APM_VERSION );
-    if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
-    {
-        ELASTIC_APM_LOG_ERROR( "Failed to build User-Agent header. snprintfRetVal: %d", snprintfRetVal );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_USERAGENT, userAgent );
+    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_USERAGENT, userAgentHttpHeader );
 
     snprintfRetVal = snprintf( url, urlBufferSize, "%s/intake/v2/events", config->serverUrl );
     if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
@@ -199,7 +266,18 @@ ResultCode syncSendEventsToApmServer(
     resultCode = resultSuccess;
 
     finally:
-    if ( curl != NULL ) curl_easy_cleanup( curl );
+
+    if ( curl != NULL )
+    {
+        curl_easy_cleanup( curl );
+        curl = NULL;
+    }
+
+    if ( requestHeaders != NULL )
+    {
+        curl_slist_free_all( requestHeaders );
+        requestHeaders = NULL;
+    }
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
@@ -222,14 +300,17 @@ struct DataToSendNode
 
     bool disableSend;
     double serverTimeoutMilliseconds;
-    StringView serializedEvents;
+    StringBuffer userAgentHttpHeader;
+    StringBuffer serializedEvents;
 };
 
 static void freeDataToSendNode( DataToSendNode** nodeOutPtr )
 {
     ELASTIC_APM_ASSERT_VALID_IN_PTR_TO_PTR( nodeOutPtr );
 
-    ELASTIC_APM_FREE_AND_SET_TO_NULL( char, (*nodeOutPtr)->serializedEvents.length, /* in,out */ (*nodeOutPtr)->serializedEvents.begin );
+    freeMallocedStringBuffer( /* in,out */ &( (*nodeOutPtr)->userAgentHttpHeader ) );
+    freeMallocedStringBuffer( /* in,out */ &( (*nodeOutPtr)->serializedEvents ) );
+    ELASTIC_APM_ZERO_STRUCT( *nodeOutPtr );
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( DataToSendNode, /* in,out */ *nodeOutPtr );
 }
 
@@ -254,24 +335,21 @@ static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
                                             , UInt64 id
                                             , bool disableSend
                                             , double serverTimeoutMilliseconds
+                                            , StringView userAgentHttpHeader
                                             , StringView serializedEvents )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( dataQueue );
 
     ResultCode resultCode;
-    char* dataCopy = NULL;
     DataToSendNode* newNode = NULL;
 
     ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( DataToSendNode, /* out */ newNode );
-    newNode->serializedEvents.begin = NULL;
-    ELASTIC_APM_MALLOC_IF_FAILED_GOTO_EX( void, serializedEvents.length, /* out */ dataCopy );
+    ELASTIC_APM_ZERO_STRUCT( newNode );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( dupMallocStringView( userAgentHttpHeader, /* out */ &( newNode->userAgentHttpHeader ) ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( dupMallocStringView( serializedEvents, /* out */ &( newNode->serializedEvents ) ) );
 
     resultCode = resultSuccess;
-
-    memcpy( dataCopy, serializedEvents.begin, serializedEvents.length );
-
-    newNode->serializedEvents.begin = dataCopy;
-    newNode->serializedEvents.length = serializedEvents.length;
 
     newNode->id = id;
     newNode->disableSend = disableSend;
@@ -286,7 +364,6 @@ static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
     return resultCode;
 
     failure:
-    ELASTIC_APM_MALLOC_IF_FAILED_GOTO_EX( void, serializedEvents.length, /* out */ dataCopy );
     freeDataToSendNode( &newNode );
     goto finally;
 }
@@ -312,7 +389,8 @@ size_t removeFirstNodeInDataToSendQueue( DataToSendQueue* dataQueue )
     ELASTIC_APM_ASSERT( ! isDataToSendQueueEmpty( dataQueue ), "" );
 
     DataToSendNode* firstNode = dataQueue->head.next;
-    size_t firstNodeDataSize = firstNode->serializedEvents.length;
+    // -1 since terminating '\0' is counted in buffer's size but not in string's length
+    size_t firstNodeDataSize = firstNode->serializedEvents.size - 1;
     DataToSendNode* newFirstNode = firstNode->next;
 
     dataQueue->head.next = newFirstNode;
@@ -352,7 +430,7 @@ typedef struct BackgroundBackendComm BackgroundBackendComm;
 
 struct BackgroundBackendCommSharedStateSnapshot
 {
-    DataToSendNode* firstDataToSendNode;
+    const DataToSendNode* firstDataToSendNode;
     size_t dataToSendTotalSize;
     bool shouldExit;
     TimeSpec shouldExitBy;
@@ -374,43 +452,179 @@ typedef struct BackgroundBackendCommSharedStateSnapshot BackgroundBackendCommSha
     failure: \
     goto finally;
 
-ResultCode getSharedStateSnapshotUnderLock( BackgroundBackendComm* backgroundBackendComm
-                                            , BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshotOut )
+void backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
+    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshot );
+
+    sharedStateSnapshot->firstDataToSendNode = getFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
+    sharedStateSnapshot->dataToSendTotalSize = backgroundBackendComm->dataToSendTotalSize;
+    sharedStateSnapshot->shouldExit = backgroundBackendComm->shouldExit;
+    sharedStateSnapshot->shouldExitBy = backgroundBackendComm->shouldExitBy;
+}
+
+static inline bool isDataToSendQueueEmptyInSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+{
+    return sharedStateSnapshot->firstDataToSendNode == NULL;
+}
+
+ResultCode backgroundBackendCommThreadFunc_getSharedStateSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshotOut );
-
-    sharedStateSnapshotOut->firstDataToSendNode = getFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
-    sharedStateSnapshotOut->dataToSendTotalSize = backgroundBackendComm->dataToSendTotalSize;
-    sharedStateSnapshotOut->shouldExit = backgroundBackendComm->shouldExit;
-    sharedStateSnapshotOut->shouldExitBy = backgroundBackendComm->shouldExitBy;
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
 
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
 
-ResultCode removeFirstInDataToSendQueueUnderLock( BackgroundBackendComm* backgroundBackendComm )
+ResultCode backgroundBackendCommThreadFunc_shouldBreakLoop(
+        const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+        , bool* shouldBreakLoop
+)
+{
+    ResultCode resultCode;
+
+    if ( sharedStateSnapshot->shouldExit )
+    {
+        if ( isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
+        {
+            *shouldBreakLoop = true;
+            goto success;
+        }
+
+        TimeSpec now;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ &now ) );
+
+        if ( compareAbsTimeSpecs( &sharedStateSnapshot->shouldExitBy, &now ) < 0 )
+        {
+            *shouldBreakLoop = true;
+            goto success;
+        }
+    }
+
+    *shouldBreakLoop = false;
+
+    success:
+    resultCode = resultSuccess;
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
     size_t firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
 
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
 
-ResultCode waitForChangesInSharedState( BackgroundBackendComm* backgroundBackendComm )
+ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( waitConditionVariable( backgroundBackendComm->condVar, backgroundBackendComm->mutex, __FUNCTION__ ) );
     ELASTIC_APM_LOG_DEBUG( "Waiting exited" );
 
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
+}
+
+ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
+        const ConfigSnapshot* config
+        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
+{
+    // This function is called only when data-queue-to-send is not empty
+    // so firstDataToSendNode is not NULL
+    StringView serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+
+    ELASTIC_APM_LOG_DEBUG(
+            "About to send batch of events"
+            "; batch ID: %"PRIu64
+            "; batch size: %"PRIu64
+            "; total size of queued events: %"PRIu64
+            , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+            , (UInt64) serializedEvents.length
+            , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
+
+    ResultCode resultCode;
+
+    resultCode = syncSendEventsToApmServer( sharedStateSnapshot->firstDataToSendNode->disableSend
+                                            , sharedStateSnapshot->firstDataToSendNode->serverTimeoutMilliseconds
+                                            , config
+                                            , sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader.begin
+                                            , serializedEvents );
+    // If we failed to send the currently first batch we return success nevertheless
+    // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
+    if ( resultCode != resultSuccess )
+    {
+        ELASTIC_APM_LOG_ERROR(
+                "Failed to send batch of events - the batch will be dequeued and dropped"
+                "; batch ID: %"PRIu64
+                "; batch size: %"PRIu64
+                "; total size of queued events: %"PRIu64
+                , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+                , (UInt64) serializedEvents.length
+                , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
+    }
+
+    return resultSuccess;
 }
 
 #undef ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG
 #undef ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG
+
+void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+{
+    StringView serializedEvents = { 0 };
+    if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
+    {
+        serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+    }
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE( "Shared state snapshot: "
+                            " total size of queued events: %"PRIu64
+                            ", firstDataToSendNode %s NULL"
+                            " (serializedEvents.length: %"PRIu64 ")"
+                            ", shouldExit: %s"
+                            ", shouldExitBy: %s"
+                           , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                           , sharedStateSnapshot->firstDataToSendNode == NULL ? "==" : "!="
+                           , (UInt64) serializedEvents.length
+                           , boolToString( sharedStateSnapshot->shouldExit )
+                           , sharedStateSnapshot->shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot->shouldExitBy, &txtOutStream ) : "N/A" );
+
+    ELASTIC_APM_ASSERT( (sharedStateSnapshot->dataToSendTotalSize == 0) == ( sharedStateSnapshot->firstDataToSendNode == NULL )
+                        , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (serializedEvents.length: %"PRIu64 ")"
+                        , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                        , sharedStateSnapshot->firstDataToSendNode
+                        , (UInt64) serializedEvents.length );
+}
 
 void* backgroundBackendCommThreadFunc( void* arg )
 {
@@ -422,74 +636,27 @@ void* backgroundBackendCommThreadFunc( void* arg )
     BackgroundBackendComm* backgroundBackendComm = (BackgroundBackendComm*)arg;
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( getGlobalTracer() );
 
+    BackgroundBackendCommSharedStateSnapshot sharedStateSnapshot;
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_getSharedStateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
     while ( true )
     {
-        BackgroundBackendCommSharedStateSnapshot sharedStateSnapshot;
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( getSharedStateSnapshotUnderLock( backgroundBackendComm, &sharedStateSnapshot ) );
+        backgroundBackendCommThreadFunc_logSharedStateSnapshot( &sharedStateSnapshot );
 
-        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-
-        ELASTIC_APM_LOG_TRACE( "Shared state snapshot: "
-                                " total size of queued events: %"PRIu64
-                                ", firstDataToSendNode %s NULL"
-                                " (size: %"PRIu64 ")"
-                                ", shouldExit: %s"
-                                ", shouldExitBy: %s"
-                               , (UInt64) sharedStateSnapshot.dataToSendTotalSize
-                               , sharedStateSnapshot.firstDataToSendNode == NULL ? "==" : "!="
-                               , (UInt64)( sharedStateSnapshot.firstDataToSendNode == NULL ? 0 : sharedStateSnapshot.firstDataToSendNode->serializedEvents.length )
-                               , boolToString( sharedStateSnapshot.shouldExit )
-                               , sharedStateSnapshot.shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot.shouldExitBy, &txtOutStream ) : "N/A" );
-
-        ELASTIC_APM_ASSERT( (sharedStateSnapshot.dataToSendTotalSize == 0) == ( sharedStateSnapshot.firstDataToSendNode == NULL )
-                            , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (size: %"PRIu64 ")"
-                            , (UInt64) sharedStateSnapshot.dataToSendTotalSize
-                            , sharedStateSnapshot.firstDataToSendNode
-                            , (UInt64)( sharedStateSnapshot.firstDataToSendNode == NULL ? 0 : sharedStateSnapshot.firstDataToSendNode->serializedEvents.length ) );
-
-        const bool isDataToSendQueueEmpty = sharedStateSnapshot.firstDataToSendNode == NULL;
-        TimeSpec now;
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ &now ) );
-
-        if ( sharedStateSnapshot.shouldExit && ( isDataToSendQueueEmpty || compareAbsTimeSpecs( &sharedStateSnapshot.shouldExitBy, &now ) < 0 ) )
+        bool shouldBreakLoop;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_shouldBreakLoop( /* in */ &sharedStateSnapshot, /* out */ &shouldBreakLoop ) );
+        if ( shouldBreakLoop )
         {
             break;
         }
 
-        if ( isDataToSendQueueEmpty )
+        if ( isDataToSendQueueEmptyInSnapshot( &sharedStateSnapshot ) )
         {
-            ELASTIC_APM_CALL_IF_FAILED_GOTO( waitForChangesInSharedState( backgroundBackendComm ) );
+            ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_waitForChangesInSharedState( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
             continue;
         }
 
-        ELASTIC_APM_LOG_DEBUG(
-                "About to send batch of events"
-                "; batch ID: %"PRIu64
-                "; batch size: %"PRIu64
-                "; total size of queued events: %"PRIu64
-                , (UInt64) sharedStateSnapshot.firstDataToSendNode->id
-                , (UInt64) sharedStateSnapshot.firstDataToSendNode->serializedEvents.length
-                , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
-
-        resultCode = syncSendEventsToApmServer( sharedStateSnapshot.firstDataToSendNode->disableSend
-                                                , sharedStateSnapshot.firstDataToSendNode->serverTimeoutMilliseconds
-                                                , config
-                                                , sharedStateSnapshot.firstDataToSendNode->serializedEvents );
-        if ( resultCode != resultSuccess )
-        {
-            ELASTIC_APM_LOG_ERROR(
-                    "Failed to send batch of events - the batch will be dequeued and dropped"
-                    "; batch ID: %"PRIu64
-                    "; batch size: %"PRIu64
-                    "; total size of queued events: %"PRIu64
-                    , (UInt64) sharedStateSnapshot.firstDataToSendNode->id
-                    , (UInt64) sharedStateSnapshot.firstDataToSendNode->serializedEvents.length
-                    , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
-        }
-
-        // We remove the node even if we have just failed to send the data
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( removeFirstInDataToSendQueueUnderLock( backgroundBackendComm ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatch( config, /* in */ &sharedStateSnapshot ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
     }
 
     resultCode = resultSuccess;
@@ -731,16 +898,19 @@ static
 ResultCode enqueueEventsToSendToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
+        , StringView userAgentHttpHeader
         , StringView serializedEvents )
 {
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
     ELASTIC_APM_LOG_DEBUG(
             "Queueing events to send asynchronously..."
-            " disableSend: %s"
-            " serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
-            " serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; disableSend: %s"
+            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "; userAgentHttpHeader [length: %"PRIu64"]:\n%.*s"
+            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
             , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+            , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     ResultCode resultCode;
@@ -764,6 +934,7 @@ ResultCode enqueueEventsToSendToApmServer(
                                       , id
                                       , disableSend
                                       , serverTimeoutMilliseconds
+                                      , userAgentHttpHeader
                                       , serializedEvents ) );
 
     backgroundBackendComm->dataToSendTotalSize += serializedEvents.length;
@@ -801,10 +972,42 @@ ResultCode enqueueEventsToSendToApmServer(
     goto finally;
 }
 
+ResultCode sendEventsToApmServerWithDataConvertedForSync(
+        bool disableSend
+        , double serverTimeoutMilliseconds
+        , const ConfigSnapshot* config
+        , StringView userAgentHttpHeader
+        , StringView serializedEvents )
+{
+    ResultCode resultCode;
+    StringBuffer userAgentHttpHeaderWithTermNull = { 0 };
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( dupMallocStringView( userAgentHttpHeader, /* out */ &userAgentHttpHeaderWithTermNull ) );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+            syncSendEventsToApmServer( disableSend
+                                       , serverTimeoutMilliseconds
+                                       , config
+                                       , userAgentHttpHeaderWithTermNull.begin
+                                       , serializedEvents ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    freeMallocedStringBuffer( /* in,out */ &userAgentHttpHeaderWithTermNull );
+
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
 ResultCode sendEventsToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
         , const ConfigSnapshot* config
+        , StringView userAgentHttpHeader
         , StringView serializedEvents )
 {
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
@@ -812,19 +1015,22 @@ ResultCode sendEventsToApmServer(
             "Handling request to send events..."
             " disableSend: %s"
             "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "; userAgentHttpHeader [length: %"PRIu64"]:\n%.*s"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
             , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+            , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     if ( ! config->asyncBackendComm )
     {
         ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is set to false - sending events synchronously" );
-        return syncSendEventsToApmServer( disableSend
-                                          , serverTimeoutMilliseconds
-                                          , config
-                                          , serializedEvents );
+        return sendEventsToApmServerWithDataConvertedForSync( disableSend
+                                                              , serverTimeoutMilliseconds
+                                                              , config
+                                                              , userAgentHttpHeader
+                                                              , serializedEvents );
     }
 
-    return enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, serializedEvents );
+    return enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, userAgentHttpHeader, serializedEvents );
 }

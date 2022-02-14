@@ -68,6 +68,10 @@ final class ErrorTransactionDataDeserializer extends DataDeserializer
                 $this->result->isSampled = ValidationUtil::assertValidBool($value);
                 return true;
 
+            case 'name':
+                $this->result->name = ValidationUtil::assertValidKeywordString($value);
+                return true;
+
             case 'type':
                 $this->result->type = ValidationUtil::assertValidKeywordString($value);
                 return true;

@@ -26,7 +26,6 @@ if (PHP_ELASTIC_APM != 'no') {
             "php_error.c" + " " +
             "platform.c" + " " +
             "platform_threads_windows.c" + " " +
-            "RequestScoped.c" + " " +
             "supportability.c" + " " +
             "SystemMetrics.c" + " " +
             "time_util.c" + " " +

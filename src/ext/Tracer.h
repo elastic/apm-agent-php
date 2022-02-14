@@ -26,7 +26,6 @@
 #include "log.h"
 #include "internal_checks.h"
 #include "MemoryTracker.h"
-#include "RequestScoped.h"
 
 struct IniEntriesRegistrationState
 {
@@ -52,8 +51,6 @@ struct Tracer
     bool isFailed;
     IniEntriesRegistrationState iniEntriesRegistrationState;
     bool curlInited;
-
-    RequestScoped requestScoped;
 };
 typedef struct Tracer Tracer;
 

@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -17,19 +19,41 @@
  * under the License.
  */
 
-#pragma once
+declare(strict_types=1);
 
-#include "basic_types.h"
-#include "ResultCode.h"
-#include "StringView.h"
+namespace ElasticApmTests\Util;
 
-struct RequestScoped
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
+final class TestArrayUtil
 {
-    StringView lastMetadataFromPhpPart;
-};
-typedef struct RequestScoped RequestScoped;
+    use StaticClassTrait;
 
-ResultCode constructRequestScoped( RequestScoped* requestScoped );
-ResultCode saveMetadataFromPhpPart( RequestScoped* requestScoped, StringView serializedMetadata );
-void destructRequestScoped( RequestScoped* requestScoped );
+    /**
+     * @param array<mixed>  $array
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T[] $array
+     * @phpstan-return  T
+     */
+    public static function getFirstValue(array $array)
+    {
+        return $array[array_key_first($array)];
+    }
 
+    /**
+     * @param array<mixed>  $array
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T[] $array
+     * @phpstan-return  T
+     */
+    public static function getLastValue(array $array)
+    {
+        return $array[count($array) - 1];
+    }
+}

@@ -481,6 +481,7 @@ final class ValidationUtil
 
     public static function assertValidErrorTransactionData(ErrorTransactionData $errorTransactionData): void
     {
+        self::assertValidKeywordString($errorTransactionData->name);
         self::assertValidKeywordString($errorTransactionData->type);
     }
 

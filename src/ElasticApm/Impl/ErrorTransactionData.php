@@ -55,6 +55,19 @@ class ErrorTransactionData implements SerializableDataInterface, LoggableInterfa
     /**
      * @var string
      *
+     * Name is the generic designation of a transaction in the scope of a single service, eg: 'GET /users/:id'
+     *
+     * The length of a value is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v8.0.0-beta1/docs/spec/v2/error.json#L1099
+     *
+     * @see  TransactionInterface::setName()
+     */
+    public $name;
+
+    /**
+     * @var string
+     *
      * Keyword of specific relevance in the service's domain (eg: 'request', 'backgroundjob', etc)
      *
      * The length of a value is limited to 1024.
@@ -70,6 +83,7 @@ class ErrorTransactionData implements SerializableDataInterface, LoggableInterfa
         $result = new ErrorTransactionData();
 
         $result->isSampled = $transaction->isSampled();
+        $result->name = $transaction->getName();
         $result->type = $transaction->getType();
 
         return $result;
@@ -85,6 +99,7 @@ class ErrorTransactionData implements SerializableDataInterface, LoggableInterfa
         if (!$this->isSampled) {
             SerializationUtil::addNameValue('sampled', $this->isSampled, /* ref */ $result);
         }
+        SerializationUtil::addNameValue('name', $this->name, /* ref */ $result);
         SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);

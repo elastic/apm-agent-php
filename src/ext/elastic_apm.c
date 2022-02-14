@@ -303,22 +303,22 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 4 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, disableSend, IS_LONG, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serverTimeoutMilliseconds, IS_DOUBLE, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedMetadata, IS_STRING, /* allow_null: */ 0 )
+                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, userAgentHttpHeader, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedEvents, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 
 /* {{{ elastic_apm_send_to_server(
  *          int $disableSend
  *          float $serverTimeoutMilliseconds,
- *          string $serializedMetadata,
+ *          string userAgentHttpHeader,
  *          string $serializedEvents ): bool
  */
 PHP_FUNCTION( elastic_apm_send_to_server )
 {
     long disableSend = 0;
     double serverTimeoutMilliseconds = 0.0;
-    char* serializedMetadata = NULL;
-    size_t serializedMetadataLength = 0;
+    char* userAgentHttpHeader = NULL;
+    size_t userAgentHttpHeaderLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
     ResultCode resultCode;
@@ -326,14 +326,14 @@ PHP_FUNCTION( elastic_apm_send_to_server )
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 4, /* max_num_args: */ 4 )
     Z_PARAM_LONG( disableSend )
     Z_PARAM_DOUBLE( serverTimeoutMilliseconds )
-    Z_PARAM_STRING( serializedMetadata, serializedMetadataLength )
+    Z_PARAM_STRING( userAgentHttpHeader, userAgentHttpHeaderLength )
     Z_PARAM_STRING( serializedEvents, serializedEventsLength )
     ZEND_PARSE_PARAMETERS_END();
 
     resultCode = elasticApmSendToServer(
             disableSend
             , serverTimeoutMilliseconds
-            , makeStringView( serializedMetadata, serializedMetadataLength )
+            , makeStringView( userAgentHttpHeader, userAgentHttpHeaderLength )
             , makeStringView( serializedEvents, serializedEventsLength ) );
     if ( resultCode == resultSuccess )
     {

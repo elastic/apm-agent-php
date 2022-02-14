@@ -37,7 +37,7 @@ pipeline {
         beforeAgent true
         anyOf {
           allOf {
-            branch 'master'
+            branch 'main'
             triggeredBy cause: 'TimerTrigger'
           }
           triggeredBy cause: "IssueCommentCause"

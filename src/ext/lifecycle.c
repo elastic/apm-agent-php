@@ -189,6 +189,93 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ELASTIC_APM_UNUSED( resultCode );
 }
 
+typedef void (* ZendErrorCallback )( int type, const char* fileName, uint32_t lineNumber, const char *format, va_list args );
+
+bool isOriginalZendErrorCallbackSet = false;
+ZendErrorCallback originalZendErrorCallback = NULL;
+
+void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t lineNumber, const char* messageFormat, va_list messageArgs )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d (%s), fileName: %s, lineNumber: %u, messageFormat: %s"
+                                              , type, get_php_error_name( type ), fileName, (UInt)lineNumber, messageFormat );
+
+    ResultCode resultCode;
+    va_list messageArgsCopy;
+    char* message = NULL;
+
+    va_copy( messageArgsCopy, messageArgs );
+    // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
+    vspprintf( &message, 0, messageFormat, messageArgsCopy );
+    va_end( messageArgsCopy );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( onPhpErrorToTracerPhpPart( type, fileName, lineNumber, message ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    if ( message != NULL )
+    {
+        efree( message );
+        message = NULL;
+    }
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    return;
+
+    failure:
+    goto finally;
+}
+
+void elasticApmZendErrorCallback( int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args )
+{
+    elasticApmZendErrorCallbackImpl( type, error_filename, error_lineno, format, args );
+
+    if ( originalZendErrorCallback != NULL )
+    {
+        originalZendErrorCallback( type, error_filename, error_lineno, format, args );
+    }
+}
+
+//typedef void (* ZendThrowExceptionHook )( zval* exception );
+//
+//bool isOriginalZendThrowExceptionHookSet = false;
+//ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
+
+//void elasticApmZendThrowExceptionHookImpl( zval* exception )
+//{
+//    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "exception: %p", exception );
+//
+//    ResultCode resultCode;
+//
+//    ELASTIC_APM_CALL_IF_FAILED_GOTO( onThrowExceptionToTracerPhpPart( exception ) );
+//
+//    resultCode = resultSuccess;
+//
+//    finally:
+//
+//    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+//    // We ignore errors because we want the monitored application to continue working
+//    // even if APM encountered an issue that prevent it from working
+//    return;
+//
+//    failure:
+//    goto finally;
+//}
+//
+//void elasticApmZendThrowExceptionHook( zval* exception )
+//{
+//    elasticApmZendThrowExceptionHookImpl( exception );
+//
+//    if ( originalZendThrowExceptionHook != NULL )
+//    {
+//        originalZendThrowExceptionHook( exception );
+//    }
+//}
+
+
 void elasticApmRequestInit()
 {
 #if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
@@ -225,8 +312,6 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructRequestScoped( &tracer->requestScoped ) );
-
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
@@ -235,6 +320,20 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
+
+    originalZendErrorCallback = zend_error_cb;
+    isOriginalZendErrorCallbackSet = true;
+    zend_error_cb = elasticApmZendErrorCallback;
+    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
+                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
+                           , elasticApmZendErrorCallback );
+
+//    originalZendThrowExceptionHook = zend_throw_exception_hook;
+//    isOriginalZendThrowExceptionHookSet = true;
+//    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+//    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+//                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+//                           , elasticApmZendThrowExceptionHook );
 
     resultCode = resultSuccess;
 
@@ -268,48 +367,6 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
             , timePointToEpochMicroseconds( currentTime ) );
 }
 
-static void sendMetrics( const Tracer* tracer, const ConfigSnapshot* config )
-{
-    ResultCode resultCode;
-    TimePoint currentTime;
-    enum { serializedEventsBufferSize = 1000 * 1000 };
-    char* serializedEventsBuffer = NULL;
-
-    if ( isEmptyStringView( tracer->requestScoped.lastMetadataFromPhpPart ) )
-    {
-        ELASTIC_APM_LOG_ERROR( "Cannot send metrics because there's no last metadata from PHP part" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-
-    getCurrentTime( &currentTime );
-
-    ELASTIC_APM_EMALLOC_STRING_IF_FAILED_GOTO( serializedEventsBufferSize, serializedEventsBuffer );
-    TextOutputStream serializedEventsTxtOutStream =
-            makeTextOutputStream( serializedEventsBuffer, serializedEventsBufferSize );
-    serializedEventsTxtOutStream.autoTermZero = false;
-
-    streamStringView( tracer->requestScoped.lastMetadataFromPhpPart, &serializedEventsTxtOutStream );
-    streamStringView( ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" ), &serializedEventsTxtOutStream );
-    serializedEventsTxtOutStream.autoTermZero = true;
-    appendMetrics( &tracer->startSystemMetricsReading, &currentTime, &serializedEventsTxtOutStream );
-
-//    sendEventsToApmServer( config, textOutputStreamContentAsStringView( &serializedEventsTxtOutStream ) );
-
-    resultCode = resultSuccess;
-
-    finally:
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( serializedEventsBufferSize, serializedEventsBuffer );
-
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
-    return;
-
-    failure:
-    goto finally;
-}
-
 void elasticApmRequestShutdown()
 {
     ResultCode resultCode;
@@ -331,14 +388,34 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
+//    if ( isOriginalZendThrowExceptionHookSet )
+//    {
+//        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
+//        zend_throw_exception_hook = originalZendThrowExceptionHook;
+//        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
+//                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
+//                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
+//        originalZendThrowExceptionHook = NULL;
+//        isOriginalZendThrowExceptionHookSet = false;
+//    }
+
+    if ( isOriginalZendErrorCallbackSet )
+    {
+        ZendErrorCallback zendErrorCallbackBeforeRestore = zend_error_cb;
+        zend_error_cb = originalZendErrorCallback;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_error_cb: %p (%s elasticApmZendErrorCallback: %p) -> %p"
+                               , zendErrorCallbackBeforeRestore, zendErrorCallbackBeforeRestore == elasticApmZendErrorCallback ? "==" : "!="
+                               , elasticApmZendErrorCallback, originalZendErrorCallback );
+        originalZendErrorCallback = NULL;
+        isOriginalZendErrorCallbackSet = false;
+    }
+
     // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
     shutdownTracerPhpPart( config );
 
     // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
-
-    destructRequestScoped( &tracer->requestScoped );
 
     resultCode = resultSuccess;
 
