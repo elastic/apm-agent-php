@@ -422,27 +422,27 @@ final class ValidationUtil
 
     public static function assertValidSpanContextDbData(SpanContextDbData $obj): void
     {
-        ValidationUtil::assertValidNullableNonKeywordString($obj->statement);
+        self::assertValidNullableNonKeywordString($obj->statement);
     }
 
     public static function assertValidSpanContextHttpData(SpanContextHttpData $obj): void
     {
-        ValidationUtil::assertValidNullableNonKeywordString($obj->url);
-        ValidationUtil::assertValidNullableHttpStatusCode($obj->statusCode);
-        ValidationUtil::assertValidNullableKeywordString($obj->method);
+        self::assertValidNullableNonKeywordString($obj->url);
+        self::assertValidNullableHttpStatusCode($obj->statusCode);
+        self::assertValidNullableKeywordString($obj->method);
     }
 
     public static function assertValidSpanContextDestinationServiceData(SpanContextDestinationServiceData $obj): void
     {
-        ValidationUtil::assertValidKeywordString($obj->name);
-        ValidationUtil::assertValidKeywordString($obj->resource);
-        ValidationUtil::assertValidKeywordString($obj->type);
+        self::assertValidKeywordString($obj->name);
+        self::assertValidKeywordString($obj->resource);
+        self::assertValidKeywordString($obj->type);
     }
 
     public static function assertValidSpanContextDestinationData(SpanContextDestinationData $obj): void
     {
         if ($obj->service !== null) {
-            ValidationUtil::assertValidSpanContextDestinationServiceData($obj->service);
+            self::assertValidSpanContextDestinationServiceData($obj->service);
         }
     }
 
@@ -512,32 +512,34 @@ final class ValidationUtil
 
     public static function assertValidErrorData(ErrorData $error): void
     {
-        ValidationUtil::assertValidTimestamp($error->timestamp);
-        ValidationUtil::assertValidErrorId($error->id);
+        self::assertValidTimestamp($error->timestamp);
+        self::assertValidErrorId($error->id);
 
-        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->transactionId));
-        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->parentId));
-        ValidationUtil::assertThat(is_null($error->traceId) === is_null($error->transaction));
+        self::assertThat(is_null($error->traceId) === is_null($error->transactionId));
+        self::assertThat(is_null($error->traceId) === is_null($error->parentId));
+        self::assertThat(is_null($error->traceId) === is_null($error->transaction));
 
         if (!is_null($error->traceId)) {
-            ValidationUtil::assertValidTraceId($error->traceId);
+            self::assertValidTraceId($error->traceId);
         }
         if (!is_null($error->transactionId)) {
-            ValidationUtil::assertValidExecutionSegmentId($error->transactionId);
+            self::assertValidExecutionSegmentId($error->transactionId);
         }
         if (!is_null($error->parentId)) {
-            ValidationUtil::assertValidExecutionSegmentId($error->parentId);
+            self::assertValidExecutionSegmentId($error->parentId);
         }
         if (!is_null($error->transaction)) {
-            ValidationUtil::assertValidErrorTransactionData($error->transaction);
+            self::assertValidErrorTransactionData($error->transaction);
         }
 
         if (!is_null($error->context)) {
-            ValidationUtil::assertValidTransactionContextData($error->context);
+            self::assertValidTransactionContextData($error->context);
         }
 
+        self::assertValidNullableNonKeywordString($error->culprit);
+
         if (!is_null($error->exception)) {
-            ValidationUtil::assertValidErrorExceptionData($error->exception);
+            self::assertValidErrorExceptionData($error->exception);
         }
     }
 
@@ -564,7 +566,7 @@ final class ValidationUtil
 
     public static function assertValidMetricSetData(MetricSetData $metricSet): void
     {
-        ValidationUtil::assertValidTimestamp($metricSet->timestamp);
+        self::assertValidTimestamp($metricSet->timestamp);
 
         self::assertValidNullableKeywordString($metricSet->transactionName);
         self::assertValidNullableKeywordString($metricSet->transactionType);
@@ -626,7 +628,7 @@ final class ValidationUtil
         self::assertValidNullableKeywordString($serviceData->environment);
 
         self::assertValidNameVersionData($serviceData->agent);
-        assert($serviceData->agent != null);
+        assert($serviceData->agent !== null);
         self::assertThat($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
         self::assertThat($serviceData->agent->version === ElasticApm::VERSION);
         self::assertValidNullableKeywordString($serviceData->agent->ephemeralId);
@@ -634,7 +636,7 @@ final class ValidationUtil
         self::assertValidNameVersionData($serviceData->framework);
 
         self::assertValidNameVersionData($serviceData->language);
-        assert($serviceData->language != null);
+        assert($serviceData->language !== null);
         self::assertThat($serviceData->language->name === MetadataDiscoverer::LANGUAGE_NAME);
 
         self::assertValidNameVersionData($serviceData->runtime);

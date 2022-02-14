@@ -191,32 +191,33 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     }
 
     /**
-     * @param ErrorExceptionData|null $errorExceptionData
+     * @param ErrorExceptionData $errorExceptionData
      *
      * @return string|null
      */
-    abstract public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string;
+    abstract public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string;
 
-    /** @inheritDoc */
-    public function createErrorFromThrowable(Throwable $throwable): ?string
+    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable): ?string
     {
         return $this->dispatchCreateError(
-            ErrorExceptionData::buildFromThrowable(
+            ErrorExceptionData::build(
                 $this->containingTransaction()->tracer(),
+                $customErrorData,
                 $throwable
             )
         );
     }
 
     /** @inheritDoc */
+    public function createErrorFromThrowable(Throwable $throwable): ?string
+    {
+        return $this->createError(/* customErrorData: */ null, $throwable);
+    }
+
+    /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->dispatchCreateError(
-            ErrorExceptionData::buildFromCustomData(
-                $this->containingTransaction()->tracer(),
-                $customErrorData
-            )
-        );
+        return $this->createError($customErrorData, /* throwable: */ null);
     }
 
     public function beforeMutating(): bool

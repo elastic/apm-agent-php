@@ -31,7 +31,7 @@
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPreHook"
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
 #define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
-#define ELASTIC_APM_PHP_PART_ON_THROW_EXCEPTION_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onThrowException"
+#define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
@@ -234,7 +234,6 @@ ResultCode onPhpErrorToTracerPhpPart( int type, const char* fileName, uint32_t l
 
     zval phpPartArgs[] = { typeAsZval, fileNameAsZval, lineNumberAsZval, messageAsZval };
 
-    uint32_t interceptedCallArgsCount;
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
                     ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC )
@@ -256,16 +255,17 @@ ResultCode onPhpErrorToTracerPhpPart( int type, const char* fileName, uint32_t l
     goto finally;
 }
 
-ResultCode onThrowExceptionToTracerPhpPart( zval* exception )
+ResultCode setLastThrownToTracerPhpPart( zval* lastThrown )
 {
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
     ResultCode resultCode;
 
-    zval phpPartArgs[] = { *exception };
+    zval phpPartArgs[] = { *lastThrown };
 
-    uint32_t interceptedCallArgsCount;
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_ON_THROW_EXCEPTION_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC )
                     , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
                     , phpPartArgs ) );
 

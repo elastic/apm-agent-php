@@ -189,10 +189,72 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ELASTIC_APM_UNUSED( resultCode );
 }
 
+typedef void (* ZendThrowExceptionHook )( zval* exception );
+
+static bool isOriginalZendThrowExceptionHookSet = false;
+static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
+static bool isLastThrownSet = false;
+static zval lastThrown;
+
+void resetLastThrown()
+{
+    if ( isLastThrownSet ) {
+        zval_ptr_dtor( &lastThrown );
+        ZVAL_UNDEF( &lastThrown );
+        isLastThrownSet = false;
+    }
+}
+
+void elasticApmZendThrowExceptionHookImpl( zval* thrown )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
+
+    resetLastThrown();
+    ZVAL_COPY( /* pZvalDst: */ &lastThrown, /* pZvalSrc: */ thrown );
+    isLastThrownSet = true;
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+}
+
+void elasticApmZendThrowExceptionHook( zval* exception )
+{
+    elasticApmZendThrowExceptionHookImpl( exception );
+
+    if ( originalZendThrowExceptionHook != NULL )
+    {
+        originalZendThrowExceptionHook( exception );
+    }
+}
+void setLastThrownIfAnyToTracerPhpPart()
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
+
+    ResultCode resultCode;
+
+    if ( isLastThrownSet ) {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( setLastThrownToTracerPhpPart( &lastThrown ) );
+    }
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    resetLastThrown();
+
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
 typedef void (* ZendErrorCallback )( int type, const char* fileName, uint32_t lineNumber, const char *format, va_list args );
 
-bool isOriginalZendErrorCallbackSet = false;
-ZendErrorCallback originalZendErrorCallback = NULL;
+static bool isOriginalZendErrorCallbackSet = false;
+static ZendErrorCallback originalZendErrorCallback = NULL;
 
 void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t lineNumber, const char* messageFormat, va_list messageArgs )
 {
@@ -207,6 +269,8 @@ void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t l
     // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
     vspprintf( &message, 0, messageFormat, messageArgsCopy );
     va_end( messageArgsCopy );
+
+    setLastThrownIfAnyToTracerPhpPart();
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( onPhpErrorToTracerPhpPart( type, fileName, lineNumber, message ) );
 
@@ -238,43 +302,6 @@ void elasticApmZendErrorCallback( int type, const char *error_filename, const ui
         originalZendErrorCallback( type, error_filename, error_lineno, format, args );
     }
 }
-
-//typedef void (* ZendThrowExceptionHook )( zval* exception );
-//
-//bool isOriginalZendThrowExceptionHookSet = false;
-//ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-
-//void elasticApmZendThrowExceptionHookImpl( zval* exception )
-//{
-//    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "exception: %p", exception );
-//
-//    ResultCode resultCode;
-//
-//    ELASTIC_APM_CALL_IF_FAILED_GOTO( onThrowExceptionToTracerPhpPart( exception ) );
-//
-//    resultCode = resultSuccess;
-//
-//    finally:
-//
-//    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-//    // We ignore errors because we want the monitored application to continue working
-//    // even if APM encountered an issue that prevent it from working
-//    return;
-//
-//    failure:
-//    goto finally;
-//}
-//
-//void elasticApmZendThrowExceptionHook( zval* exception )
-//{
-//    elasticApmZendThrowExceptionHookImpl( exception );
-//
-//    if ( originalZendThrowExceptionHook != NULL )
-//    {
-//        originalZendThrowExceptionHook( exception );
-//    }
-//}
-
 
 void elasticApmRequestInit()
 {
@@ -328,12 +355,12 @@ void elasticApmRequestInit()
                            , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
                            , elasticApmZendErrorCallback );
 
-//    originalZendThrowExceptionHook = zend_throw_exception_hook;
-//    isOriginalZendThrowExceptionHookSet = true;
-//    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-//    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-//                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-//                           , elasticApmZendThrowExceptionHook );
+    originalZendThrowExceptionHook = zend_throw_exception_hook;
+    isOriginalZendThrowExceptionHookSet = true;
+    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                           , elasticApmZendThrowExceptionHook );
 
     resultCode = resultSuccess;
 
@@ -388,16 +415,18 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-//    if ( isOriginalZendThrowExceptionHookSet )
-//    {
-//        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
-//        zend_throw_exception_hook = originalZendThrowExceptionHook;
-//        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
-//                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
-//                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
-//        originalZendThrowExceptionHook = NULL;
-//        isOriginalZendThrowExceptionHookSet = false;
-//    }
+    setLastThrownIfAnyToTracerPhpPart();
+
+    if ( isOriginalZendThrowExceptionHookSet )
+    {
+        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
+        zend_throw_exception_hook = originalZendThrowExceptionHook;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
+                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
+                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
+        originalZendThrowExceptionHook = NULL;
+        isOriginalZendThrowExceptionHookSet = false;
+    }
 
     if ( isOriginalZendErrorCallbackSet )
     {

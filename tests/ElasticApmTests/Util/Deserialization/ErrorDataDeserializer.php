@@ -94,6 +94,10 @@ final class ErrorDataDeserializer extends DataDeserializer
                 $this->result->context = TransactionContextDataDeserializer::deserialize($value);
                 return true;
 
+            case 'culprit':
+                $this->result->culprit = ValidationUtil::assertValidNullableNonKeywordString($value);
+                return true;
+
             case 'exception':
                 $this->result->exception = ErrorExceptionDataDeserializer::deserialize($value);
                 return true;

@@ -84,7 +84,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
 
         $distributedTracingData = self::extractDistributedTracingData($builder);
-        if ($distributedTracingData == null) {
+        if ($distributedTracingData === null) {
             $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
         } else {
             $traceId = $distributedTracingData->traceId;
@@ -377,7 +377,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
-    public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         if (is_null($this->currentSpan)) {
             return $this->tracer->doCreateError($errorExceptionData, /* transaction: */ $this, /* span */ null);

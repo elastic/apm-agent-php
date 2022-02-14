@@ -221,7 +221,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         $spanForError = $this->shouldBeSentToApmServer() ? $this : null;
         return $this->containingTransaction->tracer()->doCreateError(
