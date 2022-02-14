@@ -159,10 +159,6 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(): void
     {
-        // Disable 'display_errors' because otherwise PHP error will result in HTTP status 200
-        // instead of expected 500
-        // For more details see https://bugs.php.net/bug.php?id=50921
-        // ini_set('display_errors', 'off');
         appCodeForTestPhpErrorUncaughtException();
     }
 
