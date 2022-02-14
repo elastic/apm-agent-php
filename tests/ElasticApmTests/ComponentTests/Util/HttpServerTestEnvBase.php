@@ -87,7 +87,10 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             $this->testProperties->urlParts,
             SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $this->testProperties->sharedDataPerRequest)
         );
-        if ($response->getStatusCode() !== $this->testProperties->expectedStatusCode) {
+        if (
+            $this->testProperties->expectedStatusCode !== null
+            && $response->getStatusCode() !== $this->testProperties->expectedStatusCode
+        ) {
             throw new RuntimeException(
                 'HTTP status code does not match the expected one.'
                 . ' Expected: ' . $this->testProperties->expectedStatusCode
