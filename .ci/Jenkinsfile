@@ -561,7 +561,7 @@ def prepareRelease() {
     sh(label: 'Git commit', script: """git commit -a -m "${message}" """)
     def pr = githubCreatePullRequest(title: "[RELEASE] ${params.VERSION}",
                                      description: "${warning}\n\n${actions}",
-                                     labels: 'docs,release,changelog'
+                                     labels: 'docs,release,changelog',
                                      base: 'main')
     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
                  body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<${pr}|PR>).""")
