@@ -26,167 +26,240 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
 use ElasticApmTests\ComponentTests\Util\HttpConsts;
 use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\Util\DummyExceptionForTests;
+use ElasticApmTests\Util\RangeUtilForTests;
+use ElasticApmTests\Util\TestArrayUtil;
 use Exception;
-use PHPUnit\Framework\TestCase;
-use Throwable;
 
 final class ErrorTest extends ComponentTestCaseBase
 {
-    private const UNDEFINED_VARIABLE_LINE_NUMBER = 65;
-    private const UNCAUGHT_EXCEPTION_MESSAGE = 'A message for an uncaught exception';
-    private const EXCEPTION_CONVERTED_TO_500_MESSAGE = 'A message for an exception converted to 500';
+    private const STACK_TRACE_FILE_NAME = 'STACK_TRACE_FILE_NAME';
+    private const STACK_TRACE_FUNCTION = 'STACK_TRACE_FUNCTION';
+    private const STACK_TRACE_LINE_NUMBER = 'STACK_TRACE_LINE_NUMBER';
 
-    private function assertErrorValid(DataFromAgent $dataFromAgent): ErrorData
+    private function verifyError(DataFromAgent $dataFromAgent): ErrorData
     {
         $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
         $err = $dataFromAgent->singleError();
 
-        $this->assertSame($tx->id, $err->transactionId);
-        $this->assertSame($tx->id, $err->parentId);
-        $this->assertNotNull($err->transaction);
-        $this->assertSame($tx->name, $err->transaction->name);
-        $this->assertSame($tx->type, $err->transaction->type);
-        $this->assertSame($tx->isSampled, $err->transaction->isSampled);
+        self::assertSame($tx->id, $err->transactionId);
+        self::assertSame($tx->id, $err->parentId);
+        self::assertSame($tx->traceId, $err->traceId);
+        self::assertNotNull($err->transaction);
+        self::assertSame($tx->name, $err->transaction->name);
+        self::assertSame($tx->type, $err->transaction->type);
+        self::assertSame($tx->isSampled, $err->transaction->isSampled);
 
         return $err;
     }
 
-    public static function appCodeForTestPhpErrorUndefinedVariable(): void
+    /**
+     * @param array<string, mixed> $expectedFrame
+     * @param string               $expKey
+     * @param mixed                $actualValue
+     *
+     * @return void
+     */
+    private static function verifyStacktraceFrameProperty(array $expectedFrame, string $expKey, $actualValue): void
     {
-        // Ensure E_NOTICE is included in error_reporting
-        error_reporting(error_reporting() | E_NOTICE);
+        $expectedValue = ArrayUtil::getValueIfKeyExistsElse($expKey, $expectedFrame, null);
+        if ($expectedValue !== null) {
+            self::assertSame($expectedValue, $actualValue, $expKey);
+        }
+    }
 
-        TestCase::assertSame(self::UNDEFINED_VARIABLE_LINE_NUMBER, __LINE__ + 2);
-        /** @noinspection PhpUndefinedVariableInspection */
-        $undefinedVariable = $undefinedVariable + 1; // @phpstan-ignore-line
+    /**
+     * @param array<string, mixed>[] $expectedStacktraceTop
+     * @param ErrorData              $err
+     *
+     * @return void
+     */
+    private static function verifyAppCodeStacktraceTop(array $expectedStacktraceTop, ErrorData $err): void
+    {
+        self::assertNotNull($err->exception);
+        $actualStacktrace = $err->exception->stacktrace;
+        self::assertNotNull($actualStacktrace);
+        self::assertNotEmpty($actualStacktrace);
+        self::assertGreaterThanOrEqual(count($expectedStacktraceTop), count($actualStacktrace));
+
+        /** @var StacktraceFrame */
+        $bottomFrame = TestArrayUtil::getLastValue($actualStacktrace);
+        self::assertSame('ElasticApmTests\\ComponentTests\\Util\\AppCodeHostBase::run()', $bottomFrame->function);
+
+        foreach (RangeUtilForTests::generate(0, count($expectedStacktraceTop)) as $frameIndex) {
+            $expectedFrame = $expectedStacktraceTop[$frameIndex];
+            $actualFrame = $actualStacktrace[$frameIndex];
+
+            self::verifyStacktraceFrameProperty($expectedFrame, self::STACK_TRACE_FILE_NAME, $actualFrame->filename);
+            self::verifyStacktraceFrameProperty($expectedFrame, self::STACK_TRACE_FUNCTION, $actualFrame->function);
+            self::verifyStacktraceFrameProperty($expectedFrame, self::STACK_TRACE_LINE_NUMBER, $actualFrame->lineno);
+        }
+    }
+
+    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(): void
+    {
+        appCodeForTestPhpErrorUndefinedVariable();
     }
 
     public function testPhpErrorUndefinedVariable(): void
     {
-        $appCodeForTestMethod = [__CLASS__, 'appCodeForTestPhpErrorUndefinedVariable'];
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
-                ->withRoutedAppCode($appCodeForTestMethod),
-            function (DataFromAgent $dataFromAgent) use ($appCodeForTestMethod): void {
-                $err = $this->assertErrorValid($dataFromAgent);
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper']),
+            function (DataFromAgent $dataFromAgent): void {
+                $err = $this->verifyError($dataFromAgent);
+                // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
-                $this->assertNotNull($err->exception);
-                $this->assertSame(E_NOTICE, $err->exception->code);
-                $expectedMessage = __FILE__ . '(' . self::UNDEFINED_VARIABLE_LINE_NUMBER
-                                   . '): Undefined variable: undefinedVariable';
-                $this->assertSame($expectedMessage, $err->exception->message);
-                $this->assertNull($err->exception->module);
+                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
+                self::assertNotNull($err->exception);
+                self::assertSame(E_NOTICE, $err->exception->code);
+                self::assertSame('E_NOTICE', $err->exception->type);
+                $expectedMessage
+                    = 'Undefined variable: undefinedVariable in '
+                      . $appCodeFile . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
+                self::assertSame($expectedMessage, $err->exception->message);
+                self::assertNull($err->exception->module);
+                $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUndefinedVariableImpl()';
+                self::assertSame($culpritFunction, $err->culprit);
 
-                $this->assertNotNull($err->exception->stacktrace);
-                $this->assertNotEmpty($err->exception->stacktrace);
-                /** @var StacktraceFrame $errStacktraceTopFrame */
-                $errStacktraceTopFrame = $err->exception->stacktrace[0];
-                // TODO: Sergey Kleyman: Fix
-                // $this->assertSame(__FILE__, $errStacktraceTopFrame->filename);
-                $expectedFunction = __CLASS__ . '::' . $appCodeForTestMethod[1] . '()';
-                $this->assertSame($expectedFunction, $errStacktraceTopFrame->function);
-                // TODO: Sergey Kleyman: Fix
-                // $this->assertSame(self::UNDEFINED_VARIABLE_LINE_NUMBER, $errStacktraceTopFrame->lineno);
-
-                $this->assertSame('E_NOTICE', $err->exception->type);
+                $expectedStacktraceTop = [
+                    [
+                        self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                        self::STACK_TRACE_FUNCTION    => $culpritFunction,
+                        self::STACK_TRACE_LINE_NUMBER =>
+                            APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER,
+                    ],
+                    [
+                        self::STACK_TRACE_FILE_NAME => __FILE__,
+                        self::STACK_TRACE_FUNCTION  =>
+                            __NAMESPACE__ . '\\appCodeForTestPhpErrorUndefinedVariable()',
+                    ],
+                    [
+                        self::STACK_TRACE_FUNCTION =>
+                            __CLASS__ . '::appCodeForTestPhpErrorUndefinedVariableWrapper()',
+                    ],
+                ];
+                self::verifyAppCodeStacktraceTop($expectedStacktraceTop, $err);
             }
         );
     }
 
-    public static function appCodeForTestPhpErrorUncaughtException(): void
+    public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(): void
     {
-        throw new Exception(self::UNCAUGHT_EXCEPTION_MESSAGE);
+        appCodeForTestPhpErrorUncaughtException();
     }
 
     public function testPhpErrorUncaughtException(): void
     {
-        $appCodeForTestMethod = [__CLASS__, 'appCodeForTestPhpErrorUncaughtException'];
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
-                ->withRoutedAppCode($appCodeForTestMethod)
-                ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVE_ERROR),
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper'])
+                ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVER_ERROR),
             function (DataFromAgent $dataFromAgent): void {
-                $err = $this->assertErrorValid($dataFromAgent);
+                $err = $this->verifyError($dataFromAgent);
+                // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
-                // TODO: Sergey Kleyman: REMOVE
-                self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUncaughtException.php';
+                self::assertNotNull($err->exception);
+                $defaultCode = (new Exception(""))->getCode();
+                self::assertSame($defaultCode, $err->exception->code);
+                self::assertSame(Exception::class, $err->exception->type);
+                self::assertNotNull($err->exception->message);
+                self::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
+                self::assertNull($err->exception->module);
+                $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl()';
+                self::assertSame($culpritFunction, $err->culprit);
 
-                $this->assertNotNull($err->exception);
-
-                $this->assertSame(E_ERROR, $err->exception->code);
-                // $expectedMessage = __FILE__ . '(' . self::UNDEFINED_VARIABLE_LINE_NUMBER
-                //                    . '): Undefined variable: undefinedVariable';
-                // $this->assertSame($expectedMessage, $err->exception->message);
-                // $this->assertNull($err->exception->module);
-                //
-                // $this->assertNotNull($err->exception->stacktrace);
-                // $this->assertNotEmpty($err->exception->stacktrace);
-                // /** @var StacktraceFrame $errStacktraceTopFrame */
-                // $errStacktraceTopFrame = $err->exception->stacktrace[0];
-                // // TODO: Sergey Kleyman: Fix
-                // // $this->assertSame(__FILE__, $errStacktraceTopFrame->filename);
-                // $expectedFunction = __CLASS__ . '::' . $appCodeForTestMethod[1] . '()';
-                // $this->assertSame($expectedFunction, $errStacktraceTopFrame->function);
-                // // TODO: Sergey Kleyman: Fix
-                // // $this->assertSame(self::UNDEFINED_VARIABLE_LINE_NUMBER, $errStacktraceTopFrame->lineno);
-
-                $this->assertSame('E_ERROR', $err->exception->type);
+                $expectedStacktraceTop = [
+                    [
+                        self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                        self::STACK_TRACE_FUNCTION    =>
+                            __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl()',
+                        self::STACK_TRACE_LINE_NUMBER =>
+                            APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER,
+                    ],
+                    [
+                        self::STACK_TRACE_FILE_NAME => __FILE__,
+                        self::STACK_TRACE_FUNCTION  =>
+                            __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtException()',
+                    ],
+                    [
+                        self::STACK_TRACE_FUNCTION =>
+                            __CLASS__ . '::appCodeForTestPhpErrorUncaughtExceptionWrapper()',
+                    ],
+                ];
+                self::verifyAppCodeStacktraceTop($expectedStacktraceTop, $err);
             }
         );
     }
 
-    public static function appCodeForTestCaughtExceptionResponded500Aux(): void
+    public static function appCodeForTestCaughtExceptionResponded500Wrapper(): void
     {
-        throw new Exception(self::EXCEPTION_CONVERTED_TO_500_MESSAGE);
+        appCodeForTestCaughtExceptionResponded500();
     }
 
-    // public static function appCodeForTestCaughtExceptionResponded500(): void
-    // {
-    //     try {
-    //         self::appCodeForTestCaughtExceptionResponded500Aux();
-    //     } catch (Throwable $throwable) {
-    //         http_response_code(500);
-    //     }
-    // }
-    //
-    // public function testCaughtExceptionResponded500(): void
-    // {
-    //     $appCodeForTestMethod = [__CLASS__, 'appCodeForTestCaughtExceptionResponded500'];
-    //     $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-    //         (new TestProperties())
-    //             ->withRoutedAppCode($appCodeForTestMethod)
-    //             ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVE_ERROR),
-    //         function (DataFromAgent $dataFromAgent): void {
-    //             $err = $this->assertErrorValid($dataFromAgent);
-    //
-    //             // TODO: Sergey Kleyman: REMOVE
-    //             self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
-    //
-    //             $this->assertNotNull($err->exception);
-    //
-    //             // $this->assertSame(E_NOTICE, $err->exception->code);
-    //             // $expectedMessage = __FILE__ . '(' . self::UNDEFINED_VARIABLE_LINE_NUMBER
-    //             //                    . '): Undefined variable: undefinedVariable';
-    //             // $this->assertSame($expectedMessage, $err->exception->message);
-    //             // $this->assertNull($err->exception->module);
-    //             //
-    //             // $this->assertNotNull($err->exception->stacktrace);
-    //             // $this->assertNotEmpty($err->exception->stacktrace);
-    //             // /** @var StacktraceFrame $errStacktraceTopFrame */
-    //             // $errStacktraceTopFrame = $err->exception->stacktrace[0];
-    //             // // TODO: Sergey Kleyman: Fix
-    //             // // $this->assertSame(__FILE__, $errStacktraceTopFrame->filename);
-    //             // $expectedFunction = __CLASS__ . '::' . $appCodeForTestMethod[1] . '()';
-    //             // $this->assertSame($expectedFunction, $errStacktraceTopFrame->function);
-    //             // // TODO: Sergey Kleyman: Fix
-    //             // // $this->assertSame(self::UNDEFINED_VARIABLE_LINE_NUMBER, $errStacktraceTopFrame->lineno);
-    //             //
-    //             // $this->assertSame('E_NOTICE', $err->exception->type);
-    //         }
-    //     );
-    // }
+    public function testCaughtExceptionResponded500(): void
+    {
+        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
+            (new TestProperties())
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTestCaughtExceptionResponded500Wrapper'])
+                ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVER_ERROR),
+            function (DataFromAgent $dataFromAgent): void {
+                if (!$this->testEnv->isHttp()) {
+                    self::assertEmpty($dataFromAgent->idToError());
+                    return;
+                }
+
+                $err = $this->verifyError($dataFromAgent);
+
+                // TODO: Sergey Kleyman: REMOVE
+                self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+
+                $appCodeFile
+                    = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestCaughtExceptionResponded500.php';
+                self::assertNotNull($err->exception);
+                self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE, $err->exception->code);
+
+                $exceptionNamespace = '';
+                $exceptionClassName = '';
+                ClassNameUtil::splitFqClassName(
+                    DummyExceptionForTests::class, /* ref */
+                    $exceptionNamespace, /* ref */
+                    $exceptionClassName
+                );
+                self::assertSame('ElasticApmTests\\Util', $exceptionNamespace);
+                self::assertSame('DummyExceptionForTests', $exceptionClassName);
+
+                self::assertSame($exceptionNamespace, $err->exception->module);
+                self::assertSame($exceptionClassName, $err->exception->type);
+                self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_MESSAGE, $err->exception->message);
+
+                $expectedStacktraceTop = [
+                    [
+                        self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                        self::STACK_TRACE_FUNCTION    =>
+                            __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500Impl()',
+                        self::STACK_TRACE_LINE_NUMBER =>
+                            APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER,
+                    ],
+                    [
+                        self::STACK_TRACE_FILE_NAME => __FILE__,
+                        self::STACK_TRACE_FUNCTION  =>
+                            __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500()',
+                    ],
+                    [
+                        self::STACK_TRACE_FUNCTION =>
+                            __CLASS__ . '::appCodeForTestCaughtExceptionResponded500Wrapper()',
+                    ],
+                ];
+                self::verifyAppCodeStacktraceTop($expectedStacktraceTop, $err);
+            }
+        );
+    }
 }

@@ -115,17 +115,21 @@ abstract class SpawnedProcessBase implements LoggableInterface
             $runImpl($thisObj);
         } catch (Throwable $throwable) {
             $level = Level::CRITICAL;
-            $isExpected = false;
+            $isFromAppCode = false;
             $throwableToLog = $throwable;
             if ($throwable instanceof WrappedAppCodeException) {
-                $isExpected = true;
+                $isFromAppCode = true;
                 $level = Level::INFO;
                 $throwableToLog = $throwable->wrappedException();
             }
             $logger = isset($thisObj) ? $thisObj->logger : self::buildLogger();
             ($loggerProxy = $logger->ifLevelEnabled($level, __LINE__, __FUNCTION__))
-            && $loggerProxy->logThrowable($throwableToLog, 'Throwable escaped to the top of the script');
-            if ($isExpected) {
+            && $loggerProxy->logThrowable(
+                $throwableToLog,
+                'Throwable escaped to the top of the script',
+                ['isFromAppCode' => $isFromAppCode]
+            );
+            if ($isFromAppCode) {
                 /** @noinspection PhpUnhandledExceptionInspection */
                 throw $throwableToLog;
             } else {

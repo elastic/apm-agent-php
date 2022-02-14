@@ -296,34 +296,59 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
-    public function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
-    {
+    public function onPhpError(
+        int $type,
+        string $fileName,
+        int $lineNumber,
+        string $message,
+        ?Throwable $relatedThrowable
+    ): void {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Entered',
-            ['type' => $type, 'filename' => $filename, 'lineNumber' => $lineNumber, 'message' => $message]
+            [
+                'type' => $type,
+                'fileName' => $fileName,
+                'lineNumber' => $lineNumber,
+                'message' => $message,
+                'relatedThrowable' => $relatedThrowable,
+            ]
         );
 
-        $errorData = new CustomErrorData();
-        $errorData->code = $type;
-        $errorData->message = $filename . '(' . $lineNumber . '): ' . $message;
-        $errorData->type = self::getPhpErrorTypeName($type);
-        $this->createCustomError($errorData);
+        $customErrorData = new CustomErrorData();
+        $customErrorData->code = $type;
+        $customErrorData->message = TextUtil::contains($message, $fileName)
+            ? $message
+            : ($message . ' in ' . $fileName . ':' . $lineNumber);
+        $customErrorData->type = self::getPhpErrorTypeName($type);
+
+        $this->createError($customErrorData, $relatedThrowable);
+    }
+
+    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable): ?string
+    {
+        return $this->dispatchCreateError(
+            ErrorExceptionData::build(
+                $this,
+                $customErrorData,
+                $throwable
+            )
+        );
     }
 
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this, $throwable));
+        return $this->createError(/* customErrorData: */ null, $throwable);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this, $customErrorData));
+        return $this->createError($customErrorData, /* throwable: */ null);
     }
 
-    private function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         if (is_null($this->currentTransaction)) {
             return $this->doCreateError($errorExceptionData, /* transaction */ null, /* span */ null);
@@ -333,7 +358,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     public function doCreateError(
-        ?ErrorExceptionData $errorExceptionData,
+        ErrorExceptionData $errorExceptionData,
         ?Transaction $transaction,
         ?Span $span
     ): ?string {

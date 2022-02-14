@@ -114,6 +114,17 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
     public $context = null;
 
     /**
+     * @var string|null
+     *
+     * Function call which was the primary perpetrator of this event
+     *
+     * The length of a string value is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/errors/error.json#L47
+     */
+    public $culprit = null;
+
+    /**
      * @var ErrorExceptionData|null
      *
      * Data for correlating errors with transactions
@@ -124,7 +135,7 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
 
     public static function build(
         Tracer $tracer,
-        ?ErrorExceptionData $errorExceptionData,
+        ErrorExceptionData $errorExceptionData,
         ?Transaction $transaction,
         ?Span $span
     ): ErrorData {
@@ -139,6 +150,13 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
             $result->traceId = $transaction->getTraceId();
             $result->transactionId = $transaction->getId();
             $result->parentId = is_null($span) ? $transaction->getId() : $span->getId();
+        }
+
+        if (
+            !empty($errorExceptionData->stacktrace)
+            && ($topFrameFunction = $errorExceptionData->stacktrace[0]->function) !== null
+        ) {
+            $result->culprit = $topFrameFunction;
         }
 
         $result->exception = $errorExceptionData;
@@ -176,6 +194,8 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
                 /* ref */ $result
             );
         }
+
+        SerializationUtil::addNameValueIfNotNull('culprit', $this->culprit, /* ref */ $result);
 
         if (!is_null($this->exception)) {
             SerializationUtil::addNameValueIfNotEmpty(
