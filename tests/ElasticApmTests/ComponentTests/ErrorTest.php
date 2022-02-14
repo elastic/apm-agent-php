@@ -152,6 +152,10 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(): void
     {
+        // Disable 'display_errors' because otherwise PHP error will result in HTTP status 200
+        // instead of expected 500
+        // For more details see https://bugs.php.net/bug.php?id=50921
+        ini_set('display_errors', 'off');
         appCodeForTestPhpErrorUncaughtException();
     }
 
@@ -160,9 +164,7 @@ final class ErrorTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper'])
-            // TODO: Sergey Kleyman: UNCOMMENT
-            // ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVER_ERROR),
-            ->withExpectedStatusCode(/* null - ignore HTTP status */ null),
+                ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVER_ERROR),
             function (DataFromAgent $dataFromAgent): void {
                 $err = $this->verifyError($dataFromAgent);
                 // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
@@ -219,9 +221,7 @@ final class ErrorTest extends ComponentTestCaseBase
                 }
 
                 $err = $this->verifyError($dataFromAgent);
-
-                // TODO: Sergey Kleyman: REMOVE
-                self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+                // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
                 $appCodeFile
                     = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestCaughtExceptionResponded500.php';
