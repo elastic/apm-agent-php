@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\Assert;
@@ -182,17 +183,24 @@ final class PhpPartFacade
     }
 
     /**
-     * Called by elastic_apm extension
+     * @param string  $dbgCallDesc
+     * @param Closure $implFunc
      *
-     * @noinspection PhpUnused
+     * @return void
+     *
+     * @phpstan-param Closure(self): void $implFunc
      */
-    public static function shutdown(): void
+    private static function callFromExtension(string $dbgCallDesc, Closure $implFunc): void
     {
-        BootstrapStageLogger::logDebug('Starting shutdown sequence...', __LINE__, __FUNCTION__);
+        BootstrapStageLogger::logDebug(
+            'Starting to handle ' . $dbgCallDesc . ' call from extension...',
+            __LINE__,
+            __FUNCTION__
+        );
 
-        if (is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             BootstrapStageLogger::logWarning(
-                'Shutdown sequence is invoked even though singleton instance is not created'
+                'Received ' . $dbgCallDesc . ' call from extension but singleton instance is not created'
                 . ' (probably because bootstrap sequence failed)',
                 __LINE__,
                 __FUNCTION__
@@ -201,25 +209,134 @@ final class PhpPartFacade
         }
 
         try {
-            self::singletonInstance()->shutdownImpl();
+            $implFunc(self::singletonInstance());
         } catch (Throwable $throwable) {
             BootstrapStageLogger::logCriticalThrowable(
                 $throwable,
-                'One of the steps in shutdown sequence let a throwable escape - skipping the rest of the steps',
+                'Handling ' . $dbgCallDesc
+                . ' call from extension let a throwable escape - skipping the rest of the steps',
                 __LINE__,
                 __FUNCTION__
             );
+            return;
         }
 
-        self::$singletonInstance = null;
-        BootstrapStageLogger::logDebug('Successfully completed shutdown sequence', __LINE__, __FUNCTION__);
+        BootstrapStageLogger::logDebug(
+            'Successfully finished handling ' . $dbgCallDesc . ' call from extension...',
+            __LINE__,
+            __FUNCTION__
+        );
     }
 
-    private function shutdownImpl(): void
+    /**
+     * @param string  $dbgCallDesc
+     * @param Closure $implFunc
+     *
+     * @return void
+     *
+     * @phpstan-param Closure(TransactionForExtensionRequest): void $implFunc
+     */
+    private static function callFromExtensionToTransaction(string $dbgCallDesc, Closure $implFunc): void
     {
-        if (!is_null($this->transactionForExtensionRequest)) {
-            $this->transactionForExtensionRequest->onShutdown();
-        }
+        self::callFromExtension(
+            $dbgCallDesc,
+            function (PhpPartFacade $singletonInstance) use ($implFunc): void {
+                if ($singletonInstance->transactionForExtensionRequest === null) {
+                    BootstrapStageLogger::logDebug(
+                        'Received shutdown call from extension but transactionForExtensionRequest is null'
+                        . ' - just returning...',
+                        __LINE__,
+                        __FUNCTION__
+                    );
+                    return;
+                }
+
+                $implFunc($singletonInstance->transactionForExtensionRequest);
+            }
+        );
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param int    $type
+     * @param string $filename
+     * @param int    $lineNumber
+     * @param string $message
+     *
+     * @return void
+     */
+    public static function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    {
+        self::callFromExtensionToTransaction(
+            __FUNCTION__,
+            function (
+                TransactionForExtensionRequest $transactionForExtensionRequest
+            ) use (
+                $type,
+                $filename,
+                $lineNumber,
+                $message
+            ): void {
+                $transactionForExtensionRequest->onPhpError($type, $filename, $lineNumber, $message);
+            }
+        );
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param mixed $thrown
+     *
+     * @return void
+     */
+    public static function onThrowException($thrown): void
+    {
+        self::callFromExtensionToTransaction(
+            __FUNCTION__,
+            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($thrown): void {
+                $transactionForExtensionRequest->onThrowException($thrown);
+            }
+        );
+    }
+
+    // TODO: Sergey Kleyman: REMOVE
+    // /**
+    //  * Called by elastic_apm extension
+    //  *
+    //  * @noinspection PhpUnused
+    //  *
+    //  * @return void
+    //  */
+    // public static function onThrowException(): void
+    // {
+    //     self::callFromExtensionToTransaction(
+    //         __FUNCTION__,
+    //         function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
+    //             $transactionForExtensionRequest->onThrowException(null);
+    //         }
+    //     );
+    // }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     */
+    public static function shutdown(): void
+    {
+        self::callFromExtensionToTransaction(
+            __FUNCTION__,
+            function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
+                $transactionForExtensionRequest->onShutdown();
+            }
+        );
+
+        self::$singletonInstance = null;
     }
 
     /**

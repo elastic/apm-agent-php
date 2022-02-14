@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -35,6 +36,7 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestArrayUtil;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TextUtilForTests;
 use ElasticApmTests\Util\ValidationUtil;
@@ -162,17 +164,20 @@ final class DataFromAgent implements LoggableInterface
                 ValidationUtil::assertThat($eventKind === 'metadata');
             }
             switch ($eventKind) {
+                case 'error':
+                    $this->processError($eventAsDecodedJson, $intakeApiRequest, $timeBeforeRequestToApp);
+                    break;
                 case 'metadata':
                     $this->processMetadata($eventAsDecodedJson);
+                    break;
+                case 'metricset':
+                    $this->processMetricSet($eventAsDecodedJson, $intakeApiRequest, $timeBeforeRequestToApp);
                     break;
                 case 'transaction':
                     $this->processTransaction($eventAsDecodedJson, $intakeApiRequest, $timeBeforeRequestToApp);
                     break;
                 case 'span':
                     $this->processSpan($eventAsDecodedJson, $intakeApiRequest, $timeBeforeRequestToApp);
-                    break;
-                case 'metricset':
-                    $this->processMetricSet($eventAsDecodedJson, $intakeApiRequest, $timeBeforeRequestToApp);
                     break;
                 default:
                     TestCase::fail('Unexpected event kind `' . $eventKind . '\'.' . " bodyLine: `$bodyLine'");
@@ -253,6 +258,28 @@ final class DataFromAgent implements LoggableInterface
     }
 
     /**
+     * @param array<string, mixed> $errorDecodedJson
+     * @param IntakeApiRequest     $fromIntakeApiRequest
+     * @param float                $timeBeforeRequestToApp
+     */
+    private function processError(
+        array $errorDecodedJson,
+        IntakeApiRequest $fromIntakeApiRequest,
+        float $timeBeforeRequestToApp
+    ): void {
+        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
+
+        $newError = $this->validateAndDeserializeErrorData(self::decodedJsonToString($errorDecodedJson));
+
+        TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newError->timestamp);
+        TestCaseBase::assertLessThanOrEqualTimestamp($newError->timestamp, $fromIntakeApiRequest->timeReceivedAtServer);
+
+        ValidationUtil::assertThat($this->errorByIdOrNull($newError->id) === null);
+
+        $this->eventsFromAgent->idToError[$newError->id] = $newError;
+    }
+
+    /**
      * @param array<string, mixed> $metricSetDecodedJson
      * @param IntakeApiRequest     $fromIntakeApiRequest
      * @param float                $timeBeforeRequestToApp
@@ -298,12 +325,26 @@ final class DataFromAgent implements LoggableInterface
     }
 
     /**
+     * @param array<mixed>  $idToEventData
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   array<string, T> $idToEventData
+     * @phpstan-return  T
+     */
+    private static function getSingleEvent(array $idToEventData)
+    {
+        TestCase::assertCount(1, $idToEventData);
+        return TestArrayUtil::getFirstValue($idToEventData);
+    }
+
+    /**
      * @return TransactionData
      */
     public function singleTransaction(): TransactionData
     {
-        TestCase::assertCount(1, $this->eventsFromAgent->idToTransaction);
-        return $this->eventsFromAgent->idToTransaction[array_key_first($this->eventsFromAgent->idToTransaction)];
+        return self::getSingleEvent($this->eventsFromAgent->idToTransaction);
     }
 
     /**
@@ -311,8 +352,15 @@ final class DataFromAgent implements LoggableInterface
      */
     public function singleSpan(): SpanData
     {
-        TestCase::assertCount(1, $this->eventsFromAgent->idToSpan);
-        return $this->eventsFromAgent->idToSpan[array_key_first($this->eventsFromAgent->idToSpan)];
+        return self::getSingleEvent($this->eventsFromAgent->idToSpan);
+    }
+
+    /**
+     * @return ErrorData
+     */
+    public function singleError(): ErrorData
+    {
+        return self::getSingleEvent($this->eventsFromAgent->idToError);
     }
 
     public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentData
@@ -328,5 +376,10 @@ final class DataFromAgent implements LoggableInterface
         $result = $this->executionSegmentByIdOrNull($id);
         TestCaseBase::assertNotNull($result);
         return $result;
+    }
+
+    public function errorByIdOrNull(string $id): ?ErrorData
+    {
+        return ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToError, null);
     }
 }

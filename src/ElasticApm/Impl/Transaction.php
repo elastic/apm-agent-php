@@ -35,7 +35,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\RandomUtil;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
@@ -224,14 +223,14 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->currentSpan ?? NoopSpan::singletonInstance();
     }
 
-    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
-    {
-        return $this->currentSpan ?? $this;
-    }
-
     public function setCurrentSpan(?Span $newCurrentSpan): void
     {
         $this->currentSpan = $newCurrentSpan;
+    }
+
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        return $this->currentSpan ?? $this;
     }
 
     public function beginSpan(

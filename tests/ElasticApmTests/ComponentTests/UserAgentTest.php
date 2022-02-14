@@ -92,7 +92,7 @@ final class UserAgentTest extends ComponentTestCaseBase
         ];
     }
 
-    private function testImpl(
+    private function impl(
         ?AgentConfigSetter $configSetter,
         ?string $configuredServiceName,
         ?string $configuredServiceVersion,
@@ -119,7 +119,7 @@ final class UserAgentTest extends ComponentTestCaseBase
 
     public function testDefaultConfig(): void
     {
-        $this->testImpl(
+        $this->impl(
             null /* <- configSetter */,
             null /* <- configuredServiceName */,
             null /* <- expectedUserAgentHeaderValue */,
@@ -139,7 +139,7 @@ final class UserAgentTest extends ComponentTestCaseBase
         ?string $configuredServiceVersion,
         string $expectedUserAgentHeaderValue
     ): void {
-        $this->testImpl(
+        $this->impl(
             $this->randomConfigSetter(),
             $configuredServiceName,
             $configuredServiceVersion,
