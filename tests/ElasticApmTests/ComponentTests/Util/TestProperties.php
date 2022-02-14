@@ -41,7 +41,7 @@ final class TestProperties implements LoggableInterface
     /** @var UrlParts */
     public $urlParts;
 
-    /** @var int */
+    /** @var ?int */
     public $expectedStatusCode = HttpConsts::STATUS_OK;
 
     /** @var ?string */
@@ -122,7 +122,7 @@ final class TestProperties implements LoggableInterface
         return $this;
     }
 
-    public function withExpectedStatusCode(int $expectedStatusCode): self
+    public function withExpectedStatusCode(?int $expectedStatusCode): self
     {
         $this->expectedStatusCode = $expectedStatusCode;
         return $this;
