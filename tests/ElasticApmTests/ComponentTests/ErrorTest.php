@@ -117,7 +117,7 @@ final class ErrorTest extends ComponentTestCaseBase
 
                 $this->assertNotNull($err->exception);
 
-                // $this->assertSame(E_NOTICE, $err->exception->code);
+                $this->assertSame(E_ERROR, $err->exception->code);
                 // $expectedMessage = __FILE__ . '(' . self::UNDEFINED_VARIABLE_LINE_NUMBER
                 //                    . '): Undefined variable: undefinedVariable';
                 // $this->assertSame($expectedMessage, $err->exception->message);
@@ -133,8 +133,8 @@ final class ErrorTest extends ComponentTestCaseBase
                 // $this->assertSame($expectedFunction, $errStacktraceTopFrame->function);
                 // // TODO: Sergey Kleyman: Fix
                 // // $this->assertSame(self::UNDEFINED_VARIABLE_LINE_NUMBER, $errStacktraceTopFrame->lineno);
-                //
-                // $this->assertSame('E_NOTICE', $err->exception->type);
+
+                $this->assertSame('E_ERROR', $err->exception->type);
             }
         );
     }
