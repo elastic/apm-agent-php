@@ -212,4 +212,9 @@ final class TextUtil
             !$isCaseSensitive /* <- case_insensitivity */
         ) === 0;
     }
+
+    public static function contains(string $haystack, string $needle): bool
+    {
+        return strpos($haystack, $needle) !== false;
+    }
 }

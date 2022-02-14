@@ -102,6 +102,8 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
         $result->module = Tracer::limitNullableKeywordString($customErrorData->module);
         $result->type = Tracer::limitNullableKeywordString($customErrorData->type);
 
+        $result->stacktrace = StacktraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
+
         return $result;
     }
 

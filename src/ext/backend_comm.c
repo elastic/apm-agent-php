@@ -430,7 +430,7 @@ typedef struct BackgroundBackendComm BackgroundBackendComm;
 
 struct BackgroundBackendCommSharedStateSnapshot
 {
-    DataToSendNode* firstDataToSendNode;
+    const DataToSendNode* firstDataToSendNode;
     size_t dataToSendTotalSize;
     bool shouldExit;
     TimeSpec shouldExitBy;
@@ -452,43 +452,179 @@ typedef struct BackgroundBackendCommSharedStateSnapshot BackgroundBackendCommSha
     failure: \
     goto finally;
 
-ResultCode getSharedStateSnapshotUnderLock( BackgroundBackendComm* backgroundBackendComm
-                                            , BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshotOut )
+void backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
+    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshot );
+
+    sharedStateSnapshot->firstDataToSendNode = getFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
+    sharedStateSnapshot->dataToSendTotalSize = backgroundBackendComm->dataToSendTotalSize;
+    sharedStateSnapshot->shouldExit = backgroundBackendComm->shouldExit;
+    sharedStateSnapshot->shouldExitBy = backgroundBackendComm->shouldExitBy;
+}
+
+static inline bool isDataToSendQueueEmptyInSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+{
+    return sharedStateSnapshot->firstDataToSendNode == NULL;
+}
+
+ResultCode backgroundBackendCommThreadFunc_getSharedStateSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    ELASTIC_APM_ASSERT_VALID_PTR( sharedStateSnapshotOut );
-
-    sharedStateSnapshotOut->firstDataToSendNode = getFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
-    sharedStateSnapshotOut->dataToSendTotalSize = backgroundBackendComm->dataToSendTotalSize;
-    sharedStateSnapshotOut->shouldExit = backgroundBackendComm->shouldExit;
-    sharedStateSnapshotOut->shouldExitBy = backgroundBackendComm->shouldExitBy;
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
 
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
 
-ResultCode removeFirstInDataToSendQueueUnderLock( BackgroundBackendComm* backgroundBackendComm )
+ResultCode backgroundBackendCommThreadFunc_shouldBreakLoop(
+        const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+        , bool* shouldBreakLoop
+)
+{
+    ResultCode resultCode;
+
+    if ( sharedStateSnapshot->shouldExit )
+    {
+        if ( isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
+        {
+            *shouldBreakLoop = true;
+            goto success;
+        }
+
+        TimeSpec now;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ &now ) );
+
+        if ( compareAbsTimeSpecs( &sharedStateSnapshot->shouldExitBy, &now ) < 0 )
+        {
+            *shouldBreakLoop = true;
+            goto success;
+        }
+    }
+
+    *shouldBreakLoop = false;
+
+    success:
+    resultCode = resultSuccess;
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
     size_t firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
 
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
 
-ResultCode waitForChangesInSharedState( BackgroundBackendComm* backgroundBackendComm )
+ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
 {
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( waitConditionVariable( backgroundBackendComm->condVar, backgroundBackendComm->mutex, __FUNCTION__ ) );
     ELASTIC_APM_LOG_DEBUG( "Waiting exited" );
 
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
+}
+
+ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
+        const ConfigSnapshot* config
+        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+)
+{
+    // This function is called only when data-queue-to-send is not empty
+    // so firstDataToSendNode is not NULL
+    StringView serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+
+    ELASTIC_APM_LOG_DEBUG(
+            "About to send batch of events"
+            "; batch ID: %"PRIu64
+            "; batch size: %"PRIu64
+            "; total size of queued events: %"PRIu64
+            , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+            , (UInt64) serializedEvents.length
+            , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
+
+    ResultCode resultCode;
+
+    resultCode = syncSendEventsToApmServer( sharedStateSnapshot->firstDataToSendNode->disableSend
+                                            , sharedStateSnapshot->firstDataToSendNode->serverTimeoutMilliseconds
+                                            , config
+                                            , sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader.begin
+                                            , serializedEvents );
+    // If we failed to send the currently first batch we return success nevertheless
+    // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
+    if ( resultCode != resultSuccess )
+    {
+        ELASTIC_APM_LOG_ERROR(
+                "Failed to send batch of events - the batch will be dequeued and dropped"
+                "; batch ID: %"PRIu64
+                "; batch size: %"PRIu64
+                "; total size of queued events: %"PRIu64
+                , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+                , (UInt64) serializedEvents.length
+                , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
+    }
+
+    return resultSuccess;
 }
 
 #undef ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG
 #undef ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG
+
+void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+{
+    StringView serializedEvents = { 0 };
+    if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
+    {
+        serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+    }
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE( "Shared state snapshot: "
+                            " total size of queued events: %"PRIu64
+                            ", firstDataToSendNode %s NULL"
+                            " (serializedEvents.length: %"PRIu64 ")"
+                            ", shouldExit: %s"
+                            ", shouldExitBy: %s"
+                           , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                           , sharedStateSnapshot->firstDataToSendNode == NULL ? "==" : "!="
+                           , (UInt64) serializedEvents.length
+                           , boolToString( sharedStateSnapshot->shouldExit )
+                           , sharedStateSnapshot->shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot->shouldExitBy, &txtOutStream ) : "N/A" );
+
+    ELASTIC_APM_ASSERT( (sharedStateSnapshot->dataToSendTotalSize == 0) == ( sharedStateSnapshot->firstDataToSendNode == NULL )
+                        , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (serializedEvents.length: %"PRIu64 ")"
+                        , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                        , sharedStateSnapshot->firstDataToSendNode
+                        , (UInt64) serializedEvents.length );
+}
 
 void* backgroundBackendCommThreadFunc( void* arg )
 {
@@ -500,80 +636,27 @@ void* backgroundBackendCommThreadFunc( void* arg )
     BackgroundBackendComm* backgroundBackendComm = (BackgroundBackendComm*)arg;
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( getGlobalTracer() );
 
+    BackgroundBackendCommSharedStateSnapshot sharedStateSnapshot;
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_getSharedStateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
     while ( true )
     {
-        BackgroundBackendCommSharedStateSnapshot sharedStateSnapshot;
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( getSharedStateSnapshotUnderLock( backgroundBackendComm, &sharedStateSnapshot ) );
-        StringView serializedEvents = { 0 };
-        if ( sharedStateSnapshot.firstDataToSendNode != NULL )
-        {
-            serializedEvents = viewStringBuffer( sharedStateSnapshot.firstDataToSendNode->serializedEvents );
-        }
+        backgroundBackendCommThreadFunc_logSharedStateSnapshot( &sharedStateSnapshot );
 
-        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-
-        ELASTIC_APM_LOG_TRACE( "Shared state snapshot: "
-                                " total size of queued events: %"PRIu64
-                                ", firstDataToSendNode %s NULL"
-                                " (size: %"PRIu64 ")"
-                                ", shouldExit: %s"
-                                ", shouldExitBy: %s"
-                               , (UInt64) sharedStateSnapshot.dataToSendTotalSize
-                               , sharedStateSnapshot.firstDataToSendNode == NULL ? "==" : "!="
-                               , (UInt64)( serializedEvents.length )
-                               , boolToString( sharedStateSnapshot.shouldExit )
-                               , sharedStateSnapshot.shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot.shouldExitBy, &txtOutStream ) : "N/A" );
-
-        ELASTIC_APM_ASSERT( (sharedStateSnapshot.dataToSendTotalSize == 0) == ( sharedStateSnapshot.firstDataToSendNode == NULL )
-                            , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (size: %"PRIu64 ")"
-                            , (UInt64) sharedStateSnapshot.dataToSendTotalSize
-                            , sharedStateSnapshot.firstDataToSendNode
-                            , (UInt64)( serializedEvents.length ) );
-
-        const bool isDataToSendQueueEmpty = sharedStateSnapshot.firstDataToSendNode == NULL;
-        TimeSpec now;
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ &now ) );
-
-        if ( sharedStateSnapshot.shouldExit && ( isDataToSendQueueEmpty || compareAbsTimeSpecs( &sharedStateSnapshot.shouldExitBy, &now ) < 0 ) )
+        bool shouldBreakLoop;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_shouldBreakLoop( /* in */ &sharedStateSnapshot, /* out */ &shouldBreakLoop ) );
+        if ( shouldBreakLoop )
         {
             break;
         }
 
-        if ( isDataToSendQueueEmpty )
+        if ( isDataToSendQueueEmptyInSnapshot( &sharedStateSnapshot ) )
         {
-            ELASTIC_APM_CALL_IF_FAILED_GOTO( waitForChangesInSharedState( backgroundBackendComm ) );
+            ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_waitForChangesInSharedState( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
             continue;
         }
 
-        ELASTIC_APM_LOG_DEBUG(
-                "About to send batch of events"
-                "; batch ID: %"PRIu64
-                "; batch size: %"PRIu64
-                "; total size of queued events: %"PRIu64
-                , (UInt64)( sharedStateSnapshot.firstDataToSendNode->id )
-                , (UInt64)( serializedEvents.length )
-                , (UInt64)( sharedStateSnapshot.dataToSendTotalSize ) );
-
-        resultCode = syncSendEventsToApmServer( sharedStateSnapshot.firstDataToSendNode->disableSend
-                                                , sharedStateSnapshot.firstDataToSendNode->serverTimeoutMilliseconds
-                                                , config
-                                                , sharedStateSnapshot.firstDataToSendNode->userAgentHttpHeader.begin
-                                                , serializedEvents );
-        if ( resultCode != resultSuccess )
-        {
-            ELASTIC_APM_LOG_ERROR(
-                    "Failed to send batch of events - the batch will be dequeued and dropped"
-                    "; batch ID: %"PRIu64
-                    "; batch size: %"PRIu64
-                    "; total size of queued events: %"PRIu64
-                    , (UInt64)( sharedStateSnapshot.firstDataToSendNode->id )
-                    , (UInt64)( serializedEvents.length )
-                    , (UInt64)( sharedStateSnapshot.dataToSendTotalSize ) );
-        }
-
-        // We remove the node even if we have just failed to send the data
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( removeFirstInDataToSendQueueUnderLock( backgroundBackendComm ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatch( config, /* in */ &sharedStateSnapshot ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
     }
 
     resultCode = resultSuccess;

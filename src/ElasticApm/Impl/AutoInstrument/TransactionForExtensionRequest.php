@@ -34,6 +34,7 @@ use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use Elastic\Apm\TransactionInterface;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -61,6 +62,9 @@ final class TransactionForExtensionRequest
 
     /** @var ?TransactionInterface */
     private $transactionForRequest;
+
+    /** @var ?Throwable  */
+    private $lastThrown = null;
 
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
@@ -262,6 +266,10 @@ final class TransactionForExtensionRequest
         if ($tx->getOutcome() === null) {
             $this->discoverHttpOutcome($tx);
         }
+
+        if ($tx->getOutcome() === Constants::OUTCOME_FAILURE && $this->lastThrown !== null) {
+            $this->tracer->createErrorFromThrowable($this->lastThrown);
+        }
     }
 
     private function logGcStatus(): void
@@ -275,6 +283,30 @@ final class TransactionForExtensionRequest
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Called gc_status()', ['gc_status() return value' => $gcStatusRetVal]);
+    }
+
+    public function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    {
+        $this->tracer->onPhpError($type, $filename, $lineNumber, $message);
+    }
+
+    /**
+     * @param mixed $thrown
+     *
+     * @return void
+     */
+    public function onThrowException($thrown): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['thrown' => $thrown]);
+
+        if (!($thrown instanceof Throwable)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('$thrown is not an instance of Throwable - ignoring it...', ['thrown' => $thrown]);
+            return;
+        }
+
+        $this->lastThrown = $thrown;
     }
 
     public function onShutdown(): void

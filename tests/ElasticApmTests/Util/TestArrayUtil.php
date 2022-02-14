@@ -21,14 +21,39 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
-final class HttpConsts
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
+final class TestArrayUtil
 {
-    public const STATUS_OK = 200;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_INTERNAL_SERVE_ERROR = 500;
+    use StaticClassTrait;
 
-    public const METHOD_GET = 'GET';
-    public const METHOD_POST = 'POST';
+    /**
+     * @param array<mixed>  $array
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T[] $array
+     * @phpstan-return  T
+     */
+    public static function getFirstValue(array $array)
+    {
+        return $array[array_key_first($array)];
+    }
+
+    /**
+     * @param array<mixed>  $array
+     *
+     * @return mixed
+     *
+     * @template        T
+     * @phpstan-param   T[] $array
+     * @phpstan-return  T
+     */
+    public static function getLastValue(array $array)
+    {
+        return $array[count($array) - 1];
+    }
 }
