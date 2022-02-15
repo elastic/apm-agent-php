@@ -17,9 +17,8 @@ RUN apt-get -qq install -y software-properties-common --no-install-recommends \
     && apt-get -qq install -y apache2 libapache2-mod-php php${PHP_VERSION}-mysql php${PHP_VERSION}-xml php${PHP_VERSION}-mbstring php${PHP_VERSION} \
     && rm -rf /var/lib/apt/lists/*
 
-## Disable the current PHP default version and enabled just installed one.
+## Enable the new installed PHP version.
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \
-    && a2dismod php8.0 \
     && a2enmod php${PHP_VERSION}
 
 ENV TYPE=deb
