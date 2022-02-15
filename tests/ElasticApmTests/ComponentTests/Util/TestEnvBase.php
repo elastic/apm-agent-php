@@ -37,6 +37,7 @@ use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\MetadataDiscoverer;
@@ -481,14 +482,17 @@ abstract class TestEnvBase implements LoggableInterface
                         !is_null($lastException)
                         && ($lastCheckedIndexBeforeUpdate === $lastCheckedNextIntakeApiRequestIndex)
                     ) {
-                        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                        && $loggerProxy->log(
-                            'No new data since the last check - there is no point in invoking $verifyFunc() again',
-                            [
-                                'lastCheckedIndexBeforeUpdate'         => $lastCheckedIndexBeforeUpdate,
-                                'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
-                            ]
+                        TestCaseBase::logAndPrintMessage(
+                            $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
+                            'No new data since the last check - there is no point in invoking $verifyFunc() again'
+                            . '; ' . LoggableToString::convert(
+                                [
+                                    'lastCheckedIndexBeforeUpdate' => $lastCheckedIndexBeforeUpdate,
+                                    'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
+                                ]
+                            )
                         );
+
                         return false;
                     }
 
@@ -499,8 +503,11 @@ abstract class TestEnvBase implements LoggableInterface
 
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
-                    ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->logThrowable($ex, "Attempt $numberOfAttempts failed");
+                    TestCaseBase::logAndPrintMessage(
+                        $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
+                        "Attempt $numberOfAttempts failed."
+                        . 'Caught exception: ' . LoggableToString::convert($ex, /* prettyPrint: */ true)
+                    );
 
                     if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
                         $lastException = $ex;
