@@ -95,6 +95,8 @@ void logSupportabilityInfo( LogLevel logLevel )
 
 void elasticApmModuleInit( int type, int moduleNumber )
 {
+    ELASTIC_APM_UNUSED( type );
+
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
@@ -189,7 +191,13 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ELASTIC_APM_UNUSED( resultCode );
 }
 
-typedef void (* ZendThrowExceptionHook )( zval* exception );
+typedef void (* ZendThrowExceptionHook )(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* exception
+#else
+        zval* exception
+#endif
+);
 
 static bool isOriginalZendThrowExceptionHookSet = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
@@ -205,24 +213,43 @@ void resetLastThrown()
     }
 }
 
-void elasticApmZendThrowExceptionHookImpl( zval* thrown )
+void elasticApmZendThrowExceptionHookImpl(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* thrownAsPzobj
+#else
+        zval* thrownAsPzval
+#endif
+)
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
 
     resetLastThrown();
-    ZVAL_COPY( /* pZvalDst: */ &lastThrown, /* pZvalSrc: */ thrown );
+
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+    zval thrownAsZval;
+    zval* thrownAsPzval = &thrownAsZval;
+    ZVAL_OBJ( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+#endif
+    ZVAL_COPY( /* pZvalDst: */ &lastThrown, /* pZvalSrc: */ thrownAsPzval );
+
     isLastThrownSet = true;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
 
-void elasticApmZendThrowExceptionHook( zval* exception )
+void elasticApmZendThrowExceptionHook(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* thrownObj
+#else
+        zval* thrownObj
+#endif
+)
 {
-    elasticApmZendThrowExceptionHookImpl( exception );
+    elasticApmZendThrowExceptionHookImpl( thrownObj );
 
     if ( originalZendThrowExceptionHook != NULL )
     {
-        originalZendThrowExceptionHook( exception );
+        originalZendThrowExceptionHook( thrownObj );
     }
 }
 void setLastThrownIfAnyToTracerPhpPart()
@@ -251,38 +278,85 @@ void setLastThrownIfAnyToTracerPhpPart()
     goto finally;
 }
 
-typedef void (* ZendErrorCallback )( int type, const char* fileName, uint32_t lineNumber, const char *format, va_list args );
+typedef void (* ZendErrorCallback )(
+        int type
+        , const char* fileName
+        , uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* message
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+);
 
 static bool isOriginalZendErrorCallbackSet = false;
 static ZendErrorCallback originalZendErrorCallback = NULL;
 
-void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t lineNumber, const char* messageFormat, va_list messageArgs )
+void elasticApmZendErrorCallbackImpl(
+        int type
+        , const char* fileName
+        , const uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* alreadyFormattedMessage
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+)
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d (%s), fileName: %s, lineNumber: %u, messageFormat: %s"
-                                              , type, get_php_error_name( type ), fileName, (UInt)lineNumber, messageFormat );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+            "type: %d (%s), fileName: %s, lineNumber: %u"
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            ", alreadyFormattedMessage: %s"
+#else
+            ", messageFormat: %s"
+#endif
+            , type, get_php_error_name( type ), fileName, (UInt)lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , ZSTR_VAL( alreadyFormattedMessage )
+#else
+            , messageFormat
+#endif
+    );
 
     ResultCode resultCode;
-    va_list messageArgsCopy;
-    char* message = NULL;
+    char* locallyFormattedMessage = NULL;
 
+#if PHP_MAJOR_VERSION < 8 /* if PHP version is 8.* and later */
+    va_list messageArgsCopy;
     va_copy( messageArgsCopy, messageArgs );
     // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
-    vspprintf( &message, 0, messageFormat, messageArgsCopy );
+    vspprintf( /* out */ &locallyFormattedMessage, 0, messageFormat, messageArgsCopy );
     va_end( messageArgsCopy );
+#endif
 
     setLastThrownIfAnyToTracerPhpPart();
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( onPhpErrorToTracerPhpPart( type, fileName, lineNumber, message ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+        onPhpErrorToTracerPhpPart(
+            type
+            , fileName
+            , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , ZSTR_VAL( alreadyFormattedMessage )
+#else
+            , locallyFormattedMessage
+#endif
+        )
+    );
 
     resultCode = resultSuccess;
 
     finally:
 
-    if ( message != NULL )
+#if PHP_MAJOR_VERSION < 8 /* if PHP version is 8.* and later */
+    if ( locallyFormattedMessage != NULL )
     {
-        efree( message );
-        message = NULL;
+        efree( locallyFormattedMessage );
+        locallyFormattedMessage = NULL;
     }
+#endif
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
@@ -293,13 +367,43 @@ void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t l
     goto finally;
 }
 
-void elasticApmZendErrorCallback( int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args )
+void elasticApmZendErrorCallback(
+        int type
+        , const char* fileName
+        , const uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* message
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+)
 {
-    elasticApmZendErrorCallbackImpl( type, error_filename, error_lineno, format, args );
+    elasticApmZendErrorCallbackImpl(
+        type
+        , fileName
+        , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , message
+#else
+        , messageFormat
+        , messageArgs
+#endif
+    );
 
     if ( originalZendErrorCallback != NULL )
     {
-        originalZendErrorCallback( type, error_filename, error_lineno, format, args );
+        originalZendErrorCallback(
+            type
+            , fileName
+            , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , message
+#else
+            , messageFormat
+            , messageArgs
+#endif
+        );
     }
 }
 
