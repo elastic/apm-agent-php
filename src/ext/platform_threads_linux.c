@@ -134,7 +134,7 @@ UInt64 getThreadId( Thread* thread )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thread );
 
-    return (UInt) thread->thread;
+    return (UInt64) thread->thread;
 }
 
 struct Mutex

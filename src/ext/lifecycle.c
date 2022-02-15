@@ -95,6 +95,8 @@ void logSupportabilityInfo( LogLevel logLevel )
 
 void elasticApmModuleInit( int type, int moduleNumber )
 {
+    ELASTIC_APM_UNUSED( type );
+
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
@@ -189,36 +191,172 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ELASTIC_APM_UNUSED( resultCode );
 }
 
-typedef void (* ZendErrorCallback )( int type, const char* fileName, uint32_t lineNumber, const char *format, va_list args );
+typedef void (* ZendThrowExceptionHook )(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* exception
+#else
+        zval* exception
+#endif
+);
 
-bool isOriginalZendErrorCallbackSet = false;
-ZendErrorCallback originalZendErrorCallback = NULL;
+static bool isOriginalZendThrowExceptionHookSet = false;
+static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
+static bool isLastThrownSet = false;
+static zval lastThrown;
 
-void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t lineNumber, const char* messageFormat, va_list messageArgs )
+void resetLastThrown()
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d (%s), fileName: %s, lineNumber: %u, messageFormat: %s"
-                                              , type, get_php_error_name( type ), fileName, (UInt)lineNumber, messageFormat );
+    if ( isLastThrownSet ) {
+        zval_ptr_dtor( &lastThrown );
+        ZVAL_UNDEF( &lastThrown );
+        isLastThrownSet = false;
+    }
+}
+
+void elasticApmZendThrowExceptionHookImpl(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* thrownAsPzobj
+#else
+        zval* thrownAsPzval
+#endif
+)
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
+
+    resetLastThrown();
+
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+    zval thrownAsZval;
+    zval* thrownAsPzval = &thrownAsZval;
+    ZVAL_OBJ( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+#endif
+    ZVAL_COPY( /* pZvalDst: */ &lastThrown, /* pZvalSrc: */ thrownAsPzval );
+
+    isLastThrownSet = true;
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+}
+
+void elasticApmZendThrowExceptionHook(
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        zend_object* thrownObj
+#else
+        zval* thrownObj
+#endif
+)
+{
+    elasticApmZendThrowExceptionHookImpl( thrownObj );
+
+    if ( originalZendThrowExceptionHook != NULL )
+    {
+        originalZendThrowExceptionHook( thrownObj );
+    }
+}
+void setLastThrownIfAnyToTracerPhpPart()
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
 
     ResultCode resultCode;
-    va_list messageArgsCopy;
-    char* message = NULL;
 
-    va_copy( messageArgsCopy, messageArgs );
-    // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
-    vspprintf( &message, 0, messageFormat, messageArgsCopy );
-    va_end( messageArgsCopy );
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( onPhpErrorToTracerPhpPart( type, fileName, lineNumber, message ) );
+    if ( isLastThrownSet ) {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( setLastThrownToTracerPhpPart( &lastThrown ) );
+    }
 
     resultCode = resultSuccess;
 
     finally:
 
-    if ( message != NULL )
+    resetLastThrown();
+
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
+typedef void (* ZendErrorCallback )(
+        int type
+        , const char* fileName
+        , uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* message
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+);
+
+static bool isOriginalZendErrorCallbackSet = false;
+static ZendErrorCallback originalZendErrorCallback = NULL;
+
+void elasticApmZendErrorCallbackImpl(
+        int type
+        , const char* fileName
+        , const uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* alreadyFormattedMessage
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+)
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+            "type: %d (%s), fileName: %s, lineNumber: %u"
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            ", alreadyFormattedMessage: %s"
+#else
+            ", messageFormat: %s"
+#endif
+            , type, get_php_error_name( type ), fileName, (UInt)lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , ZSTR_VAL( alreadyFormattedMessage )
+#else
+            , messageFormat
+#endif
+    );
+
+    ResultCode resultCode;
+    char* locallyFormattedMessage = NULL;
+
+#if PHP_MAJOR_VERSION < 8 /* if PHP version is 8.* and later */
+    va_list messageArgsCopy;
+    va_copy( messageArgsCopy, messageArgs );
+    // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
+    vspprintf( /* out */ &locallyFormattedMessage, 0, messageFormat, messageArgsCopy );
+    va_end( messageArgsCopy );
+#endif
+
+    setLastThrownIfAnyToTracerPhpPart();
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+        onPhpErrorToTracerPhpPart(
+            type
+            , fileName
+            , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , ZSTR_VAL( alreadyFormattedMessage )
+#else
+            , locallyFormattedMessage
+#endif
+        )
+    );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+#if PHP_MAJOR_VERSION < 8 /* if PHP version is 8.* and later */
+    if ( locallyFormattedMessage != NULL )
     {
-        efree( message );
-        message = NULL;
+        efree( locallyFormattedMessage );
+        locallyFormattedMessage = NULL;
     }
+#endif
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     // We ignore errors because we want the monitored application to continue working
@@ -229,52 +367,45 @@ void elasticApmZendErrorCallbackImpl( int type, const char* fileName, uint32_t l
     goto finally;
 }
 
-void elasticApmZendErrorCallback( int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args )
+void elasticApmZendErrorCallback(
+        int type
+        , const char* fileName
+        , const uint32_t lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , zend_string* message
+#else
+        , const char* messageFormat
+        , va_list messageArgs
+#endif
+)
 {
-    elasticApmZendErrorCallbackImpl( type, error_filename, error_lineno, format, args );
+    elasticApmZendErrorCallbackImpl(
+        type
+        , fileName
+        , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+        , message
+#else
+        , messageFormat
+        , messageArgs
+#endif
+    );
 
     if ( originalZendErrorCallback != NULL )
     {
-        originalZendErrorCallback( type, error_filename, error_lineno, format, args );
+        originalZendErrorCallback(
+            type
+            , fileName
+            , lineNumber
+#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
+            , message
+#else
+            , messageFormat
+            , messageArgs
+#endif
+        );
     }
 }
-
-//typedef void (* ZendThrowExceptionHook )( zval* exception );
-//
-//bool isOriginalZendThrowExceptionHookSet = false;
-//ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-
-//void elasticApmZendThrowExceptionHookImpl( zval* exception )
-//{
-//    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "exception: %p", exception );
-//
-//    ResultCode resultCode;
-//
-//    ELASTIC_APM_CALL_IF_FAILED_GOTO( onThrowExceptionToTracerPhpPart( exception ) );
-//
-//    resultCode = resultSuccess;
-//
-//    finally:
-//
-//    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-//    // We ignore errors because we want the monitored application to continue working
-//    // even if APM encountered an issue that prevent it from working
-//    return;
-//
-//    failure:
-//    goto finally;
-//}
-//
-//void elasticApmZendThrowExceptionHook( zval* exception )
-//{
-//    elasticApmZendThrowExceptionHookImpl( exception );
-//
-//    if ( originalZendThrowExceptionHook != NULL )
-//    {
-//        originalZendThrowExceptionHook( exception );
-//    }
-//}
-
 
 void elasticApmRequestInit()
 {
@@ -328,12 +459,12 @@ void elasticApmRequestInit()
                            , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
                            , elasticApmZendErrorCallback );
 
-//    originalZendThrowExceptionHook = zend_throw_exception_hook;
-//    isOriginalZendThrowExceptionHookSet = true;
-//    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-//    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-//                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-//                           , elasticApmZendThrowExceptionHook );
+    originalZendThrowExceptionHook = zend_throw_exception_hook;
+    isOriginalZendThrowExceptionHookSet = true;
+    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                           , elasticApmZendThrowExceptionHook );
 
     resultCode = resultSuccess;
 
@@ -388,16 +519,18 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-//    if ( isOriginalZendThrowExceptionHookSet )
-//    {
-//        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
-//        zend_throw_exception_hook = originalZendThrowExceptionHook;
-//        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
-//                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
-//                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
-//        originalZendThrowExceptionHook = NULL;
-//        isOriginalZendThrowExceptionHookSet = false;
-//    }
+    setLastThrownIfAnyToTracerPhpPart();
+
+    if ( isOriginalZendThrowExceptionHookSet )
+    {
+        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
+        zend_throw_exception_hook = originalZendThrowExceptionHook;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
+                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
+                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
+        originalZendThrowExceptionHook = NULL;
+        isOriginalZendThrowExceptionHookSet = false;
+    }
 
     if ( isOriginalZendErrorCallbackSet )
     {

@@ -39,4 +39,8 @@ require __DIR__ . '/polyfills/load.php';
 require __DIR__ . '/dummyFuncForTestsWithoutNamespace.php';
 require __DIR__ . '/ElasticApmTests/dummyFuncForTestsWithNamespace.php';
 
+require __DIR__ . '/ElasticApmTests/ComponentTests/appCodeForTestCaughtExceptionResponded500.php';
+require __DIR__ . '/ElasticApmTests/ComponentTests/appCodeForTestPhpErrorUncaughtException.php';
+require __DIR__ . '/ElasticApmTests/ComponentTests/appCodeForTestPhpErrorUndefinedVariable.php';
+
 TestsRootDir::$fullPath = __DIR__;

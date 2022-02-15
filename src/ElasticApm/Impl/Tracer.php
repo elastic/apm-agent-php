@@ -38,6 +38,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
@@ -258,72 +259,59 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
-    private static function getPhpErrorTypeName(int $type): ?string
-    {
-        switch ($type) {
-            case E_ERROR:
-                return 'E_ERROR';
-            case E_WARNING:
-                return 'E_WARNING';
-            case E_PARSE:
-                return 'E_PARSE';
-            case E_NOTICE:
-                return 'E_NOTICE';
-            case E_CORE_ERROR:
-                return 'E_CORE_ERROR';
-            case E_CORE_WARNING:
-                return 'E_CORE_WARNING';
-            case E_COMPILE_ERROR:
-                return 'E_COMPILE_ERROR';
-            case E_COMPILE_WARNING:
-                return 'E_COMPILE_WARNING';
-            case E_USER_ERROR:
-                return 'E_USER_ERROR';
-            case E_USER_WARNING:
-                return 'E_USER_WARNING';
-            case E_USER_NOTICE:
-                return 'E_USER_NOTICE';
-            case E_STRICT:
-                return 'E_STRICT';
-            case E_RECOVERABLE_ERROR:
-                return 'E_RECOVERABLE_ERROR';
-            case E_DEPRECATED:
-                return 'E_DEPRECATED';
-            case E_USER_DEPRECATED:
-                return 'E_USER_DEPRECATED';
-            default:
-                return null;
-        }
-    }
-
-    public function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
-    {
+    public function onPhpError(
+        int $type,
+        string $fileName,
+        int $lineNumber,
+        string $message,
+        ?Throwable $relatedThrowable
+    ): void {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Entered',
-            ['type' => $type, 'filename' => $filename, 'lineNumber' => $lineNumber, 'message' => $message]
+            [
+                'type' => $type,
+                'fileName' => $fileName,
+                'lineNumber' => $lineNumber,
+                'message' => $message,
+                'relatedThrowable' => $relatedThrowable,
+            ]
         );
 
-        $errorData = new CustomErrorData();
-        $errorData->code = $type;
-        $errorData->message = $filename . '(' . $lineNumber . '): ' . $message;
-        $errorData->type = self::getPhpErrorTypeName($type);
-        $this->createCustomError($errorData);
+        $customErrorData = new CustomErrorData();
+        $customErrorData->code = $type;
+        $customErrorData->message = TextUtil::contains($message, $fileName)
+            ? $message
+            : ($message . ' in ' . $fileName . ':' . $lineNumber);
+        $customErrorData->type = PhpErrorUtil::getTypeName($type);
+
+        $this->createError($customErrorData, $relatedThrowable);
+    }
+
+    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable): ?string
+    {
+        return $this->dispatchCreateError(
+            ErrorExceptionData::build(
+                $this,
+                $customErrorData,
+                $throwable
+            )
+        );
     }
 
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this, $throwable));
+        return $this->createError(/* customErrorData: */ null, $throwable);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this, $customErrorData));
+        return $this->createError($customErrorData, /* throwable: */ null);
     }
 
-    private function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         if (is_null($this->currentTransaction)) {
             return $this->doCreateError($errorExceptionData, /* transaction */ null, /* span */ null);
@@ -333,7 +321,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     public function doCreateError(
-        ?ErrorExceptionData $errorExceptionData,
+        ErrorExceptionData $errorExceptionData,
         ?Transaction $transaction,
         ?Span $span
     ): ?string {

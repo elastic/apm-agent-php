@@ -100,6 +100,14 @@ final class DataFromAgent implements LoggableInterface
         return $this->eventsFromAgent->idToSpan;
     }
 
+    /**
+     * @return array<string, ErrorData>
+     */
+    public function idToError(): array
+    {
+        return $this->eventsFromAgent->idToError;
+    }
+
     public function clearAdded(): void
     {
         $this->intakeApiRequestIndexStartOffset = count($this->intakeApiRequests);

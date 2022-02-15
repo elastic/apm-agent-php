@@ -294,12 +294,12 @@ final class PhpPartFacade
      *
      * @return void
      */
-    public static function onThrowException($thrown): void
+    public static function setLastThrown($thrown): void
     {
         self::callFromExtensionToTransaction(
             __FUNCTION__,
             function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($thrown): void {
-                $transactionForExtensionRequest->onThrowException($thrown);
+                $transactionForExtensionRequest->setLastThrown($thrown);
             }
         );
     }

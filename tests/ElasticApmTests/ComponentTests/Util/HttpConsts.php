@@ -27,7 +27,7 @@ final class HttpConsts
 {
     public const STATUS_OK = 200;
     public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_INTERNAL_SERVE_ERROR = 500;
+    public const STATUS_INTERNAL_SERVER_ERROR = 500;
 
     public const METHOD_GET = 'GET';
     public const METHOD_POST = 'POST';
