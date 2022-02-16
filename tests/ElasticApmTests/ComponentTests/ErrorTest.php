@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\ErrorData;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -43,6 +43,8 @@ final class ErrorTest extends ComponentTestCaseBase
     private const STACK_TRACE_FILE_NAME = 'STACK_TRACE_FILE_NAME';
     private const STACK_TRACE_FUNCTION = 'STACK_TRACE_FUNCTION';
     private const STACK_TRACE_LINE_NUMBER = 'STACK_TRACE_LINE_NUMBER';
+
+    private const INCLUDE_IN_ERROR_REPORTING = 'INCLUDE_IN_ERROR_REPORTING';
 
     private function verifyError(DataFromAgent $dataFromAgent): ErrorData
     {
@@ -103,20 +105,66 @@ final class ErrorTest extends ComponentTestCaseBase
         }
     }
 
-    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(): void
+    private static function undefinedVariablePhpErrorCode(): int
     {
-        appCodeForTestPhpErrorUndefinedVariable();
+        // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
+        // was converted from notice to warning
+        // https://www.php.net/manual/en/migration80.incompatible.php
+        return (version_compare(PHP_VERSION, '8.0.0') < 0) ? E_NOTICE : E_WARNING;
     }
 
-    public function testPhpErrorUndefinedVariable(): void
+    private static function buildExceptionForSubstituteError(): DummyExceptionForTests
+    {
+        return new DummyExceptionForTests('Exception for substitute error', /* code: */ 123);
+    }
+
+    private static function verifySubstituteError(ErrorData $err): void
+    {
+        self::assertNotNull($err->exception);
+        self::assertSame('ElasticApmTests\\Util', $err->exception->module);
+        self::assertSame('DummyExceptionForTests', $err->exception->type);
+        self::assertSame('Exception for substitute error', $err->exception->message);
+        self::assertSame(123, $err->exception->code);
+    }
+
+    /**
+     * @param array<string, mixed> $appCodeArgs
+     */
+    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(array $appCodeArgs): void
+    {
+        /** @var bool $includeInErrorReporting */
+        $includeInErrorReporting = self::getMandatoryAppCodeArg($appCodeArgs, self::INCLUDE_IN_ERROR_REPORTING);
+        if ($includeInErrorReporting) {
+            error_reporting(error_reporting() | self::undefinedVariablePhpErrorCode());
+        } else {
+            error_reporting(error_reporting() & ~self::undefinedVariablePhpErrorCode());
+        }
+
+        appCodeForTestPhpErrorUndefinedVariable();
+
+        if (!$includeInErrorReporting) {
+            ElasticApm::createErrorFromThrowable(self::buildExceptionForSubstituteError());
+        }
+    }
+
+    /**
+     * @dataProvider boolDataProvider
+     *
+     * @param bool $includeInErrorReporting
+     */
+    public function testPhpErrorUndefinedVariable(bool $includeInErrorReporting): void
     {
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper']),
-            function (DataFromAgent $dataFromAgent): void {
+                ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper'])
+                ->withAppCodeArgs([self::INCLUDE_IN_ERROR_REPORTING => $includeInErrorReporting]),
+            function (DataFromAgent $dataFromAgent) use ($includeInErrorReporting): void {
                 $err = $this->verifyError($dataFromAgent);
-                // TODO: Sergey Kleyman: COMMENT
                 // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+                if (!$includeInErrorReporting) {
+                    self::verifySubstituteError($err);
+                    return;
+                }
 
                 $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
                 self::assertNotNull($err->exception);

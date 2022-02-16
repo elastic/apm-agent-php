@@ -278,6 +278,15 @@ final class Tracer implements TracerInterface, LoggableInterface
             ]
         );
 
+        if ((error_reporting() & $type) === 0) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Not creating error event because error_reporting() does not include its type',
+                ['type' => $type, 'error_reporting()' => error_reporting()]
+            );
+            return;
+        }
+
         $customErrorData = new CustomErrorData();
         $customErrorData->code = $type;
         $customErrorData->message = TextUtil::contains($message, $fileName)
