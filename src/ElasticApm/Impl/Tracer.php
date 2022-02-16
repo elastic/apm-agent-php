@@ -274,7 +274,7 @@ final class Tracer implements TracerInterface, LoggableInterface
                 'fileName' => $fileName,
                 'lineNumber' => $lineNumber,
                 'message' => $message,
-                'relatedThrowable' => $relatedThrowable,
+                'relatedThrowable' => $relatedThrowable
             ]
         );
 
@@ -286,6 +286,11 @@ final class Tracer implements TracerInterface, LoggableInterface
             );
             return;
         }
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Creating error event because error_reporting() includes its type...',
+            ['type' => $type, 'error_reporting()' => error_reporting()]
+        );
 
         $customErrorData = new CustomErrorData();
         $customErrorData->code = $type;

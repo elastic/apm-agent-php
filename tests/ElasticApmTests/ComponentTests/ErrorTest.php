@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\ErrorData;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -134,11 +135,26 @@ final class ErrorTest extends ComponentTestCaseBase
     {
         /** @var bool $includeInErrorReporting */
         $includeInErrorReporting = self::getMandatoryAppCodeArg($appCodeArgs, self::INCLUDE_IN_ERROR_REPORTING);
+        self::printMessage(
+            __METHOD__,
+            'Before changing error_reporting(): '
+            . '$includeInErrorReporting: ' . LoggableToString::convert($includeInErrorReporting)
+            . '; ' . 'error_reporting(): ' . error_reporting()
+            . '; ' . 'undefinedVariablePhpErrorCode: ' . self::undefinedVariablePhpErrorCode()
+            . '; ' . 'error_reporting() includes undefinedVariablePhpErrorCode: '
+            . LoggableToString::convert((error_reporting() & self::undefinedVariablePhpErrorCode()) !== 0)
+        );
         if ($includeInErrorReporting) {
             error_reporting(error_reporting() | self::undefinedVariablePhpErrorCode());
         } else {
             error_reporting(error_reporting() & ~self::undefinedVariablePhpErrorCode());
         }
+        self::printMessage(
+            __METHOD__,
+            'After changing error_reporting(): ' . error_reporting()
+            . '; ' . 'error_reporting() includes undefinedVariablePhpErrorCode: '
+            . LoggableToString::convert((error_reporting() & self::undefinedVariablePhpErrorCode()) !== 0)
+        );
 
         appCodeForTestPhpErrorUndefinedVariable();
 
@@ -171,7 +187,7 @@ final class ErrorTest extends ComponentTestCaseBase
                 // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
                 // was converted from notice to warning
                 // https://www.php.net/manual/en/migration80.incompatible.php
-                $expectedCode = (version_compare(PHP_VERSION, '8.0.0') < 0) ? E_NOTICE : E_WARNING;
+                $expectedCode = self::undefinedVariablePhpErrorCode();
                 $expectedType = PhpErrorUtil::getTypeName($expectedCode);
                 self::assertNotNull($expectedType, '$expectedCode: ' . $expectedCode);
                 self::assertSame($expectedType, $err->exception->type);
