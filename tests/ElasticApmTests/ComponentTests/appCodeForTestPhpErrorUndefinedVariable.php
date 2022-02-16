@@ -25,14 +25,11 @@ namespace ElasticApmTests\ComponentTests;
 
 use PHPUnit\Framework\TestCase;
 
-const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER = 38;
-const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER = 44;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER = 35;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER = 41;
 
 function appCodeForTestPhpErrorUndefinedVariableImpl(): void
 {
-    // Ensure E_NOTICE is included in error_reporting
-    error_reporting(error_reporting() | E_NOTICE);
-
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER, __LINE__ + 2);
     /** @noinspection PhpUndefinedVariableInspection */
     $undefinedVariable = $undefinedVariable + 1; // @phpstan-ignore-line
