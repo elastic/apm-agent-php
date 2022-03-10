@@ -445,5 +445,9 @@ void registerAtExitLogging()
     {
         ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
     }
+    else
+    {
+        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Registered callback with atexit()" );
+    }
 #endif
 }
