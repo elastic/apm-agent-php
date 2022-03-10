@@ -368,8 +368,9 @@ void writeStackTraceToSyslog()
 }
 #endif
 
+typedef void (* OsSignalHandler )( int );
 bool isOldSignalHandlerSet = false;
-__sighandler_t oldSignalHandler = NULL;
+OsSignalHandler oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
@@ -407,7 +408,7 @@ void handleOsSignalLinux( int signalId )
 void registerOsSignalHandler()
 {
 #ifndef PHP_WIN32
-    __sighandler_t signal_retVal = signal( SIGSEGV, handleOsSignalLinux );
+    OsSignalHandler signal_retVal = signal( SIGSEGV, handleOsSignalLinux );
     if ( signal_retVal == SIG_ERR )
     {
         int signal_errno = errno;
