@@ -46,7 +46,7 @@ final class ExceptionUtil
      */
     public static function buildMessage(
         string $messagePrefix,
-        array $context,
+        array $context = [],
         int $numberOfStackTraceFramesToSkip = PHP_INT_MAX
     ): string {
         $messageSuffixObj = new AdhocLoggableObject($context);

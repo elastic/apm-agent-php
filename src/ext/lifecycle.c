@@ -422,8 +422,6 @@ void elasticApmRequestInit()
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnRequestInit( config ) );
-
     if ( ! tracer->isInited )
     {
         ELASTIC_APM_LOG_DEBUG( "Extension is not initialized" );
@@ -442,6 +440,8 @@ void elasticApmRequestInit()
         resultCode = resultSuccess;
         goto finally;
     }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnRequestInit( config ) );
 
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 

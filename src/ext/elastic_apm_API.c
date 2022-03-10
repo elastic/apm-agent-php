@@ -54,10 +54,25 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
     return resultCode;
 }
 
-enum
+UInt elasticApmGetNumberOfDynamicConfigOptions()
 {
-    maxFunctionsToIntercept = numberedInterceptingCallbacksCount
-};
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+
+    const ConfigManager* const cfgManager = getGlobalTracer()->configManager;
+
+    UInt result = 0;
+    ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
+    {
+        GetConfigManagerOptionMetadataResult getMetaRes;
+        getConfigManagerOptionMetadata( cfgManager, optId, &getMetaRes );
+        if ( getMetaRes.isDynamic ) ++result;
+    }
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "result: %d", result );
+    return result;
+}
+
+enum { maxFunctionsToIntercept = numberedInterceptingCallbacksCount };
 static uint32_t g_nextFreeFunctionToInterceptId = 0;
 struct CallToInterceptData
 {
