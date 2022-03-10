@@ -52,7 +52,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
         // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        ELASTIC_APM_LOG_ERROR( "Configuration option `%s' is not set", getMetaRes.optName );
         resultCode = resultSuccess;
         goto finally;
     }
@@ -96,7 +96,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
         // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTIC_APM_LOG_INFO( "Configuration option `%s' is not set", getMetaRes.optName );
+        ELASTIC_APM_LOG_ERROR( "Configuration option `%s' is not set", getMetaRes.optName );
         resultCode = resultSuccess;
         goto finally;
     }

@@ -689,6 +689,11 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
         bool hasTimedOut;
         ELASTIC_APM_CALL_IF_FAILED_GOTO(
                 timedJoinAndDeleteThread( &( backgroundBackendComm->thread ), &backgroundBackendCommThreadFuncRetVal, timeoutAbsUtc, &hasTimedOut, __FUNCTION__ ) );
+        if ( hasTimedOut )
+        {
+            ELASTIC_APM_LOG_ERROR( "Join to thread for background backend communications timed out - skipping the rest of cleanup and exiting" );
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
     }
 
     if ( backgroundBackendComm->condVar != NULL )
@@ -782,7 +787,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
                             , /* thread's dbgDesc */ "Background backend communications" );
     if ( resultCode == resultSuccess )
     {
-        ELASTIC_APM_LOG_DEBUG( "Started thread for background backend comm; thread ID: %"PRIu64, getThreadId( backgroundBackendComm->thread ) );
+        ELASTIC_APM_LOG_DEBUG( "Started thread for background backend communications; thread ID: %"PRIu64, getThreadId( backgroundBackendComm->thread ) );
     }
     else
     {

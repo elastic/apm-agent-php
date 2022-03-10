@@ -140,6 +140,11 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
      */
     public function dataProviderForTestDynamicConfigSetting(): iterable
     {
+        if (!$this->testEnv->isHttp()) {
+            yield [$this->randomConfigSetter(), "", []];
+            return;
+        }
+
         foreach (self::buildDynamicOptionsDataSet() as $optName => $optValuePairs) {
             yield [$this->randomConfigSetter(), $optName, $optValuePairs];
         }
@@ -157,6 +162,11 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
         string $optName,
         array $optValuePairs
     ): void {
+        if (!$this->testEnv->isHttp()) {
+            self::dummyAssert();
+            return;
+        }
+
         $optRawParsedPair = $optValuePairs[0];
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTestDynamicConfigSetting'])
