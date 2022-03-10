@@ -34,6 +34,7 @@
 #   include <sys/syscall.h>
 #   include <syslog.h>
 #   include <signal.h>
+#   include <errno.h>
 #endif
 #include "util.h"
 #include "log.h"
@@ -367,6 +368,9 @@ void writeStackTraceToSyslog()
 }
 #endif
 
+bool isOldSignalHandlerSet = false;
+__sighandler_t oldSignalHandler = NULL;
+
 void handleOsSignalLinux( int signalId )
 {
     ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER(
@@ -385,17 +389,38 @@ void handleOsSignalLinux( int signalId )
 #endif
 
     /* Call the default signal handler to have core dump generated... */
-    signal( signalId, 0 );
+    if ( isOldSignalHandlerSet )
+    {
+        signal( signalId, oldSignalHandler );
+        isOldSignalHandlerSet = false;
+        oldSignalHandler = NULL;
+    }
+    else
+    {
+        signal( signalId, SIG_DFL );
+    }
     raise ( signalId );
 }
 
-#undef ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER
 #endif // #ifndef PHP_WIN32
 
 void registerOsSignalHandler()
 {
 #ifndef PHP_WIN32
-    signal( SIGSEGV, handleOsSignalLinux );
+    __sighandler_t signal_retVal = signal( SIGSEGV, handleOsSignalLinux );
+    if ( signal_retVal == SIG_ERR )
+    {
+        int signal_errno = errno;
+
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
+    }
+    else
+    {
+        isOldSignalHandlerSet = true;
+        oldSignalHandler = signal_retVal;
+    }
 #endif
 }
 
