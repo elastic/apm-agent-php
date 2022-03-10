@@ -80,3 +80,5 @@ String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream );
 String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
 
 void registerOsSignalHandler();
+
+void registerAtExitLogging();
