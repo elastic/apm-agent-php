@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
 use ElasticApmTests\ComponentTests\Util\TestProperties;
@@ -39,9 +40,9 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
     private const APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE = 'APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE';
 
     /**
-     * @return array<array{string, array<array{string, mixed}>}>
+     * @return array<string, array<array{string, mixed}>>
      */
-    public static function dataProviderForTestDynamicConfigSetting(): array
+    private static function buildDynamicOptionsDataSet(): array
     {
         /**
          * @param int $logLevel
@@ -52,6 +53,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
             return [LogLevel::intToName($logLevel), $logLevel];
         };
 
+        /** @var array<array{string, mixed}> */
         $logLevelValues = [
             $logLevelToRawParsedPair(LogLevel::TRACE),
             $logLevelToRawParsedPair(LogLevel::OFF),
@@ -61,7 +63,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
         ];
 
         return [
-            [OptionNames::LOG_LEVEL, $logLevelValues],
+            OptionNames::LOG_LEVEL => $logLevelValues,
         ];
     }
 
@@ -75,7 +77,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
          */
         $cPartNumberOfDynamicConfigOptions = \elastic_apm_get_number_of_dynamic_config_options();
 
-        self::appAssertSame($cPartNumberOfDynamicConfigOptions, count(self::dataProviderForTestDynamicConfigSetting()));
+        self::appAssertSame($cPartNumberOfDynamicConfigOptions, count(self::buildDynamicOptionsDataSet()));
 
         http_response_code(234);
     }
@@ -134,14 +136,28 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
     }
 
     /**
+     * @return iterable<array{AgentConfigSetter, string, array<array{string, mixed}>}>
+     */
+    public function dataProviderForTestDynamicConfigSetting(): iterable
+    {
+        foreach (self::buildDynamicOptionsDataSet() as $optName => $optValuePairs) {
+            yield [$this->randomConfigSetter(), $optName, $optValuePairs];
+        }
+    }
+
+    /**
      * @dataProvider dataProviderForTestDynamicConfigSetting
      *
-     * @param string       $optName
-     * @param array<mixed> $optValues
+     * @param AgentConfigSetter           $configSetter
+     * @param string                      $optName
+     * @param array<array{string, mixed}> $optValuePairs
      */
-    public function testDynamicConfigSetting(string $optName, array $optValues): void
-    {
-        $optRawParsedPair = $optValues[0];
+    public function testDynamicConfigSetting(
+        AgentConfigSetter $configSetter,
+        string $optName,
+        array $optValuePairs
+    ): void {
+        $optRawParsedPair = $optValuePairs[0];
         $testProperties = (new TestProperties())
             ->withRoutedAppCode([__CLASS__, 'appCodeForTestDynamicConfigSetting'])
             ->withAppCodeArgs(
@@ -151,7 +167,6 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
                 ]
             )
             ->withExpectedStatusCode(234);
-        $configSetter = $this->randomConfigSetter();
         $configSetter->set($optName, $optRawParsedPair[0]);
         $testProperties->withAgentConfig($configSetter);
 
