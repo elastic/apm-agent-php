@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -115,9 +116,17 @@ final class TestProcessUtil
             );
         }
 
-        TestCaseBase::printMessage(__METHOD__, "Process started");
-
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Process started', ['newProcessInfo' => $newProcessInfo]);
+        TestCaseBase::logAndPrintMessage(
+            $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
+            'Process started'
+            . '; ' . LoggableToString::convert(
+                [
+                    'newProcessInfo' => $newProcessInfo,
+                    'exitCode' => $exitCode,
+                    'adaptedCmd' => $adaptedCmd,
+                    'envVars' => $envVars,
+                ]
+            )
+        );
     }
 }
