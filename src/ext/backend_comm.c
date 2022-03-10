@@ -1015,7 +1015,7 @@ ResultCode sendEventsToApmServer(
             "Handling request to send events..."
             " disableSend: %s"
             "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
-            "; userAgentHttpHeader [length: %"PRIu64"]:\n%.*s"
+            "; userAgentHttpHeader [length: %"PRIu64"]: `%.*s'"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
             , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong

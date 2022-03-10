@@ -128,6 +128,11 @@ void elasticApmModuleInit( int type, int moduleNumber )
         goto finally;
     }
 
+    if ( getGlobalLogger()->maxEnabledLevel >= logLevel_debug )
+    {
+        registerAtExitLogging();
+    }
+
     CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
     {
