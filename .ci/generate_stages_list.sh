@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+## To be implemented, so far it prints the file with the static entries
+cat << EOF
 7.2,apk,lifecycle-testing
 7.3,apk,lifecycle-testing
 7.4,apk,lifecycle-testing
@@ -25,3 +30,4 @@
 7.3,deb,lifecycle-testing-in-fpm
 7.4,deb,lifecycle-testing-in-fpm
 8.0,deb,lifecycle-testing-in-fpm
+EOF

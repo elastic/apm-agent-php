@@ -500,9 +500,15 @@ def generateSteps() {
   deleteDir()
   unstash 'source'
   dir("${BASE_DIR}"){
-    def entries = readFile '.ci/.jenkins_php.csv'
-    entries.each{ content ->
-      parallelTasks[content] = generateStep(content)
+    def output = cmd(label: '.ci/generate_stages_list.sh', script: '.ci/generate_stages_list.sh', returnStdout: true)
+    if (output?.trim()) {
+      output.split('\n').each { line ->
+        entries.each{ content ->
+          parallelTasks[content] = generateStep(content)
+        }
+      }
+    } else {
+      error('.ci/generate_stages_list.sh contains empty data')
     }
   }
   parallel(parallelTasks)
