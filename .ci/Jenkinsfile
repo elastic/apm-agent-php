@@ -497,8 +497,6 @@ def prepareRelease() {
 
 def generateSteps() {
   def parallelTasks = [:]
-  deleteDir()
-  unstash 'source'
   dir("${BASE_DIR}"){
     def output = cmd(label: '.ci/generate_stages_list.sh', script: '.ci/generate_stages_list.sh', returnStdout: true)
     if (output?.trim()) {
