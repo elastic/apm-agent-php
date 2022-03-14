@@ -536,8 +536,10 @@ def generateStep(String content){
 
 def lifecycleTesting(php, dist) {
   try {
-    packageWorkspace(context: "Lifecycle-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
-      sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-lifecycle-testing", label: "${dist}-lifecycle-testing for ${php}")
+    withEnv(["PHP_VERSION=${php}"]) {
+      packageWorkspace(context: "Lifecycle-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
+        sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-lifecycle-testing", label: "${dist}-lifecycle-testing for ${php}")
+      }
     }
   } finally {
     junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
@@ -545,27 +547,35 @@ def lifecycleTesting(php, dist) {
 }
 
 def phpUpgradeTesting(php, dist) {
-  packageWorkspace(context: "PHP-Upgrade-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
-    sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-php-upgrade-testing", label: "${dist}-php-upgrade-testing for ${php}")
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-Upgrade-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
+      sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-php-upgrade-testing", label: "${dist}-php-upgrade-testing for ${php}")
+    }
   }
 }
 
 def agentUpgradeTesting(php, dist) {
-  initWorkspace(context: "Agent-Upgrade-Testing-${dist}") {
-    packageGeneration(versions: [php], local: true)
-    unstash 'package'
-    sh script: "make -C packaging ${dist}-agent-upgrade-testing-local", label: "${dist}-agent-upgrade-testing-local"
+  withEnv(["PHP_VERSION=${php}"]) {
+    initWorkspace(context: "Agent-Upgrade-Testing-${dist}") {
+      packageGeneration(versions: [php], local: true)
+      unstash 'package'
+      sh(script: "make -C packaging ${dist}-agent-upgrade-testing-local", label: "${dist}-agent-upgrade-testing-local")
+    }
   }
 }
 
 def phpApacheTesting(php, dist) {
-  packageWorkspace(context: "PHP-Apache-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-apache") {
-    sh(script: "make -C packaging ${dist}-lifecycle-testing-in-apache", label: "${dist}-lifecycle-testing-in-apache")
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-Apache-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-apache") {
+      sh(script: "make -C packaging ${dist}-lifecycle-testing-in-apache", label: "${dist}-lifecycle-testing-in-apache")
+    }
   }
 }
 
 def phpFpmTesting(php, dist) {
-  packageWorkspace(context: "PHP-FPM-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-fpm") {
-    sh(script: "make -C packaging ${dist}-lifecycle-testing-in-fpm", label: "${dist}-lifecycle-testing-in-fpm")
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-FPM-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-fpm") {
+      sh(script: "make -C packaging ${dist}-lifecycle-testing-in-fpm", label: "${dist}-lifecycle-testing-in-fpm")
+    }
   }
 }
