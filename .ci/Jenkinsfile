@@ -179,93 +179,8 @@ pipeline {
             beforeAgent true
             expression { return env.ONLY_DOCS == "false" }
           }
-          failFast false
-          matrix {
-            agent { label 'ubuntu-18.04 && immutable' }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0'
-              }
-              axis {
-                name 'DIST'
-                values 'apk', 'deb', 'rpm', 'tar'
-              }
-            }
-            stages {
-              stage('Lifecycle Testing') {
-                steps {
-                  packageWorkspace(context: "Lifecycle-Testing-${PHP_VERSION}-${DIST}", prepareGoal: "prepare-${DIST}") {
-                    sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${DIST}-lifecycle-testing", label: "${DIST}-lifecycle-testing for ${PHP_VERSION}"
-                  }
-                }
-                post {
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
-              stage('PHP Upgrade Testing') {
-                agent { label 'ubuntu-18.04 && immutable' }
-                when {
-                  beforeAgent true
-                  allOf {
-                    expression { return env.PHP_VERSION == "7.2" }
-                    expression { return env.DIST == "rpm" }
-                  }
-                }
-                steps {
-                  packageWorkspace(context: "PHP-Upgrade-Testing-${DIST}", prepareGoal: "prepare-${DIST}") {
-                    sh script: "make -C packaging ${DIST}-php-upgrade-testing", label: "${DIST}-php-upgrade-testing"
-                  }
-                }
-              }
-              stage('Agent Upgrade Testing') {
-                agent { label 'ubuntu-18.04 && immutable' }
-                when {
-                  beforeAgent true
-                  allOf {
-                    expression { return env.PHP_VERSION == "7.4" }
-                    expression { return (env.DIST == "rpm" || env.DIST == "deb") }
-                  }
-                }
-                steps {
-                  initWorkspace(context: "Agent-Upgrade-Testing-${DIST}") {
-                    packageGeneration(versions: [env.PHP_VERSION], local: true)
-                    unstash 'package'
-                    sh script: "make -C packaging ${DIST}-agent-upgrade-testing-local", label: "${DIST}-agent-upgrade-testing-local"
-                  }
-                }
-              }
-              stage('PHP Apache Testing') {
-                agent { label 'ubuntu-18.04 && immutable' }
-                when {
-                  beforeAgent true
-                  allOf {
-                    expression { return env.DIST == "deb" }
-                  }
-                }
-                steps {
-                  packageWorkspace(context: "PHP-Apache-Testing-${DIST}", prepareGoal: "prepare-${DIST}-apache") {
-                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-apache", label: "${DIST}-lifecycle-testing-in-apache"
-                  }
-                }
-              }
-              stage('PHP FPM Testing') {
-                agent { label 'ubuntu-18.04 && immutable' }
-                when {
-                  beforeAgent true
-                  allOf {
-                    expression { return env.DIST == "deb" }
-                  }
-                }
-                steps {
-                  packageWorkspace(context: "PHP-FPM-Testing-${DIST}", prepareGoal: "prepare-${DIST}-fpm") {
-                    sh script: "make -C packaging ${DIST}-lifecycle-testing-in-fpm", label: "${DIST}-lifecycle-testing-in-fpm"
-                  }
-                }
-              }
-            }
+          steps {
+            generateSteps()
           }
         }
       }
@@ -577,5 +492,92 @@ def prepareRelease() {
   } else {
     gitCreateTag(tag: "${tagName}")
     log(level: 'INFO', text: "There are no changes to compare with. Release will happen from this commit.")
+  }
+}
+
+def generateSteps() {
+  def parallelTasks = [:]
+  dir("${BASE_DIR}"){
+    def output = sh(label: '.ci/generate_stages_list.sh', script: '.ci/generate_stages_list.sh', returnStdout: true)
+    if (output?.trim()) {
+      output.split('\n').each { content ->
+        parallelTasks[content] = generateStep(content)
+      }
+    } else {
+      error('.ci/generate_stages_list.sh contains empty data')
+    }
+  }
+  parallel(parallelTasks)
+}
+
+def generateStep(String content){
+  return {
+    withNode(labels: 'ubuntu-18.04 && immutable') {
+      def parsedContent = content.split(',')
+      def php = parsedContent[0]
+      def dist = parsedContent[1]
+      def target = parsedContent[2]
+      if (target.equals('lifecycle-testing')) {
+        lifecycleTesting(php, dist)
+      }
+      if (target.equals('php-upgrade-testing')) {
+        phpUpgradeTesting(php, dist)
+      }
+      if (target.equals('agent-upgrade-testing')) {
+        agentUpgradeTesting(php, dist)
+      }
+      if (target.equals('lifecycle-testing-in-apache')) {
+        phpApacheTesting(php, dist)
+      }
+      if (target.equals('lifecycle-testing-in-fpm')) {
+        phpFpmTesting(php, dist)
+      }
+    }
+  }
+}
+
+def lifecycleTesting(php, dist) {
+  try {
+    withEnv(["PHP_VERSION=${php}"]) {
+      packageWorkspace(context: "Lifecycle-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
+        sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-lifecycle-testing", label: "${dist}-lifecycle-testing for ${php}")
+      }
+    }
+  } finally {
+    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
+  }
+}
+
+def phpUpgradeTesting(php, dist) {
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-Upgrade-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
+      sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-php-upgrade-testing", label: "${dist}-php-upgrade-testing for ${php}")
+    }
+  }
+}
+
+def agentUpgradeTesting(php, dist) {
+  withEnv(["PHP_VERSION=${php}"]) {
+    initWorkspace(context: "Agent-Upgrade-Testing-${dist}") {
+      packageGeneration(versions: [php], local: true)
+      unstash 'package'
+      sh(script: "make -C packaging ${dist}-agent-upgrade-testing-local", label: "${dist}-agent-upgrade-testing-local")
+    }
+  }
+}
+
+def phpApacheTesting(php, dist) {
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-Apache-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-apache") {
+      sh(script: "make -C packaging ${dist}-lifecycle-testing-in-apache", label: "${dist}-lifecycle-testing-in-apache")
+    }
+  }
+}
+
+def phpFpmTesting(php, dist) {
+  withEnv(["PHP_VERSION=${php}"]) {
+    packageWorkspace(context: "PHP-FPM-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-fpm") {
+      sh(script: "make -C packaging ${dist}-lifecycle-testing-in-fpm", label: "${dist}-lifecycle-testing-in-fpm")
+    }
   }
 }
