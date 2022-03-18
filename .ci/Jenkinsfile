@@ -518,7 +518,7 @@ def generateStep(String content){
       def dist = parsedContent[1]
       def target = parsedContent[2]
       if (target.equals('lifecycle-testing')) {
-        lifecycleTesting(php, dist)
+        lifecycleTesting(php, dist, 'Lifecycle-Testing')
       }
       if (target.equals('php-upgrade-testing')) {
         phpUpgradeTesting(php, dist)
@@ -534,17 +534,17 @@ def generateStep(String content){
       }
       if (target.equals('component-testing')) {
         withEnv(["COMPONENT_TEST_SCRIPT=${parsedContent[3]}"]) {
-          lifecycleTesting(php, dist)
+          lifecycleTesting(php, dist, env.COMPONENT_TEST_SCRIPT)
         }
       }
     }
   }
 }
 
-def lifecycleTesting(php, dist) {
+def lifecycleTesting(php, dist, id) {
   try {
     withEnv(["PHP_VERSION=${php}"]) {
-      packageWorkspace(context: "Lifecycle-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}") {
+      packageWorkspace(context: "${id}-${php}-${dist}", prepareGoal: "prepare-${dist}") {
         sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-lifecycle-testing", label: "${dist}-lifecycle-testing for ${php}")
       }
     }
