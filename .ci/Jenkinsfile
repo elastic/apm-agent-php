@@ -532,6 +532,11 @@ def generateStep(String content){
       if (target.equals('lifecycle-testing-in-fpm')) {
         phpFpmTesting(php, dist)
       }
+      if (target.equals('component-testing')) {
+        withEnv(["COMPONENT_TEST_SCRIPT=${parsedContent[3]}"]) {
+          lifecycleTesting(php, dist)
+        }
+      }
     }
   }
 }
