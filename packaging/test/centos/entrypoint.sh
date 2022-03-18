@@ -54,7 +54,9 @@ function validate_installation() {
     ## Validate the installation works as expected with composer
     composer install
     /usr/sbin/rsyslogd
-    if ! composer run-script run_component_tests ; then
+    ## This env variable can be overriden
+    COMPONENT_TEST_SCRIPT="${COMPONENT_TEST_SCRIPT:-run_component_tests}"
+    if ! composer run-script "${COMPONENT_TEST_SCRIPT}" ; then
         echo 'Something bad happened when running the tests, see the output from the syslog'
         cat /var/log/syslog
         exit 1
