@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepara Release') {
+        stage('Prepare Release') {
           options {
             skipDefaultCheckout()
           }
