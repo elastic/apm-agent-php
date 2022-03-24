@@ -100,6 +100,10 @@ pipeline {
             }
             stages {
               stage('Build') {
+                when {
+                  beforeAgent true
+                  not { expression { isInternalCI() } }
+                }
                 steps {
                   initWorkspace(context: "Build-${PHP_VERSION}") {
                     // When running in the CI with multiple parallel stages
@@ -112,6 +116,10 @@ pipeline {
                 }
               }
               stage('Static check and Unit Tests') {
+                when {
+                  beforeAgent true
+                  not { expression { isInternalCI() } }
+                }
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
@@ -177,7 +185,10 @@ pipeline {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
-            expression { return env.ONLY_DOCS == "false" }
+            allOf {
+              expression { return env.ONLY_DOCS == "false" }
+              not { expression { isInternalCI() } }
+            }
           }
           steps {
             generateSteps()
