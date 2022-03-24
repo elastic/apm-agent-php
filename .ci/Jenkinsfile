@@ -100,10 +100,6 @@ pipeline {
             }
             stages {
               stage('Build') {
-                when {
-                  beforeAgent true
-                  not { expression { isInternalCI() } }
-                }
                 steps {
                   initWorkspace(context: "Build-${PHP_VERSION}") {
                     // When running in the CI with multiple parallel stages
