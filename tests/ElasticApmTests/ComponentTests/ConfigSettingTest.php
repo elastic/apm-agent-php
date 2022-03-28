@@ -173,6 +173,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
+        self::appAssertTrue(
+            is_string($optName),
+            '$optName should be a string',
+            ['$optName actual type' => DbgUtil::getType($optName)]
+        );
+        /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
         $tracer = GlobalTracerHolder::get();

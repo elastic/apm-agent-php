@@ -32,9 +32,6 @@ final class TextUtil
 {
     use StaticClassTrait;
 
-    private const CR_AS_INT = 13;
-    private const LF_AS_INT = 10;
-
     public static function ensureMaxLength(string $text, int $maxLength): string
     {
         if (strlen($text) <= $maxLength) {

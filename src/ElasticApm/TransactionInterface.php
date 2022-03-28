@@ -75,24 +75,22 @@ interface TransactionInterface extends ExecutionSegmentInterface
      * sets the new span as the current span for this transaction.
      * The current execution segment is the current span if there is one or this transaction itself otherwise.
      *
+     * @template T
+     *
      * @param string      $name      New span's name
      * @param string      $type      New span's type
-     * @param Closure     $callback  Callback to execute as the new span
+     * @param Closure(SpanInterface $newSpan): T $callback
      * @param string|null $subtype   New span's subtype
      * @param string|null $action    New span's action
      * @param float|null  $timestamp Start time of the new span
+     *
+     * @return  T The return value of $callback
      *
      * @see             SpanInterface::setName() For the description.
      * @see             SpanInterface::setType() For the description.
      * @see             SpanInterface::setSubtype() For the description.
      * @see             SpanInterface::setAction() For the description.
      * @see             SpanInterface::getTimestamp() For the description.
-     *
-     * @template        T
-     * @phpstan-param   Closure(SpanInterface $newSpan): T $callback
-     * @phpstan-return  T
-     *
-     * @return mixed The return value of $callback
      */
     public function captureCurrentSpan(
         string $name,

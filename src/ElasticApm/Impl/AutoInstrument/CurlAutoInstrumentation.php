@@ -223,21 +223,18 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
      * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
-     * @return resource|null
+     * @return ?CurlHandleWrapped
      */
     public static function extractCurlHandleFromArgs(
         Logger $logger,
         string $dbgFuncName,
         array $interceptedCallArgs
-    ) {
+    ): ?CurlHandleWrapped {
         if (count($interceptedCallArgs) !== 0) {
-            // Prior to PHP 8 $curlHandle is a resource
-            // For PHP 8+ $curlHandle is an instance of CurlHandle class
-            $isValidCurlHandle = (PHP_MAJOR_VERSION < 8)
-                ? is_resource($interceptedCallArgs[0])
-                : is_object($interceptedCallArgs[0]);
-            if ($isValidCurlHandle) {
-                return $interceptedCallArgs[0];
+            $curlHandle = $interceptedCallArgs[0];
+            if (CurlHandleWrapped::isValidValue($curlHandle)) {
+                /** @var resource|object $curlHandle */
+                return new CurlHandleWrapped($curlHandle);
             }
         }
 
@@ -264,11 +261,11 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     private function findHandleId(string $dbgFuncName, array $interceptedCallArgs): ?int
     {
         $curlHandle = self::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
-        if (is_null($curlHandle)) {
+        if ($curlHandle === null) {
             return null;
         }
 
-        $handleId = intval($curlHandle);
+        $handleId = $curlHandle->asInt();
 
         if (!array_key_exists($handleId, $this->handleIdToTracker)) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))

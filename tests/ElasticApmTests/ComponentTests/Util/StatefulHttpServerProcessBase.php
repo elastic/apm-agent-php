@@ -74,7 +74,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
         );
 
         TestAssertUtil::assertThat(
-            !isset(AmbientContext::testConfig()->sharedDataPerRequest->serverId),
+            !isset(AmbientContext::testConfig()->sharedDataPerRequest->serverId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContext::testConfig())
         );
     }

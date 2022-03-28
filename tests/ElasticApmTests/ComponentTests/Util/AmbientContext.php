@@ -33,8 +33,8 @@ use RuntimeException;
 
 final class AmbientContext
 {
-    /** @var self */
-    private static $singletonInstance;
+    /** @var ?self */
+    private static $singletonInstance = null;
 
     /** @var string */
     private $dbgProcessName;
@@ -53,7 +53,7 @@ final class AmbientContext
 
     public static function init(string $dbgProcessName): void
     {
-        if (!isset(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             self::$singletonInstance = new AmbientContext($dbgProcessName);
         }
 
@@ -79,10 +79,15 @@ final class AmbientContext
         TestCaseBase::$isUnitTest = false;
     }
 
+    private static function getSingletonInstance(): self
+    {
+        TestCase::assertNotNull(self::$singletonInstance);
+        return self::$singletonInstance;
+    }
+
     public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
     {
-        TestCase::assertTrue(isset(self::$singletonInstance));
-        self::$singletonInstance->readAndApplyConfig($additionalConfigSource);
+        self::getSingletonInstance()->readAndApplyConfig($additionalConfigSource);
     }
 
     private function readAndApplyConfig(?RawSnapshotSourceInterface $additionalConfigSource): void
@@ -98,22 +103,16 @@ final class AmbientContext
 
     public static function dbgProcessName(): string
     {
-        TestCase::assertTrue(isset(self::$singletonInstance));
-
-        return self::$singletonInstance->dbgProcessName;
+        return self::getSingletonInstance()->dbgProcessName;
     }
 
     public static function testConfig(): TestConfigSnapshot
     {
-        TestCase::assertTrue(isset(self::$singletonInstance));
-
-        return self::$singletonInstance->testConfig;
+        return self::getSingletonInstance()->testConfig;
     }
 
     public static function loggerFactory(): LoggerFactory
     {
-        TestCase::assertTrue(isset(self::$singletonInstance));
-
-        return self::$singletonInstance->loggerFactory;
+        return self::getSingletonInstance()->loggerFactory;
     }
 }

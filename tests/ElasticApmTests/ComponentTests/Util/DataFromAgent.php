@@ -26,12 +26,14 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\TestsSharedCode\EventsFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
@@ -161,6 +163,10 @@ final class DataFromAgent implements LoggableInterface
             );
 
             $decodedJson = JsonUtil::decode($bodyLine, /* asAssocArray */ true);
+            TestCase::assertTrue(
+                is_array($decodedJson),
+                LoggableToString::convert(['$decodedJson type' => DbgUtil::getType($decodedJson)])
+            );
             TestCase::assertCount(
                 1,
                 $decodedJson,

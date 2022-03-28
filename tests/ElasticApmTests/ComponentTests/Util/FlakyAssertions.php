@@ -37,12 +37,12 @@ final class FlakyAssertions
     private const ENABLED_ENV_VAR_NAME = 'ELASTIC_APM_PHP_TESTS_FLAKY_ASSERTIONS_ENABLED';
     private const ENABLED_DEFAULT_VALUE = false;
 
-    /** @var bool */
-    private static $areEnabled;
+    /** @var ?bool */
+    private static $areEnabled = null;
 
     private static function areEnabled(): bool
     {
-        if (!isset(self::$areEnabled)) {
+        if (self::$areEnabled === null) {
             $envVarValue = getenv(self::ENABLED_ENV_VAR_NAME);
             if ($envVarValue === false) {
                 self::$areEnabled = self::ENABLED_DEFAULT_VALUE;

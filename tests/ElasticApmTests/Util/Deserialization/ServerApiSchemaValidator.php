@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -60,8 +61,8 @@ final class ServerApiSchemaValidator
             self::METRIC_SET_SCHEMA_INDEX  => 'metricset.json',
         ];
 
-    /** @var array<string, null> */
-    private static $additionalPropertiesCandidateNodesKeys;
+    /** @var ?array<string, null> */
+    private static $additionalPropertiesCandidateNodesKeys = null;
 
     /** @var array<string> */
     private $tempFilePaths = [];
@@ -73,7 +74,7 @@ final class ServerApiSchemaValidator
 
     private static function isAdditionalPropertiesCandidate(string $key): bool
     {
-        if (!isset(self::$additionalPropertiesCandidateNodesKeys)) {
+        if (self::$additionalPropertiesCandidateNodesKeys === null) {
             self::$additionalPropertiesCandidateNodesKeys = ['properties' => null, 'patternProperties' => null];
         }
 
@@ -193,10 +194,6 @@ final class ServerApiSchemaValidator
      */
     private function loadSchema(string $absolutePath, bool $allowAdditionalProperties): array
     {
-        if ($allowAdditionalProperties) {
-            return ['$ref' => self::convertPathToFileUrl($absolutePath)];
-        }
-
         $decodedSchema = self::loadSchemaAndResolveRefs($absolutePath);
         self::processSchema(/* ref */ $decodedSchema, $allowAdditionalProperties);
         $pathToTempFileWithProcessedSchema = $this->writeProcessedSchemaToTempFile($decodedSchema);
@@ -265,6 +262,7 @@ final class ServerApiSchemaValidator
             return;
         }
 
+        /** @var string */
         $refValue = $decodedSchemaNode['$ref'];
         self::loadRefAndMerge($absolutePath, /* ref */ $decodedSchemaNode, $refValue);
     }
@@ -294,7 +292,10 @@ final class ServerApiSchemaValidator
         if (!$allowAdditionalProperties) {
             self::disableAdditionalProperties(/* ref */ $decodedSchema);
         }
+
         self::removeRedundantKeysFromRef(/* ref */ $decodedSchema);
+
+        self::adjustTimestampType(/* ref */ $decodedSchema);
     }
 
     /**
@@ -308,12 +309,13 @@ final class ServerApiSchemaValidator
             }
         }
 
-        if (
-            array_key_exists('allOf', $decodedSchemaNode)
-            && self::atLeastOneChildFromRef($decodedSchemaNode['allOf'])
-        ) {
-            self::doMergeAllOfFromRef(/* ref */ $decodedSchemaNode);
-            unset($decodedSchemaNode['allOf']);
+        if (array_key_exists('allOf', $decodedSchemaNode)) {
+            /** @var array<mixed> */
+            $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
+            if (self::atLeastOneChildFromRef($decodedSchemaNodeAllOf)) {
+                self::doMergeAllOfFromRef(/* ref */ $decodedSchemaNode);
+                unset($decodedSchemaNode['allOf']);
+            }
         }
     }
 
@@ -322,7 +324,10 @@ final class ServerApiSchemaValidator
      */
     private static function doMergeAllOfFromRef(array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode['allOf'] as $childNode) {
+        /** @var array<mixed> */
+        $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
+        foreach ($decodedSchemaNodeAllOf as $childNode) {
+            /** @var array<mixed, mixed> $childNode */
             /** @var string $key */
             foreach ($childNode as $key => $value) {
                 if ($key === '$ref' || $key === '$id' || $key === 'title') {
@@ -338,12 +343,14 @@ final class ServerApiSchemaValidator
                     continue;
                 }
 
+                /** @var array<mixed, mixed> */
                 $dstArray = &$decodedSchemaNode[$key];
+                /** @var array<mixed, mixed> $value */
                 foreach ($value as $subKey => $subValue) {
                     if (array_key_exists($key, $dstArray)) {
                         throw ValidationUtil::buildException(
                             'Failed to merge because key already exists.'
-                            . "subKey: `$subKey'" . "; key: `$key'" . "; subValue: `$subValue'"
+                            . LoggableToString::convert(['subKey' => $subKey, 'key' => $key, 'subValue' => $subValue])
                         );
                     }
                     $dstArray[$subKey] = $subValue;
@@ -360,6 +367,7 @@ final class ServerApiSchemaValidator
     private static function atLeastOneChildFromRef(array $allOfArray): bool
     {
         foreach ($allOfArray as $value) {
+            /** @var array<mixed, mixed> $value */
             if (array_key_exists('$ref', $value)) {
                 return true;
             }
@@ -398,6 +406,57 @@ final class ServerApiSchemaValidator
         }
 
         unset($decodedSchemaNode['$ref']);
+    }
+
+    /**
+     * @param array<string, mixed> $decodedSchemaNode
+     */
+    private static function adjustTimestampType(array &$decodedSchemaNode): void
+    {
+        foreach ($decodedSchemaNode as $key => $value) {
+            if (is_array($value)) {
+                self::adjustTimestampType(/* ref */ $decodedSchemaNode[$key]);
+            }
+        }
+
+        if (!array_key_exists('timestamp', $decodedSchemaNode)) {
+            return;
+        }
+
+        // from earliest_supported/docs/spec/timestamp_epoch.json
+        //      "timestamp": {
+        //          "type": ["integer", "null"]
+        //      }
+
+        // from earliest_supported/docs/spec/metricsets/metricset.json
+        //      "timestamp": {
+        //          "type": "integer"
+        //      }
+
+        $timestampVal = &$decodedSchemaNode['timestamp'];
+        if (!is_array($timestampVal)) {
+            return;
+        }
+        /** @var array<mixed, mixed> $timestampVal */
+        $typeVal = &$timestampVal['type'];
+        if (is_array($typeVal)) {
+            if (count($typeVal) !== 2) {
+                return;
+            }
+            /** @var array<mixed, mixed> $typeVal */
+            if (
+                !(in_array('null', $typeVal, /* $strict: */ true)
+                  && in_array('integer', $typeVal, /* $strict: */ true))
+            ) {
+                return;
+            }
+            $typeVal = ['number' , 'null'];
+        } else {
+            if ($typeVal !== 'integer') {
+                return;
+            }
+            $typeVal = 'number';
+        }
     }
 
     private static function buildException(

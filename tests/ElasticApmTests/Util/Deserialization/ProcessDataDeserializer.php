@@ -43,11 +43,11 @@ final class ProcessDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return ProcessData
      */
-    public static function deserialize(array $deserializedRawData): ProcessData
+    public static function deserialize($deserializedRawData): ProcessData
     {
         $result = new ProcessData();
         (new self($result))->doDeserialize($deserializedRawData);

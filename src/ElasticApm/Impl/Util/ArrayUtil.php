@@ -55,7 +55,7 @@ final class ArrayUtil
 
     /**
      * @param string|int    $key
-     * @param array<mixed>  $array
+     * @param array<string|int, mixed>  $array
      * @param mixed         $fallbackValue
      *
      * @return mixed
@@ -72,6 +72,94 @@ final class ArrayUtil
         }
 
         return $array[$key];
+    }
+
+    /**
+     * @param string|int               $key
+     * @param array<string|int, mixed> $array
+     * @param string                   $fallbackValue
+     *
+     * @return string
+     */
+    public static function getStringValueIfKeyExistsElse($key, array $array, string $fallbackValue): string
+    {
+        if (!array_key_exists($key, $array)) {
+            return $fallbackValue;
+        }
+
+        $value = $array[$key];
+
+        if (!is_string($value)) {
+            return $fallbackValue;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param string|int               $key
+     * @param array<string|int, mixed> $array
+     * @param ?string                  $fallbackValue
+     *
+     * @return ?string
+     */
+    public static function getNullableStringValueIfKeyExistsElse($key, array $array, ?string $fallbackValue): ?string
+    {
+        if (!array_key_exists($key, $array)) {
+            return $fallbackValue;
+        }
+
+        $value = $array[$key];
+
+        if (!is_string($value)) {
+            return $fallbackValue;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param string|int               $key
+     * @param array<string|int, mixed> $array
+     * @param int                      $fallbackValue
+     *
+     * @return int
+     */
+    public static function getIntValueIfKeyExistsElse($key, array $array, int $fallbackValue): int
+    {
+        if (!array_key_exists($key, $array)) {
+            return $fallbackValue;
+        }
+
+        $value = $array[$key];
+
+        if (!is_int($value)) {
+            return $fallbackValue;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param string|int               $key
+     * @param array<string|int, mixed> $array
+     * @param ?int                     $fallbackValue
+     *
+     * @return ?int
+     */
+    public static function getNullableIntValueIfKeyExistsElse($key, array $array, ?int $fallbackValue): ?int
+    {
+        if (!array_key_exists($key, $array)) {
+            return $fallbackValue;
+        }
+
+        $value = $array[$key];
+
+        if (!is_int($value)) {
+            return $fallbackValue;
+        }
+
+        return $value;
     }
 
     /**

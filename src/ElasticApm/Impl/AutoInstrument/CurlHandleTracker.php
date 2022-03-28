@@ -72,7 +72,7 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var mixed */
+    /** @var CurlHandleWrapped */
     private $curlHandle;
 
     /** @var string|null */
@@ -132,6 +132,7 @@ final class CurlHandleTracker implements LoggableInterface
     private function setUrl($value): void
     {
         $this->verifyValueType(is_string($value), 'string', $value);
+        /** @var string $value */
         $this->url = $value;
     }
 
@@ -145,12 +146,13 @@ final class CurlHandleTracker implements LoggableInterface
         if ($curlHandle === false) {
             return null;
         }
-
-        $this->curlHandle = $curlHandle;
-
         // Prior to PHP 8 $curlHandle is a resource
         // For PHP 8+ $curlHandle is an instance of CurlHandle class
-        return is_resource($curlHandle) ? intval($curlHandle) : spl_object_id($curlHandle);
+        /** @var resource|object $curlHandle */
+
+        $this->curlHandle = new CurlHandleWrapped($curlHandle);
+
+        return $this->curlHandle->asInt();
     }
 
     /**
@@ -239,13 +241,13 @@ final class CurlHandleTracker implements LoggableInterface
             = CurlAutoInstrumentation::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
 
         return
-            $assertProxy->that(intval($curlHandle) === intval($this->curlHandle))
+            $assertProxy->that($curlHandle->asInt() === $this->curlHandle->asInt())
             && $assertProxy->withContext(
-                'intval($curlHandle) === intval($this->curlHandle)',
+                '$curlHandle->asInt() === $this->curlHandle->asInt()',
                 [
-                    'intval($curlHandle)'       => intval($curlHandle),
-                    'intval($this->curlHandle)' => intval($this->curlHandle),
-                    'this'                      => $this,
+                    '$curlHandle->asInt()'       => $curlHandle->asInt(),
+                    '$this->curlHandle->asInt()' => $this->curlHandle->asInt(),
+                    'this'                       => $this,
                 ]
             );
     }
@@ -284,6 +286,7 @@ final class CurlHandleTracker implements LoggableInterface
     private function isSuccess($returnValue): bool
     {
         $this->verifyValueType(is_bool($returnValue), 'bool', $returnValue);
+        /** @var bool $returnValue */
         return $returnValue;
     }
 
@@ -347,12 +350,14 @@ final class CurlHandleTracker implements LoggableInterface
             case CURLOPT_CUSTOMREQUEST:
                 $optionValue = $getOptionValue();
                 $this->verifyValueType(is_string($optionValue), 'string', $optionValue);
+                /** @var string $optionValue */
                 $this->httpMethod = $optionValue;
                 break;
 
             case CURLOPT_HTTPHEADER:
                 $optionValue = $getOptionValue();
                 $this->verifyValueType(is_array($optionValue), 'array', $optionValue);
+                /** @var mixed[] $optionValue */
                 $this->headersSetByApp = $optionValue;
                 break;
 
@@ -407,6 +412,7 @@ final class CurlHandleTracker implements LoggableInterface
         $this->verifyMinNumberOfArguments(2, $interceptedCallArgs);
         $optionsIdToValue = $interceptedCallArgs[1];
         $this->verifyValueType(is_array($optionsIdToValue), 'array', $optionsIdToValue);
+        /** @var array<mixed, mixed> $optionsIdToValue */
 
         foreach ($optionsIdToValue as $optionId => $optionValue) {
             $this->processSetOpt(
@@ -562,7 +568,7 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPostHook(): void
     {
-        $statusCode = curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE);
+        $statusCode = $this->curlHandle->getInfo(CURLINFO_RESPONSE_CODE);
         if (is_int($statusCode)) {
             $this->span->context()->http()->setStatusCode($statusCode);
             $outcome = (400 <= $statusCode && $statusCode < 600)
@@ -585,7 +591,7 @@ final class CurlHandleTracker implements LoggableInterface
             $this->headersSetByApp = $this->savedHeadersBeforeInjection;
             $this->savedHeadersBeforeInjection = null;
 
-            $setOptRetVal = curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, $this->headersSetByApp);
+            $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $this->headersSetByApp);
             if ($setOptRetVal) {
                 ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Successfully restored headers as they were before injection');
@@ -630,7 +636,7 @@ final class CurlHandleTracker implements LoggableInterface
         );
 
         $this->savedHeadersBeforeInjection = $this->headersSetByApp;
-        $setOptRetVal = curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, $headers);
+        $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
         if ($setOptRetVal) {
             ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(

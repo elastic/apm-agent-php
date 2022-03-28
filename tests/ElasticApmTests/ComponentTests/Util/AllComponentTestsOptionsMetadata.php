@@ -46,12 +46,8 @@ final class AllComponentTestsOptionsMetadata
     public const SHARED_DATA_PER_PROCESS_OPTION_NAME = 'shared_data_per_process';
     public const SHARED_DATA_PER_REQUEST_OPTION_NAME = 'shared_data_per_request';
 
-    /**
-     * @var array<string, OptionMetadata>
-     *
-     * @phpstan-var array<string, OptionMetadata<mixed>>
-     */
-    private static $vaLue;
+    /** @var ?array<string, OptionMetadata<mixed>> */
+    private static $vaLue = null;
 
     /**
      * @return array<string, OptionMetadata> Option name to metadata
@@ -60,33 +56,34 @@ final class AllComponentTestsOptionsMetadata
      */
     public static function get(): array
     {
-        if (!isset(self::$vaLue)) {
-            self::$vaLue = [
-                self::APP_CODE_HOST_KIND_OPTION_NAME      => new AppCodeHostKindOptionMetadata(),
-                'app_code_php_exe'                        => new NullableStringOptionMetadata(),
-                self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
-                'delete_temp_php_ini'                     => new BoolOptionMetadata(true),
-                'env_vars_to_pass_through'                => new NullableWildcardListOptionMetadata(),
-                'log_level'                               => new LogLevelOptionMetadata(LogLevel::DEBUG),
-                self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
-                    function (string $rawValue): SharedDataPerProcess {
-                        /** @noinspection PhpIncompatibleReturnTypeInspection */
-                        return SharedDataPerProcess::deserializeFromJson(
-                            JsonUtil::decode($rawValue, /* asAssocArray */ true)
-                        );
-                    }
-                ),
-                self::SHARED_DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
-                    function (string $rawValue): SharedDataPerRequest {
-                        /** @noinspection PhpIncompatibleReturnTypeInspection */
-                        return SharedDataPerRequest::deserializeFromJson(
-                            JsonUtil::decode($rawValue, /* asAssocArray */ true)
-                        );
-                    }
-                ),
-            ];
+        if (self::$vaLue !== null) {
+            return self::$vaLue;
         }
 
-        return self::$vaLue;
+        /** @phpstan-ignore-next-line */
+        self::$vaLue = [
+            self::APP_CODE_HOST_KIND_OPTION_NAME      => new AppCodeHostKindOptionMetadata(),
+            'app_code_php_exe'                        => new NullableStringOptionMetadata(),
+            self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
+            'delete_temp_php_ini'                     => new BoolOptionMetadata(true),
+            'env_vars_to_pass_through'                => new NullableWildcardListOptionMetadata(),
+            'log_level'                               => new LogLevelOptionMetadata(LogLevel::DEBUG),
+            self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
+                function (string $rawValue): SharedDataPerProcess {
+                    $decodedData = JsonUtil::decode($rawValue, /* asAssocArray */ true);
+                    /** @var array<string, mixed> $decodedData */
+                    return SharedDataPerProcess::deserializeFromJson($decodedData);
+                }
+            ),
+            self::SHARED_DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
+                function (string $rawValue): SharedDataPerRequest {
+                    $decodedData = JsonUtil::decode($rawValue, /* asAssocArray */ true);
+                    /** @var array<string, mixed> $decodedData */
+                    return SharedDataPerRequest::deserializeFromJson($decodedData);
+                }
+            ),
+        ];
+
+        return self::$vaLue; // @phpstan-ignore-line
     }
 }

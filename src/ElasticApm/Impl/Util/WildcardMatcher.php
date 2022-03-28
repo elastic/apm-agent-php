@@ -50,6 +50,7 @@ final class WildcardMatcher
 
     public function __construct(string $expr)
     {
+        /** @phpstan-ignore-next-line */
         if (!isset(self::$wildcardLen)) {
             self::$wildcardLen = strlen(self::WILDCARD);
         }
@@ -64,7 +65,6 @@ final class WildcardMatcher
             $nextWildcardPos = strpos($expr, self::WILDCARD, $exprPos);
             if ($nextWildcardPos === $exprPos) {
                 $lastPartWasWildcard = true;
-                /** @noinspection PhpConditionAlreadyCheckedInspection */
                 if ($this->literalParts === []) {
                     $this->startsWithWildcard = true;
                 }
