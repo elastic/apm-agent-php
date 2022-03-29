@@ -122,7 +122,11 @@ ResultCode loadPhpFile( const char* phpFilePath )
 
     if ( opened_path != NULL )
     {
+#           if PHP_VERSION_ID < 70300
+        zend_string_release( opened_path );
+#else
         zend_string_release_ex( opened_path, /* persistent: */ 0 );
+#           endif
         opened_path = NULL;
     }
 
@@ -132,7 +136,9 @@ ResultCode loadPhpFile( const char* phpFilePath )
         should_destroy_file_handle = false;
     }
 
+#       if PHP_VERSION_ID >= 80100
     zend_string_release( phpFilePathAsZendString );
+#       endif
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
