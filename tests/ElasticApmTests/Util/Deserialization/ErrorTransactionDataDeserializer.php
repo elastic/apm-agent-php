@@ -43,11 +43,11 @@ final class ErrorTransactionDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return ErrorTransactionData
      */
-    public static function deserialize(array $deserializedRawData): ErrorTransactionData
+    public static function deserialize($deserializedRawData): ErrorTransactionData
     {
         $result = new ErrorTransactionData();
         (new self($result))->doDeserialize($deserializedRawData);

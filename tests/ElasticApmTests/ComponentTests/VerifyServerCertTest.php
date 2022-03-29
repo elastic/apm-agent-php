@@ -52,6 +52,7 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     {
         $tx = ElasticApm::getCurrentTransaction();
         $verifyServerCert = ArrayUtil::getValueIfKeyExistsElse('verifyServerCert', $args, null);
+        /** @var ?bool $verifyServerCert */
         $tx->context()->setLabel('verifyServerCert', $verifyServerCert);
     }
 

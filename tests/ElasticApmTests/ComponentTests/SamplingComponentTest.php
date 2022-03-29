@@ -54,6 +54,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     public static function appCodeForTwoNestedSpansTest(array $args): void
     {
         $transactionSampleRate = ArrayUtil::getValueIfKeyExistsElse('transactionSampleRate', $args, null);
+        /** @var ?float $transactionSampleRate */
         SamplingTestSharedCode::appCodeForTwoNestedSpansTest($transactionSampleRate ?? 1.0);
     }
 

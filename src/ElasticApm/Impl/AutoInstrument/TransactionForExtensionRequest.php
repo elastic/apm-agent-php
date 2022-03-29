@@ -30,12 +30,12 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use Elastic\Apm\TransactionInterface;
-use PHP_CodeSniffer\Generators\Text;
 use Throwable;
 
 /**
@@ -114,6 +114,7 @@ final class TransactionForExtensionRequest
 
     private function discoverHttpRequestData(): bool
     {
+        /** @phpstan-ignore-next-line */
         if (!self::isGlobalServerVarSet()) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('$_SERVER variable is not populated - forcing PHP engine to populate it...');
@@ -126,6 +127,7 @@ final class TransactionForExtensionRequest
              */
             \elastic_apm_force_init_server_global_var();
 
+            /** @phpstan-ignore-next-line */
             if (!self::isGlobalServerVarSet()) {
                 ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
@@ -141,8 +143,8 @@ final class TransactionForExtensionRequest
         /** @var ?string */
         $urlQuery = null;
 
-        $pathQuery = self::getMandatoryServerVarElement('REQUEST_URI');
-        if ($pathQuery !== null) {
+        $pathQuery = $this->getMandatoryServerVarStringElement('REQUEST_URI');
+        if (is_string($pathQuery)) {
             UrlUtil::splitPathQuery($pathQuery, /* ref */ $urlPath, /* ref */ $urlQuery);
             if ($urlPath === null) {
                 ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
@@ -157,7 +159,7 @@ final class TransactionForExtensionRequest
             }
         }
 
-        $this->httpMethod = self::getMandatoryServerVarElement('REQUEST_METHOD');
+        $this->httpMethod = $this->getMandatoryServerVarStringElement('REQUEST_METHOD');
 
         $this->urlParts = new UrlParts();
         $this->urlParts->path = $urlPath;
@@ -166,7 +168,7 @@ final class TransactionForExtensionRequest
         $serverHttps = self::getOptionalServerVarElement('HTTPS');
         $this->urlParts->scheme = !empty($serverHttps) ? 'https' : 'http';
 
-        $hostPort = self::getMandatoryServerVarElement('HTTP_HOST');
+        $hostPort = $this->getMandatoryServerVarStringElement('HTTP_HOST');
         if ($hostPort !== null) {
             UrlUtil::splitHostPort($hostPort, /* ref */ $this->urlParts->host, /* ref */ $this->urlParts->port);
             if ($this->urlParts->host === null) {
@@ -414,6 +416,25 @@ final class TransactionForExtensionRequest
         return $_SERVER[$key];
     }
 
+    private function getMandatoryServerVarStringElement(string $key): ?string
+    {
+        $val = $this->getMandatoryServerVarElement($key);
+        if ($val === null) {
+            return $val;
+        }
+
+        if (!is_string($val)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                '$_SERVER contains `' . $key . '\' key but the value is not a string',
+                ['value type' => DbgUtil::getType($val)]
+            );
+            return null;
+        }
+
+        return $val;
+    }
+
     private function discoverHttpName(): string
     {
         if ($this->urlParts === null || $this->urlParts->path === null) {
@@ -488,6 +509,15 @@ final class TransactionForExtensionRequest
         if ($traceParentHeaderValue === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Incoming ' . $headerName . ' HTTP request header not found');
+            return null;
+        }
+
+        if (!is_string($traceParentHeaderValue)) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                '$_SERVER contains `' . $traceParentHeaderKey . '\' key but the value is not a string',
+                ['value type' => DbgUtil::getType($traceParentHeaderValue)]
+            );
             return null;
         }
 

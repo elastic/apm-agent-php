@@ -304,24 +304,6 @@ final class PhpPartFacade
         );
     }
 
-    // TODO: Sergey Kleyman: REMOVE
-    // /**
-    //  * Called by elastic_apm extension
-    //  *
-    //  * @noinspection PhpUnused
-    //  *
-    //  * @return void
-    //  */
-    // public static function onThrowException(): void
-    // {
-    //     self::callFromExtensionToTransaction(
-    //         __FUNCTION__,
-    //         function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
-    //             $transactionForExtensionRequest->onThrowException(null);
-    //         }
-    //     );
-    // }
-
     /**
      * Called by elastic_apm extension
      *

@@ -43,11 +43,11 @@ final class ServiceDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return ServiceData
      */
-    public static function deserialize(array $deserializedRawData): ServiceData
+    public static function deserialize($deserializedRawData): ServiceData
     {
         $result = new ServiceData();
         (new self($result))->doDeserialize($deserializedRawData);
@@ -81,7 +81,7 @@ final class ServiceDataDeserializer extends DataDeserializer
                 return true;
 
             case 'name':
-                $this->result->name = ValidationUtil::assertValidServiceName($value);
+                $this->result->name = ValidationUtil::assertValidKeywordString($value);
                 return true;
 
             case 'node':
@@ -102,10 +102,12 @@ final class ServiceDataDeserializer extends DataDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      */
-    private function deserializeNodeSubObject(array $deserializedRawData): void
+    private function deserializeNodeSubObject($deserializedRawData): void
     {
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'configured_name':

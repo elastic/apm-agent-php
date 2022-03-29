@@ -100,6 +100,32 @@ final class StacktraceTestSharedCode
 
     /**
      * @param array<string, mixed> $expectedData
+     * @param string               $key
+     *
+     * @return string
+     */
+    private static function getStringFromExpectedData(array $expectedData, string $key): string
+    {
+        $value = $expectedData[$key];
+        TestCase::assertIsString($value, LoggableToString::convert(['$key' => $key]));
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $expectedData
+     * @param string               $key
+     *
+     * @return int
+     */
+    private static function getIntFromExpectedData(array $expectedData, string $key): int
+    {
+        $value = $expectedData[$key];
+        TestCase::assertIsInt($value, LoggableToString::convert(['$key' => $key]));
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $expectedData
      * @param SpanData             $span
      */
     private static function assertPartImplOneSpan(array $expectedData, SpanData $span): void
@@ -127,14 +153,14 @@ final class StacktraceTestSharedCode
         /** @var StacktraceFrame[] */
         $expectedStacktrace = [];
         $expectedStacktrace[] = $buildStacktraceFrame(
-            $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')],
+            self::getStringFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'function')),
             __FILE__,
-            $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')]
+            self::getIntFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'line number'))
         );
         $expectedStacktrace[] = $buildStacktraceFrame(
             $funcNameForClosureWithoutThisCaptured,
             __FILE__,
-            $expectedData[self::lineNumberKey('$createSpan')]
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('$createSpan'))
         );
         $expectedStacktrace[] = $buildStacktraceFrame(
             $funcNameForClosureWithoutThisCaptured,
@@ -146,12 +172,12 @@ final class StacktraceTestSharedCode
                 DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE . '\\' . 'dummyFuncForTestsWithNamespace'
             ),
             __FILE__,
-            $expectedData[self::lineNumberKey('dummyFuncForTestsWithNamespace')]
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithNamespace'))
         );
         $expectedStacktrace[] = $buildStacktraceFrame(
             $buildStaticMethodName(__CLASS__, 'myStaticMethod'),
             __FILE__,
-            $expectedData[self::lineNumberKey('myStaticMethod')]
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myStaticMethod'))
         );
         $expectedStacktrace[] = $buildStacktraceFrame(
             $funcNameForClosureWithThisCaptured,
@@ -161,12 +187,12 @@ final class StacktraceTestSharedCode
         $expectedStacktrace[] = $buildStacktraceFrame(
             $buildFuncName('dummyFuncForTestsWithoutNamespace'),
             __FILE__,
-            $expectedData[self::lineNumberKey('dummyFuncForTestsWithoutNamespace')]
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithoutNamespace'))
         );
         $expectedStacktrace[] = $buildStacktraceFrame(
             self::buildMethodName(__CLASS__, 'myInstanceMethod'),
             __FILE__,
-            $expectedData[self::lineNumberKey('myInstanceMethod')]
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myInstanceMethod'))
         );
 
         $actualStacktrace = $span->stacktrace;

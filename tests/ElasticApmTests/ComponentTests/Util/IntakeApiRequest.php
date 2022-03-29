@@ -52,8 +52,7 @@ final class IntakeApiRequest implements JsonSerializable, LoggableInterface
     {
         $result = [];
 
-        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
-        foreach ($this as $thisObjPropName => $thisObjPropValue) {
+        foreach (get_object_vars($this) as $thisObjPropName => $thisObjPropValue) {
             $result[$thisObjPropName] = $thisObjPropValue;
         }
 
@@ -67,7 +66,6 @@ final class IntakeApiRequest implements JsonSerializable, LoggableInterface
     {
         $thisObj = new self();
 
-        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
         foreach ($decodedJson as $propName => $propValue) {
             if (!property_exists($thisObj, $propName)) {
                 throw new RuntimeException(

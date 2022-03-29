@@ -44,11 +44,11 @@ final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return SpanData
      */
-    public static function deserialize(array $deserializedRawData): SpanData
+    public static function deserialize($deserializedRawData): SpanData
     {
         $result = new SpanData();
         (new self($result))->doDeserialize($deserializedRawData);

@@ -43,11 +43,11 @@ class NameVersionDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return NameVersionData
      */
-    public static function deserialize(array $deserializedRawData): NameVersionData
+    public static function deserialize($deserializedRawData): NameVersionData
     {
         $result = new NameVersionData();
         (new self($result))->doDeserialize($deserializedRawData);

@@ -57,23 +57,23 @@ class TestCaseBase extends TestCase
     // Compare up to 10 milliseconds (10000 microseconds) precision
     public const TIMESTAMP_COMPARISON_PRECISION = 10000;
 
-    /** @var LoggerFactory */
-    private static $noopLoggerFactory;
+    /** @var ?LoggerFactory */
+    private static $noopLoggerFactory = null;
 
     /** @var bool */
     public static $isUnitTest = true;
 
     /**
-     * @param mixed        $name
+     * @param ?string      $name
      * @param array<mixed> $data
-     * @param mixed        $dataName
+     * @param int|string   $dataName
      */
-    public function __construct($name = null, array $data = [], $dataName = '')
+    public function __construct(?string $name = null, array $data = [], $dataName = '')
     {
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
 
-        parent::__construct($name, $data, $dataName);
+        parent::__construct($name, $data, $dataName); // @phpstan-ignore-line
     }
 
     public static function assertEqualTimestamp(float $expected, float $actual): void
@@ -558,7 +558,7 @@ class TestCaseBase extends TestCase
 
     public static function noopLoggerFactory(): LoggerFactory
     {
-        if (!isset(self::$noopLoggerFactory)) {
+        if (self::$noopLoggerFactory === null) {
             self::$noopLoggerFactory = new LoggerFactory(
                 new LogBackend(LogLevel::OFF, NoopLogSink::singletonInstance())
             );

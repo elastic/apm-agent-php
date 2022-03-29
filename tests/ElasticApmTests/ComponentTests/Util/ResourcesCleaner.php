@@ -30,7 +30,7 @@ use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
-use React\Http\Response;
+use React\Http\Message\Response;
 
 final class ResourcesCleaner extends StatefulHttpServerProcessBase
 {
@@ -67,7 +67,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         parent::processConfig();
 
         TestAssertUtil::assertThat(
-            isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId),
+            isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContext::testConfig())
         );
     }

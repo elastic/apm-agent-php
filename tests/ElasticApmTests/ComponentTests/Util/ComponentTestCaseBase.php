@@ -43,11 +43,11 @@ class ComponentTestCaseBase extends TestCaseBase
     protected $allConfigSetters;
 
     /**
-     * @param mixed        $name
+     * @param ?string      $name
      * @param array<mixed> $data
-     * @param mixed        $dataName
+     * @param int|string   $dataName
      */
-    public function __construct($name = null, array $data = [], $dataName = '')
+    public function __construct(?string $name = null, array $data = [], $dataName = '')
     {
         parent::__construct($name, $data, $dataName);
 

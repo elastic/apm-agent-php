@@ -42,12 +42,12 @@ final class TestHttpClientUtil
 {
     use StaticClassTrait;
 
-    /** @var Logger */
-    private static $logger;
+    /** @var ?Logger */
+    private static $logger = null;
 
     public static function getLogger(): Logger
     {
-        if (!isset(self::$logger)) {
+        if (self::$logger === null) {
             self::$logger = AmbientContext::loggerFactory()->loggerForClass(
                 LogCategoryForTests::TEST_UTIL,
                 __NAMESPACE__,

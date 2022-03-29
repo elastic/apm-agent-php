@@ -43,11 +43,11 @@ final class TransactionContextRequestDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return TransactionContextRequestData
      */
-    public static function deserialize(array $deserializedRawData): TransactionContextRequestData
+    public static function deserialize($deserializedRawData): TransactionContextRequestData
     {
         $result = new TransactionContextRequestData();
         (new self($result))->doDeserialize($deserializedRawData);

@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use PHPUnit\Framework\TestCase;
 use Throwable;
 
 /**
@@ -35,11 +36,14 @@ abstract class DataDeserializer
 {
     /**
      *
-     * @param array<string, mixed>  $deserializedRawData
+     * @param mixed  $deserializedRawData
      */
-    protected function doDeserialize(array $deserializedRawData): void
+    protected function doDeserialize($deserializedRawData): void
     {
+        TestCase::assertIsArray($deserializedRawData);
+
         foreach ($deserializedRawData as $key => $value) {
+            TestCase::assertIsString($key);
             if (!$this->deserializeKeyValue($key, $value)) {
                 throw self::buildException("Unknown key: `$key'");
             }

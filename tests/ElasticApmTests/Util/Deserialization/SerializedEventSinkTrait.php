@@ -61,7 +61,6 @@ trait SerializedEventSinkTrait
         /** @var array<string, mixed> $deserializedJson */
         $deserializedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
         $deserializedData = $deserialize($deserializedJson);
-        /** @noinspection PsalmAdvanceCallableParamsInspection */
         $assertValid($deserializedData);
         return $deserializedData;
     }

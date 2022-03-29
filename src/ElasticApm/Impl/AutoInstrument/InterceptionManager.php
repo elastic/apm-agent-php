@@ -48,12 +48,6 @@ final class InterceptionManager
     /** @var Registration|null */
     private $interceptedCallInProgressRegistration;
 
-    /** @var object|null */
-    private $interceptedCallInProgressThisObj;
-
-    /** @var mixed[]|null */
-    private $interceptedCallInProgressArgs;
-
     /**
      * @var null|callable
      * @phpstan-var null|callable(int, bool, mixed): void
@@ -128,8 +122,6 @@ final class InterceptionManager
         if ($shouldCallPostHook) {
             $this->interceptedCallInProgressRegistrationId = $interceptRegistrationId;
             $this->interceptedCallInProgressRegistration = $registration;
-            $this->interceptedCallInProgressThisObj = $thisObj;
-            $this->interceptedCallInProgressArgs = $interceptedCallArgs;
             $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
         }
 
@@ -143,8 +135,6 @@ final class InterceptionManager
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
-     *
-     * @noinspection PhpMissingParamTypeInspection
      */
     public function interceptedCallPostHook(
         int $numberOfStackFramesToSkip,
@@ -159,7 +149,6 @@ final class InterceptionManager
             && $loggerProxy->log('There is no intercepted call in progress');
             return;
         }
-        assert($this->interceptedCallInProgressArgs !== null);
         assert($this->interceptedCallInProgressRegistration !== null);
         assert($this->interceptedCallInProgressPreHookRetVal !== null);
 
@@ -185,8 +174,6 @@ final class InterceptionManager
         }
 
         $this->interceptedCallInProgressRegistrationId = null;
-        $this->interceptedCallInProgressThisObj = null;
-        $this->interceptedCallInProgressArgs = null;
         $this->interceptedCallInProgressPreHookRetVal = null;
     }
 }

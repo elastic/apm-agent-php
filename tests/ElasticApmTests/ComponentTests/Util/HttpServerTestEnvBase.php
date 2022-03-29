@@ -62,7 +62,7 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(): void
     {
-        TestCase::assertTrue(isset($this->testProperties));
+        TestCase::assertTrue(isset($this->testProperties)); // @phpstan-ignore-line
 
         $this->ensureAppCodeHostServerRunning();
         TestCase::assertNotNull($this->testProperties->urlParts->port);

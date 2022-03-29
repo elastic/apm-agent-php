@@ -43,11 +43,11 @@ final class SpanContextDbDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return SpanContextDbData
      */
-    public static function deserialize(array $deserializedRawData): SpanContextDbData
+    public static function deserialize($deserializedRawData): SpanContextDbData
     {
         $result = new SpanContextDbData();
         (new self($result))->doDeserialize($deserializedRawData);

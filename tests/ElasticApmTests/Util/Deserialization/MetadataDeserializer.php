@@ -43,11 +43,11 @@ final class MetadataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return Metadata
      */
-    public static function deserialize(array $deserializedRawData): Metadata
+    public static function deserialize($deserializedRawData): Metadata
     {
         $result = new Metadata();
         (new self($result))->doDeserialize($deserializedRawData);

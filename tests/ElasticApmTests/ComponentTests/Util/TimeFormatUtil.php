@@ -35,6 +35,16 @@ final class TimeFormatUtil
 {
     use StaticClassTrait;
 
+    public static function calcWholeTimesAndRemainderForFloat(
+        float $largeVal,
+        int $smallVal,
+        float &$wholeTimes,
+        float &$remainder
+    ): void {
+        $wholeTimes = floor($largeVal / $smallVal);
+        $remainder = $largeVal - ($smallVal * $wholeTimes);
+    }
+
     public static function formatDurationInMicroseconds(float $durationInMicroseconds): string
     {
         if ($durationInMicroseconds === 0.0) {
@@ -43,19 +53,53 @@ final class TimeFormatUtil
 
         $isNegative = ($durationInMicroseconds < 0);
         $microsecondsTotalFloat = abs($durationInMicroseconds);
-        $microsecondsTotal = intval(floor($microsecondsTotalFloat));
-        $microsecondsFraction = $microsecondsTotalFloat - $microsecondsTotal;
+        $microsecondsTotalWhole = floor($microsecondsTotalFloat);
+        $microsecondsFraction = $microsecondsTotalFloat - $microsecondsTotalWhole;
 
-        $microsecondsRemainder = $microsecondsTotal % TimeUtil::NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
-        $millisecondsTotal = intval(floor($microsecondsTotal / TimeUtil::NUMBER_OF_MICROSECONDS_IN_MILLISECOND));
-        $millisecondsRemainder = $millisecondsTotal % TimeUtil::NUMBER_OF_MILLISECONDS_IN_SECOND;
-        $secondsTotal = intval(floor($millisecondsTotal / TimeUtil::NUMBER_OF_MILLISECONDS_IN_SECOND));
-        $secondsRemainder = $secondsTotal % TimeUtil::NUMBER_OF_SECONDS_IN_MINUTE;
-        $minutesTotal = intval(floor($secondsTotal / TimeUtil::NUMBER_OF_SECONDS_IN_MINUTE));
-        $minutesRemainder = $minutesTotal % TimeUtil::NUMBER_OF_MINUTES_IN_HOUR;
-        $hoursTotal = intval(floor($minutesTotal / TimeUtil::NUMBER_OF_MINUTES_IN_HOUR));
-        $hoursRemainder = $hoursTotal % TimeUtil::NUMBER_OF_HOURS_IN_DAY;
-        $daysTotal = intval(floor($hoursTotal / TimeUtil::NUMBER_OF_HOURS_IN_DAY));
+        $millisecondsTotalWhole = 0.0;
+        $microsecondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $microsecondsTotalWhole,
+            TimeUtil::NUMBER_OF_MICROSECONDS_IN_MILLISECOND,
+            /* ref */ $millisecondsTotalWhole,
+            /* ref */ $microsecondsRemainder
+        );
+
+        $secondsTotalWhole = 0.0;
+        $millisecondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $millisecondsTotalWhole,
+            TimeUtil::NUMBER_OF_MILLISECONDS_IN_SECOND,
+            /* ref */ $secondsTotalWhole,
+            /* ref */ $millisecondsRemainder
+        );
+
+        $minutesTotalWhole = 0.0;
+        $secondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $secondsTotalWhole,
+            TimeUtil::NUMBER_OF_SECONDS_IN_MINUTE,
+            /* ref */ $minutesTotalWhole,
+            /* ref */ $secondsRemainder
+        );
+
+        $hoursTotalWhole = 0.0;
+        $minutesRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $minutesTotalWhole,
+            TimeUtil::NUMBER_OF_MINUTES_IN_HOUR,
+            /* ref */ $hoursTotalWhole,
+            /* ref */ $minutesRemainder
+        );
+
+        $hoursRemainder = 0.0;
+        $daysTotalWhole = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $hoursTotalWhole,
+            TimeUtil::NUMBER_OF_HOURS_IN_DAY,
+            /* ref */ $daysTotalWhole,
+            /* ref */ $hoursRemainder
+        );
 
         $appendRemainder = function (string $appendTo, float $remainder, string $units): string {
             if ($remainder === 0.0) {
@@ -67,7 +111,7 @@ final class TimeFormatUtil
         };
 
         $result = '';
-        $result = $appendRemainder($result, $daysTotal, 'd');
+        $result = $appendRemainder($result, $daysTotalWhole, 'd');
         $result = $appendRemainder($result, $hoursRemainder, 'h');
         $result = $appendRemainder($result, $minutesRemainder, 'm');
         $result = $appendRemainder($result, $secondsRemainder, 's');

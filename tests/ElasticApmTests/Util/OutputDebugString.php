@@ -36,8 +36,8 @@ final class OutputDebugString
 {
     use StaticClassTrait;
 
-    /** @var bool */
-    private static $isEnabled;
+    /** @var ?bool */
+    private static $isEnabled = null;
 
     /**
      * @noinspection RedundantSuppression, PhpFullyQualifiedNameUsageInspection, PhpUndefinedClassInspection
@@ -52,7 +52,7 @@ final class OutputDebugString
 
     public static function isEnabled(): bool
     {
-        if (!isset(self::$isEnabled)) {
+        if (self::$isEnabled === null) {
             self::$isEnabled = self::calcIsEnabled();
         }
 

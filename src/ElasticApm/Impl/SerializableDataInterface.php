@@ -38,5 +38,6 @@ interface SerializableDataInterface extends JsonSerializable
      *
      * @return array<string, mixed>|stdClass
      */
+    #[\ReturnTypeWillChange]
     public function jsonSerialize();
 }
