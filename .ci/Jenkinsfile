@@ -37,7 +37,25 @@ pipeline {
       stages {
         stage('Checkout') {
           steps {
-            runDefaultCheckout()
+            whenTrue(isInternalCI() && isTag()) {
+              setEnvVar('PRE_RELEASE_STAGE', 'true')
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release tag *${env.TAG_NAME}* has been created", body: "Build: (<${env.RUN_DISPLAY_URL}|here>) for further details.")
+            }
+            whenTrue(params.VERSION?.trim() ? true : false) {
+              script {
+                currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} release triggered."
+              }
+            }
+            pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
+            deleteDir()
+            gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
+            stash allowEmpty: true, name: 'source', useDefaultExcludes: false
+            dir("${BASE_DIR}"){
+              // Skip all the stages except docs for PR's with asciidoc and md changes only
+              whenTrue(isPR()) {
+                setEnvVar('ONLY_DOCS', isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md|png)' ], shouldMatchAll: true))
+              }
+            }
           }
         }
         stage('Prepara Release') {
@@ -83,12 +101,23 @@ pipeline {
             stages {
               stage('Build') {
                 steps {
-                  runBuild()
+                  initWorkspace(context: "Build-${PHP_VERSION}") {
+                    // When running in the CI with multiple parallel stages
+                    // the access could be considered as a DDOS attack.
+                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                    }
+                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
+                  }
                 }
               }
               stage('Static check and Unit Tests') {
                 steps {
-                  runUnitTest()
+                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+                    }
+                  }
                 }
                 post {
                   always {
@@ -98,7 +127,12 @@ pipeline {
               }
               stage('Generate for package') {
                 steps {
-                  runGeneratePackage()
+                  withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
+                    dir("${BASE_DIR}"){
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                      stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
+                    }
+                  }
                 }
               }
             }
@@ -228,7 +262,10 @@ pipeline {
             stages {
               stage('Release Test') {
                 steps {
-                  runSignedTest()
+                  initWorkspace(context: "Signed-Test-${PHP_VERSION}") {
+                      unstash "${env.SIGNED_ARTIFACTS}"
+                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
+                  }
                 }
                 post {
                   unsuccessful {
@@ -278,7 +315,9 @@ pipeline {
             stages {
               stage('Release Test') {
                 steps {
-                  runReleaseTest()
+                  initWorkspace(context: "Release-Test-${PHP_VERSION}") {
+                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
+                  }
                 }
                 post {
                   unsuccessful {
@@ -318,121 +357,6 @@ pipeline {
         notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Pre-release steps failed", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
       }
     }
-  }
-}
-
-/**
-* IMPORTANT: List of functions to solve the Method code too large!
-* See https://support.cloudbees.com/hc/en-us/articles/360039361371-Method-Code-Too-Large-Error
-*/
-
-/**
-* This function runs only in the very first checkout stage.
-*/
-def runDefaultCheckout() {
-  whenTrue(isInternalCI() && isTag()) {
-    setEnvVar('PRE_RELEASE_STAGE', 'true')
-    notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release tag *${env.TAG_NAME}* has been created", body: "Build: (<${env.RUN_DISPLAY_URL}|here>) for further details.")
-  }
-  whenTrue(params.VERSION?.trim() ? true : false) {
-    script {
-      currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} release triggered."
-    }
-  }
-  pipelineManager([ cancelPreviousRunningBuilds: [ when: 'PR' ] ])
-  deleteDir()
-  gitCheckout(basedir: "${BASE_DIR}", githubNotifyFirstTimeContributor: true)
-  stash allowEmpty: true, name: 'source', useDefaultExcludes: false
-  dir("${BASE_DIR}"){
-    // Skip all the stages except docs for PR's with asciidoc and md changes only
-    whenTrue(isPR()) {
-      setEnvVar('ONLY_DOCS', isGitRegionMatch(patterns: [ '.*\\.(asciidoc|md|png)' ], shouldMatchAll: true))
-    }
-  }
-}
-
-/**
-* This function runs only in the build stage.
-*/
-def runBuild() {
-  initWorkspace(context: "Build-${PHP_VERSION}") {
-    // When running in the CI with multiple parallel stages
-    // the access could be considered as a DDOS attack.
-    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
-    }
-    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
-  }
-}
-
-/**
-* This function runs only in the unit test stage.
-*/
-def runUnitTest() {
-  githubNotifyWithDir(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
-    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
-  }
-}
-
-/**
-* This function runs only in the package test stage.
-*/
-def runGeneratePackage() {
-  githubNotifyWithDir(context: "Generate-For-Package-${PHP_VERSION}") {
-    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-    stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
-  }
-}
-
-/**
-* This function runs only in the upgrade test stage.
-*/
-def runAgentUpgradeTest() {
-  initWorkspace(context: "Agent-Upgrade-Testing-${DIST}") {
-    packageGeneration(versions: [env.PHP_VERSION], local: true)
-    unstash 'package'
-    sh script: "make -C packaging ${DIST}-agent-upgrade-testing-local", label: "${DIST}-agent-upgrade-testing-local"
-  }
-}
-
-/**
-* This function runs only in the release test stage.
-*/
-def runReleaseTest() {
-  initWorkspace(context: "Release-Test-${PHP_VERSION}") {
-    sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
-  }
-}
-
-/**
-* This function runs only in the signed test stage.
-*/
-def runSignedTest() {
-  initWorkspace(context: "Signed-Test-${PHP_VERSION}") {
-                unstash "${env.SIGNED_ARTIFACTS}"
-                sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
-  }
-}
-
-/**
-* Prepare function to
-* Send a GitHub Notification, and run the body in the BASE_DIR folder
-*/
-def githubNotifyWithDir(def args = [:], Closure body){
-  withGithubNotify(args) {
-    dir("${BASE_DIR}"){
-      body()
-    }
-  }
-}
-
-/**
-* Prepare function to
-* packageWorkspace and run the body in the BASE_DIR folder
-*/
-def packageWorkspaceWithSh(def args = [:], Closure body){
-  packageWorkspace(args) {
-    sh script: args.script, label: args.label
   }
 }
 
