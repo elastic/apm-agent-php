@@ -340,7 +340,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
             ): ?callable {
                 $statement = (
                     $interceptedCallThis instanceof PDOStatement
-                    && isset($interceptedCallThis->queryString)
+                    && isset($interceptedCallThis->queryString) // @phpstan-ignore-line
                     && is_string($interceptedCallThis->queryString)
                 )
                     ? $interceptedCallThis->queryString

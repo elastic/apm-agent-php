@@ -73,7 +73,7 @@ class TestCaseBase extends TestCase
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
 
-        parent::__construct($name, $data, $dataName);
+        parent::__construct($name, $data, $dataName); // @phpstan-ignore-line
     }
 
     public static function assertEqualTimestamp(float $expected, float $actual): void
