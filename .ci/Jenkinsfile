@@ -91,7 +91,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0'
+                values '7.2', '7.3', '7.4', '8.0', '8.1'
               }
               axis {
                 name 'DOCKERFILE'
@@ -162,7 +162,7 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             initWorkspace(context: "Package", tab: 'artifacts') {
-                packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0'])
+                packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1'])
             }
           }
           post {
@@ -256,7 +256,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0'
+                values '7.2', '7.3', '7.4', '8.0', '8.1'
               }
             }
             stages {
@@ -309,7 +309,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0'
+                values '7.2', '7.3', '7.4', '8.0', '8.1'
               }
             }
             stages {

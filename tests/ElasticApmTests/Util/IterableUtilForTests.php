@@ -63,9 +63,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed, mixed> $iterable
+     * @template T
      *
-     * @return array<mixed, mixed>
+     * @param iterable<T> $iterable
+     *
+     * @return array<T>
      */
     public static function toArray(iterable $iterable): array
     {

@@ -35,23 +35,20 @@ final class AllOptionsMetadata
     use StaticClassTrait;
 
     /**
-     * @var array<string, OptionMetadata>
-     *
-     * @phpstan-var array<string, OptionMetadata<mixed>>
+     * @var ?array<string, OptionMetadata<mixed>>
      */
-    private static $vaLue;
+    private static $vaLue = null;
 
     /**
-     * @return array<string, OptionMetadata> Option name to metadata
-     *
-     * @phpstan-return array<string, OptionMetadata<mixed>> Option name to metadata
+     * @return array<string, OptionMetadata<mixed>> Option name to metadata
      */
     public static function get(): array
     {
-        if (isset(self::$vaLue)) {
+        if (self::$vaLue !== null) {
             return self::$vaLue;
         }
 
+        /** @phpstan-ignore-next-line */
         self::$vaLue = [
             OptionNames::API_KEY                  => new NullableStringOptionMetadata(),
             OptionNames::ASYNC_BACKEND_COMM       => new BoolOptionMetadata(/* defaultValue: */ true),
@@ -87,6 +84,6 @@ final class AllOptionsMetadata
             OptionNames::VERIFY_SERVER_CERT       => new BoolOptionMetadata(/* defaultValue: */ true),
         ];
 
-        return self::$vaLue;
+        return self::$vaLue; // @phpstan-ignore-line
     }
 }

@@ -43,11 +43,11 @@ final class MetricSetDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return MetricSetData
      */
-    public static function deserialize(array $deserializedRawData): MetricSetData
+    public static function deserialize($deserializedRawData): MetricSetData
     {
         $result = new MetricSetData();
         (new self($result))->doDeserialize($deserializedRawData);
@@ -88,10 +88,12 @@ final class MetricSetDataDeserializer extends DataDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      */
-    private function deserializeTransactionObject(array $deserializedRawData): void
+    private function deserializeTransactionObject($deserializedRawData): void
     {
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'name':
@@ -109,10 +111,12 @@ final class MetricSetDataDeserializer extends DataDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      */
-    private function deserializeSpanObject(array $deserializedRawData): void
+    private function deserializeSpanObject($deserializedRawData): void
     {
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'subtype':

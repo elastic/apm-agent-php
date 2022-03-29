@@ -92,13 +92,10 @@ final class TracerBuilder
 
     public function build(): TracerInterface
     {
-        /**
-         * elastic_apm_* functions are provided by the elastic_apm extension
-         *
-         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-         * @phpstan-ignore-next-line
-         */
-        if ($this->shouldCheckExtension && (!ElasticApmExtensionUtil::isLoaded() || !\elastic_apm_is_enabled())) {
+        if (
+            $this->shouldCheckExtension
+            && (!ElasticApmExtensionUtil::isLoaded() || !ElasticApmExtensionUtil::getEnabledConfig())
+        ) {
             return NoopTracer::singletonInstance();
         }
 

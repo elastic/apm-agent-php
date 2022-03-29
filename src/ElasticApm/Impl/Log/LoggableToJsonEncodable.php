@@ -317,12 +317,14 @@ final class LoggableToJsonEncodable
      * @param object $object
      *
      * @return array<string, mixed>|string
+     * @phpstan-return array<string, mixed>
      */
     private static function convertDtoObject(object $object)
     {
         $class = get_class($object);
         try {
             $currentClass = new ReflectionClass($class);
+            /** @phpstan-ignore-next-line */
         } catch (ReflectionException $ex) {
             return LoggingSubsystem::onInternalFailure('Failed to reflect', ['class' => $class], $ex);
         }
@@ -362,9 +364,9 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param string                      $className
+     * @template T of object
      *
-     * @phpstan-param class-string<mixed> $className
+     * @param class-string<T> $className
      *
      * @return bool
      */
@@ -372,6 +374,7 @@ final class LoggableToJsonEncodable
     {
         try {
             $currentClass = new ReflectionClass($className);
+            /** @phpstan-ignore-next-line */
         } catch (ReflectionException $ex) {
             LoggingSubsystem::onInternalFailure('Failed to reflect', ['className' => $className], $ex);
             return false;

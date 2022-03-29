@@ -514,10 +514,15 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         /**
          * if addSpanSelfTime is called that means $this->breakdownMetricsPerTransaction is not null
+
+         * Local variable to workaround PHPStan not having a way to declare that
+         * $this->breakdownMetricsPerTransaction is not null
          *
-         * @phpstan-ignore-next-line
+         * @var BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
+         * @noinspection PhpUnnecessaryLocalVariableInspection
          */
-        $this->breakdownMetricsPerTransaction->addSpanSelfTime(
+        $breakdownMetricsPerTransaction = $this->breakdownMetricsPerTransaction;
+        $breakdownMetricsPerTransaction->addSpanSelfTime(
             $spanType,
             $spanSubtype,
             $spanSelfTimeInMicroseconds

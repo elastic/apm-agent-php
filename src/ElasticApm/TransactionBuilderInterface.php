@@ -69,13 +69,9 @@ interface TransactionBuilderInterface
      * Begins a new transaction,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
-     * @param Closure $callback
-     *
-     * @return mixed The return value of $callback
-     *
      * @template T
-     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
-     * @phpstan-return T The return value of $callback
+     * @param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @return T The return value of $callback
      */
     public function capture(Closure $callback);
 }

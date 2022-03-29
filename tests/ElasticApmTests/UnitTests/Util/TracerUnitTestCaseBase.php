@@ -40,11 +40,11 @@ class TracerUnitTestCaseBase extends TestCaseBase
     protected $tracer;
 
     /**
-     * @param mixed        $name
+     * @param ?string      $name
      * @param array<mixed> $data
-     * @param mixed        $dataName
+     * @param int|string   $dataName
      */
-    public function __construct($name = null, array $data = [], $dataName = '')
+    public function __construct(?string $name = null, array $data = [], $dataName = '')
     {
         if (ElasticApmExtensionUtil::isLoaded()) {
             throw new RuntimeException(

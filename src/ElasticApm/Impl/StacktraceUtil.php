@@ -70,8 +70,8 @@ final class StacktraceUtil
             $srcFrame = $srcFrames[$i];
 
             $dstFrame = new StacktraceFrame(
-                ArrayUtil::getValueIfKeyExistsElse('file', $srcFrame, 'FILE NAME N/A'),
-                ArrayUtil::getValueIfKeyExistsElse('line', $srcFrame, 0)
+                ArrayUtil::getStringValueIfKeyExistsElse('file', $srcFrame, 'FILE NAME N/A'),
+                ArrayUtil::getIntValueIfKeyExistsElse('line', $srcFrame, 0)
             );
 
             $className = ArrayUtil::getValueIfKeyExistsElse('class', $srcFrame, null);

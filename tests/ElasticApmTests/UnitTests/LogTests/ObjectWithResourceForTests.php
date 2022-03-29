@@ -31,5 +31,5 @@ class ObjectWithResourceForTests implements LoggableInterface
     use LoggableTrait;
 
     /** @var resource */
-    private $resourceField;
+    private $resourceField; // @phpstan-ignore-line
 }

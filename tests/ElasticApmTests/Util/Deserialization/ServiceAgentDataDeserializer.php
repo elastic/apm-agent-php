@@ -47,11 +47,11 @@ final class ServiceAgentDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return ServiceAgentData
      */
-    public static function deserialize(array $deserializedRawData): ServiceAgentData
+    public static function deserialize($deserializedRawData): ServiceAgentData
     {
         $result = new ServiceAgentData();
         (new self($result))->doDeserialize($deserializedRawData);

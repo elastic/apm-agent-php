@@ -345,19 +345,27 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $isGoingToBeSentWithTransaction = $transaction !== null && !($transaction->hasEnded());
 
-        // PHPStan cannot deduce that $transaction is not null
-        // if $isGoingToBeSentWithTransaction is true
-        // @phpstan-ignore-next-line
-        if ($isGoingToBeSentWithTransaction && !$transaction->reserveSpaceInErrorToSendQueue()) {
-            return null;
+        if ($isGoingToBeSentWithTransaction) {
+            /**
+             * PHPStan cannot deduce that $transaction is not null
+             * if $isGoingToBeSentWithTransaction is true
+             *
+             * @var Transaction $transaction
+             */
+            if (!$transaction->reserveSpaceInErrorToSendQueue()) {
+                return null;
+            }
         }
 
         $newError = ErrorData::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
 
         if ($isGoingToBeSentWithTransaction) {
-            // PHPStan cannot deduce that $transaction is not null
-            // if $isGoingToBeSentWithTransaction is true
-            // @phpstan-ignore-next-line
+            /**
+             * PHPStan cannot deduce that $transaction is not null
+             * if $isGoingToBeSentWithTransaction is true
+             *
+             * @var Transaction $transaction
+             */
             $transaction->queueErrorDataToSend($newError);
         } else {
             $this->sendEventsToApmServer(

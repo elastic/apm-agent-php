@@ -36,19 +36,23 @@ final class StacktraceDeserializer
 {
     /**
      *
-     * @param array<mixed, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return StacktraceFrame[]
      */
-    public static function deserialize(array $deserializedRawData): array
+    public static function deserialize($deserializedRawData): array
     {
         /** @var StacktraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
 
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
+
         foreach ($deserializedRawData as $key => $value) {
             ValidationUtil::assertThat($key === $nextExpectedIndex);
+            /** @var array<string, mixed> $value */
             $frames[] = self::deserializeFrame($value);
             ++$nextExpectedIndex;
         }
@@ -59,19 +63,21 @@ final class StacktraceDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return StacktraceFrame
      */
-    private static function deserializeFrame(array $deserializedRawData): StacktraceFrame
+    private static function deserializeFrame($deserializedRawData): StacktraceFrame
     {
-        /** @var string|null */
+        /** @var ?string */
         $filename = null;
         /** @var int */
         $lineNumber = -1;
         /** @var string|null */
         $function = null;
 
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':

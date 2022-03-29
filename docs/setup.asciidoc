@@ -8,7 +8,7 @@ endif::[]
 
 Install the agent using one of the https://github.com/elastic/apm-agent-php/releases/latest[packages for supported platforms].
 
-NOTE: The agent supports PHP versions 7.2-8.0.
+NOTE: The agent supports PHP versions 7.2-8.1.0.
 
 [discrete]
 [[setup-rpm]]

@@ -108,7 +108,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
                 return $tx;
 
             case 'captureCurrentTransaction':
-                return $shouldUseDeprecatedApi
+                return $shouldUseDeprecatedApi // @phpstan-ignore-line
                     ? ElasticApm::captureCurrentTransaction(
                         $name,
                         $type,
@@ -136,7 +136,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
                 return $tx;
 
             case 'captureTransaction':
-                return $shouldUseDeprecatedApi
+                return $shouldUseDeprecatedApi // @phpstan-ignore-line
                     ? ElasticApm::captureTransaction(
                         $name,
                         $type,

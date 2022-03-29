@@ -61,7 +61,7 @@ final class ValidationUtil
 {
     use StaticClassTrait;
 
-    /** @var float Timestamp for February 20, 2020 18:04:47.987 */
+    // Timestamp for February 20, 2020 18:04:47.987
     private const PAST_TIMESTAMP = 1582221887987;
 
     public static function buildException(
@@ -100,6 +100,7 @@ final class ValidationUtil
     public static function assertValidId($id, int $expectedSizeInBytes): string
     {
         self::assertThat(is_string($id));
+        /** @var string $id */
         self::assertThat(IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes));
         return $id;
     }
@@ -139,16 +140,17 @@ final class ValidationUtil
      * @param bool  $isNullable
      * @param int   $maxLength
      *
-     * @return mixed
+     * @return ?string
      */
-    public static function assertValidString($stringValue, bool $isNullable, int $maxLength)
+    public static function assertValidString($stringValue, bool $isNullable, int $maxLength): ?string
     {
-        if (is_null($stringValue)) {
+        if ($stringValue === null) {
             self::assertThat($isNullable);
             return null;
         }
 
         self::assertThat(is_string($stringValue));
+        /** @var string $stringValue */
 
         self::assertThat(strlen($stringValue) <= $maxLength);
         return $stringValue;
@@ -171,7 +173,9 @@ final class ValidationUtil
      */
     public static function assertValidKeywordString($keywordString): string
     {
-        return self::assertValidString($keywordString, /* isNullable: */ false, Constants::KEYWORD_STRING_MAX_LENGTH);
+        $value = self::assertValidString($keywordString, /* isNullable: */ false, Constants::KEYWORD_STRING_MAX_LENGTH);
+        /** @var string $value */
+        return $value;
     }
 
     /**
@@ -196,9 +200,10 @@ final class ValidationUtil
     public static function assertValidTimestamp($timestamp): float
     {
         self::assertThat(is_float($timestamp) || is_int($timestamp));
+        /** @var float|int $timestamp */
 
         self::assertThat($timestamp >= self::PAST_TIMESTAMP);
-        return $timestamp;
+        return floatval($timestamp);
     }
 
     /**
@@ -209,18 +214,21 @@ final class ValidationUtil
     public static function assertValidDuration($duration): float
     {
         self::assertThat(is_float($duration) || is_int($duration));
+        /** @var float|int $duration */
 
         self::assertThat($duration >= 0);
-        return $duration;
+        return floatval($duration);
     }
 
     /**
-     * @param array<string, string|bool|int|float|null> $labels
+     * @param mixed $labels
      *
      * @return array<string, string|bool|int|float|null>
      */
-    public static function assertValidLabels(array $labels): array
+    public static function assertValidLabels($labels): array
     {
+        self::assertThat(is_array($labels));
+        /** @var array<mixed, mixed> $labels */
         foreach ($labels as $key => $value) {
             self::assertValidKeywordString($key);
             self::assertThat(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
@@ -228,6 +236,7 @@ final class ValidationUtil
                 self::assertValidKeywordString($value);
             }
         }
+        /** @var array<string, string|bool|int|float|null> $labels */
         return $labels;
     }
 
@@ -239,6 +248,7 @@ final class ValidationUtil
     public static function assertValidOutcome($outcome): ?string
     {
         self::assertThat($outcome === null || is_string($outcome));
+        /** @var ?string $outcome */
         self::assertThat(ExecutionSegment::isValidOutcome($outcome));
         return $outcome;
     }
@@ -260,29 +270,16 @@ final class ValidationUtil
     }
 
     /**
-     * @param mixed $droppedSpansCount
+     * @param mixed $count
      *
      * @return int
      */
-    public static function assertValidTransactionDroppedSpansCount($droppedSpansCount): int
+    public static function assertValidCount($count): int
     {
-        self::assertThat(is_int($droppedSpansCount));
-
-        self::assertThat($droppedSpansCount >= 0);
-        return $droppedSpansCount;
-    }
-
-    /**
-     * @param mixed $startedSpansCount
-     *
-     * @return int
-     */
-    public static function assertValidTransactionStartedSpansCount($startedSpansCount): int
-    {
-        self::assertThat(is_int($startedSpansCount));
-
-        self::assertThat($startedSpansCount >= 0);
-        return $startedSpansCount;
+        self::assertThat(is_int($count));
+        /** @var int $count */
+        self::assertThat($count >= 0);
+        return $count;
     }
 
     public static function assertValidTransactionContextRequestUrlData(
@@ -338,6 +335,7 @@ final class ValidationUtil
     public static function assertValidStacktraceFrameFilename($filename): string
     {
         self::assertThat(is_string($filename));
+        /** @var string $filename */
         self::assertThat(!TextUtil::isEmptyString($filename));
 
         return $filename;
@@ -351,6 +349,7 @@ final class ValidationUtil
     public static function assertValidStacktraceFrameLineNumber($lineNumber): int
     {
         self::assertThat(is_int($lineNumber));
+        /** @var int $lineNumber */
         self::assertThat($lineNumber >= 0);
 
         return $lineNumber;
@@ -365,6 +364,7 @@ final class ValidationUtil
     {
         if (!is_null($function)) {
             self::assertThat(is_string($function));
+            /** @var string $function */
             self::assertThat(!TextUtil::isEmptyString($function));
         }
 
@@ -551,16 +551,20 @@ final class ValidationUtil
     public static function assertValidMetricSetDataSamples($samples): array
     {
         self::assertThat(is_array($samples));
+        /** @var array<mixed, mixed> $samples */
         self::assertThat(!empty($samples));
 
         foreach ($samples as $key => $valueArr) {
             self::assertValidKeywordString($key);
             self::assertThat(is_array($valueArr));
+            /** @var array<mixed, mixed> $valueArr */
             self::assertThat(count($valueArr) === 1);
             self::assertThat(array_key_exists('value', $valueArr));
             $value = $valueArr['value'];
             self::assertThat(is_int($value) || is_float($value));
+            /** @var float|int $value */
         }
+        /** @var array<string, array<string, float|int>> $samples */
         return $samples;
     }
 
@@ -588,7 +592,7 @@ final class ValidationUtil
     public static function assertValidProcessId($pid): int
     {
         self::assertThat(is_int($pid));
-
+        /** @var int $pid */
         self::assertThat($pid > 0);
 
         return $pid;
@@ -597,18 +601,6 @@ final class ValidationUtil
     public static function assertValidProcessData(ProcessData $processData): void
     {
         self::assertValidProcessId($processData->pid);
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return string
-     */
-    public static function assertValidServiceName($value): string
-    {
-        self::assertValidNullableKeywordString($value);
-
-        return $value;
     }
 
     public static function assertValidNameVersionData(?NameVersionData $nameVersionData): void
@@ -622,7 +614,7 @@ final class ValidationUtil
 
     public static function assertValidServiceData(ServiceData $serviceData): void
     {
-        self::assertValidServiceName($serviceData->name);
+        self::assertValidKeywordString($serviceData->name);
         self::assertValidNullableKeywordString($serviceData->nodeConfiguredName);
         self::assertValidNullableKeywordString($serviceData->version);
         self::assertValidNullableKeywordString($serviceData->environment);
@@ -667,14 +659,14 @@ final class ValidationUtil
     }
 
     /**
-     * @param mixed $boolVal
+     * @param mixed $value
      *
      * @return bool
      */
-    public static function assertValidBool($boolVal): bool
+    public static function assertValidBool($value): bool
     {
-        self::assertThat(is_bool($boolVal));
-
-        return $boolVal;
+        self::assertThat(is_bool($value));
+        /** @var bool $value */
+        return $value;
     }
 }

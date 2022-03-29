@@ -95,9 +95,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
                  * If breakdownMetrics config is true then all transaction's spans
                  * breakdownMetricsSelfTimeTracker should not be null
                  *
-                 * @phpstan-ignore-next-line
+                 * Local variable to workaround PHPStan not having a way to declare that
+                 * $parentExecutionSegment->breakdownMetricsSelfTimeTracker is not null
+                 *
+                 * @var BreakdownMetricsSelfTimeTracker $parentBreakdownMetricsSelfTimeTracker
                  */
-                $parentExecutionSegment->breakdownMetricsSelfTimeTracker->onChildBegin($monotonicClockNow);
+                $parentBreakdownMetricsSelfTimeTracker = $parentExecutionSegment->breakdownMetricsSelfTimeTracker;
+                $parentBreakdownMetricsSelfTimeTracker->onChildBegin($monotonicClockNow);
             }
         }
 
@@ -393,9 +397,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             /**
              * doUpdateBreakdownMetricsOnEnd is called only if breakdownMetricsSelfTimeTracker is not null
              *
-             * @phpstan-ignore-next-line
+             * Local variable to workaround PHPStan not having a way to declare that
+             * $parentExecutionSegment->breakdownMetricsSelfTimeTracker is not null
+             *
+             * @var BreakdownMetricsSelfTimeTracker $parentBreakdownMetricsSelfTimeTracker
              */
-            $parentExecutionSegment->breakdownMetricsSelfTimeTracker->onChildEnd($monotonicClockNow);
+            $parentBreakdownMetricsSelfTimeTracker = $parentExecutionSegment->breakdownMetricsSelfTimeTracker;
+            $parentBreakdownMetricsSelfTimeTracker->onChildEnd($monotonicClockNow);
         }
     }
 

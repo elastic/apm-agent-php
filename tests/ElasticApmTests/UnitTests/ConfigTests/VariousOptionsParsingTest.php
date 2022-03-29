@@ -61,29 +61,30 @@ class VariousOptionsParsingTest extends TestCaseBase
         OptionMetadata $optMeta
     ): OptionTestValuesGeneratorInterface {
         $optionParser = $optMeta->parser();
+
         if ($optionParser instanceof BoolOptionParser) {
-            return new EnumOptionTestValuesGenerator(
+            return new EnumOptionTestValuesGenerator( // @phpstan-ignore-line
                 $optionParser,
                 /* additionalValidValues: */ [new OptionTestValidValue('', false)]
             );
         }
         if ($optionParser instanceof DurationOptionParser) {
-            return new DurationOptionTestValuesGenerator($optionParser);
+            return new DurationOptionTestValuesGenerator($optionParser); // @phpstan-ignore-line
         }
         if ($optionParser instanceof EnumOptionParser) {
-            return new EnumOptionTestValuesGenerator($optionParser);
+            return new EnumOptionTestValuesGenerator($optionParser); // @phpstan-ignore-line
         }
         if ($optionParser instanceof FloatOptionParser) {
-            return new FloatOptionTestValuesGenerator($optionParser);
+            return new FloatOptionTestValuesGenerator($optionParser); // @phpstan-ignore-line
         }
         if ($optionParser instanceof IntOptionParser) {
-            return new IntOptionTestValuesGenerator($optionParser);
+            return new IntOptionTestValuesGenerator($optionParser); // @phpstan-ignore-line
         }
         if ($optionParser instanceof StringOptionParser) {
-            return StringOptionTestValuesGenerator::singletonInstance();
+            return StringOptionTestValuesGenerator::singletonInstance(); // @phpstan-ignore-line
         }
         if ($optionParser instanceof WildcardListOptionParser) {
-            return WildcardListOptionTestValuesGenerator::singletonInstance();
+            return WildcardListOptionTestValuesGenerator::singletonInstance(); // @phpstan-ignore-line
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));
@@ -130,11 +131,11 @@ class VariousOptionsParsingTest extends TestCaseBase
             -987.654 /* defaultValue */
         );
 
-        return $result;
+        return $result; // @phpstan-ignore-line
     }
 
     /**
-     * @return array<string|null, array>
+     * @return array<string|null, array<string, OptionMetadata<mixed>>>
      */
     private function snapshotClassToOptionsMeta(): array
     {

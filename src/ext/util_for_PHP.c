@@ -25,72 +25,120 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
-ResultCode loadPhpFile( const char* filename )
+ResultCode loadPhpFile( const char* phpFilePath )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "phpFilePath: `%s'", phpFilePath );
 
     ResultCode resultCode;
-    size_t filename_len = strlen( filename );
     zval dummy;
     zend_file_handle file_handle;
-    zend_op_array * new_op_array = NULL;
-    zval result;
-    int ret;
+    bool should_destroy_file_handle = false;
     zend_string* opened_path = NULL;
+    zend_op_array* new_op_array = NULL;
+    zval result;
+    bool should_dtor_result = false;
 
-    if ( filename_len == 0 )
+    size_t phpFilePathLen = strlen( phpFilePath );
+    if ( phpFilePathLen == 0 )
     {
-        ELASTIC_APM_LOG_ERROR( "filename_len == 0" );
+        ELASTIC_APM_LOG_ERROR( "phpFilePathLen == 0" );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
-    if ( ret != SUCCESS )
+    // Copied from
+    //      https://github.com/php/php-src/blob/php-8.0.0/ext/spl/php_spl.c
+    //      https://github.com/php/php-src/blob/php-8.1.0/ext/spl/php_spl.c
+    // the second half of spl_autoload()
+
+#       if PHP_VERSION_ID >= 80100
+    zend_string* phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
+    zend_stream_init_filename_ex( &file_handle, phpFilePathAsZendString );
+    should_destroy_file_handle = true;
+#       endif
+
+    int php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
+#               if PHP_VERSION_ID < 80100
+            phpFilePath,
+#               endif
+            &file_handle
+            , USE_PATH|STREAM_OPEN_FOR_INCLUDE );
+    if ( php_stream_open_for_zend_ex_retVal != SUCCESS )
     {
-        ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
+        ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex() failed. Return value: %d. phpFilePath: `%s'", php_stream_open_for_zend_ex_retVal, phpFilePath );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
+    should_destroy_file_handle = true;
 
-    if ( ! file_handle.opened_path )
-    {
-        file_handle.opened_path = zend_string_init( filename, filename_len, 0 );
+    if ( ! file_handle.opened_path ) {
+        file_handle.opened_path =
+#               if PHP_VERSION_ID < 80100
+            zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
+#               else
+            zend_string_copy( phpFilePathAsZendString );
+#               endif
     }
     opened_path = zend_string_copy( file_handle.opened_path );
+
     ZVAL_NULL( &dummy );
-    if ( ! zend_hash_add( &EG( included_files ), opened_path, &dummy ) )
+    if ( ! zend_hash_add( &EG(included_files), opened_path, &dummy ) )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. filename: %s", filename );
+#           if PHP_VERSION_ID < 80100
         zend_file_handle_dtor( &file_handle );
+        should_destroy_file_handle = false;
+#           endif
+
+        ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. phpFilePath: `%s'", phpFilePath );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     new_op_array = zend_compile_file( &file_handle, ZEND_REQUIRE );
-    zend_destroy_file_handle( &file_handle );
-    if ( ! new_op_array )
+    if ( new_op_array == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. filename: %s", filename );
+        ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. phpFilePath: `%s'", phpFilePath );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     ZVAL_UNDEF( &result );
     zend_execute( new_op_array, &result );
-    zval_ptr_dtor( &result );
+    should_dtor_result = true;
+    bool hasThrownException = ( EG( exception ) != NULL );
+    destroy_op_array( new_op_array );
+    efree( new_op_array );
+    if ( hasThrownException )
+    {
+        should_dtor_result = false;
+        ELASTIC_APM_LOG_ERROR( "Exception was thrown during zend_execute(). phpFilePath: `%s'", phpFilePath );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
 
     resultCode = resultSuccess;
 
     finally:
-    if ( new_op_array )
+
+    if ( should_dtor_result )
     {
-        destroy_op_array( new_op_array );
-        efree( new_op_array );
-        new_op_array = NULL;
+        zval_ptr_dtor( &result );
     }
 
-    if ( opened_path )
+    if ( opened_path != NULL )
     {
+#           if PHP_VERSION_ID < 70300
         zend_string_release( opened_path );
+#else
+        zend_string_release_ex( opened_path, /* persistent: */ 0 );
+#           endif
         opened_path = NULL;
     }
+
+    if ( should_destroy_file_handle )
+    {
+        zend_destroy_file_handle( &file_handle );
+        should_destroy_file_handle = false;
+    }
+
+#       if PHP_VERSION_ID >= 80100
+    zend_string_release( phpFilePathAsZendString );
+#       endif
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
