@@ -44,11 +44,11 @@ final class TransactionContextDataDeserializer extends ExecutionSegmentContextDa
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return TransactionContextData
      */
-    public static function deserialize(array $deserializedRawData): TransactionContextData
+    public static function deserialize($deserializedRawData): TransactionContextData
     {
         $result = new TransactionContextData();
         (new self($result))->doDeserialize($deserializedRawData);

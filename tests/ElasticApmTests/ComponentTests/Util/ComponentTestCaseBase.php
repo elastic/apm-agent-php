@@ -43,11 +43,11 @@ class ComponentTestCaseBase extends TestCaseBase
     protected $allConfigSetters;
 
     /**
-     * @param mixed        $name
+     * @param ?string      $name
      * @param array<mixed> $data
-     * @param mixed        $dataName
+     * @param int|string   $dataName
      */
-    public function __construct($name = null, array $data = [], $dataName = '')
+    public function __construct(?string $name = null, array $data = [], $dataName = '')
     {
         parent::__construct($name, $data, $dataName);
 
@@ -178,5 +178,36 @@ class ComponentTestCaseBase extends TestCaseBase
             );
         }
         return $appCodeArgs[$appArgNameKey];
+    }
+
+    /**
+     * @param bool                 $condition
+     * @param string               $messagePrefix
+     * @param array<string, mixed> $context
+     */
+    protected static function appAssertTrue(bool $condition, string $messagePrefix, array $context = []): void
+    {
+        if (!$condition) {
+            throw new RuntimeException(ExceptionUtil::buildMessage($messagePrefix, $context));
+        }
+    }
+
+    /**
+     * @param mixed                $expected
+     * @param mixed                $actual
+     * @param string|null          $messagePrefix
+     * @param array<string, mixed> $context
+     */
+    protected static function appAssertSame(
+        $expected,
+        $actual,
+        ?string $messagePrefix = null,
+        array $context = []
+    ): void {
+        self::appAssertTrue(
+            $expected == $actual,
+            $messagePrefix ?? "The actual value is not the same as the expected one",
+            array_merge(['expected' => $expected, 'actual' => $actual], $context)
+        );
     }
 }

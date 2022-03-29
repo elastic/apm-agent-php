@@ -29,8 +29,6 @@ declare(strict_types=1);
  * @param array<mixed> $arr
  *
  * @return string|int|null Returns the first key of array if the array is not empty; NULL otherwise.
- *
- * @phpstan-ignore-next-line
  */
 function array_key_first(array $arr)
 {

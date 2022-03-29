@@ -35,7 +35,7 @@ final class ElasticApm
 {
     use StaticClassTrait;
 
-    public const VERSION = '1.4.2';
+    public const VERSION = '1.5';
 
     /**
      * Begins a new transaction and sets it as the current transaction.
@@ -65,18 +65,15 @@ final class ElasticApm
      * Begins a new transaction, sets as the current transaction,
      * runs the provided callback as the new transaction and automatically ends the new transaction.
      *
+     * @template T
+     *
      * @param string      $name      New transaction's name
      * @param string      $type      New transaction's type
-     * @param Closure     $callback  Callback to execute as the new transaction
+     * @param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
      * @param float|null  $timestamp Start time of the new transaction
      * @param string|null $serializedDistTracingData - DEPRECATED since version 1.3 -
      *                                               use newTransaction()->distributedTracingHeaderExtractor() instead
-     *
-     * @return mixed The return value of $callback
-     *
-     * @template T
-     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
-     * @phpstan-return T The return value of $callback
+     * @return T The return value of $callback
      *
      * @see             TransactionInterface::setName() For the description.
      * @see             TransactionInterface::setType() For the description.

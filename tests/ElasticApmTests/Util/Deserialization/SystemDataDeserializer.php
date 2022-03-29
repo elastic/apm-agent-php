@@ -43,11 +43,11 @@ final class SystemDataDeserializer extends DataDeserializer
 
     /**
      *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return SystemData
      */
-    public static function deserialize(array $deserializedRawData): SystemData
+    public static function deserialize($deserializedRawData): SystemData
     {
         $result = new SystemData();
         (new self($result))->doDeserialize($deserializedRawData);

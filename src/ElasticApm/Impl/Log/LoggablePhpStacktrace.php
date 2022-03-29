@@ -79,7 +79,7 @@ final class LoggablePhpStacktrace
             $result[self::FUNCTION_KEY] = $funcName;
         }
 
-        if (!is_null($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null))) {
+        if (!is_null($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null)) && is_string($srcFile)) {
             $result[self::FILE_KEY] = self::adaptSourceCodeFilePath($srcFile);
         }
 
@@ -91,7 +91,10 @@ final class LoggablePhpStacktrace
             $result[self::THIS_OBJECT_KEY] = $callThisObj;
         }
 
-        if (!is_null($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))) {
+        if (
+            !is_null($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))
+            && is_iterable($callArgs)
+        ) {
             $args = [];
             foreach ($callArgs as $callArg) {
                 $args[] = $callArg;

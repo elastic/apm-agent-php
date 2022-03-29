@@ -43,38 +43,48 @@ final class SharedCode
     /** @var bool */
     private const SHOULD_PRINT_PROGRESS = true;
 
+    public const TESTING_DEPTH_0 = 0;
+    public const TESTING_DEPTH_1 = 1;
+    public const TESTING_DEPTH_MAX = 2;
+
     /**
-     * @param bool $isFullTestingMode
+     * @param int $testingDepth
      *
      * @return iterable<int|null>
      */
-    public static function configTransactionMaxSpansVariants(bool $isFullTestingMode): iterable
+    public static function configTransactionMaxSpansVariants(int $testingDepth): iterable
     {
-        yield from [null, 0];
+        // TODO: Sergey Kleyman: UNCOMMENT and remove the "if" block below
+        // yield null;
+        if ($testingDepth >= self::TESTING_DEPTH_1) {
+            yield null;
+        }
 
-        if ($isFullTestingMode) {
-            yield from [10, 1000];
+        yield 0;
+
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
+            yield from [10, 100, OptionDefaultValues::TRANSACTION_MAX_SPANS * 2];
         }
     }
 
     /**
      * @param ?int $configTransactionMaxSpans
-     * @param bool $isFullTestingMode
+     * @param int  $testingDepth
      *
      * @return iterable<int>
      */
     public static function numberOfSpansToCreateVariants(
         ?int $configTransactionMaxSpans,
-        bool $isFullTestingMode
+        int $testingDepth
     ): iterable {
         /** @var Set<int> */
         $result = new Set();
 
-        $addInterestingValues = function (int $maxSpans) use ($result, $isFullTestingMode) {
+        $addInterestingValues = function (int $maxSpans) use ($result, $testingDepth) {
             $result->add($maxSpans);
             $result->add($maxSpans + 1);
 
-            if ($isFullTestingMode) {
+            if ($testingDepth >= self::TESTING_DEPTH_MAX) {
                 $result->add($maxSpans - 1);
                 $result->add(2 * $maxSpans);
             }
@@ -82,7 +92,7 @@ final class SharedCode
 
         $addInterestingValues($configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(0);
         }
 
@@ -94,19 +104,19 @@ final class SharedCode
     }
 
     /**
-     * @param int  $numberOfSpansToCreateValues
-     * @param bool $isFullTestingMode
+     * @param int $numberOfSpansToCreateValues
+     * @param int $testingDepth
      *
      * @return iterable<int>
      */
-    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
+    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, int $testingDepth): iterable
     {
         /** @var Set<int> */
         $result = new Set();
 
         $result->add(3);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(1);
             $result->add($numberOfSpansToCreateValues);
         }
@@ -119,19 +129,19 @@ final class SharedCode
     }
 
     /**
-     * @param int  $numberOfSpansToCreateValues
-     * @param bool $isFullTestingMode
+     * @param int $numberOfSpansToCreateValues
+     * @param int $testingDepth
      *
      * @return iterable<int>
      */
-    public static function maxDepthVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
+    public static function maxDepthVariants(int $numberOfSpansToCreateValues, int $testingDepth): iterable
     {
         /** @var Set<int> */
         $result = new Set();
 
         $result->add(3);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(1);
             $result->add(2);
             $result->add($numberOfSpansToCreateValues);
@@ -146,22 +156,22 @@ final class SharedCode
     }
 
     /**
-     * @param bool $isFullTestingMode
+     * @param int $testingDepth
      *
      * @return iterable<Args>
      */
-    public static function testArgsVariants(bool $isFullTestingMode): iterable
+    public static function testArgsVariants(int $testingDepth): iterable
     {
         // /** @var ?int */
         // $limitVariousCombinationsToVariantIndex = null;
 
         $variantIndex = 1;
         foreach ([true, false] as $isSampled) {
-            foreach (self::configTransactionMaxSpansVariants($isFullTestingMode) as $configTransactionMaxSpans) {
-                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $isFullTestingMode);
+            foreach (self::configTransactionMaxSpansVariants($testingDepth) as $configTransactionMaxSpans) {
+                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $testingDepth);
                 foreach ($numSpansVars as $numberOfSpansToCreate) {
-                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxFanOut) {
-                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxDepth) {
+                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $testingDepth) as $maxFanOut) {
+                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $testingDepth) as $maxDepth) {
                             foreach ([true, false] as $shouldUseOnlyCurrentCreateSpanApis) {
                                 $result = new Args();
                                 $result->variantIndex = $variantIndex++;
@@ -180,9 +190,9 @@ final class SharedCode
         }
     }
 
-    public static function testEachArgsVariantProlog(bool $isFullTestingMode, Args $testArgs): bool
+    public static function testEachArgsVariantProlog(int $testingDepth, Args $testArgs): bool
     {
-        $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($isFullTestingMode));
+        $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($testingDepth));
         if ($testArgs->variantIndex === 1) {
             /** @phpstan-ignore-next-line */
             if (!is_null(self::LIMIT_TO_VARIANT_INDEX) && self::SHOULD_PRINT_PROGRESS) {

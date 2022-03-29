@@ -392,6 +392,7 @@ abstract class TestEnvBase implements LoggableInterface
                 'http://localhost:' . $this->mockApmServerPort
             );
 
+            /** @phpstan-ignore-next-line */
             TestCase::assertTrue(!isset($testProperties->sharedDataPerRequest->agentEphemeralId));
             $testProperties->sharedDataPerRequest->agentEphemeralId = $this->generateSecondaryIdFromTestEnvId();
             $this->sendRequestToInstrumentedApp();
@@ -800,8 +801,10 @@ abstract class TestEnvBase implements LoggableInterface
         }
 
         $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
+        /** @var array<string, mixed> $decodedBody */
 
         $requestsJson = $decodedBody[MockApmServer::INTAKE_API_REQUESTS_JSON_KEY];
+        /** @var array<array<string, mixed>> $requestsJson */
         $newIntakeApiRequests = [];
         foreach ($requestsJson as $requestJson) {
             $newIntakeApiRequests[] = IntakeApiRequest::jsonDeserialize($requestJson);

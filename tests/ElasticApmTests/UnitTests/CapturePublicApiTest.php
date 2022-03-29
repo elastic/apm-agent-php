@@ -175,7 +175,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             'test_TX_name',
             'test_TX_type',
             function (): TestDummyObject {
-                return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+                return ElasticApm::getCurrentTransaction()->captureCurrentSpan( // @phpstan-ignore-line
                     'initial_test_span_name',
                     'initial_test_span_type',
                     function (SpanInterface $capturedSpan): TestDummyObject {
@@ -231,7 +231,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
                     $throwingRunData['traceId'] = $tx->getTraceId();
                     $throwingRunData['transactionId'] = $tx->getId();
                     $tx->context()->setLabel('TX_label_key', 'TX_label_value');
-                    return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+                    return ElasticApm::getCurrentTransaction()->captureCurrentSpan( // @phpstan-ignore-line
                         'test_span_name',
                         'test_span_type',
                         function (SpanInterface $span) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {

@@ -43,10 +43,10 @@ final class DbgUtil
 
         $stackFrame = $stackFrames[$callerStackFrameIndex];
         return new CallerInfo(
-            ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null),
-            ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, null),
-            ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null),
-            ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, null)
+            ArrayUtil::getNullableStringValueIfKeyExistsElse('file', $stackFrame, null),
+            ArrayUtil::getNullableIntValueIfKeyExistsElse('line', $stackFrame, null),
+            ArrayUtil::getNullableStringValueIfKeyExistsElse('class', $stackFrame, null),
+            ArrayUtil::getNullableStringValueIfKeyExistsElse('function', $stackFrame, null)
         );
     }
 

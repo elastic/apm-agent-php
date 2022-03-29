@@ -99,9 +99,10 @@ typedef ParsedOptionValue (* GetConfigSnapshotFieldFunc )( const OptionMetadata*
 typedef void (* ParsedOptionValueToZvalFunc )( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value );
 struct OptionMetadata
 {
-    bool isSecret;
     String name;
     StringView iniName;
+    bool isSecret;
+    bool isDynamic;
     ParsedOptionValue defaultValue;
     InterpretIniRawValueFunc interpretIniRawValue;
     ParseRawValueFunc parseRawValue;
@@ -346,7 +347,7 @@ ResultCode parseEnumValue( const OptionMetadata* optMeta, String rawValue, /* ou
         if ( optMeta->additionalData.enumData.isUniquePrefixEnough )
         {
             // If there's more than one enum name that raw value matches as a prefix
-            // then it's ambiguous and we return failure
+            // then it's ambiguous, and we return failure
             if ( foundMatch != -1 )
             {
                 ELASTIC_APM_LOG_ERROR(
@@ -394,18 +395,21 @@ static String streamParsedLogLevel( const OptionMetadata* optMeta, ParsedOptionV
 }
 
 static OptionMetadata buildStringOptionMetadata(
-        bool isSecret
-        , String name
+        String name
         , StringView iniName
+        , bool isSecret
+        , bool isDynamic
         , String defaultValue
         , SetConfigSnapshotFieldFunc setFieldFunc
-        , GetConfigSnapshotFieldFunc getFieldFunc )
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
 {
     return (OptionMetadata)
     {
-        .isSecret = isSecret,
         .name = name,
         .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
         .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseStringValue,
@@ -417,18 +421,21 @@ static OptionMetadata buildStringOptionMetadata(
 }
 
 static OptionMetadata buildBoolOptionMetadata(
-        bool isSecret
-        , String name
+        String name
         , StringView iniName
+        , bool isSecret
+        , bool isDynamic
         , bool defaultValue
         , SetConfigSnapshotFieldFunc setFieldFunc
-        , GetConfigSnapshotFieldFunc getFieldFunc )
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
 {
     return (OptionMetadata)
     {
-        .isSecret = isSecret,
         .name = name,
         .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
         .defaultValue = { .type = parsedOptionValueType_bool, .u.boolValue = defaultValue },
         .interpretIniRawValue = &interpretBoolIniRawValue,
         .parseRawValue = &parseBoolValue,
@@ -440,19 +447,22 @@ static OptionMetadata buildBoolOptionMetadata(
 }
 
 static OptionMetadata buildDurationOptionMetadata(
-        bool isSecret
-        , String name
+        String name
         , StringView iniName
+        , bool isSecret
+        , bool isDynamic
         , Duration defaultValue
         , SetConfigSnapshotFieldFunc setFieldFunc
         , GetConfigSnapshotFieldFunc getFieldFunc
-        , DurationUnits defaultUnits )
+        , DurationUnits defaultUnits
+)
 {
     return (OptionMetadata)
     {
-        .isSecret = isSecret,
         .name = name,
         .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
         .defaultValue = { .type = parsedOptionValueType_duration, .u.durationValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseDurationValue,
@@ -465,21 +475,24 @@ static OptionMetadata buildDurationOptionMetadata(
 }
 
 static OptionMetadata buildEnumOptionMetadata(
-        bool isSecret
-        , String name
+        String name
         , StringView iniName
+        , bool isSecret
+        , bool isDynamic
         , int defaultValue
         , InterpretIniRawValueFunc interpretIniRawValue
         , SetConfigSnapshotFieldFunc setFieldFunc
         , GetConfigSnapshotFieldFunc getFieldFunc
         , StreamParsedValueFunc streamParsedValue
-        , EnumOptionAdditionalMetadata additionalMetadata )
+        , EnumOptionAdditionalMetadata additionalMetadata
+)
 {
     return (OptionMetadata)
     {
-        .isSecret = isSecret,
         .name = name,
         .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
         .defaultValue = { .type = parsedOptionValueType_int, .u.intValue = defaultValue },
         .interpretIniRawValue = interpretIniRawValue,
         .parseRawValue = &parseEnumValue,
@@ -598,7 +611,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 #undef ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS
 #undef ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS
 
-#define ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, isSecret, optName, defaultValue, ... ) \
+#define ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, isSecret, isDynamic, defaultValue, ... ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -606,9 +619,10 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
         , optionId_##fieldName \
         , buildFunc \
         ( \
-            isSecret \
-            , optName \
+            optName \
             , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
+            , isSecret \
+            , isDynamic \
             , defaultValue \
             , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
             , ELASTIC_APM_GET_FIELD_FUNC_NAME( fieldName ) \
@@ -617,15 +631,18 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
     )
 
 #define ELASTIC_APM_INIT_METADATA( buildFunc, fieldName, optName, defaultValue ) \
-    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ false, optName, defaultValue )
+    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue )
 
 #define ELASTIC_APM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits ) \
-    ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, /* isSecret */ false, optName, defaultValue, defaultUnits )
+    ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue, defaultUnits )
 
 #define ELASTIC_APM_INIT_SECRET_METADATA( buildFunc, fieldName, optName, defaultValue ) \
-    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, /* isSecret */ true, optName, defaultValue )
+    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ true, /* isDynamic */ false, defaultValue )
 
-#define ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
+#define ELASTIC_APM_INIT_DYNAMIC_METADATA( buildFunc, fieldName, optName, defaultValue ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ false, /* isDynamic */ true, defaultValue )
+
+#define ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -633,9 +650,10 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
         , optionId_##fieldName \
         , buildEnumOptionMetadata \
         ( \
-            /* isSecret */ false \
-            , optName \
+            optName \
             , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
+            , /* isSecret */ false \
+            , isDynamic \
             , defaultValue \
             , interpretIniRawValue \
             , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
@@ -650,8 +668,17 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
         ) \
     )
 
+#define ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, /* isDynamic */ false, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg )
+
+#define ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, isDynamic ) \
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
+
 #define ELASTIC_APM_INIT_LOG_LEVEL_METADATA( fieldName, optName ) \
-    ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, /* isDynamic: */ false )
+
+#define ELASTIC_APM_INIT_DYNAMIC_LOG_LEVEL_METADATA( fieldName, optName ) \
+    ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, /* isDynamic: */ true )
 
 static void initOptionsMetadata( OptionMetadata* optsMeta )
 {
@@ -761,7 +788,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             ELASTIC_APM_CFG_OPT_NAME_LOG_FILE,
             /* defaultValue: */ NULL );
 
-    ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
+    ELASTIC_APM_INIT_DYNAMIC_LOG_LEVEL_METADATA(
             logLevel,
             ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL );
     ELASTIC_APM_INIT_LOG_LEVEL_METADATA(
@@ -864,7 +891,11 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 #undef ELASTIC_APM_GET_FIELD_FUNC_NAME
 #undef ELASTIC_APM_FREE_AND_RESET_FIELD_FUNC_NAME
 
+#undef ELASTIC_APM_INIT_METADATA_EX
 #undef ELASTIC_APM_INIT_METADATA
+#undef ELASTIC_APM_ENUM_INIT_METADATA
+#undef ELASTIC_APM_ENUM_INIT_METADATA_EX
+#undef ELASTIC_APM_INIT_LOG_LEVEL_METADATA
 #undef ELASTIC_APM_INIT_LOG_LEVEL_METADATA
 
 static
@@ -1363,6 +1394,7 @@ void getConfigManagerOptionMetadata(
 
     const OptionMetadata* const optMeta = &( cfgManager->meta.optionsMeta[ optId ] );
     result->isSecret = optMeta->isSecret;
+    result->isDynamic = optMeta->isDynamic;
     result->optName = optMeta->name;
     result->envVarName = cfgManager->meta.envVarNames[ optId ];
     result->iniName = optMeta->iniName;

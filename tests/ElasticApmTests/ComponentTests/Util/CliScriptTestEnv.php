@@ -57,7 +57,7 @@ final class CliScriptTestEnv extends TestEnvBase
 
     protected function sendRequestToInstrumentedApp(): void
     {
-        TestCase::assertTrue(isset($this->testProperties));
+        TestCase::assertTrue(isset($this->testProperties)); // @phpstan-ignore-line
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(

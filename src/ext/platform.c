@@ -20,6 +20,7 @@
 #include "platform.h"
 #include <limits.h>
 #include <string.h>
+#include <stdlib.h>
 #ifdef PHP_WIN32
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
@@ -34,6 +35,7 @@
 #   include <sys/syscall.h>
 #   include <syslog.h>
 #   include <signal.h>
+#   include <errno.h>
 #endif
 #include "util.h"
 #include "log.h"
@@ -331,11 +333,15 @@ static String osSignalIdToName( int signalId )
     #undef ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE
 }
 
-#define ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( fmt, ... ) \
+#define ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ... ) \
     do { \
-        syslog( LOG_CRIT, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[PID: %d] [CRITICAL] " fmt, getCurrentProcessId(), ##__VA_ARGS__ ); \
+        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[PID: %d] [" levelName "] " fmt, getCurrentProcessId(), ##__VA_ARGS__ ); \
     } while ( 0 )
 
+#define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
+
+#define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
 void writeStackTraceToSyslog()
@@ -345,31 +351,35 @@ void writeStackTraceToSyslog()
     int stackTraceAddressesCount = backtrace( stackTraceAddresses, maxStackTraceAddressesCount );
     if ( stackTraceAddressesCount == 0 )
     {
-        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "backtrace returned 0 (i.e., failed to get any address on the stack)\n" );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "backtrace returned 0 (i.e., failed to get any address on the stack)\n" );
         return;
     }
 
     ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
-        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d address: %p\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddresses[ i ] );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d address: %p\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddresses[ i ] );
 
     char** stackTraceAddressesAsSymbols = backtrace_symbols( stackTraceAddresses, stackTraceAddressesCount );
     if ( stackTraceAddressesAsSymbols == NULL )
     {
-        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
         return;
     }
 
     ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
-        ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d: %s\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddressesAsSymbols[ i ] );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d: %s\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddressesAsSymbols[ i ] );
 
     free( stackTraceAddressesAsSymbols );
     stackTraceAddressesAsSymbols = NULL;
 }
 #endif
 
+typedef void (* OsSignalHandler )( int );
+bool isOldSignalHandlerSet = false;
+OsSignalHandler oldSignalHandler = NULL;
+
 void handleOsSignalLinux( int signalId )
 {
-    ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER(
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER(
             "Received signal %d (%s). %s"
             , signalId, osSignalIdToName( signalId )
             ,
@@ -385,17 +395,59 @@ void handleOsSignalLinux( int signalId )
 #endif
 
     /* Call the default signal handler to have core dump generated... */
-    signal( signalId, 0 );
+    if ( isOldSignalHandlerSet )
+    {
+        signal( signalId, oldSignalHandler );
+        isOldSignalHandlerSet = false;
+        oldSignalHandler = NULL;
+    }
+    else
+    {
+        signal( signalId, SIG_DFL );
+    }
     raise ( signalId );
 }
-
-#undef ELASTIC_APM_WRITE_FROM_SIGNAL_HANDLER
 #endif // #ifndef PHP_WIN32
 
 void registerOsSignalHandler()
 {
 #ifndef PHP_WIN32
-    signal( SIGSEGV, handleOsSignalLinux );
+    OsSignalHandler signal_retVal = signal( SIGSEGV, handleOsSignalLinux );
+    if ( signal_retVal == SIG_ERR )
+    {
+        int signal_errno = errno;
+
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
+    }
+    else
+    {
+        isOldSignalHandlerSet = true;
+        oldSignalHandler = signal_retVal;
+    }
 #endif
 }
 
+void atExitLogging()
+{
+#ifndef PHP_WIN32
+    ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Callback registered with atexit() has been called" );
+#endif
+}
+
+void registerAtExitLogging()
+{
+#ifndef PHP_WIN32
+    int atexit_retVal = atexit( &atExitLogging );
+    // atexit returns 0 if successful, or a nonzero value if an error occurs
+    if ( atexit_retVal != 0 )
+    {
+        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
+    }
+    else
+    {
+        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Registered callback with atexit()" );
+    }
+#endif
+}

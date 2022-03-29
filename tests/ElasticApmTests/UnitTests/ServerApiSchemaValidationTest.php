@@ -57,8 +57,8 @@ class ServerApiSchemaValidationTest extends TestCaseBase
 
     /**
      * @param Closure(string, Closure(string): void): void $testImpl
-     * @param string $serializedEvent
-     * @param Closure(string): void $validateSerializedEvent
+     * @param string                                       $serializedEvent
+     * @param Closure(string): void                        $validateSerializedEvent
      */
     public function callTestOnOneCreateValidateCombination(
         Closure $testImpl,
@@ -68,6 +68,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         // Make sure serialized data passes validation before we corrupt it
         $validateSerializedEvent($serializedEvent);
 
+        /** @noinspection PsalmAdvanceCallableParamsInspection */
         $testImpl($serializedEvent, $validateSerializedEvent);
     }
 
@@ -110,7 +111,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
 
     /**
      * @param array<string, mixed> $deserializedJson
-     * @param array<mixed>         $pathToElement
+     * @param array<string>        $pathToElement
      *
      * @return mixed
      */
@@ -127,7 +128,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     /**
      * @param string       $serializedEvent
      * @param Closure(string): void $validateSerializedEvent
-     * @param array<mixed> $pathToParentElement
+     * @param array<string> $pathToParentElement
      */
     private function unknownPropertyTestImpl(
         string $serializedEvent,
@@ -138,6 +139,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
         $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
 
+        /** @var array<mixed, mixed> */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
         $this->assertArrayNotHasKey($unknownPropertyName, $parentJsonNode);
         $parentJsonNode[$unknownPropertyName] = $unknownPropertyValue;
@@ -156,7 +158,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     }
 
     /**
-     * @param array<mixed> $pathToParentElement
+     * @param array<string> $pathToParentElement
      *
      * @return Closure(string, Closure(string): void): void
      */
@@ -191,7 +193,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     /**
      * @param string       $serializedEvent
      * @param Closure(string): void $validateSerializedEvent
-     * @param array<mixed> $pathToElement
+     * @param array<string> $pathToElement
      * @param mixed        $wrongTypeValue
      */
     private function wrongPropertyValueTypeTestImpl(
@@ -221,10 +223,11 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     }
 
     /**
-     * @param array<mixed> $pathToElement
-     * @param mixed        $wrongTypeValue
+     * @param array<string> $pathToElement
+     * @param mixed         $wrongTypeValue
      *
      * @return Closure(string, Closure(string): void): void
+     * @noinspection PhpSameParameterValueInspection
      */
     private function createWrongPropertyValueTypeTestImpl(array $pathToElement, $wrongTypeValue): Closure
     {

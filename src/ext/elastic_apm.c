@@ -252,6 +252,17 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
 }
 /* }}} */
 
+/* {{{ elastic_apm_get_number_of_dynamic_config_options(): int
+ */
+PHP_FUNCTION( elastic_apm_get_number_of_dynamic_config_options )
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    long result = elasticApmGetNumberOfDynamicConfigOptions(); // NOLINT(cppcoreguidelines-narrowing-conversions)
+    RETURN_LONG( result );
+}
+/* }}} */
+
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_intercept_calls_to_internal_method_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ className, IS_STRING, /* allow_null: */ 0 )
                 ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ methodName, IS_STRING, /* allow_null: */ 0 )
@@ -425,6 +436,7 @@ static const zend_function_entry elastic_apm_functions[] =
 {
     PHP_FE( elastic_apm_is_enabled, elastic_apm_no_paramters_arginfo )
     PHP_FE( elastic_apm_get_config_option_by_name, elastic_apm_get_config_option_by_name_arginfo )
+    PHP_FE( elastic_apm_get_number_of_dynamic_config_options, elastic_apm_no_paramters_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_method, elastic_apm_intercept_calls_to_internal_method_arginfo )
     PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )

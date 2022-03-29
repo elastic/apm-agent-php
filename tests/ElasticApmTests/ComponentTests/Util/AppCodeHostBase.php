@@ -148,6 +148,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         );
 
         $msg = LoggableToString::convert(AmbientContext::testConfig());
+        /** @phpstan-ignore-next-line */
         TestCase::assertTrue(isset(AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId), $msg);
         $agentEphemeralId = AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId;
         TestCase::assertNotEmpty($agentEphemeralId);

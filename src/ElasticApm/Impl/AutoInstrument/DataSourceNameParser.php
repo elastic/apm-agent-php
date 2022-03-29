@@ -36,15 +36,15 @@ final class DataSourceNameParser
 {
     use StaticClassTrait;
 
-    /** @var array<string, string> */
-    private static $cachedDsnPrefixToSubtype;
+    /** @var ?array<string, string> */
+    private static $cachedDsnPrefixToSubtype = null;
 
     /**
      * @return array<string, string>
      */
     private static function getDsnPrefixToSubtype(): array
     {
-        if (!isset(self::$cachedDsnPrefixToSubtype)) {
+        if (self::$cachedDsnPrefixToSubtype === null) {
             self::$cachedDsnPrefixToSubtype = [
                 'sqlite:'   => Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE,
                 'mysql:'    => Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,

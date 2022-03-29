@@ -43,11 +43,11 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
      * @return TransactionData
      */
-    public static function deserialize(array $deserializedRawData): TransactionData
+    public static function deserialize($deserializedRawData): TransactionData
     {
         $result = new TransactionData();
         (new self($result))->doDeserialize($deserializedRawData);
@@ -94,20 +94,23 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      */
-    private function deserializeSpanCountSubObject(array $deserializedRawData): void
+    private function deserializeSpanCountSubObject($deserializedRawData): void
     {
+        ValidationUtil::assertThat(is_array($deserializedRawData));
+        /** @var array<mixed, mixed> $deserializedRawData */
+
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'dropped':
                     $this->result->droppedSpansCount
-                        = ValidationUtil::assertValidTransactionDroppedSpansCount($value);
+                        = ValidationUtil::assertValidCount($value);
                     break;
 
                 case 'started':
                     $this->result->startedSpansCount
-                        = ValidationUtil::assertValidTransactionStartedSpansCount($value);
+                        = ValidationUtil::assertValidCount($value);
                     break;
 
                 default:

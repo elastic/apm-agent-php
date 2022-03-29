@@ -43,7 +43,8 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
-    private const ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY = 'elastic_apm_DB_span_subtype';
+    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE
+        = 'Elastic_APM_dynamically_attached_property_DB_span_subtype';
 
     /** @var Logger */
     private $logger;
@@ -87,6 +88,30 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
         $this->pdoStatementExecute($ctx);
     }
 
+    /**
+     * @param object $obj
+     * @param string $propName
+     * @param mixed  $val
+     *
+     * @return void
+     */
+    private static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
+    {
+        $obj->{$propName} = $val;
+    }
+
+    /**
+     * @param ?object $obj
+     * @param string  $propName
+     * @param mixed   $defaultValue
+     *
+     * @return mixed
+     */
+    private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
+    {
+        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
+    }
+
     private function pdoConstruct(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
@@ -122,7 +147,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                 if (!is_string($dsn)) {
                     ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
-                        'The first received arguments for PDO::__construct call is not a string'
+                        'The first received argument for PDO::__construct call is not a string'
                         . ' but PDO::__construct is expected to have Data Source Name (DSN) as the first argument ',
                         ['interceptedCallThis' => $interceptedCallThis]
                     );
@@ -132,26 +157,15 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                 /** var string */
                 $dbSpanSubtype = '';
                 DataSourceNameParser::parse($dsn, /* ref */ $dbSpanSubtype);
-                /** @phpstan-ignore-next-line */
-                $interceptedCallThis->{self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY} = $dbSpanSubtype;
+                self::setDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
+                    $dbSpanSubtype
+                );
 
                 return null; // no post-hook
             }
         );
-    }
-
-    /**
-     * @param ?object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
-     *
-     * @return mixed
-     */
-    private function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
-    {
-        return ($obj !== null) && isset($obj->{$propName})
-            ? $obj->{$propName}
-            : $defaultValue;
     }
 
     private function pdoInterceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
@@ -175,13 +189,28 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     return null; // no post-hook
                 }
 
-                $statement = count($interceptedCallArgs) > 0 ? $interceptedCallArgs[0] : null;
+                if (count($interceptedCallArgs) > 0) {
+                    $statement = $interceptedCallArgs[0];
+                    if (!is_string($statement)) {
+                        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                        && $loggerProxy->log(
+                            'The first received argument for PDO::' . $methodName . ' call is not a string'
+                            . ' so statement cannot be captured',
+                            ['interceptedCallThis' => $interceptedCallThis]
+                        );
+                        $statement = null;
+                    }
+                } else {
+                    $statement = null;
+                }
+                /** @var ?string $statement */
 
-                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                $spanSubtype = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
+                /** @var string $spanSubtype */
 
                 $span = $this->beginDbSpan($statement ?? ('PDO->' . $methodName), $spanSubtype, $statement);
 
@@ -250,9 +279,9 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     return null; // no post-hook
                 }
 
-                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                $spanSubtype = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
@@ -283,8 +312,11 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                         return;
                     }
 
-                    /** @phpstan-ignore-next-line */
-                    $returnValueOrThrown->{self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY} = $spanSubtype;
+                    self::setDynamicallyAttachedProperty(
+                        $returnValueOrThrown,
+                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
+                        $spanSubtype
+                    );
                 };
             }
         );
@@ -308,17 +340,18 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
             ): ?callable {
                 $statement = (
                     $interceptedCallThis instanceof PDOStatement
-                    && isset($interceptedCallThis->queryString)
+                    && isset($interceptedCallThis->queryString) // @phpstan-ignore-line
                     && is_string($interceptedCallThis->queryString)
                 )
                     ? $interceptedCallThis->queryString
                     : null;
 
-                $spanSubtype = $this->getDynamicallyAttachedProperty(
+                $spanSubtype = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::ELASTIC_APM_DB_SPAN_SUBTYPE_ADDED_PROPERTY,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
+                /** @var string $spanSubtype */
 
                 $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $spanSubtype, $statement);
 

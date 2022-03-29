@@ -37,10 +37,8 @@ final class AdhocLoggableObject implements LoggableInterface
      * @param array<string, mixed> $nameToValue
      * @param int                  $logPriority
      */
-    public function __construct(
-        array $nameToValue,
-        int $logPriority = PropertyLogPriority::NORMAL
-    ) {
+    public function __construct(array $nameToValue, int $logPriority = PropertyLogPriority::NORMAL)
+    {
         $this->addProperties($nameToValue, $logPriority);
     }
 

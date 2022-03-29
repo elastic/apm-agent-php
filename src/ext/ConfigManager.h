@@ -179,6 +179,7 @@ ResultCode getConfigManagerOptionValueByName(
 struct GetConfigManagerOptionMetadataResult
 {
     bool isSecret;
+    bool isDynamic;
     String optName;
     String envVarName;
     StringView iniName;

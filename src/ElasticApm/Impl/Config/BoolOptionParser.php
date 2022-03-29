@@ -40,15 +40,12 @@ final class BoolOptionParser extends EnumOptionParser
     /** @var array<string> */
     public static $falseRawValues = ['false', 'no', 'off', '0'];
 
-    /**
-     * @var array<array<string|bool>>
-     * @phpstan-var array<array{string, bool}>
-     */
-    private static $boolNameToValue;
+    /** @var ?array<array{string, bool}> */
+    private static $boolNameToValue = null;
 
     public function __construct()
     {
-        if (!isset(self::$boolNameToValue)) {
+        if (self::$boolNameToValue === null) {
             self::$boolNameToValue = [];
             foreach (self::$trueRawValues as $trueRawValue) {
                 self::$boolNameToValue[] = [$trueRawValue, true];
@@ -69,7 +66,6 @@ final class BoolOptionParser extends EnumOptionParser
     /** @inheritDoc */
     public function parse(string $rawValue)
     {
-        $x = TextUtil::isEmptyString($rawValue);
         return TextUtil::isEmptyString($rawValue) ? false : parent::parse($rawValue);
     }
 }

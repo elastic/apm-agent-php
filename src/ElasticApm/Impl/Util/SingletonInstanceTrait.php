@@ -35,15 +35,15 @@ trait SingletonInstanceTrait
      */
     use HiddenConstructorTrait;
 
-    /** @var self */
-    private static $singletonInstance;
+    /** @var ?self */
+    private static $singletonInstance = null;
 
     /**
      * @return self
      */
     public static function singletonInstance(): self
     {
-        if (!isset(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             self::$singletonInstance = new static(); // @phpstan-ignore-line
         }
         return self::$singletonInstance;

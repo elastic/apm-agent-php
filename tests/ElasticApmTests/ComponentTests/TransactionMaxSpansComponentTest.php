@@ -38,7 +38,7 @@ use PHPUnit\Framework\TestCase;
 
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 {
-    private const IS_FULL_TESTING_MODE = false;
+    public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_0;
 
     /**
      * @return iterable<array<mixed>>
@@ -47,7 +47,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public function dataProviderForTestVariousCombinations(): iterable
     {
         /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::IS_FULL_TESTING_MODE) as $testArgs) {
+        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
             $setsAnyConfig = false;
             if (!is_null($testArgs->configTransactionMaxSpans)) {
                 $setsAnyConfig = true;
@@ -85,7 +85,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
      */
     public function testVariousCombinations(?AgentConfigSetter $configSetter, Args $testArgs): void
     {
-        if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
+        if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
             self::dummyAssert();
             return;
         }
