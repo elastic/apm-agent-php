@@ -33,7 +33,7 @@ use ElasticApmTests\Util\TracerBuilderForTests;
 
 class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 {
-    private const IS_FULL_TESTING_MODE = false;
+    public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_1;
 
     private function variousCombinationsTestImpl(Args $testArgs): void
     {
@@ -69,8 +69,8 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
     public function testVariousCombinations(): void
     {
         /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::IS_FULL_TESTING_MODE) as $testArgs) {
-            if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
+        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+            if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
                 continue;
             }
 

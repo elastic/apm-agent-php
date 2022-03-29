@@ -240,14 +240,16 @@ final class CurlHandleTracker implements LoggableInterface
         $curlHandle
             = CurlAutoInstrumentation::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
 
+        $thisCurlHandleAsInt = $this->curlHandle->asInt();
+        $argsCurlHandleAsInt = CurlHandleWrapped::nullableAsInt($curlHandle);
         return
-            $assertProxy->that($curlHandle->asInt() === $this->curlHandle->asInt())
+            $assertProxy->that($thisCurlHandleAsInt === $argsCurlHandleAsInt)
             && $assertProxy->withContext(
-                '$curlHandle->asInt() === $this->curlHandle->asInt()',
+                '$thisCurlHandleAsInt === $argsCurlHandleAsInt',
                 [
-                    '$curlHandle->asInt()'       => $curlHandle->asInt(),
-                    '$this->curlHandle->asInt()' => $this->curlHandle->asInt(),
-                    'this'                       => $this,
+                    '$thisCurlHandleAsInt' => $thisCurlHandleAsInt,
+                    '$argsCurlHandleAsInt' => $argsCurlHandleAsInt,
+                    'this'                 => $this,
                 ]
             );
     }

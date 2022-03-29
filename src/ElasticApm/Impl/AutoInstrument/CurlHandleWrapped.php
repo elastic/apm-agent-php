@@ -89,6 +89,11 @@ final class CurlHandleWrapped implements LoggableInterface
         return is_resource($this->curlHandle) ? intval($this->curlHandle) : spl_object_id($this->curlHandle);
     }
 
+    public static function nullableAsInt(?self $curlHandleWrapped): ?int
+    {
+        return $curlHandleWrapped === null ? null : $curlHandleWrapped->asInt();
+    }
+
     public function toLog(LogStreamInterface $stream): void
     {
         // TODO: Sergey Kleyman: Implement: CurlHandleWrapped::toLog
