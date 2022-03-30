@@ -582,7 +582,7 @@ def signedTesting(php, dist) {
     withEnv(["PHP_VERSION=${php}"]) {
       initWorkspace(context: "Signed-Testing-${php}-${dist}") {
         unstash "${env.SIGNED_ARTIFACTS}"
-        sh(script: "PHP_VERSION=${php} make -C packaging install-${dist}", label: "package install-${dist}")
+        sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-install", label: "package ${dist}-install")
       }
     }
   } finally {
