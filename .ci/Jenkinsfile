@@ -147,7 +147,7 @@ pipeline {
           agent none
           when {
             beforeAgent true
-            changeRequest()
+            not { changeRequest() }
           }
           steps {
             githubNotify(context: "${env.GITHUB_CHECK_ITS_NAME}", description: "Waiting for asynchronous job to begin ...", status: 'PENDING', targetUrl: "${env.JENKINS_URL}search/?q=${env.ITS_PIPELINE.replaceAll('/','+')}")
