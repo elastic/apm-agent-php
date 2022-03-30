@@ -24,6 +24,7 @@ pipeline {
   }
   triggers {
     issueCommentTrigger("${obltGitHubComments()}")
+    cron('H */3 * * 1-5')
   }
   parameters {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
@@ -519,7 +520,7 @@ def generateSteps() {
 
 def generateStep(String content){
   return {
-    withNode(labels: 'ubuntu-18.04 && immutable') {
+    withNode(labels: 'linux && immutable && gobld/image:elastic-apm-ci-ubuntu-1804-lts-20220322223016') {
       def parsedContent = content.split(',')
       def php = parsedContent[0]
       def dist = parsedContent[1]
