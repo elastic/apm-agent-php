@@ -193,7 +193,7 @@ pipeline {
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
-    stage('Release') {
+    stage('Prepare Release') {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
@@ -217,11 +217,11 @@ pipeline {
         RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
       }
       stages {
-        stage('Notify') {
+        stage('Approve to Publish') {
           options { skipDefaultCheckout() }
           steps {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
-            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release ready to be pushed",
+            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
                          body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
             setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
@@ -286,7 +286,7 @@ pipeline {
             }
           }
         }
-        stage('Release CI') {
+        stage('Publish') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -308,7 +308,7 @@ pipeline {
             }
           }
         }
-        stage('Test-Released-Package') {
+        stage('Test-Published-Package') {
           options { skipDefaultCheckout() }
           failFast false
           matrix {
