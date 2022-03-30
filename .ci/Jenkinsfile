@@ -187,7 +187,7 @@ pipeline {
             }
           }
           steps {
-            generateSteps()
+            generateSteps("generate_stages_list.sh")
           }
         }
       }
@@ -248,32 +248,12 @@ pipeline {
         }
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
-          failFast false
-          matrix {
-            agent { label 'ubuntu-18.04 && immutable' }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0', '8.1'
-              }
-            }
-            stages {
-              stage('Release Test') {
-                steps {
-                  initWorkspace(context: "Signed-Test-${PHP_VERSION}") {
-                      unstash "${env.SIGNED_ARTIFACTS}"
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
-                  }
-                }
-                post {
-                  unsuccessful {
-                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
-                  }
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
+          steps {
+            generateSteps("generate_stages_list_smoke.sh")
+          }
+          post {
+            unsuccessful {
+              notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
             }
           }
         }
@@ -502,10 +482,10 @@ def prepareRelease() {
   }
 }
 
-def generateSteps() {
+def generateSteps(file) {
   def parallelTasks = [:]
   dir("${BASE_DIR}"){
-    def output = sh(label: '.ci/generate_stages_list.sh', script: '.ci/generate_stages_list.sh', returnStdout: true)
+    def output = sh(label: ".ci/${file}", script: ".ci/${file}", returnStdout: true)
     if (output?.trim()) {
       output.split('\n').each { content ->
         parallelTasks[content] = generateStep(content)
@@ -543,6 +523,9 @@ def generateStep(String content){
         withEnv(["COMPONENT_TEST_SCRIPT=${parsedContent[3]}"]) {
           lifecycleTesting(php, dist, env.COMPONENT_TEST_SCRIPT)
         }
+      }
+      if (target.equals('signed-testing')) {
+        signedTesting(php, dist)
       }
     }
   }
@@ -591,5 +574,18 @@ def phpFpmTesting(php, dist) {
     packageWorkspace(context: "PHP-FPM-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-fpm") {
       sh(script: "make -C packaging ${dist}-lifecycle-testing-in-fpm", label: "${dist}-lifecycle-testing-in-fpm")
     }
+  }
+}
+
+def signedTesting(php, dist) {
+  try {
+    withEnv(["PHP_VERSION=${php}"]) {
+      initWorkspace(context: "Signed-Testing-${php}-${dist}") {
+        unstash "${env.SIGNED_ARTIFACTS}"
+        sh(script: "PHP_VERSION=${php} make -C packaging install-${dist}", label: "package install-${dist}")
+      }
+    }
+  } finally {
+    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
   }
 }
