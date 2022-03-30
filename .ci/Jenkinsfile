@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepare Release') {
+        stage('Prepare Release (apm-ci)') {
           options {
             skipDefaultCheckout()
           }
@@ -193,7 +193,7 @@ pipeline {
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
-    stage('Prepare Release') {
+    stage('Prepare Release (internal-ci)') {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
