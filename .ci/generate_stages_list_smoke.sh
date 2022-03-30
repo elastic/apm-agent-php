@@ -2,7 +2,7 @@
 set -e
 
 #
-# lifecycle-testing
+# install-testing
 #
 for phpVersion in 7.2 7.3 7.4 8.0 8.1
 do
