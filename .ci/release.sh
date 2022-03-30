@@ -14,6 +14,12 @@ github-release release \
     --tag "${TAG_NAME}" \
     --description "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)."
 
+## Info
+github-release info \
+    --user ${USER} \
+    --repo ${REPO} \
+    --tag "${TAG_NAME}"
+
 ## Upload the distribution files
 for package in build/packages/* ; do
   name=$(basename "${package}")
@@ -22,5 +28,11 @@ for package in build/packages/* ; do
       --repo ${REPO} \
       --tag "${TAG_NAME}" \
       --name "${name}" \
-      --file "${package}" 
+      --file "${package}"
 done
+
+## Info
+github-release info \
+    --user ${USER} \
+    --repo ${REPO} \
+    --tag "${TAG_NAME}"
