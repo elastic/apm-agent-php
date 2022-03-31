@@ -120,6 +120,10 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 		golang:1.14.7 \
 		/app/.ci/release.sh
 
+.PHONY: publish-release
+publish-release: validate-tag-name validate-github-token  ## Publish the release given the GITHUB_TOKEN and TAG_NAME
+	@echo 'TBD'
+
 validate-github-token:
 ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
