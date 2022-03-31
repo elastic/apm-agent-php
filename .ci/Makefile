@@ -124,6 +124,10 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
 	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
+.PHONY: download-verify
+download-verify:  ## Get the draft release id for the given TAG_NAME
+	.ci/donwload-verify.sh
+
 validate-github-token:
 ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
