@@ -310,10 +310,11 @@ pipeline {
           }
           options { skipDefaultCheckout() }
           steps {
-            dir("${BASE_DIR}") {
-              withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
-                sh(script: 'make -f .ci/Makefile publish-release', label: 'publish-release')
-              }
+            dir("${BASE_DIR}"){
+              setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
+            }
+            withGhEnv(version: '2.4.0') {
+              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
             }
           }
           post {

@@ -113,16 +113,16 @@ endif
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
 	@docker run --rm -t \
-		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
-		--env TAG_NAME=$(TAG_NAME) \
+		--env GITHUB_TOKEN \
+		--env TAG_NAME \
 		--volume "$(PWD)":/app \
 		--workdir /app \
 		golang:1.14.7 \
 		/app/.ci/release.sh
 
-.PHONY: publish-release
-publish-release: validate-tag-name validate-github-token  ## Publish the release given the GITHUB_TOKEN and TAG_NAME
-	@echo 'TBD'
+.PHONY: get-draft-release
+get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
+	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 validate-github-token:
 ifndef GITHUB_TOKEN
