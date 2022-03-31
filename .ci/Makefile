@@ -111,15 +111,7 @@ endif
 		gren
 
 .PHONY: draft-release
-draft-release:  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-ifndef GITHUB_TOKEN
-	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
-	exit 1
-endif
-ifndef TAG_NAME
-	@echo "Please set TAG_NAME in the environment to perform a release"
-	exit 1
-endif
+draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
 	@docker run --rm -t \
 		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
 		--env TAG_NAME=$(TAG_NAME) \
@@ -127,3 +119,15 @@ endif
 		--workdir /app \
 		golang:1.14.7 \
 		/app/.ci/release.sh
+
+validate-github-token:
+ifndef GITHUB_TOKEN
+	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
+	exit 1
+endif
+
+validate-tag-name:
+ifndef TAG_NAME
+	@echo "Please set TAG_NAME in the environment to perform a release"
+	exit 1
+endif
