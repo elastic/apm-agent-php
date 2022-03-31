@@ -4,7 +4,7 @@ IMAGE := test-php
 PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
 LOOPS ?= 50
-SUFFIX := 
+SUFFIX :=
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ## This is only required to tag the docker images used for building/testing this project
     SUFFIX := -alpine
@@ -110,8 +110,8 @@ endif
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		gren
 
-.PHONY: release
-release:  ## Run a release given the GITHUB_TOKEN and TAG_NAME
+.PHONY: draft-release
+draft-release:  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
 ifndef GITHUB_TOKEN
 	@echo "Please set GITHUB_TOKEN in the environment to perform a release"
 	exit 1

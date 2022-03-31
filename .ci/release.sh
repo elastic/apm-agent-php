@@ -12,6 +12,7 @@ github-release release \
     --user ${USER} \
     --repo ${REPO} \
     --tag "${TAG_NAME}" \
+    --draft \
     --description "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)."
 
 echo "INFO: sleep since the release might not be available in GitHub yet"

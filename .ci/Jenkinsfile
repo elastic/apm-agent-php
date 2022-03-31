@@ -266,7 +266,7 @@ pipeline {
             setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
-        stage('Publish') {
+        stage('Draft Release') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -278,13 +278,13 @@ pipeline {
             dir("${BASE_DIR}") {
               unstash "${env.SIGNED_ARTIFACTS}"
               withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
-                sh script: 'make -f .ci/Makefile release', label: 'release'
+                sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
               }
             }
           }
           post {
             success {
-              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Draft Release *${env.TAG_NAME}* has been created", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }
           }
         }
