@@ -289,32 +289,17 @@ pipeline {
           }
         }
         stage('Test-Published-Package') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
           options { skipDefaultCheckout() }
-          failFast false
-          matrix {
-            agent { label 'ubuntu-18.04 && immutable' }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0', '8.1'
-              }
-            }
-            stages {
-              stage('Release Test') {
-                steps {
-                  initWorkspace(context: "Release-Test-${PHP_VERSION}") {
-                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
-                  }
-                }
-                post {
-                  unsuccessful {
-                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published with some test failures in the installers.", body: "Please review the signed and released binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
-                  }
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
+          steps {
+            echo 'DOWNLOAD ARTIFACTS AND MD5SUM CHECK'
+          }
+          post {
+            unsuccessful {
+              notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Draft Release *${env.TAG_NAME}*: artifacts mismatch.", body: "Please review the signed and drafted binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }
           }
         }
