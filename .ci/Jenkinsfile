@@ -520,7 +520,7 @@ def generateSteps() {
 
 def generateStep(String content){
   return {
-    withNode(labels: 'linux && immutable && gobld/image:elastic-apm-ci-ubuntu-1804-lts-20220322223016') {
+    withNode(labels: 'linux && immutable && gobld/image:elastic-apm-ci-ubuntu-1804-lts-docker-20-10-13') {
       def parsedContent = content.split(',')
       def php = parsedContent[0]
       def dist = parsedContent[1]
