@@ -56,6 +56,7 @@ trait MockExecutionSegmentDataTrait
         } else {
             $this->syncWithChildren();
         }
+        $this->sampleRate = 1.0;
     }
 
     public function setName(string $name): void

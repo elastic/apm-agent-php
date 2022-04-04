@@ -28,7 +28,9 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\TestsRootDir;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\ValidationUtil;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
@@ -66,11 +68,6 @@ final class ServerApiSchemaValidator
 
     /** @var array<string> */
     private $tempFilePaths = [];
-
-    private static function pathToSpecsRootDir(): string
-    {
-        return TestsRootDir::$fullPath . '/APM_Server_intake_API_schema';
-    }
 
     private static function isAdditionalPropertiesCandidate(string $key): bool
     {
@@ -167,7 +164,7 @@ final class ServerApiSchemaValidator
         $validator->validate(
             $deserializedRawData,
             (object)($this->loadSchema(
-                self::normalizePath(self::pathToSpecsRootDir() . '/' . $relativePathToSchema),
+                ExternalTestData::fullPathForFileInApmServerIntakeApiSchemaDir($relativePathToSchema),
                 $allowAdditionalProperties
             )),
             Constraint::CHECK_MODE_VALIDATE_SCHEMA
@@ -175,15 +172,6 @@ final class ServerApiSchemaValidator
         if (!$validator->isValid()) {
             throw self::buildException($relativePathToSchema, $validator, $serializedData);
         }
-    }
-
-    private static function normalizePath(string $absolutePath): string
-    {
-        $result = realpath($absolutePath);
-        if ($result === false) {
-            throw ValidationUtil::buildException("realpath failed. absolutePath: `$absolutePath'");
-        }
-        return $result;
     }
 
     /**
@@ -274,7 +262,9 @@ final class ServerApiSchemaValidator
      */
     private static function loadRefAndMerge(string $absolutePath, array &$refParentNode, string $refValue): void
     {
-        $schemaFromRef = self::loadSchemaAndResolveRefs(self::normalizePath(dirname($absolutePath) . '/' . $refValue));
+        $schemaFromRef = self::loadSchemaAndResolveRefs(
+            FileUtilForTests::normalizePath(dirname($absolutePath) . '/' . $refValue)
+        );
         foreach ($schemaFromRef as $key => $value) {
             if (!array_key_exists($key, $refParentNode)) {
                 $refParentNode[$key] = $value;

@@ -27,10 +27,24 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\HttpDistributedTracing;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\TestCaseBase;
 
 class HttpDistributedTracingTest extends TestCaseBase
 {
+    private static function buildDistributedTracingData(
+        string $traceId,
+        string $parentId,
+        bool $isSampled
+    ): DistributedTracingData {
+        $data = new DistributedTracingData();
+        $data->traceId = strtolower($traceId);
+        $data->parentId = strtolower($parentId);
+        $data->isSampled = $isSampled;
+        return $data;
+    }
+
     /**
      * @param string $traceId
      * @param string $parentId
@@ -41,11 +55,34 @@ class HttpDistributedTracingTest extends TestCaseBase
      */
     private static function buildValidInput(string $traceId, string $parentId, bool $isSampled): array
     {
-        $data = new DistributedTracingData();
-        $data->traceId = strtolower($traceId);
-        $data->parentId = strtolower($parentId);
-        $data->isSampled = $isSampled;
-        return ['00' . '-' . $traceId . '-' . $parentId . '-' . ($isSampled ? '01' : '00'), $data];
+        return [
+            '00' . '-' . $traceId . '-' . $parentId . '-' . ($isSampled ? '01' : '00'),
+            self::buildDistributedTracingData($traceId, $parentId, $isSampled)
+        ];
+    }
+
+    /**
+     * @return iterable<array<string|DistributedTracingData|null>>
+     * @phpstan-return iterable<array{string, ?DistributedTracingData}>
+     */
+    public function dataProviderForTestBuildTraceParentHeader(): iterable
+    {
+        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', true);
+        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', false);
+        yield self::buildValidInput('11111111111111111111111111111111', '2222222222222222', true);
+        yield self::buildValidInput('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'bbbbbbbbbbbbbbbb', true);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestBuildTraceParentHeader
+     *
+     * @param DistributedTracingData $data
+     * @param string                 $expectedHeaderValue
+     */
+    public function testBuildTraceParentHeader(string $expectedHeaderValue, DistributedTracingData $data): void
+    {
+        $builtHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
+        self::assertEquals(strtolower($expectedHeaderValue), $builtHeaderValue);
     }
 
     /**
@@ -54,10 +91,13 @@ class HttpDistributedTracingTest extends TestCaseBase
      */
     public function dataProviderForTestParseTraceParentHeader(): iterable
     {
-        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', true);
-        yield self::buildValidInput('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', false);
-        yield self::buildValidInput('11111111111111111111111111111111', '2222222222222222', true);
-        yield self::buildValidInput('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBB', true);
+        yield from $this->dataProviderForTestBuildTraceParentHeader();
+
+        // Future version with currently correct structure
+        yield [
+            '01-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01',
+            self::buildDistributedTracingData('0af7651916cd43dd8448eb211c80319c', 'b9c7c989f97918e1', true)
+        ];
 
         // Erroneous input:
 
@@ -69,7 +109,6 @@ class HttpDistributedTracingTest extends TestCaseBase
         yield ['000af7651916cd43dd8448eb211c80319cb9c7c989f97918e1-01', null]; // delimiters are missing
         yield ['00-0af7651916cd43dd8448eb211c80319cb9c7c989f97918e101', null]; // delimiters are missing
 
-        yield ['01-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01', null]; // version: unsupported
         yield ['-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01', null]; // version: missing
         yield ['0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01', null]; // version: missing
         yield ['0-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01', null]; // version: too short
@@ -93,15 +132,25 @@ class HttpDistributedTracingTest extends TestCaseBase
     public function testParseTraceParentHeader(string $headerValue, ?DistributedTracingData $expectedData): void
     {
         $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
-        $actualData = $httpDistributedTracing->parseTraceParentHeader($headerValue);
+        $isTraceParentValid = true;
+        /** @var ?bool */
+        $isTraceStateValid = null;
+        $actualData = $httpDistributedTracing->parseHeadersImpl(
+            [$headerValue] /* /* <- traceParentHeaders */,
+            [] /* <- traceStateHeaders */,
+            $isTraceParentValid /* <- ref */,
+            $isTraceStateValid /* <- ref */
+        );
         self::assertEquals($expectedData, $actualData);
+        self::assertEquals($isTraceParentValid, $actualData !== null);
+        self::assertNull($isTraceStateValid);
     }
 
     /**
      * @return iterable<array<DistributedTracingData|string>>
      * @phpstan-return iterable<array{DistributedTracingData, string}>
      */
-    public function dataProviderForTestBuildTraceParentHeader(): iterable
+    public function dataProviderForBuildTraceParentHeader(): iterable
     {
         foreach (self::dataProviderForTestParseTraceParentHeader() as $headerDataPair) {
             if (is_null($headerDataPair[1])) {
@@ -113,14 +162,58 @@ class HttpDistributedTracingTest extends TestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderForTestBuildTraceParentHeader
-     *
-     * @param DistributedTracingData $data
-     * @param string                 $expectedHeaderValue
+     * @return iterable<array<mixed>>
      */
-    public function testBuildHeader(DistributedTracingData $data, string $expectedHeaderValue): void
+    public function dataProviderForW3cData(): iterable
     {
-        $builtHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
-        self::assertEquals($expectedHeaderValue, $builtHeaderValue);
+        $w3cDataJson = ExternalTestData::readJsonSpecsFile('w3c_distributed_tracing.json');
+        self::assertIsArray($w3cDataJson);
+        foreach ($w3cDataJson as $entry) {
+            yield [$entry];
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForW3cData
+     *
+     * @param array<string, mixed> $entry
+     */
+    public function testOnW3cDataEntry(array $entry): void
+    {
+        self::assertIsArray($entry);
+        $headers = $entry['headers'];
+        self::assertIsArray($headers);
+        $expectedIsTraceParentValid = $entry['is_traceparent_valid'];
+        $expectedIsTraceStateValid = ArrayUtil::getValueIfKeyExistsElse('is_tracestate_valid', $entry, null);
+
+        $traceParentHeaders = [];
+        $traceStateHeaders = [];
+        foreach ($headers as $header) {
+            self::assertIsArray($header);
+            self::assertCount(2, $header);
+            if (strtolower($header[0]) === 'traceparent') {
+                $traceParentHeaders[] = $header[1];
+            }
+            if (strtolower($header[0]) === 'tracestate') {
+                $traceStateHeaders[] = $header[1];
+            }
+        }
+
+        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
+
+        $actualIsTraceParentValid = true;
+        /** @var ?bool */
+        $actualIsTraceStateValid = null;
+        $distTracingData = $httpDistributedTracing->parseHeadersImpl(
+            $traceParentHeaders,
+            $traceStateHeaders,
+            /* ref */ $actualIsTraceParentValid,
+            /* ref */ $actualIsTraceStateValid
+        );
+        self::assertSame($actualIsTraceParentValid, $distTracingData !== null);
+        self::assertSame($expectedIsTraceParentValid, $actualIsTraceParentValid);
+        if ($expectedIsTraceStateValid !== null) {
+            self::assertSame($expectedIsTraceStateValid, $actualIsTraceStateValid);
+        }
     }
 }

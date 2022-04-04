@@ -96,7 +96,6 @@ final class CurlHandleWrapped implements LoggableInterface
 
     public function toLog(LogStreamInterface $stream): void
     {
-        // TODO: Sergey Kleyman: Implement: CurlHandleWrapped::toLog
         $stream->toLogAs(['as int' => $this->asInt()]);
     }
 }

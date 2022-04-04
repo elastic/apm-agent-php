@@ -169,6 +169,8 @@ final class TextUtil
      * @param string $input
      *
      * @return string
+     *
+     * @noinspection PhpUnused
      */
     public static function camelToPascalCase(string $input): string
     {
@@ -185,6 +187,7 @@ final class TextUtil
             return true;
         }
 
+        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
         return substr_compare(
             $text /* <- haystack */,
             $prefix /* <- needle */,
@@ -201,6 +204,7 @@ final class TextUtil
             return true;
         }
 
+        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
         return substr_compare(
             $text /* <- haystack */,
             $suffix /* <- needle */,
