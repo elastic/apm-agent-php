@@ -64,7 +64,8 @@ final class Span extends ExecutionSegment implements SpanInterface
         ?string $subtype,
         ?string $action,
         ?float $timestamp,
-        bool $isDropped
+        bool $isDropped,
+        float $sampleRate
     ) {
         $this->data = new SpanData();
         $this->parentExecutionSegment = $parentExecutionSegment;
@@ -77,6 +78,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             $containingTransaction->getTraceId(),
             $name,
             $type,
+            $sampleRate,
             $timestamp
         );
 

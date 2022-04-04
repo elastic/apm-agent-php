@@ -98,11 +98,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
              * @link https://github.com/elastic/apm/blob/main/specs/agents/tracing-sampling.md#non-sampled-transactions
              * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0
              */
-            // $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
+            $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
         } else {
             $isSampled = $distributedTracingData->isSampled;
-            // $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate;
+            $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate;
         }
+        /** @var float $sampleRateToMarkTransaction */
 
         parent::__construct(
             $this->data,
@@ -111,6 +112,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $traceId,
             $builder->name,
             $builder->type,
+            $sampleRateToMarkTransaction,
             $builder->timestamp
         );
 
@@ -286,7 +288,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $subtype,
             $action,
             $timestamp,
-            $isDropped
+            $isDropped,
+            $this->data->sampleRate // @phpstan-ignore-line
         );
     }
 
