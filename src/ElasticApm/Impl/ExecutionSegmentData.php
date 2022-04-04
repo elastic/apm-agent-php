@@ -57,6 +57,18 @@ class ExecutionSegmentData implements SerializableDataInterface, LoggableInterfa
     /** @var string|null */
     public $outcome = null;
 
+    /**
+     * @var float|null
+     *
+     * Sample rate applied to the monitored service at the time where this transaction/span was recorded.
+     * Allowed values are [0..1].
+     * A sample rate < 1 indicates that not all spans are recorded.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/transactions/transaction.json#L26
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/spans/span.json#L45
+     */
+    public $sampleRate = null;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
@@ -73,6 +85,7 @@ class ExecutionSegmentData implements SerializableDataInterface, LoggableInterfa
         );
         SerializationUtil::addNameValue('duration', $this->duration, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('outcome', $this->outcome, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('sample_rate', $this->sampleRate, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

@@ -126,21 +126,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         };
     }
 
-    /**
-     * @param MockSpanData $span
-     * @param string|null  $newTransactionId
-     *
-     * @return Closure
-     *
-     * @phpstan-return Closure(): Closure(): void
-     */
-    private static function makeCorruptTransactionIdFunc(MockSpanData $span, ?string $newTransactionId = null): Closure
+    private static function makeCorruptTransactionIdFunc(MockSpanData $span): Closure
     {
-        return function () use ($span, $newTransactionId): Closure {
+        return function () use ($span): Closure {
             $oldTransactionId = $span->transactionId;
-            $span->setTransactionId(
-                $newTransactionId ?? IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
-            );
+            $span->setTransactionId(IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES));
             return function () use ($span, $oldTransactionId): void {
                 $span->setTransactionId($oldTransactionId);
             };

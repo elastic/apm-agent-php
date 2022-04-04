@@ -66,6 +66,10 @@ abstract class ExecutionSegmentDataDeserializer extends DataDeserializer
                 $this->result->outcome = ValidationUtil::assertValidOutcome($value);
                 return true;
 
+            case 'sample_rate':
+                $this->result->sampleRate = ValidationUtil::assertValidSampleRate($value);
+                return true;
+
             case 'timestamp':
                 $this->result->timestamp = ValidationUtil::assertValidTimestamp($value);
                 return true;

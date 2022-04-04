@@ -253,6 +253,21 @@ final class ValidationUtil
         return $outcome;
     }
 
+    /**
+     * @param mixed $value
+     *
+     * @return float|null
+     */
+    public static function assertValidSampleRate($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+        self::assertThat(is_float($value) || is_int($value));
+        self::assertThat(0 <= $value && $value <= 1);
+        return floatval($value);
+    }
+
     public static function assertValidExecutionSegmentData(ExecutionSegmentData $execSegData): void
     {
         self::assertValidDuration($execSegData->duration);
@@ -262,6 +277,7 @@ final class ValidationUtil
         self::assertValidTraceId($execSegData->traceId);
         self::assertValidKeywordString($execSegData->type);
         self::assertValidOutcome($execSegData->outcome);
+        self::assertValidSampleRate($execSegData->sampleRate);
     }
 
     public static function assertValidExecutionSegmentContextData(ExecutionSegmentContextData $execSegCtxData): void

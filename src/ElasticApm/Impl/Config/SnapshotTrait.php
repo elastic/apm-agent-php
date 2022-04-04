@@ -42,6 +42,8 @@ trait SnapshotTrait
      */
     protected function setPropertiesToValuesFrom(array $optNameToParsedValue): void
     {
+        $this->optNameToParsedValue = $optNameToParsedValue;
+
         foreach ($optNameToParsedValue as $optName => $parsedValue) {
             $propertyName = TextUtil::snakeToCamelCase($optName);
             $actualClass = get_called_class();

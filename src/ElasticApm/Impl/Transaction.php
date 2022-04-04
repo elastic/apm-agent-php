@@ -91,6 +91,19 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $this->data->parentId = $distributedTracingData->parentId;
         }
 
+        if ($distributedTracingData === null) {
+            $effectiveTransactionSampleRate = $this->tracer->getConfig()->effectiveTransactionSampleRate();
+            $isSampled = self::makeSamplingDecision($effectiveTransactionSampleRate);
+            /**
+             * @link https://github.com/elastic/apm/blob/main/specs/agents/tracing-sampling.md#non-sampled-transactions
+             * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0
+             */
+            // $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
+        } else {
+            $isSampled = $distributedTracingData->isSampled;
+            // $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate;
+        }
+
         parent::__construct(
             $this->data,
             $builder->tracer,
@@ -105,9 +118,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
                                      ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                                      ->addContext('this', $this);
 
-        $this->data->isSampled = is_null($distributedTracingData)
-            ? $this->makeSamplingDecision()
-            : $distributedTracingData->isSampled;
+        $this->data->isSampled = $isSampled;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
@@ -143,16 +154,16 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->data->parentId;
     }
 
-    private function makeSamplingDecision(): bool
+    private static function makeSamplingDecision(float $sampleRate): bool
     {
-        if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
+        if ($sampleRate === 0.0) {
             return false;
         }
-        if ($this->tracer->getConfig()->transactionSampleRate() === 1.0) {
+        if ($sampleRate === 1.0) {
             return true;
         }
 
-        return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
+        return RandomUtil::generate01Float() < $sampleRate;
     }
 
     public function tracer(): Tracer

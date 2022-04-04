@@ -38,6 +38,16 @@ final class DistributedTracingData
     public $isSampled;
 
     /**
+     * @var ?float
+     *
+     * @link https://github.com/elastic/apm/blob/master/specs/agents/tracing-sampling.md#propagation
+     */
+    public $stateSampleRate = null;
+
+    /** @var array<string> */
+    public $stateOtherVendors = [];
+
+    /**
      * @deprecated Deprecated since version 1.3 - use injectHeaders() instead
      * @see             injectHeaders() Use it instead of this method
      *
