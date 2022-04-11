@@ -7,7 +7,7 @@ endif::[]
 == Configuration
 
 Utilize configuration options to adapt the Elastic APM agent to your needs.
-One way to configure settings is with the `php.ini` file:```
+One way to configure settings is with the `php.ini` file:
 
 [source,ini]
 ----
