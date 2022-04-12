@@ -126,7 +126,7 @@ get-draft-release: validate-tag-name  ## Get the draft release id for the given 
 
 .PHONY: download-verify
 download-verify:  ## Get the draft release id for the given TAG_NAME
-	.ci/donwload-verify.sh
+	.ci/download-verify.sh
 
 validate-github-token:
 ifndef GITHUB_TOKEN

@@ -297,8 +297,11 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             dir("${BASE_DIR}") {
+              dir('signed') {
+                unstash "${env.SIGNED_ARTIFACTS}"
+              }
               withGhEnv(version: '2.4.0') {
-                sh(script: 'make -f .ci/Makefile donwload-verify', label: 'donwload-verify')
+                sh(script: 'make -f .ci/Makefile download-verify', label: 'download-verify')
               }
             }
           }
