@@ -301,7 +301,7 @@ pipeline {
                 unstash "${env.SIGNED_ARTIFACTS}"
               }
               withGhEnv(version: '2.4.0') {
-                sh(script: 'make -f .ci/Makefile download-verify', label: 'download-verify')
+                sh(script: "RELEASE_ID=${RELEASE_ID} TARGET=signed make -f .ci/Makefile download-verify", label: 'download-verify')
               }
             }
           }

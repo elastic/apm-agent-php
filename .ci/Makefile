@@ -125,8 +125,8 @@ get-draft-release: validate-tag-name  ## Get the draft release id for the given 
 	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 .PHONY: download-verify
-download-verify:  ## Get the draft release id for the given TAG_NAME
-	.ci/download-verify.sh
+download-verify:  ## Download the assets for the given draft release and verify their signature
+	.ci/download-verify.sh ${RELEASE_ID} ${TARGET}
 
 validate-github-token:
 ifndef GITHUB_TOKEN
