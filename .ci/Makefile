@@ -117,6 +117,7 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 		create \
 		"$(TAG_NAME)" \
 		--draft \
+		--title "$(TAG_NAME)" \
 		--notes "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)." \
 		--repo elastic/apm-agent-php \
 		build/packages/*.*
