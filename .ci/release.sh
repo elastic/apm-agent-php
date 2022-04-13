@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -exo pipefail
 
-USER=elastic
+USER=v1v
 REPO=apm-agent-php
 
 ## Install tooling
