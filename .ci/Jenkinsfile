@@ -3,7 +3,7 @@
 @Library('apm@current') _
 
 pipeline {
-  agent { label 'ubuntu-18 && immutable' }
+  agent { label 'ubuntu-18.04 && immutable' }
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
@@ -89,7 +89,7 @@ pipeline {
           }
           failFast false
           matrix {
-            agent { label 'ubuntu-18 && immutable' }
+            agent { label 'ubuntu-18.04 && immutable' }
             axes {
               axis {
                 name 'PHP_VERSION'
@@ -197,7 +197,7 @@ pipeline {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
       }
-      agent { label 'ubuntu-18 && immutable' }
+      agent { label 'ubuntu-18.04 && immutable' }
       environment {
         BUCKET_NAME = 'internal-ci-artifacts'
         BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
@@ -495,7 +495,7 @@ def generateSteps(file) {
 
 def generateStep(String content){
   return {
-    withNode(labels: 'ubuntu-18 && immutable') {
+    withNode(labels: 'ubuntu-18.04 && immutable') {
       def parsedContent = content.split(',')
       def php = parsedContent[0]
       def dist = parsedContent[1]
