@@ -9,7 +9,7 @@ mkdir $GITHUB || true
 cd $GITHUB
 ## TODO: wait for https://github.com/cli/cli/pull/5442
 ## gh release download --release-id ${RELEASE_ID}
-gh release download "$TAG_NAME"
+gh release download "$TAG_NAME" --repo v1v/apm-agent-php
 cd ..
 
 echo 'calculate the sha512'
