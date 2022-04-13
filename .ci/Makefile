@@ -112,13 +112,14 @@ endif
 
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-	@docker run --rm -t \
-		--env GITHUB_TOKEN \
-		--env TAG_NAME \
-		--volume "$(PWD)":/app \
-		--workdir /app \
-		golang:1.14.7 \
-		/app/.ci/release.sh
+	@gh \
+		release \
+		create \
+		"$(TAG_NAME)" \
+		--draft \
+		--notes "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)." \
+		--repo elastic/apm-agent-php \
+		build/packages/*.*
 
 .PHONY: get-draft-release
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
