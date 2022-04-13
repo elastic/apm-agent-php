@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -exo pipefail
+set -eo pipefail
 RELEASE_ID=${1}
 TARGET=${2}
 GITHUB=github
@@ -18,4 +18,10 @@ sort $GITHUB/*.sha512 > github.sha512
 sort $TARGET/*.sha512 > target.sha512
 
 echo 'verify sha512 are valid'
-diff github.sha512 target.sha512
+diff github.sha512 target.sha512 || exit 1
+
+echo 'debug: sha512 for the github artifacts'
+cat github.sha512
+
+echo 'debug: sha512 for the signed artifacts'
+cat target.sha512
