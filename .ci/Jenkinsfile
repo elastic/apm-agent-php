@@ -203,7 +203,7 @@ pipeline {
         BUCKET_SUBFOLDER = "${env.REPO}/${env.TAG_NAME}"
         BUCKET_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER}"
         BUCKET_CREDENTIALS = 'internal-ci-gcs-plugin'
-        SIGNED_ARTIFACTS = 'signed-artifacts'
+        SIGNED_ARTIFACTS = 'package'
         BUCKET_SUBFOLDER_SIGNED_ARTIFACTS = "${env.BUCKET_SUBFOLDER}/${env.SIGNED_ARTIFACTS}"
         BUCKET_SIGNED_ARTIFACTS_PATH = "gs://${env.BUCKET_NAME}/${env.BUCKET_SUBFOLDER_SIGNED_ARTIFACTS}"
         RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
