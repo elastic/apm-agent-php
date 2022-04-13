@@ -257,9 +257,9 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
-            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
-                         body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
-            setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
+            //notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
+            //             body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
+            setEnvVar('RELEASE', 'true')
           }
         }
         stage('Draft Release') {
@@ -315,9 +315,7 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             withGhEnv(version: '2.4.0') {
-              withEnv(["ORG_NAME=elastic"]) {
-                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
-              }
+              githubReleasePublish1(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
             }
           }
           post {
@@ -590,3 +588,25 @@ def signedTesting(php, dist) {
     junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
   }
 }
+
+def githubReleasePublish1(Map args = [:]){
+
+  log(level: 'INFO', text: 'githubReleasePublish: just been called.')
+
+  def token = getGithubToken()
+
+  def id = args.containsKey('id') ? args.id : error('githubReleasePublish: id parameter is required.')
+  def name = args.containsKey('name') ? args.id : error('githubReleasePublish: name is required.')
+
+  // Construct GitHub API URL
+  def apiURL = "https://api.github.com/repos/v1v/${env.REPO_NAME}/releases/${id}"
+
+  def release_params = [
+    "draft": false
+  ]
+
+  // Call the GitHub API
+  ret = githubApiCall(token: token, url: apiURL, data: release_params)
+  return ret
+}
+
