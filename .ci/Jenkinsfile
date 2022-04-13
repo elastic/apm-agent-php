@@ -7,11 +7,12 @@ pipeline {
   environment {
     REPO = 'apm-agent-php'
     BASE_DIR = "src/go.elastic.co/apm/${env.REPO}"
-    SLACK_CHANNEL = '#apm-agent-php'
-    NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
+    SLACK_CHANNEL = 'UJ2J1AZV2'
+    NOTIFY_TO = 'victor.martinez+apm-agent-php@elastic.co'
     ONLY_DOCS = "false"
     GITHUB_CHECK_ITS_NAME = 'Integration Tests'
     ITS_PIPELINE = 'apm-integration-tests-selector-mbp/main'
+    TAG_NAME = 'v1.6.0'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -37,10 +38,10 @@ pipeline {
       stages {
         stage('Checkout') {
           steps {
-            whenTrue(isInternalCI() && isTag()) {
+            //whenTrue(isInternalCI() && isTag()) {
               setEnvVar('PRE_RELEASE_STAGE', 'true')
               notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Build for the release tag *${env.TAG_NAME}* has been triggered", body: "Build: (<${env.RUN_DISPLAY_URL}|here>) for further details.")
-            }
+            //}
             whenTrue(params.VERSION?.trim() ? true : false) {
               script {
                 currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} release triggered."
@@ -69,6 +70,7 @@ pipeline {
               not { changeRequest() }
               not { expression { isInternalCI() } }
               expression { return (params.VERSION?.trim() && params.VERSION =~ /^\d+.\d+/) }
+              expression { return false }
             }
           }
           steps {
@@ -112,10 +114,10 @@ pipeline {
                 }
               }
               stage('Static check and Unit Tests') {
-                when {
-                  beforeAgent true
-                  not { expression { isInternalCI() } }
-                }
+                  when {
+                    beforeAgent true
+                    expression { return false }
+                  }
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
@@ -146,7 +148,7 @@ pipeline {
           agent none
           when {
             beforeAgent true
-            changeRequest()
+            expression { return false }
           }
           steps {
             githubNotify(context: "${env.GITHUB_CHECK_ITS_NAME}", description: "Waiting for asynchronous job to begin ...", status: 'PENDING', targetUrl: "${env.JENKINS_URL}search/?q=${env.ITS_PIPELINE.replaceAll('/','+')}")
@@ -181,10 +183,7 @@ pipeline {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
-            allOf {
-              expression { return env.ONLY_DOCS == "false" }
-              not { expression { isInternalCI() } }
-            }
+            expression { return false }
           }
           steps {
             generateSteps("generate_stages_list.sh")
@@ -197,13 +196,6 @@ pipeline {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
-      }
-      when {
-        beforeAgent true
-        allOf {
-          tag pattern: 'v\\d+.*', comparator: 'REGEXP'
-          expression { isInternalCI() }
-        }
       }
       agent { label 'ubuntu-18.04 && immutable' }
       environment {
@@ -220,7 +212,7 @@ pipeline {
         stage('Signing CI') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return false }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -248,6 +240,10 @@ pipeline {
         }
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return false }
+          }
           steps {
             generateSteps("generate_stages_list_smoke.sh")
           }
@@ -342,17 +338,10 @@ pipeline {
     }
   }
   post {
-    cleanup {
-      // Reporting disables in the `internal-ci` since credentials are not in place
-      // OTOH it avoids duplicated notifications
-      whenFalse(isInternalCI()){
-        notifyBuildResult(prComment: true, analyzeFlakey: true, jobName: getFlakyJobName(withBranch: 'main'))
-      }
-    }
     failure {
-      whenTrue(isInternalCI() && env.PRE_RELEASE_STAGE == 'true') {
+      //whenTrue(isInternalCI() && env.PRE_RELEASE_STAGE == 'true') {
         notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Pre-release steps failed", body: "(<${env.RUN_DISPLAY_URL}|Open>)")
-      }
+      //}
     }
   }
 }
