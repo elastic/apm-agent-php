@@ -315,7 +315,9 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             withGhEnv(version: '2.4.0') {
-              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+              withEnv(["ORG_NAME=elastic"]) {
+                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+              }
             }
           }
           post {
