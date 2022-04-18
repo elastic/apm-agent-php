@@ -2,7 +2,7 @@
 set -eo pipefail
 RELEASE_ID=${1}
 TARGET=${2}
-GITHUB=download
+GITHUB=github
 
 echo 'download artifacts'
 mkdir $GITHUB || true
@@ -13,8 +13,8 @@ gh release download "$TAG_NAME"
 cd ..
 
 echo 'calculate the sha512'
-sort "$GITHUB/*.sha512" > github.sha512
-sort "$TARGET/*.sha512" > target.sha512
+sort $GITHUB/*.sha512 > github.sha512
+sort $TARGET/*.sha512 > target.sha512
 
 echo 'verify sha512 are valid'
 diff github.sha512 target.sha512 || exit 1
