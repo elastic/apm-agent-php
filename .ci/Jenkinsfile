@@ -303,6 +303,9 @@ pipeline {
             }
           }
           post {
+            always {
+              archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/build/packages/target.sha512, ${BASE_DIR}/github/github.sha512")
+            }
             unsuccessful {
               notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Draft Release *${env.TAG_NAME}*: artifacts mismatch.", body: "Please review the signed and drafted binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }

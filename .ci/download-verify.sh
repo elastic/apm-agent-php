@@ -12,6 +12,12 @@ cd $GITHUB
 gh release download "$TAG_NAME"
 cd ..
 
+echo 'debug github artifacts'
+ls -l $GITHUB
+
+echo 'debug target artifacts'
+ls -l $TARGET
+
 echo 'calculate the sha512'
 sort $GITHUB/*.sha512 > github.sha512
 sort $TARGET/*.sha512 > target.sha512
