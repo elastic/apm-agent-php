@@ -38,8 +38,6 @@ use ElasticApmTests\Util\EventDataValidator;
 use ElasticApmTests\Util\ExecutionSegmentDataValidator;
 use ElasticApmTests\Util\InvalidEventDataException;
 use ElasticApmTests\Util\TestCaseBase;
-use ElasticApmTests\Util\TraceDataActual;
-use ElasticApmTests\Util\TraceDataValidator;
 use PHPUnit\Exception as PhpUnitException;
 use Throwable;
 
@@ -48,11 +46,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     private const TIMESTAMP_COMPARISON_PRECISION = EventDataValidator::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
 
     /**
-     * @param TransactionData[] $transactions
-     * @param SpanData[]        $spans
-     * @param callable          $corruptFunc
+     * @param TransactionData[]            $transactions
+     * @param SpanData[]                   $spans
+     * @param callable                     $corruptFunc
      *
-     * @phpstan-param callable(): callable  $corruptFunc
+     * @phpstan-param callable(): callable $corruptFunc
      */
     private function assertValidAndCorrupted(
         array $transactions,
@@ -98,7 +96,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
      * @return array<string, ExecutionSegmentData>
      *
      * @template        T of ExecutionSegmentData
-     * @phpstan-param   T[] $events
+     * @phpstan-param   T[]          $events
      * @phpstan-return  array<string, T>
      *
      */

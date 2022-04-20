@@ -26,8 +26,6 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
-use Elastic\Apm\Impl\Util\IdGenerator;
-use ElasticApmTests\ComponentTests\Util\TestConfigUtil;
 use PHPUnit\Runner\BeforeTestHook;
 
 /**

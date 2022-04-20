@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\ExecutionSegmentDataValidator;
 use ElasticApmTests\Util\FloatLimits;
 
@@ -44,6 +45,7 @@ trait MockExecutionSegmentDataTrait
      */
     protected function constructMockExecutionSegmentDataTrait(array $childSpans, array $childTransactions): void
     {
+        $timestampBegin = Clock::singletonInstance()->getSystemClockCurrentTime();
         $this->childSpans = $childSpans;
         $this->childTransactions = $childTransactions;
         $prefix = 'dummy ' . ClassNameUtil::fqToShort(get_called_class()) . ' ';
@@ -51,8 +53,9 @@ trait MockExecutionSegmentDataTrait
         $this->name = $prefix . 'name';
         $this->type = $prefix . 'type';
         if (empty($this->childSpans) && empty($this->childTransactions)) {
-            $this->setTimestamp(Clock::singletonInstance()->getSystemClockCurrentTime());
-            $this->duration = mt_rand(0, 1);
+            $this->timestamp = $timestampBegin;
+            $timestampEnd = Clock::singletonInstance()->getSystemClockCurrentTime();
+            $this->duration = TimeUtil::calcDuration($timestampBegin, $timestampEnd);
         } else {
             $this->syncWithChildren();
         }
@@ -62,11 +65,6 @@ trait MockExecutionSegmentDataTrait
     public function setName(string $name): void
     {
         $this->name = $name;
-    }
-
-    public function setTimestamp(float $timestamp): void
-    {
-        $this->timestamp = $timestamp;
     }
 
     public function setTraceId(string $traceId): void
@@ -99,7 +97,7 @@ trait MockExecutionSegmentDataTrait
                 = max($maxChildEndTimestamp, ExecutionSegmentDataValidator::calcEndTime($childTransaction));
         }
 
-        $this->setTimestamp($minChildStartTimestamp - mt_rand(0, 1));
-        $this->duration = $maxChildEndTimestamp + mt_rand(0, 1) - $this->timestamp;
+        $this->timestamp = $minChildStartTimestamp;
+        $this->duration = TimeUtil::calcDuration($this->timestamp, $maxChildEndTimestamp);
     }
 }

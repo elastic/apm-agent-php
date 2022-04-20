@@ -45,9 +45,4 @@ final class MockTransactionData extends TransactionData
         }
         $this->isSampled = true;
     }
-
-    public function setTimestamp(float $timestamp): void
-    {
-        $this->timestamp = $timestamp;
-    }
 }

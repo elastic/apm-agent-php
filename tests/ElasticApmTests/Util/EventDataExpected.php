@@ -39,6 +39,8 @@ class EventDataExpected
 
     public function __construct()
     {
-        $this->timeAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
+        // TODO: Sergey Kleyman: UNCOMMENT
+        // $this->timeAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $this->timeAfter = Clock::singletonInstance()->getSystemClockCurrentTime() + 1000 * 1000;
     }
 }
