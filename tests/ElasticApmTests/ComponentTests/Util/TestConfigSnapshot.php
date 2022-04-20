@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Config\SnapshotTrait;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
+use RuntimeException;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -38,14 +39,20 @@ final class TestConfigSnapshot implements LoggableInterface
     use SnapshotTrait;
     use LoggableTrait;
 
-    /** @var int */
-    public $appCodeHostKind;
+    /** @var ?AppCodeHostKind */
+    private $appCodeHostKind = null;
 
-    /** @var string|null */
+    /** @var ?string */
     public $appCodePhpExe;
 
-    /** @var string|null */
+    /** @var ?string */
     public $appCodePhpIni;
+
+    /** @var TestInfraDataPerProcess */
+    public $dataPerProcess;
+
+    /** @var TestInfraDataPerRequest */
+    public $dataPerRequest;
 
     /** @var bool */
     public $deleteTempPhpIni;
@@ -56,12 +63,6 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var int */
     public $logLevel;
 
-    /** @var SharedDataPerProcess */
-    public $sharedDataPerProcess;
-
-    /** @var SharedDataPerRequest */
-    public $sharedDataPerRequest;
-
     /**
      * Snapshot constructor.
      *
@@ -69,8 +70,8 @@ final class TestConfigSnapshot implements LoggableInterface
      */
     public function __construct(array $optNameToParsedValue)
     {
-        $this->sharedDataPerProcess = new SharedDataPerProcess();
-        $this->sharedDataPerRequest = new SharedDataPerRequest();
+        $this->dataPerProcess = new TestInfraDataPerProcess();
+        $this->dataPerRequest = new TestInfraDataPerRequest();
 
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
     }
@@ -82,5 +83,19 @@ final class TestConfigSnapshot implements LoggableInterface
         }
 
         return $this->envVarsToPassThrough->match($envVarName) !== null;
+    }
+
+    public function appCodeHostKind(): AppCodeHostKind
+    {
+        if ($this->appCodeHostKind === null) {
+            $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
+            $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
+            throw new RuntimeException(
+                'Required configuration option ' . $optionName
+                . " (environment variable $envVarName)" . ' is not set'
+            );
+        }
+
+        return $this->appCodeHostKind;
     }
 }

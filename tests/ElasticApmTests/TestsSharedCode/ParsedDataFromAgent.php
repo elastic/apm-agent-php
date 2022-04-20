@@ -36,7 +36,7 @@ use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
-final class EventsFromAgent implements LoggableInterface
+final class ParsedDataFromAgent implements LoggableInterface
 {
     use LoggableTrait;
 

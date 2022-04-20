@@ -71,6 +71,6 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return ['logger', 'tracer'];
+        return ['tracer'];
     }
 }

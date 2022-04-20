@@ -29,14 +29,15 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\TestsSharedCode\ParsedDataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
+use ElasticApmTests\Util\EventDataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestArrayUtil;
 use ElasticApmTests\Util\TestCaseBase;
@@ -49,17 +50,17 @@ final class DataFromAgent implements LoggableInterface
     use SerializedEventSinkTrait;
     use LoggableTrait;
 
-    /** @var IntakeApiRequest[] */
-    public $intakeApiRequests = [];
-
-    /** @var EventsFromAgent */
-    private $eventsFromAgent;
-
     /** @var Logger */
     private $logger;
 
+    /** @var IntakeApiRequest[] */
+    public $intakeApiRequests = [];
+
     /** @var int */
     private $intakeApiRequestIndexStartOffset = 0;
+
+    /** @var ParsedDataFromAgent */
+    private $parsed;
 
     public function __construct()
     {
@@ -70,51 +71,12 @@ final class DataFromAgent implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
-        $this->eventsFromAgent = new EventsFromAgent();
+        $this->parsed = new ParsedDataFromAgent();
     }
 
-    public function eventsFromAgent(): EventsFromAgent
+    public function parsed(): ParsedDataFromAgent
     {
-        return $this->eventsFromAgent;
-    }
-
-    /**
-     * @return Metadata[]
-     */
-    public function metadata(): array
-    {
-        return $this->eventsFromAgent->metadatas;
-    }
-
-    /**
-     * @return array<string, TransactionData>
-     */
-    public function idToTransaction(): array
-    {
-        return $this->eventsFromAgent->idToTransaction;
-    }
-
-    /**
-     * @return array<string, SpanData>
-     */
-    public function idToSpan(): array
-    {
-        return $this->eventsFromAgent->idToSpan;
-    }
-
-    /**
-     * @return array<string, ErrorData>
-     */
-    public function idToError(): array
-    {
-        return $this->eventsFromAgent->idToError;
-    }
-
-    public function clearAdded(): void
-    {
-        $this->intakeApiRequestIndexStartOffset = count($this->intakeApiRequests);
-        $this->intakeApiRequests = [];
-        $this->eventsFromAgent->clear();
+        return $this->parsed;
     }
 
     public function nextIntakeApiRequestIndexToFetch(): int
@@ -215,7 +177,7 @@ final class DataFromAgent implements LoggableInterface
      */
     private function processMetadata(array $metadataAsDecodedJson): void
     {
-        $this->eventsFromAgent->metadatas[]
+        $this->parsed->metadatas[]
             = $this->validateAndDeserializeMetadata(self::decodedJsonToString($metadataAsDecodedJson));
     }
 
@@ -229,21 +191,21 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
+        ValidationUtil::assertThat(!empty($this->parsed->metadatas));
 
         $newTransaction = $this->validateAndDeserializeTransactionData(
             self::decodedJsonToString($transactionDecodedJson)
         );
 
-        TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newTransaction->timestamp);
-        TestCaseBase::assertLessThanOrEqualTimestamp(
-            TestCaseBase::calcEndTime($newTransaction),
+        EventDataValidator::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newTransaction->timestamp);
+        EventDataValidator::assertLessThanOrEqualTimestamp(
+            ExecutionSegmentDataValidator::calcEndTime($newTransaction),
             $fromIntakeApiRequest->timeReceivedAtServer
         );
 
         ValidationUtil::assertThat(is_null($this->executionSegmentByIdOrNull($newTransaction->id)));
 
-        $this->eventsFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
+        $this->parsed->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
     /**
@@ -256,19 +218,19 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
+        ValidationUtil::assertThat(!empty($this->parsed->metadatas));
 
         $newSpan = $this->validateAndDeserializeSpanData(self::decodedJsonToString($spanDecodedJson));
 
-        TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newSpan->timestamp);
-        TestCaseBase::assertLessThanOrEqualTimestamp(
-            TestCaseBase::calcEndTime($newSpan),
+        EventDataValidator::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newSpan->timestamp);
+        EventDataValidator::assertLessThanOrEqualTimestamp(
+            ExecutionSegmentDataValidator::calcEndTime($newSpan),
             $fromIntakeApiRequest->timeReceivedAtServer
         );
 
         ValidationUtil::assertThat(is_null($this->executionSegmentByIdOrNull($newSpan->id)));
 
-        $this->eventsFromAgent->idToSpan[$newSpan->id] = $newSpan;
+        $this->parsed->idToSpan[$newSpan->id] = $newSpan;
     }
 
     /**
@@ -281,16 +243,19 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
+        ValidationUtil::assertThat(!empty($this->parsed->metadatas));
 
         $newError = $this->validateAndDeserializeErrorData(self::decodedJsonToString($errorDecodedJson));
 
-        TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newError->timestamp);
-        TestCaseBase::assertLessThanOrEqualTimestamp($newError->timestamp, $fromIntakeApiRequest->timeReceivedAtServer);
+        EventDataValidator::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newError->timestamp);
+        EventDataValidator::assertLessThanOrEqualTimestamp(
+            $newError->timestamp,
+            $fromIntakeApiRequest->timeReceivedAtServer
+        );
 
         ValidationUtil::assertThat($this->errorByIdOrNull($newError->id) === null);
 
-        $this->eventsFromAgent->idToError[$newError->id] = $newError;
+        $this->parsed->idToError[$newError->id] = $newError;
     }
 
     /**
@@ -305,7 +270,7 @@ final class DataFromAgent implements LoggableInterface
         IntakeApiRequest $fromIntakeApiRequest,
         float $timeBeforeRequestToApp
     ): void {
-        ValidationUtil::assertThat(!empty($this->eventsFromAgent->metadatas));
+        ValidationUtil::assertThat(!empty($this->parsed->metadatas));
 
         // TestCaseBase::assertLessThanOrEqualTimestamp($timeBeforeRequestToApp, $newEvent->timestamp);
         // TestCaseBase::assertLessThanOrEqualTimestamp(
@@ -339,7 +304,7 @@ final class DataFromAgent implements LoggableInterface
     }
 
     /**
-     * @param array<mixed>  $idToEventData
+     * @param array<mixed>               $idToEventData
      *
      * @return mixed
      *
@@ -358,7 +323,7 @@ final class DataFromAgent implements LoggableInterface
      */
     public function singleTransaction(): TransactionData
     {
-        return self::getSingleEvent($this->eventsFromAgent->idToTransaction);
+        return self::getSingleEvent($this->parsed->idToTransaction);
     }
 
     /**
@@ -366,7 +331,7 @@ final class DataFromAgent implements LoggableInterface
      */
     public function singleSpan(): SpanData
     {
-        return self::getSingleEvent($this->eventsFromAgent->idToSpan);
+        return self::getSingleEvent($this->parsed->idToSpan);
     }
 
     /**
@@ -374,15 +339,15 @@ final class DataFromAgent implements LoggableInterface
      */
     public function singleError(): ErrorData
     {
-        return self::getSingleEvent($this->eventsFromAgent->idToError);
+        return self::getSingleEvent($this->parsed->idToError);
     }
 
     public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentData
     {
-        if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToSpan, null))) {
+        if (!is_null($span = ArrayUtil::getValueIfKeyExistsElse($id, $this->parsed->idToSpan, null))) {
             return $span;
         }
-        return ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToTransaction, null);
+        return ArrayUtil::getValueIfKeyExistsElse($id, $this->parsed->idToTransaction, null);
     }
 
     public function executionSegmentById(string $id): ExecutionSegmentData
@@ -394,6 +359,6 @@ final class DataFromAgent implements LoggableInterface
 
     public function errorByIdOrNull(string $id): ?ErrorData
     {
-        return ArrayUtil::getValueIfKeyExistsElse($id, $this->eventsFromAgent->idToError, null);
+        return ArrayUtil::getValueIfKeyExistsElse($id, $this->parsed->idToError, null);
     }
 }

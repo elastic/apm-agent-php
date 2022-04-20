@@ -23,9 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class ExternalHttpServerTestEnv extends HttpServerTestEnvBase
+use Elastic\Apm\Impl\Log\LoggableTrait;
+
+final class HttpAppCodeHostParams extends AppCodeHostParams
 {
-    protected function ensureAppCodeHostServerRunning(): void
-    {
-    }
 }

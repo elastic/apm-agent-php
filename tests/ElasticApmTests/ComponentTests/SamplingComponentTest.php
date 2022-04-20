@@ -82,7 +82,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
             function (DataFromAgent $dataFromAgent) use ($transactionSampleRate): void {
                 SamplingTestSharedCode::assertResultsForTwoNestedSpansTest(
                     $transactionSampleRate,
-                    $dataFromAgent->eventsFromAgent()
+                    $dataFromAgent->parsed()
                 );
             }
         );

@@ -116,7 +116,7 @@ final class TransactionForExtensionRequest
     {
         /** @phpstan-ignore-next-line */
         if (!self::isGlobalServerVarSet()) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('$_SERVER variable is not populated - forcing PHP engine to populate it...');
 
             /**
@@ -420,6 +420,7 @@ final class TransactionForExtensionRequest
     {
         $val = $this->getMandatoryServerVarElement($key);
         if ($val === null) {
+            /** @noinspection PhpExpressionAlwaysNullInspection */
             return $val;
         }
 

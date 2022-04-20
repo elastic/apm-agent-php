@@ -110,7 +110,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             $testProperties,
             function (DataFromAgent $dataFromAgent) use ($testArgs): void {
-                SharedCode::assertResults($testArgs, $dataFromAgent->eventsFromAgent());
+                SharedCode::assertResults($testArgs, $dataFromAgent->parsed());
             }
         );
     }

@@ -23,9 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Ds\Queue;
-use Ds\Set;
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
@@ -35,298 +32,24 @@ use Elastic\Apm\Impl\Log\EnabledLoggerProxy;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContext;
-use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
-use PHPUnit\Framework\Constraint\IsEqual;
-use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
 use Throwable;
 
 class TestCaseBase extends TestCase
 {
-    // Compare up to 10 milliseconds (10000 microseconds) precision
-    public const TIMESTAMP_COMPARISON_PRECISION = 10000;
-
-    /** @var ?LoggerFactory */
-    private static $noopLoggerFactory = null;
-
     /** @var bool */
     public static $isUnitTest = true;
 
-    /**
-     * @param ?string      $name
-     * @param array<mixed> $data
-     * @param int|string   $dataName
-     */
-    public function __construct(?string $name = null, array $data = [], $dataName = '')
-    {
-        LoggingSubsystem::$isInTestingContext = true;
-        SerializationUtil::$isInTestingContext = true;
-
-        parent::__construct($name, $data, $dataName); // @phpstan-ignore-line
-    }
-
-    public static function assertEqualTimestamp(float $expected, float $actual): void
-    {
-        self::assertEqualsWithDelta($expected, $actual, self::TIMESTAMP_COMPARISON_PRECISION);
-    }
-
-    public static function assertLessThanOrEqualTimestamp(float $lhs, float $rhs): void
-    {
-        self::assertThat(
-            $lhs,
-            self::logicalOr(
-                new IsEqual($rhs, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION),
-                new LessThan($rhs)
-            ),
-            ' $lhs: ' . number_format($lhs) . ', $rhs: ' . number_format($rhs)
-        );
-    }
-
-    public static function assertLessThanOrEqualDuration(float $lhs, float $rhs): void
-    {
-        self::assertThat($lhs, self::logicalOr(new IsEqual($rhs, /* delta: */ 1), new LessThan($rhs)));
-    }
-
-    public static function calcEndTime(ExecutionSegmentData $timedData): float
-    {
-        return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
-    }
-
-    public static function assertTimestampIsInside(float $innerTimestamp, ExecutionSegmentData $outerExecSeg): void
-    {
-        self::assertLessThanOrEqualTimestamp($outerExecSeg->timestamp, $innerTimestamp);
-        self::assertLessThanOrEqualTimestamp($innerTimestamp, self::calcEndTime($outerExecSeg));
-    }
-
-    public static function assertTimedEventIsNested(
-        ExecutionSegmentData $nestedExecSeg,
-        ExecutionSegmentData $outerExecSeg
-    ): void {
-        self::assertTimestampIsInside($nestedExecSeg->timestamp, $outerExecSeg);
-        self::assertTimestampIsInside(self::calcEndTime($nestedExecSeg), $outerExecSeg);
-    }
-
-    /**
-     * @param TransactionData         $transaction
-     * @param array<string, SpanData> $idToSpan
-     * @param bool                    $forceEnableFlakyAssertions
-     */
-    public static function assertValidTransactionAndItsSpans(
-        TransactionData $transaction,
-        array $idToSpan,
-        bool $forceEnableFlakyAssertions = false
-    ): void {
-        ValidationUtil::assertValidTransactionData($transaction);
-
-        /** @var SpanData $span */
-        foreach ($idToSpan as $span) {
-            ValidationUtil::assertValidSpanData($span);
-            self::assertSame($transaction->id, $span->transactionId);
-            self::assertSame($transaction->traceId, $span->traceId);
-
-            if ($span->parentId === $transaction->id) {
-                self::assertTimedEventIsNested($span, $transaction);
-            } else {
-                self::assertArrayHasKey($span->parentId, $idToSpan, 'count($idToSpan): ' . count($idToSpan));
-                self::assertTimedEventIsNested($span, $idToSpan[$span->parentId]);
-            }
-        }
-
-        FlakyAssertions::run(
-            function () use ($transaction, $idToSpan): void {
-                self::assertValidTransactionAndItsSpansFlakyPart($transaction, $idToSpan);
-            },
-            $forceEnableFlakyAssertions
-        );
-    }
-
-    /**
-     * @param TransactionData         $transaction
-     * @param array<string, SpanData> $idToSpan
-     */
-    private static function assertValidTransactionAndItsSpansFlakyPart(
-        TransactionData $transaction,
-        array $idToSpan
-    ): void {
-        self::assertCount($transaction->startedSpansCount, $idToSpan);
-
-        $spanIdToParentId = [];
-        foreach ($idToSpan as $id => $span) {
-            $spanIdToParentId[$id] = $span->parentId;
-        }
-        self::assertGraphIsTree($transaction->id, $spanIdToParentId);
-    }
-
-    /**
-     * @param string                $rootId
-     * @param array<string, string> $idToParentId
-     */
-    private static function assertGraphIsTree(string $rootId, array $idToParentId): void
-    {
-        /** @var Set<string> */
-        $idsReachableFromRoot = new Set();
-
-        /** @var Queue<string> */
-        $reachableToProcess = new Queue([$rootId]);
-
-        while (!$reachableToProcess->isEmpty()) {
-            $currentParentId = $reachableToProcess->pop();
-            foreach ($idToParentId as $id => $parentId) {
-                if ($currentParentId === $parentId) {
-                    self::assertTrue(!$idsReachableFromRoot->contains($id));
-                    $idsReachableFromRoot->add($id);
-                    $reachableToProcess->push($id);
-                }
-            }
-        }
-
-        self::assertCount($idsReachableFromRoot->count(), $idToParentId);
-    }
-
-    /**
-     * @param array<string, SpanData> $idToSpan
-     *
-     * @return array<string, array<string, SpanData>>
-     */
-    public static function groupSpansByTransactionId(array $idToSpan): array
-    {
-        /** @var array<string, array<string, SpanData>> */
-        $transactionIdToSpans = [];
-
-        /** @var SpanData $span */
-        foreach ($idToSpan as $spanId => $span) {
-            if (!array_key_exists($span->transactionId, $transactionIdToSpans)) {
-                $transactionIdToSpans[$span->transactionId] = [];
-            }
-            $transactionIdToSpans[$span->transactionId][$spanId] = $span;
-        }
-
-        return $transactionIdToSpans;
-    }
-
-    /**
-     * @param array<string, TransactionData> $idToTransaction
-     *
-     * @return TransactionData
-     */
-    public static function findRootTransaction(array $idToTransaction): TransactionData
-    {
-        /** @var TransactionData|null */
-        $rootTransaction = null;
-        foreach ($idToTransaction as $transaction) {
-            if (is_null($transaction->parentId)) {
-                self::assertNull($rootTransaction, 'Found more than one root transaction');
-                $rootTransaction = $transaction;
-            }
-        }
-        self::assertNotNull(
-            $rootTransaction,
-            'Root transaction not found. ' . LoggableToString::convert(['idToTransaction' => $idToTransaction])
-        );
-        return $rootTransaction;
-    }
-
-    /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
-     */
-    private static function assertTransactionsGraphIsTree(array $idToTransaction, array $idToSpan): void
-    {
-        $rootTransaction = self::findRootTransaction($idToTransaction);
-        /** @var array<string, string> */
-        $transactionIdToParentId = [];
-        foreach ($idToTransaction as $transactionId => $transaction) {
-            if (is_null($transaction->parentId)) {
-                continue;
-            }
-            $parentSpan = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $idToSpan, null);
-            if (is_null($parentSpan)) {
-                self::assertArrayHasKey($transaction->parentId, $idToTransaction);
-                $transactionIdToParentId[$transactionId] = $transaction->parentId;
-            } else {
-                $transactionIdToParentId[$transactionId] = $parentSpan->transactionId;
-            }
-        }
-        self::assertNotNull($rootTransaction);
-        self::assertGraphIsTree($rootTransaction->id, $transactionIdToParentId);
-    }
-
-    /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
-     * @param bool                           $forceEnableFlakyAssertions
-     */
-    public static function assertValidTransactionsAndSpans(
-        array $idToTransaction,
-        array $idToSpan,
-        bool $forceEnableFlakyAssertions = false
-    ): void {
-        self::assertTransactionsGraphIsTree($idToTransaction, $idToSpan);
-
-        $rootTransaction = self::findRootTransaction($idToTransaction);
-
-        // Assert that all transactions have the same traceId
-        foreach ($idToTransaction as $transaction) {
-            self::assertSame($rootTransaction->traceId, $transaction->traceId);
-        }
-
-        // Assert that each transaction did not start before its parent
-        foreach ($idToTransaction as $transaction) {
-            if (is_null($transaction->parentId)) {
-                continue;
-            }
-            /** @var ExecutionSegmentData|null $parentExecSegment */
-            $parentExecSegment = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $idToSpan, null);
-            if (is_null($parentExecSegment)) {
-                self::assertTrue(
-                    ArrayUtil::getValueIfKeyExists(
-                        $transaction->parentId,
-                        $idToTransaction,
-                        /* ref */ $parentExecSegment
-                    )
-                );
-            }
-            self::assertNotNull($parentExecSegment);
-            self::assertLessThanOrEqualTimestamp($parentExecSegment->timestamp, $transaction->timestamp);
-        }
-
-        // Assert that all spans have the same traceId
-        foreach ($idToSpan as $span) {
-            self::assertSame($rootTransaction->traceId, $span->traceId);
-        }
-
-        // Assert that every span's transactionId is present
-        /** @var SpanData $span */
-        foreach ($idToSpan as $span) {
-            self::assertArrayHasKey($span->transactionId, $idToTransaction);
-        }
-
-        // Group spans by transaction and verify every group
-        foreach ($idToTransaction as $transactionId => $transaction) {
-            $idToSpanOnlyCurrentTransaction = [];
-            foreach ($idToSpan as $spanId => $span) {
-                if ($span->transactionId === $transactionId) {
-                    $idToSpanOnlyCurrentTransaction[$spanId] = $span;
-                }
-            }
-            self::assertValidTransactionAndItsSpans(
-                $transaction,
-                $idToSpanOnlyCurrentTransaction,
-                $forceEnableFlakyAssertions
-            );
-        }
-    }
+    /** @var ?LoggerFactory */
+    private static $noopLoggerFactory = null;
 
     public static function assertTransactionEquals(TransactionData $expected, TransactionData $actual): void
     {
@@ -642,8 +365,42 @@ class TestCaseBase extends TestCase
         }
     }
 
-    protected static function dummyAssert(): void
+    public static function dummyAssert(): void
     {
         self::assertTrue(true);
+    }
+
+    /**
+     * @param array<string, TransactionData> $idToTransaction
+     * @param array<string, SpanData>        $idToSpan
+     * @param bool                           $forceEnableFlakyAssertions
+     */
+    public static function assertValidOneTraceTransactionsAndSpans(
+        array $idToTransaction,
+        array $idToSpan,
+        bool $forceEnableFlakyAssertions = false
+    ): void {
+        TraceDataValidator::validate(
+            new TraceDataActual($idToTransaction, $idToSpan),
+            null /* <- expected */,
+            $forceEnableFlakyAssertions
+        );
+    }
+
+    /**
+     * @param TransactionData         $transaction
+     * @param array<string, SpanData> $idToSpan
+     * @param bool                    $forceEnableFlakyAssertions
+     */
+    protected static function assertValidTransactionAndSpans(
+        TransactionData $transaction,
+        array $idToSpan,
+        bool $forceEnableFlakyAssertions = false
+    ): void {
+        TraceDataValidator::validate(
+            new TraceDataActual([$transaction->id => $transaction], $idToSpan),
+            null /* <- expected */,
+            $forceEnableFlakyAssertions
+        );
     }
 }

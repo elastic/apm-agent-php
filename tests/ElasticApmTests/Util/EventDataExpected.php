@@ -21,7 +21,24 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
-/** @var string|null */
-$globalTopLevelCodeId = null;
+use Elastic\Apm\Impl\Clock;
+
+class EventDataExpected
+{
+    // TODO: Sergey Kleyman: Set PAST_TIMESTAMP before each test case run
+    // Timestamp for February 20, 2020 18:04:47.987
+    private const PAST_TIMESTAMP = 1582221887987;
+
+    /** @var float */
+    public $timeBefore = self::PAST_TIMESTAMP;
+
+    /** @var float */
+    public $timeAfter;
+
+    public function __construct()
+    {
+        $this->timeAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
+    }
+}

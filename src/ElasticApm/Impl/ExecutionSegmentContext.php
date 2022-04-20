@@ -84,12 +84,4 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
     {
         return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
     }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return array_merge(parent::propertiesExcludedFromLog(), ['logger']);
-    }
 }

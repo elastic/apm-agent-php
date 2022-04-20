@@ -71,7 +71,7 @@ final class SamplingTestSharedCode
 
     public static function assertResultsForTwoNestedSpansTest(
         ?float $inputTransactionSampleRate,
-        EventsFromAgent $eventsFromAgent
+        ParsedDataFromAgent $eventsFromAgent
     ): void {
         $tx = $eventsFromAgent->singleTransaction();
         $effectiveTransactionSampleRate = $inputTransactionSampleRate ?? 1.0;

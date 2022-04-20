@@ -87,7 +87,7 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
         $this->assertSame($expectedTxType, $tx->type);
         $this->assertSame(floatval($expectedTxDuration), TimeUtil::millisecondsToMicroseconds($tx->duration));
 
-        $metricSets = $this->mockEventSink->eventsFromAgent->metricSetDatas;
+        $metricSets = $this->mockEventSink->dataFromAgent->metricSetDatas;
         // +1 is for the metric-set with "transaction.breakdown.count"
         $this->assertCount($breakdownMetricsConfig ? count($expectedSelfTimes) + 1 : 0, $metricSets);
 

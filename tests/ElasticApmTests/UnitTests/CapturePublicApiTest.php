@@ -256,16 +256,16 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
         // Assert
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToTransaction);
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToSpan);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToTransaction);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToSpan);
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToError);
-        foreach ($this->mockEventSink->eventsFromAgent->idToError as $error) {
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToError);
+        foreach ($this->mockEventSink->dataFromAgent->idToError as $error) {
             self::assertSame($throwingRunData['traceId'], $error->traceId);
             self::assertSame($throwingRunData['transactionId'], $error->transactionId);
-            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->eventsFromAgent->idToTransaction);
-            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->eventsFromAgent->idToSpan);
-            self::assertArrayHasKey($error->id, $this->mockEventSink->eventsFromAgent->idToError);
+            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->dataFromAgent->idToTransaction);
+            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->dataFromAgent->idToSpan);
+            self::assertArrayHasKey($error->id, $this->mockEventSink->dataFromAgent->idToError);
             self::assertTrue(
                 $error->parentId === $throwingRunData['spanId']
                 || $error->parentId === $throwingRunData['transactionId']

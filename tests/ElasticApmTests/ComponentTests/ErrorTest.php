@@ -295,7 +295,7 @@ final class ErrorTest extends ComponentTestCaseBase
                 ->withExpectedStatusCode(HttpConsts::STATUS_INTERNAL_SERVER_ERROR),
             function (DataFromAgent $dataFromAgent): void {
                 if (!$this->testEnv->isHttp()) {
-                    self::assertEmpty($dataFromAgent->idToError());
+                    self::assertEmpty($dataFromAgent->parsed()->idToError);
                     return;
                 }
 

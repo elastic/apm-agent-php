@@ -21,7 +21,7 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TimeUtil;
@@ -31,11 +31,11 @@ use Elastic\Apm\Impl\Util\TimeUtil;
  *
  * @internal
  */
-final class TimeFormatUtil
+final class TimeFormatUtilForTests
 {
     use StaticClassTrait;
 
-    public static function calcWholeTimesAndRemainderForFloat(
+    private static function calcWholeTimesAndRemainderForFloat(
         float $largeVal,
         int $smallVal,
         float &$wholeTimes,

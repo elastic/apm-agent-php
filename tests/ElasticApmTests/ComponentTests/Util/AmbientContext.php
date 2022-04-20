@@ -57,15 +57,6 @@ final class AmbientContext
             self::$singletonInstance = new AmbientContext($dbgProcessName);
         }
 
-        if (self::testConfig()->appCodeHostKind === AppCodeHostKind::NOT_SET) {
-            $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
-            $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
-            throw new RuntimeException(
-                'Required configuration option ' . $optionName
-                . " (environment variable $envVarName)" . ' is not set'
-            );
-        }
-
         if (!is_null(self::testConfig()->appCodePhpIni) && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
             $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);

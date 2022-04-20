@@ -102,10 +102,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         } else {
             $isSampled = $distributedTracingData->isSampled;
             // TODO: Sergey Kleyman: Implement: Transaction::
-            // $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate;
-            $sampleRateToMarkTransaction = 1.0;
+            $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate ?? 1.0;
         }
-        /** @var float $sampleRateToMarkTransaction */
 
         parent::__construct(
             $this->data,
@@ -555,14 +553,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
-    /**
-     * @return string[]
-     */
+    /** @inheritDoc */
     protected static function propertiesExcludedFromLog(): array
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['config', 'logger', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
+            ['config', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
         );
     }
 

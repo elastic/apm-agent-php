@@ -35,13 +35,13 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Factory;
 use React\EventLoop\LoopInterface;
-use React\Http\Server as HttpServer;
+use React\Http\HttpServer;
 use React\Promise\Promise;
 use React\Socket\Server as ServerSocket;
 use RuntimeException;
 use Throwable;
 
-abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
+abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
@@ -65,16 +65,16 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
         parent::processConfig();
 
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
+            !is_null(AmbientContext::testConfig()->dataPerProcess->thisServerId),
             LoggableToString::convert(AmbientContext::testConfig())
         );
         TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
+            !is_null(AmbientContext::testConfig()->dataPerProcess->thisServerPort),
             LoggableToString::convert(AmbientContext::testConfig())
         );
 
         TestAssertUtil::assertThat(
-            !isset(AmbientContext::testConfig()->sharedDataPerRequest->serverId), // @phpstan-ignore-line
+            !isset(AmbientContext::testConfig()->dataPerRequest->serverId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContext::testConfig())
         );
     }
@@ -111,8 +111,8 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
     {
         $loop = Factory::create();
 
-        assert(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort !== null);
-        $serverSocket = new ServerSocket(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort, $loop);
+        assert(AmbientContext::testConfig()->dataPerProcess->thisServerPort !== null);
+        $serverSocket = new ServerSocket(AmbientContext::testConfig()->dataPerProcess->thisServerPort, $loop);
 
         $httpServer = new HttpServer(
         /**
@@ -203,7 +203,7 @@ abstract class StatefulHttpServerProcessBase extends SpawnedProcessBase
                     }
                 )
             );
-            $verifyServerIdResponse = self::verifyServerId($testConfigForRequest->sharedDataPerRequest->serverId);
+            $verifyServerIdResponse = self::verifyServerId($testConfigForRequest->dataPerRequest->serverId);
             if (
                 $verifyServerIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
                 || $request->getUri()->getPath() === TestEnvBase::STATUS_CHECK_URI

@@ -68,14 +68,14 @@ final class CliScriptTestEnv extends TestEnvBase
         TestProcessUtil::startProcessAndWaitUntilExit(
             $this->testProperties->agentConfigSetter->appCodePhpCmd()
             . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"',
-            $this->inheritedEnvVars(/* keepElasticApmEnvVars */ false)
+            $this->inheritedEnvVars(/* keepAllEnvVars */ false)
             + [
                 TestConfigUtil::envVarNameForTestOption(
-                    AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME
-                ) => SerializationUtil::serializeAsJson($this->buildSharedDataPerProcess()),
+                    AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME
+                ) => $this->buildTestInfraDataPerProcess()->serializeToString(),
                 TestConfigUtil::envVarNameForTestOption(
-                    AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                ) => SerializationUtil::serializeAsJson($this->testProperties->sharedDataPerRequest),
+                    AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME
+                ) => $this->testProperties->dataPerRequest->serializeToString(),
             ]
             + $this->testProperties->agentConfigSetter->additionalEnvVars()
         );

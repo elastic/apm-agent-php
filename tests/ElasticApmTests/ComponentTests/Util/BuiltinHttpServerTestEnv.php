@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 
+// TODO: Sergey Kleyman: REMOVE: class TestEnvBase
 final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
 {
     private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToCliBuiltinHttpServerAppCodeHost.php';
@@ -46,7 +47,7 @@ final class BuiltinHttpServerTestEnv extends HttpServerTestEnvBase
                        . " -S localhost:$port"
                        . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"';
             },
-            false /* <- $keepElasticApmEnvVars */,
+            false /* <- $keepAllEnvVars */,
             $this->testProperties->agentConfigSetter->additionalEnvVars()
         );
     }
