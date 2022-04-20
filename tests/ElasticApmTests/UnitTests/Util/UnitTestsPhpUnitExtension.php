@@ -23,7 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
+use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
+use RuntimeException;
 
 /**
  * @noinspection PhpUnused
@@ -32,4 +34,15 @@ use ElasticApmTests\Util\PhpUnitExtensionBase;
  */
 final class UnitTestsPhpUnitExtension extends PhpUnitExtensionBase
 {
+    public function executeBeforeTest(string $test): void
+    {
+        parent::executeBeforeTest($test);
+
+        if (ElasticApmExtensionUtil::isLoaded()) {
+            throw new RuntimeException(
+                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
+                . ' because it will cause a clash.'
+            );
+        }
+    }
 }

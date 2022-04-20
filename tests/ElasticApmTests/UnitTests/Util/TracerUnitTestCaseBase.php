@@ -39,23 +39,6 @@ class TracerUnitTestCaseBase extends TestCaseBase
     /** @var TracerInterface */
     protected $tracer;
 
-    /**
-     * @param ?string      $name
-     * @param array<mixed> $data
-     * @param int|string   $dataName
-     */
-    public function __construct(?string $name = null, array $data = [], $dataName = '')
-    {
-        if (ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
-                . ' because it will cause a clash.'
-            );
-        }
-
-        parent::__construct($name, $data, $dataName);
-    }
-
     public function setUp(): void
     {
         $this->setUpTestEnv();
