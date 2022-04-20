@@ -29,11 +29,15 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\PhpUnitExtensionBase;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TimeFormatUtilForTests;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -43,7 +47,10 @@ use PHPUnit\Runner\AfterTestFailureHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
 
-final class PhpUnitExtension implements
+/**
+ * Referenced in PHPUnit's configuration file - phpunit_component_tests.xml
+ */
+final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implements
     BeforeTestHook,
     AfterSuccessfulTestHook,
     AfterTestFailureHook,
@@ -54,33 +61,38 @@ final class PhpUnitExtension implements
     AfterRiskyTestHook
 {
     /** @var string */
-    public static $testEnvId;
+    public static $currentTestCaseId;
 
     /** @var Logger */
     private $logger;
 
     public function __construct()
     {
-        ComponentTestCaseBase::init();
+        parent::__construct();
+
+        AmbientContext::init(/* dbgProcessName */ 'Component tests');
+        GlobalTracerHolder::set(NoopTracer::singletonInstance());
 
         $this->logger = AmbientContext::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
-        )->addContext('appCodeHostKind', AppCodeHostKind::toString(AmbientContext::testConfig()->appCodeHostKind));
+        )->addContext('appCodeHostKind', AmbientContext::testConfig()->appCodeHostKind());
     }
 
     public function executeBeforeTest(string $test): void
     {
-        self::$testEnvId = IdGenerator::generateId(/* idLengthInBytes */ 16);
+        parent::executeBeforeTest($test);
+
+        self::$currentTestCaseId = IdGenerator::generateId(/* idLengthInBytes */ 16);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Test starting...',
             [
                 'test'                  => $test,
-                'testEnvId'             => self::$testEnvId,
+                'testEnvId'             => self::$currentTestCaseId,
                 'Environment variables' => getenv(),
             ]
         );
@@ -94,7 +106,9 @@ final class PhpUnitExtension implements
     {
         // Round to milliseconds
         $roundedDurationInSeconds = round($durationInSeconds, /* precision */ 3);
-        return TimeFormatUtil::formatDurationInMicroseconds(TimeUtil::secondsToMicroseconds($roundedDurationInSeconds));
+        return TimeFormatUtilForTests::formatDurationInMicroseconds(
+            TimeUtil::secondsToMicroseconds($roundedDurationInSeconds)
+        );
     }
 
     public function executeAfterSuccessfulTest(string $test, float $time): void
@@ -102,7 +116,7 @@ final class PhpUnitExtension implements
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Test finished successfully',
-            ['test' => $test, 'time' => $time, 'testEnvId' => self::$testEnvId]
+            ['test' => $test, 'time' => $time, 'testEnvId' => self::$currentTestCaseId]
         );
 
         TestCaseBase::printMessage(
@@ -116,7 +130,7 @@ final class PhpUnitExtension implements
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             "Test finished $issue",
-            ['test' => $test, 'message' => $message, 'time' => $time, 'testEnvId' => self::$testEnvId]
+            ['test' => $test, 'message' => $message, 'time' => $time, 'testEnvId' => self::$currentTestCaseId]
         );
 
         TestCaseBase::printMessage(

@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
+use Elastic\Apm\Impl\Config\NullableOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 
 /**
@@ -31,9 +32,9 @@ use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
  *
  * @internal
  *
- * @extends OptionWithDefaultValueMetadata<int>
+ * @extends NullableOptionMetadata<AppCodeHostKind>
  */
-final class AppCodeHostKindOptionMetadata extends OptionWithDefaultValueMetadata
+final class NullableAppCodeHostKindOptionMetadata extends NullableOptionMetadata
 {
     public function __construct()
     {
@@ -41,14 +42,12 @@ final class AppCodeHostKindOptionMetadata extends OptionWithDefaultValueMetadata
             new EnumOptionParser(
                 'application code host kind' /* <- dbgEnumDesc */,
                 [
-                    ['CLI_script', AppCodeHostKind::CLI_SCRIPT],
-                    ['CLI_builtin_HTTP_server', AppCodeHostKind::CLI_BUILTIN_HTTP_SERVER],
-                    ['external_HTTP_server', AppCodeHostKind::EXTERNAL_HTTP_SERVER],
+                    ['CLI_script', AppCodeHostKind::cliScript()],
+                    ['Builtin_HTTP_server', AppCodeHostKind::builtinHttpServer()],
                 ],
                 false /* <- isCaseSensitive */,
                 false /* <- isUnambiguousPrefixAllowed */
-            ),
-            AppCodeHostKind::NOT_SET /* defaultValue */
+            )
         );
     }
 }

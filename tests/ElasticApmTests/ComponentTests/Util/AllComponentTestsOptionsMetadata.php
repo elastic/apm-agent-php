@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableWildcardListOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionMetadata;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
@@ -43,8 +42,9 @@ final class AllComponentTestsOptionsMetadata
 
     public const APP_CODE_HOST_KIND_OPTION_NAME = 'app_code_host_kind';
     public const APP_CODE_PHP_INI_OPTION_NAME = 'app_code_php_ini';
-    public const SHARED_DATA_PER_PROCESS_OPTION_NAME = 'shared_data_per_process';
-    public const SHARED_DATA_PER_REQUEST_OPTION_NAME = 'shared_data_per_request';
+    public const DATA_PER_PROCESS_OPTION_NAME = 'data_per_process';
+    public const DATA_PER_REQUEST_OPTION_NAME = 'data_per_request';
+    public const SERVER_ID_IN_REQUEST_OPTION_NAME = 'server_id_in_request';
 
     /** @var ?array<string, OptionMetadata<mixed>> */
     private static $vaLue = null;
@@ -60,29 +60,28 @@ final class AllComponentTestsOptionsMetadata
             return self::$vaLue;
         }
 
-        /** @phpstan-ignore-next-line */
-        self::$vaLue = [
-            self::APP_CODE_HOST_KIND_OPTION_NAME      => new AppCodeHostKindOptionMetadata(),
-            'app_code_php_exe'                        => new NullableStringOptionMetadata(),
-            self::APP_CODE_PHP_INI_OPTION_NAME        => new NullableStringOptionMetadata(),
-            'delete_temp_php_ini'                     => new BoolOptionMetadata(true),
-            'env_vars_to_pass_through'                => new NullableWildcardListOptionMetadata(),
-            'log_level'                               => new LogLevelOptionMetadata(LogLevel::DEBUG),
-            self::SHARED_DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
-                function (string $rawValue): SharedDataPerProcess {
-                    $decodedData = JsonUtil::decode($rawValue, /* asAssocArray */ true);
-                    /** @var array<string, mixed> $decodedData */
-                    return SharedDataPerProcess::deserializeFromJson($decodedData);
+        /** @var array<string, OptionMetadata<mixed>> */
+        $optNameToMeta = [
+            self::APP_CODE_HOST_KIND_OPTION_NAME => new NullableAppCodeHostKindOptionMetadata(),
+            'app_code_php_exe' => new NullableStringOptionMetadata(),
+            self::APP_CODE_PHP_INI_OPTION_NAME => new NullableStringOptionMetadata(),
+            'delete_temp_php_ini' => new BoolOptionMetadata(true),
+            'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
+            'log_level' => new LogLevelOptionMetadata(LogLevel::DEBUG),
+            self::DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
+                function (string $rawValue): TestInfraDataPerProcess {
+                    return TestInfraDataPerProcess::deserializeFromString($rawValue);
                 }
             ),
-            self::SHARED_DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
-                function (string $rawValue): SharedDataPerRequest {
-                    $decodedData = JsonUtil::decode($rawValue, /* asAssocArray */ true);
-                    /** @var array<string, mixed> $decodedData */
-                    return SharedDataPerRequest::deserializeFromJson($decodedData);
+            self::DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
+                function (string $rawValue): TestInfraDataPerRequest {
+                    return TestInfraDataPerRequest::deserializeFromString($rawValue);
                 }
             ),
+            self::SERVER_ID_IN_REQUEST_OPTION_NAME => new NullableStringOptionMetadata(),
         ];
+
+        self::$vaLue = $optNameToMeta;
 
         return self::$vaLue; // @phpstan-ignore-line
     }

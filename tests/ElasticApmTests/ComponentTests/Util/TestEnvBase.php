@@ -32,7 +32,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\EventSender;
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
@@ -51,6 +50,7 @@ use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TraceDataValidator;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
@@ -59,6 +59,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
 
+// TODO: Sergey Kleyman: REMOVE: class TestEnvBase
 abstract class TestEnvBase implements LoggableInterface
 {
     use LoggableTrait;
@@ -75,6 +76,9 @@ abstract class TestEnvBase implements LoggableInterface
 
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
     private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
+
+    /** @var string */
+    public $agentEphemeralId;
 
     /** @var int|null */
     protected $resourcesCleanerPort = null;
@@ -106,12 +110,14 @@ abstract class TestEnvBase implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
+        $this->agentEphemeralId = $this->generateSecondaryIdFromTestEnvId();
         $this->dataFromAgent = new DataFromAgent();
     }
 
     public function generateSecondaryIdFromTestEnvId(): string
     {
-        return PhpUnitExtension::$testEnvId . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
+        return ComponentTestsPhpUnitExtension::$currentTestCaseId
+               . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
     }
 
     protected function findFreePortToListen(): int
@@ -140,7 +146,7 @@ abstract class TestEnvBase implements LoggableInterface
                     $response = TestHttpClientUtil::sendRequest(
                         HttpConsts::METHOD_GET,
                         (new UrlParts())->path(TestEnvBase::STATUS_CHECK_URI)->port($port),
-                        SharedDataPerRequest::fromServerId($serverId)
+                        TestInfraDataPerRequest::dupWithServerId($serverId)
                     );
                 } catch (Throwable $throwable) {
                     $lastException = $throwable;
@@ -176,15 +182,15 @@ abstract class TestEnvBase implements LoggableInterface
     }
 
     /**
-     * @param bool $keepElasticApmEnvVars
+     * @param bool $keepAll
      *
      * @return array<string, string>
      */
-    protected function inheritedEnvVars(bool $keepElasticApmEnvVars): array
+    protected function inheritedEnvVars(bool $keepAll): array
     {
         $envVars = getenv();
 
-        if ($keepElasticApmEnvVars) {
+        if ($keepAll) {
             return $envVars;
         }
 
@@ -229,7 +235,7 @@ abstract class TestEnvBase implements LoggableInterface
      * @param string|null           $serverId
      * @param string                $dbgServerDesc
      * @param Closure               $cmdLineGenFunc
-     * @param bool                  $keepElasticApmEnvVars
+     * @param bool                  $keepAllEnvVars
      * @param array<string, string> $additionalEnvVars
      *
      */
@@ -238,7 +244,7 @@ abstract class TestEnvBase implements LoggableInterface
         ?string &$serverId,
         string $dbgServerDesc,
         Closure $cmdLineGenFunc,
-        bool $keepElasticApmEnvVars,
+        bool $keepAllEnvVars,
         array $additionalEnvVars = []
     ): void {
         if (!is_null($port)) {
@@ -274,15 +280,14 @@ abstract class TestEnvBase implements LoggableInterface
                 "Starting HTTP server. cmdLine: `$cmdLine', currentTryPort: $currentTryPort ..."
             );
 
-            $sharedDataPerProcessOptName = AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME;
-            $sharedDataPerProcess = $this->buildSharedDataPerProcess($currentTryServerId, $currentTryPort);
+            $dataPerProcessEnvVarName = TestConfigUtil::envVarNameForTestOption(
+                AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME
+            );
+            $dataPerProcess = $this->buildTestInfraDataPerProcess($currentTryServerId, $currentTryPort);
             TestProcessUtil::startBackgroundProcess(
                 $cmdLine,
-                $this->inheritedEnvVars($keepElasticApmEnvVars)
-                + [
-                    TestConfigUtil::envVarNameForTestOption($sharedDataPerProcessOptName) =>
-                        SerializationUtil::serializeAsJson($sharedDataPerProcess),
-                ]
+                $this->inheritedEnvVars($keepAllEnvVars)
+                + [$dataPerProcessEnvVarName => $dataPerProcess->serializeToString()]
                 + $additionalEnvVars
             );
 
@@ -320,7 +325,7 @@ abstract class TestEnvBase implements LoggableInterface
             function (/** @noinspection PhpUnusedParameterInspection */ int $port) use ($runScriptName) {
                 return self::runScriptNameToCmdLine($runScriptName);
             },
-            true /* <- keepElasticApmEnvVars */
+            true /* <- keepAllEnvVars */
         );
     }
 
@@ -346,11 +351,11 @@ abstract class TestEnvBase implements LoggableInterface
         );
     }
 
-    protected function buildSharedDataPerProcess(
+    protected function buildTestInfraDataPerProcess(
         ?string $targetProcessServerId = null,
         ?int $targetProcessPort = null
-    ): SharedDataPerProcess {
-        $result = new SharedDataPerProcess();
+    ): TestInfraDataPerProcess {
+        $result = new TestInfraDataPerProcess();
 
         $currentProcessId = getmypid();
         if ($currentProcessId === false) {
@@ -363,6 +368,8 @@ abstract class TestEnvBase implements LoggableInterface
 
         $result->thisServerId = $targetProcessServerId;
         $result->thisServerPort = $targetProcessPort;
+
+        $result->agentEphemeralId = $this->agentEphemeralId;
 
         return $result;
     }
@@ -382,7 +389,6 @@ abstract class TestEnvBase implements LoggableInterface
         $this->testProperties = $testProperties;
 
         try {
-            $this->dataFromAgent->clearAdded();
             $timeBeforeRequestToApp = Clock::singletonInstance()->getSystemClockCurrentTime();
 
             $this->ensureMockApmServerRunning();
@@ -392,9 +398,6 @@ abstract class TestEnvBase implements LoggableInterface
                 'http://localhost:' . $this->mockApmServerPort
             );
 
-            /** @phpstan-ignore-next-line */
-            TestCase::assertTrue(!isset($testProperties->sharedDataPerRequest->agentEphemeralId));
-            $testProperties->sharedDataPerRequest->agentEphemeralId = $this->generateSecondaryIdFromTestEnvId();
             $this->sendRequestToInstrumentedApp();
             $this->pollDataFromAgentAndVerify($timeBeforeRequestToApp, $testProperties, $verifyFunc);
         } finally {
@@ -404,7 +407,7 @@ abstract class TestEnvBase implements LoggableInterface
 
     abstract protected function sendRequestToInstrumentedApp(): void;
 
-    public function shutdown(): void
+    public function tearDown(): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Shutting down...');
@@ -428,7 +431,7 @@ abstract class TestEnvBase implements LoggableInterface
             TestHttpClientUtil::sendRequest(
                 HttpConsts::METHOD_POST,
                 (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->resourcesCleanerPort),
-                SharedDataPerRequest::fromServerId($this->resourcesCleanerServerId)
+                TestInfraDataPerRequest::dupWithServerId($this->resourcesCleanerServerId)
             );
         } catch (GuzzleException $ex) {
             // clean-and-exit request is expected to throw
@@ -450,7 +453,7 @@ abstract class TestEnvBase implements LoggableInterface
      *
      * @phpstan-param Closure(DataFromAgent): void $verifyFunc
      */
-    public function pollDataFromAgentAndVerify(
+    private function pollDataFromAgentAndVerify(
         float $timeBeforeRequestToApp,
         TestProperties $testProperties,
         Closure $verifyFunc
@@ -488,7 +491,7 @@ abstract class TestEnvBase implements LoggableInterface
                             'No new data since the last check - there is no point in invoking $verifyFunc() again'
                             . '; ' . LoggableToString::convert(
                                 [
-                                    'lastCheckedIndexBeforeUpdate' => $lastCheckedIndexBeforeUpdate,
+                                    'lastCheckedIndexBeforeUpdate'         => $lastCheckedIndexBeforeUpdate,
                                     'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
                                 ]
                             )
@@ -500,7 +503,7 @@ abstract class TestEnvBase implements LoggableInterface
                     $this->verifyDataAgainstRequest($testProperties);
 
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log('Calling $verifyFunc supplied by the text case...');
+                    && $loggerProxy->log('Calling $verifyFunc supplied by the test case...');
 
                     $verifyFunc($this->dataFromAgent);
                 } catch (Exception $ex) {
@@ -574,18 +577,18 @@ abstract class TestEnvBase implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Verifying data received from the agent...');
 
-        self::verifyAgentEphemeralId($testProperties, $this->dataFromAgent);
+        $this->verifyAgentEphemeralId($this->dataFromAgent);
 
         $this->verifyHttpRequestHeaders($testProperties);
 
         $this->verifyMetadata($testProperties);
 
-        $rootTransaction = TestCaseBase::findRootTransaction($this->dataFromAgent->idToTransaction());
+        $rootTransaction = TraceDataValidator::findRootTransaction($this->dataFromAgent->parsed()->idToTransaction);
         $this->verifyRootTransaction($rootTransaction);
 
-        TestCaseBase::assertValidTransactionsAndSpans(
-            $this->dataFromAgent->idToTransaction(),
-            $this->dataFromAgent->idToSpan()
+        TestCaseBase::assertValidOneTraceTransactionsAndSpans(
+            $this->dataFromAgent->parsed()->idToTransaction,
+            $this->dataFromAgent->parsed()->idToSpan
         );
     }
 
@@ -679,12 +682,12 @@ abstract class TestEnvBase implements LoggableInterface
         self::verifyHostname(Tracer::limitNullableKeywordString($configuredHostname), $this->dataFromAgent);
     }
 
-    public static function verifyAgentEphemeralId(TestProperties $testProperties, DataFromAgent $dataFromAgent): void
+    public function verifyAgentEphemeralId(DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             TestCase::assertTrue(isset($metadata->service->agent));
             TestCase::assertSame(
-                $testProperties->sharedDataPerRequest->agentEphemeralId,
+                $this->agentEphemeralId,
                 $metadata->service->agent->ephemeralId
             );
         }
@@ -692,7 +695,7 @@ abstract class TestEnvBase implements LoggableInterface
 
     public static function verifyEnvironment(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             TestCase::assertSame($expected, $metadata->service->environment);
         }
     }
@@ -706,7 +709,7 @@ abstract class TestEnvBase implements LoggableInterface
             $detected = Tracer::limitNullableKeywordString($detected);
         }
 
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             if ($configured === null) {
                 TestCase::assertSame($detected, $metadata->system->detectedHostname);
                 TestCase::assertSame($detected, $metadata->system->hostname);
@@ -720,21 +723,21 @@ abstract class TestEnvBase implements LoggableInterface
 
     public static function verifyServiceName(string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             TestCase::assertSame($expected, $metadata->service->name);
         }
     }
 
     public static function verifyServiceNodeName(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
         }
     }
 
     public static function verifyServiceVersion(?string $expected, DataFromAgent $dataFromAgent): void
     {
-        foreach ($dataFromAgent->metadata() as $metadata) {
+        foreach ($dataFromAgent->parsed()->metadatas as $metadata) {
             TestCase::assertSame($expected, $metadata->service->version);
         }
     }
@@ -792,7 +795,7 @@ abstract class TestEnvBase implements LoggableInterface
             (new UrlParts())
                 ->path(MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS)
                 ->port($this->mockApmServerPort),
-            SharedDataPerRequest::fromServerId($this->mockApmServerId),
+            TestInfraDataPerRequest::dupWithServerId($this->mockApmServerId),
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->dataFromAgent->nextIntakeApiRequestIndexToFetch())]
         );
 

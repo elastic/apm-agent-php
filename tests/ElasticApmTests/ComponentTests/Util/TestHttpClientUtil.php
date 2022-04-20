@@ -25,7 +25,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\AutoInstrument\CurlHandleWrapped;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\UrlParts;
@@ -36,6 +36,7 @@ use ElasticApmTests\Util\TestCaseBase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 final class TestHttpClientUtil
@@ -60,10 +61,10 @@ final class TestHttpClientUtil
     }
 
     /**
-     * @param string                $httpMethod
-     * @param UrlParts              $urlParts
-     * @param SharedDataPerRequest  $sharedDataPerRequest
-     * @param array<string, string> $headers
+     * @param string                  $httpMethod
+     * @param UrlParts                $urlParts
+     * @param TestInfraDataPerRequest $dataPerRequest
+     * @param array<string, string>   $headers
      *
      * @return ResponseInterface
      *
@@ -72,7 +73,7 @@ final class TestHttpClientUtil
     public static function sendRequest(
         string $httpMethod,
         UrlParts $urlParts,
-        SharedDataPerRequest $sharedDataPerRequest,
+        TestInfraDataPerRequest $dataPerRequest,
         array $headers = []
     ): ResponseInterface {
         $baseUrl = UrlUtil::buildRequestBaseUrl($urlParts);
@@ -80,7 +81,7 @@ final class TestHttpClientUtil
 
         TestCaseBase::logAndPrintMessage(
             self::getLogger()->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
-            "Sending HTTP request to `${baseUrl}${urlRelPart}'..."
+            "Sending HTTP request to `$baseUrl$urlRelPart'..."
         );
 
         $client = new Client(['base_uri' => $baseUrl]);
@@ -93,8 +94,8 @@ final class TestHttpClientUtil
                     $headers
                     + [
                         RequestHeadersRawSnapshotSource::optionNameToHeaderName(
-                            AllComponentTestsOptionsMetadata::SHARED_DATA_PER_REQUEST_OPTION_NAME
-                        ) => SerializationUtil::serializeAsJson($sharedDataPerRequest),
+                            AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME
+                        ) => $dataPerRequest->serializeToString(),
                     ],
                 /*
                  * http://docs.guzzlephp.org/en/stable/request-options.html#http-errors
@@ -110,9 +111,24 @@ final class TestHttpClientUtil
 
         TestCaseBase::logAndPrintMessage(
             self::getLogger()->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
-            "Sent HTTP request to `${baseUrl}${urlRelPart}' - response status code: " . $response->getStatusCode()
+            "Sent HTTP request to `$baseUrl$urlRelPart' - response status code: " . $response->getStatusCode()
         );
 
         return $response;
+    }
+
+    public static function createCurlHandleToSendRequestToAppCode(
+        UrlParts $urlParts,
+        TestInfraDataPerRequest $dataPerRequest
+    ): CurlHandleWrappedForTests {
+        $curlInitRetVal = curl_init(UrlUtil::buildFullUrl($urlParts));
+        TestCase::assertNotSame(false, $curlInitRetVal);
+        $curlHandle = new CurlHandleWrappedForTests($curlInitRetVal);
+        $dataPerRequestHeaderName = RequestHeadersRawSnapshotSource::optionNameToHeaderName(
+            AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME
+        );
+        $dataPerRequestHeaderVal = $dataPerRequest->serializeToString();
+        $curlHandle->setOpt(CURLOPT_HTTPHEADER, [$dataPerRequestHeaderName . ': ' . $dataPerRequestHeaderVal]);
+        return $curlHandle;
     }
 }

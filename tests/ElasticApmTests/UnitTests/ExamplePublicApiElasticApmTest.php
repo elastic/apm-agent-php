@@ -102,7 +102,7 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
     ): void {
         $this->assertCount(4, $idToSpan);
 
-        $this->assertValidTransactionAndItsSpans($transaction, $idToSpan);
+        $this->assertValidTransactionAndSpans($transaction, $idToSpan);
 
         $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_NAME, $transaction->name);
         $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_TYPE, $transaction->type);

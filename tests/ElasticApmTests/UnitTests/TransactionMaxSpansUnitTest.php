@@ -63,7 +63,7 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         ///////////////////////////////
         // Assert
 
-        SharedCode::assertResults($testArgs, $this->mockEventSink->eventsFromAgent);
+        SharedCode::assertResults($testArgs, $this->mockEventSink->dataFromAgent);
     }
 
     public function testVariousCombinations(): void

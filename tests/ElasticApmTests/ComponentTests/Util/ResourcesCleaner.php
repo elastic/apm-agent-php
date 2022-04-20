@@ -32,7 +32,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
 use React\Http\Message\Response;
 
-final class ResourcesCleaner extends StatefulHttpServerProcessBase
+final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const CLEAN_AND_EXIT_URI_PATH = '/clean_resources_and_exit';
@@ -67,7 +67,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         parent::processConfig();
 
         TestAssertUtil::assertThat(
-            isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId), // @phpstan-ignore-line
+            isset(AmbientContext::testConfig()->dataPerProcess->rootProcessId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContext::testConfig())
         );
     }
@@ -77,7 +77,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
         $loop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
-                $rootProcessId = AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId;
+                $rootProcessId = AmbientContext::testConfig()->dataPerProcess->rootProcessId;
                 if (!TestProcessUtil::doesProcessExist($rootProcessId)) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log('Detected that parent process does not exist');

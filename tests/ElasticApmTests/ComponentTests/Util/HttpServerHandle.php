@@ -23,39 +23,32 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class SharedDataPerRequest extends SharedData
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+
+class HttpServerHandle implements LoggableInterface
 {
-    /** @var array<string, mixed>|null */
-    public $appCodeArguments = null;
+    use LoggableTrait;
 
-    /** @var string|null */
-    public $appCodeClass = null;
-
-    /** @var string|null */
-    public $appCodeMethod = null;
-
-    /** @var string|null */
-    public $appTopLevelCodeId = null;
+    /** @var int */
+    private $port;
 
     /** @var string */
-    public $serverId;
+    private $serverId;
 
-    /** @var string */
-    public $agentEphemeralId;
-
-    public static function fromServerId(string $serverId, ?SharedDataPerRequest $prototype = null): self
+    public function __construct(int $port, string $serverId)
     {
-        $result = new SharedDataPerRequest();
+        $this->port = $port;
+        $this->serverId = $serverId;
+    }
 
-        if (!is_null($prototype)) {
-            // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
-            foreach ($prototype as $propName => $propValue) {
-                $result->$propName = $propValue;
-            }
-        }
+    public function getPort(): int
+    {
+        return $this->port;
+    }
 
-        $result->serverId = $serverId;
-
-        return $result;
+    public function getServerId(): string
+    {
+        return $this->serverId;
     }
 }

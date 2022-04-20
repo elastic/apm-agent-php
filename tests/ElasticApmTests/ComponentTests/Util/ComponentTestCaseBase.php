@@ -36,9 +36,15 @@ use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
+    // TODO: Sergey Kleyman: REMOVE: ComponentTestCaseBase::$testEnv
     /** @var TestEnvBase */
     protected $testEnv;
 
+    // TODO: Sergey Kleyman: Make not-nullable
+    /** @var ?TestCaseHandle */
+    private $testCaseHandle = null;
+
+    // TODO: Sergey Kleyman: REMOVE: ComponentTestCaseBase::$allConfigSetters
     /** @var AgentConfigSetter[] */
     protected $allConfigSetters;
 
@@ -49,33 +55,35 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     public function __construct(?string $name = null, array $data = [], $dataName = '')
     {
-        parent::__construct($name, $data, $dataName);
+        // TODO: Sergey Kleyman: REMOVE: ComponentTestCaseBase::__construct
 
-        self::init();
+        parent::__construct($name, $data, $dataName); // @phpstan-ignore-line
 
         $this->testEnv = $this->selectTestEnv();
 
         $this->allConfigSetters = [new AgentConfigSetterIni(), new AgentConfigSetterEnvVars()];
     }
 
-    public static function init(): void
+    protected function getTestCaseHandle(): TestCaseHandle
     {
-        AmbientContext::init(/* dbgProcessName */ 'Component tests');
-        GlobalTracerHolder::set(NoopTracer::singletonInstance());
+        return $this->testCaseHandle ?? ($this->testCaseHandle = new TestCaseHandle());
     }
 
+    /** @inheritDoc */
     public function tearDown(): void
     {
-        $this->testEnv->shutdown();
+        if ($this->testCaseHandle !== null) {
+            $this->testCaseHandle->tearDown();
+        } else {
+            $this->testEnv->tearDown();
+        }
     }
 
     /**
-     * @param TestProperties                       $testProperties
-     * @param Closure                              $verifyFunc
+     * @param TestProperties               $testProperties
+     * @param Closure(DataFromAgent): void $verifyFunc
      *
      * @return void
-     *
-     * @phpstan-param Closure(DataFromAgent): void $verifyFunc
      */
     protected function sendRequestToInstrumentedAppAndVerifyDataFromAgent(
         TestProperties $testProperties,
@@ -86,15 +94,12 @@ class ComponentTestCaseBase extends TestCaseBase
 
     private function selectTestEnv(): TestEnvBase
     {
-        switch (AmbientContext::testConfig()->appCodeHostKind) {
-            case AppCodeHostKind::CLI_SCRIPT:
+        switch (AmbientContext::testConfig()->appCodeHostKind()) {
+            case AppCodeHostKind::cliScript():
                 return new CliScriptTestEnv();
 
-            case AppCodeHostKind::CLI_BUILTIN_HTTP_SERVER:
+            case AppCodeHostKind::builtinHttpServer():
                 return new BuiltinHttpServerTestEnv();
-
-            case AppCodeHostKind::EXTERNAL_HTTP_SERVER:
-                return new ExternalHttpServerTestEnv();
         }
 
         throw new RuntimeException('This point in the code should not be reached');
@@ -150,17 +155,6 @@ class ComponentTestCaseBase extends TestCaseBase
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent($testProperties, $verifyFunc);
     }
 
-    protected function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionData
-    {
-        $this->assertEmpty($dataFromAgent->idToSpan());
-
-        $tx = $dataFromAgent->singleTransaction();
-        $this->assertSame(0, $tx->startedSpansCount);
-        $this->assertSame(0, $tx->droppedSpansCount);
-        $this->assertNull($tx->parentId);
-        return $tx;
-    }
-
     /**
      * @param array<string, mixed> $appCodeArgs
      * @param string               $appArgNameKey
@@ -208,6 +202,35 @@ class ComponentTestCaseBase extends TestCaseBase
             $expected == $actual,
             $messagePrefix ?? "The actual value is not the same as the expected one",
             array_merge(['expected' => $expected, 'actual' => $actual], $context)
+        );
+    }
+
+    public static function isMainAppCodeHostHttp(): bool
+    {
+        return AmbientContext::testConfig()->appCodeHostKind()->isHttp();
+    }
+
+    protected function verifyTransactionWithoutSpans(DataFromAgent $dataFromAgent): TransactionData
+    {
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame(0, $tx->startedSpansCount);
+        self::assertSame(0, $tx->droppedSpansCount);
+        self::assertNull($tx->parentId);
+        return $tx;
+    }
+
+    protected function verifyDataFromAgentOneTransaction(TestCaseHandle $testCaseHandle, Closure $verifyFunc): void
+    {
+        $testCaseHandle->verifyDataFromAgent((new EventCounts())->transactions(1), $verifyFunc);
+    }
+
+    protected function verifyDataFromAgentOneNoSpansTransaction(TestCaseHandle $testCaseHandle): void
+    {
+        $this->verifyDataFromAgentOneTransaction(
+            $testCaseHandle,
+            function (DataFromAgent $dataFromAgent): void {
+                $this->verifyTransactionWithoutSpans($dataFromAgent);
+            }
         );
     }
 }

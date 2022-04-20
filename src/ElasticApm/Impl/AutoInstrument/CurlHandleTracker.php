@@ -570,16 +570,16 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPostHook(): void
     {
-        $statusCode = $this->curlHandle->getInfo(CURLINFO_RESPONSE_CODE);
-        if (is_int($statusCode)) {
-            $this->span->context()->http()->setStatusCode($statusCode);
-            $outcome = (400 <= $statusCode && $statusCode < 600)
+        $responseStatusCode = $this->curlHandle->getResponseStatusCode();
+        if (is_int($responseStatusCode)) {
+            $this->span->context()->http()->setStatusCode($responseStatusCode);
+            $outcome = (400 <= $responseStatusCode && $responseStatusCode < 600)
                 ? Constants::OUTCOME_FAILURE
                 : Constants::OUTCOME_SUCCESS;
             $this->span->setOutcome($outcome);
         } else {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Failed to get response status code');
+            && $loggerProxy->log('Failed to get response status code', ['responseStatusCode' => $responseStatusCode]);
         }
     }
 
@@ -660,6 +660,6 @@ final class CurlHandleTracker implements LoggableInterface
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return ['logger', 'tracer'];
+        return ['tracer'];
     }
 }

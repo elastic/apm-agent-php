@@ -23,33 +23,65 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class AppCodeHostKind
+final class AppCodeHostKind implements LoggableInterface
 {
-    use StaticClassTrait;
+    use LoggableTrait;
 
-    public const NOT_SET = 0;
-    public const CLI_SCRIPT = self::NOT_SET + 1;
-    public const CLI_BUILTIN_HTTP_SERVER = self::CLI_SCRIPT + 1;
-    public const EXTERNAL_HTTP_SERVER = self::CLI_BUILTIN_HTTP_SERVER + 1;
+    /** @var ?self */
+    private static $builtinHttpServer = null;
 
-    public static function toString(int $intValue): string
+    /** @var ?self */
+    private static $cliScript = null;
+
+    /** @var string */
+    private $asString;
+
+    /** @var bool */
+    private $isHttp;
+
+    private function __construct(string $asString, bool $isHttp)
     {
-        /** @var array<int, string> */
-        $intToStringMap = [
-            AppCodeHostKind::NOT_SET => 'NOT_SET',
-            AppCodeHostKind::CLI_SCRIPT => 'CLI_script',
-            AppCodeHostKind::CLI_BUILTIN_HTTP_SERVER => 'CLI_builtin_HTTP_server',
-            AppCodeHostKind::EXTERNAL_HTTP_SERVER    => 'external_HTTP_server'
-        ];
+        $this->asString = $asString;
+        $this->isHttp = $isHttp;
+    }
 
-        return ArrayUtil::getValueIfKeyExistsElse($intValue, $intToStringMap, null) ?? "UNKNOWN ($intValue)";
+    public function asString(): string
+    {
+        return $this->asString;
+    }
+
+    public function isHttp(): bool
+    {
+        return $this->isHttp;
+    }
+
+    private static function ensureInited(): void
+    {
+        if (self::$cliScript !== null) {
+            return;
+        }
+
+        self::$builtinHttpServer = new self('Built-in HTTP server', /* isHttp: */ true);
+        self::$cliScript = new self('CLI script', /* isHttp: */ false);
+    }
+
+    public static function builtinHttpServer(): self
+    {
+        self::ensureInited();
+        return self::$builtinHttpServer; // @phpstan-ignore-line
+    }
+
+    public static function cliScript(): self
+    {
+        self::ensureInited();
+        return self::$cliScript; // @phpstan-ignore-line
     }
 }

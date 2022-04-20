@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
+// TODO: Sergey Kleyman: REMOVE: AgentConfigSetter
 abstract class AgentConfigSetter implements LoggableInterface
 {
     use LoggableTrait;

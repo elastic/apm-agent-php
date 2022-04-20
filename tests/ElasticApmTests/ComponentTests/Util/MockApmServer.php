@@ -36,7 +36,7 @@ use React\EventLoop\LoopInterface;
 use React\Http\Message\Response;
 use React\Promise\Promise;
 
-final class MockApmServer extends StatefulHttpServerProcessBase
+final class MockApmServer extends TestInfraHttpServerProcessBase
 {
     public const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
     private const INTAKE_API_URI = '/intake/v2/events';

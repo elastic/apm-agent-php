@@ -75,14 +75,14 @@ abstract class SpawnedProcessBase implements LoggableInterface
 
     protected function processConfig(): void
     {
-        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME);
+        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
             TestAssertUtil::assertThat(
-                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId),
+                !is_null(AmbientContext::testConfig()->dataPerProcess->resourcesCleanerServerId),
                 LoggableToString::convert(AmbientContext::testConfig())
             );
             TestAssertUtil::assertThat(
-                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
+                !is_null(AmbientContext::testConfig()->dataPerProcess->resourcesCleanerPort),
                 LoggableToString::convert(AmbientContext::testConfig())
             );
         }
@@ -181,15 +181,15 @@ abstract class SpawnedProcessBase implements LoggableInterface
             'Registering with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...'
         );
 
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort);
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId);
+        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerProcess->resourcesCleanerPort);
+        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerProcess->resourcesCleanerServerId);
         $response = TestHttpClientUtil::sendRequest(
             HttpConsts::METHOD_POST,
             (new UrlParts())
                 ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
-                ->port(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
-            SharedDataPerRequest::fromServerId(
-                AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId
+                ->port(AmbientContext::testConfig()->dataPerProcess->resourcesCleanerPort),
+            TestInfraDataPerRequest::dupWithServerId(
+                AmbientContext::testConfig()->dataPerProcess->resourcesCleanerServerId
             ),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );

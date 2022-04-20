@@ -31,11 +31,11 @@ trait HttpServerProcessTrait
 {
     protected static function verifyServerId(string $receivedServerId): ResponseInterface
     {
-        if ($receivedServerId !== AmbientContext::testConfig()->sharedDataPerProcess->thisServerId) {
+        if ($receivedServerId !== AmbientContext::testConfig()->dataPerProcess->thisServerId) {
             return self::buildErrorResponse(
                 400,
                 'Received server ID does not match the expected one.'
-                . ' Expected: ' . AmbientContext::testConfig()->sharedDataPerProcess->thisServerId
+                . ' Expected: ' . AmbientContext::testConfig()->dataPerProcess->thisServerId
                 . ', received: ' . $receivedServerId
             );
         }

@@ -73,15 +73,16 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
     public static function run(?string &$topLevelCodeId): void
     {
         self::runSkeleton(
-            function (SpawnedProcessBase $thisObjArg) use (&$topLevelCodeId): void {
-                $topLevelCodeId = AmbientContext::testConfig()->sharedDataPerRequest->appTopLevelCodeId;
-                if (!is_null($topLevelCodeId)) {
+            function (SpawnedProcessBase $thisObj) use (&$topLevelCodeId): void {
+                TestCase::assertInstanceOf(self::class, $thisObj);
+                self::setAgentEphemeralId();
+
+                $topLevelCodeId = AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeTopLevelId;
+                if ($topLevelCodeId !== null) {
                     return;
                 }
 
-                /** var AppCodeHostBase */
-                $thisObj = $thisObjArg;
-                $thisObj->runImpl(); // @phpstan-ignore-line
+                $thisObj->runImpl();
             }
         );
     }
@@ -100,33 +101,26 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
     protected function callAppCode(): void
     {
-        $logCtx = [
-            'appCodeClass'     => AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass,
-            'appCodeMethod'    => AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod,
-            'appCodeArguments' => AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments,
-            'agentEphemeralId' => AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId,
-        ];
+        $logCtx = ['dataPerRequest' => AmbientContext::testConfig()->dataPerRequest];
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Calling application code...', $logCtx);
 
         $msg = LoggableToString::convert(AmbientContext::testConfig());
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass, $msg);
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod, $msg);
-
-        self::setAgentEphemeralId();
+        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeClass, $msg);
+        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeMethod, $msg);
 
         try {
             $methodToCall = [
-                AmbientContext::testConfig()->sharedDataPerRequest->appCodeClass,
-                AmbientContext::testConfig()->sharedDataPerRequest->appCodeMethod,
+                AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeClass,
+                AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeMethod,
             ];
-            if (is_null(AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments)) {
+            if (is_null(AmbientContext::testConfig()->dataPerRequest->appCodeArguments)) {
                 /** @phpstan-ignore-next-line */
                 call_user_func($methodToCall);
             } else {
                 /** @phpstan-ignore-next-line */
-                call_user_func($methodToCall, AmbientContext::testConfig()->sharedDataPerRequest->appCodeArguments);
+                call_user_func($methodToCall, AmbientContext::testConfig()->dataPerRequest->appCodeArguments);
             }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -149,8 +143,8 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
         $msg = LoggableToString::convert(AmbientContext::testConfig());
         /** @phpstan-ignore-next-line */
-        TestCase::assertTrue(isset(AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId), $msg);
-        $agentEphemeralId = AmbientContext::testConfig()->sharedDataPerRequest->agentEphemeralId;
+        TestCase::assertTrue(isset(AmbientContext::testConfig()->dataPerProcess->agentEphemeralId), $msg);
+        $agentEphemeralId = AmbientContext::testConfig()->dataPerProcess->agentEphemeralId;
         TestCase::assertNotEmpty($agentEphemeralId);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

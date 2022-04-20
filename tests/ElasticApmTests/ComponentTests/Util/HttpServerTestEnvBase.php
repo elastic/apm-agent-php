@@ -35,6 +35,7 @@ use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+// TODO: Sergey Kleyman: REMOVE: class TestEnvBase
 abstract class HttpServerTestEnvBase extends TestEnvBase
 {
     /** @var string|null */
@@ -81,11 +82,13 @@ abstract class HttpServerTestEnvBase extends TestEnvBase
             'Sending HTTP request to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
+        $this->testProperties->dataPerRequest->serverId = $this->appCodeHostServerId;
+
         /** @noinspection PhpUnhandledExceptionInspection */
         $response = TestHttpClientUtil::sendRequest(
             $this->testProperties->httpMethod,
             $this->testProperties->urlParts,
-            SharedDataPerRequest::fromServerId($this->appCodeHostServerId, $this->testProperties->sharedDataPerRequest)
+            $this->testProperties->dataPerRequest
         );
         if (
             $this->testProperties->expectedStatusCode !== null

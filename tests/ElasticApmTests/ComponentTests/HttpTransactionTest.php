@@ -121,7 +121,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     public static function appCodeForHttpStatus(array $args): void
     {
         $customHttpStatus = ArrayUtil::getValueIfKeyExistsElse('customHttpStatus', $args, null);
-        if (!is_null($customHttpStatus)) {
+        if ($customHttpStatus !== null) {
             /** @var int $customHttpStatus */
             http_response_code($customHttpStatus);
         }

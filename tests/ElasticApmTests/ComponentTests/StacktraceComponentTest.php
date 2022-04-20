@@ -72,7 +72,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
                 StacktraceTestSharedCode::assertPartImpl(
                     count($createSpanApis),
                     $expectedData,
-                    $dataFromAgent->idToSpan()
+                    $dataFromAgent->parsed()->idToSpan
                 );
             }
         );

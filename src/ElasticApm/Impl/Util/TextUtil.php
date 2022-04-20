@@ -197,6 +197,11 @@ final class TextUtil
         ) === 0;
     }
 
+    public static function isPrefixOfIgnoreCase(string $prefix, string $text): bool
+    {
+        return self::isPrefixOf($prefix, $text, /* isCaseSensitive: */ false);
+    }
+
     public static function isSuffixOf(string $suffix, string $text, bool $isCaseSensitive = true): bool
     {
         $suffixLen = strlen($suffix);

@@ -33,4 +33,7 @@
       <directory>./tests/ElasticApmTests/UnitTests</directory>
     </testsuite>
   </testsuites>
+    <extensions>
+        <extension class="\ElasticApmTests\UnitTests\Util\UnitTestsPhpUnitExtension"/>
+    </extensions>
 </phpunit>

@@ -27,8 +27,8 @@ use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
 use ElasticApmTests\Util\FloatLimits;
-use ElasticApmTests\Util\TestCaseBase;
 
 trait MockExecutionSegmentDataTrait
 {
@@ -88,13 +88,15 @@ trait MockExecutionSegmentDataTrait
         foreach ($this->childSpans as $childSpan) {
             $childSpan->parentId = $this->id;
             $minChildStartTimestamp = min($minChildStartTimestamp, $childSpan->timestamp);
-            $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childSpan));
+            $maxChildEndTimestamp
+                = max($maxChildEndTimestamp, ExecutionSegmentDataValidator::calcEndTime($childSpan));
         }
 
         foreach ($this->childTransactions as $childTransaction) {
             $childTransaction->parentId = $this->id;
             $minChildStartTimestamp = min($minChildStartTimestamp, $childTransaction->timestamp);
-            $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childTransaction));
+            $maxChildEndTimestamp
+                = max($maxChildEndTimestamp, ExecutionSegmentDataValidator::calcEndTime($childTransaction));
         }
 
         $this->setTimestamp($minChildStartTimestamp - mt_rand(0, 1));

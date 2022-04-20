@@ -25,45 +25,44 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use JsonSerializable;
 
-abstract class SharedData implements JsonSerializable, LoggableInterface
+final class EventCounts implements LoggableInterface
 {
     use LoggableTrait;
 
-    /**
-     * @return array<string, mixed>
-     *
-     * Called by json_encode
-     * @noinspection PhpUnused
-     */
-    public function jsonSerialize(): array
+    /** @var int */
+    public $transactionCount = 0;
+
+    /** @var int */
+    public $spanCount = 0;
+
+    /** @var int */
+    public $errorCount = 0;
+
+    /** @var int */
+    public $metricCount = 0;
+
+    public function transactions(int $count): self
     {
-        $result = [];
-
-        // @phpstan-ignore-next-line - see https://github.com/phpstan/phpstan/issues/1060
-        foreach ($this as $thisObjPropName => $thisObjPropValue) {
-            $result[$thisObjPropName] = $thisObjPropValue;
-        }
-
-        return $result;
+        $this->transactionCount = $count;
+        return $this;
     }
 
-    /**
-     * @param array<string, mixed> $decodedJson
-     *
-     * @return SharedData
-     *
-     * @phpstan-return static
-     */
-    public static function deserializeFromJson(array $decodedJson): self
+    public function spans(int $count): self
     {
-        $result = new static(); // @phpstan-ignore-line
+        $this->spanCount = $count;
+        return $this;
+    }
 
-        foreach ($decodedJson as $jsonKey => $jsonVal) {
-            $result->$jsonKey = $jsonVal;
-        }
+    public function errors(int $count): self
+    {
+        $this->errorCount = $count;
+        return $this;
+    }
 
-        return $result;
+    public function metrics(int $count): self
+    {
+        $this->metricCount = $count;
+        return $this;
     }
 }

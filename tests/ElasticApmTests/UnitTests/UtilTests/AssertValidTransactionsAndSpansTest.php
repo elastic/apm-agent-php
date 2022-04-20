@@ -34,13 +34,19 @@ use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockSpanData;
 use ElasticApmTests\UnitTests\Util\MockTransactionData;
+use ElasticApmTests\Util\EventDataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
 use ElasticApmTests\Util\InvalidEventDataException;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TraceDataActual;
+use ElasticApmTests\Util\TraceDataValidator;
 use PHPUnit\Exception as PhpUnitException;
 use Throwable;
 
 class AssertValidTransactionsAndSpansTest extends TestCaseBase
 {
+    private const TIMESTAMP_COMPARISON_PRECISION = EventDataValidator::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
+
     /**
      * @param TransactionData[] $transactions
      * @param SpanData[]        $spans
@@ -55,13 +61,13 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     ): void {
         $idToTransaction = self::idToEvent($transactions);
         $idToSpan = self::idToEvent($spans);
-        self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan);
+        self::assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan);
         /** @var callable(): void */
         $revertCorruptFunc = $corruptFunc();
         /** @noinspection PhpUnhandledExceptionInspection */
         self::assertInvalidTransactionsAndSpans($idToTransaction, $idToSpan);
         $revertCorruptFunc();
-        self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan);
+        self::assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan);
     }
 
     /**
@@ -71,7 +77,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     private static function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
         try {
-            self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan, /* forceEnableFlakyAssertions: */ true);
+            self::assertValidOneTraceTransactionsAndSpans(
+                $idToTransaction,
+                $idToSpan,
+                /* forceEnableFlakyAssertions: */ true
+            );
         } catch (Throwable $throwable) {
             if ($throwable instanceof PhpUnitException || $throwable instanceof InvalidEventDataException) {
                 return;
@@ -261,11 +271,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     public function testSpanStartedBeforeParent(): void
     {
         $span_1_1 = new MockSpanData();
-        self::padSegmentTime($span_1_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        self::padSegmentTime($span_1_1, 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_1 = new MockSpanData([$span_1_1]);
-        self::padSegmentTime($span_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        self::padSegmentTime($span_1, 3 * self::TIMESTAMP_COMPARISON_PRECISION);
         $tx = new MockTransactionData([$span_1]);
-        self::padSegmentTime($tx, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        self::padSegmentTime($tx, 3 * self::TIMESTAMP_COMPARISON_PRECISION);
 
         $this->assertValidAndCorrupted(
             [$tx],
@@ -313,7 +323,8 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             [$tx],
             [$span_1, $span_1_1],
             function () use ($span_1, $span_1_1): Closure {
-                $delta = TestCaseBase::calcEndTime($span_1) - TestCaseBase::calcEndTime($span_1_1)
+                $delta = ExecutionSegmentDataValidator::calcEndTime($span_1)
+                         - ExecutionSegmentDataValidator::calcEndTime($span_1_1)
                          + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1_1->duration = $span_1_1->duration + $delta;
@@ -327,7 +338,8 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
             [$tx],
             [$span_1, $span_1_1],
             function () use ($tx, $span_1): Closure {
-                $delta = TestCaseBase::calcEndTime($tx) - TestCaseBase::calcEndTime($span_1)
+                $delta = ExecutionSegmentDataValidator::calcEndTime($tx)
+                         - ExecutionSegmentDataValidator::calcEndTime($span_1)
                          + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
                 self::assertGreaterThan(0, $delta);
                 $span_1->duration = $span_1->duration + $delta;
@@ -367,12 +379,13 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         self::padSegmentTime($tx_C, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
         $span_B = new MockSpanData([], [$tx_C]);
         self::padSegmentTime($span_B, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx_C->timestamp = TestCaseBase::calcEndTime($span_B) + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+        $tx_C->timestamp
+            = ExecutionSegmentDataValidator::calcEndTime($span_B) + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
         $tx_C->duration = TimeUtil::microsecondsToMilliseconds(2 * self::TIMESTAMP_COMPARISON_PRECISION);
         $tx_A = new MockTransactionData([$span_B]);
         self::padSegmentTime($tx_A, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
 
-        self::assertValidTransactionsAndSpans(self::idToEvent([$tx_A, $tx_C]), self::idToEvent([$span_B]));
+        self::assertValidOneTraceTransactionsAndSpans(self::idToEvent([$tx_A, $tx_C]), self::idToEvent([$span_B]));
     }
 
     public function testParentAndChildTransactionsTraceIdMismatch(): void

@@ -56,15 +56,15 @@ final class TestProperties implements LoggableInterface
     /** @var AgentConfigSetter */
     public $agentConfigSetter;
 
-    /** @var SharedDataPerRequest */
-    public $sharedDataPerRequest;
+    /** @var TestInfraDataPerRequest */
+    public $dataPerRequest;
 
     public function __construct()
     {
         $this->agentConfigSetter = new AgentConfigSetterEnvVars();
         $this->agentConfigSetter->set(OptionNames::LOG_LEVEL_SYSLOG, LogLevel::intToName(LogLevel::TRACE));
 
-        $this->sharedDataPerRequest = new SharedDataPerRequest();
+        $this->dataPerRequest = new TestInfraDataPerRequest();
         $this->urlParts = TestProperties::newDefaultUrlParts();
     }
 
@@ -75,25 +75,24 @@ final class TestProperties implements LoggableInterface
 
     public function withRoutedAppCode(callable $appCodeClassMethod): self
     {
-        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appTopLevelCodeId));
+        TestCase::assertTrue(is_null($this->dataPerRequest->appCodeTarget->appCodeTopLevelId));
 
         TestCase::assertTrue(is_callable($appCodeClassMethod));
         TestCase::assertTrue(is_array($appCodeClassMethod));
         /** @noinspection PhpParamsInspection */
         TestCase::assertCount(2, $appCodeClassMethod);
 
-        $this->sharedDataPerRequest->appCodeClass = $appCodeClassMethod[0];
-        $this->sharedDataPerRequest->appCodeMethod = $appCodeClassMethod[1];
+        $this->dataPerRequest->appCodeTarget = AppCodeTarget::asRouted($appCodeClassMethod);
 
         return $this;
     }
 
     public function withTopLevelAppCode(string $topLevelCodeId): self
     {
-        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appCodeClass));
-        TestCase::assertTrue(is_null($this->sharedDataPerRequest->appCodeMethod));
+        TestCase::assertTrue(is_null($this->dataPerRequest->appCodeTarget->appCodeClass));
+        TestCase::assertTrue(is_null($this->dataPerRequest->appCodeTarget->appCodeMethod));
 
-        $this->sharedDataPerRequest->appTopLevelCodeId = $topLevelCodeId;
+        $this->dataPerRequest->appCodeTarget = AppCodeTarget::asTopLevel($topLevelCodeId);
 
         return $this;
     }
@@ -105,7 +104,7 @@ final class TestProperties implements LoggableInterface
      */
     public function withAppCodeArgs(array $appCodeArgs): self
     {
-        $this->sharedDataPerRequest->appCodeArguments = $appCodeArgs;
+        $this->dataPerRequest->appCodeArguments = $appCodeArgs;
 
         return $this;
     }

@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\TestsSharedCode\ParsedDataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
@@ -226,7 +226,7 @@ final class SharedCode
         AppCode::run($testArgs, $tx);
     }
 
-    public static function assertResults(Args $testArgs, EventsFromAgent $eventsFromAgent): void
+    public static function assertResults(Args $testArgs, ParsedDataFromAgent $eventsFromAgent): void
     {
         $tx = $eventsFromAgent->singleTransaction();
         TestCase::assertSame($testArgs->isSampled, $tx->isSampled);

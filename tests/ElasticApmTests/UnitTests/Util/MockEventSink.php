@@ -32,26 +32,26 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\TestsSharedCode\ParsedDataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\ValidationUtil;
 use PHPUnit\Framework\TestCase;
 
-class MockEventSink implements EventSinkInterface
+final class MockEventSink implements EventSinkInterface
 {
     use SerializedEventSinkTrait;
 
-    /** @var EventsFromAgent */
-    public $eventsFromAgent;
+    /** @var ParsedDataFromAgent */
+    public $dataFromAgent;
 
     public function __construct()
     {
-        $this->eventsFromAgent = new EventsFromAgent();
+        $this->dataFromAgent = new ParsedDataFromAgent();
     }
 
     public function clear(): void
     {
-        $this->eventsFromAgent->clear();
+        $this->dataFromAgent->clear();
     }
 
     /**
@@ -121,7 +121,7 @@ class MockEventSink implements EventSinkInterface
 
     private function consumeMetadata(Metadata $metadata): void
     {
-        $this->eventsFromAgent->metadatas[] = self::passThroughSerialization(
+        $this->dataFromAgent->metadatas[] = self::passThroughSerialization(
             $metadata,
             /* assertValid: */
             function (Metadata $data): void {
@@ -165,8 +165,8 @@ class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newTransaction->id, $this->eventsFromAgent->idToTransaction);
-        $this->eventsFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
+        TestCase::assertArrayNotHasKey($newTransaction->id, $this->dataFromAgent->idToTransaction);
+        $this->dataFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
     private function consumeSpanData(SpanData $spanData): void
@@ -191,8 +191,8 @@ class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newSpan->id, $this->eventsFromAgent->idToSpan);
-        $this->eventsFromAgent->idToSpan[$newSpan->id] = $newSpan;
+        TestCase::assertArrayNotHasKey($newSpan->id, $this->dataFromAgent->idToSpan);
+        $this->dataFromAgent->idToSpan[$newSpan->id] = $newSpan;
     }
 
     private function consumeErrorData(ErrorData $errorData): void
@@ -217,8 +217,8 @@ class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newError->id, $this->eventsFromAgent->idToError);
-        $this->eventsFromAgent->idToError[$newError->id] = $newError;
+        TestCase::assertArrayNotHasKey($newError->id, $this->dataFromAgent->idToError);
+        $this->dataFromAgent->idToError[$newError->id] = $newError;
     }
 
     private function consumeMetricSetData(MetricSetData $metricSetData): void
@@ -244,7 +244,7 @@ class MockEventSink implements EventSinkInterface
             }
         );
 
-        $this->eventsFromAgent->metricSetDatas[] = $newMetricSetData;
+        $this->dataFromAgent->metricSetDatas[] = $newMetricSetData;
     }
 
     public static function additionalMetadataValidation(Metadata $metadata): void
@@ -260,7 +260,7 @@ class MockEventSink implements EventSinkInterface
      */
     public function idToTransaction(): array
     {
-        return $this->eventsFromAgent->idToTransaction;
+        return $this->dataFromAgent->idToTransaction;
     }
 
     /**
@@ -268,7 +268,7 @@ class MockEventSink implements EventSinkInterface
      */
     public function singleTransaction(): TransactionData
     {
-        return $this->eventsFromAgent->singleTransaction();
+        return $this->dataFromAgent->singleTransaction();
     }
 
     /**
@@ -276,7 +276,7 @@ class MockEventSink implements EventSinkInterface
      */
     public function idToSpan(): array
     {
-        return $this->eventsFromAgent->idToSpan;
+        return $this->dataFromAgent->idToSpan;
     }
 
     /**
@@ -284,7 +284,7 @@ class MockEventSink implements EventSinkInterface
      */
     public function singleSpan(): SpanData
     {
-        return $this->eventsFromAgent->singleSpan();
+        return $this->dataFromAgent->singleSpan();
     }
 
     /**
@@ -295,7 +295,7 @@ class MockEventSink implements EventSinkInterface
      */
     public function spanByName(string $name): SpanData
     {
-        return $this->eventsFromAgent->spanByName($name);
+        return $this->dataFromAgent->spanByName($name);
     }
 
     /**
@@ -305,6 +305,6 @@ class MockEventSink implements EventSinkInterface
      */
     public function spansForTransaction(TransactionData $transaction): array
     {
-        return $this->eventsFromAgent->spansForTransaction($transaction);
+        return $this->dataFromAgent->spansForTransaction($transaction);
     }
 }

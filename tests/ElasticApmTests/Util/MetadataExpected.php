@@ -21,22 +21,8 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
-final class SharedDataPerProcess extends SharedData
+final class MetadataExpected extends EventDataExpected
 {
-    /** @var int|null */
-    public $resourcesCleanerPort = null;
-
-    /** @var string|null */
-    public $resourcesCleanerServerId = null;
-
-    /** @var int */
-    public $rootProcessId;
-
-    /** @var string|null */
-    public $thisServerId = null;
-
-    /** @var int|null */
-    public $thisServerPort = null;
 }

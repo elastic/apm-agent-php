@@ -34,6 +34,6 @@
     </testsuite>
   </testsuites>
   <extensions>
-    <extension class="\ElasticApmTests\ComponentTests\Util\PhpUnitExtension"/>
+    <extension class="\ElasticApmTests\ComponentTests\Util\ComponentTestsPhpUnitExtension"/>
   </extensions>
 </phpunit>

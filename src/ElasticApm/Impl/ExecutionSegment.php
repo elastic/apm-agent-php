@@ -117,7 +117,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return ['tracer', 'logger'];
+        return ['tracer'];
     }
 
     public function isSampled(): bool

@@ -68,7 +68,7 @@ class SamplingUnitTest extends TracerUnitTestCaseBase
 
         SamplingTestSharedCode::assertResultsForTwoNestedSpansTest(
             $transactionSampleRate,
-            $this->mockEventSink->eventsFromAgent
+            $this->mockEventSink->dataFromAgent
         );
     }
 }
