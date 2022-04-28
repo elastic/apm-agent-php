@@ -27,20 +27,21 @@ use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
+use PHPUnit\Framework\TestCase;
 
 final class TransactionDataValidator extends ExecutionSegmentDataValidator
 {
-    /** @var TransactionDataExpected */
-    protected $expected;
+    /** @var TransactionDataExpectations */
+    protected $expectations;
 
     /** @var TransactionData */
     protected $actual;
 
-    private function __construct(TransactionDataExpected $expected, TransactionData $actual)
+    private function __construct(TransactionDataExpectations $expectations, TransactionData $actual)
     {
-        parent::__construct($expected, $actual);
+        parent::__construct($expectations, $actual);
 
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
@@ -52,14 +53,18 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
             self::validateId($this->actual->parentId);
         }
 
-        if ($this->expected->isSampled !== null) {
-            self::assertSame($this->expected->isSampled, $this->actual->isSampled);
+        if ($this->expectations->isSampled !== null) {
+            TestCase::assertSame($this->expectations->isSampled, $this->actual->isSampled);
         }
 
         if (!$this->actual->isSampled) {
-            self::assertSame(0, $this->actual->startedSpansCount);
-            self::assertSame(0, $this->actual->droppedSpansCount);
-            self::assertNull($this->actual->context);
+            TestCase::assertSame(0, $this->actual->startedSpansCount);
+            TestCase::assertSame(0, $this->actual->droppedSpansCount);
+            TestCase::assertNull($this->actual->context);
+        }
+
+        if ($this->expectations->droppedSpansCount !== null) {
+            TestCase::assertSame($this->expectations->droppedSpansCount, $this->actual->droppedSpansCount);
         }
 
         if ($this->actual->context !== null) {
@@ -67,9 +72,9 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
         }
     }
 
-    public static function validate(TransactionData $actual, ?TransactionDataExpected $expected = null): void
+    public static function validate(TransactionData $actual, ?TransactionDataExpectations $expectations = null): void
     {
-        (new self($expected ?? new TransactionDataExpected(), $actual))->validateImpl();
+        (new self($expectations ?? new TransactionDataExpectations(), $actual))->validateImpl();
     }
 
     /**
@@ -79,9 +84,9 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
      */
     public static function validateCount($count): int
     {
-        self::assertIsInt($count);
+        TestCase::assertIsInt($count);
         /** @var int $count */
-        self::assertGreaterThanOrEqual(0, $count);
+        TestCase::assertGreaterThanOrEqual(0, $count);
         return $count;
     }
 
@@ -96,7 +101,7 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
             return null;
         }
 
-        self::assertIsInt($value);
+        TestCase::assertIsInt($value);
         /** @var int $value */
         return $value;
     }
@@ -114,9 +119,13 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
 
     public static function validateContextRequestData(TransactionContextRequestData $ctxRequestData): void
     {
-        if ($ctxRequestData->url !== null) {
-            self::validateContextRequestUrlData($ctxRequestData->url);
-        }
+        /**
+         * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L101
+         * "required": ["url", "method"]
+         */
+        self::validateKeywordString($ctxRequestData->method);
+        TestCase::assertNotNull($ctxRequestData->url);
+        self::validateContextRequestUrlData($ctxRequestData->url);
     }
 
     public static function validateContextData(TransactionContextData $ctxData): void

@@ -36,30 +36,14 @@ final class HttpAppCodeRequestParams extends AppCodeRequestParams
     /** @var ?int */
     public $expectedHttpResponseStatusCode = HttpConsts::STATUS_OK;
 
-    public function __construct(AppCodeTarget $appCodeTarget)
+    public function __construct(HttpServerHandle $httpServerHandle, AppCodeTarget $appCodeTarget)
     {
         parent::__construct($appCodeTarget);
 
-        $this->urlParts = TestProperties::newDefaultUrlParts();
-    }
-
-    public static function newDefaultUrlParts(): UrlParts
-    {
-        return (new UrlParts())->scheme('http')->host('localhost')->path('/');
-    }
-
-    public function setHttpRequestMethod(string $httpRequestMethod): void
-    {
-        $this->httpRequestMethod = $httpRequestMethod;
-    }
-
-    public function setUrlParts(UrlParts $urlParts): void
-    {
-        $this->urlParts = $urlParts;
-    }
-
-    public function setExpectedHttpResponseStatusCode(?int $expectedCode): void
-    {
-        $this->expectedHttpResponseStatusCode = $expectedCode;
+        $this->urlParts = new UrlParts();
+        $this->urlParts->scheme('http')
+                       ->host(HttpServerHandle::DEFAULT_HOST)
+                       ->port($httpServerHandle->getPort())
+                       ->path('/');
     }
 }

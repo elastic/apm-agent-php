@@ -28,28 +28,40 @@ use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\EnabledLoggerProxy;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use ElasticApmTests\ComponentTests\Util\AmbientContext;
+use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
+use PHPUnit\Framework\Constraint\GreaterThan;
+use PHPUnit\Framework\Constraint\IsEqual;
+use PHPUnit\Framework\Constraint\IsType;
+use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
 use Throwable;
 
 class TestCaseBase extends TestCase
 {
-    /** @var bool */
-    public static $isUnitTest = true;
+    /**
+     * 10 milliseconds (10000 microseconds) precision
+     */
+    public const TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS = 10000;
+
+    public const DURATION_COMPARISON_PRECISION_MILLISECONDS = self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS / 1000;
 
     /** @var ?LoggerFactory */
     private static $noopLoggerFactory = null;
+
+    /** @var ?Logger */
+    private $logger = null;
 
     public static function assertTransactionEquals(TransactionData $expected, TransactionData $actual): void
     {
@@ -163,7 +175,7 @@ class TestCaseBase extends TestCase
             return $execSegData->context;
         }
 
-        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
         return $execSegData->context;
     }
 
@@ -295,7 +307,7 @@ class TestCaseBase extends TestCase
             return $execSegData->parentId;
         }
 
-        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
         return $execSegData->parentId;
     }
 
@@ -304,11 +316,12 @@ class TestCaseBase extends TestCase
         if ($execSegData instanceof SpanData) {
             self::assertNotNull($newParentId);
             $execSegData->parentId = $newParentId;
-            return;
+        } else {
+            self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+            $execSegData->parentId = $newParentId;
         }
 
-        TestCase::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
-        $execSegData->parentId = $newParentId;
+        self::assertSame($newParentId, self::getParentId($execSegData));
     }
 
     public static function generateDummyMaxKeywordString(string $prefix = ''): string
@@ -333,36 +346,29 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
-    private static function processSpecificPrefix(): string
+    protected function getLogger(string $namespace, string $className, string $srcCodeFile): Logger
     {
-        return self::$isUnitTest ? '' : AmbientContext::dbgProcessName() . ' [PID: ' . getmypid() . '] ';
+        if ($this->logger === null) {
+            $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+                LogCategoryForTests::TEST,
+                $namespace,
+                $className,
+                $srcCodeFile
+            )->addContext('this', $this);
+        }
+        self::assertNotNull($this->logger);
+
+        return $this->logger;
     }
 
-    public static function printMessage(string $srcMethod, string $msg): void
+    public static function getLoggerStatic(string $namespace, string $className, string $srcCodeFile): Logger
     {
-        if (!defined('STDERR')) {
-            define('STDERR', fopen('php://stderr', 'w'));
-        }
-
-        if (defined('STDERR')) {
-            fwrite(STDERR, self::processSpecificPrefix() . '[' . $srcMethod . ']' . ' ' . $msg . PHP_EOL);
-        }
-    }
-
-    public static function logAndPrintMessage(
-        ?EnabledLoggerProxy $loggerProxy,
-        string $msg
-    ): void {
-        if (!defined('STDERR')) {
-            define('STDERR', fopen('php://stderr', 'w'));
-        }
-        if (defined('STDERR')) {
-            fwrite(STDERR, self::processSpecificPrefix() . $msg . PHP_EOL);
-        }
-
-        if ($loggerProxy !== null) {
-            $loggerProxy->log($msg);
-        }
+        return AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST,
+            $namespace,
+            $className,
+            $srcCodeFile
+        );
     }
 
     public static function dummyAssert(): void
@@ -371,20 +377,87 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
-     * @param bool                           $forceEnableFlakyAssertions
+     * @param mixed  $expected
+     * @param mixed  $actual
+     * @param string $message
      */
-    public static function assertValidOneTraceTransactionsAndSpans(
-        array $idToTransaction,
-        array $idToSpan,
-        bool $forceEnableFlakyAssertions = false
-    ): void {
-        TraceDataValidator::validate(
-            new TraceDataActual($idToTransaction, $idToSpan),
-            null /* <- expected */,
-            $forceEnableFlakyAssertions
+    public static function assertSameNullness($expected, $actual, string $message = ''): void
+    {
+        TestCase::assertThat(
+            $actual,
+            ($expected === null) ? TestCase::isNull() : TestCase::logicalNot(TestCase::isNull()),
+            LoggableToString::convert(
+                [
+                    '$expected' => $expected,
+                    '$actual' => $actual,
+                    $message
+                ]
+            )
         );
+    }
+
+    /**
+     * @param mixed  $actual
+     * @param string $message
+     *
+     * @psalm-assert int|float $actual
+     */
+    public static function assertIsNumber($actual, string $message = ''): void
+    {
+        TestCase::assertThat(
+            $actual,
+            TestCase::logicalOr(new IsType(IsType::TYPE_INT), new IsType(IsType::TYPE_FLOAT)),
+            $message
+        );
+    }
+
+    public static function assertGreaterThanZero(int $actual, string $message = ''): void
+    {
+        TestCase::assertGreaterThan(0, $actual, $message);
+    }
+
+    /**
+     * @param int|float $rangeBegin
+     * @param int|float $actual
+     * @param int|float $rangeEnd
+     * @param string    $message
+     */
+    public static function assertInClosedRange($rangeBegin, $actual, $rangeEnd, string $message = ''): void
+    {
+        TestCase::assertThat(
+            $actual,
+            TestCase::logicalAnd(
+                TestCase::logicalOr(new IsEqual($rangeBegin), new GreaterThan($rangeBegin)),
+                TestCase::logicalOr(new IsEqual($rangeEnd), new LessThan($rangeEnd))
+            ),
+            $message
+        );
+    }
+
+    public static function assertLessThanOrEqualTimestamp(float $before, float $after): void
+    {
+        TestCase::assertThat(
+            $before,
+            TestCase::logicalOr(
+                new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS),
+                new LessThan($after)
+            ),
+            ' before: ' . number_format($before) . ', after: ' . number_format($after)
+        );
+    }
+
+    public static function assertTimestampInRange(
+        float $pastTimestamp,
+        float $timestamp,
+        float $futureTimestamp
+    ): void {
+        TestCaseBase::assertLessThanOrEqualTimestamp($pastTimestamp, $timestamp);
+        TestCaseBase::assertLessThanOrEqualTimestamp($timestamp, $futureTimestamp);
+    }
+
+    public static function calcEndTime(ExecutionSegmentData $timedData): float
+    {
+        return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
     }
 
     /**

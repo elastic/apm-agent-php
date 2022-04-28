@@ -27,29 +27,30 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ErrorExceptionData;
 use Elastic\Apm\Impl\ErrorTransactionData;
+use PHPUnit\Framework\TestCase;
 
-final class ErrorDataValidator extends EventDataValidator
+final class ErrorDataValidator extends DataValidatorBase
 {
-    /** @var ErrorDataExpected */
-    protected $expected;
+    /** @var ErrorDataExpectations */
+    protected $expectations;
 
     /** @var ErrorData */
     protected $actual;
 
-    private function __construct(ErrorDataExpected $expected, ErrorData $actual)
+    private function __construct(ErrorDataExpectations $expectations, ErrorData $actual)
     {
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
     private function validateImpl(): void
     {
-        self::validateTimestamp($this->actual->timestamp, $this->expected);
+        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
         self::validateId($this->actual->id);
 
-        self::assertSameNullness($this->actual->traceId, $this->actual->transactionId);
-        self::assertSameNullness($this->actual->traceId, $this->actual->parentId);
-        self::assertSameNullness($this->actual->traceId, $this->actual->transaction);
+        TestCaseBase::assertSameNullness($this->actual->traceId, $this->actual->transactionId);
+        TestCaseBase::assertSameNullness($this->actual->traceId, $this->actual->parentId);
+        TestCaseBase::assertSameNullness($this->actual->traceId, $this->actual->transaction);
 
         if ($this->actual->traceId !== null) {
             self::validateTraceId($this->actual->traceId);
@@ -75,9 +76,9 @@ final class ErrorDataValidator extends EventDataValidator
         }
     }
 
-    public static function validate(ErrorData $actual, ?ErrorDataExpected $expected = null): void
+    public static function validate(ErrorData $actual, ?ErrorDataExpectations $expectations = null): void
     {
-        (new self($expected ?? new ErrorDataExpected(), $actual))->validateImpl();
+        (new self($expectations ?? new ErrorDataExpectations(), $actual))->validateImpl();
     }
 
     /**
@@ -99,8 +100,8 @@ final class ErrorDataValidator extends EventDataValidator
 
         self::validateErrorTransactionData($errorTransactionData);
 
-        if ($this->expected->isSampled !== null) {
-            self::assertSame($this->expected->isSampled, $errorTransactionData->isSampled);
+        if ($this->expectations->isSampled !== null) {
+            TestCase::assertSame($this->expectations->isSampled, $errorTransactionData->isSampled);
         }
     }
 

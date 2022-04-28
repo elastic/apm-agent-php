@@ -46,14 +46,14 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     private $logger;
 
     /** @var AppCodeHostParams */
-    protected $appCodeHostParams;
+    private $appCodeHostParams;
 
     /** @var ?string */
     private $tempIniFileFullPath = null;
 
     public function __construct(AppCodeHostParams $appCodeHostParams)
     {
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
@@ -77,7 +77,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     public function getPhpIniFile(): ?string
     {
         if (empty($this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::iniFile()))) {
-            return AmbientContext::testConfig()->appCodePhpIni;
+            return AmbientContextForTests::testConfig()->appCodePhpIni;
         }
 
         if ($this->tempIniFileFullPath === null) {
@@ -98,22 +98,11 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return;
         }
 
-        if (!AmbientContext::testConfig()->deleteTempPhpIni) {
+        if (!AmbientContextForTests::testConfig()->deleteTempPhpIni) {
             return;
         }
 
-        if (!file_exists($this->tempIniFileFullPath)) {
-            return;
-        }
-
-        if (!unlink($this->tempIniFileFullPath)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Failed to delete temporary INI file',
-                    ['tempIniFileFullPath' => $this->tempIniFileFullPath]
-                )
-            );
-        }
+        TempFileUtilForTests::deleteTempIniFile($this->tempIniFileFullPath);
     }
 
     /**
@@ -154,7 +143,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
                 }
 
                 // Keep environment variables explicitly configure to be passed through
-                if (AmbientContext::testConfig()->isEnvVarToPassThrough($envVarName)) {
+                if (AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
                     return true;
                 }
 
@@ -206,12 +195,14 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return strval($optVal);
         }
 
-        // if the string doesn't contain whitespace then return it as it is
-        if (!preg_match('/[^\w]/', $optVal)) {
-            return $optVal;
-        }
-
-        return '"' . $optVal . '"';
+        /**
+         * If the string contains a non-word characters (not a letter, number, underscore) than return it in quotes.
+         *
+         * \W     Any non-word character. A word character is a letter, number, underscore.
+         *
+         * @link https://www.php.net/manual/en/function.preg-match.php
+         */
+        return preg_match('/\W/', $optVal) ? ('"' . $optVal . '"') : $optVal;
     }
 
     /**
@@ -264,7 +255,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
 
     private function writeTempIniContent(string $tempIniFileFullPath): void
     {
-        $baseIniFileFullPath = AmbientContext::testConfig()->appCodePhpIni ?? php_ini_loaded_file();
+        $baseIniFileFullPath = AmbientContextForTests::testConfig()->appCodePhpIni ?? php_ini_loaded_file();
         if ($baseIniFileFullPath === false) {
             $baseIniFileFullPath = null;
         } else {
@@ -316,19 +307,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
 
     private function createTempIniFile(): string
     {
-        $tempIniFileFullPath = tempnam(
-            sys_get_temp_dir(),
-            /* prefix: */ 'Elastic_APM_PHP_Agent_component_tests_php_ini_'
-        );
-        if ($tempIniFileFullPath === false) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Failed to create a temporary INI file',
-                    ['sys_get_temp_dir' => sys_get_temp_dir()]
-                )
-            );
-        }
-
+        $tempIniFileFullPath = TempFileUtilForTests::createTempIniFile('php_ini');
         $this->writeTempIniContent($tempIniFileFullPath);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

@@ -23,11 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ClassNameUtil;
-
 final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
 {
-    private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToCliBuiltinHttpServerAppCodeHost.php';
+    private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToBuiltinHttpServerAppCodeHost.php';
 
     /** @var HttpAppCodeHostParams */
     private $appCodeHostParams;
@@ -38,25 +36,24 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     /** @var ResourcesCleanerHandle */
     private $resourcesCleaner;
 
+    private function __construct(
+        HttpAppCodeHostParams $appCodeHostParams,
+        AgentConfigSourceBuilder $agentConfigSourceBuilder,
+        ResourcesCleanerHandle $resourcesCleaner
+    ) {
+        parent::__construct($appCodeHostParams->dbgProcessName);
+
+        $this->appCodeHostParams = $appCodeHostParams;
+        $this->agentConfigSourceBuilder = $agentConfigSourceBuilder;
+        $this->resourcesCleaner = $resourcesCleaner;
+    }
+
     public static function startBuiltinHttpServerAppCodeHost(
         HttpAppCodeHostParams $appCodeHostParams,
         AgentConfigSourceBuilder $agentConfigSourceBuilder,
         ResourcesCleanerHandle $resourcesCleaner
     ): HttpServerHandle {
         return (new self($appCodeHostParams, $agentConfigSourceBuilder, $resourcesCleaner))->startHttpServer();
-    }
-
-    private function __construct(
-        HttpAppCodeHostParams $appCodeHostParams,
-        AgentConfigSourceBuilder $agentConfigSourceBuilder,
-        ResourcesCleanerHandle $resourcesCleaner
-    ) {
-        $dbgServerDesc = ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class);
-        parent::__construct($dbgServerDesc);
-
-        $this->appCodeHostParams = $appCodeHostParams;
-        $this->agentConfigSourceBuilder = $agentConfigSourceBuilder;
-        $this->resourcesCleaner = $resourcesCleaner;
     }
 
     /** @inheritDoc */
@@ -68,14 +65,14 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(int $port, string $serverId): array
+    protected function buildEnvVars(string $spawnedProcessId, int $port): array
     {
         return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(),
-            $serverId,
+            $spawnedProcessId,
             $port,
             $this->resourcesCleaner,
-            $this->appCodeHostParams->agentEphemeralId
+            $this->appCodeHostParams->dbgProcessName
         );
     }
 }

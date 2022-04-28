@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\TestsSharedCode\ParsedDataFromAgent;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
@@ -199,7 +199,9 @@ final class SharedCode
                 $msg = 'LIMITED to variant #'
                        . self::LIMIT_TO_VARIANT_INDEX . ' out of '
                        . $testArgsVariantsCount;
-                TestCaseBase::printMessage(__METHOD__, $msg);
+                $logger = TestCaseBase::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+                ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log($msg);
             }
         }
 
@@ -215,7 +217,9 @@ final class SharedCode
         if ($shouldPrintProgress) {
             $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . $testArgsVariantsCount
                    . ': ' . LoggableToString::convert($testArgs);
-            TestCaseBase::printMessage(__METHOD__, $msg);
+            $logger = TestCaseBase::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log($msg);
         }
 
         return $isThisVariantEnabled;
@@ -226,9 +230,9 @@ final class SharedCode
         AppCode::run($testArgs, $tx);
     }
 
-    public static function assertResults(Args $testArgs, ParsedDataFromAgent $eventsFromAgent): void
+    public static function assertResults(Args $testArgs, DataFromAgent $dataFromAgent): void
     {
-        $tx = $eventsFromAgent->singleTransaction();
+        $tx = $dataFromAgent->singleTransaction();
         TestCase::assertSame($testArgs->isSampled, $tx->isSampled);
 
         $transactionMaxSpans = $testArgs->configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS;
@@ -236,11 +240,11 @@ final class SharedCode
             $transactionMaxSpans = OptionDefaultValues::TRANSACTION_MAX_SPANS;
         }
 
-        $msg = LoggableToString::convert(['testArgs' => $testArgs, 'eventsFromAgent' => $eventsFromAgent]);
+        $msg = LoggableToString::convert(['testArgs' => $testArgs, 'dataFromAgent' => $dataFromAgent]);
         if (!$tx->isSampled) {
             TestCase::assertSame(0, $tx->startedSpansCount, $msg);
             TestCase::assertSame(0, $tx->droppedSpansCount, $msg);
-            TestCase::assertEmpty($eventsFromAgent->idToSpan, $msg);
+            TestCase::assertEmpty($dataFromAgent->idToSpan, $msg);
             return;
         }
 
@@ -248,13 +252,13 @@ final class SharedCode
         TestCase::assertSame($expectedStartedSpansCount, $tx->startedSpansCount, $msg);
         $expectedDroppedSpansCount = $testArgs->numberOfSpansToCreate - $expectedStartedSpansCount;
         TestCase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
-        TestCase::assertCount($expectedStartedSpansCount, $eventsFromAgent->idToSpan, $msg);
+        TestCase::assertCount($expectedStartedSpansCount, $dataFromAgent->idToSpan, $msg);
 
-        foreach ($eventsFromAgent->idToSpan as $span) {
+        foreach ($dataFromAgent->idToSpan as $span) {
             $msg2 = $msg . ' spanId: ' . $span->id . '.';
             TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $msg2);
             $createdChildCount = TestCaseBase::getLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
-            $sentChildCount = IterableUtilForTests::count($eventsFromAgent->findChildSpans($span->id));
+            $sentChildCount = IterableUtilForTests::count($dataFromAgent->findChildSpans($span->id));
             if ($tx->droppedSpansCount === 0) {
                 TestCase::assertSame($createdChildCount, $sentChildCount, $msg2);
             } else {

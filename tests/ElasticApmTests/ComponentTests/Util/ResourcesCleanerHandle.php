@@ -30,14 +30,14 @@ use GuzzleHttp\Exception\GuzzleException;
 
 final class ResourcesCleanerHandle extends HttpServerHandle
 {
-    public function __construct(HttpServerHandle $httpServerHandle)
+    public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
-        parent::__construct($httpServerHandle->getPort(), $httpServerHandle->getServerId());
+        parent::__construct($httpSpawnedProcessHandle->getSpawnedProcessId(), $httpSpawnedProcessHandle->getPort());
     }
 
     public function signalToExit(): void
     {
-        $logger = AmbientContext::loggerFactory()->loggerForClass(
+        $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
@@ -50,10 +50,10 @@ final class ResourcesCleanerHandle extends HttpServerHandle
         );
 
         try {
-            TestHttpClientUtil::sendRequest(
+            HttpClientUtilForTests::sendRequest(
                 HttpConsts::METHOD_POST,
                 (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->getPort()),
-                TestInfraDataPerRequest::dupWithServerId($this->getServerId())
+                TestInfraDataPerRequest::withSpawnedProcessId($this->getSpawnedProcessId())
             );
         } catch (GuzzleException $ex) {
             // clean-and-exit request is expected to throw

@@ -60,6 +60,8 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     AfterIncompleteTestHook,
     AfterRiskyTestHook
 {
+    private const DBG_PROCESS_NAME = 'Component tests';
+
     /** @var string */
     public static $currentTestCaseId;
 
@@ -68,17 +70,21 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 
     public function __construct()
     {
-        parent::__construct();
+        parent::__construct(self::DBG_PROCESS_NAME);
 
-        AmbientContext::init(/* dbgProcessName */ 'Component tests');
         GlobalTracerHolder::set(NoopTracer::singletonInstance());
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
-        )->addContext('appCodeHostKind', AmbientContext::testConfig()->appCodeHostKind());
+        )->addContext('appCodeHostKind', AmbientContextForTests::testConfig()->appCodeHostKind());
+    }
+
+    public static function initSingletons(): void
+    {
+        AmbientContextForTests::init(self::DBG_PROCESS_NAME);
     }
 
     public function executeBeforeTest(string $test): void
@@ -97,8 +103,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             ]
         );
 
-        TestCaseBase::printMessage(__METHOD__, 'Test starting... (' . $test . ')');
-
         TestConfigUtil::assertAgentDisabled();
     }
 
@@ -111,32 +115,30 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         );
     }
 
-    public function executeAfterSuccessfulTest(string $test, float $time): void
+    public function executeAfterSuccessfulTest(string $test, /* test duration in seconds */ float $time): void
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Test finished successfully',
-            ['test' => $test, 'time' => $time, 'testEnvId' => self::$currentTestCaseId]
-        );
-
-        TestCaseBase::printMessage(
-            __METHOD__,
-            'Test finished successfully (' . $test . '). Time: ' . self::formatTime($time)
+            [
+                'test' => $test,
+                'duration' => self::formatTime($time),
+                'currentTestCaseId' => self::$currentTestCaseId
+            ]
         );
     }
 
     private function testFinishedUnsuccessfully(string $issue, string $test, string $message, float $time): void
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             "Test finished $issue",
-            ['test' => $test, 'message' => $message, 'time' => $time, 'testEnvId' => self::$currentTestCaseId]
-        );
-
-        TestCaseBase::printMessage(
-            __METHOD__,
-            'Test finished ' . $issue . '(' . $test . ')'
-            . '. Message: ' . $message . '. Time: ' . self::formatTime($time)
+            [
+                'test' => $test,
+                'message' => $message,
+                'duration' => self::formatTime($time),
+                'currentTestCaseId' => self::$currentTestCaseId
+            ]
         );
     }
 

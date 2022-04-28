@@ -25,11 +25,12 @@ namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use ElasticApmTests\Util\Deserialization\DeserializableDataObjectTrait;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
 
-final class Args implements LoggableInterface
+final class Args implements JsonDeserializableInterface, LoggableInterface
 {
-    use DeserializableDataObjectTrait;
+    use JsonDeserializableTrait;
     use LoggableTrait;
 
     /** @var int */

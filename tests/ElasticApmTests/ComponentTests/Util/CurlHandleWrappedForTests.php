@@ -25,10 +25,18 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\AutoInstrument\CurlHandleWrappedTrait;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use PHPUnit\Framework\TestCase;
 
 final class CurlHandleWrappedForTests implements LoggableInterface
 {
     use CurlHandleWrappedTrait;
+
+    /** @var string */
+    private $tempFileForVerboseOutput;
+
+    /** @var string */
+    private $lastVerboseOutput = '';
 
     /**
      * @param resource|object $curlHandle
@@ -38,6 +46,7 @@ final class CurlHandleWrappedForTests implements LoggableInterface
     public function __construct($curlHandle)
     {
         $this->constructCurlHandleWrappedTrait($curlHandle);
+        $this->tempFileForVerboseOutput = TempFileUtilForTests::createTempIniFile('curl_verbose');
     }
 
     /**
@@ -45,11 +54,57 @@ final class CurlHandleWrappedForTests implements LoggableInterface
      */
     public function exec()
     {
-        return curl_exec($this->curlHandle); // @phpstan-ignore-line
+        $this->setOpt(CURLOPT_VERBOSE, true);
+
+        $assertMsg = LoggableToString::convert(['$this' => $this]);
+        /** @var null|string|bool */
+        $retVal = null;
+        /** @var null|resource|false */
+        $verboseOutputFile = null;
+        $hasVerboseOutputWritten = false;
+        try {
+            $verboseOutputFile = fopen($this->tempFileForVerboseOutput, 'w'); // open file for write
+            TestCase::assertIsResource($verboseOutputFile, $assertMsg);
+            $this->setOpt(CURLOPT_STDERR, $verboseOutputFile);
+            $retVal = curl_exec($this->curlHandle); // @phpstan-ignore-line
+        } finally {
+            if ($verboseOutputFile !== null) {
+                TestCase::assertIsResource($verboseOutputFile, $assertMsg);
+                TestCase::assertTrue(fflush($verboseOutputFile), $assertMsg);
+                TestCase::assertTrue(fclose($verboseOutputFile), $assertMsg);
+                $verboseOutputFile = null;
+                $hasVerboseOutputWritten = true;
+            }
+        }
+
+        if ($hasVerboseOutputWritten) {
+            $verboseOutput = file_get_contents($this->tempFileForVerboseOutput);
+            TestCase::assertIsString($verboseOutput, $assertMsg);
+            $this->lastVerboseOutput = $verboseOutput;
+        }
+
+        TestCase::assertNotNull($retVal, $assertMsg);
+        return $retVal;
+    }
+
+    public function error(): string
+    {
+        return curl_error($this->curlHandle); // @phpstan-ignore-line
+    }
+
+    public function errno(): int
+    {
+        return curl_errno($this->curlHandle); // @phpstan-ignore-line
+    }
+
+    public function verboseOutput(): string
+    {
+        return $this->lastVerboseOutput;
     }
 
     public function close(): void
     {
+        TempFileUtilForTests::deleteTempIniFile($this->tempFileForVerboseOutput);
         curl_close($this->curlHandle); // @phpstan-ignore-line
     }
 }

@@ -31,17 +31,16 @@ final class TestInfraUtil
 {
     use StaticClassTrait;
 
-    public static function generateIdBasedOnTestCaseId(): string
+    public static function generateIdBasedOnCurrentTestCaseId(): string
     {
         return ComponentTestsPhpUnitExtension::$currentTestCaseId
                . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
     }
 
     public static function buildTestInfraDataPerProcess(
-        ?string $targetProcessServerId,
-        ?int $targetProcessPort,
-        ?ResourcesCleanerHandle $resourcesCleaner,
-        ?string $agentEphemeralId
+        string $targetSpawnedProcessId,
+        ?int $targetServerPort,
+        ?ResourcesCleanerHandle $resourcesCleaner
     ): TestInfraDataPerProcess {
         $result = new TestInfraDataPerProcess();
 
@@ -52,49 +51,44 @@ final class TestInfraUtil
         $result->rootProcessId = $currentProcessId;
 
         if ($resourcesCleaner !== null) {
-            $result->resourcesCleanerServerId = $resourcesCleaner->getServerId();
+            $result->resourcesCleanerSpawnedProcessId = $resourcesCleaner->getSpawnedProcessId();
             $result->resourcesCleanerPort = $resourcesCleaner->getPort();
         }
 
-        $result->thisServerId = $targetProcessServerId;
-        $result->thisServerPort = $targetProcessPort;
-
-        $result->agentEphemeralId = $agentEphemeralId;
+        $result->thisSpawnedProcessId = $targetSpawnedProcessId;
+        $result->thisServerPort = $targetServerPort;
 
         return $result;
     }
 
     /**
      * @param array<string, string>   $baseEnvVars
-     * @param ?string                 $targetProcessServerId
-     * @param ?int                    $targetProcessPort
+     * @param ?int                    $targetServerPort
      * @param ?ResourcesCleanerHandle $resourcesCleaner
-     * @param ?string                 $agentEphemeralId
      *
      * @return array<string, string>
      */
     public static function addTestInfraDataPerProcessToEnvVars(
         array $baseEnvVars,
-        ?string $targetProcessServerId,
-        ?int $targetProcessPort,
+        string $targetSpawnedProcessId,
+        ?int $targetServerPort,
         ?ResourcesCleanerHandle $resourcesCleaner,
-        ?string $agentEphemeralId
+        string $dbgProcessName
     ): array {
-        $dataPerProcessEnvVarName = TestConfigUtil::envVarNameForTestOption(
-            AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME
-        );
-        $dataPerProcess = self::buildTestInfraDataPerProcess(
-            $targetProcessServerId,
-            $targetProcessPort,
-            $resourcesCleaner,
-            $agentEphemeralId
-        );
-        return $baseEnvVars + [$dataPerProcessEnvVarName => $dataPerProcess->serializeToString()];
+        $dataPerProcessOptName = AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME;
+        $dataPerProcessEnvVarName = TestConfigUtil::envVarNameForTestOption($dataPerProcessOptName);
+        $dataPerProcess
+            = self::buildTestInfraDataPerProcess($targetSpawnedProcessId, $targetServerPort, $resourcesCleaner);
+        return $baseEnvVars
+               + [
+                   SpawnedProcessBase::DBG_PROCESS_NAME_ENV_VAR_NAME => $dbgProcessName,
+                   $dataPerProcessEnvVarName => $dataPerProcess->serializeToString(),
+               ];
     }
 
     public static function buildAppCodePhpCmd(?string $appCodePhpIni): string
     {
-        $result = AmbientContext::testConfig()->appCodePhpExe ?? 'php';
+        $result = AmbientContextForTests::testConfig()->appCodePhpExe ?? 'php';
         if ($appCodePhpIni !== null) {
             $result .= ' -c ' . $appCodePhpIni;
         }

@@ -30,25 +30,28 @@ class HttpServerHandle implements LoggableInterface
 {
     use LoggableTrait;
 
+    public const DEFAULT_HOST = '127.0.0.1';
+    public const STATUS_CHECK_URI = '/elastic_apm_php_tests_status_check';
+
+    /** @var string */
+    private $spawnedProcessId;
+
     /** @var int */
     private $port;
 
-    /** @var string */
-    private $serverId;
-
-    public function __construct(int $port, string $serverId)
+    public function __construct(string $spawnedProcessId, int $port)
     {
+        $this->spawnedProcessId = $spawnedProcessId;
         $this->port = $port;
-        $this->serverId = $serverId;
+    }
+
+    public function getSpawnedProcessId(): string
+    {
+        return $this->spawnedProcessId;
     }
 
     public function getPort(): int
     {
         return $this->port;
-    }
-
-    public function getServerId(): string
-    {
-        return $this->serverId;
     }
 }

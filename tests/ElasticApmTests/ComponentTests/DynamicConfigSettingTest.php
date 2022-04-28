@@ -29,15 +29,18 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 
 final class DynamicConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';
     private const APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE = 'APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE';
+
+    private const APP_CODE_RESPONSE_HTTP_STATUS_CODE = 234;
 
     /**
      * @return array<string, array<array{string, mixed}>>
@@ -84,16 +87,17 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
 
     public function testNumberOfDynamicConfigOptions(): void
     {
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForTestNumberOfDynamicConfigOptions'])
-            ->withExpectedStatusCode(234);
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestNumberOfDynamicConfigOptions']),
+            function (AppCodeRequestParams $appCodeRequestParams): void {
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = self::APP_CODE_RESPONSE_HTTP_STATUS_CODE;
+                }
             }
         );
+        $this->waitForOneEmptyTransaction($testCaseHandle);
     }
 
     /**
@@ -138,59 +142,58 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
             ]
         );
 
-        http_response_code(234);
+        http_response_code(self::APP_CODE_RESPONSE_HTTP_STATUS_CODE);
     }
 
     /**
-     * @return iterable<array{AgentConfigSetter, string, array<array{string, mixed}>}>
+     * @return iterable<array{string, array<array{string, mixed}>}>
      */
     public function dataProviderForTestDynamicConfigSetting(): iterable
     {
-        if (!$this->testEnv->isHttp()) {
-            yield [$this->randomConfigSetter(), "", []];
+        if (!self::isMainAppCodeHostHttp()) {
+            yield ["", []];
             return;
         }
 
         foreach (self::buildDynamicOptionsDataSet() as $optName => $optValuePairs) {
-            yield [$this->randomConfigSetter(), $optName, $optValuePairs];
+            yield [$optName, $optValuePairs];
         }
     }
 
     /**
      * @dataProvider dataProviderForTestDynamicConfigSetting
      *
-     * @param AgentConfigSetter           $configSetter
      * @param string                      $optName
      * @param array<array{string, mixed}> $optValuePairs
      */
-    public function testDynamicConfigSetting(
-        AgentConfigSetter $configSetter,
-        string $optName,
-        array $optValuePairs
-    ): void {
-        if (!$this->testEnv->isHttp()) {
-            self::dummyAssert();
+    public function testDynamicConfigSetting(string $optName, array $optValuePairs): void
+    {
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
 
-        $optRawParsedPair = $optValuePairs[0];
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForTestDynamicConfigSetting'])
-            ->withAppCodeArgs(
-                [
-                    self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
-                    self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optRawParsedPair[1],
-                ]
-            )
-            ->withExpectedStatusCode(234);
-        $configSetter->set($optName, $optRawParsedPair[0]);
-        $testProperties->withAgentConfig($configSetter);
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
+        $optRawValue = $optValuePairs[0][0];
+        $optParsedValue = $optValuePairs[0][1];
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($optName, $optRawValue): void {
+                $appCodeParams->setAgentOption($optName, $optRawValue);
             }
         );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestDynamicConfigSetting']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($optName, $optParsedValue): void {
+                $appCodeRequestParams->setAppCodeArgs(
+                    [
+                        self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
+                        self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optParsedValue,
+                    ]
+                );
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = self::APP_CODE_RESPONSE_HTTP_STATUS_CODE;
+                }
+            }
+        );
+        $this->waitForOneEmptyTransaction($testCaseHandle);
     }
 }

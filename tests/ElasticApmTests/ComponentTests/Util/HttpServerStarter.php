@@ -27,7 +27,6 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 use Throwable;
 
@@ -45,18 +44,18 @@ abstract class HttpServerStarter
     private $logger;
 
     /** @var string */
-    private $dbgServerDesc;
+    protected $dbgProcessName;
 
-    protected function __construct(string $dbgServerDesc)
+    protected function __construct(string $dbgProcessName)
     {
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
 
-        $this->dbgServerDesc = $dbgServerDesc;
+        $this->dbgProcessName = $dbgProcessName;
     }
 
     /**
@@ -67,53 +66,51 @@ abstract class HttpServerStarter
     abstract protected function buildCommandLine(int $port): string;
 
     /**
+     * @param string $spawnedProcessId
      * @param int    $port
-     * @param string $serverId
      *
      * @return array<string, string>
      */
-    abstract protected function buildEnvVars(int $port, string $serverId): array;
+    abstract protected function buildEnvVars(string $spawnedProcessId, int $port): array;
 
     protected function startHttpServer(): HttpServerHandle
     {
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
             $currentTryPort = self::findFreePortToListen();
-            $currentTryServerId = TestInfraUtil::generateIdBasedOnTestCaseId();
+            $currentTrySpawnedProcessId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
             $cmdLine = $this->buildCommandLine($currentTryPort);
-            $envVars = $this->buildEnvVars($currentTryPort, $currentTryServerId);
+            $envVars = $this->buildEnvVars($currentTrySpawnedProcessId, $currentTryPort);
 
             $logger = $this->logger->inherit()->addAllContext(
                 [
-                    'tryCount'           => $tryCount,
-                    'maxTries'           => self::MAX_TRIES_TO_START_SERVER,
-                    'currentTryPort'     => $currentTryPort,
-                    'currentTryServerId' => $currentTryServerId,
-                    'cmdLine'            => $cmdLine,
-                    'envVars'            => $envVars,
+                    'tryCount'                   => $tryCount,
+                    'maxTries'                   => self::MAX_TRIES_TO_START_SERVER,
+                    'currentTryPort'             => $currentTryPort,
+                    'currentTrySpawnedProcessId' => $currentTrySpawnedProcessId,
+                    'cmdLine'                    => $cmdLine,
+                    'envVars'                    => $envVars,
                 ]
             );
 
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Starting HTTP server...');
-
-            TestCaseBase::printMessage(
-                __METHOD__,
-                "Starting HTTP server. cmdLine: `$cmdLine', currentTryPort: $currentTryPort ..."
+            && $loggerProxy->log(
+                'Starting ' . $this->dbgProcessName . ' HTTP server...',
+                ['cmdLine' => $cmdLine, 'currentTryPort' => $currentTryPort]
             );
 
-            TestProcessUtil::startBackgroundProcess($cmdLine, $envVars);
+            ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars);
 
-            if ($this->isHttpServerRunning($currentTryPort, $currentTryServerId, $logger)) {
+            if ($this->isHttpServerRunning($currentTrySpawnedProcessId, $currentTryPort, $logger)) {
                 ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Started HTTP server');
-                return new HttpServerHandle($currentTryPort, $currentTryServerId);
+                && $loggerProxy->log('Started ' . $this->dbgProcessName . ' HTTP server');
+                return new HttpServerHandle($currentTrySpawnedProcessId, $currentTryPort);
             }
 
             ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Failed to start HTTP server');
         }
 
-        throw new RuntimeException("Failed to start HTTP server. dbgServerDesc: $this->dbgServerDesc.");
+        throw new RuntimeException("Failed to start ' . $this->dbgProcessName . ' HTTP server");
     }
 
     private static function findFreePortToListen(): int
@@ -121,25 +118,28 @@ abstract class HttpServerStarter
         return mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
     }
 
-    private function isHttpServerRunning(int $port, string $serverId, Logger $logger): bool
+    private function isHttpServerRunning(string $spawnedProcessId, int $port, Logger $logger): bool
     {
-        /** @var Throwable|null */
-        $lastException = null;
-        $dataPerRequest = TestInfraDataPerRequest::withServerId($serverId);
+        /** @var ?Throwable */
+        $lastThrown = null;
+        $dataPerRequest = TestInfraDataPerRequest::withSpawnedProcessId($spawnedProcessId);
         $checkResult = (new PollingCheck(
-            $this->dbgServerDesc . ' started',
-            self::MAX_WAIT_SERVER_START_MICROSECONDS,
-            AmbientContext::loggerFactory()
+            $this->dbgProcessName . ' started',
+            self::MAX_WAIT_SERVER_START_MICROSECONDS
         ))->run(
-            function () use ($port, $dataPerRequest, $logger, &$lastException) {
+            function () use ($port, $dataPerRequest, $logger, &$lastThrown) {
                 try {
-                    $response = TestHttpClientUtil::sendRequest(
+                    $response = HttpClientUtilForTests::sendRequest(
                         HttpConsts::METHOD_GET,
-                        (new UrlParts())->path(TestEnvBase::STATUS_CHECK_URI)->port($port),
+                        (new UrlParts())->host(HttpServerHandle::DEFAULT_HOST)
+                                        ->port($port)
+                                        ->path(HttpServerHandle::STATUS_CHECK_URI),
                         $dataPerRequest
                     );
                 } catch (Throwable $throwable) {
-                    $lastException = $throwable;
+                    ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->logThrowable($throwable, 'Caught while checking if HTTP server is running');
+                    $lastThrown = $throwable;
                     return false;
                 }
 
@@ -159,12 +159,12 @@ abstract class HttpServerStarter
         );
 
         if (!$checkResult) {
-            if ($lastException === null) {
+            if ($lastThrown === null) {
                 ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Failed to send request to check HTTP server status');
             } else {
                 ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->logThrowable($lastException, 'Failed to send request to check HTTP server status');
+                && $loggerProxy->logThrowable($lastThrown, 'Failed to send request to check HTTP server status');
             }
         }
 

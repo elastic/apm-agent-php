@@ -26,9 +26,9 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
 use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
 
@@ -66,42 +66,41 @@ class StacktraceComponentTest extends ComponentTestCaseBase
          */
         $createSpanApis = $sharedCodeResult['createSpanApis'];
 
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeForTestAllSpanCreatingApis']),
-            function (DataFromAgent $dataFromAgent) use ($expectedData, $createSpanApis): void {
-                StacktraceTestSharedCode::assertPartImpl(
-                    count($createSpanApis),
-                    $expectedData,
-                    $dataFromAgent->parsed()->idToSpan
-                );
-            }
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllSpanCreatingApis']));
+        $expectedMinSpansCount = count($createSpanApis);
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans($expectedMinSpansCount, PHP_INT_MAX)
         );
+        StacktraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
     }
 
     public function testTopLevelTransactionBeginCurrentSpanApi(): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())->withTopLevelAppCode(TopLevelCodeId::SPAN_BEGIN_END),
-            function (DataFromAgent $dataFromAgent): void {
-                $span = $dataFromAgent->singleSpan();
-                self::assertSame('top_level_code_span_name', $span->name);
-                self::assertSame('top_level_code_span_type', $span->type);
-                $actualStacktrace = $span->stacktrace;
-                self::assertNotNull($actualStacktrace);
-                self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
-                /** @var string */
-                $expectedFileName = self::getLabel($span, 'top_level_code_span_end_file_name');
-                self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);
-                self::assertSame($expectedFileName, $actualStacktrace[0]->filename);
-                self::assertSame(
-                    self::getLabel($span, 'top_level_code_span_end_line_number'),
-                    $actualStacktrace[0]->lineno
-                );
-                self::assertSame(
-                    StacktraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
-                    $actualStacktrace[0]->function
-                );
-            }
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(AppCodeTarget::asTopLevel(TopLevelCodeId::SPAN_BEGIN_END));
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans(1)
+        );
+        $span = $dataFromAgent->singleSpan();
+        self::assertSame('top_level_code_span_name', $span->name);
+        self::assertSame('top_level_code_span_type', $span->type);
+        $actualStacktrace = $span->stacktrace;
+        self::assertNotNull($actualStacktrace);
+        self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
+        /** @var string */
+        $expectedFileName = self::getLabel($span, 'top_level_code_span_end_file_name');
+        self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);
+        self::assertSame($expectedFileName, $actualStacktrace[0]->filename);
+        self::assertSame(
+            self::getLabel($span, 'top_level_code_span_end_line_number'),
+            $actualStacktrace[0]->lineno
+        );
+        self::assertSame(
+            StacktraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
+            $actualStacktrace[0]->function
         );
     }
 }

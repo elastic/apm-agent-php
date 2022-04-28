@@ -23,38 +23,44 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use PHPUnit\Framework\TestCase;
+
 final class TestInfraDataPerRequest extends TestInfraData
 {
-    /** @var AppCodeTarget */
-    public $appCodeTarget;
+    /** @var ?AppCodeTarget */
+    public $appCodeTarget = null;
 
     /** @var null|array<string, mixed> */
     public $appCodeArguments = null;
 
     /** @var string */
-    public $serverId;
+    public $spawnedProcessId;
 
-    // TODO: Sergey Kleyman: REMOVE
-    public static function withServerId(string $serverId): self
+    public static function withSpawnedProcessId(string $spawnedProcessId): self
     {
         $result = new TestInfraDataPerRequest();
-        $result->serverId = $serverId;
+        $result->spawnedProcessId = $spawnedProcessId;
         return $result;
     }
 
-    // TODO: Sergey Kleyman: REMOVE
-    public static function dupWithServerId(string $serverId, ?TestInfraDataPerRequest $prototype = null): self
+    /**
+     * @param mixed $decodedJson
+     *
+     * @return mixed
+     */
+    protected function deserializePropertyValue(string $propertyName, $decodedJson)
     {
-        $result = new TestInfraDataPerRequest();
-
-        if ($prototype !== null) {
-            foreach (get_object_vars($prototype) as $propName => $propValue) {
-                $result->$propName = $propValue;
-            }
+        switch ($propertyName) {
+            case 'appCodeTarget':
+                if ($decodedJson === null) {
+                    return null;
+                }
+                $appCodeTarget = new AppCodeTarget();
+                TestCase::assertIsArray($decodedJson);
+                $appCodeTarget->deserializeFromDecodedJson($decodedJson);
+                return $appCodeTarget;
+            default:
+                return parent::deserializePropertyValue($propertyName, $decodedJson);
         }
-
-        $result->serverId = $serverId;
-
-        return $result;
     }
 }

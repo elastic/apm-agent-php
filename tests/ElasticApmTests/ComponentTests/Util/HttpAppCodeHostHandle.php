@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Monolog\Test\TestCase;
 
@@ -34,10 +36,11 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
 
     public function __construct(
         TestCaseHandle $testCaseHandle,
-        HttpAppCodeHostParams $params,
+        HttpAppCodeHostParams $appCodeHostParams,
+        AgentConfigSourceBuilder $agentConfigSourceBuilder,
         HttpServerHandle $httpServerHandle
     ) {
-        parent::__construct($testCaseHandle, $params);
+        parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder);
         $this->httpServerHandle = $httpServerHandle;
     }
 
@@ -67,6 +70,7 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
         if ($setParamsFunc !== null) {
             $setParamsFunc($requestParams);
         }
+        $this->setAppCodeRequestParamsExpected($requestParams);
 
         $localLogger = $this->logger->inherit()->addContext('requestParams', $requestParams);
 
@@ -75,15 +79,26 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
             'Sending HTTP request to ' . ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '...'
         );
 
-        $requestSentToAppCode = $this->beforeRequestSent($appCodeTarget, $requestParams);
-        $response = TestHttpClientUtil::sendRequest(
+        $appCodeInvocation = $this->beforeAppCodeInvocation($requestParams);
+        $response = HttpClientUtilForTests::sendRequest(
             $requestParams->httpRequestMethod,
             $requestParams->urlParts,
             $requestParams->dataPerRequest
         );
-        $this->afterRequestSent($requestSentToAppCode);
+        $this->afterAppCodeInvocation($appCodeInvocation);
 
-        TestCase::assertSame($requestParams->expectedHttpResponseStatusCode, $response->getStatusCode());
+        if ($requestParams->expectedHttpResponseStatusCode !== null) {
+            TestCase::assertSame(
+                $requestParams->expectedHttpResponseStatusCode,
+                $response->getStatusCode(),
+                LoggableToString::convert(
+                    [
+                        'expected HTTP response status code' => $requestParams->expectedHttpResponseStatusCode,
+                        'actual HTTP response status code' => $response->getStatusCode(),
+                    ]
+                )
+            );
+        }
 
         ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -93,8 +108,16 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
 
     private function buildRequestParams(AppCodeTarget $appCodeTarget): HttpAppCodeRequestParams
     {
-        $requestParams = new HttpAppCodeRequestParams($appCodeTarget);
-        $requestParams->dataPerRequest->serverId = $this->httpServerHandle->getServerId();
+        $requestParams = new HttpAppCodeRequestParams($this->httpServerHandle, $appCodeTarget);
+        $requestParams->dataPerRequest->spawnedProcessId = $this->httpServerHandle->getSpawnedProcessId();
         return $requestParams;
+    }
+
+    private function setAppCodeRequestParamsExpected(HttpAppCodeRequestParams $appCodeRequestParams): void
+    {
+        $appCodeRequestParams->expectedTransactionName->setValueIfNotSet(
+            $appCodeRequestParams->httpRequestMethod . ' ' . ($appCodeRequestParams->urlParts->path ?? '/')
+        );
+        $appCodeRequestParams->expectedTransactionType->setValueIfNotSet(Constants::TRANSACTION_TYPE_REQUEST);
     }
 }

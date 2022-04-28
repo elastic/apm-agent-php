@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use ElasticApmTests\Util\Optional;
 
 class AppCodeRequestParams implements LoggableInterface
 {
@@ -33,16 +34,24 @@ class AppCodeRequestParams implements LoggableInterface
     /** @var TestInfraDataPerRequest */
     public $dataPerRequest;
 
-    /** @var ?string */
-    public $expectedTransactionName = null;
+    /** @var bool */
+    public $shouldVerifyRootTransaction = true;
 
-    /** @var ?string */
-    public $expectedTransactionType = null;
+    /** @var Optional<?string> */
+    public $expectedTransactionName;
+
+    /** @var Optional<?string> */
+    public $expectedTransactionType;
+
+    /** @var bool */
+    public $shouldAssumeNoDroppedSpans = true;
 
     public function __construct(AppCodeTarget $appCodeTarget)
     {
         $this->dataPerRequest = new TestInfraDataPerRequest();
         $this->dataPerRequest->appCodeTarget = $appCodeTarget;
+        $this->expectedTransactionName = new Optional();
+        $this->expectedTransactionType = new Optional();
     }
 
     /**
@@ -51,15 +60,5 @@ class AppCodeRequestParams implements LoggableInterface
     public function setAppCodeArgs(array $appCodeArgs): void
     {
         $this->dataPerRequest->appCodeArguments = $appCodeArgs;
-    }
-
-    public function setExpectedTransactionName(string $expectedTransactionName): void
-    {
-        $this->expectedTransactionName = $expectedTransactionName;
-    }
-
-    public function setExpectedTransactionType(string $expectedTransactionType): void
-    {
-        $this->expectedTransactionType = $expectedTransactionType;
     }
 }

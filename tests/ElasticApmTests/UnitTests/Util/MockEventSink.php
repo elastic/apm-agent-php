@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\TestsSharedCode\ParsedDataFromAgent;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\ValidationUtil;
 use PHPUnit\Framework\TestCase;
@@ -41,17 +41,17 @@ final class MockEventSink implements EventSinkInterface
 {
     use SerializedEventSinkTrait;
 
-    /** @var ParsedDataFromAgent */
+    /** @var DataFromAgent */
     public $dataFromAgent;
 
     public function __construct()
     {
-        $this->dataFromAgent = new ParsedDataFromAgent();
+        $this->dataFromAgent = new DataFromAgent();
     }
 
     public function clear(): void
     {
-        $this->dataFromAgent->clear();
+        $this->dataFromAgent = new DataFromAgent();
     }
 
     /**
@@ -165,7 +165,7 @@ final class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newTransaction->id, $this->dataFromAgent->idToTransaction);
+        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($newTransaction->id));
         $this->dataFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
@@ -191,7 +191,7 @@ final class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newSpan->id, $this->dataFromAgent->idToSpan);
+        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($newSpan->id));
         $this->dataFromAgent->idToSpan[$newSpan->id] = $newSpan;
     }
 
@@ -244,7 +244,7 @@ final class MockEventSink implements EventSinkInterface
             }
         );
 
-        $this->dataFromAgent->metricSetDatas[] = $newMetricSetData;
+        $this->dataFromAgent->metricSets[] = $newMetricSetData;
     }
 
     public static function additionalMetadataValidation(Metadata $metadata): void

@@ -51,8 +51,8 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var TestInfraDataPerProcess */
     public $dataPerProcess;
 
-    /** @var TestInfraDataPerRequest */
-    public $dataPerRequest;
+    /** @var ?TestInfraDataPerRequest */
+    public $dataPerRequest = null;
 
     /** @var bool */
     public $deleteTempPhpIni;
@@ -71,8 +71,6 @@ final class TestConfigSnapshot implements LoggableInterface
     public function __construct(array $optNameToParsedValue)
     {
         $this->dataPerProcess = new TestInfraDataPerProcess();
-        $this->dataPerRequest = new TestInfraDataPerRequest();
-
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
     }
 

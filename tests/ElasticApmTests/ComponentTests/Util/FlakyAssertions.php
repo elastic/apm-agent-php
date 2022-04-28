@@ -69,14 +69,9 @@ final class FlakyAssertions
                 throw $ex;
             }
 
-            TestCaseBase::printMessage(
-                __METHOD__,
-                'Flaky assertions are disabled but one has just failed' . PHP_EOL
-                . '+-> Exception:' . PHP_EOL
-                . LoggableToEncodedJson::convert($ex) . PHP_EOL
-                . '+-> Stack trace:' . PHP_EOL
-                . $ex->getTraceAsString()
-            );
+            $logger = TestCaseBase::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+            ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->logThrowable($ex, 'Flaky assertions are disabled but one has just failed');
         }
     }
 }

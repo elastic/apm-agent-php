@@ -38,7 +38,7 @@ use Throwable;
 abstract class AppCodeHostBase extends SpawnedProcessBase
 {
     /** @var Logger */
-    private $logger;
+    protected $logger;
 
     public function __construct()
     {
@@ -52,7 +52,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
         parent::__construct();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
@@ -60,7 +60,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         )->addContext('this', $this);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Done', ['Environment variables' => getenv()]);
+        && $loggerProxy->log('Done');
     }
 
     protected function shouldAgentBeEnabled(): bool
@@ -68,21 +68,17 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         return true;
     }
 
-    abstract protected function runImpl(): void;
+    abstract protected function runImpl(?string &$topLevelCodeId): void;
 
     public static function run(?string &$topLevelCodeId): void
     {
         self::runSkeleton(
             function (SpawnedProcessBase $thisObj) use (&$topLevelCodeId): void {
                 TestCase::assertInstanceOf(self::class, $thisObj);
-                self::setAgentEphemeralId();
 
-                $topLevelCodeId = AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeTopLevelId;
-                if ($topLevelCodeId !== null) {
-                    return;
-                }
+                self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME);
 
-                $thisObj->runImpl();
+                $thisObj->runImpl(/* ref */ $topLevelCodeId);
             }
         );
     }
@@ -99,28 +95,38 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         }
     }
 
-    protected function callAppCode(): void
+    protected function callAppCode(?string &$topLevelCodeId): void
     {
-        $logCtx = ['dataPerRequest' => AmbientContext::testConfig()->dataPerRequest];
+        $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
+        TestCase::assertNotNull($dataPerRequest);
+        $logCtx = ['dataPerRequest' => $dataPerRequest];
+
+        self::setAgentEphemeralIdToSpawnedProcessId();
+
+        TestCase::assertNotNull($dataPerRequest->appCodeTarget);
+        $topLevelCodeId = $dataPerRequest->appCodeTarget->appCodeTopLevelId;
+        if ($topLevelCodeId !== null) {
+            return;
+        }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Calling application code...', $logCtx);
 
-        $msg = LoggableToString::convert(AmbientContext::testConfig());
-        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeClass, $msg);
-        TestCase::assertNotNull(AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeMethod, $msg);
+        $msg = LoggableToString::convert(AmbientContextForTests::testConfig());
+        $appCodeTarget = $dataPerRequest->appCodeTarget;
+        TestCase::assertNotNull($appCodeTarget, $msg);
+        TestCase::assertNotNull($appCodeTarget->appCodeClass, $msg);
+        TestCase::assertNotNull($appCodeTarget->appCodeMethod, $msg);
 
         try {
-            $methodToCall = [
-                AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeClass,
-                AmbientContext::testConfig()->dataPerRequest->appCodeTarget->appCodeMethod,
-            ];
-            if (is_null(AmbientContext::testConfig()->dataPerRequest->appCodeArguments)) {
+            $methodToCall = [$appCodeTarget->appCodeClass, $appCodeTarget->appCodeMethod];
+            $appCodeArguments = $dataPerRequest->appCodeArguments;
+            if ($appCodeArguments === null) {
                 /** @phpstan-ignore-next-line */
                 call_user_func($methodToCall);
             } else {
                 /** @phpstan-ignore-next-line */
-                call_user_func($methodToCall, AmbientContext::testConfig()->dataPerRequest->appCodeArguments);
+                call_user_func($methodToCall, $appCodeArguments);
             }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -132,19 +138,16 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         && $loggerProxy->log('Call to application code completed', $logCtx);
     }
 
-    public static function setAgentEphemeralId(): void
+    public static function setAgentEphemeralIdToSpawnedProcessId(): void
     {
-        $logger = AmbientContext::loggerFactory()->loggerForClass(
+        $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         );
 
-        $msg = LoggableToString::convert(AmbientContext::testConfig());
-        /** @phpstan-ignore-next-line */
-        TestCase::assertTrue(isset(AmbientContext::testConfig()->dataPerProcess->agentEphemeralId), $msg);
-        $agentEphemeralId = AmbientContext::testConfig()->dataPerProcess->agentEphemeralId;
+        $agentEphemeralId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId;
         TestCase::assertNotEmpty($agentEphemeralId);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
