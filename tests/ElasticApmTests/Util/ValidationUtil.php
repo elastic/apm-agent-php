@@ -57,6 +57,7 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
+// TODO: Sergey Kleyman: REMOVE class ValidationUtil
 final class ValidationUtil
 {
     use StaticClassTrait;
