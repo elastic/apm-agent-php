@@ -29,23 +29,4 @@ fi
 # Run component tests
 mkdir -p /app/build/
 composer run-script run_component_tests 2>&1 | tee /app/build/run_component_tests_output.txt
-run_component_tests_exit_code=$?
-if [[ $run_component_tests_exit_code -ne 0 ]] ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
 
-    if [ -f "/var/log/syslog" ]; then
-        cp "/var/log/syslog" /app/build/run_component_tests_syslog.txt
-        cat "/var/log/syslog"
-        echo '================= end of /var/log/syslog content ================='
-    else
-        if [ -f "/var/log/messages" ]; then
-            cp "/var/log/messages" /app/build/run_component_tests_syslog.txt
-            cat "/var/log/messages"
-            echo '================= end of /var/log/messages content ================='
-        else
-            echo 'syslog log file not found'
-        fi
-    fi
-
-    exit 1
-fi

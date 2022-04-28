@@ -35,7 +35,7 @@ trait HttpServerProcessTrait
         TestCase::assertSame(
             AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId,
             $receivedSpawnedProcessId,
-            'Received server PID does not match this process PID.'
+            'Received spawnedProcessId does not match this spawnedProcessId.'
         );
         return new Response(HttpConsts::STATUS_OK);
     }

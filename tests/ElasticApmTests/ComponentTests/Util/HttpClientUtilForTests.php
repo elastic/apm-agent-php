@@ -81,7 +81,13 @@ final class HttpClientUtilForTests
         $urlRelPart = UrlUtil::buildRequestMethodArg($urlParts);
 
         ($loggerProxy = self::getLogger()->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log("Sending HTTP request to `$baseUrl$urlRelPart'...");
+        && $loggerProxy->log(
+            "Sending HTTP request to `$baseUrl$urlRelPart'...",
+            [
+                'dataPerRequest' => $dataPerRequest,
+                'other headers' => $headers,
+            ]
+        );
 
         $client = new Client(['base_uri' => $baseUrl]);
 
