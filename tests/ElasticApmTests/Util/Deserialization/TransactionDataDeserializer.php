@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\Util\EventDataValidator;
+use ElasticApmTests\Util\DataValidatorBase;
 use ElasticApmTests\Util\ValidationUtil;
 
 /**
@@ -86,7 +86,7 @@ final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
                 return true;
 
             case 'sampled':
-                $this->result->isSampled = EventDataValidator::validateBool($value);
+                $this->result->isSampled = DataValidatorBase::validateBool($value);
                 return true;
 
             default:

@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
@@ -34,6 +35,8 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
  */
 trait CurlHandleWrappedTrait
 {
+    use LoggableTrait;
+
     /**
      * Prior to PHP 8 $curlHandle is a resource.
      * For PHP 8+ $curlHandle is an instance of CurlHandle class.

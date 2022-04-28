@@ -26,45 +26,46 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\Util\BoolUtil;
+use PHPUnit\Framework\TestCase;
 
-final class MetricSetDataValidator extends EventDataValidator
+final class MetricSetDataValidator extends DataValidatorBase
 {
-    /** @var MetricSetDataExpected */
-    protected $expected;
+    /** @var MetricSetDataExpectations */
+    protected $expectations;
 
     /** @var MetricSetData */
     protected $actual;
 
-    private function __construct(MetricSetDataExpected $expected, MetricSetData $actual)
+    private function __construct(MetricSetDataExpectations $expectations, MetricSetData $actual)
     {
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
     private function validateImpl(): void
     {
-        self::validateTimestamp($this->actual->timestamp, $this->expected);
+        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
 
         self::validateNullableKeywordString($this->actual->transactionName);
         self::validateNullableKeywordString($this->actual->transactionType);
         self::validateNullableKeywordString($this->actual->spanType);
         self::validateNullableKeywordString($this->actual->spanSubtype);
 
-        self::assertSameNullness($this->actual->transactionName, $this->actual->transactionType);
+        TestCaseBase::assertSameNullness($this->actual->transactionName, $this->actual->transactionType);
 
         if ($this->actual->spanSubtype !== null) {
-            self::assertNotNull($this->actual->spanType);
+            TestCase::assertNotNull($this->actual->spanType);
         }
         if ($this->actual->spanType !== null) {
-            self::assertNotNull($this->actual->transactionType);
+            TestCase::assertNotNull($this->actual->transactionType);
         }
 
         self::validateSamples($this->actual->samples);
     }
 
-    public static function validate(MetricSetData $actual, ?MetricSetDataExpected $expected = null): void
+    public static function validate(MetricSetData $actual, ?MetricSetDataExpectations $expectations = null): void
     {
-        (new self($expected ?? new MetricSetDataExpected(), $actual))->validateImpl();
+        (new self($expectations ?? new MetricSetDataExpectations(), $actual))->validateImpl();
     }
 
     /**
@@ -74,18 +75,18 @@ final class MetricSetDataValidator extends EventDataValidator
      */
     public static function validateSamples($samples): array
     {
-        self::assertTrue(is_array($samples));
+        TestCase::assertTrue(is_array($samples));
         /** @var array<mixed, mixed> $samples */
-        self::assertTrue(!empty($samples));
+        TestCase::assertTrue(!empty($samples));
 
         foreach ($samples as $key => $valueArr) {
             self::validateKeywordString($key);
-            self::assertTrue(is_array($valueArr));
+            TestCase::assertTrue(is_array($valueArr));
             /** @var array<mixed, mixed> $valueArr */
-            self::assertTrue(count($valueArr) === 1);
-            self::assertTrue(array_key_exists('value', $valueArr));
+            TestCase::assertTrue(count($valueArr) === 1);
+            TestCase::assertTrue(array_key_exists('value', $valueArr));
             $value = $valueArr['value'];
-            self::assertTrue(is_int($value) || is_float($value));
+            TestCase::assertTrue(is_int($value) || is_float($value));
             /** @var float|int $value */
         }
         /** @var array<string, array<string, float|int>> $samples */

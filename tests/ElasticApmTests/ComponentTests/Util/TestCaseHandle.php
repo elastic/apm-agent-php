@@ -30,8 +30,9 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -39,7 +40,10 @@ final class TestCaseHandle implements LoggableInterface
 {
     use LoggableTrait;
 
-    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 30;
+    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
+
+    /** @var Logger */
+    private $logger;
 
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
@@ -53,15 +57,12 @@ final class TestCaseHandle implements LoggableInterface
     /** @var ?HttpAppCodeHostHandle */
     protected $additionalHttpAppCodeHost = null;
 
-    /** @var Logger */
-    private $logger;
-
-    /** @var RequestSentToAppCode[] */
-    private $requestsSentToAppCode = [];
+    /** @var ?AppCodeInvocation */
+    public $appCodeInvocation = null;
 
     public function __construct()
     {
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
@@ -86,22 +87,23 @@ final class TestCaseHandle implements LoggableInterface
                     if ($setParamsFunc !== null) {
                         $setParamsFunc($params);
                     }
-                }
+                },
+                'main' /* <- dbgInstanceName */
             );
         }
         return $this->mainAppCodeHost;
     }
 
-    /**
-     * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
-     *
-     * @return HttpAppCodeHostHandle
-     */
-    public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
-    {
-        TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
-        return $this->ensureMainHttpAppCodeHost($setParamsFunc); // @phpstan-ignore-line
-    }
+    // /**
+    //  * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
+    //  *
+    //  * @return HttpAppCodeHostHandle
+    //  */
+    // public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
+    // {
+    //     TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
+    //     return $this->ensureMainHttpAppCodeHost($setParamsFunc); // @phpstan-ignore-line
+    // }
 
     /**
      * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
@@ -119,10 +121,49 @@ final class TestCaseHandle implements LoggableInterface
                         $setParamsFunc($params);
                     }
                 },
-                $this->resourcesCleaner
+                $this->resourcesCleaner,
+                'additional' /* dbgInstanceName */
             );
         }
         return $this->additionalHttpAppCodeHost;
+    }
+
+    public function waitForDataFromAgent(
+        ExpectedEventCounts $expectedEventCounts,
+        bool $shouldValidate = true
+    ): DataFromAgentPlusRaw {
+        TestCase::assertNotNull($this->appCodeInvocation);
+        $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
+        $hasPassed = (new PollingCheck(
+            __FUNCTION__ . ' passes',
+            intval(TimeUtil::secondsToMicroseconds(self::MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS))
+        ))->run(
+            function () use ($expectedEventCounts, $dataFromAgentAccumulator) {
+                return $this->pollForDataFromAgent($expectedEventCounts, $dataFromAgentAccumulator);
+            }
+        );
+        TestCase::assertTrue(
+            $hasPassed,
+            'The expected data from agent has not arrived.'
+            . ' ' . LoggableToString::convert(
+                [
+                    'expected event counts' => $expectedEventCounts,
+                    'actual event counts' => $dataFromAgentAccumulator->dbgCounts(),
+                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator
+                ]
+            )
+        );
+
+        $dataFromAgent = $dataFromAgentAccumulator->getAccumulatedData();
+        if ($shouldValidate) {
+            $expectations = new DataFromAgentPlusRawExpectations(
+                $this->appCodeInvocation,
+                ArrayUtilForTests::getLastValue($dataFromAgent->intakeApiRequests)->timeReceivedAtApmServer
+            );
+            DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
+            return $dataFromAgent;
+        }
+        return $dataFromAgent;
     }
 
     private function setMandatoryOptions(AppCodeHostParams $params): void
@@ -130,29 +171,17 @@ final class TestCaseHandle implements LoggableInterface
         $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPort());
     }
 
-    /**
-     * @param EventCounts                  $eventCounts
-     * @param Closure(DataFromAgent): void $testSpecificVerifyFunc
-     *
-     * @return void
-     */
-    public function verifyDataFromAgent(EventCounts $eventCounts, Closure $testSpecificVerifyFunc): void
+    public function setAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
     {
-        $this->fetchAllExpectedData($eventCounts);
-        $this->verifyDataFromAgentAgainstSentRequests();
-        $testSpecificVerifyFunc($this->mockApmServer->getAccumulatedData());
-    }
-
-    public function addRequestSentToAppCode(RequestSentToAppCode $requestSentToAppCode): void
-    {
-        $this->requestsSentToAppCode[] = $requestSentToAppCode;
-    }
-
-    private function verifyDataFromAgentAgainstSentRequests(): void
-    {
-        TestCaseBase::assertCount(1, $this->requestsSentToAppCode);
-        // TODO: Sergey Kleyman: Implement: TestCaseHandle::verifyDataFromAgentAgainstSentRequests
-        TestCaseBase::dummyAssert();
+        TestCase::assertNull($this->appCodeInvocation);
+        $appCodeInvocation->appCodeHostsParams = [];
+        if ($this->mainAppCodeHost !== null) {
+            $appCodeInvocation->appCodeHostsParams[] = $this->mainAppCodeHost->appCodeHostParams;
+        }
+        if ($this->additionalHttpAppCodeHost !== null) {
+            $appCodeInvocation->appCodeHostsParams[] = $this->additionalHttpAppCodeHost->appCodeHostParams;
+        }
+        $this->appCodeInvocation = $appCodeInvocation;
     }
 
     public function tearDown(): void
@@ -173,7 +202,7 @@ final class TestCaseHandle implements LoggableInterface
     private static function startResourcesCleaner(): ResourcesCleanerHandle
     {
         $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
-            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgServerDesc */,
+            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessName */,
             'runResourcesCleaner.php' /* <- runScriptName */,
             null /* <- resourcesCleaner */
         );
@@ -183,7 +212,7 @@ final class TestCaseHandle implements LoggableInterface
     private static function startMockApmServer(ResourcesCleanerHandle $resourcesCleaner): MockApmServerHandle
     {
         $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
-            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgServerDesc */,
+            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgProcessName */,
             'runMockApmServer.php' /* <- runScriptName */,
             $resourcesCleaner
         );
@@ -192,134 +221,42 @@ final class TestCaseHandle implements LoggableInterface
 
     /**
      * @param Closure(AppCodeHostParams): void $setParamsFunc
+     * @param string                           $dbgInstanceName
      *
      * @return AppCodeHostHandle
      */
-    private function startAppCodeHost(Closure $setParamsFunc): AppCodeHostHandle
+    private function startAppCodeHost(Closure $setParamsFunc, string $dbgInstanceName): AppCodeHostHandle
     {
-        switch (AmbientContext::testConfig()->appCodeHostKind()) {
+        switch (AmbientContextForTests::testConfig()->appCodeHostKind()) {
             case AppCodeHostKind::cliScript():
-                return new CliAppCodeHostHandle($this, $setParamsFunc, $this->resourcesCleaner);
+                return new CliScriptAppCodeHostHandle(
+                    $this,
+                    $setParamsFunc,
+                    $this->resourcesCleaner,
+                    $dbgInstanceName
+                );
 
             case AppCodeHostKind::builtinHttpServer():
-                return new BuiltinHttpServerAppCodeHostHandle($this, $setParamsFunc, $this->resourcesCleaner);
+                return new BuiltinHttpServerAppCodeHostHandle(
+                    $this,
+                    $setParamsFunc,
+                    $this->resourcesCleaner,
+                    $dbgInstanceName
+                );
         }
 
         throw new RuntimeException(
             'This point in the code should not be reached; '
-            . LoggableToString::convert(['appCodeHostKind' => AmbientContext::testConfig()->appCodeHostKind()])
+            . LoggableToString::convert(['appCodeHostKind' => AmbientContextForTests::testConfig()->appCodeHostKind()])
         );
     }
 
-    private function fetchAllExpectedData(EventCounts $eventCounts): void
-    {
-        // TODO: Sergey Kleyman: Implement: TestCaseHandle::fetchAllExpectedData
-
-        // // $this->mockApmServer->ensureLatestData()
-        // // $this->mockApmServer->getAccumulatedData()
-        //
-        // $hasPassed = (new PollingCheck(
-        //     __FUNCTION__ . ' passes',
-        //     intval(TimeUtil::secondsToMicroseconds(self::MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS)),
-        //     AmbientContext::loggerFactory()
-        // ))->run(
-        //     function () use ($eventCounts) {
-        //
-        //     }
-        // );
+    private function pollForDataFromAgent(
+        ExpectedEventCounts $expectedEventCounts,
+        DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
+    ): bool {
+        $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
+        $dataFromAgentAccumulator->addIntakeApiRequests($newIntakeApiRequests);
+        return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
     }
-
-    // /**
-    //  * @return void
-    //  */
-    // private function pollDataFromAgentAndVerify(EventCounts $eventCounts): void
-    // {
-    //     /** @var Exception|null */
-    //     $lastException = null;
-    //     $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
-    //     $numberOfFailedAttempts = 0;
-    //     $numberOfAttempts = 0;
-    //     $hasPassed = (new PollingCheck(
-    //         __FUNCTION__ . ' passes',
-    //         3 * self::MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS * 1000 * 1000 /* maxWaitTimeInMicroseconds */,
-    //         AmbientContext::loggerFactory()
-    //     ))->run(
-    //         function () use (
-    //             $timeBeforeRequestToApp,
-    //             $testProperties,
-    //             $verifyFunc,
-    //             &$lastException,
-    //             &$lastCheckedNextIntakeApiRequestIndex,
-    //             &$numberOfAttempts,
-    //             &$numberOfFailedAttempts
-    //         ) {
-    //             ++$numberOfAttempts;
-    //             try {
-    //                 $lastCheckedIndexBeforeUpdate = $lastCheckedNextIntakeApiRequestIndex;
-    //                 $this->ensureLatestDataFromMockApmServer($timeBeforeRequestToApp);
-    //                 $lastCheckedNextIntakeApiRequestIndex = $this->dataFromAgent->nextIntakeApiRequestIndexToFetch();
-    //                 if (
-    //                     !is_null($lastException)
-    //                     && ($lastCheckedIndexBeforeUpdate === $lastCheckedNextIntakeApiRequestIndex)
-    //                 ) {
-    //                     TestCaseBase::logAndPrintMessage(
-    //                         $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
-    //                         'No new data since the last check - there is no point in invoking $verifyFunc() again'
-    //                         . '; ' . LoggableToString::convert(
-    //                             [
-    //                                 'lastCheckedIndexBeforeUpdate'         => $lastCheckedIndexBeforeUpdate,
-    //                                 'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
-    //                             ]
-    //                         )
-    //                     );
-    //
-    //                     return false;
-    //                 }
-    //
-    //                 $this->verifyDataAgainstRequest($testProperties);
-    //
-    //                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-    //                 && $loggerProxy->log('Calling $verifyFunc supplied by the test case...');
-    //
-    //                 $verifyFunc($this->dataFromAgent);
-    //             } catch (Exception $ex) {
-    //                 TestCaseBase::logAndPrintMessage(
-    //                     $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__),
-    //                     "Attempt $numberOfAttempts failed."
-    //                     . 'Caught exception: ' . LoggableToString::convert($ex, /* prettyPrint: */ true)
-    //                 );
-    //
-    //                 if ($ex instanceof ConnectException || $ex instanceof PhpUnitException) {
-    //                     $lastException = $ex;
-    //                     ++$numberOfFailedAttempts;
-    //                     return false;
-    //                 }
-    //
-    //                 /** @noinspection PhpUnhandledExceptionInspection */
-    //                 throw $ex;
-    //             }
-    //             return true;
-    //         }
-    //     );
-    //
-    //     if (!$hasPassed) {
-    //         TestCase::assertNotNull($lastException);
-    //
-    //         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-    //         && $loggerProxy->log(
-    //             __FUNCTION__ . ' failed',
-    //             [
-    //                 'last exception from verifyFunc()'     => $lastException,
-    //                 'numberOfAttempts'                     => $numberOfAttempts,
-    //                 'numberOfFailedAttempts'               => $numberOfFailedAttempts,
-    //                 'timeBeforeRequestToApp'               => $timeBeforeRequestToApp,
-    //                 'testProperties'                       => $testProperties,
-    //                 'this'                                 => $this,
-    //                 'lastCheckedNextIntakeApiRequestIndex' => $lastCheckedNextIntakeApiRequestIndex,
-    //             ]
-    //         );
-    //
-    //         throw $lastException;
-    //     }
-    // }
 }

@@ -46,11 +46,11 @@ final class PollingCheck
     /** @var int */
     private $reportIntervalInMicroseconds = 1000 * 1000; // 1 second
 
-    public function __construct(string $dbgDesc, int $maxWaitTimeInMicroseconds, LoggerFactory $loggerFactory)
+    public function __construct(string $dbgDesc, int $maxWaitTimeInMicroseconds)
     {
         $this->dbgDesc = $dbgDesc;
         $this->maxWaitTimeInMicroseconds = $maxWaitTimeInMicroseconds;
-        $this->logger = $loggerFactory->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,

@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Runner\BeforeTestHook;
 
 /**
@@ -38,10 +39,12 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
     /** @var float */
     public static $timeBeforeTest;
 
-    public function __construct()
+    public function __construct(string $dbgProcessName)
     {
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
+
+        AmbientContextForTests::init($dbgProcessName);
     }
 
     public function executeBeforeTest(string $test): void

@@ -25,24 +25,23 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
 use PHPUnit\Framework\TestCase;
 
-final class AppCodeTarget implements LoggableInterface
+final class AppCodeTarget implements JsonDeserializableInterface, LoggableInterface
 {
     use LoggableTrait;
+    use JsonDeserializableTrait;
 
-    /** @var string|null */
+    /** @var ?string */
     public $appCodeClass = null;
 
-    /** @var string|null */
+    /** @var ?string */
     public $appCodeMethod = null;
 
-    /** @var string|null */
+    /** @var ?string */
     public $appCodeTopLevelId = null;
-
-    private function __construct()
-    {
-    }
 
     public static function asRouted(callable $appCodeClassMethod): AppCodeTarget
     {

@@ -25,17 +25,22 @@ namespace ElasticApmTests\Util;
 
 use Ds\Queue;
 use Ds\Set;
-use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\SpanData;
+use Elastic\Apm\Impl\TransactionContextData;
+use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\TransactionContextRequestUrlData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
+use Elastic\Apm\Impl\Util\UrlUtil;
 use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
+use PHPUnit\Framework\TestCase;
 
-final class TraceDataValidator extends EventDataValidator
+final class TraceDataValidator extends DataValidatorBase
 {
-    /** @var TraceDataExpected */
-    protected $expected;
+    /** @var TraceDataExpectations */
+    protected $expectations;
 
     /** @var TraceDataActual */
     protected $actual;
@@ -44,62 +49,58 @@ final class TraceDataValidator extends EventDataValidator
     protected $forceEnableFlakyAssertions;
 
     private function __construct(
-        TraceDataExpected $expected,
+        TraceDataExpectations $expectations,
         TraceDataActual $actual,
         bool $forceEnableFlakyAssertions
     ) {
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
         $this->forceEnableFlakyAssertions = $forceEnableFlakyAssertions;
     }
 
     protected function validateImpl(): void
     {
-        $rootTransaction = self::findRootTransaction($this->actual->idToTransaction);
+        $idToTransaction = $this->actual->idToTransaction;
+        $idToSpan = $this->actual->idToSpan;
+        $rootTransaction = self::findRootTransaction($idToTransaction);
+        if ($this->expectations->shouldVerifyRootTransaction) {
+            $this->validateRootTransaction($rootTransaction);
+        }
 
         // Assert that all transactions have the same traceId
-        foreach ($this->actual->idToTransaction as $transaction) {
-            self::assertSame($rootTransaction->traceId, $transaction->traceId);
+        foreach ($idToTransaction as $transaction) {
+            TestCase::assertSame($rootTransaction->traceId, $transaction->traceId);
         }
+        // Assert that all spans have the same traceId
+        foreach ($idToSpan as $span) {
+            TestCase::assertSame($rootTransaction->traceId, $span->traceId);
+        }
+
+        // Assert that transactions and spans don't have any shared IDs
+        TestCase::assertEmpty(array_intersect(array_keys($idToTransaction), array_keys($idToSpan)));
 
         self::assertTransactionsGraphIsTree($rootTransaction);
 
         // Assert that each transaction did not start before its parent
-        foreach ($this->actual->idToTransaction as $transaction) {
-            if (is_null($transaction->parentId)) {
+        foreach ($idToTransaction as $transaction) {
+            if ($transaction->parentId === null) {
                 continue;
             }
-            /** @var ExecutionSegmentData|null $parentExecSegment */
-            $parentExecSegment
-                = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $this->actual->idToSpan, null);
-            if (is_null($parentExecSegment)) {
-                self::assertTrue(
-                    ArrayUtil::getValueIfKeyExists(
-                        $transaction->parentId,
-                        $this->actual->idToTransaction,
-                        /* ref */ $parentExecSegment
-                    )
-                );
-            }
-            self::assertNotNull($parentExecSegment);
-            self::assertLessThanOrEqualTimestamp($parentExecSegment->timestamp, $transaction->timestamp);
-        }
-
-        // Assert that all spans have the same traceId
-        foreach ($this->actual->idToSpan as $span) {
-            self::assertSame($rootTransaction->traceId, $span->traceId);
+            $parentExecutionSegment
+                = DataFromAgent::executionSegmentByIdEx($idToTransaction, $idToSpan, $transaction->parentId);
+            TestCaseBase::assertLessThanOrEqualTimestamp($parentExecutionSegment->timestamp, $transaction->timestamp);
         }
 
         // Assert that every span's transactionId is present
         /** @var SpanData $span */
-        foreach ($this->actual->idToSpan as $span) {
-            self::assertArrayHasKey($span->transactionId, $this->actual->idToTransaction);
+        foreach ($idToSpan as $span) {
+            TestCase::assertArrayHasKey($span->transactionId, $idToTransaction);
         }
 
         // Group spans by transaction and verify each group
-        foreach ($this->actual->idToTransaction as $transactionId => $transaction) {
+        foreach ($idToTransaction as $transactionId => $transaction) {
             $idToSpanOnlyCurrentTransaction = [];
-            foreach ($this->actual->idToSpan as $spanId => $span) {
+            foreach ($idToSpan as $spanId => $span) {
                 if ($span->transactionId === $transactionId) {
                     $idToSpanOnlyCurrentTransaction[$spanId] = $span;
                 }
@@ -114,10 +115,10 @@ final class TraceDataValidator extends EventDataValidator
 
     public static function validate(
         TraceDataActual $actual,
-        ?TraceDataExpected $expected = null,
+        ?TraceDataExpectations $expectations = null,
         bool $forceEnableFlakyAssertions = false
     ): void {
-        (new self($expected ?? new TraceDataExpected(), $actual, $forceEnableFlakyAssertions))->validateImpl();
+        (new self($expectations ?? new TraceDataExpectations(), $actual, $forceEnableFlakyAssertions))->validateImpl();
     }
 
     /**
@@ -130,19 +131,19 @@ final class TraceDataValidator extends EventDataValidator
         array $idToSpan,
         bool $forceEnableFlakyAssertions = false
     ): void {
-        TransactionDataValidator::validate($transaction, $this->expected->transaction);
+        TransactionDataValidator::validate($transaction, $this->expectations->transaction);
 
         /** @var SpanData $span */
         foreach ($idToSpan as $span) {
-            ValidationUtil::assertValidSpanData($span);
-            self::assertSame($transaction->id, $span->transactionId);
-            self::assertSame($transaction->traceId, $span->traceId);
+            SpanDataValidator::validate($span, $this->expectations->span);
+            TestCase::assertSame($transaction->id, $span->transactionId);
+            TestCase::assertSame($transaction->traceId, $span->traceId);
 
             if ($span->parentId === $transaction->id) {
-                ExecutionSegmentDataValidator::assertNested($span, $transaction);
+                ExecutionSegmentDataValidator::assertTimeNested($span, $transaction);
             } else {
-                self::assertArrayHasKey($span->parentId, $idToSpan, 'count($idToSpan): ' . count($idToSpan));
-                ExecutionSegmentDataValidator::assertNested($span, $idToSpan[$span->parentId]);
+                TestCase::assertArrayHasKey($span->parentId, $idToSpan, 'count($idToSpan): ' . count($idToSpan));
+                ExecutionSegmentDataValidator::assertTimeNested($span, $idToSpan[$span->parentId]);
             }
         }
 
@@ -162,7 +163,7 @@ final class TraceDataValidator extends EventDataValidator
         TransactionData $transaction,
         array $idToSpan
     ): void {
-        self::assertCount($transaction->startedSpansCount, $idToSpan);
+        TestCase::assertCount($transaction->startedSpansCount, $idToSpan);
 
         $spanIdToParentId = [];
         foreach ($idToSpan as $id => $span) {
@@ -187,14 +188,14 @@ final class TraceDataValidator extends EventDataValidator
             $currentParentId = $reachableToProcess->pop();
             foreach ($idToParentId as $id => $parentId) {
                 if ($currentParentId === $parentId) {
-                    self::assertTrue(!$idsReachableFromRoot->contains($id));
+                    TestCase::assertTrue(!$idsReachableFromRoot->contains($id));
                     $idsReachableFromRoot->add($id);
                     $reachableToProcess->push($id);
                 }
             }
         }
 
-        self::assertCount($idsReachableFromRoot->count(), $idToParentId);
+        TestCase::assertCount($idsReachableFromRoot->count(), $idToParentId);
     }
 
     /**
@@ -208,11 +209,11 @@ final class TraceDataValidator extends EventDataValidator
         $rootTransaction = null;
         foreach ($idToTransaction as $currentTransaction) {
             if ($currentTransaction->parentId === null) {
-                self::assertNull($rootTransaction, 'Found more than one root transaction');
+                TestCase::assertNull($rootTransaction, 'Found more than one root transaction');
                 $rootTransaction = $currentTransaction;
             }
         }
-        self::assertNotNull(
+        TestCase::assertNotNull(
             $rootTransaction,
             'Root transaction not found. ' . LoggableToString::convert(['idToTransaction' => $idToTransaction])
         );
@@ -230,13 +231,71 @@ final class TraceDataValidator extends EventDataValidator
             }
             $parentSpan = ArrayUtil::getValueIfKeyExistsElse($transaction->parentId, $this->actual->idToSpan, null);
             if ($parentSpan === null) {
-                self::assertArrayHasKey($transaction->parentId, $this->actual->idToTransaction);
+                TestCase::assertArrayHasKey($transaction->parentId, $this->actual->idToTransaction);
                 $transactionIdToParentId[$transactionId] = $transaction->parentId;
             } else {
                 $transactionIdToParentId[$transactionId] = $parentSpan->transactionId;
             }
         }
-        self::assertNotNull($rootTransaction);
+        TestCase::assertNotNull($rootTransaction);
         self::assertGraphIsTree($rootTransaction->id, $transactionIdToParentId);
+    }
+
+    private function validateRootTransaction(TransactionData $rootTx): void
+    {
+        if ($this->expectations->rootTransactionName !== null) {
+            TestCase::assertSame($this->expectations->rootTransactionName, $rootTx->name);
+        }
+        if ($this->expectations->rootTransactionType !== null) {
+            TestCase::assertSame($this->expectations->rootTransactionType, $rootTx->type);
+        }
+
+        if ($rootTx->context !== null) {
+            $this->validateRootTransactionContext($rootTx->context);
+        }
+    }
+
+    private function validateRootTransactionContext(TransactionContextData $rootTxCtx): void
+    {
+        $rootTxCtxReq = $rootTxCtx->request;
+        if ($this->expectations->isRootTransactionHttp) {
+            TestCase::assertNotNull($rootTxCtxReq);
+            $this->validateRootTransactionContextRequest($rootTxCtxReq);
+        } else {
+            TestCase::assertNull($rootTxCtxReq);
+        }
+    }
+
+    private function validateRootTransactionContextRequest(TransactionContextRequestData $rootTxCtxReq): void
+    {
+        /**
+         * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L101
+         * "required": ["url", "method"]
+         */
+        TestCase::assertNotNull($rootTxCtxReq->url);
+        TestCase::assertNotNull($rootTxCtxReq->method);
+
+        $expectedUrlParts = $this->expectations->rootTransactionUrlParts;
+        if ($expectedUrlParts !== null) {
+            $this->validateRootTransactionContextRequestUrl($expectedUrlParts, $rootTxCtxReq->url);
+        }
+
+        if ($this->expectations->rootTransactionHttpRequestMethod !== null) {
+            TestCase::assertSame($this->expectations->rootTransactionHttpRequestMethod, $rootTxCtxReq->method);
+        }
+    }
+
+    protected function validateRootTransactionContextRequestUrl(
+        UrlParts $expectedUrlParts,
+        TransactionContextRequestUrlData $rootTxCtxReqUrl
+    ): void {
+        $expectedFullUrl = UrlUtil::buildFullUrl($expectedUrlParts);
+        TestCase::assertSame($expectedFullUrl, $rootTxCtxReqUrl->full);
+        TestCase::assertSame($expectedFullUrl, $rootTxCtxReqUrl->original);
+        TestCase::assertSame($expectedUrlParts->scheme, $rootTxCtxReqUrl->protocol);
+        TestCase::assertSame($expectedUrlParts->host, $rootTxCtxReqUrl->domain);
+        TestCase::assertSame($expectedUrlParts->port, $rootTxCtxReqUrl->port);
+        TestCase::assertSame($expectedUrlParts->path, $rootTxCtxReqUrl->path);
+        TestCase::assertSame($expectedUrlParts->query, $rootTxCtxReqUrl->query);
     }
 }

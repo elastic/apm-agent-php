@@ -23,7 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
 use RuntimeException;
 
@@ -34,6 +38,11 @@ use RuntimeException;
  */
 final class UnitTestsPhpUnitExtension extends PhpUnitExtensionBase
 {
+    public function __construct()
+    {
+        parent::__construct(/* dbgProcessName */ 'Unit tests');
+    }
+
     public function executeBeforeTest(string $test): void
     {
         parent::executeBeforeTest($test);

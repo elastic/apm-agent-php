@@ -24,29 +24,32 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 
 final class BuiltinHttpServerAppCodeHostHandle extends HttpAppCodeHostHandle
 {
-    /** @var HttpAppCodeHostParams */
-    protected $params;
-
     /**
      * @param Closure(HttpAppCodeHostParams): void $setParamsFunc
      */
     public function __construct(
         TestCaseHandle $testCaseHandle,
         Closure $setParamsFunc,
-        ResourcesCleanerHandle $resourcesCleaner
+        ResourcesCleanerHandle $resourcesCleaner,
+        string $dbgInstanceName
     ) {
-        $this->params = new HttpAppCodeHostParams();
-        $setParamsFunc($this->params);
+        $dbgProcessName = ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '(' . $dbgInstanceName . ')';
+        $appCodeHostParams = new HttpAppCodeHostParams($dbgProcessName);
+        $setParamsFunc($appCodeHostParams);
+
+        $agentConfigSourceBuilder = new AgentConfigSourceBuilder($appCodeHostParams);
 
         $httpServerHandle = BuiltinHttpServerAppCodeHostStarter::startBuiltinHttpServerAppCodeHost(
-            $this->params,
-            $this->agentConfigSourceBuilder,
+            $appCodeHostParams,
+            $agentConfigSourceBuilder,
             $resourcesCleaner
         );
+        $appCodeHostParams->spawnedProcessId = $httpServerHandle->getSpawnedProcessId();
 
-        parent::__construct($testCaseHandle, $this->params, $httpServerHandle);
+        parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder, $httpServerHandle);
     }
 }

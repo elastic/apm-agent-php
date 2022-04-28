@@ -26,18 +26,17 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
-use ElasticApmTests\Util\LogCategoryForTests;
+use ErrorException;
 use Exception;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use React\EventLoop\Factory;
+use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Http\HttpServer;
 use React\Promise\Promise;
-use React\Socket\Server as ServerSocket;
+use React\Socket\SocketServer;
 use RuntimeException;
 use Throwable;
 
@@ -45,38 +44,40 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
-    /** @var Logger */
-    private $logger;
-
     public function __construct()
     {
         parent::__construct();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        set_error_handler(
+            function (
+                int $type,
+                string $message,
+                string $srcFile,
+                int $srcLine
+            ): bool {
+                $msgForEx = LoggableToString::convert(
+                    [
+                        'message' => $message,
+                        'error type' => $type,
+                        'srcFile:srcLine' => $srcFile . ':' . $srcLine,
+                    ]
+                );
+                throw new ErrorException($msgForEx, /* code: */ 0, $type, $srcFile, $srcLine);
+            }
+        );
     }
 
     protected function processConfig(): void
     {
         parent::processConfig();
 
-        TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->dataPerProcess->thisServerId),
-            LoggableToString::convert(AmbientContext::testConfig())
-        );
-        TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->dataPerProcess->thisServerPort),
-            LoggableToString::convert(AmbientContext::testConfig())
+        TestCase::assertNotNull(
+            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
+            LoggableToString::convert(AmbientContextForTests::testConfig())
         );
 
-        TestAssertUtil::assertThat(
-            !isset(AmbientContext::testConfig()->dataPerRequest->serverId), // @phpstan-ignore-line
-            LoggableToString::convert(AmbientContext::testConfig())
-        );
+        // At this point request is not parsed and applied to config yet
+        TestCase::assertNull(AmbientContextForTests::testConfig()->dataPerRequest);
     }
 
     /**
@@ -109,10 +110,14 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 
     private function runHttpServer(): void
     {
-        $loop = Factory::create();
+        $loop = Loop::get();
 
-        assert(AmbientContext::testConfig()->dataPerProcess->thisServerPort !== null);
-        $serverSocket = new ServerSocket(AmbientContext::testConfig()->dataPerProcess->thisServerPort, $loop);
+        assert(AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort !== null);
+        $serverSocket = new SocketServer(
+            HttpServerHandle::DEFAULT_HOST . ':' . AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
+            [] /* <- context */,
+            $loop
+        );
 
         $httpServer = new HttpServer(
         /**
@@ -142,7 +147,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
     }
 
-    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
     {
         return true;
     }
@@ -194,21 +199,23 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
-        if ($this->shouldRequestHaveServerId($request)) {
+        if ($this->shouldRequestHaveSpawnedProcessId($request)) {
             $testConfigForRequest = TestConfigUtil::read(
-                AmbientContext::dbgProcessName(),
+                AmbientContextForTests::dbgProcessName(),
                 new RequestHeadersRawSnapshotSource(
                     function (string $headerName) use ($request): ?string {
                         return self::getRequestHeader($request, $headerName);
                     }
                 )
             );
-            $verifyServerIdResponse = self::verifyServerId($testConfigForRequest->dataPerRequest->serverId);
+            TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
+            $verifySpawnedProcessIdResponse
+                = self::verifySpawnedProcessId($testConfigForRequest->dataPerRequest->spawnedProcessId);
             if (
-                $verifyServerIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
-                || $request->getUri()->getPath() === TestEnvBase::STATUS_CHECK_URI
+                $verifySpawnedProcessIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
+                || $request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI
             ) {
-                return $verifyServerIdResponse;
+                return $verifySpawnedProcessIdResponse;
             }
         }
 

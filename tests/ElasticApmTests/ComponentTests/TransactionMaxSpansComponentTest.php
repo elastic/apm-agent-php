@@ -26,12 +26,14 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use PHPUnit\Framework\TestCase;
@@ -42,25 +44,13 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 
     /**
      * @return iterable<array<mixed>>
-     * @phpstan-return iterable<array{?AgentConfigSetter, Args}>
+     * @phpstan-return iterable<array{Args}>
      */
     public function dataProviderForTestVariousCombinations(): iterable
     {
         /** @var Args $testArgs */
         foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
-            $setsAnyConfig = false;
-            if (!is_null($testArgs->configTransactionMaxSpans)) {
-                $setsAnyConfig = true;
-            }
-            if (!$setsAnyConfig && !$testArgs->isSampled) {
-                $setsAnyConfig = true;
-            }
-
-            if ($setsAnyConfig) {
-                yield [$this->randomConfigSetter(), $testArgs];
-            } else {
-                yield [null, $testArgs];
-            }
+            yield [$testArgs];
         }
     }
 
@@ -73,45 +63,51 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
         TestCase::assertNotNull($testArgsAsDecodedJson);
         TestCase::assertIsArray($testArgsAsDecodedJson);
         $testArgs = new Args();
-        $testArgs->deserializeFrom($testArgsAsDecodedJson);
+        $testArgs->deserializeFromDecodedJson($testArgsAsDecodedJson);
         SharedCode::appCode($testArgs, ElasticApm::getCurrentTransaction());
     }
 
     /**
      * @dataProvider dataProviderForTestVariousCombinations
      *
-     * @param AgentConfigSetter|null $configSetter
-     * @param Args                   $testArgs
+     * @param Args $testArgs
      */
-    public function testVariousCombinations(?AgentConfigSetter $configSetter, Args $testArgs): void
+    public function testVariousCombinations(Args $testArgs): void
     {
         if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
             self::dummyAssert();
             return;
         }
 
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForTestVariousCombinations'])
-            ->withAppCodeArgs(['testArgs' => $testArgs]);
-
-        if (is_null($configSetter)) {
-            self::assertNull($testArgs->configTransactionMaxSpans);
-            self::assertTrue($testArgs->isSampled);
-        } else {
-            if (!is_null($testArgs->configTransactionMaxSpans)) {
-                $configSetter->set(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
-            }
-            if (!$testArgs->isSampled) {
-                $configSetter->set(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
-            }
-            $testProperties->withAgentConfig($configSetter);
-        }
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent) use ($testArgs): void {
-                SharedCode::assertResults($testArgs, $dataFromAgent->parsed());
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
+                if ($testArgs->configTransactionMaxSpans !== null) {
+                    $appCodeParams->setAgentOption(
+                        OptionNames::TRANSACTION_MAX_SPANS,
+                        strval($testArgs->configTransactionMaxSpans)
+                    );
+                }
+                if (!$testArgs->isSampled) {
+                    $appCodeParams->setAgentOption(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
+                }
             }
         );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestVariousCombinations']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
+                $appCodeRequestParams->shouldAssumeNoDroppedSpans = false;
+                $appCodeRequestParams->setAppCodeArgs(['testArgs' => $testArgs]);
+            }
+        );
+        $transactionMaxSpans = $testArgs->configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS;
+        if ($transactionMaxSpans < 0) {
+            $transactionMaxSpans = OptionDefaultValues::TRANSACTION_MAX_SPANS;
+        }
+        $expectedStartedSpansCount = min($testArgs->numberOfSpansToCreate, $transactionMaxSpans);
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans($expectedStartedSpansCount)
+        );
+        SharedCode::assertResults($testArgs, $dataFromAgent);
     }
 }

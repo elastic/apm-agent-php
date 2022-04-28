@@ -25,6 +25,7 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -45,7 +46,7 @@ final class SamplingTestSharedCode
     {
         $tx = ElasticApm::getCurrentTransaction();
         $expectedIsSampled = $transactionSampleRate === 1.0 ? true : ($transactionSampleRate === 0.0 ? false : null);
-        if (!is_null($expectedIsSampled) && $tx->isSampled() !== $expectedIsSampled) {
+        if ($expectedIsSampled !== null && $tx->isSampled() !== $expectedIsSampled) {
             $tx->discard();
             throw new RuntimeException(
                 "transactionSampleRate: $transactionSampleRate" .
@@ -71,7 +72,7 @@ final class SamplingTestSharedCode
 
     public static function assertResultsForTwoNestedSpansTest(
         ?float $inputTransactionSampleRate,
-        ParsedDataFromAgent $eventsFromAgent
+        DataFromAgent $eventsFromAgent
     ): void {
         $tx = $eventsFromAgent->singleTransaction();
         $effectiveTransactionSampleRate = $inputTransactionSampleRate ?? 1.0;

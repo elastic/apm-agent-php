@@ -28,18 +28,15 @@ final class TestInfraDataPerProcess extends TestInfraData
     /** @var int */
     public $rootProcessId;
 
+    /** @var ?string */
+    public $resourcesCleanerSpawnedProcessId = null;
+
     /** @var ?int */
     public $resourcesCleanerPort = null;
 
-    /** @var ?string */
-    public $resourcesCleanerServerId = null;
-
-    /** @var ?string */
-    public $thisServerId = null;
+    /** @var string */
+    public $thisSpawnedProcessId;
 
     /** @var ?int */
     public $thisServerPort = null;
-
-    /** @var ?string */
-    public $agentEphemeralId = null;
 }

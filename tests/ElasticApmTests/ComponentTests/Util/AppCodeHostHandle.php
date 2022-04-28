@@ -37,24 +37,35 @@ abstract class AppCodeHostHandle implements LoggableInterface
     /** @var TestCaseHandle */
     protected $testCaseHandle;
 
-    /** @var Logger */
-    protected $logger;
+    /** @var AppCodeHostParams */
+    public $appCodeHostParams;
 
     /** @var AgentConfigSourceBuilder */
     protected $agentConfigSourceBuilder;
 
-    public function __construct(TestCaseHandle $testCaseHandle, AppCodeHostParams $params)
-    {
-        $this->testCaseHandle = $testCaseHandle;
+    /** @var Logger */
+    protected $logger;
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+    /**
+     * @param TestCaseHandle           $testCaseHandle
+     * @param AppCodeHostParams        $appCodeHostParams
+     * @param AgentConfigSourceBuilder $agentConfigSourceBuilder
+     */
+    public function __construct(
+        TestCaseHandle $testCaseHandle,
+        AppCodeHostParams $appCodeHostParams,
+        AgentConfigSourceBuilder $agentConfigSourceBuilder
+    ) {
+        $this->testCaseHandle = $testCaseHandle;
+        $this->appCodeHostParams = $appCodeHostParams;
+        $this->agentConfigSourceBuilder = $agentConfigSourceBuilder;
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
-
-        $this->agentConfigSourceBuilder = new AgentConfigSourceBuilder($params);
     }
 
     /**
@@ -68,19 +79,16 @@ abstract class AppCodeHostHandle implements LoggableInterface
         $this->agentConfigSourceBuilder->tearDown();
     }
 
-    protected function beforeRequestSent(AppCodeTarget $target, AppCodeRequestParams $params): RequestSentToAppCode
+    protected function beforeAppCodeInvocation(AppCodeRequestParams $appCodeRequestParams): AppCodeInvocation
     {
-        $result = new RequestSentToAppCode();
-        $result->target = $target;
-        $result->params = $params;
-        $result->timestampBefore = Clock::singletonInstance()->getSystemClockCurrentTime();
-        return $result;
+        $timestampBefore = Clock::singletonInstance()->getSystemClockCurrentTime();
+        return new AppCodeInvocation($appCodeRequestParams, $timestampBefore);
     }
 
-    protected function afterRequestSent(RequestSentToAppCode $requestSentToAppCode): void
+    protected function afterAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
     {
-        $requestSentToAppCode->timestampAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
-        $this->testCaseHandle->addRequestSentToAppCode($requestSentToAppCode);
+        $appCodeInvocation->after();
+        $this->testCaseHandle->setAppCodeInvocation($appCodeInvocation);
     }
 
     /**

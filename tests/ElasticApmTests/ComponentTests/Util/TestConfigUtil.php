@@ -68,13 +68,10 @@ final class TestConfigUtil
                     $envVarConfigSource,
                 ]
             );
-        $parser = new Parser(
-            new LoggerFactory(new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName)))
-        );
+        $parser = new Parser(AmbientContextForTests::buildLoggerFactory($dbgProcessName, LogLevel::ERROR));
         $allOptsMeta = AllComponentTestsOptionsMetadata::get();
-        return new TestConfigSnapshot(
-            $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta))
-        );
+        $optNameToParsedValue = $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta));
+        return new TestConfigSnapshot($optNameToParsedValue);
     }
 
     public static function assertAgentDisabled(): void

@@ -44,7 +44,6 @@ final class AllComponentTestsOptionsMetadata
     public const APP_CODE_PHP_INI_OPTION_NAME = 'app_code_php_ini';
     public const DATA_PER_PROCESS_OPTION_NAME = 'data_per_process';
     public const DATA_PER_REQUEST_OPTION_NAME = 'data_per_request';
-    public const SERVER_ID_IN_REQUEST_OPTION_NAME = 'server_id_in_request';
 
     /** @var ?array<string, OptionMetadata<mixed>> */
     private static $vaLue = null;
@@ -70,15 +69,18 @@ final class AllComponentTestsOptionsMetadata
             'log_level' => new LogLevelOptionMetadata(LogLevel::DEBUG),
             self::DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
-                    return TestInfraDataPerProcess::deserializeFromString($rawValue);
+                    $deserializedObj = new TestInfraDataPerProcess();
+                    $deserializedObj->deserializeFromString($rawValue);
+                    return $deserializedObj;
                 }
             ),
             self::DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerRequest {
-                    return TestInfraDataPerRequest::deserializeFromString($rawValue);
+                    $deserializedObj = new TestInfraDataPerRequest();
+                    $deserializedObj->deserializeFromString($rawValue);
+                    return $deserializedObj;
                 }
             ),
-            self::SERVER_ID_IN_REQUEST_OPTION_NAME => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;

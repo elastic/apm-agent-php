@@ -32,17 +32,17 @@ use Elastic\Apm\Impl\SpanData;
 
 final class SpanDataValidator extends ExecutionSegmentDataValidator
 {
-    /** @var SpanDataExpected */
-    protected $expected;
+    /** @var SpanDataExpectations */
+    protected $expectations;
 
     /** @var SpanData */
     protected $actual;
 
-    protected function __construct(SpanDataExpected $expected, SpanData $actual)
+    protected function __construct(SpanDataExpectations $expectations, SpanData $actual)
     {
-        parent::__construct($expected, $actual);
+        parent::__construct($expectations, $actual);
 
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
@@ -62,9 +62,9 @@ final class SpanDataValidator extends ExecutionSegmentDataValidator
         }
     }
 
-    public static function validate(SpanData $actual, ?SpanDataExpected $expected = null): void
+    public static function validate(SpanData $actual, ?SpanDataExpectations $expectations = null): void
     {
-        (new self($expected ?? new SpanDataExpected(), $actual))->validateImpl();
+        (new self($expectations ?? new SpanDataExpectations(), $actual))->validateImpl();
     }
 
     public static function validateContextDbData(SpanContextDbData $obj): void

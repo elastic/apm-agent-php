@@ -29,18 +29,19 @@ use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use PHPUnit\Framework\TestCase;
 
-abstract class ExecutionSegmentDataValidator extends EventDataValidator
+abstract class ExecutionSegmentDataValidator extends DataValidatorBase
 {
-    /** @var ExecutionSegmentDataExpected */
-    protected $expected;
+    /** @var ExecutionSegmentDataExpectations */
+    protected $expectations;
 
     /** @var ExecutionSegmentData */
     protected $actual;
 
-    protected function __construct(ExecutionSegmentDataExpected $expected, ExecutionSegmentData $actual)
+    protected function __construct(ExecutionSegmentDataExpectations $expectations, ExecutionSegmentData $actual)
     {
-        $this->expected = $expected;
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
@@ -51,9 +52,9 @@ abstract class ExecutionSegmentDataValidator extends EventDataValidator
         self::validateId($this->actual->id);
         self::validateTraceId($this->actual->traceId);
 
-        self::validateTimestamp($this->actual->timestamp, $this->expected);
+        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
         self::validateDuration($this->actual->duration);
-        self::validateTimestamp(self::calcEndTime($this->actual), $this->expected);
+        self::validateTimestampInsideEvent(TestCaseBase::calcEndTime($this->actual), $this->expectations);
 
         self::validateOutcome($this->actual->outcome);
         self::validateNullableSampleRate($this->actual->sampleRate);
@@ -76,9 +77,9 @@ abstract class ExecutionSegmentDataValidator extends EventDataValidator
      */
     public static function validateOutcome($outcome): ?string
     {
-        self::assertTrue($outcome === null || is_string($outcome));
+        TestCase::assertTrue($outcome === null || is_string($outcome));
         /** @var ?string $outcome */
-        self::assertTrue(ExecutionSegment::isValidOutcome($outcome));
+        TestCase::assertTrue(ExecutionSegment::isValidOutcome($outcome));
         return $outcome;
     }
 
@@ -92,9 +93,9 @@ abstract class ExecutionSegmentDataValidator extends EventDataValidator
         if ($value === null) {
             return null;
         }
-        self::assertIsNumber($value);
+        TestCaseBase::assertIsNumber($value);
         /** @var int|float $value */
-        self::assertInClosedRange(0, $value, 1);
+        TestCaseBase::assertInClosedRange(0, $value, 1);
         return floatval($value);
     }
 
@@ -105,11 +106,11 @@ abstract class ExecutionSegmentDataValidator extends EventDataValidator
      */
     public static function validateLabels($labels): array
     {
-        self::assertTrue(is_array($labels));
+        TestCase::assertTrue(is_array($labels));
         /** @var array<mixed, mixed> $labels */
         foreach ($labels as $key => $value) {
             self::validateKeywordString($key);
-            self::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
+            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::validateKeywordString($value);
             }
@@ -123,16 +124,14 @@ abstract class ExecutionSegmentDataValidator extends EventDataValidator
         self::validateLabels($ctxData->labels);
     }
 
-    public static function calcEndTime(ExecutionSegmentData $timedData): float
-    {
-        return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
-    }
-
-    public static function assertNested(ExecutionSegmentData $nestedExecSeg, ExecutionSegmentData $outerExecSeg): void
-    {
+    public static function assertTimeNested(
+        ExecutionSegmentData $nestedExecSeg,
+        ExecutionSegmentData $outerExecSeg
+    ): void {
         $outerBeginTimestamp = $outerExecSeg->timestamp;
-        $outerEndTimestamp = self::calcEndTime($outerExecSeg);
-        self::assertTimestampInRange($outerBeginTimestamp, $nestedExecSeg->timestamp, $outerEndTimestamp);
-        self::assertTimestampInRange($outerBeginTimestamp, self::calcEndTime($nestedExecSeg), $outerEndTimestamp);
+        $outerEndTimestamp = TestCaseBase::calcEndTime($outerExecSeg);
+        TestCaseBase::assertTimestampInRange($outerBeginTimestamp, $nestedExecSeg->timestamp, $outerEndTimestamp);
+        $nestedEndTimestamp = TestCaseBase::calcEndTime($nestedExecSeg);
+        TestCaseBase::assertTimestampInRange($outerBeginTimestamp, $nestedEndTimestamp, $outerEndTimestamp);
     }
 }

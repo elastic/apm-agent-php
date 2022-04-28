@@ -32,24 +32,24 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     private $resourcesCleaner;
 
     public static function startTestInfraHttpServer(
-        string $dbgServerDesc,
+        string $dbgProcessName,
         string $runScriptName,
         ?ResourcesCleanerHandle $resourcesCleaner
     ): HttpServerHandle {
-        return (new self($dbgServerDesc, $runScriptName, $resourcesCleaner))->startHttpServer();
+        return (new self($dbgProcessName, $runScriptName, $resourcesCleaner))->startHttpServer();
     }
 
     /**
-     * @param string                  $dbgServerDesc
+     * @param string                  $dbgProcessName
      * @param string                  $runScriptName
      * @param ?ResourcesCleanerHandle $resourcesCleaner
      */
     private function __construct(
-        string $dbgServerDesc,
+        string $dbgProcessName,
         string $runScriptName,
         ?ResourcesCleanerHandle $resourcesCleaner
     ) {
-        parent::__construct($dbgServerDesc);
+        parent::__construct($dbgProcessName);
 
         $this->runScriptName = $runScriptName;
         $this->resourcesCleaner = $resourcesCleaner;
@@ -62,14 +62,14 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(int $port, string $serverId): array
+    protected function buildEnvVars(string $spawnedProcessId, int $port): array
     {
         return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
             getenv(),
-            $serverId,
+            $spawnedProcessId,
             $port,
             $this->resourcesCleaner,
-            null /* <- agentEphemeralId */
+            $this->dbgProcessName
         );
     }
 }

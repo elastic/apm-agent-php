@@ -26,36 +26,50 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetadataDiscoverer;
-use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\NameVersionData;
-use Elastic\Apm\Impl\ProcessData;
-use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SystemData;
+use PHPUnit\Framework\TestCase;
 
-final class MetadataValidator extends EventDataValidator
+final class MetadataValidator extends DataValidatorBase
 {
-    /** @var MetadataExpected */
-    protected $expected;
+    /** @var MetadataExpectations */
+    protected $expectations;
 
     /** @var Metadata */
     protected $actual;
 
-    private function __construct(MetadataExpected $expected, Metadata $actual)
+    public static function validate(Metadata $actual, ?MetadataExpectations $expectations = null): void
     {
-        $this->expected = $expected;
+        (new self($expectations ?? new MetadataExpectations(), $actual))->validateImpl();
+    }
+
+    private function __construct(MetadataExpectations $expectations, Metadata $actual)
+    {
+        $this->expectations = $expectations;
         $this->actual = $actual;
     }
 
     private function validateImpl(): void
     {
-        self::validateServiceData($this->actual->service);
-        self::validateProcessData($this->actual->process);
-        self::validateSystemData($this->actual->system);
+        if ($this->expectations->agentEphemeralId !== null) {
+            TestCase::assertNotNull($this->actual->service->agent);
+            $this->validateNullableAgentEphemeralId($this->actual->service->agent->ephemeralId);
+            TestCase::assertSame($this->expectations->agentEphemeralId, $this->actual->service->agent->ephemeralId);
+        }
+
+        $this->validateServiceData();
+        $this->validateProcessData();
+        $this->validateSystemData();
     }
 
-    public static function validate(Metadata $actual, ?MetadataExpected $expected = null): void
+    /**
+     * @param mixed $agentEphemeralId
+     *
+     * @return ?string
+     */
+    public static function validateNullableAgentEphemeralId($agentEphemeralId): ?string
     {
-        (new self($expected ?? new MetadataExpected(), $actual))->validateImpl();
+        return self::validateNullableKeywordString($agentEphemeralId);
     }
 
     /**
@@ -65,19 +79,20 @@ final class MetadataValidator extends EventDataValidator
      */
     public static function validateProcessId($pid): int
     {
-        self::assertIsInt($pid);
+        TestCase::assertIsInt($pid);
         /** @var int $pid */
-        self::assertGreaterThan(0, $pid);
+        TestCase::assertGreaterThan(0, $pid);
 
         return $pid;
     }
 
-    public static function validateProcessData(ProcessData $processData): void
+    private function validateProcessData(): void
     {
+        $processData = $this->actual->process;
         self::validateProcessId($processData->pid);
     }
 
-    public static function validateNameVersionData(?NameVersionData $nameVersionData): void
+    private static function validateNameVersionData(?NameVersionData $nameVersionData): void
     {
         if (is_null($nameVersionData)) {
             return;
@@ -86,43 +101,76 @@ final class MetadataValidator extends EventDataValidator
         self::validateNullableKeywordString($nameVersionData->version);
     }
 
-    public static function validateServiceData(ServiceData $serviceData): void
+    private function validateServiceData(): void
     {
+        $serviceData = $this->actual->service;
+
         self::validateKeywordString($serviceData->name);
+        TestCase::assertSame($this->expectations->serviceName, $serviceData->name);
+
         self::validateNullableKeywordString($serviceData->nodeConfiguredName);
+        TestCase::assertSame($this->expectations->serviceNodeConfiguredName, $serviceData->nodeConfiguredName);
+
         self::validateNullableKeywordString($serviceData->version);
+        TestCase::assertSame($this->expectations->serviceVersion, $serviceData->version);
+
         self::validateNullableKeywordString($serviceData->environment);
+        TestCase::assertSame($this->expectations->serviceEnvironment, $serviceData->environment);
 
         self::validateNameVersionData($serviceData->agent);
         assert($serviceData->agent !== null);
-        self::assertTrue($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
-        self::assertTrue($serviceData->agent->version === ElasticApm::VERSION);
+        TestCase::assertTrue($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
+        TestCase::assertTrue($serviceData->agent->version === ElasticApm::VERSION);
         self::validateNullableKeywordString($serviceData->agent->ephemeralId);
 
         self::validateNameVersionData($serviceData->framework);
 
         self::validateNameVersionData($serviceData->language);
         assert($serviceData->language !== null);
-        self::assertTrue($serviceData->language->name === MetadataDiscoverer::LANGUAGE_NAME);
+        TestCase::assertTrue($serviceData->language->name === MetadataDiscoverer::LANGUAGE_NAME);
 
         self::validateNameVersionData($serviceData->runtime);
-        self::assertTrue($serviceData->runtime !== null);
+        TestCase::assertTrue($serviceData->runtime !== null);
         assert($serviceData->runtime !== null);
-        self::assertTrue($serviceData->runtime->name === MetadataDiscoverer::LANGUAGE_NAME);
-        self::assertTrue($serviceData->runtime->version === $serviceData->language->version);
+        TestCase::assertTrue($serviceData->runtime->name === MetadataDiscoverer::LANGUAGE_NAME);
+        TestCase::assertTrue($serviceData->runtime->version === $serviceData->language->version);
     }
 
-    public static function validateSystemData(SystemData $systemData): void
+    private function validateSystemData(): void
     {
+        $systemData = $this->actual->system;
+
+        self::verifyHostnames(
+            $this->expectations->configuredHostname,
+            $this->expectations->detectedHostname,
+            $systemData
+        );
+    }
+
+    public static function verifyHostnames(
+        ?string $expectedConfiguredHostname,
+        ?string $expectedDetectedHostname,
+        SystemData $systemData
+    ): void {
         self::validateNullableKeywordString($systemData->hostname);
         self::validateNullableKeywordString($systemData->configuredHostname);
         self::validateNullableKeywordString($systemData->detectedHostname);
 
-        if ($systemData->configuredHostname !== null) {
-            self::assertTrue($systemData->detectedHostname === null);
-            self::assertTrue($systemData->hostname === $systemData->configuredHostname);
+        if ($systemData->configuredHostname === null) {
+            TestCase::assertSame($systemData->detectedHostname, $systemData->hostname);
         } else {
-            self::assertTrue($systemData->hostname === $systemData->detectedHostname);
+            TestCase::assertNull($systemData->detectedHostname);
+            TestCase::assertSame($systemData->configuredHostname, $systemData->hostname);
         }
+
+        TestCase::assertSame($expectedConfiguredHostname, $systemData->configuredHostname);
+        TestCase::assertSame($expectedDetectedHostname, $systemData->detectedHostname);
+    }
+
+    public static function deriveExpectedServiceName(?string $configured): string
+    {
+        return $configured === null
+            ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
+            : MetadataDiscoverer::adaptServiceName($configured);
     }
 }

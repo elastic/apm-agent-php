@@ -25,11 +25,9 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Map;
 use Elastic\Apm\Impl\Clock;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -43,12 +41,10 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
     public const FROM_INDEX_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'FROM_INDEX';
     public const INTAKE_API_REQUESTS_JSON_KEY = 'intake_api_requests_received_from_agent';
+    public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
     /** @var int */
     public static $pendingDataRequestNextId = 1;
-
-    /** @var Logger */
-    private $logger;
 
     /** @var LoopInterface */
     private $reactLoop;
@@ -64,13 +60,6 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         parent::__construct();
 
         $this->pendingDataRequests = new Map();
-
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
     }
 
     protected function beforeLoopRun(LoopInterface $loop): void
@@ -96,7 +85,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
     }
 
-    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
     }
@@ -111,7 +100,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         }
 
         $newRequest = new IntakeApiRequest();
-        $newRequest->timeReceivedAtServer = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $newRequest->timeReceivedAtApmServer = Clock::singletonInstance()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
         $this->receivedIntakeApiRequests[] = $newRequest;
@@ -165,7 +154,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = self::$pendingDataRequestNextId++;
                 $timer = $this->reactLoop->addTimer(
-                    TestEnvBase::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
+                    self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
                         $this->fulfillTimedOutPendingDataRequest($pendingDataRequestId);
                     }
@@ -203,7 +192,6 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function fulfillTimedOutPendingDataRequest(int $pendingDataRequestId): void
     {
-        /** @noinspection PhpRedundantOptionalArgumentInspection */
         $pendingDataRequest = $this->pendingDataRequests->remove($pendingDataRequestId, /* default: */ null);
         if ($pendingDataRequest === null) {
             // If request is already fulfilled then just return

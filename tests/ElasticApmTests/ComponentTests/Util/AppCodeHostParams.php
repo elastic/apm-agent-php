@@ -23,14 +23,25 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\Parser as ConfigParser;
+use Elastic\Apm\Impl\Config\Snapshot as AgentConfigSnapshot;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
+use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
 use PHPUnit\Framework\TestCase;
 
 class AppCodeHostParams implements LoggableInterface
 {
     use LoggableTrait;
+
+    /** @var string */
+    public $dbgProcessName;
 
     /** @var AgentConfigSourceKind */
     private $defaultAgentConfigSource;
@@ -39,12 +50,28 @@ class AppCodeHostParams implements LoggableInterface
     private $agentOptions = [];
 
     /** @var string */
-    public $agentEphemeralId;
+    public $spawnedProcessId;
 
-    public function __construct()
+    /** @var Logger */
+    protected $logger;
+
+    public function __construct(string $dbgProcessName)
     {
-        $this->defaultAgentConfigSource = AgentConfigSourceKind::envVars();
-        $this->agentEphemeralId = TestInfraUtil::generateIdBasedOnTestCaseId();
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
+
+        $this->dbgProcessName = $dbgProcessName;
+
+        $this->defaultAgentConfigSource = RandomUtilForTests::getRandomValueFromArray(AgentConfigSourceKind::all());
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Randomly selected default agent config source',
+            ['defaultAgentConfigSource' => $this->defaultAgentConfigSource, 'dbgProcessName' => $this->dbgProcessName]
+        );
     }
 
     public function setDefaultAgentConfigSource(AgentConfigSourceKind $defaultAgentConfigSource): self
@@ -87,5 +114,44 @@ class AppCodeHostParams implements LoggableInterface
     public function getAgentOptions(AgentConfigSourceKind $sourceKind): array
     {
         return ArrayUtil::getValueIfKeyExistsElse($sourceKind->asString(), $this->agentOptions, []);
+    }
+
+    /**
+     * @return array<string, string|int|float>
+     */
+    public function getEffectiveAgentOptions(): array
+    {
+        $iniOptions = $this->getAgentOptions(AgentConfigSourceKind::iniFile());
+        $envVarsOptions = $this->getAgentOptions(AgentConfigSourceKind::envVars());
+
+        /**
+         * If the input arrays have the same string keys,
+         * then the later value for that key will overwrite the previous one.
+         *
+         * .ini file source has higher precedence than environment variables.
+         *
+         * @link https://www.php.net/manual/en/function.array-merge.php
+         */
+        return array_merge($envVarsOptions, $iniOptions);
+    }
+
+    public function getEffectiveAgentConfig(): AgentConfigSnapshot
+    {
+        $configRawSnapshotSource = new MockConfigRawSnapshotSource();
+        foreach ($this->getEffectiveAgentOptions() as $optName => $optVal) {
+            $configRawSnapshotSource->set($optName, strval($optVal));
+        }
+        $loggerFactory = AmbientContextForTests::loggerFactory();
+        $parser = new ConfigParser($loggerFactory);
+        $allOptsMeta = AllOptionsMetadata::get();
+        $rawSnapshot = $configRawSnapshotSource->currentSnapshot($allOptsMeta);
+        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $loggerFactory);
+    }
+
+    public function getSetAgentOptionValue(string $optName): ?string
+    {
+        $setAgentOptions = $this->getEffectiveAgentOptions();
+        $optVal = ArrayUtil::getValueIfKeyExistsElse($optName, $setAgentOptions, null);
+        return $optVal === null ? null : strval($optVal);
     }
 }

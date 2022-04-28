@@ -101,7 +101,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
         } else {
             $isSampled = $distributedTracingData->isSampled;
-            // TODO: Sergey Kleyman: Implement: Transaction::
+            // TODO: Sergey Kleyman: Implement: $sampleRateToMarkTransaction in Transaction::__construct
             $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate ?? 1.0;
         }
 

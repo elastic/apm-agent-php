@@ -54,7 +54,7 @@ final class SerializationUtil
             $serializedData = JsonUtil::encode($data);
         } catch (Exception $ex) {
             throw new SerializationException(
-                ExceptionUtil::buildMessage('Serialization failed', ['data' => $data]),
+                ExceptionUtil::buildMessage('Serialization failed', ['data' => $data, 'original exception' => $ex]),
                 $ex
             );
         }
