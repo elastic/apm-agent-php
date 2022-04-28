@@ -25,14 +25,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\AutoInstrument\CurlHandleWrapped;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\SourceClassLogContext;
-use ElasticApmTests\Util\TestCaseBase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
@@ -42,6 +40,9 @@ use Psr\Http\Message\ResponseInterface;
 final class HttpClientUtilForTests
 {
     use StaticClassTrait;
+
+    private const CONNECT_TIMEOUT_SECONDS = MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 2;
+    private const TIMEOUT_SECONDS = MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 2;
 
     /** @var ?Logger */
     private static $logger = null;
@@ -104,6 +105,24 @@ final class HttpClientUtilForTests
                  * Exceptions are thrown by default when HTTP protocol errors are encountered.
                  */
                 RequestOptions::HTTP_ERRORS => false,
+                /*
+                 * https://docs.guzzlephp.org/en/stable/request-options.html#connect-timeout
+                 *
+                 * connect-timeout
+                 *
+                 * Float describing the number of seconds to wait while trying to connect to a server.
+                 * Use 0 to wait indefinitely (the default behavior).
+                 */
+                RequestOptions::CONNECT_TIMEOUT => self::CONNECT_TIMEOUT_SECONDS,
+                /*
+                 * https://docs.guzzlephp.org/en/stable/request-options.html#timeout
+                 *
+                 * timeout
+                 *
+                 * Float describing the total timeout of the request in seconds.
+                 * Use 0 to wait indefinitely (the default behavior).
+                 */
+                RequestOptions::TIMEOUT => self::TIMEOUT_SECONDS,
             ]
         );
 
