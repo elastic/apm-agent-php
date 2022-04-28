@@ -28,8 +28,7 @@ fi
 
 # Run component tests
 mkdir -p /app/build/
-composer run-script run_component_tests | tee /app/build/run_component_tests_output.txt
-composer run-script run_component_tests_configured_filter CurlAutoInstrumentationTest | tee /app/build/run_component_tests_output.txt
+composer run-script run_component_tests 2>&1 | tee /app/build/run_component_tests_output.txt
 run_component_tests_exit_code=$?
 if [[ $run_component_tests_exit_code -ne 0 ]] ; then
     echo 'Something bad happened when running the tests, see the output from the syslog'
