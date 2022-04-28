@@ -30,14 +30,10 @@
     </logging>
     <testsuites>
         <testsuite name="Tests">
-            <!-- TODO: Sergey Kleyman: UNCOMMENT -->
             <directory>./tests/ElasticApmTests/UnitTests</directory>
-<!--            <directory>./tests/ElasticApmTests/ComponentTests</directory>-->
         </testsuite>
     </testsuites>
     <extensions>
-        <!-- TODO: Sergey Kleyman: UNCOMMENT -->
         <extension class="\ElasticApmTests\UnitTests\Util\UnitTestsPhpUnitExtension"/>
-<!--        <extension class="\ElasticApmTests\ComponentTests\Util\ComponentTestsPhpUnitExtension"/>-->
     </extensions>
 </phpunit>
