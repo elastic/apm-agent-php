@@ -48,12 +48,22 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
         $this->resourcesCleaner = $resourcesCleaner;
     }
 
+    /**
+     * @param HttpAppCodeHostParams    $appCodeHostParams
+     * @param AgentConfigSourceBuilder $agentConfigSourceBuilder
+     * @param int[]                    $portsInUse
+     * @param ResourcesCleanerHandle   $resourcesCleaner
+     *
+     * @return HttpServerHandle
+     */
     public static function startBuiltinHttpServerAppCodeHost(
         HttpAppCodeHostParams $appCodeHostParams,
         AgentConfigSourceBuilder $agentConfigSourceBuilder,
-        ResourcesCleanerHandle $resourcesCleaner
+        ResourcesCleanerHandle $resourcesCleaner,
+        array $portsInUse
     ): HttpServerHandle {
-        return (new self($appCodeHostParams, $agentConfigSourceBuilder, $resourcesCleaner))->startHttpServer();
+        return (new self($appCodeHostParams, $agentConfigSourceBuilder, $resourcesCleaner))
+            ->startHttpServer($portsInUse);
     }
 
     /** @inheritDoc */

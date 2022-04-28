@@ -31,12 +31,21 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     /** @var ?ResourcesCleanerHandle */
     private $resourcesCleaner;
 
+    /**
+     * @param string                  $dbgProcessName
+     * @param string                  $runScriptName
+     * @param int[]                   $portsInUse
+     * @param ?ResourcesCleanerHandle $resourcesCleaner
+     *
+     * @return HttpServerHandle
+     */
     public static function startTestInfraHttpServer(
         string $dbgProcessName,
         string $runScriptName,
+        array $portsInUse,
         ?ResourcesCleanerHandle $resourcesCleaner
     ): HttpServerHandle {
-        return (new self($dbgProcessName, $runScriptName, $resourcesCleaner))->startHttpServer();
+        return (new self($dbgProcessName, $runScriptName, $resourcesCleaner))->startHttpServer($portsInUse);
     }
 
     /**

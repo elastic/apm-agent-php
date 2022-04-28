@@ -32,11 +32,16 @@ trait HttpServerProcessTrait
 {
     protected static function verifySpawnedProcessId(string $receivedSpawnedProcessId): ResponseInterface
     {
-        TestCase::assertSame(
-            AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId,
-            $receivedSpawnedProcessId,
-            'Received spawnedProcessId does not match this spawnedProcessId.'
-        );
+        $expectedSpawnedProcessId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId;
+        if ($expectedSpawnedProcessId !== $receivedSpawnedProcessId) {
+            return self::buildErrorResponse(
+                400,
+                'Received server ID does not match the expected one.'
+                . ' Expected: ' . $expectedSpawnedProcessId
+                . ', received: ' . $receivedSpawnedProcessId
+            );
+        }
+
         return new Response(HttpConsts::STATUS_OK);
     }
 

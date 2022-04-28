@@ -29,12 +29,17 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 final class BuiltinHttpServerAppCodeHostHandle extends HttpAppCodeHostHandle
 {
     /**
+     * @param TestCaseHandle                       $testCaseHandle
      * @param Closure(HttpAppCodeHostParams): void $setParamsFunc
+     * @param ResourcesCleanerHandle               $resourcesCleaner
+     * @param int[]                                $portsInUse
+     * @param string                               $dbgInstanceName
      */
     public function __construct(
         TestCaseHandle $testCaseHandle,
         Closure $setParamsFunc,
         ResourcesCleanerHandle $resourcesCleaner,
+        array $portsInUse,
         string $dbgInstanceName
     ) {
         $dbgProcessName = ClassNameUtil::fqToShort(BuiltinHttpServerAppCodeHost::class) . '(' . $dbgInstanceName . ')';
@@ -46,7 +51,8 @@ final class BuiltinHttpServerAppCodeHostHandle extends HttpAppCodeHostHandle
         $httpServerHandle = BuiltinHttpServerAppCodeHostStarter::startBuiltinHttpServerAppCodeHost(
             $appCodeHostParams,
             $agentConfigSourceBuilder,
-            $resourcesCleaner
+            $resourcesCleaner,
+            $portsInUse
         );
         $appCodeHostParams->spawnedProcessId = $httpServerHandle->getSpawnedProcessId();
 

@@ -45,6 +45,9 @@ final class TestCaseHandle implements LoggableInterface
     /** @var Logger */
     private $logger;
 
+    /** @var int[] */
+    private $portsInUse = [];
+
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
 
@@ -69,8 +72,8 @@ final class TestCaseHandle implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
-        $this->resourcesCleaner = self::startResourcesCleaner();
-        $this->mockApmServer = self::startMockApmServer($this->resourcesCleaner);
+        $this->resourcesCleaner = $this->startResourcesCleaner();
+        $this->mockApmServer = $this->startMockApmServer($this->resourcesCleaner);
     }
 
     /**
@@ -113,15 +116,13 @@ final class TestCaseHandle implements LoggableInterface
     public function ensureAdditionalHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
     {
         if ($this->additionalHttpAppCodeHost === null) {
-            $this->additionalHttpAppCodeHost = new BuiltinHttpServerAppCodeHostHandle(
-                $this,
+            $this->additionalHttpAppCodeHost = $this->startBuiltinHttpServerAppCodeHost(
                 function (HttpAppCodeHostParams $params) use ($setParamsFunc): void {
                     $this->setMandatoryOptions($params);
                     if ($setParamsFunc !== null) {
                         $setParamsFunc($params);
                     }
                 },
-                $this->resourcesCleaner,
                 'additional' /* dbgInstanceName */
             );
         }
@@ -199,24 +200,49 @@ final class TestCaseHandle implements LoggableInterface
         $this->resourcesCleaner->signalToExit();
     }
 
-    private static function startResourcesCleaner(): ResourcesCleanerHandle
+    private function addPortInUse(int $port): void
+    {
+        TestCase::assertNotContains($port, $this->portsInUse);
+        $this->portsInUse[] = $port;
+    }
+
+    private function startResourcesCleaner(): ResourcesCleanerHandle
     {
         $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
             ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessName */,
             'runResourcesCleaner.php' /* <- runScriptName */,
+            $this->portsInUse,
             null /* <- resourcesCleaner */
         );
+        $this->addPortInUse($httpServerHandle->getPort());
         return new ResourcesCleanerHandle($httpServerHandle);
     }
 
-    private static function startMockApmServer(ResourcesCleanerHandle $resourcesCleaner): MockApmServerHandle
+    private function startMockApmServer(ResourcesCleanerHandle $resourcesCleaner): MockApmServerHandle
     {
         $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
             ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgProcessName */,
             'runMockApmServer.php' /* <- runScriptName */,
+            $this->portsInUse,
             $resourcesCleaner
         );
+        $this->addPortInUse($httpServerHandle->getPort());
         return new MockApmServerHandle($httpServerHandle);
+    }
+
+    private function startBuiltinHttpServerAppCodeHost(
+        Closure $setParamsFunc,
+        string $dbgInstanceName
+    ): BuiltinHttpServerAppCodeHostHandle {
+        $result = new BuiltinHttpServerAppCodeHostHandle(
+            $this,
+            $setParamsFunc,
+            $this->resourcesCleaner,
+            $this->portsInUse,
+            $dbgInstanceName
+        );
+        $this->addPortInUse($result->getPort());
+        return $result;
     }
 
     /**
@@ -237,12 +263,7 @@ final class TestCaseHandle implements LoggableInterface
                 );
 
             case AppCodeHostKind::builtinHttpServer():
-                return new BuiltinHttpServerAppCodeHostHandle(
-                    $this,
-                    $setParamsFunc,
-                    $this->resourcesCleaner,
-                    $dbgInstanceName
-                );
+                return $this->startBuiltinHttpServerAppCodeHost($setParamsFunc, $dbgInstanceName);
         }
 
         throw new RuntimeException(

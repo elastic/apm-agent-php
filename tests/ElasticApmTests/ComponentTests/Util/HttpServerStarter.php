@@ -23,10 +23,13 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
+use PHPUnit\Util\Test;
 use RuntimeException;
 use Throwable;
 
@@ -73,10 +76,15 @@ abstract class HttpServerStarter
      */
     abstract protected function buildEnvVars(string $spawnedProcessId, int $port): array;
 
-    protected function startHttpServer(): HttpServerHandle
+    /**
+     * @param int[] $portsInUse
+     *
+     * @return HttpServerHandle
+     */
+    protected function startHttpServer(array $portsInUse): HttpServerHandle
     {
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
-            $currentTryPort = self::findFreePortToListen();
+            $currentTryPort = self::findFreePortToListen($portsInUse);
             $currentTrySpawnedProcessId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
             $cmdLine = $this->buildCommandLine($currentTryPort);
             $envVars = $this->buildEnvVars($currentTrySpawnedProcessId, $currentTryPort);
@@ -113,9 +121,26 @@ abstract class HttpServerStarter
         throw new RuntimeException("Failed to start ' . $this->dbgProcessName . ' HTTP server");
     }
 
-    private static function findFreePortToListen(): int
+    /**
+     * @param int[] $portsInUse
+     *
+     * @return int
+     */
+    private static function findFreePortToListen(array $portsInUse): int
     {
-        return mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
+        $firstCandidate = mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
+        $candidate = $firstCandidate;
+        while (true) {
+            if (!in_array($candidate, $portsInUse)) {
+                break;
+            }
+            ++$candidate;
+            $candidate = $candidate === self::PORTS_RANGE_END ? self::PORTS_RANGE_BEGIN : $candidate;
+            if ($firstCandidate === $candidate) {
+                TestCase::fail('Could not find a free port' . LoggableToString::convert(['portsInUse' => $portsInUse]));
+            }
+        }
+        return $candidate;
     }
 
     private function isHttpServerRunning(string $spawnedProcessId, int $port, Logger $logger): bool
