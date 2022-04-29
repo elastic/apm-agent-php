@@ -49,6 +49,9 @@ abstract class HttpServerStarter
     /** @var string */
     protected $dbgProcessName;
 
+    /** @var int */
+    private static $portToStartSearchFrom = self::PORTS_RANGE_BEGIN;
+
     protected function __construct(string $dbgProcessName)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -128,18 +131,28 @@ abstract class HttpServerStarter
      */
     private static function findFreePortToListen(array $portsInUse): int
     {
-        $firstCandidate = mt_rand(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1);
-        $candidate = $firstCandidate;
+        $calcNextInCircularPortRange = function (int $port): int {
+            return $port === (self::PORTS_RANGE_END - 1) ? self::PORTS_RANGE_BEGIN : ($port + 1);
+        };
+        $candidate = self::$portToStartSearchFrom;
         while (true) {
             if (!in_array($candidate, $portsInUse)) {
                 break;
             }
-            ++$candidate;
-            $candidate = $candidate === self::PORTS_RANGE_END ? self::PORTS_RANGE_BEGIN : $candidate;
-            if ($firstCandidate === $candidate) {
-                TestCase::fail('Could not find a free port' . LoggableToString::convert(['portsInUse' => $portsInUse]));
+            $candidate = $calcNextInCircularPortRange($candidate);
+            if ($candidate === self::$portToStartSearchFrom) {
+                TestCase::fail(
+                    'Could not find a free port'
+                    . LoggableToString::convert(
+                        [
+                            'portsInUse' => $portsInUse,
+                            'portToStartSearchFrom' => self::$portToStartSearchFrom,
+                        ]
+                    )
+                );
             }
         }
+        self::$portToStartSearchFrom = $calcNextInCircularPortRange($candidate);
         return $candidate;
     }
 
