@@ -109,8 +109,8 @@ trait AutoInstrumentationTrait
         array $interceptedCallArgs
     ): void {
         ($assertProxy = Assert::ifEnabled())
-        && $assertProxy->that(!is_null($interceptedCallThis))
-        && $assertProxy->withContext('!is_null($interceptedCallThis)', ['interceptedCallArgs' => $interceptedCallArgs]);
+        && $assertProxy->that($interceptedCallThis !== null)
+        && $assertProxy->withContext('$interceptedCallThis !== null', ['interceptedCallArgs' => $interceptedCallArgs]);
     }
 
     /**

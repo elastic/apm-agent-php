@@ -45,8 +45,8 @@ final class AppCodeTarget implements JsonDeserializableInterface, LoggableInterf
 
     public static function asRouted(callable $appCodeClassMethod): AppCodeTarget
     {
-        TestCase::assertTrue(is_callable($appCodeClassMethod));
-        TestCase::assertTrue(is_array($appCodeClassMethod));
+        TestCase::assertIsCallable($appCodeClassMethod);
+        TestCase::assertIsArray($appCodeClassMethod);
         /** @noinspection PhpParamsInspection */
         TestCase::assertCount(2, $appCodeClassMethod);
 

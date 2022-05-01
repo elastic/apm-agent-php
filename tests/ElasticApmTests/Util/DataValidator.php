@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -32,7 +33,7 @@ use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use PHPUnit\Framework\TestCase;
 
-abstract class DataValidatorBase implements LoggableInterface
+abstract class DataValidator implements LoggableInterface
 {
     use LoggableTrait;
 
@@ -51,16 +52,6 @@ abstract class DataValidatorBase implements LoggableInterface
             LoggableToString::convert(['$id' => $id, '$expectedSizeInBytes' => $expectedSizeInBytes])
         );
         return $id;
-    }
-
-    /**
-     * @param mixed $traceId
-     *
-     * @return string
-     */
-    public static function validateTraceId($traceId): string
-    {
-        return self::validateIdEx($traceId, Constants::TRACE_ID_SIZE_IN_BYTES);
     }
 
     /**
@@ -122,18 +113,17 @@ abstract class DataValidatorBase implements LoggableInterface
     }
 
     /**
-     * @param mixed                 $timestamp
-     * @param EventDataExpectations $expectations
+     * @param mixed                  $timestamp
+     * @param ?EventDataExpectations $expectationsArg
      *
      * @return float
      */
-    public function validateTimestampInsideEvent($timestamp, EventDataExpectations $expectations): float
+    public static function validateTimestamp($timestamp, ?EventDataExpectations $expectationsArg = null): float
     {
         TestCaseBase::assertIsNumber($timestamp);
         /** @var float|int $timestamp */
-
+        $expectations = $expectationsArg ?? new EventDataExpectations();
         TestCaseBase::assertTimestampInRange($expectations->timestampBefore, $timestamp, $expectations->timestampAfter);
-
         return floatval($timestamp);
     }
 
@@ -219,7 +209,7 @@ abstract class DataValidatorBase implements LoggableInterface
      */
     public static function validateNullableHttpStatusCode($value): ?int
     {
-        if (is_null($value)) {
+        if ($value === null) {
             return null;
         }
 
@@ -251,5 +241,25 @@ abstract class DataValidatorBase implements LoggableInterface
             ++$count;
         }
         return $count;
+    }
+
+    /**
+     * @param mixed $labels
+     *
+     * @return array<string, string|bool|int|float|null>
+     */
+    public static function validateLabels($labels): array
+    {
+        TestCase::assertTrue(is_array($labels));
+        /** @var array<mixed, mixed> $labels */
+        foreach ($labels as $key => $value) {
+            self::validateKeywordString($key);
+            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
+            if (is_string($value)) {
+                self::validateKeywordString($value);
+            }
+        }
+        /** @var array<string, string|bool|int|float|null> $labels */
+        return $labels;
     }
 }

@@ -82,6 +82,6 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
      */
     public static function doesValueHaveSupportedLabelType($value): bool
     {
-        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
+        return $value === null || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
     }
 }

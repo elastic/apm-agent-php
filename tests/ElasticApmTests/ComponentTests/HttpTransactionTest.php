@@ -60,16 +60,14 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             return;
         }
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = $testCaseHandle->ensureMainHttpAppCodeHost();
         /** @var ?UrlParts */
         $expectedUrlParts = null;
-        $appCodeHost->sendRequest(
+        $appCodeHost->sendHttpRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($httpMethod, &$expectedUrlParts): void {
-                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    $appCodeRequestParams->httpRequestMethod = $httpMethod;
-                    $expectedUrlParts = $appCodeRequestParams->urlParts;
-                }
+            function (HttpAppCodeRequestParams $appCodeRequestParams) use ($httpMethod, &$expectedUrlParts): void {
+                $appCodeRequestParams->httpRequestMethod = $httpMethod;
+                $expectedUrlParts = $appCodeRequestParams->urlParts;
             }
         );
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
@@ -120,13 +118,11 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             return;
         }
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
-        $appCodeHost->sendRequest(
+        $appCodeHost = $testCaseHandle->ensureMainHttpAppCodeHost();
+        $appCodeHost->sendHttpRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($path, $query): void {
-                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    $appCodeRequestParams->urlParts->path($path)->query($query);
-                }
+            function (HttpAppCodeRequestParams $appCodeRequestParams) use ($path, $query): void {
+                $appCodeRequestParams->urlParts->path($path)->query($query);
             }
         );
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);

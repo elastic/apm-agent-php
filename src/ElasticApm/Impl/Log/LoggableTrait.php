@@ -63,7 +63,7 @@ trait LoggableTrait
         $nameToValue = $customPropValues;
 
         $classNameToLog = static::classNameToLog();
-        if (!is_null($classNameToLog)) {
+        if ($classNameToLog !== null) {
             $nameToValue[LogConsts::TYPE_KEY] = $classNameToLog;
         }
 

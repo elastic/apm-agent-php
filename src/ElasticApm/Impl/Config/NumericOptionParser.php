@@ -88,8 +88,8 @@ abstract class NumericOptionParser extends OptionParser
         $parsedValue = $this->stringToNumber($rawValue);
 
         if (
-            (!is_null($this->minValidValue) && ($parsedValue < $this->minValidValue))
-            || (!is_null($this->maxValidValue) && ($this->maxValidValue < $parsedValue))
+            (($this->minValidValue !== null) && ($parsedValue < $this->minValidValue))
+            || (($this->maxValidValue !== null) && ($parsedValue > $this->maxValidValue))
         ) {
             throw new ParseException(
                 'Value is not in range between the valid minimum and maximum values.'

@@ -56,7 +56,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
 
     public function setUp(): void
     {
-        $this->mockClock = new MockClock();
+        $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
         $this->startTimestamp = mt_rand(1, 10) * TimeUtil::secondsToMicroseconds(1000 * 1000);
         // Fast forward to some initial point
         $this->mockClock->fastForwardMicroseconds($this->startTimestamp);

@@ -97,16 +97,25 @@ final class TestCaseHandle implements LoggableInterface
         return $this->mainAppCodeHost;
     }
 
-    // /**
-    //  * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
-    //  *
-    //  * @return HttpAppCodeHostHandle
-    //  */
-    // public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
-    // {
-    //     TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
-    //     return $this->ensureMainHttpAppCodeHost($setParamsFunc); // @phpstan-ignore-line
-    // }
+    /**
+     * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
+     *
+     * @return HttpAppCodeHostHandle
+     */
+    public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
+    {
+        TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
+        $appCodeHostHandle = $this->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeHostParams) use ($setParamsFunc): void {
+                TestCase::assertInstanceOf(HttpAppCodeHostParams::class, $appCodeHostParams);
+                if ($setParamsFunc !== null) {
+                    $setParamsFunc($appCodeHostParams);
+                }
+            }
+        );
+        TestCase::assertInstanceOf(HttpAppCodeHostHandle::class, $appCodeHostHandle);
+        return $appCodeHostHandle;
+    }
 
     /**
      * @param null|Closure(HttpAppCodeHostParams): void $setParamsFunc
@@ -117,10 +126,10 @@ final class TestCaseHandle implements LoggableInterface
     {
         if ($this->additionalHttpAppCodeHost === null) {
             $this->additionalHttpAppCodeHost = $this->startBuiltinHttpServerAppCodeHost(
-                function (HttpAppCodeHostParams $params) use ($setParamsFunc): void {
-                    $this->setMandatoryOptions($params);
+                function (HttpAppCodeHostParams $appCodeHostParams) use ($setParamsFunc): void {
+                    $this->setMandatoryOptions($appCodeHostParams);
                     if ($setParamsFunc !== null) {
-                        $setParamsFunc($params);
+                        $setParamsFunc($appCodeHostParams);
                     }
                 },
                 'additional' /* dbgInstanceName */

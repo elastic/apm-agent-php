@@ -24,99 +24,74 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\Util\DataValidatorBase;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\TransactionDataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class TransactionDataDeserializer extends ExecutionSegmentDataDeserializer
+final class TransactionDataDeserializer
 {
-    /** @var TransactionData */
-    private $result;
-
-    private function __construct(TransactionData $result)
-    {
-        parent::__construct($result);
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     * @param mixed $deserializedRawData
+     * @param mixed $value
      *
      * @return TransactionData
      */
-    public static function deserialize($deserializedRawData): TransactionData
+    public static function deserialize($value): TransactionData
     {
         $result = new TransactionData();
-        (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidTransactionData($result);
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (ExecutionSegmentDataDeserializer::deserializeKeyValue($key, $value, $result)) {
+                    return true;
+                }
+
+                switch ($key) {
+                    case 'context':
+                        $result->context = TransactionContextDataDeserializer::deserialize($value);
+                        return true;
+                    case 'parent_id':
+                        $result->parentId = ExecutionSegmentDataValidator::validateId($value);
+                        return true;
+                    case 'result':
+                        $result->result = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'span_count':
+                        self::deserializeSpanCountSubObject($value, $result);
+                        return true;
+                    case 'sampled':
+                        $result->isSampled = DataValidator::validateBool($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        TransactionDataValidator::validate($result);
         return $result;
     }
 
     /**
-     * @param string $key
-     * @param mixed  $value
-     *
-     * @return bool
+     * @param mixed $value
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    private static function deserializeSpanCountSubObject($value, TransactionData $result): void
     {
-        if (parent::deserializeKeyValue($key, $value)) {
-            return true;
-        }
-
-        switch ($key) {
-            case 'context':
-                $this->result->context = TransactionContextDataDeserializer::deserialize($value);
-                return true;
-
-            case 'parent_id':
-                $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
-                return true;
-
-            case 'result':
-                $this->result->result = ValidationUtil::assertValidKeywordString($value);
-                return true;
-
-            case 'span_count':
-                $this->deserializeSpanCountSubObject($value);
-                return true;
-
-            case 'sampled':
-                $this->result->isSampled = DataValidatorBase::validateBool($value);
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * @param mixed $deserializedRawData
-     */
-    private function deserializeSpanCountSubObject($deserializedRawData): void
-    {
-        ValidationUtil::assertThat(is_array($deserializedRawData));
-        /** @var array<mixed, mixed> $deserializedRawData */
-
-        foreach ($deserializedRawData as $key => $value) {
-            switch ($key) {
-                case 'dropped':
-                    $this->result->droppedSpansCount
-                        = ValidationUtil::assertValidCount($value);
-                    break;
-
-                case 'started':
-                    $this->result->startedSpansCount
-                        = ValidationUtil::assertValidCount($value);
-                    break;
-
-                default:
-                    throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'dropped':
+                        $result->droppedSpansCount = TransactionDataValidator::validateCount($value);
+                        return true;
+                    case 'started':
+                        $result->startedSpansCount = TransactionDataValidator::validateCount($value);
+                        return true;
+                    default:
+                        return false;
+                }
             }
-        }
+        );
     }
 }

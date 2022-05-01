@@ -195,7 +195,7 @@ final class SharedCode
         $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($testingDepth));
         if ($testArgs->variantIndex === 1) {
             /** @phpstan-ignore-next-line */
-            if (!is_null(self::LIMIT_TO_VARIANT_INDEX) && self::SHOULD_PRINT_PROGRESS) {
+            if (self::LIMIT_TO_VARIANT_INDEX !== null && self::SHOULD_PRINT_PROGRESS) {
                 $msg = 'LIMITED to variant #'
                        . self::LIMIT_TO_VARIANT_INDEX . ' out of '
                        . $testArgsVariantsCount;
@@ -206,10 +206,10 @@ final class SharedCode
         }
 
         /** @phpstan-ignore-next-line */
-        $isThisVariantEnabled = is_null(self::LIMIT_TO_VARIANT_INDEX)
+        $isThisVariantEnabled = self::LIMIT_TO_VARIANT_INDEX === null
                                 || ($testArgs->variantIndex === self::LIMIT_TO_VARIANT_INDEX);
 
-        $shouldPrintProgress = is_null(self::LIMIT_TO_VARIANT_INDEX)
+        $shouldPrintProgress = self::LIMIT_TO_VARIANT_INDEX === null
             ? self::SHOULD_PRINT_PROGRESS
             : $isThisVariantEnabled; // @phpstan-ignore-line
 

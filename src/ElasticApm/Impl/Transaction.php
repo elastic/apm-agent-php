@@ -198,7 +198,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return NoopTransactionContext::singletonInstance();
         }
 
-        if (is_null($this->context)) {
+        if ($this->context === null) {
             $this->data->context = new TransactionContextData();
             $this->context = new TransactionContext($this, $this->data->context);
         }
@@ -208,7 +208,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function cloneContextData(): ?TransactionContextData
     {
-        if (is_null($this->data->context)) {
+        if ($this->data->context === null) {
             return null;
         }
         return clone $this->data->context;
@@ -393,7 +393,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
-        if (is_null($this->currentSpan)) {
+        if ($this->currentSpan === null) {
             return $this->tracer->doCreateError($errorExceptionData, /* transaction: */ $this, /* span */ null);
         }
 
@@ -403,7 +403,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function getDistributedTracingData(): ?DistributedTracingData
     {
-        if (is_null($this->currentSpan)) {
+        if ($this->currentSpan === null) {
             return $this->doGetDistributedTracingData(/* span */ null);
         }
 
@@ -419,7 +419,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $result = new DistributedTracingData();
         $result->traceId = $this->data->traceId;
-        $result->parentId = is_null($span) ? $this->data->id : $span->getId();
+        $result->parentId = $span === null ? $this->data->id : $span->getId();
         $result->isSampled = $this->data->isSampled;
         return $result;
     }
@@ -533,7 +533,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
          * $this->breakdownMetricsPerTransaction is not null
          *
          * @var BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
-         * @noinspection PhpUnnecessaryLocalVariableInspection
          */
         $breakdownMetricsPerTransaction = $this->breakdownMetricsPerTransaction;
         $breakdownMetricsPerTransaction->addSpanSelfTime(
@@ -565,7 +564,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function toLog(LogStreamInterface $stream): void
     {
-        $currentSpanId = is_null($this->currentSpan) ? null : $this->currentSpan->getId();
+        $currentSpanId = $this->currentSpan === null ? null : $this->currentSpan->getId();
         parent::toLogLoggableTraitImpl(
             $stream,
             /* customPropValues */

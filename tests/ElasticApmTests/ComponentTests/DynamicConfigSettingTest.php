@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
@@ -34,6 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use PHPUnit\Framework\TestCase;
 
 final class DynamicConfigSettingTest extends ComponentTestCaseBase
 {
@@ -80,7 +82,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
          */
         $cPartNumberOfDynamicConfigOptions = \elastic_apm_get_number_of_dynamic_config_options();
 
-        self::appAssertSame($cPartNumberOfDynamicConfigOptions, count(self::buildDynamicOptionsDataSet()));
+        TestCase::assertSame($cPartNumberOfDynamicConfigOptions, count(self::buildDynamicOptionsDataSet()));
 
         http_response_code(234);
     }
@@ -106,20 +108,12 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
     public static function appCodeForTestDynamicConfigSetting(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        self::appAssertTrue(
-            is_string($optName),
-            '$optName should be a string',
-            ['$optName actual type' => DbgUtil::getType($optName)]
-        );
+        TestCase::assertIsString($optName);
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
         $tracer = GlobalTracerHolder::get();
-        self::appAssertTrue(
-            $tracer instanceof Tracer,
-            '$tracer is not an instance of Tracer class',
-            ['$tracer' => $tracer]
-        );
+        TestCase::assertInstanceOf(Tracer::class, $tracer);
         /** @var Tracer $tracer */
 
         $optActualVal = $tracer->getConfig()->parsedValueFor($optName);
@@ -130,16 +124,18 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
             $areValuesEqual = ($optActualVal == $optExpectedVal);
         }
 
-        self::appAssertTrue(
+        TestCase::assertTrue(
             $areValuesEqual,
-            'Expected option parsed value is not equal to the actual parsed value',
-            [
-                'optName'             => $optName,
-                'optExpectedVal'      => $optExpectedVal,
-                'optExpectedVal type' => DbgUtil::getType($optExpectedVal),
-                'optActualVal'        => $optActualVal,
-                'optActualVal type'   => DbgUtil::getType($optActualVal),
-            ]
+            'Expected option parsed value is not equal to the actual parsed value'
+            . '; ' . LoggableToString::convert(
+                [
+                    'optName'             => $optName,
+                    'optExpectedVal'      => $optExpectedVal,
+                    'optExpectedVal type' => DbgUtil::getType($optExpectedVal),
+                    'optActualVal'        => $optActualVal,
+                    'optActualVal type'   => DbgUtil::getType($optActualVal),
+                ]
+            )
         );
 
         http_response_code(self::APP_CODE_RESPONSE_HTTP_STATUS_CODE);

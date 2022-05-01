@@ -31,7 +31,7 @@ use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use PHPUnit\Framework\TestCase;
 
-abstract class ExecutionSegmentDataValidator extends DataValidatorBase
+abstract class ExecutionSegmentDataValidator extends DataValidator
 {
     /** @var ExecutionSegmentDataExpectations */
     protected $expectations;
@@ -50,11 +50,11 @@ abstract class ExecutionSegmentDataValidator extends DataValidatorBase
         self::validateKeywordString($this->actual->name);
         self::validateKeywordString($this->actual->type);
         self::validateId($this->actual->id);
-        self::validateTraceId($this->actual->traceId);
+        TraceDataValidator::validateId($this->actual->traceId);
 
-        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
+        self::validateTimestamp($this->actual->timestamp, $this->expectations);
         self::validateDuration($this->actual->duration);
-        self::validateTimestampInsideEvent(TestCaseBase::calcEndTime($this->actual), $this->expectations);
+        self::validateTimestamp(TestCaseBase::calcEndTime($this->actual), $this->expectations);
 
         self::validateOutcome($this->actual->outcome);
         self::validateNullableSampleRate($this->actual->sampleRate);
@@ -97,26 +97,6 @@ abstract class ExecutionSegmentDataValidator extends DataValidatorBase
         /** @var int|float $value */
         TestCaseBase::assertInClosedRange(0, $value, 1);
         return floatval($value);
-    }
-
-    /**
-     * @param mixed $labels
-     *
-     * @return array<string, string|bool|int|float|null>
-     */
-    public static function validateLabels($labels): array
-    {
-        TestCase::assertTrue(is_array($labels));
-        /** @var array<mixed, mixed> $labels */
-        foreach ($labels as $key => $value) {
-            self::validateKeywordString($key);
-            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
-            if (is_string($value)) {
-                self::validateKeywordString($value);
-            }
-        }
-        /** @var array<string, string|bool|int|float|null> $labels */
-        return $labels;
     }
 
     public static function validateExecutionSegmentContextData(ExecutionSegmentContextData $ctxData): void

@@ -29,11 +29,8 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use ElasticApmTests\Util\LogSinkForTests;
 use RuntimeException;
 
 final class TestConfigUtil
@@ -60,7 +57,7 @@ final class TestConfigUtil
         ?RawSnapshotSourceInterface $additionalConfigSource
     ): TestConfigSnapshot {
         $envVarConfigSource = new EnvVarsRawSnapshotSource(TestConfigUtil::ENV_VAR_NAME_PREFIX);
-        $configSource = is_null($additionalConfigSource)
+        $configSource =  $additionalConfigSource === null
             ? $envVarConfigSource
             : new CompositeRawSnapshotSource(
                 [

@@ -25,6 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Ds\Queue;
 use Ds\Set;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionContextData;
@@ -34,10 +35,9 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
-use ElasticApmTests\ComponentTests\Util\FlakyAssertions;
 use PHPUnit\Framework\TestCase;
 
-final class TraceDataValidator extends DataValidatorBase
+final class TraceDataValidator extends DataValidator
 {
     /** @var TraceDataExpectations */
     protected $expectations;
@@ -297,5 +297,15 @@ final class TraceDataValidator extends DataValidatorBase
         TestCase::assertSame($expectedUrlParts->port, $rootTxCtxReqUrl->port);
         TestCase::assertSame($expectedUrlParts->path, $rootTxCtxReqUrl->path);
         TestCase::assertSame($expectedUrlParts->query, $rootTxCtxReqUrl->query);
+    }
+
+    /**
+     * @param mixed $traceId
+     *
+     * @return string
+     */
+    public static function validateId($traceId): string
+    {
+        return self::validateIdEx($traceId, Constants::TRACE_ID_SIZE_IN_BYTES);
     }
 }

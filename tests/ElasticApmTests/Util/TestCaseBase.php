@@ -188,7 +188,7 @@ class TestCaseBase extends TestCase
     public static function hasLabel(ExecutionSegmentData $execSegData, string $key): bool
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if (is_null($context)) {
+        if ($context === null) {
             return false;
         }
         return array_key_exists($key, $context->labels);
@@ -203,7 +203,7 @@ class TestCaseBase extends TestCase
     public static function assertLabelsCount(int $expectedCount, ExecutionSegmentData $execSegData): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if (is_null($context)) {
+        if ($context === null) {
             self::assertSame(0, $expectedCount, LoggableToString::convert($execSegData));
             return;
         }
@@ -218,7 +218,7 @@ class TestCaseBase extends TestCase
     public static function getLabels(ExecutionSegmentData $execSegData): array
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if (is_null($context)) {
+        if ($context === null) {
             return [];
         }
         return $context->labels;
@@ -252,7 +252,7 @@ class TestCaseBase extends TestCase
     public static function assertNotHasLabel(ExecutionSegmentData $execSegData, string $key): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if (is_null($context)) {
+        if ($context === null) {
             return;
         }
         self::assertArrayNotHasKey($key, $context->labels);
@@ -311,6 +311,7 @@ class TestCaseBase extends TestCase
         return $execSegData->parentId;
     }
 
+    /** @noinspection PhpIfWithCommonPartsInspection */
     public static function setParentId(ExecutionSegmentData $execSegData, ?string $newParentId): void
     {
         if ($execSegData instanceof SpanData) {

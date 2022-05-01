@@ -23,26 +23,40 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\MetadataDiscoverer;
+
 final class MetadataExpectations extends EventDataExpectations
 {
-    /** @var ?string */
-    public $agentEphemeralId = null;
+    /** @var Optional<?string> */
+    public $agentEphemeralId;
 
-    /** @var string */
+    /** @var Optional<?string> */
+    public $configuredHostname;
+
+    /** @var Optional<?string> */
+    public $detectedHostname;
+
+    /** @var Optional<string> */
     public $serviceName;
 
-    /** @var ?string */
-    public $serviceNodeConfiguredName = null;
+    /** @var Optional<?string> */
+    public $serviceEnvironment;
 
-    /** @var ?string */
-    public $serviceEnvironment = null;
+    /** @var Optional<?string> */
+    public $serviceNodeConfiguredName;
 
-    /** @var ?string */
-    public $serviceVersion = null;
+    /** @var Optional<?string> */
+    public $serviceVersion;
 
-    /** @var ?string */
-    public $configuredHostname = null;
-
-    /** @var ?string */
-    public $detectedHostname;
+    public function __construct()
+    {
+        parent::__construct();
+        $this->agentEphemeralId = new Optional();
+        $this->configuredHostname = new Optional();
+        $this->detectedHostname = new Optional();
+        $this->serviceEnvironment = new Optional();
+        $this->serviceName = new Optional();
+        $this->serviceNodeConfiguredName = new Optional();
+        $this->serviceVersion = new Optional();
+    }
 }

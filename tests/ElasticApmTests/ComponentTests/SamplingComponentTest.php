@@ -31,7 +31,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TransactionDataExpectations;
 
 final class SamplingComponentTest extends ComponentTestCaseBase
 {
@@ -62,6 +62,9 @@ final class SamplingComponentTest extends ComponentTestCaseBase
      */
     public function testTwoNestedSpans(?float $transactionSampleRate): void
     {
+        // Arrange
+
+        TransactionDataExpectations::$defaultIsSampled = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($transactionSampleRate): void {
@@ -73,6 +76,9 @@ final class SamplingComponentTest extends ComponentTestCaseBase
                 }
             }
         );
+
+        // Act
+
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTwoNestedSpansTest']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($transactionSampleRate): void {
@@ -90,6 +96,9 @@ final class SamplingComponentTest extends ComponentTestCaseBase
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans($minSpansCount, $maxSpansCount)
         );
+
+        // Assert
+
         SamplingTestSharedCode::assertResultsForTwoNestedSpansTest($transactionSampleRate, $dataFromAgent);
     }
 }

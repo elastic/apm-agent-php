@@ -111,25 +111,20 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     private function runHttpServer(): void
     {
         $loop = Loop::get();
-
-        assert(AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort !== null);
-        $serverSocket = new SocketServer(
-            HttpServerHandle::DEFAULT_HOST . ':' . AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
-            [] /* <- context */,
-            $loop
-        );
-
+        $thisServerPort = AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort;
+        TestCase::assertNotNull($thisServerPort);
+        $uri = HttpServerHandle::DEFAULT_HOST . ':' . $thisServerPort;
+        $serverSocket = new SocketServer($uri, /* context */ [], $loop);
         $httpServer = new HttpServer(
-        /**
-         * @param ServerRequestInterface $request
-         *
-         * @return ResponseInterface|Promise
-         */
+            /**
+             * @param ServerRequestInterface $request
+             *
+             * @return ResponseInterface|Promise
+             */
             function (ServerRequestInterface $request) {
                 return $this->processRequestWrapper($request);
             }
         );
-
         $httpServer->listen($serverSocket);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -143,6 +138,11 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         $loop->run();
     }
 
+    /**
+     * @param LoopInterface $loop
+     *
+     * @return void
+     */
     protected function beforeLoopRun(LoopInterface $loop): void
     {
     }
@@ -242,7 +242,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     protected static function getRequiredRequestHeader(ServerRequestInterface $request, string $headerName): string
     {
         $headerValue = self::getRequestHeader($request, $headerName);
-        if (is_null($headerValue)) {
+        if ($headerValue === null) {
             throw new RuntimeException('Missing required HTTP request header `' . $headerName . '\'');
         }
         return $headerValue;

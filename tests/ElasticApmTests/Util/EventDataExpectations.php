@@ -35,7 +35,8 @@ class EventDataExpectations
 
     public function __construct()
     {
-        $this->timestampBefore = PhpUnitExtensionBase::$timeBeforeTest;
-        $this->timestampAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $this->timestampBefore = PhpUnitExtensionBase::$timestampBeforeTest;
+        $this->timestampAfter
+            = PhpUnitExtensionBase::$timestampAfterTest ?? Clock::singletonInstance()->getSystemClockCurrentTime();
     }
 }

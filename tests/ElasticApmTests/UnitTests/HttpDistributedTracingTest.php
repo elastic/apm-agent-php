@@ -153,7 +153,7 @@ class HttpDistributedTracingTest extends TestCaseBase
     public function dataProviderForBuildTraceParentHeader(): iterable
     {
         foreach (self::dataProviderForTestParseTraceParentHeader() as $headerDataPair) {
-            if (is_null($headerDataPair[1])) {
+            if ($headerDataPair[1] === null) {
                 continue;
             }
 

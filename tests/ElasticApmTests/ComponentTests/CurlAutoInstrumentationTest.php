@@ -25,14 +25,12 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\UrlParts;
-use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
-use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\CurlHandleWrappedForTests;
-use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpClientUtilForTests;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 use ElasticApmTests\ComponentTests\Util\TestInfraDataPerRequest;
+use PHPUnit\Framework\TestCase;
 
 final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 {
@@ -43,7 +41,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function assertCurlExtensionIsLoaded(): void
     {
-        self::appAssertTrue(extension_loaded('curl'), 'curl is not loaded');
+        TestCase::assertTrue(extension_loaded('curl'));
     }
 
     /**

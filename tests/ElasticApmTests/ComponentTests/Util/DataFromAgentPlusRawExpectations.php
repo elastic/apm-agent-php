@@ -23,10 +23,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\Util\DataFromAgentExpectations;
-use ElasticApmTests\Util\DataValidatorBase;
+use ElasticApmTests\Util\DataValidator;
 use ElasticApmTests\Util\ErrorDataExpectations;
 use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MetadataValidator;
@@ -34,7 +34,6 @@ use ElasticApmTests\Util\MetricSetDataExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TraceDataExpectations;
 use ElasticApmTests\Util\TransactionDataExpectations;
-use PHPUnit\Framework\TestCase;
 
 final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 {
@@ -62,7 +61,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         }
 
         $this->fillErrorExpectations($transactionExpectations);
-        $this->fillPidToMetadataExpectations($transactionExpectations);
+        $this->fillMetadataExpectations($transactionExpectations);
         $this->fillMetricSetExpectations($transactionExpectations);
         $this->fillTraceExpectations($transactionExpectations);
     }
@@ -95,17 +94,17 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     {
         $this->error = new ErrorDataExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidatorBase::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->error)
+            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->error)
         );
     }
 
-    private function fillPidToMetadataExpectations(TransactionDataExpectations $transactionExpectations): void
+    private function fillMetadataExpectations(TransactionDataExpectations $transactionExpectations): void
     {
         $this->agentEphemeralIdToMetadata = [];
         foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $metadataExpectations
                 = self::buildMetadataExpectationsForHost($transactionExpectations, $appCodeHostParams);
-            $metadataExpectations->agentEphemeralId = $appCodeHostParams->spawnedProcessId;
+            $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessId);
             $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessId] = $metadataExpectations;
         }
     }
@@ -116,41 +115,32 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     ): MetadataExpectations {
         $metadata = new MetadataExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidatorBase::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata)
+            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata)
         );
 
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
-        $metadata->serviceName
-            = MetadataValidator::deriveExpectedServiceName($agentConfig->serviceName());
-        $metadata->serviceNodeConfiguredName
-            = Tracer::limitNullableKeywordString($agentConfig->serviceNodeName());
-        $metadata->serviceVersion
-            = Tracer::limitNullableKeywordString($agentConfig->serviceVersion());
-        $metadata->serviceEnvironment
-            = Tracer::limitNullableKeywordString($agentConfig->environment());
+        $metadata->serviceName->setValue(MetadataValidator::deriveExpectedServiceName($agentConfig->serviceName()));
+        $expectedServiceNodeName = Tracer::limitNullableKeywordString($agentConfig->serviceNodeName());
+        $metadata->serviceNodeConfiguredName->setValue($expectedServiceNodeName);
+        $expectedServiceVersion = Tracer::limitNullableKeywordString($agentConfig->serviceVersion());
+        $metadata->serviceVersion->setValue($expectedServiceVersion);
+        $expectedServiceEnvironment = Tracer::limitNullableKeywordString($agentConfig->environment());
+        $metadata->serviceEnvironment->setValue($expectedServiceEnvironment);
 
-        $metadata->configuredHostname = Tracer::limitNullableKeywordString($agentConfig->hostname());
-        $metadata->detectedHostname
-            = $metadata->configuredHostname === null ? self::detectHostname() : null;
+        $configuredHostname = Tracer::limitNullableKeywordString($agentConfig->hostname());
+        $metadata->configuredHostname->setValue($configuredHostname);
+        $metadata->detectedHostname->setValue(
+            $configuredHostname === null ? MetadataDiscoverer::detectHostname() : null
+        );
 
         return $metadata;
-    }
-
-    public static function detectHostname(): ?string
-    {
-        $detected = gethostname();
-        if ($detected === false) {
-            return null;
-        }
-
-        return Tracer::limitKeywordString($detected);
     }
 
     private function fillMetricSetExpectations(TransactionDataExpectations $transactionExpectations): void
     {
         $this->metricSet = new MetricSetDataExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidatorBase::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->metricSet)
+            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->metricSet)
         );
     }
 
@@ -158,7 +148,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     {
         $this->trace = new TraceDataExpectations();
         $this->trace->transaction = $transactionExpectations;
-        DataValidatorBase::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->trace->span);
+        DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->trace->span);
         $this->trace->span->timestampAfter = $this->appCodeInvocation->timestampAfter;
 
         $appCodeRequestParams = $this->appCodeInvocation->appCodeRequestParams;

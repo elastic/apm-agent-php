@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use PHPUnit\Framework\TestCase;
 
-class DataFromAgentValidator extends DataValidatorBase
+class DataFromAgentValidator extends DataValidator
 {
     /** @var DataFromAgentExpectations */
     protected $expectations;
@@ -56,7 +56,7 @@ class DataFromAgentValidator extends DataValidatorBase
             TestCase::assertNotNull($metadata->service->agent);
             $agentEphemeralId = $metadata->service->agent->ephemeralId;
             TestCase::assertNotNull($agentEphemeralId);
-            MetadataValidator::validateNullableAgentEphemeralId($agentEphemeralId);
+            DataValidator::validateNullableKeywordString($agentEphemeralId);
             TestCase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
             MetadataValidator::validate($metadata, $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]);
         }

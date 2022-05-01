@@ -75,7 +75,7 @@ final class StacktraceUtil
             );
 
             $className = ArrayUtil::getValueIfKeyExistsElse('class', $srcFrame, null);
-            if ($hideElasticApmImpl && !is_null($className)) {
+            if ($hideElasticApmImpl && $className !== null) {
                 if ($className === Span::class) {
                     $className = SpanInterface::class;
                 } elseif ($className === Transaction::class) {
@@ -84,9 +84,9 @@ final class StacktraceUtil
             }
             $funcName = ArrayUtil::getValueIfKeyExistsElse('function', $srcFrame, null);
             $callType = ArrayUtil::getValueIfKeyExistsElse('type', $srcFrame, '.');
-            $dstFrame->function = is_null($className)
-                ? is_null($funcName) ? null : ($funcName . '()')
-                : (($className . $callType) . (is_null($funcName) ? 'FUNCTION NAME N/A' : ($funcName . '()')));
+            $dstFrame->function = $className === null
+                ? $funcName === null ? null : ($funcName . '()')
+                : (($className . $callType) . ($funcName === null ? 'FUNCTION NAME N/A' : ($funcName . '()')));
 
             $dstFrames[] = $dstFrame;
         }

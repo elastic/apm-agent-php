@@ -23,40 +23,25 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Closure;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 use PHPUnit\Framework\TestCase;
 use Throwable;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-abstract class DataDeserializer
+final class DeserializationUtil
 {
+    use StaticClassTrait;
+
     /**
+     * @param mixed $key
      *
-     * @param mixed  $deserializedRawData
+     * @return DeserializationException
      */
-    protected function doDeserialize($deserializedRawData): void
+    public static function buildUnknownKeyException($key): DeserializationException
     {
-        TestCase::assertIsArray($deserializedRawData);
-
-        foreach ($deserializedRawData as $key => $value) {
-            TestCase::assertIsString($key);
-            if (!$this->deserializeKeyValue($key, $value)) {
-                throw self::buildException("Unknown key: `$key'");
-            }
-        }
+        return DeserializationUtil::buildException('Unknown key: ' . $key);
     }
-
-    /**
-     * @param string $key
-     * @param mixed  $value
-     *
-     * @return bool
-     */
-    abstract protected function deserializeKeyValue(string $key, $value): bool;
 
     public static function buildException(
         ?string $msgDetails = null,
@@ -64,7 +49,7 @@ abstract class DataDeserializer
         Throwable $previous = null
     ): DeserializationException {
         $msgStart = 'Deserialization failed';
-        if (!is_null($msgDetails)) {
+        if ($msgDetails !== null) {
             $msgStart .= ': ';
             $msgStart .= $msgDetails;
         }
@@ -74,5 +59,31 @@ abstract class DataDeserializer
             $code,
             $previous
         );
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return array<mixed>
+     */
+    public static function assertDecodedJsonMap($value): array
+    {
+        TestCase::assertIsArray($value);
+        return $value;
+    }
+
+    /**
+     * @param array<mixed, mixed>         $deserializedRawData
+     * @param Closure(mixed, mixed): bool $deserializeKeyValuePair
+     */
+    public static function deserializeKeyValuePairs(
+        array $deserializedRawData,
+        Closure $deserializeKeyValuePair
+    ): void {
+        foreach ($deserializedRawData as $key => $value) {
+            if (!$deserializeKeyValuePair($key, $value)) {
+                throw DeserializationUtil::buildUnknownKeyException($key);
+            }
+        }
     }
 }

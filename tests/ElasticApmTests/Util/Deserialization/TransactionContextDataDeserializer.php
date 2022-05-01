@@ -24,57 +24,110 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\TransactionContextData;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\TransactionContextRequestUrlData;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\TransactionDataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class TransactionContextDataDeserializer extends ExecutionSegmentContextDataDeserializer
+final class TransactionContextDataDeserializer
 {
-    /** @var TransactionContextData */
-    private $result;
-
-    private function __construct(TransactionContextData $result)
-    {
-        parent::__construct($result);
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     *
-     * @param mixed $deserializedRawData
+     * @param mixed $value
      *
      * @return TransactionContextData
      */
-    public static function deserialize($deserializedRawData): TransactionContextData
+    public static function deserialize($value): TransactionContextData
     {
         $result = new TransactionContextData();
-        (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidTransactionContextData($result);
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (ExecutionSegmentContextDataDeserializer::deserializeKeyValue($key, $value, $result)) {
+                    return true;
+                }
+
+                switch ($key) {
+                    case 'request':
+                        $result->request = self::deserializeRequestData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        TransactionDataValidator::validateContextData($result);
         return $result;
     }
 
     /**
-     * @param string $key
-     * @param mixed  $value
+     * @param mixed $value
      *
-     * @return bool
+     * @return TransactionContextRequestData
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    private static function deserializeRequestData($value): TransactionContextRequestData
     {
-        if (parent::deserializeKeyValue($key, $value)) {
-            return true;
-        }
+        $result = new TransactionContextRequestData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'method':
+                        $result->method = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'url':
+                        $result->url = self::deserializeRequestUrlData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        TransactionDataValidator::validateContextRequestData($result);
+        return $result;
+    }
 
-        switch ($key) {
-            case 'request':
-                $this->result->request = TransactionContextRequestDataDeserializer::deserialize($value);
-                return true;
-
-            default:
-                return false;
-        }
+    /**
+     * @param mixed $value
+     *
+     * @return TransactionContextRequestUrlData
+     */
+    private static function deserializeRequestUrlData($value): TransactionContextRequestUrlData
+    {
+        $result = new TransactionContextRequestUrlData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'full':
+                        $result->full = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'hostname':
+                        $result->domain = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'pathname':
+                        $result->path = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'port':
+                        $result->port = TransactionDataValidator::validateNullablePort($value);
+                        return true;
+                    case 'protocol':
+                        $result->protocol = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'raw':
+                        $result->original = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'search':
+                        $result->query = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        TransactionDataValidator::validateContextRequestUrlData($result);
+        return $result;
     }
 }

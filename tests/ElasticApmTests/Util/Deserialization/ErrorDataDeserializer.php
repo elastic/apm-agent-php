@@ -24,86 +24,129 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\ErrorData;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\ErrorExceptionData;
+use Elastic\Apm\Impl\ErrorTransactionData;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\ErrorDataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\TraceDataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class ErrorDataDeserializer extends DataDeserializer
+final class ErrorDataDeserializer
 {
-    /** @var ErrorData */
-    private $result;
-
-    private function __construct(ErrorData $result)
-    {
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     *
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $value
      *
      * @return ErrorData
      */
-    public static function deserialize(array $deserializedRawData): ErrorData
+    public static function deserialize($value): ErrorData
     {
         $result = new ErrorData();
-        (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidErrorData($result);
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'timestamp':
+                        $result->timestamp = DataValidator::validateTimestamp($value);
+                        return true;
+                    case 'id':
+                        $result->id = ErrorDataValidator::validateId($value);
+                        return true;
+                    case 'trace_id':
+                        $result->traceId = TraceDataValidator::validateId($value);
+                        return true;
+                    case 'transaction_id':
+                        $result->transactionId = ExecutionSegmentDataValidator::validateId($value);
+                        return true;
+                    case 'parent_id':
+                        $result->parentId = ExecutionSegmentDataValidator::validateId($value);
+                        return true;
+                    case 'transaction':
+                        $result->transaction = self::deserializeTransactionData($value);
+                        return true;
+                    case 'context':
+                        $result->context = TransactionContextDataDeserializer::deserialize($value);
+                        return true;
+                    case 'culprit':
+                        $result->culprit = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'exception':
+                        $result->exception = self::deserializeExceptionData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        ErrorDataValidator::validate($result);
         return $result;
     }
 
     /**
-     * @param string $key
      * @param mixed  $value
      *
-     * @return bool
+     * @return ErrorExceptionData
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    private static function deserializeExceptionData($value): ErrorExceptionData
     {
-        switch ($key) {
-            // public $transaction = null;
+        $result = new ErrorExceptionData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'code':
+                        $result->code = ErrorDataValidator::validateExceptionDataCode($value);
+                        return true;
+                    case 'message':
+                        $result->message = DataValidator::validateNullableNonKeywordString($value);
+                        return true;
+                    case 'module':
+                        $result->module = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'stacktrace':
+                        $result->stacktrace = StacktraceDeserializer::deserialize($value);
+                        return true;
+                    case 'type':
+                        $result->type = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        ErrorDataValidator::validateExceptionData($result);
+        return $result;
+    }
 
-            case 'timestamp':
-                $this->result->timestamp = ValidationUtil::assertValidTimestamp($value);
-                return true;
-
-            case 'id':
-                $this->result->id = ValidationUtil::assertValidErrorId($value);
-                return true;
-
-            case 'trace_id':
-                $this->result->traceId = ValidationUtil::assertValidTraceId($value);
-                return true;
-
-            case 'transaction_id':
-                $this->result->transactionId = ValidationUtil::assertValidExecutionSegmentId($value);
-                return true;
-
-            case 'parent_id':
-                $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
-                return true;
-
-            case 'transaction':
-                $this->result->transaction = ErrorTransactionDataDeserializer::deserialize($value);
-                return true;
-
-            case 'context':
-                $this->result->context = TransactionContextDataDeserializer::deserialize($value);
-                return true;
-
-            case 'culprit':
-                $this->result->culprit = ValidationUtil::assertValidNullableNonKeywordString($value);
-                return true;
-
-            case 'exception':
-                $this->result->exception = ErrorExceptionDataDeserializer::deserialize($value);
-                return true;
-
-            default:
-                return false;
-        }
+    /**
+     * @param mixed  $value
+     *
+     * @return ErrorTransactionData
+     */
+    private static function deserializeTransactionData($value): ErrorTransactionData
+    {
+        $result = new ErrorTransactionData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'sampled':
+                        $result->isSampled = DataValidator::validateBool($value);
+                        return true;
+                    case 'name':
+                        $result->name = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'type':
+                        $result->type = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        ErrorDataValidator::validateTransactionDataEx($result);
+        return $result;
     }
 }

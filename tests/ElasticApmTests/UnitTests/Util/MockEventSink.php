@@ -34,7 +34,11 @@ use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\Util\ErrorDataValidator;
+use ElasticApmTests\Util\MetadataValidator;
+use ElasticApmTests\Util\MetricSetDataValidator;
+use ElasticApmTests\Util\SpanDataValidator;
+use ElasticApmTests\Util\TransactionDataValidator;
 use PHPUnit\Framework\TestCase;
 
 final class MockEventSink implements EventSinkInterface
@@ -125,7 +129,7 @@ final class MockEventSink implements EventSinkInterface
             $metadata,
             /* assertValid: */
             function (Metadata $data): void {
-                ValidationUtil::assertValidMetadata($data);
+                MetadataValidator::validate($data);
                 self::additionalMetadataValidation($data);
             },
             /* serialize: */
@@ -150,7 +154,7 @@ final class MockEventSink implements EventSinkInterface
             $transaction,
             /* assertValid: */
             function (TransactionData $data): void {
-                ValidationUtil::assertValidTransactionData($data);
+                TransactionDataValidator::validate($data);
             },
             /* serialize: */
             function (TransactionData $data): string {
@@ -176,7 +180,7 @@ final class MockEventSink implements EventSinkInterface
             $spanData,
             /* assertValid: */
             function (SpanData $data): void {
-                ValidationUtil::assertValidSpanData($data);
+                SpanDataValidator::validate($data);
             },
             /* serialize: */
             function (SpanData $data): string {
@@ -202,7 +206,7 @@ final class MockEventSink implements EventSinkInterface
             $errorData,
             /* assertValid: */
             function (ErrorData $data): void {
-                ValidationUtil::assertValidErrorData($data);
+                ErrorDataValidator::validate($data);
             },
             /* serialize: */
             function (ErrorData $data): string {
@@ -228,7 +232,7 @@ final class MockEventSink implements EventSinkInterface
             $metricSetData,
             /* assertValid: */
             function (MetricSetData $data): void {
-                ValidationUtil::assertValidMetricSetData($data);
+                MetricSetDataValidator::validate($data);
             },
             /* serialize: */
             function (MetricSetData $data): string {

@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -91,38 +92,7 @@ class ComponentTestCaseBase extends TestCaseBase
         return $appCodeArgs[$appArgNameKey];
     }
 
-    /**
-     * @param bool                 $condition
-     * @param string               $messagePrefix
-     * @param array<string, mixed> $context
-     */
-    protected static function appAssertTrue(bool $condition, string $messagePrefix, array $context = []): void
-    {
-        if (!$condition) {
-            throw new RuntimeException(ExceptionUtil::buildMessage($messagePrefix, $context));
-        }
-    }
-
-    /**
-     * @param mixed                $expected
-     * @param mixed                $actual
-     * @param string|null          $messagePrefix
-     * @param array<string, mixed> $context
-     */
-    protected static function appAssertSame(
-        $expected,
-        $actual,
-        ?string $messagePrefix = null,
-        array $context = []
-    ): void {
-        self::appAssertTrue(
-            $expected == $actual,
-            $messagePrefix ?? "The actual value is not the same as the expected one",
-            array_merge(['expected' => $expected, 'actual' => $actual], $context)
-        );
-    }
-
-    protected static function isMainAppCodeHostHttp(): bool
+    public static function isMainAppCodeHostHttp(): bool
     {
         ComponentTestsPhpUnitExtension::initSingletons();
         return AmbientContextForTests::testConfig()->appCodeHostKind()->isHttp();

@@ -452,7 +452,7 @@ final class CurlHandleTracker implements LoggableInterface
 
         if ($isHttp) {
             $distributedTracingData = $this->span->getDistributedTracingData();
-            if (!is_null($distributedTracingData)) {
+            if ($distributedTracingData !== null) {
                 $this->injectDistributedTracingHeader($distributedTracingData);
             }
         }
@@ -589,7 +589,7 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function curlExecPostHook(int $numberOfStackFramesToSkip, $returnValue): void
     {
-        if (!is_null($this->savedHeadersBeforeInjection)) {
+        if ($this->savedHeadersBeforeInjection !== null) {
             $this->headersSetByApp = $this->savedHeadersBeforeInjection;
             $this->savedHeadersBeforeInjection = null;
 

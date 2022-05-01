@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use PHPUnit\Framework\TestCase;
 
-final class MetricSetDataValidator extends DataValidatorBase
+final class MetricSetDataValidator extends DataValidator
 {
     /** @var MetricSetDataExpectations */
     protected $expectations;
@@ -44,7 +44,7 @@ final class MetricSetDataValidator extends DataValidatorBase
 
     private function validateImpl(): void
     {
-        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
+        self::validateTimestamp($this->actual->timestamp, $this->expectations);
 
         self::validateNullableKeywordString($this->actual->transactionName);
         self::validateNullableKeywordString($this->actual->transactionType);

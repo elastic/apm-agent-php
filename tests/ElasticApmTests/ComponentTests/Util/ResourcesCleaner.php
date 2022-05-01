@@ -60,6 +60,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         );
     }
 
+    /** @inheritDoc */
     protected function beforeLoopRun(LoopInterface $loop): void
     {
         $loop->addPeriodicTimer(

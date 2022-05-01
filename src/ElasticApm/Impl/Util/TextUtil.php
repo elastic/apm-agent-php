@@ -47,7 +47,7 @@ final class TextUtil
 
     public static function isNullOrEmptyString(?string $str): bool
     {
-        return is_null($str) || self::isEmptyString($str);
+        return $str === null || self::isEmptyString($str);
     }
 
     public static function isUpperCaseLetter(int $charAsInt): bool
@@ -135,7 +135,7 @@ final class TextUtil
                 }
             }
 
-            if (is_null($nonUnderscorePos)) {
+            if ($nonUnderscorePos === null) {
                 $inputRemainderPos = strlen($input);
                 break;
             }

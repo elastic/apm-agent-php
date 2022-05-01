@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\ErrorExceptionData;
 use Elastic\Apm\Impl\ErrorTransactionData;
 use PHPUnit\Framework\TestCase;
 
-final class ErrorDataValidator extends DataValidatorBase
+final class ErrorDataValidator extends DataValidator
 {
     /** @var ErrorDataExpectations */
     protected $expectations;
@@ -45,7 +45,7 @@ final class ErrorDataValidator extends DataValidatorBase
 
     private function validateImpl(): void
     {
-        self::validateTimestampInsideEvent($this->actual->timestamp, $this->expectations);
+        self::validateTimestamp($this->actual->timestamp, $this->expectations);
         self::validateId($this->actual->id);
 
         TestCaseBase::assertSameNullness($this->actual->traceId, $this->actual->transactionId);
@@ -53,7 +53,7 @@ final class ErrorDataValidator extends DataValidatorBase
         TestCaseBase::assertSameNullness($this->actual->traceId, $this->actual->transaction);
 
         if ($this->actual->traceId !== null) {
-            self::validateTraceId($this->actual->traceId);
+            TraceDataValidator::validateId($this->actual->traceId);
         }
         if ($this->actual->transactionId !== null) {
             ExecutionSegmentDataValidator::validateId($this->actual->transactionId);
@@ -62,17 +62,17 @@ final class ErrorDataValidator extends DataValidatorBase
             ExecutionSegmentDataValidator::validateId($this->actual->parentId);
         }
         if ($this->actual->transaction !== null) {
-            self::validateErrorTransactionDataEx();
+            self::validateTransactionData();
         }
 
         if ($this->actual->context !== null) {
             TransactionDataValidator::validateContextData($this->actual->context);
         }
 
-        self::validateNullableNonKeywordString($this->actual->culprit);
+        self::validateNullableKeywordString($this->actual->culprit);
 
         if ($this->actual->exception !== null) {
-            self::validateErrorExceptionData($this->actual->exception);
+            self::validateExceptionData($this->actual->exception);
         }
     }
 
@@ -91,24 +91,35 @@ final class ErrorDataValidator extends DataValidatorBase
         return self::validateIdEx($errorId, Constants::ERROR_ID_SIZE_IN_BYTES);
     }
 
-    public function validateErrorTransactionDataEx(): void
+    public function validateTransactionData(): void
     {
         $errorTransactionData = $this->actual->transaction;
         if ($errorTransactionData === null) {
             return;
         }
 
-        self::validateErrorTransactionData($errorTransactionData);
+        self::validateTransactionDataEx($errorTransactionData);
 
         if ($this->expectations->isSampled !== null) {
             TestCase::assertSame($this->expectations->isSampled, $errorTransactionData->isSampled);
         }
     }
 
-    public static function validateErrorTransactionData(ErrorTransactionData $errorTransactionData): void
+    public static function validateTransactionDataEx(ErrorTransactionData $errorTransactionData): void
     {
         self::validateKeywordString($errorTransactionData->name);
         self::validateKeywordString($errorTransactionData->type);
+    }
+
+    public static function validateExceptionData(ErrorExceptionData $errorExceptionData): void
+    {
+        self::validateExceptionDataCode($errorExceptionData->code);
+        self::validateNullableNonKeywordString($errorExceptionData->message);
+        self::validateNullableKeywordString($errorExceptionData->module);
+        if ($errorExceptionData->stacktrace !== null) {
+            self::validateStacktrace($errorExceptionData->stacktrace);
+        }
+        self::validateNullableKeywordString($errorExceptionData->type);
     }
 
     /**
@@ -116,23 +127,12 @@ final class ErrorDataValidator extends DataValidatorBase
      *
      * @return int|string|null
      */
-    public static function validateErrorExceptionCode($value)
+    public static function validateExceptionDataCode($value)
     {
         if (is_int($value)) {
             return $value;
         }
 
         return self::validateNullableKeywordString($value);
-    }
-
-    public static function validateErrorExceptionData(ErrorExceptionData $errorExceptionData): void
-    {
-        self::validateErrorExceptionCode($errorExceptionData->code);
-        self::validateNullableNonKeywordString($errorExceptionData->message);
-        self::validateNullableKeywordString($errorExceptionData->module);
-        if ($errorExceptionData->stacktrace !== null) {
-            self::validateStacktrace($errorExceptionData->stacktrace);
-        }
-        self::validateNullableKeywordString($errorExceptionData->type);
     }
 }

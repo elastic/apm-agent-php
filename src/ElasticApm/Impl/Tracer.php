@@ -327,7 +327,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
-        if (is_null($this->currentTransaction)) {
+        if ($this->currentTransaction === null) {
             return $this->doCreateError($errorExceptionData, /* transaction */ null, /* span */ null);
         }
 
@@ -395,7 +395,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public static function limitNullableKeywordString(?string $keywordString): ?string
     {
-        if (is_null($keywordString)) {
+        if ($keywordString === null) {
             return null;
         }
 
@@ -409,7 +409,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public function limitNullableNonKeywordString(?string $nonKeywordString): ?string
     {
-        if (is_null($nonKeywordString)) {
+        if ($nonKeywordString === null) {
             return null;
         }
 
@@ -508,7 +508,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             'config'               => $this->config,
         ];
 
-        if (!is_null($this->currentTransaction)) {
+        if ($this->currentTransaction !== null) {
             $result['currentTransactionId'] = $this->currentTransaction->getId();
         }
 

@@ -157,7 +157,7 @@ final class MetadataTest extends ComponentTestCaseBase
 
         $expectedConfiguredHostname = Tracer::limitNullableKeywordString($configured);
         $expectedDetectedHostname
-            = $expectedConfiguredHostname === null ? DataFromAgentPlusRawExpectations::detectHostname() : null;
+            = $expectedConfiguredHostname === null ? MetadataDiscoverer::detectHostname() : null;
 
         foreach ($dataFromAgent->metadatas as $metadata) {
             MetadataValidator::verifyHostnames(

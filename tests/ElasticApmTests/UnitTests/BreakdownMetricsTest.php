@@ -57,7 +57,7 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
 
     public function setUp(): void
     {
-        $this->mockClock = new MockClock();
+        $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
     }
 
     /**

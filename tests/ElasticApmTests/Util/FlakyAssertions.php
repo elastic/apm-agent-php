@@ -21,13 +21,11 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Config\BoolOptionParser;
-use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\ExpectationFailedException;
 
 final class FlakyAssertions

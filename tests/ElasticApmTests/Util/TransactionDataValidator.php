@@ -57,6 +57,9 @@ final class TransactionDataValidator extends ExecutionSegmentDataValidator
             TestCase::assertSame($this->expectations->isSampled, $this->actual->isSampled);
         }
 
+        self::validateCount($this->actual->startedSpansCount);
+        self::validateCount($this->actual->droppedSpansCount);
+
         if (!$this->actual->isSampled) {
             TestCase::assertSame(0, $this->actual->startedSpansCount);
             TestCase::assertSame(0, $this->actual->droppedSpansCount);

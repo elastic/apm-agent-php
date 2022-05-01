@@ -49,7 +49,7 @@ final class TracerDependencies implements LoggableInterface
     public function toLog(LogStreamInterface $stream): void
     {
         $getDependencyType = function (?object $dep): ?string {
-            return is_null($dep) ? null : get_class($dep);
+            return  $dep === null ? null : get_class($dep);
         };
 
         $stream->toLogAs(

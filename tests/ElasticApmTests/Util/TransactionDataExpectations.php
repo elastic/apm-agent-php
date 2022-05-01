@@ -26,8 +26,27 @@ namespace ElasticApmTests\Util;
 final class TransactionDataExpectations extends ExecutionSegmentDataExpectations
 {
     /** @var ?bool */
-    public $isSampled = true;
+    public static $defaultIsSampled = true;
+
+    /** @var ?bool */
+    public $isSampled;
 
     /** @var ?int */
-    public $droppedSpansCount = 0;
+    public static $defaultDroppedSpansCount = 0;
+
+    /** @var ?int */
+    public $droppedSpansCount;
+
+    public static function setDefaults(): void
+    {
+        self::$defaultIsSampled = true;
+        self::$defaultDroppedSpansCount = 0;
+    }
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->isSampled = self::$defaultIsSampled;
+        $this->droppedSpansCount = self::$defaultDroppedSpansCount;
+    }
 }

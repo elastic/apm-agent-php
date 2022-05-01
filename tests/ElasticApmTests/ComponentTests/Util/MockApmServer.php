@@ -62,6 +62,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         $this->pendingDataRequests = new Map();
     }
 
+    /** @inheritDoc */
     protected function beforeLoopRun(LoopInterface $loop): void
     {
         $this->reactLoop = $loop;

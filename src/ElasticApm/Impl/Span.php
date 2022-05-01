@@ -146,7 +146,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             return NoopSpanContext::singletonInstance();
         }
 
-        if (is_null($this->context)) {
+        if ($this->context === null) {
             $this->data->context = new SpanContextData();
             $this->context = new SpanContext($this, $this->data->context);
         }

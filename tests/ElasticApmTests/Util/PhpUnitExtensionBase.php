@@ -37,7 +37,10 @@ use PHPUnit\Runner\BeforeTestHook;
 abstract class PhpUnitExtensionBase implements BeforeTestHook
 {
     /** @var float */
-    public static $timeBeforeTest;
+    public static $timestampBeforeTest;
+
+    /** @var ?float */
+    public static $timestampAfterTest = null;
 
     public function __construct(string $dbgProcessName)
     {
@@ -49,6 +52,8 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
 
     public function executeBeforeTest(string $test): void
     {
-        self::$timeBeforeTest = Clock::singletonInstance()->getSystemClockCurrentTime();
+        self::$timestampBeforeTest = Clock::singletonInstance()->getSystemClockCurrentTime();
+        self::$timestampAfterTest = null;
+        TransactionDataExpectations::setDefaults();
     }
 }

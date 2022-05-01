@@ -36,6 +36,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
+use ElasticApmTests\Util\TransactionDataExpectations;
 use PHPUnit\Framework\TestCase;
 
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
@@ -74,6 +75,9 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
      */
     public function testVariousCombinations(Args $testArgs): void
     {
+        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        TransactionDataExpectations::$defaultIsSampled = null;
+
         if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
             self::dummyAssert();
             return;
