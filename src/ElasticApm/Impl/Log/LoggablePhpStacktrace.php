@@ -71,30 +71,27 @@ final class LoggablePhpStacktrace
     private static function buildStackFrame(array $stackFrame): array
     {
         $result = [];
-        if (!is_null($className = ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null))) {
+        if (is_string($className = ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null))) {
             $result[self::CLASS_KEY] = $className;
         }
 
-        if (!is_null($funcName = ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, null))) {
+        if (is_string($funcName = ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, null))) {
             $result[self::FUNCTION_KEY] = $funcName;
         }
 
-        if (!is_null($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null)) && is_string($srcFile)) {
+        if (is_string($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null))) {
             $result[self::FILE_KEY] = self::adaptSourceCodeFilePath($srcFile);
         }
 
-        if (!is_null($srcLine = ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, null))) {
+        if (is_int($srcLine = ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, null))) {
             $result[self::LINE_KEY] = $srcLine;
         }
 
-        if (!is_null($callThisObj = ArrayUtil::getValueIfKeyExistsElse('object', $stackFrame, null))) {
+        if (is_object($callThisObj = ArrayUtil::getValueIfKeyExistsElse('object', $stackFrame, null))) {
             $result[self::THIS_OBJECT_KEY] = $callThisObj;
         }
 
-        if (
-            !is_null($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))
-            && is_iterable($callArgs)
-        ) {
+        if (is_iterable($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))) {
             $args = [];
             foreach ($callArgs as $callArg) {
                 $args[] = $callArg;

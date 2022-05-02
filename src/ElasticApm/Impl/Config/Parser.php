@@ -74,7 +74,7 @@ final class Parser
         /** @var OptionMetadata<mixed> $optMeta */
         foreach ($optNameToMeta as $optName => $optMeta) {
             $rawValue = $rawSnapshot->valueFor($optName);
-            if (is_null($rawValue)) {
+            if ($rawValue === null) {
                 $parsedValue = $optMeta->defaultValue();
 
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

@@ -24,37 +24,26 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
-use Elastic\Apm\Impl\ExecutionSegmentData;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-abstract class ExecutionSegmentContextDataDeserializer extends DataDeserializer
+final class ExecutionSegmentContextDataDeserializer
 {
-    /** @var ExecutionSegmentContextData */
-    private $result;
-
-    protected function __construct(ExecutionSegmentContextData $result)
-    {
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     * @param string $key
-     * @param mixed  $value
+     * @param mixed                       $key
+     * @param mixed                       $value
+     * @param ExecutionSegmentContextData $result
      *
      * @return bool
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    public static function deserializeKeyValue($key, $value, ExecutionSegmentContextData $result): bool
     {
         switch ($key) {
             case 'tags':
-                $this->result->labels = ValidationUtil::assertValidLabels($value);
+                $result->labels = DataValidator::validateLabels($value);
                 return true;
-
             default:
                 return false;
         }

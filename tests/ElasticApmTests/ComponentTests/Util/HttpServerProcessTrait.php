@@ -24,19 +24,21 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\JsonUtil;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use React\Http\Message\Response;
 
 trait HttpServerProcessTrait
 {
-    protected static function verifyServerId(string $receivedServerId): ResponseInterface
+    protected static function verifySpawnedProcessId(string $receivedSpawnedProcessId): ResponseInterface
     {
-        if ($receivedServerId !== AmbientContext::testConfig()->sharedDataPerProcess->thisServerId) {
+        $expectedSpawnedProcessId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId;
+        if ($expectedSpawnedProcessId !== $receivedSpawnedProcessId) {
             return self::buildErrorResponse(
                 400,
                 'Received server ID does not match the expected one.'
-                . ' Expected: ' . AmbientContext::testConfig()->sharedDataPerProcess->thisServerId
-                . ', received: ' . $receivedServerId
+                . ' Expected: ' . $expectedSpawnedProcessId
+                . ', received: ' . $receivedSpawnedProcessId
             );
         }
 

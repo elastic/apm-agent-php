@@ -73,12 +73,12 @@ final class DurationOptionParser extends OptionParser
 
         if (
             (
-                (!is_null($this->minValidValueInMilliseconds))
+                ($this->minValidValueInMilliseconds !== null)
                 && ($parsedValueInMilliseconds < $this->minValidValueInMilliseconds)
             )
             || (
-                (!is_null($this->maxValidValueInMilliseconds))
-                && ($this->maxValidValueInMilliseconds < $parsedValueInMilliseconds)
+                ($this->maxValidValueInMilliseconds !== null)
+                && ($parsedValueInMilliseconds > $this->maxValidValueInMilliseconds)
             )
         ) {
             throw new ParseException(

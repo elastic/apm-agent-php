@@ -26,7 +26,6 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 
 /**
  * An error or a logged error message captured by an agent occurring in a monitored service

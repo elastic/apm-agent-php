@@ -23,78 +23,203 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Elastic\Apm\Impl\SpanContextData;
+use Elastic\Apm\Impl\SpanContextDbData;
+use Elastic\Apm\Impl\SpanContextDestinationData;
+use Elastic\Apm\Impl\SpanContextDestinationServiceData;
+use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\SpanDataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class SpanDataDeserializer extends ExecutionSegmentDataDeserializer
+final class SpanDataDeserializer
 {
-    /** @var SpanData */
-    private $result;
-
-    private function __construct(SpanData $result)
-    {
-        parent::__construct($result);
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     *
-     * @param mixed $deserializedRawData
+     * @param mixed $value
      *
      * @return SpanData
      */
-    public static function deserialize($deserializedRawData): SpanData
+    public static function deserialize($value): SpanData
     {
         $result = new SpanData();
-        (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidSpanData($result);
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (ExecutionSegmentDataDeserializer::deserializeKeyValue($key, $value, $result)) {
+                    return true;
+                }
+
+                switch ($key) {
+                    case 'action':
+                        $result->action = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'context':
+                        $result->context = self::deserializeContextData($value);
+                        return true;
+                    case 'parent_id':
+                        $result->parentId = ExecutionSegmentDataValidator::validateId($value);
+                        return true;
+                    case 'stacktrace':
+                        $result->stacktrace = StacktraceDeserializer::deserialize($value);
+                        return true;
+                    case 'subtype':
+                        $result->subtype = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'transaction_id':
+                        $result->transactionId = ExecutionSegmentDataValidator::validateId($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validate($result);
         return $result;
     }
 
     /**
-     * @param string $key
-     * @param mixed  $value
+     * @param mixed $value
      *
-     * @return bool
+     * @return SpanContextData
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    private static function deserializeContextData($value): SpanContextData
     {
-        if (parent::deserializeKeyValue($key, $value)) {
-            return true;
-        }
+        $result = new SpanContextData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (ExecutionSegmentContextDataDeserializer::deserializeKeyValue($key, $value, $result)) {
+                    return true;
+                }
 
-        switch ($key) {
-            case 'action':
-                $this->result->action = ValidationUtil::assertValidKeywordString($value);
-                return true;
+                switch ($key) {
+                    case 'db':
+                        $result->db = self::deserializeContextDbData($value);
+                        return true;
+                    case 'http':
+                        $result->http = self::deserializeContextHttpData($value);
+                        return true;
+                    case 'destination':
+                        $result->destination = self::deserializeContextDestinationData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextData($result);
+        return $result;
+    }
 
-            case 'context':
-                $this->result->context = SpanContextDataDeserializer::deserialize($value);
-                return true;
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextDbData
+     */
+    private static function deserializeContextDbData($value): SpanContextDbData
+    {
+        $result = new SpanContextDbData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'statement':
+                        $result->statement = DataValidator::validateNullableNonKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextDbData($result);
+        return $result;
+    }
 
-            case 'parent_id':
-                $this->result->parentId = ValidationUtil::assertValidExecutionSegmentId($value);
-                return true;
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextDestinationData
+     */
+    private static function deserializeContextDestinationData($value): SpanContextDestinationData
+    {
+        $result = new SpanContextDestinationData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'service':
+                        $result->service = self::deserializeContextDestinationServiceData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextDestinationData($result);
+        return $result;
+    }
 
-            case 'stacktrace':
-                $this->result->stacktrace = StacktraceDeserializer::deserialize($value);
-                return true;
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextDestinationServiceData
+     */
+    private static function deserializeContextDestinationServiceData($value): SpanContextDestinationServiceData
+    {
+        $result = new SpanContextDestinationServiceData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'name':
+                        $result->name = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'resource':
+                        $result->resource = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'type':
+                        $result->type = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextDestinationServiceData($result);
+        return $result;
+    }
 
-            case 'subtype':
-                $this->result->subtype = ValidationUtil::assertValidKeywordString($value);
-                return true;
-
-            case 'transaction_id':
-                $this->result->transactionId = ValidationUtil::assertValidExecutionSegmentId($value);
-                return true;
-
-            default:
-                return false;
-        }
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextHttpData
+     */
+    private static function deserializeContextHttpData($value): SpanContextHttpData
+    {
+        $result = new SpanContextHttpData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'url':
+                        $result->url = DataValidator::validateNullableNonKeywordString($value);
+                        return true;
+                    case 'status_code':
+                        $result->statusCode = DataValidator::validateNullableHttpStatusCode($value);
+                        return true;
+                    case 'method':
+                        $result->method = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextHttpData($result);
+        return $result;
     }
 }

@@ -64,7 +64,7 @@ final class PhpPartFacade
         }
 
         $tracer = self::buildTracer();
-        if (is_null($tracer)) {
+        if ($tracer === null) {
             BootstrapStageLogger::logDebug(
                 'Cutting bootstrap sequence short - tracing is disabled',
                 __LINE__,
@@ -96,7 +96,7 @@ final class PhpPartFacade
             __FUNCTION__
         );
 
-        if (!is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance !== null) {
             BootstrapStageLogger::logCritical(
                 'bootstrap() is called even though singleton instance is already created'
                 . ' (probably bootstrap() is called more than once)',
@@ -124,7 +124,7 @@ final class PhpPartFacade
 
     private static function singletonInstance(): self
     {
-        if (is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             throw new RuntimeException(
                 'Trying to use singleton instance that is not set'
                 . ' (probably either before call to bootstrap() or after failed call to bootstrap())'

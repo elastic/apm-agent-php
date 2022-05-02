@@ -39,12 +39,12 @@ final class GlobalTracerHolder
 
     public static function isSet(): bool
     {
-        return !is_null(self::$singletonInstance);
+        return self::$singletonInstance !== null;
     }
 
     public static function get(): TracerInterface
     {
-        if (is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             self::$singletonInstance = TracerBuilder::startNew()->build();
         }
         return self::$singletonInstance;

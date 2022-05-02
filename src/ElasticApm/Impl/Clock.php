@@ -35,12 +35,23 @@ final class Clock implements ClockInterface
 {
     use SingletonInstanceTrait;
 
+    /** @var ?float */
+    private static $lastSystemClockCurrentTime = null;
+
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
         // Return value should be in microseconds
         // while microtime(/* get_as_float: */ true) returns in seconds with microseconds being the fractional part
-        return round(TimeUtil::secondsToMicroseconds(microtime(/* get_as_float: */ true)));
+        $current = round(TimeUtil::secondsToMicroseconds(microtime(/* get_as_float: */ true)));
+        if (self::$lastSystemClockCurrentTime === null) {
+            self::$lastSystemClockCurrentTime = $current;
+        } else {
+            if ($current < self::$lastSystemClockCurrentTime) {
+                $current = self::$lastSystemClockCurrentTime;
+            }
+        }
+        return $current;
     }
 
     /** @inheritDoc */

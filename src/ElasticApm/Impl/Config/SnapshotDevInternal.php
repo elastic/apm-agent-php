@@ -57,7 +57,7 @@ final class SnapshotDevInternal implements LoggableInterface
     {
         $logger = $loggerFactory->loggerForClass(LogCategory::CONFIGURATION, __NAMESPACE__, __CLASS__, __FILE__);
 
-        foreach (get_object_vars($this) as $propName => $propVal) {
+        foreach (get_object_vars($this) as $propName => $propValue) {
             $subOptName = TextUtil::camelToSnakeCase($propName);
             $matchedExpr = WildcardListMatcher::matchNullable($devInternal, $subOptName);
             if ($matchedExpr === null) {

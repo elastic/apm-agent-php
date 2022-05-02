@@ -23,80 +23,36 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
-use Elastic\Apm\Impl\Clock;
-use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\IdGenerator;
-use ElasticApmTests\Util\FloatLimits;
-use ElasticApmTests\Util\TestCaseBase;
+use Elastic\Apm\Impl\Util\TimeUtil;
 
 trait MockExecutionSegmentDataTrait
 {
-    /** @var MockSpanData[] */
-    protected $childSpans;
-
-    /** @var MockTransactionData[] */
-    protected $childTransactions;
-
-    /**
-     * @param MockSpanData[]        $childSpans
-     * @param MockTransactionData[] $childTransactions
-     */
-    protected function constructMockExecutionSegmentDataTrait(array $childSpans, array $childTransactions): void
+    protected function constructMockExecutionSegmentDataTrait(?string $name): void
     {
-        $this->childSpans = $childSpans;
-        $this->childTransactions = $childTransactions;
-        $prefix = 'dummy ' . ClassNameUtil::fqToShort(get_called_class()) . ' ';
-        $this->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
-        $this->name = $prefix . 'name';
-        $this->type = $prefix . 'type';
-        if (empty($this->childSpans) && empty($this->childTransactions)) {
-            $this->setTimestamp(Clock::singletonInstance()->getSystemClockCurrentTime());
-            $this->duration = mt_rand(0, 1);
-        } else {
-            $this->syncWithChildren();
-        }
+        $this->id = $this->getTransaction()->tracer->generateExecutionSegmentId();
+        $this->timestamp = $this->getTransaction()->tracer->getCurrentTime();
+
+        $prefix = ClassNameUtil::fqToShort(get_called_class());
+        $this->name = $name ?? ($prefix . ' name');
+        $this->type = $prefix . '_type';
     }
 
-    public function setName(string $name): void
+    public function beginChildSpan(?string $name = null): MockSpanData
     {
-        $this->name = $name;
+        $transaction = $this->getTransaction();
+        ++$transaction->startedSpansCount;
+        return new MockSpanData($name, $transaction, /* parent */ $this);
     }
 
-    public function setTimestamp(float $timestamp): void
+    public function beginChildTransaction(?string $name = null): MockTransactionData
     {
-        $this->timestamp = $timestamp;
+        return new MockTransactionData($name, $this->getTransaction()->tracer, /* parent */ $this);
     }
 
-    public function setTraceId(string $traceId): void
+    public function end(): void
     {
-        $this->traceId = $traceId;
-        foreach ($this->childSpans as $childSpan) {
-            $childSpan->setTraceId($traceId);
-        }
-        foreach ($this->childTransactions as $childTransaction) {
-            $childTransaction->setTraceId($traceId);
-        }
-    }
-
-    private function syncWithChildren(): void
-    {
-        $minChildStartTimestamp = FloatLimits::MAX;
-        $maxChildEndTimestamp = FloatLimits::MIN;
-
-        foreach ($this->childSpans as $childSpan) {
-            $childSpan->parentId = $this->id;
-            $minChildStartTimestamp = min($minChildStartTimestamp, $childSpan->timestamp);
-            $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childSpan));
-        }
-
-        foreach ($this->childTransactions as $childTransaction) {
-            $childTransaction->parentId = $this->id;
-            $minChildStartTimestamp = min($minChildStartTimestamp, $childTransaction->timestamp);
-            $maxChildEndTimestamp = max($maxChildEndTimestamp, TestCaseBase::calcEndTime($childTransaction));
-        }
-
-        $this->setTimestamp($minChildStartTimestamp - mt_rand(0, 1));
-        $this->duration = $maxChildEndTimestamp + mt_rand(0, 1) - $this->timestamp;
+        $timestampEnd = $this->getTransaction()->tracer->getCurrentTime();
+        $this->duration = TimeUtil::calcDuration($this->timestamp, $timestampEnd);
     }
 }

@@ -24,58 +24,231 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\Metadata;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\NameVersionData;
+use Elastic\Apm\Impl\ProcessData;
+use Elastic\Apm\Impl\ServiceAgentData;
+use Elastic\Apm\Impl\ServiceData;
+use Elastic\Apm\Impl\SystemData;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\MetadataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class MetadataDeserializer extends DataDeserializer
+final class MetadataDeserializer
 {
-    /** @var Metadata */
-    private $result;
-
-    private function __construct(Metadata $result)
-    {
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     *
-     * @param mixed $deserializedRawData
+     * @param mixed $value
      *
      * @return Metadata
      */
-    public static function deserialize($deserializedRawData): Metadata
+    public static function deserialize($value): Metadata
     {
         $result = new Metadata();
-        (new self($result))->doDeserialize($deserializedRawData);
-        ValidationUtil::assertValidMetadata($result);
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'process':
+                        $result->process = self::deserializeProcessData($value);
+                        return true;
+
+                    case 'service':
+                        $result->service = self::deserializeServiceData($value);
+                        return true;
+
+                    case 'system':
+                        $result->system = self::deserializeSystemData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        MetadataValidator::validate($result);
         return $result;
     }
 
     /**
-     * @param string $key
+     * @param mixed $value
+     *
+     * @return ProcessData
+     */
+    private static function deserializeProcessData($value): ProcessData
+    {
+        $result = new ProcessData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'pid':
+                        $result->pid = MetadataValidator::validateProcessId($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        MetadataValidator::validateProcessData($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return ServiceData
+     */
+    private static function deserializeServiceData($value): ServiceData
+    {
+        $result = new ServiceData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'agent':
+                        $result->agent = self::deserializeServiceAgentData($value);
+                        return true;
+                    case 'environment':
+                        $result->environment = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'framework':
+                        $result->framework = self::deserializeNameVersionData($value);
+                        return true;
+                    case 'language':
+                        $result->language = self::deserializeNameVersionData($value);
+                        return true;
+                    case 'name':
+                        $result->name = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'node':
+                        self::deserializeServiceNodeSubObject($value, $result);
+                        return true;
+                    case 'runtime':
+                        $result->runtime = self::deserializeNameVersionData($value);
+                        return true;
+                    case 'version':
+                        $result->version = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        MetadataValidator::validateServiceDataEx($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return ServiceAgentData
+     */
+    private static function deserializeServiceAgentData($value): ServiceAgentData
+    {
+        $result = new ServiceAgentData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (self::deserializeNameVersionDataKeyValue($key, $value, $result)) {
+                    return true;
+                }
+
+                switch ($key) {
+                    case 'ephemeral_id':
+                        $result->ephemeralId = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        MetadataValidator::validateServiceAgentDataEx($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private static function deserializeServiceNodeSubObject($value, ServiceData $result): void
+    {
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'configured_name':
+                        $result->nodeConfiguredName = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return SystemData
+     */
+    private static function deserializeSystemData($value): SystemData
+    {
+        $result = new SystemData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'hostname':
+                        $result->hostname = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'detected_hostname':
+                        $result->detectedHostname = DataValidator::validateKeywordString($value);
+                        return true;
+                    case 'configured_hostname':
+                        $result->configuredHostname = DataValidator::validateKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        MetadataValidator::validateSystemDataEx($result);
+        return $result;
+    }
+
+    /**
      * @param mixed  $value
+     *
+     * @return NameVersionData
+     */
+    private static function deserializeNameVersionData($value): NameVersionData
+    {
+        $result = new NameVersionData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                return self::deserializeNameVersionDataKeyValue($key, $value, $result);
+            }
+        );
+        MetadataValidator::validateNullableNameVersionData($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed           $key
+     * @param mixed           $value
+     * @param NameVersionData $result
      *
      * @return bool
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    private static function deserializeNameVersionDataKeyValue($key, $value, NameVersionData $result): bool
     {
         switch ($key) {
-            case 'process':
-                $this->result->process = ProcessDataDeserializer::deserialize($value);
+            case 'name':
+                $result->name = DataValidator::validateKeywordString($value);
                 return true;
-
-            case 'service':
-                $this->result->service = ServiceDataDeserializer::deserialize($value);
+            case 'version':
+                $result->version = DataValidator::validateKeywordString($value);
                 return true;
-
-            case 'system':
-                $this->result->system = SystemDataDeserializer::deserialize($value);
-                return true;
-
             default:
                 return false;
         }

@@ -30,7 +30,11 @@ use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\Util\ErrorDataValidator;
+use ElasticApmTests\Util\MetadataValidator;
+use ElasticApmTests\Util\MetricSetDataValidator;
+use ElasticApmTests\Util\SpanDataValidator;
+use ElasticApmTests\Util\TransactionDataValidator;
 
 trait SerializedEventSinkTrait
 {
@@ -38,18 +42,13 @@ trait SerializedEventSinkTrait
     public $shouldValidateAgainstSchema = true;
 
     /**
-     * @param string  $serializedData
-     * @param Closure $validateAgainstSchema
-     * @param Closure $deserialize
-     * @param Closure $assertValid
-     *
-     * @return  mixed
-     *
      * @template        T of object
-     * @phpstan-param   Closure(string): void $validateAgainstSchema
-     * @phpstan-param   Closure(array<string, mixed>): T $deserialize
-     * @phpstan-param   Closure(T): void $assertValid
-     * @phpstan-return  T
+     *
+     * @param Closure(string): void           $validateAgainstSchema
+     * @param Closure(array<mixed, mixed>): T $deserialize
+     * @param Closure(T): void                $assertValid
+     *
+     * @return  T
      */
     private static function validateAndDeserialize(
         string $serializedData,
@@ -78,7 +77,7 @@ trait SerializedEventSinkTrait
                 return MetadataDeserializer::deserialize($deserializedRawData);
             },
             function (Metadata $data): void {
-                ValidationUtil::assertValidMetadata($data);
+                MetadataValidator::validate($data);
             }
         );
     }
@@ -97,7 +96,7 @@ trait SerializedEventSinkTrait
                 return TransactionDataDeserializer::deserialize($deserializedRawData);
             },
             function (TransactionData $data): void {
-                ValidationUtil::assertValidTransactionData($data);
+                TransactionDataValidator::validate($data);
             }
         );
     }
@@ -115,7 +114,7 @@ trait SerializedEventSinkTrait
                 return SpanDataDeserializer::deserialize($deserializedRawData);
             },
             function (SpanData $data): void {
-                ValidationUtil::assertValidSpanData($data);
+                SpanDataValidator::validate($data);
             }
         );
     }
@@ -133,7 +132,7 @@ trait SerializedEventSinkTrait
                 return ErrorDataDeserializer::deserialize($deserializedRawData);
             },
             function (ErrorData $data): void {
-                ValidationUtil::assertValidErrorData($data);
+                ErrorDataValidator::validate($data);
             }
         );
     }
@@ -151,7 +150,7 @@ trait SerializedEventSinkTrait
                 return MetricSetDataDeserializer::deserialize($deserializedRawData);
             },
             function (MetricSetData $data): void {
-                ValidationUtil::assertValidMetricSetData($data);
+                MetricSetDataValidator::validate($data);
             }
         );
     }

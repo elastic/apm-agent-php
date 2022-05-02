@@ -24,26 +24,25 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class TransactionTest extends ComponentTestCaseBase
 {
-    public function testTransactionWithoutSpans(): void
-    {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpans']),
-            function (DataFromAgent $dataFromAgent): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertGreaterThanOrEqual(200, $tx->duration);
-            }
-        );
-    }
-
     public static function appCodeForTransactionWithoutSpans(): void
     {
         usleep(/* microseconds - 200 milliseconds */ 200 * 1000);
+    }
+
+    public function testTransactionWithoutSpans(): void
+    {
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForTransactionWithoutSpans']));
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertGreaterThanOrEqual(200, $tx->duration);
     }
 
     public static function appCodeForTransactionWithoutSpansCustomProperties(): void
@@ -64,22 +63,26 @@ final class TransactionTest extends ComponentTestCaseBase
 
     public function testTransactionWithoutSpansCustomProperties(): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties'])
-                ->withExpectedTransactionName('custom TX name')
-                ->withExpectedTransactionType('custom TX type'),
-            function (DataFromAgent $dataFromAgent): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                $this->assertLabelsCount(5, $tx);
-                $this->assertSame('string_label_value', self::getLabel($tx, 'string_label_key'));
-                $this->assertTrue(self::getLabel($tx, 'bool_label_key'));
-                $this->assertSame(-987654321, self::getLabel($tx, 'int_label_key'));
-                $this->assertSame(1234.56789, self::getLabel($tx, 'float_label_key'));
-                $this->assertNull(self::getLabel($tx, 'null_label_key'));
-                $this->assertSame('custom TX result', $tx->result);
-                $this->assertEquals(100, $tx->duration);
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTransactionWithoutSpansCustomProperties']),
+            function (AppCodeRequestParams $appCodeRequestParams): void {
+                $appCodeRequestParams->expectedTransactionName->setValue('custom TX name');
+                $appCodeRequestParams->expectedTransactionType->setValue('custom TX type');
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame('custom TX name', $tx->name);
+        self::assertSame('custom TX type', $tx->type);
+        self::assertLabelsCount(5, $tx);
+        self::assertSame('string_label_value', self::getLabel($tx, 'string_label_key'));
+        self::assertTrue(self::getLabel($tx, 'bool_label_key'));
+        self::assertSame(-987654321, self::getLabel($tx, 'int_label_key'));
+        self::assertSame(1234.56789, self::getLabel($tx, 'float_label_key'));
+        self::assertNull(self::getLabel($tx, 'null_label_key'));
+        self::assertSame('custom TX result', $tx->result);
+        self::assertEquals(100, $tx->duration);
     }
 }

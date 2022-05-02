@@ -67,11 +67,7 @@ final class ArrayUtil
      */
     public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
-        if (!array_key_exists($key, $array)) {
-            return $fallbackValue;
-        }
-
-        return $array[$key];
+        return array_key_exists($key, $array) ? $array[$key] : $fallbackValue;
     }
 
     /**

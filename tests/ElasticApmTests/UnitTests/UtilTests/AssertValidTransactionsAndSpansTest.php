@@ -32,21 +32,65 @@ use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\UnitTests\Util\MockClock;
 use ElasticApmTests\UnitTests\Util\MockSpanData;
-use ElasticApmTests\UnitTests\Util\MockTransactionData;
+use ElasticApmTests\UnitTests\Util\MockTracer;
 use ElasticApmTests\Util\InvalidEventDataException;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TraceDataActual;
+use ElasticApmTests\Util\TraceDataExpectations;
+use ElasticApmTests\Util\TraceDataValidator;
 use PHPUnit\Exception as PhpUnitException;
 use Throwable;
 
 class AssertValidTransactionsAndSpansTest extends TestCaseBase
 {
+    /** @var MockClock */
+    protected $mockClock;
+
+    /** @var MockTracer */
+    protected $mockTracer;
+
+    /** @var float */
+    protected $startTimestamp;
+
+    public function setUp(): void
+    {
+        $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
+        $this->startTimestamp = mt_rand(1, 10) * TimeUtil::secondsToMicroseconds(1000 * 1000);
+        // Fast forward to some initial point
+        $this->mockClock->fastForwardMicroseconds($this->startTimestamp);
+        $this->mockTracer = new MockTracer($this->mockClock);
+    }
+
     /**
-     * @param TransactionData[] $transactions
-     * @param SpanData[]        $spans
-     * @param callable          $corruptFunc
+     * @param array<string, TransactionData> $idToTransaction
+     * @param array<string, SpanData>        $idToSpan
+     * @param bool                           $forceEnableFlakyAssertions
+     */
+    public function assertValidOneTraceTransactionsAndSpans(
+        array $idToTransaction,
+        array $idToSpan,
+        bool $forceEnableFlakyAssertions = false
+    ): void {
+        $expected = new TraceDataExpectations();
+        $expected->transaction->timestampBefore = $this->startTimestamp;
+        $expected->transaction->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
+        $expected->span->timestampBefore = $this->startTimestamp;
+        $expected->span->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
+        TraceDataValidator::validate(
+            new TraceDataActual($idToTransaction, $idToSpan),
+            $expected,
+            $forceEnableFlakyAssertions
+        );
+    }
+
+    /**
+     * @param TransactionData[]            $transactions
+     * @param SpanData[]                   $spans
+     * @param callable                     $corruptFunc
      *
-     * @phpstan-param callable(): callable  $corruptFunc
+     * @phpstan-param callable(): callable $corruptFunc
      */
     private function assertValidAndCorrupted(
         array $transactions,
@@ -55,23 +99,27 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     ): void {
         $idToTransaction = self::idToEvent($transactions);
         $idToSpan = self::idToEvent($spans);
-        self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan);
+        self::assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan);
         /** @var callable(): void */
         $revertCorruptFunc = $corruptFunc();
         /** @noinspection PhpUnhandledExceptionInspection */
         self::assertInvalidTransactionsAndSpans($idToTransaction, $idToSpan);
         $revertCorruptFunc();
-        self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan);
+        self::assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan);
     }
 
     /**
      * @param array<string, TransactionData> $idToTransaction
      * @param array<string, SpanData>        $idToSpan
      */
-    private static function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
+    private function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
         try {
-            self::assertValidTransactionsAndSpans($idToTransaction, $idToSpan, /* forceEnableFlakyAssertions: */ true);
+            $this->assertValidOneTraceTransactionsAndSpans(
+                $idToTransaction,
+                $idToSpan,
+                /* forceEnableFlakyAssertions: */ true
+            );
         } catch (Throwable $throwable) {
             if ($throwable instanceof PhpUnitException || $throwable instanceof InvalidEventDataException) {
                 return;
@@ -88,7 +136,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
      * @return array<string, ExecutionSegmentData>
      *
      * @template        T of ExecutionSegmentData
-     * @phpstan-param   T[] $events
+     * @phpstan-param   T[]          $events
      * @phpstan-return  array<string, T>
      *
      */
@@ -103,208 +151,218 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param ExecutionSegmentData $executionSegment
-     * @param string|null          $newParentId
+     * @param ExecutionSegmentData $execSeg
+     * @param ?string              $newParentId
      *
-     * @return Closure
-     *
-     * @phpstan-return Closure(): Closure(): void
+     * @return Closure(): Closure(): void
      */
-    private static function makeCorruptParentIdFunc(
-        ExecutionSegmentData $executionSegment,
-        ?string $newParentId = null
-    ): Closure {
-        return function () use ($executionSegment, $newParentId): Closure {
-            $oldParentId = self::getParentId($executionSegment);
-            self::setParentId(
-                $executionSegment,
-                $newParentId ?? IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
-            );
-            return function () use ($executionSegment, $oldParentId): void {
-                self::setParentId($executionSegment, $oldParentId);
+    private static function makeCorruptParentIdFunc(ExecutionSegmentData $execSeg, ?string $newParentId): Closure
+    {
+        return function () use ($execSeg, $newParentId): Closure {
+            $oldParentId = self::getParentId($execSeg);
+            self::setParentId($execSeg, $newParentId);
+            return function () use ($execSeg, $oldParentId): void {
+                self::setParentId($execSeg, $oldParentId);
             };
         };
     }
 
     /**
-     * @param MockSpanData $span
-     * @param string|null  $newTransactionId
+     * @param ExecutionSegmentData $execSeg
      *
-     * @return Closure
-     *
-     * @phpstan-return Closure(): Closure(): void
+     * @return Closure(): Closure(): void
      */
-    private static function makeCorruptTransactionIdFunc(MockSpanData $span, ?string $newTransactionId = null): Closure
+    private static function makeCorruptRandomParentIdFunc(ExecutionSegmentData $execSeg): Closure
     {
-        return function () use ($span, $newTransactionId): Closure {
+        return self::makeCorruptParentIdFunc(
+            $execSeg,
+            IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
+        );
+    }
+
+    private static function makeCorruptRandomTransactionIdFunc(MockSpanData $span): Closure
+    {
+        return function () use ($span): Closure {
             $oldTransactionId = $span->transactionId;
-            $span->setTransactionId(
-                $newTransactionId ?? IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES)
-            );
+            $span->transactionId = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
             return function () use ($span, $oldTransactionId): void {
-                $span->setTransactionId($oldTransactionId);
+                $span->transactionId = $oldTransactionId;
             };
         };
     }
 
     public function testOneSpanNotReachableFromRoot(): void
     {
-        $span = new MockSpanData();
-        $tx = new MockTransactionData([$span]);
+        $tx = $this->mockTracer->beginTransaction();
+        $span = $tx->beginChildSpan();
+        $span->end();
+        $tx->end();
 
-        $this->assertValidAndCorrupted([$tx], [$span], self::makeCorruptParentIdFunc($span));
+        $this->assertValidAndCorrupted([$tx], [$span], self::makeCorruptRandomParentIdFunc($span));
     }
 
     public function testTwoSpansNotReachableFromRoot(): void
     {
-        $span_1_1 = new MockSpanData();
-        $span_1 = new MockSpanData([$span_1_1]);
-        $tx = new MockTransactionData([$span_1]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $span_L2 = $tx_L1->beginChildSpan();
+        $span_L3 = $tx_L1->beginChildSpan();
+        $span_L3->end();
+        $span_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted([$tx], [$span_1, $span_1_1], self::makeCorruptParentIdFunc($span_1));
-        $this->assertValidAndCorrupted([$tx], [$span_1, $span_1_1], self::makeCorruptParentIdFunc($span_1_1));
+        $this->assertValidAndCorrupted([$tx_L1], [$span_L2, $span_L3], self::makeCorruptRandomParentIdFunc($span_L2));
+        $this->assertValidAndCorrupted([$tx_L1], [$span_L2, $span_L3], self::makeCorruptRandomParentIdFunc($span_L3));
     }
 
     public function testSpanParentCycle(): void
     {
-        $span_1_1 = new MockSpanData();
-        $span_1 = new MockSpanData([$span_1_1]);
-        $tx = new MockTransactionData([$span_1]);
+        $tx_L1 = $this->mockTracer->beginTransaction('tx_L1');
+        $span_L2 = $tx_L1->beginChildSpan('span_L2');
+        $span_L3 = $span_L2->beginChildSpan('span_L3');
+        $span_L3->end();
+        $span_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted(
-            [$tx],
-            [$span_1, $span_1_1],
-            self::makeCorruptParentIdFunc($span_1, $span_1_1->id)
-        );
+        $allSpans = [$span_L2, $span_L3];
+        $this->assertValidAndCorrupted([$tx_L1], $allSpans, self::makeCorruptParentIdFunc($span_L2, $span_L3->id));
     }
 
     public function testTransactionNotReachableFromRoot(): void
     {
-        $tx_C = new MockTransactionData();
-        $tx_B = new MockTransactionData([], [$tx_C]);
-        $tx_A = new MockTransactionData([], [$tx_B]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $tx_L2 = $tx_L1->beginChildTransaction();
+        $tx_L3 = $tx_L2->beginChildTransaction();
+        $tx_L3->end();
+        $tx_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted([$tx_A, $tx_B, $tx_C], [], self::makeCorruptParentIdFunc($tx_B));
-        $this->assertValidAndCorrupted([$tx_A, $tx_B, $tx_C], [], self::makeCorruptParentIdFunc($tx_C));
-        $this->assertValidAndCorrupted([$tx_A, $tx_B, $tx_C], [], self::makeCorruptParentIdFunc($tx_B, $tx_C->id));
+        $allTransactions = [$tx_L1, $tx_L2, $tx_L3];
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptRandomParentIdFunc($tx_L2));
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptRandomParentIdFunc($tx_L3));
+    }
+
+    public function testTransactionParentCycle(): void
+    {
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $tx_L2 = $tx_L1->beginChildTransaction();
+        $tx_L3 = $tx_L2->beginChildTransaction();
+        $tx_L3->end();
+        $tx_L2->end();
+        $tx_L1->end();
+
+        $allTransactions = [$tx_L1, $tx_L2, $tx_L3];
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptParentIdFunc($tx_L2, $tx_L3->id));
     }
 
     public function testTransactionWithSpansNotReachableFromRoot(): void
     {
-        $span_I = new MockSpanData();
-        $span_H = new MockSpanData([$span_I]);
-        $tx_G = new MockTransactionData([$span_H]);
-        $span_F = new MockSpanData([], [$tx_G]);
-        $span_E = new MockSpanData([$span_F]);
-        $tx_D = new MockTransactionData([$span_E]);
-        $span_C = new MockSpanData([], [$tx_D]);
-        $span_B = new MockSpanData([$span_C]);
-        $tx_A = new MockTransactionData([$span_B]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $sp_L2 = $tx_L1->beginChildSpan();
+        $sp_L3 = $sp_L2->beginChildSpan();
+        $tx_L4 = $sp_L3->beginChildTransaction();
+        $sp_L5 = $tx_L4->beginChildSpan();
+        $sp_L6 = $sp_L5->beginChildSpan();
+        $tx_L7 = $sp_L6->beginChildTransaction();
+        $sp_L8 = $tx_L7->beginChildSpan();
+        $sp_L9 = $sp_L8->beginChildSpan();
+        $sp_L9->end();
+        $sp_L8->end();
+        $tx_L7->end();
+        $sp_L6->end();
+        $sp_L5->end();
+        $tx_L4->end();
+        $sp_L3->end();
+        $sp_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted(
-            [$tx_A, $tx_D, $tx_G],
-            [$span_B, $span_C, $span_E, $span_F, $span_H, $span_I],
-            self::makeCorruptParentIdFunc($tx_G)
-        );
+        $allTransactions = [$tx_L1, $tx_L4, $tx_L7];
+        $allSpans = [$sp_L2, $sp_L3, $sp_L5, $sp_L6, $sp_L8, $sp_L9];
 
-        $this->assertValidAndCorrupted(
-            [$tx_A, $tx_D, $tx_G],
-            [$span_B, $span_C, $span_E, $span_F, $span_H, $span_I],
-            self::makeCorruptParentIdFunc($tx_D)
-        );
-
-        $this->assertValidAndCorrupted(
-            [$tx_A, $tx_D, $tx_G],
-            [$span_B, $span_C, $span_E, $span_F, $span_H, $span_I],
-            self::makeCorruptParentIdFunc($tx_D, $span_I->id)
-        );
-
-        $this->assertValidAndCorrupted(
-            [$tx_A, $tx_D, $tx_G],
-            [$span_B, $span_C, $span_E, $span_F, $span_H, $span_I],
-            self::makeCorruptParentIdFunc($tx_D, $span_H->id)
-        );
+        $this->assertValidAndCorrupted($allTransactions, $allSpans, self::makeCorruptRandomParentIdFunc($tx_L7));
+        $this->assertValidAndCorrupted($allTransactions, $allSpans, self::makeCorruptRandomParentIdFunc($tx_L4));
+        $this->assertValidAndCorrupted($allTransactions, $allSpans, self::makeCorruptParentIdFunc($tx_L4, $sp_L9->id));
+        $this->assertValidAndCorrupted($allTransactions, $allSpans, self::makeCorruptParentIdFunc($tx_L4, $sp_L8->id));
     }
 
     public function testNoRootTransaction(): void
     {
-        $tx_C = new MockTransactionData();
-        $tx_B = new MockTransactionData([], [$tx_C]);
-        $tx_A = new MockTransactionData([], [$tx_B]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $tx_L2 = $tx_L1->beginChildTransaction();
+        $tx_L3 = $tx_L1->beginChildTransaction();
+        $tx_L3->end();
+        $tx_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted([$tx_A, $tx_B, $tx_C], [], self::makeCorruptParentIdFunc($tx_A));
-        $this->assertValidAndCorrupted([$tx_A, $tx_B, $tx_C], [], self::makeCorruptParentIdFunc($tx_A, $tx_C->id));
+        $allTransactions = [$tx_L1, $tx_L2, $tx_L3];
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptRandomParentIdFunc($tx_L1));
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptParentIdFunc($tx_L1, $tx_L2->id));
+        $this->assertValidAndCorrupted($allTransactions, [], self::makeCorruptParentIdFunc($tx_L1, $tx_L3->id));
     }
 
     public function testMoreThanOneRootTransaction(): void
     {
-        $tx_B = new MockTransactionData();
-        $tx_A = new MockTransactionData([], [$tx_B]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $tx_L2 = $tx_L1->beginChildTransaction();
+        $tx_L2->end();
+        $tx_L1->end();
 
-        $this->assertValidAndCorrupted(
-            [$tx_A, $tx_B],
-            [],
-            function () use ($tx_A, $tx_B): Closure {
-                $tx_B->parentId = null;
-                return function () use ($tx_A, $tx_B): void {
-                    $tx_B->parentId = $tx_A->id;
-                };
-            }
-        );
+        $this->assertValidAndCorrupted([$tx_L1, $tx_L2], [], self::makeCorruptParentIdFunc($tx_L2, null));
     }
 
     public function testSpanWithoutTransaction(): void
     {
-        $span = new MockSpanData();
-        $tx = new MockTransactionData([$span]);
+        $tx = $this->mockTracer->beginTransaction();
+        $span = $tx->beginChildSpan();
+        $span->end();
+        $tx->end();
 
-        $this->assertValidAndCorrupted([$tx], [$span], self::makeCorruptTransactionIdFunc($span));
-    }
-
-    private static function padSegmentTime(ExecutionSegmentData $executionSegment, float $paddingInMicroseconds): void
-    {
-        $executionSegment->timestamp = $executionSegment->timestamp - $paddingInMicroseconds;
-        $executionSegment->duration
-            = $executionSegment->duration + TimeUtil::microsecondsToMilliseconds($paddingInMicroseconds);
+        $this->assertValidAndCorrupted([$tx], [$span], self::makeCorruptRandomTransactionIdFunc($span));
     }
 
     public function testSpanStartedBeforeParent(): void
     {
-        $span_1_1 = new MockSpanData();
-        self::padSegmentTime($span_1_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $span_1 = new MockSpanData([$span_1_1]);
-        self::padSegmentTime($span_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx = new MockTransactionData([$span_1]);
-        self::padSegmentTime($tx, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $timeHalfStep = 2 * self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
+        $timeStep = 2 * $timeHalfStep;
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2 = $tx_L1->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L3 = $sp_L2->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L3->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L1->end();
 
         $this->assertValidAndCorrupted(
-            [$tx],
-            [$span_1, $span_1_1],
+            [$tx_L1],
+            [$sp_L2, $sp_L3],
             /* corruptFunc: */
-            function () use ($span_1, $span_1_1): Closure {
-                $delta = $span_1_1->timestamp - $span_1->timestamp + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+            function () use ($sp_L2, $sp_L3, $timeHalfStep): Closure {
+                $delta = $sp_L3->timestamp - $sp_L2->timestamp + $timeHalfStep;
                 self::assertGreaterThan(0, $delta);
-                $span_1_1->timestamp = $span_1_1->timestamp - $delta;
-                $span_1_1->duration = $span_1_1->duration + $delta;
+                $sp_L3->timestamp -= $delta;
+                $sp_L3->duration += $delta;
                 /* revertCorruptFunc: */
-                return function () use ($span_1_1, $delta): void {
-                    $span_1_1->timestamp = $span_1_1->timestamp + $delta;
-                    $span_1_1->duration = $span_1_1->duration - $delta;
+                return function () use ($sp_L3, $delta): void {
+                    $sp_L3->timestamp += $delta;
+                    $sp_L3->duration -= $delta;
                 };
             }
         );
 
         $this->assertValidAndCorrupted(
-            [$tx],
-            [$span_1, $span_1_1],
-            function () use ($tx, $span_1): Closure {
-                $delta = $span_1->timestamp - $tx->timestamp + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+            [$tx_L1],
+            [$sp_L2, $sp_L3],
+            function () use ($tx_L1, $sp_L2, $timeHalfStep): Closure {
+                $delta = $sp_L2->timestamp - $tx_L1->timestamp + $timeHalfStep;
                 self::assertGreaterThan(0, $delta);
-                $span_1->timestamp = $span_1->timestamp - $delta;
-                $span_1->duration = $span_1->duration + $delta;
-                return function () use ($span_1, $delta): void {
-                    $span_1->timestamp = $span_1->timestamp + $delta;
-                    $span_1->duration = $span_1->duration - $delta;
+                $sp_L2->timestamp -= $delta;
+                $sp_L2->duration += $delta;
+                return function () use ($sp_L2, $delta): void {
+                    $sp_L2->timestamp += $delta;
+                    $sp_L2->duration -= $delta;
                 };
             }
         );
@@ -312,37 +370,42 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
 
     public function testSpanEndedAfterParent(): void
     {
-        $span_1_1 = new MockSpanData();
-        self::padSegmentTime($span_1_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $span_1 = new MockSpanData([$span_1_1]);
-        self::padSegmentTime($span_1, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx = new MockTransactionData([$span_1]);
-        self::padSegmentTime($tx, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $timeHalfStep = 2 * self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
+        $timeStep = 2 * $timeHalfStep;
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2 = $tx_L1->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L3 = $sp_L2->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L3->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L1->end();
 
         $this->assertValidAndCorrupted(
-            [$tx],
-            [$span_1, $span_1_1],
-            function () use ($span_1, $span_1_1): Closure {
-                $delta = TestCaseBase::calcEndTime($span_1) - TestCaseBase::calcEndTime($span_1_1)
-                         + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+            [$tx_L1],
+            [$sp_L2, $sp_L3],
+            function () use ($sp_L2, $sp_L3, $timeHalfStep): Closure {
+                $delta = TestCaseBase::calcEndTime($sp_L2) - TestCaseBase::calcEndTime($sp_L3) + $timeHalfStep;
                 self::assertGreaterThan(0, $delta);
-                $span_1_1->duration = $span_1_1->duration + $delta;
-                return function () use ($span_1_1, $delta): void {
-                    $span_1_1->duration = $span_1_1->duration - $delta;
+                $sp_L3->duration += $delta;
+                return function () use ($sp_L3, $delta): void {
+                    $sp_L3->duration -= $delta;
                 };
             }
         );
 
         $this->assertValidAndCorrupted(
-            [$tx],
-            [$span_1, $span_1_1],
-            function () use ($tx, $span_1): Closure {
-                $delta = TestCaseBase::calcEndTime($tx) - TestCaseBase::calcEndTime($span_1)
-                         + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+            [$tx_L1],
+            [$sp_L2, $sp_L3],
+            function () use ($tx_L1, $sp_L2, $timeHalfStep): Closure {
+                $delta = TestCaseBase::calcEndTime($tx_L1) - TestCaseBase::calcEndTime($sp_L2) + $timeHalfStep;
                 self::assertGreaterThan(0, $delta);
-                $span_1->duration = $span_1->duration + $delta;
-                return function () use ($span_1, $delta): void {
-                    $span_1->duration = $span_1->duration - $delta;
+                $sp_L2->duration += $delta;
+                return function () use ($sp_L2, $delta): void {
+                    $sp_L2->duration -= $delta;
                 };
             }
         );
@@ -350,22 +413,29 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
 
     public function testChildTransactionStartedBeforeParentStarted(): void
     {
-        $tx_C = new MockTransactionData();
-        self::padSegmentTime($tx_C, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $span_B = new MockSpanData([], [$tx_C]);
-        self::padSegmentTime($span_B, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx_A = new MockTransactionData([$span_B]);
-        self::padSegmentTime($tx_A, /* microseconds */ 3 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $timeHalfStep = 2 * self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
+        $timeStep = 2 * $timeHalfStep;
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2 = $tx_L1->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L3 = $sp_L2->beginChildTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L3->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L1->end();
 
         $this->assertValidAndCorrupted(
-            [$tx_A, $tx_C],
-            [$span_B],
-            function () use ($span_B, $tx_C): Closure {
-                $delta = $tx_C->timestamp - $span_B->timestamp + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
+            [$tx_L1, $tx_L3],
+            [$sp_L2],
+            function () use ($sp_L2, $tx_L3, $timeHalfStep): Closure {
+                $delta = $tx_L3->timestamp - $sp_L2->timestamp + $timeHalfStep;
                 self::assertGreaterThan(0, $delta);
-                $tx_C->timestamp = $tx_C->timestamp - $delta;
-                return function () use ($tx_C, $delta): void {
-                    $tx_C->timestamp = $tx_C->timestamp + $delta;
+                $tx_L3->timestamp -= $delta;
+                return function () use ($tx_L3, $delta): void {
+                    $tx_L3->timestamp += $delta;
                 };
             }
         );
@@ -373,30 +443,37 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
 
     public function testChildTransactionCanStartAfterParentEnded(): void
     {
-        $tx_C = new MockTransactionData();
-        self::padSegmentTime($tx_C, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $span_B = new MockSpanData([], [$tx_C]);
-        self::padSegmentTime($span_B, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx_C->timestamp = TestCaseBase::calcEndTime($span_B) + 2 * self::TIMESTAMP_COMPARISON_PRECISION;
-        $tx_C->duration = TimeUtil::microsecondsToMilliseconds(2 * self::TIMESTAMP_COMPARISON_PRECISION);
-        $tx_A = new MockTransactionData([$span_B]);
-        self::padSegmentTime($tx_A, /* microseconds */ 5 * self::TIMESTAMP_COMPARISON_PRECISION);
+        $timeHalfStep = 2 * self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS;
+        $timeStep = 2 * $timeHalfStep;
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2 = $tx_L1->beginChildSpan();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $sp_L2->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L1->end();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L3 = $sp_L2->beginChildTransaction();
+        $this->mockClock->fastForwardMicroseconds($timeStep);
+        $tx_L3->end();
 
-        self::assertValidTransactionsAndSpans(self::idToEvent([$tx_A, $tx_C]), self::idToEvent([$span_B]));
+        self::assertValidOneTraceTransactionsAndSpans(self::idToEvent([$tx_L1, $tx_L3]), self::idToEvent([$sp_L2]));
     }
 
     public function testParentAndChildTransactionsTraceIdMismatch(): void
     {
-        $tx_B = new MockTransactionData();
-        $tx_A = new MockTransactionData([], [$tx_B]);
+        $tx_L1 = $this->mockTracer->beginTransaction();
+        $tx_L2 = $tx_L1->beginChildTransaction();
+        $tx_L2->end();
+        $tx_L1->end();
 
         $this->assertValidAndCorrupted(
-            [$tx_A, $tx_B],
+            [$tx_L1, $tx_L2],
             [],
-            function () use ($tx_A, $tx_B): Closure {
-                $tx_B->setTraceId(IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES));
-                return function () use ($tx_A, $tx_B): void {
-                    $tx_B->setTraceId($tx_A->traceId);
+            function () use ($tx_L1, $tx_L2): Closure {
+                $tx_L2->traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
+                return function () use ($tx_L1, $tx_L2): void {
+                    $tx_L2->traceId = $tx_L1->traceId;
                 };
             }
         );

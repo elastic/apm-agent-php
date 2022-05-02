@@ -123,7 +123,7 @@ class LoggingVariousTypesTest extends TestCaseBase
      */
     private static function expectedSimpleObject(?string $className = null, bool $isPropExcluded = true): array
     {
-        return (is_null($className) ? [] : [LogConsts::TYPE_KEY => $className])
+        return ($className === null ? [] : [LogConsts::TYPE_KEY => $className])
                + [
                    'intProp'            => 123,
                    'stringProp'         => 'Abc',

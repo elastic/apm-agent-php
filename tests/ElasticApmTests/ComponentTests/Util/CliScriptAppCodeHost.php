@@ -30,8 +30,8 @@ final class CliScriptAppCodeHost extends AppCodeHostBase
         parent::__construct();
     }
 
-    protected function runImpl(): void
+    protected function runImpl(?string &$topLevelCodeId): void
     {
-        $this->callAppCode();
+        $this->callAppCode(/* ref */ $topLevelCodeId);
     }
 }

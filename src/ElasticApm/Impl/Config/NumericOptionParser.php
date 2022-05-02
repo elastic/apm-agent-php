@@ -34,26 +34,18 @@ namespace Elastic\Apm\Impl\Config;
  */
 abstract class NumericOptionParser extends OptionParser
 {
-    /**
-     * @var int|float|null
-     * @phpstan-var T|null
-     */
+    /** @var ?T */
     private $minValidValue;
 
     /**
-     * @var int|float|null
-     * @phpstan-var T|null
-     */
+     * @var ?T */
     private $maxValidValue;
 
     /**
      * NumericOptionMetadata constructor.
      *
-     * @param int|float|null $minValidValue
-     * @param int|float|null $maxValidValue
-     *
-     * @phpstan-param T|null $minValidValue
-     * @phpstan-param T|null $maxValidValue
+     * @param ?T $minValidValue
+     * @param ?T $maxValidValue
      */
     public function __construct($minValidValue, $maxValidValue)
     {
@@ -76,18 +68,14 @@ abstract class NumericOptionParser extends OptionParser
     /**
      * @param string $rawValue
      *
-     * @return mixed
-     *
-     * @phpstan-return T
+     * @return T
      */
     abstract protected function stringToNumber(string $rawValue);
 
     /**
      * @param string $rawValue
      *
-     * @return mixed
-     *
-     * @phpstan-return T
+     * @return T
      */
     public function parse(string $rawValue)
     {
@@ -100,8 +88,8 @@ abstract class NumericOptionParser extends OptionParser
         $parsedValue = $this->stringToNumber($rawValue);
 
         if (
-            (!is_null($this->minValidValue) && ($parsedValue < $this->minValidValue))
-            || (!is_null($this->maxValidValue) && ($this->maxValidValue < $parsedValue))
+            (($this->minValidValue !== null) && ($parsedValue < $this->minValidValue))
+            || (($this->maxValidValue !== null) && ($parsedValue > $this->maxValidValue))
         ) {
             throw new ParseException(
                 'Value is not in range between the valid minimum and maximum values.'
@@ -116,9 +104,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return float|int|null
-     *
-     * @phpstan-return T|null
+     * @return ?T
      */
     public function minValidValue()
     {
@@ -126,9 +112,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return float|int|null
-     *
-     * @phpstan-return T|null
+     * @return ?T
      */
     public function maxValidValue()
     {

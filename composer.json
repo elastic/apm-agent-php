@@ -13,6 +13,7 @@
         "psr/log": "^1.0"
     },
     "require-dev": {
+        "ext-curl": "*",
         "ext-pdo": "*",
         "guzzlehttp/guzzle": "^6.5.5||^7.4.1",
         "justinrainbow/json-schema": "^5.2.11",
@@ -90,7 +91,7 @@
         ],
         "run_component_tests_http": [
             "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_builtin_HTTP_server",
+            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server",
             "composer run-script run_component_tests_configured"
         ],
         "run_component_tests_cli": [

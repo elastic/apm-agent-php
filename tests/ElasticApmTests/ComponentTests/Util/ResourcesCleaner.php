@@ -27,23 +27,18 @@ use Ds\Set;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
 use React\Http\Message\Response;
 
-final class ResourcesCleaner extends StatefulHttpServerProcessBase
+final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const CLEAN_AND_EXIT_URI_PATH = '/clean_resources_and_exit';
 
     public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
-
-    /** @var LoopInterface */
-    protected $loop;
-
-    /** @var Logger */
-    private $logger;
 
     /** @var Set<int> */
     private $processesToTerminateIds;
@@ -52,13 +47,6 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     {
         parent::__construct();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
-
         $this->processesToTerminateIds = new Set();
     }
 
@@ -66,19 +54,20 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     {
         parent::processConfig();
 
-        TestAssertUtil::assertThat(
-            isset(AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId), // @phpstan-ignore-line
-            LoggableToString::convert(AmbientContext::testConfig())
+        TestCase::assertTrue(
+            isset(AmbientContextForTests::testConfig()->dataPerProcess->rootProcessId), // @phpstan-ignore-line
+            LoggableToString::convert(AmbientContextForTests::testConfig())
         );
     }
 
+    /** @inheritDoc */
     protected function beforeLoopRun(LoopInterface $loop): void
     {
         $loop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
-                $rootProcessId = AmbientContext::testConfig()->sharedDataPerProcess->rootProcessId;
-                if (!TestProcessUtil::doesProcessExist($rootProcessId)) {
+                $rootProcessId = AmbientContextForTests::testConfig()->dataPerProcess->rootProcessId;
+                if (!ProcessUtilForTests::doesProcessExist($rootProcessId)) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log('Detected that parent process does not exist');
                     $this->cleanAndExit();
@@ -99,28 +88,28 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
     private function cleanSpawnedProcesses(): void
     {
         if ($this->processesToTerminateIds->isEmpty()) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('There are no spawned processes to terminate');
             return;
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Terminating spawned processes...',
             ['spawnedProcessesCount' => $this->processesToTerminateIds->count()]
         );
 
         foreach ($this->processesToTerminateIds as $spawnedProcessesId) {
-            if (!TestProcessUtil::doesProcessExist($spawnedProcessesId)) {
-                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            if (!ProcessUtilForTests::doesProcessExist($spawnedProcessesId)) {
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
                     'Spawned process does not exist anymore - no need to terminate',
                     ['spawnedProcessesId' => $spawnedProcessesId]
                 );
                 continue;
             }
-            $termCmdExitCode = TestProcessUtil::terminateProcess($spawnedProcessesId);
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            $termCmdExitCode = ProcessUtilForTests::terminateProcess($spawnedProcessesId);
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Issued command to terminate spawned process',
                 ['spawnedProcessesId' => $spawnedProcessesId, 'termCmdExitCode' => $termCmdExitCode]
@@ -138,7 +127,7 @@ final class ResourcesCleaner extends StatefulHttpServerProcessBase
             return new Response();
         }
 
-        return $this->buildErrorResponse(/* status */ 400, 'Unknown URI path: `' . $request->getRequestTarget() . '\'');
+        TestCase::fail('Unknown URI path: `' . $request->getRequestTarget() . '\'');
     }
 
     protected function registerProcessToTerminate(ServerRequestInterface $request): ResponseInterface

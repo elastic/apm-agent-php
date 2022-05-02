@@ -39,7 +39,15 @@ trait LoggableTrait
     }
 
     /**
-     * @return array<string>
+     * @return string[]
+     */
+    protected static function defaultPropertiesExcludedFromLog(): array
+    {
+        return ['logger'];
+    }
+
+    /**
+     * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {
@@ -55,7 +63,7 @@ trait LoggableTrait
         $nameToValue = $customPropValues;
 
         $classNameToLog = static::classNameToLog();
-        if (!is_null($classNameToLog)) {
+        if ($classNameToLog !== null) {
             $nameToValue[LogConsts::TYPE_KEY] = $classNameToLog;
         }
 
@@ -68,7 +76,10 @@ trait LoggableTrait
             return;
         }
 
-        $propertiesExcludedFromLog = static::propertiesExcludedFromLog();
+        $propertiesExcludedFromLog = array_merge(
+            static::propertiesExcludedFromLog(),
+            static::defaultPropertiesExcludedFromLog()
+        );
         while (true) {
             foreach ($currentClass->getProperties() as $reflectionProperty) {
                 if ($reflectionProperty->isStatic()) {

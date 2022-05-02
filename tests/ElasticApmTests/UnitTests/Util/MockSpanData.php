@@ -23,42 +23,27 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
+use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
 
 final class MockSpanData extends SpanData
 {
     use MockExecutionSegmentDataTrait;
 
-    /**
-     * @param MockSpanData[]        $childSpans
-     * @param MockTransactionData[] $childTransactions
-     */
-    public function __construct(array $childSpans = [], array $childTransactions = [])
+    /** @var MockTransactionData */
+    public $transaction;
+
+    public function __construct(?string $name, MockTransactionData $transaction, ExecutionSegmentData $parent)
     {
-        $this->constructMockExecutionSegmentDataTrait($childSpans, $childTransactions);
+        $this->transaction = $transaction;
+        $this->constructMockExecutionSegmentDataTrait($name);
+        $this->traceId = $parent->traceId;
+        $this->transactionId = $this->transaction->id;
+        $this->parentId = $parent->id;
     }
 
-    public function syncWithTransaction(TransactionData $transactionData): void
+    protected function getTransaction(): MockTransactionData
     {
-        $this->traceId = $transactionData->traceId;
-        $this->setTransactionId($transactionData->id);
-    }
-
-    public function setTransactionId(string $transactionId): void
-    {
-        $this->transactionId = $transactionId;
-        foreach ($this->childSpans as $child) {
-            $child->setTransactionId($transactionId);
-        }
-    }
-
-    public function getTreeSpansCount(): int
-    {
-        $result = 1;
-        foreach ($this->childSpans as $child) {
-            $result += $child->getTreeSpansCount();
-        }
-        return $result;
+        return $this->transaction;
     }
 }

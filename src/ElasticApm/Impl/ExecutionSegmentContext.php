@@ -82,14 +82,6 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
      */
     public static function doesValueHaveSupportedLabelType($value): bool
     {
-        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
-    }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return array_merge(parent::propertiesExcludedFromLog(), ['logger']);
+        return $value === null || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
     }
 }

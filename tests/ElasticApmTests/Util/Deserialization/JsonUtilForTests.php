@@ -23,8 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use PHPUnit\Framework\Constraint\IsType;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -43,5 +47,37 @@ final class JsonUtilForTests
     public static function prettyFormat(string $inputJson): string
     {
         return JsonUtil::encode(JsonUtil::decode($inputJson, /* asAssocArray */ true), /* prettyPrint: */ true);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    public static function assertJsonDeserializable($value, string $dbgPathToValue): void
+    {
+        $dbgInfoAboutValue = LoggableToString::convert(
+            ['$dbgPathToValue' => $dbgPathToValue, '$value type' => DbgUtil::getType($value), '$value' => $value]
+        );
+
+        TestCase::assertThat(
+            $value,
+            TestCase::logicalOr(
+                new IsType(IsType::TYPE_ARRAY),
+                new IsType(IsType::TYPE_BOOL),
+                new IsType(IsType::TYPE_FLOAT),
+                new IsType(IsType::TYPE_INT),
+                new IsType(IsType::TYPE_NULL),
+                new IsType(IsType::TYPE_OBJECT),
+                new IsType(IsType::TYPE_STRING)
+            ),
+            $dbgInfoAboutValue
+        );
+
+        if (is_array($value)) {
+            foreach ($value as $arrKey => $arrVal) {
+                self::assertJsonDeserializable($arrVal, $dbgPathToValue . '[' . $arrKey . ']');
+            }
+        } elseif (is_object($value)) {
+            TestCase::assertInstanceOf(JsonDeserializableInterface::class, $value, $dbgInfoAboutValue);
+        }
     }
 }

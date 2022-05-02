@@ -286,7 +286,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     {
         $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
 
-        return is_null($handleId) ? null : $this->handleIdToTracker[$handleId];
+        return $handleId === null ? null : $this->handleIdToTracker[$handleId];
     }
 
     /**
@@ -314,7 +314,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
 
             default:
                 $curlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
-                if (!is_null($curlHandleTracker)) {
+                if ($curlHandleTracker !== null) {
                     $curlHandleTracker->preHook($dbgFuncName, $funcId, $interceptedCallArgs);
                 }
                 return $curlHandleTracker;
@@ -340,7 +340,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle): void
     {
         $handleId = $curlHandleTracker->setHandle($curlHandle);
-        if (!is_null($handleId)) {
+        if ($handleId !== null) {
             $this->addToHandleIdToTracker($handleId, $curlHandleTracker);
         }
     }
@@ -354,7 +354,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     public function curlCopyHandlePreHook(string $dbgFuncName, array $interceptedCallArgs): ?CurlHandleTracker
     {
         $srcCurlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
-        if (is_null($srcCurlHandleTracker)) {
+        if ($srcCurlHandleTracker === null) {
             return null;
         }
 
@@ -368,7 +368,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     public function curlClosePreHook(string $dbgFuncName, array $interceptedCallArgs): void
     {
         $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
-        if (is_null($handleId)) {
+        if ($handleId === null) {
             return;
         }
 
