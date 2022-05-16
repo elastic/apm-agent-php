@@ -18,12 +18,32 @@
  */
 
 #include "util_for_PHP.h"
+#include <stdio.h>
 #include <php_main.h>
 #include "util.h"
+#include "platform.h"
 #include "time_util.h"
 #include "ConfigManager.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
+
+void logDiagnostics_for_failed_php_stream_open_for_zend_ex( const char* phpFilePath )
+{
+    FILE* fopen_ret_val = fopen( phpFilePath, "r" );
+    int fopen_errno = errno;
+    const char* prefix = "Diagnostics for failed php_stream_open_for_zend_ex()";
+    if ( fopen_ret_val == NULL )
+    {
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "%s: fopen(\"%s\", \"r\") returned NULL value, errno: %d (%s)", prefix, phpFilePath, fopen_errno, streamErrNo( fopen_errno, &txtOutStream ) );
+    }
+    else
+    {
+        ELASTIC_APM_LOG_ERROR( "%s: fopen(\"%s\", \"r\") returned non-NULL value", prefix, phpFilePath );
+        fclose( fopen_ret_val );
+    }
+}
 
 ResultCode loadPhpFile( const char* phpFilePath )
 {
@@ -65,6 +85,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
     if ( php_stream_open_for_zend_ex_retVal != SUCCESS )
     {
         ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex() failed. Return value: %d. phpFilePath: `%s'", php_stream_open_for_zend_ex_retVal, phpFilePath );
+        logDiagnostics_for_failed_php_stream_open_for_zend_ex( phpFilePath );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
     should_destroy_file_handle = true;
