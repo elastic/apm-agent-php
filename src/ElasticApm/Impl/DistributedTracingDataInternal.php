@@ -23,42 +23,39 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Closure;
 use Elastic\Apm\DistributedTracingData;
-use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class NoopDistributedTracingData
+final class DistributedTracingDataInternal extends DistributedTracingData implements LoggableInterface
 {
-    use StaticClassTrait;
+    use LoggableTrait;
 
-    /** @var DistributedTracingData */
-    private static $data;
+    /**
+     * @var ?float
+     *
+     * @link https://github.com/elastic/apm/blob/master/specs/agents/tracing-sampling.md#propagation
+     */
+    public $sampleRate = null;
 
-    /** @var string */
-    private static $dataSerializedToString;
+    /** @var ?string */
+    public $outgoingTraceState = null;
 
-    public static function get(): DistributedTracingData
+    /** @inheritDoc */
+    public function injectHeaders(Closure $headerInjector): void
     {
-        if (self::$data === null) {
-            self::$data = new DistributedTracingData();
-            self::$data->traceId = NoopExecutionSegment::TRACE_ID;
-            self::$data->parentId = NoopExecutionSegment::ID;
-            self::$data->isSampled = false;
+        parent::injectHeaders($headerInjector);
+        if ($this->outgoingTraceState !== null) {
+            $headerInjector(
+                HttpDistributedTracing::TRACE_STATE_HEADER_NAME,
+                $this->outgoingTraceState
+            );
         }
-
-        return self::$data;
-    }
-
-    public static function serializedToString(): string
-    {
-        if (self::$dataSerializedToString === null) {
-            self::$dataSerializedToString = self::get()->serializeToString();
-        }
-
-        return self::$dataSerializedToString;
     }
 }

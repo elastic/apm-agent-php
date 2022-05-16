@@ -105,7 +105,7 @@ final class TextUtil
             $result .= chr(self::toLowerCaseLetter($currentCharAsInt));
             $prevIndex = $i + 1;
         }
-        if (empty($result)) {
+        if (self::isEmptyString($result)) {
             return $input;
         }
 
@@ -141,7 +141,7 @@ final class TextUtil
             }
 
             // Don't uppercase the first letter
-            if (empty($result)) {
+            if (self::isEmptyString($result)) {
                 $result .= $input[$nonUnderscorePos];
             } else {
                 $result .= chr(self::toUpperCaseLetter(ord($input[$nonUnderscorePos])));
@@ -156,7 +156,7 @@ final class TextUtil
             return $result;
         }
 
-        if (empty($result)) {
+        if (self::isEmptyString($result)) {
             return $input;
         }
 
@@ -174,7 +174,7 @@ final class TextUtil
      */
     public static function camelToPascalCase(string $input): string
     {
-        if (empty($input)) {
+        if (self::isEmptyString($input)) {
             return '';
         }
         return chr(self::toUpperCaseLetter(ord($input[0]))) . substr($input, 1, strlen($input) - 1);

@@ -38,7 +38,7 @@ use Throwable;
 abstract class AppCodeHostBase extends SpawnedProcessBase
 {
     /** @var Logger */
-    protected $logger;
+    private $logger;
 
     public function __construct()
     {

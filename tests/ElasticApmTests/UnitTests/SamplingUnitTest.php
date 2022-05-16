@@ -27,7 +27,6 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
-use ElasticApmTests\Util\PhpUnitExtensionBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
 use ElasticApmTests\Util\TransactionDataExpectations;
 

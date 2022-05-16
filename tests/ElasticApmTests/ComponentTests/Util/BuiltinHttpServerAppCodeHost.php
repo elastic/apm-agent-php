@@ -25,12 +25,17 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
+use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {
     use HttpServerProcessTrait;
+
+    /** @var Logger */
+    private $logger;
 
     public function __construct()
     {
@@ -40,6 +45,13 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         }
 
         parent::__construct();
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(

@@ -48,7 +48,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     public const DBG_PROCESS_NAME_ENV_VAR_NAME = 'DBG_PROCESS_NAME';
 
     /** @var Logger */
-    protected $logger;
+    private $logger;
 
     protected function __construct()
     {
@@ -73,7 +73,6 @@ abstract class SpawnedProcessBase implements LoggableInterface
             __FILE__
         );
     }
-
     protected function processConfig(): void
     {
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);

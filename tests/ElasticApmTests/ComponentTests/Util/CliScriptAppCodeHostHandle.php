@@ -25,12 +25,17 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 
 final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
 {
     /** @var ResourcesCleanerHandle */
     private $resourcesCleaner;
+
+    /** @var Logger */
+    private $logger;
 
     /**
      * @param Closure(AppCodeHostParams): void $setParamsFunc
@@ -49,6 +54,13 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         parent::__construct($testCaseHandle, $appCodeHostParams, new AgentConfigSourceBuilder($appCodeHostParams));
 
         $this->resourcesCleaner = $resourcesCleaner;
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
     }
 
     /** @inheritDoc */
@@ -70,7 +82,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         }
 
         $envVars = TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
-            $this->agentConfigSourceBuilder->getEnvVars(),
+            $this->agentConfigSourceBuilder->getEnvVars(getenv()),
             $this->appCodeHostParams->spawnedProcessId,
             null /* <- targetServerPort */,
             $this->resourcesCleaner,

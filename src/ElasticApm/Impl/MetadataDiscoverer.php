@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -72,7 +73,7 @@ final class MetadataDiscoverer
 
     public static function adaptServiceName(string $configuredName): string
     {
-        if (empty($configuredName)) {
+        if (TextUtil::isEmptyString($configuredName)) {
             return self::DEFAULT_SERVICE_NAME;
         }
 

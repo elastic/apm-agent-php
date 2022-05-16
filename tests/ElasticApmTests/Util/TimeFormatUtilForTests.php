@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
@@ -107,7 +108,7 @@ final class TimeFormatUtilForTests
             }
 
             $remainderAsString = ($remainder === floor($remainder)) ? strval(intval($remainder)) : strval($remainder);
-            return $appendTo . (empty($appendTo) ? '' : ' ') . $remainderAsString . $units;
+            return $appendTo . (TextUtil::isEmptyString($appendTo) ? '' : ' ') . $remainderAsString . $units;
         };
 
         $result = '';
