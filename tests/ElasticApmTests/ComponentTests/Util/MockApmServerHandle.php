@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -82,7 +83,7 @@ final class MockApmServerHandle extends HttpServerHandle
             $newIntakeApiRequests[] = $newIntakeApiRequest;
         }
 
-        if (empty($newIntakeApiRequests)) {
+        if (ArrayUtil::isEmpty($newIntakeApiRequests)) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Fetched NO new intake API requests received from agent');
         } else {

@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -73,7 +74,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $isFirstLine = true;
         $encounteredEmptyLine = false;
         foreach (self::iterateLines($this->intakeApiRequest->body) as $bodyLine) {
-            if (empty($bodyLine)) {
+            if (TextUtil::isEmptyString($bodyLine)) {
                 $encounteredEmptyLine = true;
                 continue;
             }

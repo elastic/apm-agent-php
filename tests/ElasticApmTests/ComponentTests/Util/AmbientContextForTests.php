@@ -23,11 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\Util\LogSinkForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -80,6 +81,13 @@ final class AmbientContextForTests
     public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
     {
         self::getSingletonInstance()->readAndApplyConfig($additionalConfigSource);
+    }
+
+    public static function reconfigureLogLevel(int $newLevel): void
+    {
+        $configSource = new MockConfigRawSnapshotSource();
+        $configSource->set(OptionNames::LOG_LEVEL, LogSinkForTests::levelToString($newLevel));
+        self::reconfigure($configSource);
     }
 
     private function readAndApplyConfig(?RawSnapshotSourceInterface $additionalConfigSource): void

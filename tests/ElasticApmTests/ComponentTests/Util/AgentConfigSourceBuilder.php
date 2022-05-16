@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -64,11 +65,13 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     }
 
     /**
+     * @param array<string, string> $baseEnvVars
+     *
      * @return array<string, string>
      */
-    public function getEnvVars(): array
+    public function getEnvVars(array $baseEnvVars): array
     {
-        return $this->addEnvVarsForAgentOptions($this->selectEnvVarsToInherit());
+        return $this->addEnvVarsForAgentOptions($this->selectEnvVarsToInherit($baseEnvVars));
     }
 
     /**
@@ -76,7 +79,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
      */
     public function getPhpIniFile(): ?string
     {
-        if (empty($this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::iniFile()))) {
+        if (ArrayUtil::isEmpty($this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::iniFile()))) {
             return AmbientContextForTests::testConfig()->appCodePhpIni;
         }
 
@@ -106,11 +109,13 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     }
 
     /**
+     * @param array<string, string> $baseEnvVars
+     *
      * @return array<string, string>
      */
-    private function selectEnvVarsToInherit(): array
+    private function selectEnvVarsToInherit(array $baseEnvVars): array
     {
-        $envVars = getenv();
+        $envVars = $baseEnvVars;
 
         foreach ($this->appCodeHostParams->getSetAgentOptionNames() as $optName) {
             $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(

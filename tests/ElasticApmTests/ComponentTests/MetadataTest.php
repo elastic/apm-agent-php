@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawExpectations;
 use ElasticApmTests\Util\MetadataValidator;
 use PHPUnit\Framework\TestCase;
 

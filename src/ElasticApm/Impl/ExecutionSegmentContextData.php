@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -42,7 +43,7 @@ class ExecutionSegmentContextData implements OptionalSerializableDataInterface, 
     /** @inheritDoc */
     public function prepareForSerialization(): bool
     {
-        return !empty($this->labels);
+        return !ArrayUtil::isEmpty($this->labels);
     }
 
     /** @inheritDoc */

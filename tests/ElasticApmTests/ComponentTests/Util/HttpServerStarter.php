@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Util\Test;
 use RuntimeException;
 use Throwable;
 
@@ -104,10 +103,7 @@ abstract class HttpServerStarter
             );
 
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Starting ' . $this->dbgProcessName . ' HTTP server...',
-                ['cmdLine' => $cmdLine, 'currentTryPort' => $currentTryPort]
-            );
+            && $loggerProxy->log('Starting ' . $this->dbgProcessName . ' HTTP server...');
 
             ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars);
 

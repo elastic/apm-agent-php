@@ -97,7 +97,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             'Test starting...',
             [
                 'test'                  => $test,
-                'testEnvId'             => self::$currentTestCaseId,
+                'currentTestCaseId'     => self::$currentTestCaseId,
                 'Environment variables' => getenv(),
             ]
         );

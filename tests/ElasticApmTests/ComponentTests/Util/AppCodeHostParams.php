@@ -53,7 +53,7 @@ class AppCodeHostParams implements LoggableInterface
     public $spawnedProcessId;
 
     /** @var Logger */
-    protected $logger;
+    private $logger;
 
     public function __construct(string $dbgProcessName)
     {

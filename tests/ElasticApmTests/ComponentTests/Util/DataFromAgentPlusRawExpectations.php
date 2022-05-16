@@ -86,8 +86,8 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     private static function deriveIsSampledExpectationForAppCodeHost(AppCodeHostParams $appCodeHostParams): ?bool
     {
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
-        $sampleRate = $agentConfig->effectiveTransactionSampleRateAsString();
-        return $sampleRate === '0' ? false : ($sampleRate === '1' ? true : null);
+        $sampleRate = $agentConfig->transactionSampleRate();
+        return $sampleRate === 0.0 ? false : ($sampleRate === 1.0 ? true : null);
     }
 
     private function fillErrorExpectations(TransactionDataExpectations $transactionExpectations): void

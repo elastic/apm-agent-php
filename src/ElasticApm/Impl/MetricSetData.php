@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 
 /**
  * An error or a logged error message captured by an agent occurring in a monitored service
@@ -139,14 +140,14 @@ class MetricSetData implements SerializableDataInterface, LoggableInterface
         $transactionObj = [];
         SerializationUtil::addNameValueIfNotNull('name', $this->transactionName, /* ref */ $transactionObj);
         SerializationUtil::addNameValueIfNotNull('type', $this->transactionType, /* ref */ $transactionObj);
-        if (!empty($transactionObj)) {
+        if (!ArrayUtil::isEmpty($transactionObj)) {
             SerializationUtil::addNameValueIfNotNull('transaction', $transactionObj, /* ref */ $result);
         }
 
         $spanObj = [];
         SerializationUtil::addNameValueIfNotNull('type', $this->spanType, /* ref */ $spanObj);
         SerializationUtil::addNameValueIfNotNull('subtype', $this->spanSubtype, /* ref */ $spanObj);
-        if (!empty($spanObj)) {
+        if (!ArrayUtil::isEmpty($spanObj)) {
             SerializationUtil::addNameValueIfNotNull('span', $spanObj, /* ref */ $result);
         }
 

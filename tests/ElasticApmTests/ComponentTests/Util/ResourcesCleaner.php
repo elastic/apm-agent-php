@@ -43,11 +43,21 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     /** @var Set<int> */
     private $processesToTerminateIds;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct()
     {
         parent::__construct();
 
         $this->processesToTerminateIds = new Set();
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
     }
 
     protected function processConfig(): void

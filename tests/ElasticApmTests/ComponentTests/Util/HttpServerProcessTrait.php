@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\JsonUtil;
-use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use React\Http\Message\Response;
 

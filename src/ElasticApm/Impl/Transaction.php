@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
@@ -74,6 +73,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ?BreakdownMetricsPerTransaction */
     private $breakdownMetricsPerTransaction = null;
 
+    /** @var ?string */
+    private $outgoingTraceState;
+
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
@@ -86,23 +88,21 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         $distributedTracingData = self::extractDistributedTracingData($builder);
         if ($distributedTracingData === null) {
             $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
-        } else {
-            $traceId = $distributedTracingData->traceId;
-            $this->data->parentId = $distributedTracingData->parentId;
-        }
-
-        if ($distributedTracingData === null) {
-            $effectiveTransactionSampleRate = $this->tracer->getConfig()->effectiveTransactionSampleRate();
-            $isSampled = self::makeSamplingDecision($effectiveTransactionSampleRate);
+            $sampleRate = $this->tracer->getConfig()->transactionSampleRate();
+            $isSampled = self::makeSamplingDecision($sampleRate);
             /**
              * @link https://github.com/elastic/apm/blob/main/specs/agents/tracing-sampling.md#non-sampled-transactions
              * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0
              */
-            $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
+            $sampleRateToMarkTransaction = $isSampled ? $sampleRate : 0.0;
+            $this->outgoingTraceState
+                = $this->tracer->httpDistributedTracing()->buildOutgoingTraceStateForRootTransaction($sampleRate);
         } else {
+            $traceId = $distributedTracingData->traceId;
+            $this->data->parentId = $distributedTracingData->parentId;
             $isSampled = $distributedTracingData->isSampled;
-            // TODO: Sergey Kleyman: Implement: $sampleRateToMarkTransaction in Transaction::__construct
-            $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate ?? 1.0;
+            $sampleRateToMarkTransaction = $distributedTracingData->sampleRate;
+            $this->outgoingTraceState = $distributedTracingData->outgoingTraceState;
         }
 
         parent::__construct(
@@ -126,28 +126,61 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         && $loggerProxy->log('Transaction created');
     }
 
-    public static function extractDistributedTracingData(TransactionBuilder $builder): ?DistributedTracingData
+    private static function extractDistributedTracingData(TransactionBuilder $builder): ?DistributedTracingDataInternal
     {
-        $traceParentHeaderValue = null;
-        if ($builder->serializedDistTracingData === null) {
-            if ($builder->headersExtractor !== null) {
-                $traceParentHeaderValues
-                    = ($builder->headersExtractor)(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME);
-                if (is_string($traceParentHeaderValues)) {
-                    $traceParentHeaderValue = $traceParentHeaderValues;
-                } elseif (is_array($traceParentHeaderValues) && count($traceParentHeaderValues) === 1) {
-                    $traceParentHeaderValue = $traceParentHeaderValues[0];
-                } else {
-                    return null;
-                }
-            }
-        } else {
-            $traceParentHeaderValue = $builder->serializedDistTracingData;
+        /** @var string[] */
+        $traceParentHeaderValues = [];
+        /** @var string[] */
+        $traceStateHeaderValues = [];
+        self::extractDistributedTracingHeaders(
+            $builder,
+            $traceParentHeaderValues /* <- ref */,
+            $traceStateHeaderValues /* <- ref */
+        );
+        return $builder->tracer->httpDistributedTracing()->parseHeaders(
+            $traceParentHeaderValues,
+            $traceStateHeaderValues
+        );
+    }
+
+
+    /**
+     * @param TransactionBuilder $builder
+     * @param string[]           $traceParentHeaderValues
+     * @param string[]           $traceStateHeaderValues
+     */
+    private static function extractDistributedTracingHeaders(
+        TransactionBuilder $builder,
+        array &$traceParentHeaderValues,
+        array &$traceStateHeaderValues
+    ): void {
+        if ($builder->serializedDistTracingData !== null) {
+            $traceParentHeaderValues[] = $builder->serializedDistTracingData;
+            return;
         }
 
-        return $traceParentHeaderValue === null
-            ? null
-            : $builder->tracer->httpDistributedTracing()->parseTraceParentHeader($traceParentHeaderValue);
+        $headersExtractor = $builder->headersExtractor;
+        if ($headersExtractor === null) {
+            return;
+        }
+
+        /**
+         * @param null|string|string[] $headersExtractorRetVal
+         *
+         * @return string[]
+         */
+        $adaptHeadersExtractorRetVal = function ($headersExtractorRetVal): array {
+            return $headersExtractorRetVal === null
+                ? []
+                : (is_string($headersExtractorRetVal) ? [$headersExtractorRetVal] : $headersExtractorRetVal);
+        };
+
+        $traceParentHeaderValues = $adaptHeadersExtractorRetVal(
+            $headersExtractor(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME)
+        );
+        $traceStateHeaderValues = $adaptHeadersExtractorRetVal(
+            $headersExtractor(HttpDistributedTracing::TRACE_STATE_HEADER_NAME)
+        );
     }
 
     /** @inheritDoc */
@@ -289,7 +322,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $action,
             $timestamp,
             $isDropped,
-            $this->data->sampleRate // @phpstan-ignore-line
+            $this->data->sampleRate
         );
     }
 
@@ -401,26 +434,26 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
-    public function getDistributedTracingData(): ?DistributedTracingData
+    public function getDistributedTracingDataInternal(): ?DistributedTracingDataInternal
     {
         if ($this->currentSpan === null) {
             return $this->doGetDistributedTracingData(/* span */ null);
         }
 
-        /** @noinspection PhpDeprecationInspection */
-        return $this->currentSpan->getDistributedTracingData();
+        return $this->currentSpan->getDistributedTracingDataInternal();
     }
 
-    public function doGetDistributedTracingData(?Span $span): ?DistributedTracingData
+    public function doGetDistributedTracingData(?Span $span): ?DistributedTracingDataInternal
     {
         if (!$this->tracer->isRecording()) {
             return null;
         }
 
-        $result = new DistributedTracingData();
+        $result = new DistributedTracingDataInternal();
         $result->traceId = $this->data->traceId;
         $result->parentId = $span === null ? $this->data->id : $span->getId();
         $result->isSampled = $this->data->isSampled;
+        $result->outgoingTraceState = $this->outgoingTraceState;
         return $result;
     }
 

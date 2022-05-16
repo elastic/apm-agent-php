@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\SpanContextInterface;
@@ -65,7 +64,7 @@ final class Span extends ExecutionSegment implements SpanInterface
         ?string $action,
         ?float $timestamp,
         bool $isDropped,
-        float $sampleRate
+        ?float $sampleRate
     ) {
         $this->data = new SpanData();
         $this->parentExecutionSegment = $parentExecutionSegment;
@@ -175,7 +174,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function getDistributedTracingData(): ?DistributedTracingData
+    public function getDistributedTracingDataInternal(): ?DistributedTracingDataInternal
     {
         $spanAsParent = $this->shouldBeSentToApmServer() ? $this : null;
         return $this->containingTransaction->doGetDistributedTracingData($spanAsParent);

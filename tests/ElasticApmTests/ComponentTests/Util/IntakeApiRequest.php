@@ -23,13 +23,16 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
 use JsonSerializable;
 
-final class IntakeApiRequest implements JsonSerializable, JsonDeserializableInterface
+final class IntakeApiRequest implements JsonSerializable, JsonDeserializableInterface, LoggableInterface
 {
     use JsonDeserializableTrait;
+    use LoggableTrait;
 
     /** @var array<string, array<string>> */
     public $headers;

@@ -177,4 +177,14 @@ final class ArrayUtil
 
         return $array[$key];
     }
+
+    /**
+     * @param array<mixed, mixed> $array
+     *
+     * @return bool
+     */
+    public static function isEmpty(array $array): bool
+    {
+        return count($array) === 0;
+    }
 }
