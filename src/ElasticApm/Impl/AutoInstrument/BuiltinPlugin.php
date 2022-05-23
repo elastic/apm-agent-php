@@ -39,6 +39,7 @@ final class BuiltinPlugin extends PluginBase
             [
                 new CurlAutoInstrumentation($tracer),
                 new PdoAutoInstrumentation($tracer),
+                new MySQLiAutoInstrumentation($tracer),
             ]
         );
     }
