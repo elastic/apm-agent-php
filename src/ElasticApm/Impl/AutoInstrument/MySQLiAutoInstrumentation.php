@@ -43,7 +43,6 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
-    private const MYSQLI_QUERY_ID = 1;
     private const DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE
         = 'Elastic_APM_dynamically_attached_property_DB_span_subtype';
 
@@ -81,7 +80,11 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             return;
 
         }
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_query', self::MYSQLI_QUERY_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_query');
+        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_connect');
+        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_fetch_array');
+        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_ping');
+        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_fetch_object');
         $this->mysqliConstruct($ctx);
         $this->mysqliQuery($ctx);
         $this->mysqliPrepare($ctx);
@@ -90,8 +93,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     public function registerDelegatingToHandleTracker(
         RegistrationContextInterface $ctx,
-        string $funcName,
-        int $funcId
+        string $funcName
     ): void {
         $ctx->interceptCallsToFunction(
             $funcName,
@@ -102,9 +104,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
              *
              * @phpstan-return callable(int, bool, mixed): mixed
              */
-            function (array $interceptedCallArgs) use ($funcName, $funcId): ?callable {
+            function (array $interceptedCallArgs) use ($funcName): ?callable {
                 $statement = (
-                    $interceptedCallArgs instanceof mysqli_stmt
+                    $interceptedCallArgs instanceof mysqli
                     && isset($interceptedCallArgs[1]->mysqliQuery) // @phpstan-ignore-line
                     && is_string($interceptedCallArgs[1]->queryString)
                 )
@@ -112,7 +114,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                     : null;
 
                 $spanSubtype = self::getDynamicallyAttachedProperty(
-                    (object)["hi" => $interceptedCallArgs],
+                    (object)["args" => $interceptedCallArgs],
                     self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL /* <- defaultValue */
                 );
