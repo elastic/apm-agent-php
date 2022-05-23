@@ -6,40 +6,58 @@ endif::[]
 [[setup]]
 == Set up the Agent
 
+[float]
+[[setup-prerequisites]]
+=== Prerequisites
+
+[float]
+==== Operating system
+The agent is currently only available for Linux operating system.
+
+[float]
+==== PHP
+The agent supports PHP versions 7.2-8.1
+
+[float]
+==== curl
+The agent requires `libcurl` 7.58 or later.
+
+[float]
+[[setup-installation]]
+=== Installation
+
 Install the agent using one of the https://github.com/elastic/apm-agent-php/releases/latest[packages for supported platforms].
 
-NOTE: The agent supports PHP versions 7.2-8.1.0.
-
-[discrete]
+[float]
 [[setup-rpm]]
-=== Using RPM package (RHEL/CentOS, Fedora)
+==== Using RPM package (RHEL/CentOS, Fedora)
 
 [source,bash]
 ----
 rpm -ivh <package-file>.rpm
 ----
 
-[discrete]
+[float]
 [[setup-deb]]
-=== Using DEB package (Debian, Ubuntu)
+==== Using DEB package (Debian, Ubuntu 18+)
 
 [source,bash]
 ----
 dpkg -i <package-file>.deb
 ----
 
-[discrete]
+[float]
 [[setup-apk]]
-=== Using APK package (Alpine)
+==== Using APK package (Alpine)
 
 [source,bash]
 ----
 apk add --allow-untrusted <package-file>.apk
 ----
 
-[discrete]
+[float]
 [[build-from-source]]
-=== Build from source
+==== Build from source
 
 If you can’t find your distribution, you can install the agent by building it from the source.
 
