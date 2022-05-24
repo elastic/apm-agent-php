@@ -16,7 +16,7 @@ The agent is currently only available for the Linux operating system.
 
 [discrete]
 ==== PHP
-The agent supports PHP versions 7.2-8.1
+The agent supports PHP versions 7.2-8.1.
 
 [discrete]
 ==== curl
