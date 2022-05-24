@@ -12,7 +12,7 @@ endif::[]
 
 [discrete]
 ==== Operating system
-The agent is currently only available for Linux operating system.
+The agent is currently only available for the Linux operating system.
 
 [discrete]
 ==== PHP
