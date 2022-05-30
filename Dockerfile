@@ -15,7 +15,7 @@ RUN apt-get -qq update \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.20.5/cmake-3.20.5-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
       && mkdir /usr/bin/cmake \
