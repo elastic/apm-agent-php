@@ -12,7 +12,7 @@ RUN apk update \
     unzip \
     wget
 
-COPY --from=composer:2.0.13 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 RUN php -v
 
