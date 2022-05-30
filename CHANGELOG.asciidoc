@@ -21,6 +21,10 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.5.1]]
+=== v1.5.1 - 2022/05/30
+* Fixed bug: Forked process runs indefinitely: {pull}691[#691]
+
 [[release-notes-v1.5]]
 === v1.5 - 2022/03/29
 * Added support for PHP 8.1: {pull}604[#604]
