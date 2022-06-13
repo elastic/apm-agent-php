@@ -327,13 +327,13 @@ final class PhpPartFacade
     private static function buildTracer(): ?Tracer
     {
         ($assertProxy = Assert::ifEnabled())
-        && $assertProxy->that(!GlobalTracerHolder::isSet())
+        && $assertProxy->that(!GlobalTracerHolder::isValueSet())
         && $assertProxy->withContext(
             '!GlobalTracerHolder::isSet()',
-            ['GlobalTracerHolder::get()' => GlobalTracerHolder::get()]
+            ['GlobalTracerHolder::get()' => GlobalTracerHolder::getValue()]
         );
 
-        $tracer = GlobalTracerHolder::get();
+        $tracer = GlobalTracerHolder::getValue();
         if ($tracer->isNoop()) {
             return null;
         }

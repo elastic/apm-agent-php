@@ -88,7 +88,7 @@ final class TestConfigUtil
             );
         }
 
-        if (GlobalTracerHolder::get()->isRecording()) {
+        if (GlobalTracerHolder::getValue()->isRecording()) {
             throw new RuntimeException('Tracer should not be recording component tests auxiliary processes');
         }
     }

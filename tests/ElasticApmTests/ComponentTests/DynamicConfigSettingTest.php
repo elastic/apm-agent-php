@@ -110,7 +110,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::get();
+        $tracer = GlobalTracerHolder::getValue();
         self::appAssertTrue(
             $tracer instanceof Tracer,
             '$tracer is not an instance of Tracer class',
