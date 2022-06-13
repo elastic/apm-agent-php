@@ -182,7 +182,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::get();
+        $tracer = GlobalTracerHolder::getValue();
         if (!($tracer instanceof Tracer)) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage('$tracer is not an instance of Tracer class', ['$tracer' => $tracer])

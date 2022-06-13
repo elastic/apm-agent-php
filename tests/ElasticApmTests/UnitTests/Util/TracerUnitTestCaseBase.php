@@ -64,11 +64,11 @@ class TracerUnitTestCaseBase extends TestCaseBase
         }
 
         $this->tracer = $builder->build();
-        GlobalTracerHolder::set($this->tracer);
+        GlobalTracerHolder::setValue($this->tracer);
     }
 
     public function tearDown(): void
     {
-        GlobalTracerHolder::unset();
+        GlobalTracerHolder::unsetValue();
     }
 }
