@@ -58,7 +58,8 @@ final class ElasticApm
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        return GlobalTracerHolder::getValue()->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
+        return GlobalTracerHolder::getValue()
+                                 ->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
     }
 
     /**
