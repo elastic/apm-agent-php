@@ -27,6 +27,7 @@
 #include <php.h>
 #include <zend_compile.h>
 #include <zend_exceptions.h>
+#include <zend_hash.h>
 #include "php_elastic_apm.h"
 #include "log.h"
 #include "SystemMetrics.h"
@@ -219,6 +220,167 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
 }
+
+static bool g_isEnabledForCurrentRequest = true;
+static const char* g_isEnabledForCurrentRequestReason = "Not checked yet";
+
+#define ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME "opcache_get_status"
+#define ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME_LEN (ELASTIC_APM_STATIC_ARRAY_SIZE( ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME ) - 1)
+
+#define ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY "restart_pending"
+#define ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY_LEN (ELASTIC_APM_STATIC_ARRAY_SIZE( ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY ) - 1)
+#define ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY "restart_in_progress"
+#define ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY_LEN (ELASTIC_APM_STATIC_ARRAY_SIZE( ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY ) - 1)
+
+zend_function* getOpcacheGetStatusFuncEntry()
+{
+    return zend_hash_str_find_ptr( CG( function_table ), ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME, ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME_LEN );
+}
+
+bool isOpCacheEnabled()
+{
+    return getOpcacheGetStatusFuncEntry() != NULL;
+}
+
+ResultCode findBoolInZvalArray( zval* zvalArray, const char* key, size_t keyLen, bool* val )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+    zval* pFoundZval = NULL;
+
+    pFoundZval = zend_hash_str_find( Z_ARRVAL_P( zvalArray ), key, keyLen );
+    if ( pFoundZval == NULL)
+    {
+        ELASTIC_APM_LOG_ERROR( "Could not find value by key: %.*s", (int)keyLen, key );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( Z_TYPE_P( pFoundZval ) == IS_FALSE )
+    {
+        *val = false;
+    }
+    else if ( Z_TYPE_P( pFoundZval ) == IS_TRUE )
+    {
+        *val = true;
+    }
+    else
+    {
+        ELASTIC_APM_LOG_ERROR( "Found value is not of type bool. Actual type: %s; key: %.*s", zend_get_type_by_const( Z_TYPE_P( pFoundZval ) ), (int)keyLen, key );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    ELASTIC_APM_LOG_DEBUG( "Found value is %s (key: %.*s)", boolToString( *val ), (int)keyLen, key );
+    resultCode = resultSuccess;
+
+    finally:
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+    zval include_scripts_param;
+    ZVAL_BOOL( &include_scripts_param, false );
+    zval params[] = { include_scripts_param };
+    zval opcacheGetStatusRetVal;
+    ZVAL_UNDEF( &opcacheGetStatusRetVal );
+    int opcacheGetStatusCallRetVal = SUCCESS;
+    zval opcacheGetStatusFuncFuncName;
+    ZVAL_UNDEF( &opcacheGetStatusFuncFuncName );
+
+    ZVAL_STRINGL( &opcacheGetStatusFuncFuncName, ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME, ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME_LEN );
+    opcacheGetStatusCallRetVal = call_user_function( CG(function_table), /* object */ NULL, &opcacheGetStatusFuncFuncName, &opcacheGetStatusRetVal, ELASTIC_APM_STATIC_ARRAY_SIZE( params ), params );
+    if ( opcacheGetStatusCallRetVal != SUCCESS )
+    {
+        ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d", opcacheGetStatusCallRetVal );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( Z_TYPE( opcacheGetStatusRetVal ) != IS_ARRAY )
+    {
+        ELASTIC_APM_LOG_ERROR( "opcache_get_status return value is not an array."
+                               " zend_get_type_by_const( Z_TYPE( opcacheGetStatusRetVal ) ): %s"
+                               , zend_get_type_by_const( Z_TYPE( opcacheGetStatusRetVal ) ) );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( findBoolInZvalArray( &opcacheGetStatusRetVal, ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY, ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY_LEN, restartPending ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( findBoolInZvalArray( &opcacheGetStatusRetVal, ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY, ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY_LEN, restartInProgress ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    zval_dtor( &opcacheGetStatusRetVal );
+    zval_dtor( &opcacheGetStatusFuncFuncName );
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+bool checkIfEnabledForCurrentRequest( const char* calledFromFunction )
+{
+    if ( ! g_isEnabledForCurrentRequest ) {
+        goto finally;
+    }
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+    bool restartPending = false;
+    bool restartInProgress = false;
+
+    if ( isOpCacheEnabled() )
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( getOpCacheStatus( &restartPending, &restartInProgress ) );
+        if ( restartPending )
+        {
+            g_isEnabledForCurrentRequest = false;
+            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY "'] is true";
+            goto finally;
+        }
+        if ( restartInProgress )
+        {
+            g_isEnabledForCurrentRequest = false;
+            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY "'] is true";
+            goto finally;
+        }
+    }
+
+    g_isEnabledForCurrentRequest = true;
+    g_isEnabledForCurrentRequestReason = "Passed all checks";
+
+    finally:
+
+    ELASTIC_APM_LOG_DEBUG( "Elastic APM is %s for the current request. Reason: %s. Check called from %s"
+                           , (g_isEnabledForCurrentRequest ? "enabled" : "DISABLED")
+                           , g_isEnabledForCurrentRequestReason
+                           , calledFromFunction );
+    return g_isEnabledForCurrentRequest;
+
+    failure:
+    ELASTIC_APM_LOG_DEBUG( "Failed to check if enabled for current request - defaulting to DISABLED" );
+    g_isEnabledForCurrentRequest = false;
+    g_isEnabledForCurrentRequestReason = "Failed to check";
+    goto finally;
+}
+
+bool resetIfEnabledForCurrentRequest()
+{
+    g_isEnabledForCurrentRequest = true;
+}
+
 
 typedef void (* ZendThrowExceptionHook )(
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
@@ -451,6 +613,11 @@ void elasticApmRequestInit()
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
+    resetIfEnabledForCurrentRequest();
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+        return;
+    }
+
     g_pidOnRequestInit = getCurrentProcessId();
 
     TimePoint requestInitStartTime;
@@ -540,6 +707,10 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
 
 void elasticApmRequestShutdown()
 {
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+        return;
+    }
+
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
