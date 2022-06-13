@@ -49,7 +49,7 @@ final class TransactionBuilder implements TransactionBuilderInterface
     /** @var ?float */
     public $timestamp = null;
 
-    /** @var ?Closure(string $headerName): null|string|string[] */
+    /** @var ?Closure(string $headerName): (null|string|string[]) */
     public $headersExtractor = null;
 
     /** @var ?string */
