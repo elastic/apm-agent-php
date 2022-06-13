@@ -78,8 +78,8 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     {
         if (!extension_loaded('mysqli')) {
             return;
-
         }
+
         $this->registerDelegatingToHandleTracker($ctx, 'mysqli_query');
         $this->registerDelegatingToHandleTracker($ctx, 'mysqli_connect');
         $this->registerDelegatingToHandleTracker($ctx, 'mysqli_fetch_array');
@@ -105,12 +105,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
              * @phpstan-return callable(int, bool, mixed): mixed
              */
             function (array $interceptedCallArgs) use ($funcName): ?callable {
+                $firstArg = $interceptedCallArgs[1];
                 $statement = (
-                    $interceptedCallArgs instanceof mysqli
-                    && isset($interceptedCallArgs[1]->mysqliQuery) // @phpstan-ignore-line
-                    && is_string($interceptedCallArgs[1]->queryString)
+                    $firstArg instanceof mysqli
+                    && isset($firstArg->mysqliQuery) // @phpstan-ignore-line
+                    && is_string($firstArg->mysqliQuery)
                 )
-                    ? $interceptedCallArgs[1]->queryString
+                    ? $interceptedCallArgs[1]->mysqliQuery
                     : null;
 
                 $spanSubtype = self::getDynamicallyAttachedProperty(
@@ -127,7 +128,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 return self::createPostHookFromEndSpan($span);
             }
         );
-    }    
+    }
 
     /**
      * @param string  $funcName
@@ -218,7 +219,6 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
              *
              * @return callable
              */
-            
             function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName): ?callable {
                 if (!($interceptedCallThis instanceof mysqli)) {
                     ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
@@ -256,7 +256,6 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
                 return self::createPostHookFromEndSpan($span);
             }
-            
         );
     }
 
@@ -281,7 +280,6 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function mysqliQuery(RegistrationContextInterface $ctx): void
     {
-
         $this->mysqliInterceptCallToSpan($ctx, 'query');
     }
 
@@ -355,7 +353,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function mysqliStatementExecute(RegistrationContextInterface $ctx, array $interceptedCallArgs= []): void
+    private function mysqliStatementExecute(RegistrationContextInterface $ctx, array $interceptedCallArgs = []): void
     {
         $ctx->interceptCallsToMethod(
             'mysqli_stmt',
@@ -374,9 +372,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 $statement = (
                     $interceptedCallThis instanceof mysqli_stmt
                     && isset($interceptedCallThis->mysqliQuery) // @phpstan-ignore-line
-                    && is_string($interceptedCallThis->queryString)
+                    && is_string($interceptedCallThis->mysqliQuery)
                 )
-                    ? $interceptedCallThis->queryString
+                    ? $interceptedCallThis->mysqliQuery
                     : null;
 
                 $spanSubtype = self::getDynamicallyAttachedProperty(
@@ -394,5 +392,4 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             }
         );
     }
-
 }
