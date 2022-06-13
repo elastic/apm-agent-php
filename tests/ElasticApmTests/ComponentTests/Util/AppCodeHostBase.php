@@ -153,6 +153,6 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Setting agentEphemeralId...', ['agentEphemeralId' => $agentEphemeralId]);
 
-        GlobalTracerHolder::get()->setAgentEphemeralId($agentEphemeralId);
+        GlobalTracerHolder::getValue()->setAgentEphemeralId($agentEphemeralId);
     }
 }

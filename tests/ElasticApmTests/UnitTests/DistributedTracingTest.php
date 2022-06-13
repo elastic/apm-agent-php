@@ -301,7 +301,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         // Act
 
         // On the sending side:
-        GlobalTracerHolder::set($senderTracer);
+        GlobalTracerHolder::setValue($senderTracer);
 
         if ($distDataSource !== 0) {
             $senderTransaction = ElasticApm::beginCurrentTransaction('POST /web-layer-api', 'web-layer');
@@ -329,7 +329,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $receiverDistTracingData = $senderDistTracingData;
 
         // On the receivinging side
-        GlobalTracerHolder::set($receiverTracer);
+        GlobalTracerHolder::setValue($receiverTracer);
 
         // On the receivinging side: begin a new transaction and pass received DistributedTracingData
         $receiverTransaction = self::beginAndEndTransactionUsingApi(
@@ -347,7 +347,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
 
         $receiverTransaction->end();
 
-        GlobalTracerHolder::set($senderTracer);
+        GlobalTracerHolder::setValue($senderTracer);
 
         if (isset($senderSpan)) {
             $senderSpan->end();
@@ -415,7 +415,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         // Act
 
         // On the sending side:
-        GlobalTracerHolder::set($senderTracer);
+        GlobalTracerHolder::setValue($senderTracer);
 
         $senderTxA = ElasticApm::beginTransaction('POST /web-layer-api-A', 'web-layer');
         self::assertFalse($senderTxA->isNoop());
@@ -446,7 +446,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         );
 
         // On the receivinging side
-        GlobalTracerHolder::set($receiverTracer);
+        GlobalTracerHolder::setValue($receiverTracer);
 
         $headerExtractorB = function (string $headerName) use ($distTracingDataB): ?string {
             return array_key_exists($headerName, $distTracingDataB)
@@ -474,7 +474,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $receiverTxB->end();
         $receiverTxA->end();
 
-        GlobalTracerHolder::set($senderTracer);
+        GlobalTracerHolder::setValue($senderTracer);
 
         $senderSpanB->end();
         $senderSpanA->end();
@@ -551,7 +551,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $distTracingData = [];
 
         if ($doesTxHaveParentAlready) {
-            GlobalTracerHolder::set($webFrontTracer);
+            GlobalTracerHolder::setValue($webFrontTracer);
             $webFrontTx = ElasticApm::beginCurrentTransaction('web front end TX', 'web front end TX type');
             ElasticApm::getCurrentExecutionSegment()->injectDistributedTracingHeaders(
                 function (string $headerName, string $headerValue) use (&$distTracingData): void {
@@ -560,7 +560,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
             );
         }
 
-        GlobalTracerHolder::set($backendServiceTracer);
+        GlobalTracerHolder::setValue($backendServiceTracer);
         $headerExtractor = function (string $headerName) use ($distTracingData): ?string {
             return array_key_exists($headerName, $distTracingData)
                 ? $distTracingData[$headerName]
@@ -574,7 +574,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $backendServiceTx->end();
 
         if ($webFrontTx !== null) {
-            GlobalTracerHolder::set($webFrontTracer);
+            GlobalTracerHolder::setValue($webFrontTracer);
             $webFrontTx->end();
         }
 
