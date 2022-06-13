@@ -36,7 +36,6 @@ use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
-use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TimeFormatUtilForTests;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
@@ -72,7 +71,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         parent::__construct(self::DBG_PROCESS_NAME);
 
-        GlobalTracerHolder::set(NoopTracer::singletonInstance());
+        GlobalTracerHolder::setValue(NoopTracer::singletonInstance());
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
