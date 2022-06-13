@@ -61,7 +61,7 @@ class ComponentTestCaseBase extends TestCaseBase
     public static function init(): void
     {
         AmbientContext::init(/* dbgProcessName */ 'Component tests');
-        GlobalTracerHolder::set(NoopTracer::singletonInstance());
+        GlobalTracerHolder::setValue(NoopTracer::singletonInstance());
     }
 
     public function tearDown(): void

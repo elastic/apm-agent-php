@@ -74,7 +74,7 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
                 continue;
             }
 
-            GlobalTracerHolder::unset();
+            GlobalTracerHolder::unsetValue();
             $this->mockEventSink->clear();
             $this->variousCombinationsTestImpl($testArgs);
         }
