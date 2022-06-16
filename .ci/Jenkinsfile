@@ -263,7 +263,7 @@ pipeline {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
             notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
                          body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
-            setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
+            setEnvVar('RELEASE', askAndWait(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
         stage('Draft Release') {
@@ -427,16 +427,6 @@ def prepareWorkspace(def args = [:], Closure body){
   }
 }
 
-// TODO: create an input step to avoid this try/catch and return true/false
-def askAndWait(message) {
-  try {
-    input(message: message, ok: 'Yes')
-    return true
-  } catch(err) {
-    return false
-  }
-}
-
 def notifyStatus(def args = [:]) {
   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
                       slackColor: args.slackStatus,
@@ -477,7 +467,7 @@ def prepareRelease() {
                                      base: 'main')
     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
                  body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<${pr}|PR>).""")
-    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
+    if (askAndWait(message: "You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
       // Update branch.
       sh(label: "Git branch ${env.BRANCH_NAME}", script: """git checkout ${env.BRANCH_NAME}""")
       sh(label: 'Git rebase', script: """git rebase ${branchName}""")
