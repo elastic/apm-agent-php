@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Closure;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
@@ -83,9 +84,6 @@ final class CurlHandleTracker implements LoggableInterface
 
     /** @var mixed[] */
     private $headersSetByApp = [];
-
-    /** @var mixed[]|null */
-    private $savedHeadersBeforeInjection = null;
 
     /** @var SpanInterface */
     private $span;
@@ -570,6 +568,17 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPostHook(): void
     {
+        $errorCode = $this->curlHandle->errno();
+        if ($errorCode !== 0) {
+            $this->span->setOutcome(Constants::OUTCOME_FAILURE);
+            $customErrorData = new CustomErrorData();
+            $customErrorData->code = $errorCode;
+            $customErrorData->type = curl_strerror($errorCode);
+            $customErrorData->message = $this->curlHandle->error();
+            $this->span->createCustomError($customErrorData);
+            return;
+        }
+
         $statusCode = $this->curlHandle->getInfo(CURLINFO_RESPONSE_CODE);
         if (is_int($statusCode)) {
             $this->span->context()->http()->setStatusCode($statusCode);
@@ -589,21 +598,6 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function curlExecPostHook(int $numberOfStackFramesToSkip, $returnValue): void
     {
-        if (!is_null($this->savedHeadersBeforeInjection)) {
-            $this->headersSetByApp = $this->savedHeadersBeforeInjection;
-            $this->savedHeadersBeforeInjection = null;
-
-            $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $this->headersSetByApp);
-            if ($setOptRetVal) {
-                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Successfully restored headers as they were before injection');
-            } else {
-                $this->savedHeadersBeforeInjection = null;
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Failed to restore headers as they were before injection');
-            }
-        }
-
         $this->setContextPostHook();
 
         self::endSpan(
@@ -637,7 +631,6 @@ final class CurlHandleTracker implements LoggableInterface
             'Injecting outgoing ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header...'
         );
 
-        $this->savedHeadersBeforeInjection = $this->headersSetByApp;
         $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
         if ($setOptRetVal) {
             ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
@@ -646,7 +639,6 @@ final class CurlHandleTracker implements LoggableInterface
                 . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header'
             );
         } else {
-            $this->savedHeadersBeforeInjection = null;
             ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Failed to inject outgoing '
