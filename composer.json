@@ -22,7 +22,7 @@
         "phpstan/phpstan-phpunit": "^0.12||^1.0",
         "phpunit/phpunit": "^8.5||^9.5",
         "react/http": "^1.6",
-        "squizlabs/php_codesniffer": "^3.6.2"
+        "squizlabs/php_codesniffer": "3.6.2"
     },
     "suggest": {
         "ext-curl": "*",
