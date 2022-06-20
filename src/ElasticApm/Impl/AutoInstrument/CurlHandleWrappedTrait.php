@@ -73,6 +73,16 @@ trait CurlHandleWrappedTrait
         return curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE); // @phpstan-ignore-line
     }
 
+    public function errno(): int
+    {
+        return curl_errno($this->curlHandle); // @phpstan-ignore-line
+    }
+
+    public function error(): string
+    {
+        return curl_error($this->curlHandle); // @phpstan-ignore-line
+    }
+
     /**
      * @param int   $option
      * @param mixed $value
