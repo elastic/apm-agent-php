@@ -21,6 +21,10 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.5.2]]
+=== v1.5.2 - 2022/06/20
+* Fixed bug: Agent destroys error code for curl calls: {pull}707[#707]
+
 [[release-notes-v1.5.1]]
 === v1.5.1 - 2022/05/30
 * Fixed bug: Forked process runs indefinitely: {pull}691[#691]
