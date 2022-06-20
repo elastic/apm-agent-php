@@ -19,11 +19,11 @@
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",
         "php-ds/php-ds": "^1.4.1",
-        "phpstan/phpstan": "1.7.13",
+        "phpstan/phpstan": "1.7.15",
         "phpstan/phpstan-phpunit": "^1.1.1",
         "phpunit/phpunit": "^8.5||^9.5",
         "react/http": "^1.6",
-        "squizlabs/php_codesniffer": "3.7.0"
+        "squizlabs/php_codesniffer": "3.7.1"
     },
     "suggest": {
         "ext-curl": "*",
