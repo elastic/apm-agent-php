@@ -556,7 +556,7 @@ def componentTesting(linuxDistro, phpVersion, shouldUseSignedBinaries, component
     withEnv(["COMPONENT_TEST_SCRIPT=run_component_tests_${componentTestType}"]) {
         runTestingCommand(
             phpVersion,
-            workspaceContext: buildWorkspaceContext("Component-testing", linuxDistro, phpVersion, shouldUseSignedBinaries, "${componentTestType}")
+            workspaceContext: buildWorkspaceContext("Component-testing", linuxDistro, phpVersion, shouldUseSignedBinaries, "${componentTestType}"),
             testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${linuxDistro}-lifecycle-testing",
             unsignedBinariesPrepareGoal: "prepare-${linuxDistro}",
             label: buildLabel("Component testing", linuxDistro, phpVersion, shouldUseSignedBinaries, "componentTestType: ${componentTestType}"),
@@ -568,7 +568,7 @@ def componentTesting(linuxDistro, phpVersion, shouldUseSignedBinaries, component
 def phpUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries) {
     runTestingCommand(
         phpVersion,
-        workspaceContext: buildWorkspaceContext("PHP-upgrade-testing", linuxDistro, phpVersion, shouldUseSignedBinaries)
+        workspaceContext: buildWorkspaceContext("PHP-upgrade-testing", linuxDistro, phpVersion, shouldUseSignedBinaries),
         testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${linuxDistro}-php-upgrade-testing",
         unsignedBinariesPrepareGoal: "prepare-${linuxDistro}",
         label: buildLabel("PHP upgrade", linuxDistro, phpVersion, shouldUseSignedBinaries),
