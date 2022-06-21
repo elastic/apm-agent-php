@@ -567,7 +567,7 @@ def componentTesting(def args = [:]) {
             args + [
                 context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing', suffix: args.componentTestType]),
                 prepareGoal: "prepare-${args.linuxDistro}",
-                testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${args.linuxDistro}-lifecycle-testing",
+                testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxDistro}-lifecycle-testing",
                 label: buildLabel(args + [prefix: 'Lifecycle testing', suffix: args.componentTestType])
             ]
         )
