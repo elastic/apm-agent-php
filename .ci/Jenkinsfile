@@ -183,7 +183,7 @@ pipeline {
             }
           }
           steps {
-            generateSteps(shouldUseSignedBinaries: false)
+            generateTestPackageMatrix(shouldUseSignedBinaries: false)
           }
         }
       }
@@ -245,7 +245,7 @@ pipeline {
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
           steps {
-            generateSteps(shouldUseSignedBinaries: true)
+            generateTestPackageMatrix(shouldUseSignedBinaries: true)
           }
           post {
             unsuccessful {
@@ -484,14 +484,14 @@ def prepareRelease() {
   }
 }
 
-def generateSteps(shouldUseSignedBinaries) {
+def generateTestPackageMatrix(shouldUseSignedBinaries) {
   def parallelTasks = [:]
   dir("${BASE_DIR}"){
     def generateScript = "./.ci/generate_test_package_matrix.sh"
     def output = sh(label: generateScript, script: generateScript, returnStdout: true)
     if (output?.trim()) {
-      output.split('\n').each { content ->
-        parallelTasks[content] = generateStep(content, shouldUseSignedBinaries)
+      output.split('\n').each { testMatrixRow ->
+        parallelTasks[testMatrixRow] = generateTestPackageMatrixRow(testMatrixRow, shouldUseSignedBinaries)
       }
     } else {
       error('${generateScript} returned empty set of data')
@@ -500,27 +500,27 @@ def generateSteps(shouldUseSignedBinaries) {
   parallel(parallelTasks)
 }
 
-def generateStep(String content, boolean shouldUseSignedBinaries){
+def generateTestPackageMatrixRow(String testMatrixRow, boolean shouldUseSignedBinaries){
     return {
         withNode(labels: 'ubuntu-18.04 && immutable') {
-            def parsedContent = content.split(',')
-            def phpVersion = parsedContent[0]
-            def linuxDistro = parsedContent[1]
-            def target = parsedContent[2]
-            if (target.equals('php-upgrade')) {
+            def parsedTestMatrixRow = testMatrixRow.split(',')
+            def phpVersion = parsedTestMatrixRow[0]
+            def linuxDistro = parsedTestMatrixRow[1]
+            def testType = parsedTestMatrixRow[2]
+            if (testType.equals('php-upgrade')) {
                 phpUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
             }
-            if (target.equals('agent-upgrade')) {
+            if (testType.equals('agent-upgrade')) {
                 agentUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
             }
-            if (target.equals('lifecycle-in-apache')) {
+            if (testType.equals('lifecycle-in-apache')) {
                 phpApacheTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
             }
-            if (target.equals('lifecycle-in-fpm')) {
+            if (testType.equals('lifecycle-in-fpm')) {
                 phpFpmTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
             }
-            if (target.equals('component')) {
-                def componentTestType = parsedContent[3]
+            if (testType.equals('component')) {
+                def componentTestType = parsedTestMatrixRow[3]
                 componentTesting(linuxDistro, phpVersion, shouldUseSignedBinaries, componentTestType)
             }
         }
