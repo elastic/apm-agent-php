@@ -226,7 +226,7 @@ pipeline {
         stage('Signing CI') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { isInternalCI() }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -253,6 +253,10 @@ pipeline {
           }
         }
         stage('Package lifecycle testing (signed binaries)') {
+          when {
+            beforeAgent true
+            expression { isInternalCI() }
+          }
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -271,20 +275,20 @@ pipeline {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
             notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
                          body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
-            setEnvVar('RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
+            setEnvVar('IS_APPROVED_TO_PUBLISH', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
         stage('Publish Draft Release') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.IS_APPROVED_TO_PUBLISH == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
             unstash 'source'
             dir("${BASE_DIR}") {
-              unstash "${env.SIGNED_ARTIFACTS}"
+              unstash env.SIGNED_ARTIFACTS
               withGhEnv(version: '2.4.0') {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
@@ -300,7 +304,7 @@ pipeline {
         stage('Verify Draft Release Binaries Checksum') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.IS_APPROVED_TO_PUBLISH == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -328,7 +332,7 @@ pipeline {
         stage('Publish Release') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.IS_APPROVED_TO_PUBLISH == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -418,7 +422,7 @@ def initWorkspace(def args = [:], Closure body){
 def packageWorkspace(def args = [:], Closure body){
     prepareWorkspace(args) {
         dir("${BASE_DIR}"){
-            unstash (args.shouldUseSignedBinaries ? "${env.SIGNED_ARTIFACTS}" : 'package')
+            unstash (args.shouldUseSignedBinaries ? env.SIGNED_ARTIFACTS : 'package')
             // When running in the CI sometimes the docker build might fail for
             // some environmental issues, let's retry
             retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -593,7 +597,7 @@ def agentUpgradeTesting(def args = [:]) {
     withEnv(["PHP_VERSION=${args.phpVersion}"]) {
         initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
             if (args.shouldUseSignedBinaries) {
-                unstash "${env.SIGNED_ARTIFACTS}"
+                unstash env.SIGNED_ARTIFACTS
             } else {
                 packageGeneration(versions: [args.phpVersion], local: true)
                 unstash 'package'
