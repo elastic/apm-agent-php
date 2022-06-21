@@ -40,9 +40,9 @@ composer install
 composer run-script static_check
 
 # Run unit tests
-# run-test-command-with-timeout.sh <testCommand> <maxDuration> <maxTries>
+# run-test-command-with-timeout.sh <test_command> <max_duration> <max_tries> <file_for_output_prefix>
 this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-"${this_script_dir}/run-test-command-with-timeout.sh" "composer run-script run_unit_tests" 10m 3
+"${this_script_dir}/run-test-command-with-timeout.sh" "composer run-script run_unit_tests" 10m 3 /${BUILD_FOLDER}/unit-test_output
 
 # Generate junit output for phpstan
 composer phpstan-junit-report-for-ci

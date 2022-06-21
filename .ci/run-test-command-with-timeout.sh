@@ -2,45 +2,53 @@
 set -xe
 
 #
-# run-test-command-with-timeout.sh <testCommand> <maxDuration> <maxTries>
+# run-test-command-with-timeout.sh <test_command> <max_duration> <max_tries> <file_for_output_prefix>
 #
 
 if [ -n "$1" ]; then
-    testCommand="$1"
+    test_command="$1"
 else
-    echo "The 1st parameter (testCommand) is mandatory"
+    echo "The 1st parameter (test_command) is mandatory"
 fi
 
 if [ -n "$2" ]; then
-    maxDuration="$2"
+    max_duration="$2"
 else
-    echo "The 2nd parameter (maxDuration) is mandatory"
+    echo "The 2nd parameter (max_duration) is mandatory"
 fi
 
 if [ -n "$3" ]; then
-    maxTries="$3"
+    max_tries="$3"
 else
-    echo "The 3rd parameter (maxTries) is mandatory"
+    echo "The 3rd parameter (max_tries) is mandatory"
 fi
 
-tryCount=0
-while [[ $tryCount -le $maxTries ]]; do
-    ++tryCount
-    echo "Running $testCommand (try $tryCount out of $maxTries) ..."
+if [ -n "$4" ]; then
+    file_for_output_prefix="$4"
+else
+    echo "The 4th parameter (file_for_output_prefix) is mandatory"
+fi
+
+try_count=0
+while [[ $try_count -lt $max_tries ]]; do
+    ((++try_count))
+    echo "Running $test_command (try $try_count out of $max_tries) ..."
     set -x
     # shellcheck disable=SC2086
-    timeout $maxDuration $testCommand 2>&1 | tee /app/build/component-test_output_try_$tryCount.txt
-    exitCode=$?
+    timeout $max_duration $test_command 2>&1 | tee "${file_for_output_prefix}_try_${try_count}.txt"
+    exit_code=${PIPESTATUS[0]}
     set -xe
-    if [ $exitCode -eq 0 ]; then
+    if [ "$exit_code" -eq "0" ]; then
+        echo "$test_command (try $try_count out of $max_tries) finished successfully"
         break
     fi
 
     # timeout returns 124 when the time limit is reached
-    if [ $exitCode -eq 124 ]; then
-        echo "$testCommand (try $tryCount out of $maxTries) timed out"
+    if [ "$exit_code" -eq "124" ]; then
+        echo "$test_command (try $try_count out of $max_tries) timed out"
         continue
     fi
 
-    exit $exitCode
+    echo "$test_command (try $try_count out of $max_tries) exited with an error code $exit_code"
+    exit $exit_code
 done

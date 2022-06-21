@@ -27,8 +27,7 @@ fi
 
 # Run component tests
 mkdir -p /app/build/
-
 testCommand="composer run-script ${COMPONENT_TEST_SCRIPT}"
 this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-# run-test-command-with-timeout.sh <testCommand> <maxDuration> <maxTries>
-"${this_script_dir}/run-test-command-with-timeout.sh" "${testCommand}" 30m 3
+# run-test-command-with-timeout.sh <test_command> <max_duration> <max_tries> <file_for_output_prefix>
+"${this_script_dir}/run-test-command-with-timeout.sh" "${testCommand}" 30m 3 /app/build/component-test_output
