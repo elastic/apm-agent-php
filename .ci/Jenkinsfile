@@ -183,7 +183,7 @@ pipeline {
             }
           }
           steps {
-            generateTestPackageMatrix(shouldUseSignedBinaries: false)
+            generateSteps(shouldUseSignedBinaries: false)
           }
         }
       }
@@ -245,7 +245,7 @@ pipeline {
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
           steps {
-            generateTestPackageMatrix(shouldUseSignedBinaries: true)
+            generateSteps(shouldUseSignedBinaries: true)
           }
           post {
             unsuccessful {
@@ -484,14 +484,14 @@ def prepareRelease() {
   }
 }
 
-def generateTestPackageMatrix(shouldUseSignedBinaries) {
+def generateSteps(shouldUseSignedBinaries) {
   def parallelTasks = [:]
   dir("${BASE_DIR}"){
     def generateScript = "./.ci/generate_test_package_matrix.sh"
     def output = sh(label: generateScript, script: generateScript, returnStdout: true)
     if (output?.trim()) {
       output.split('\n').each { testMatrixRow ->
-        parallelTasks[testMatrixRow] = generateTestPackageMatrixRow(testMatrixRow, shouldUseSignedBinaries)
+        parallelTasks[testMatrixRow] = generateStep(testMatrixRow, shouldUseSignedBinaries)
       }
     } else {
       error('${generateScript} returned empty set of data')
@@ -500,7 +500,7 @@ def generateTestPackageMatrix(shouldUseSignedBinaries) {
   parallel(parallelTasks)
 }
 
-def generateTestPackageMatrixRow(String testMatrixRow, boolean shouldUseSignedBinaries){
+def generateStep(String testMatrixRow, boolean shouldUseSignedBinaries){
     return {
         withNode(labels: 'ubuntu-18.04 && immutable') {
             def parsedTestMatrixRow = testMatrixRow.split(',')
