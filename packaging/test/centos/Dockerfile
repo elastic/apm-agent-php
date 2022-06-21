@@ -7,7 +7,7 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && rpm -Uvh http://rpms.remirepo.net/enterprise/remi-release-7.rpm \
     && yum update -y \
     && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
-    && yum install -y php php-mbstring php-mysql php-xml rsyslog
+    && yum install -y php php-mbstring php-mysql php-xml rsyslog which
 
 ## sh: git: command not found
 # the zip extension and unzip command are both missing, skipping.
