@@ -113,14 +113,14 @@ pipeline {
               }
               stage('Static check and Unit Tests') {
                 ////////////////////////////////////////////////////////////////////////////
-                // TODO: Sergey Kleyman: REMOVE
+                // TODO: Sergey Kleyman: REMOVE to re-enable stage('Static check and Unit Tests')
                 //
                 when {
                   beforeAgent true
                   expression { false }
                 }
                 //
-                // TODO: Sergey Kleyman: REMOVE
+                // REMOVE - end
                 ////////////////////////////////////////////////////////////////////////////
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
@@ -446,7 +446,7 @@ def prepareWorkspace(def args = [:], Closure body){
 }
 
 def notifyStatus(def args = [:]) {
-  // TODO: Sergey Kleyman: UNCOMMENT
+  // TODO: Sergey Kleyman: UNCOMMENT to re-enable Slack notifications
 //   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
 //                       slackColor: args.slackStatus,
 //                       slackCredentialsId: 'jenkins-slack-integration-token',
@@ -508,6 +508,15 @@ def generatePackageLifecycleTestMatrix(def args = [:]) {
         def output = sh(label: generateScript, script: generateScript, returnStdout: true)
         if (output?.trim()) {
             output.split('\n').each { testMatrixRow ->
+                ////////////////////////////////////////////////////////////////////////////
+                // TODO: Sergey Kleyman: REMOVE to re-enable 'agent-upgrade' tests
+                //
+                def parsedTestMatrixRow = testMatrixRow.split(',')
+                def testType = parsedTestMatrixRow[2]
+                if (testType.equals('agent-upgrade') && args.shouldUseSignedBinaries) return
+                //
+                // REMOVE - end
+                ////////////////////////////////////////////////////////////////////////////
                 parallelTasks[testMatrixRow] = generatePackageLifecycleTestMatrixRow(testMatrixRow: testMatrixRow, shouldUseSignedBinaries: args.shouldUseSignedBinaries)
             }
         } else {
