@@ -444,12 +444,13 @@ def prepareWorkspace(def args = [:], Closure body){
 }
 
 def notifyStatus(def args = [:]) {
-  releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
-                      slackColor: args.slackStatus,
-                      slackCredentialsId: 'jenkins-slack-integration-token',
-                      to: "${env.NOTIFY_TO}",
-                      subject: args.subject,
-                      body: args.body)
+  // TODO: Sergey Kleyman: UNCOMMENT
+//   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
+//                       slackColor: args.slackStatus,
+//                       slackCredentialsId: 'jenkins-slack-integration-token',
+//                       to: "${env.NOTIFY_TO}",
+//                       subject: args.subject,
+//                       body: args.body)
 }
 
 def prepareRelease() {
