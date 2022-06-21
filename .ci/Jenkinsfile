@@ -189,9 +189,7 @@ pipeline {
             beforeAgent true
             allOf {
               expression { return env.ONLY_DOCS == "false" }
-              // TODO: Sergey Kleyman: REMOVE
-              // not { expression { isInternalCI() } }
-              expression { true }
+              not { expression { isInternalCI() } }
             }
           }
           steps {
@@ -257,9 +255,9 @@ pipeline {
         stage('Package lifecycle testing (signed binaries)') {
           options { skipDefaultCheckout() }
           steps {
-            // TODO: Sergey Kleyman: UNCOMMENT
-            // generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
-            generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: false)
+            deleteDir()
+            unstash 'source'
+            generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
           }
           post {
             unsuccessful {
