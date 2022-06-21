@@ -49,6 +49,6 @@ while [[ $try_count -lt $max_tries ]]; do
         continue
     fi
 
-    echo "$test_command (try $try_count out of $max_tries) exited with an error code $exit_code"
+    echo "$test_command (try $try_count out of max $max_tries) exited with an error code $exit_code"
     exit $exit_code
 done

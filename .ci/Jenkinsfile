@@ -554,7 +554,9 @@ def runTestingCommand(def args = [:]) {
 }
 
 def buildWorkspaceContext(def args = [:]) {
-    return "${args.prefix}-${args.linuxDistro}-PHP-${args.phpVersion}-signed-binaries-${args.shouldUseSignedBinaries}" + (args.containsKey('suffix') ? "-${args.suffix}" : "")
+    return "${args.prefix}-${args.linuxDistro}-PHP-${args.phpVersion}"
+    + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
+    + (args.containsKey('suffix') ? "-${args.suffix}" : "")
 }
 
 def buildLabel(def args = [:]) {
@@ -565,10 +567,10 @@ def componentTesting(def args = [:]) {
     withEnv(["COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestType}"]) {
         runTestingCommand(
             args + [
-                context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing', suffix: args.componentTestType]),
+                context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing', suffix: "componentTestType-${args.componentTestType}"]),
                 prepareGoal: "prepare-${args.linuxDistro}",
                 testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxDistro}-lifecycle-testing",
-                label: buildLabel(args + [prefix: 'Lifecycle testing', suffix: args.componentTestType])
+                label: buildLabel(args + [prefix: 'Lifecycle testing', suffix: "componentTestType: ${args.componentTestType}"])
             ]
         )
     }
