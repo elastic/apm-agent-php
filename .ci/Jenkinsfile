@@ -484,7 +484,7 @@ def prepareRelease() {
   }
 }
 
-def generateSteps(boolean shouldUseSignedBinaries) {
+def generateSteps(shouldUseSignedBinaries) {
   def parallelTasks = [:]
   dir("${BASE_DIR}"){
     def generateScript = "./.ci/generate_test_package_matrix.sh"
