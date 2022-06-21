@@ -491,7 +491,9 @@ def generateSteps(shouldUseSignedBinaries) {
     def output = sh(label: generateScript, script: generateScript, returnStdout: true)
     if (output?.trim()) {
       output.split('\n').each { testMatrixRow ->
-        parallelTasks[testMatrixRow] = generateStep(testMatrixRow, shouldUseSignedBinaries)
+        // TODO: Sergey Kleyman: UNCOMMENT
+        // parallelTasks[testMatrixRow] = generateStep(testMatrixRow, shouldUseSignedBinaries)
+        parallelTasks[testMatrixRow] = generateStep(testMatrixRow)
       }
     } else {
       error('${generateScript} returned empty set of data')
@@ -500,7 +502,10 @@ def generateSteps(shouldUseSignedBinaries) {
   parallel(parallelTasks)
 }
 
-def generateStep(String testMatrixRow, boolean shouldUseSignedBinaries){
+// TODO: Sergey Kleyman: UNCOMMENT
+// def generateStep(String testMatrixRow, boolean shouldUseSignedBinaries){
+def generateStep(String testMatrixRow){
+    shouldUseSignedBinaries = false;
     return {
         withNode(labels: 'ubuntu-18.04 && immutable') {
             def parsedTestMatrixRow = testMatrixRow.split(',')
