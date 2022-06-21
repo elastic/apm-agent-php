@@ -112,6 +112,16 @@ pipeline {
                 }
               }
               stage('Static check and Unit Tests') {
+                ////////////////////////////////////////////////////////////////////////////
+                // TODO: Sergey Kleyman: REMOVE
+                //
+                when {
+                  beforeAgent true
+                  expression { false }
+                }
+                //
+                // TODO: Sergey Kleyman: REMOVE
+                ////////////////////////////////////////////////////////////////////////////
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
@@ -183,7 +193,7 @@ pipeline {
             }
           }
           steps {
-            generateSteps(shouldUseSignedBinaries: false)
+            generateTestPackageMatrix(shouldUseSignedBinaries: false)
           }
         }
       }
@@ -245,7 +255,7 @@ pipeline {
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
           steps {
-            generateSteps(shouldUseSignedBinaries: true)
+            generateTestPackageMatrix(shouldUseSignedBinaries: true)
           }
           post {
             unsuccessful {
@@ -404,17 +414,17 @@ def initWorkspace(def args = [:], Closure body){
 * and run the body in the BASE_DIR folder
 */
 def packageWorkspace(def args = [:], Closure body){
-  prepareWorkspace(args) {
-    dir("${BASE_DIR}"){
-      unstash 'package'
-      // When running in the CI sometimes the docker build might fail for
-      // some environmental issues, let's retry
-      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
-      }
-      body()
+    prepareWorkspace(args) {
+        dir("${BASE_DIR}"){
+            unstash args.shouldUseSignedBinaries ? "${env.SIGNED_ARTIFACTS}" : 'package'
+            // When running in the CI sometimes the docker build might fail for
+            // some environmental issues, let's retry
+            retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
+            }
+            body()
+        }
     }
-  }
 }
 
 /**
@@ -484,66 +494,58 @@ def prepareRelease() {
   }
 }
 
-def generateSteps(shouldUseSignedBinaries) {
-  def parallelTasks = [:]
-  dir("${BASE_DIR}"){
-    def generateScript = "./.ci/generate_test_package_matrix.sh"
-    def output = sh(label: generateScript, script: generateScript, returnStdout: true)
-    if (output?.trim()) {
-      output.split('\n').each { testMatrixRow ->
-        // TODO: Sergey Kleyman: UNCOMMENT
-        // parallelTasks[testMatrixRow] = generateStep(testMatrixRow, shouldUseSignedBinaries)
-        parallelTasks[testMatrixRow] = generateStep(testMatrixRow)
-      }
-    } else {
-      error('${generateScript} returned empty set of data')
+def generateTestPackageMatrix(def args = [:]) {
+    def parallelTasks = [:]
+    dir("${BASE_DIR}") {
+        def generateScript = "./.ci/generate_test_package_matrix.sh"
+        def output = sh(label: generateScript, script: generateScript, returnStdout: true)
+        if (output?.trim()) {
+            output.split('\n').each { testMatrixRow ->
+                parallelTasks[testMatrixRow] = generateTestPackageMatrixRow(testMatrixRow: testMatrixRow, shouldUseSignedBinaries: args.shouldUseSignedBinaries)
+            }
+        } else {
+            error("${generateScript} returned empty set of data")
+        }
     }
-  }
-  parallel(parallelTasks)
+    parallel(parallelTasks)
 }
 
 // TODO: Sergey Kleyman: UNCOMMENT
-// def generateStep(String testMatrixRow, boolean shouldUseSignedBinaries){
-def generateStep(String testMatrixRow){
-    shouldUseSignedBinaries = false;
+def generateTestPackageMatrixRow(def args = [:]){
     return {
         withNode(labels: 'ubuntu-18.04 && immutable') {
-            def parsedTestMatrixRow = testMatrixRow.split(',')
-            def phpVersion = parsedTestMatrixRow[0]
-            def linuxDistro = parsedTestMatrixRow[1]
+            def testingArgs =  [:]
+            testingArgs['shouldUseSignedBinaries'] = args.shouldUseSignedBinaries
+            def parsedTestMatrixRow = args.testMatrixRow.split(',')
+            testingArgs['phpVersion'] = parsedTestMatrixRow[0]
+            testingArgs['linuxDistro'] = parsedTestMatrixRow[1]
             def testType = parsedTestMatrixRow[2]
             if (testType.equals('php-upgrade')) {
-                phpUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
+                phpUpgradeTesting(testingArgs)
             }
             if (testType.equals('agent-upgrade')) {
-                agentUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
+                agentUpgradeTesting(testingArgs)
             }
             if (testType.equals('lifecycle-in-apache')) {
-                phpApacheTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
+                phpApacheTesting(testingArgs)
             }
             if (testType.equals('lifecycle-in-fpm')) {
-                phpFpmTesting(linuxDistro, phpVersion, shouldUseSignedBinaries)
+                phpFpmTesting(testingArgs)
             }
             if (testType.equals('component')) {
-                def componentTestType = parsedTestMatrixRow[3]
-                componentTesting(linuxDistro, phpVersion, shouldUseSignedBinaries, componentTestType)
+                testingArgs['componentTestType'] = parsedTestMatrixRow[3]
+                componentTesting(testingArgs)
             }
         }
     }
 }
 
-def runTestingCommand(phpVersion, workspaceContext, testingCommand, unsignedBinariesPrepareGoal, label, shouldUseSignedBinaries) {
+
+def runTestingCommand(def args = [:]) {
     try {
-        withEnv(["PHP_VERSION=${phpVersion}"]) {
-            if (shouldUseSignedBinaries) {
-                initWorkspace(context: workspaceContext) {
-                    unstash "${env.SIGNED_ARTIFACTS}"
-                    sh(script: testingCommand, label: label)
-                }
-            } else {
-                packageWorkspace(context: workspaceContext, prepareGoal: unsignedBinariesPrepareGoal) {
-                    sh(script: testingCommand, label: label)
-                }
+        withEnv(["PHP_VERSION=${args.phpVersion}"]) {
+            packageWorkspace(args) {
+                sh(script: args.testingCommand, label: args.label)
             }
         }
     } finally {
@@ -551,70 +553,70 @@ def runTestingCommand(phpVersion, workspaceContext, testingCommand, unsignedBina
     }
 }
 
-def buildWorkspaceContext(prefix, linuxDistro, phpVersion, shouldUseSignedBinaries, suffix = null) {
-    return "${prefix}-${linuxDistro}-PHP-${phpVersion}-signed-binaries-${shouldUseSignedBinaries}" + (suffix ? "-${suffix}" : "")
+def buildWorkspaceContext(def args = [:]) {
+    return "${args.prefix}-${args.linuxDistro}-PHP-${args.phpVersion}-signed-binaries-${args.shouldUseSignedBinaries}" + (args.containsKey('suffix') ? "-${args.suffix}" : "")
 }
 
-def buildLabel(prefix, linuxDistro, phpVersion, shouldUseSignedBinaries, suffix) {
-    return "${prefix} for Linux: ${linuxDistro}, PHP: ${phpVersion}, shouldUseSignedBinaries: ${shouldUseSignedBinaries}" + (suffix ? ", ${suffix}" : "")
+def buildLabel(def args = [:]) {
+    return "${args.prefix} for Linux: ${args.linuxDistro}, PHP: ${args.phpVersion}, shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}" + (args.containsKey('suffix') ? ", ${args.suffix}" : "")
 }
 
-def componentTesting(linuxDistro, phpVersion, shouldUseSignedBinaries, componentTestType) {
-    withEnv(["COMPONENT_TEST_SCRIPT=run_component_tests_${componentTestType}"]) {
+def componentTesting(def args = [:]) {
+    withEnv(["COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestType}"]) {
         runTestingCommand(
-            phpVersion,
-            workspaceContext: buildWorkspaceContext("Component-testing", linuxDistro, phpVersion, shouldUseSignedBinaries, "${componentTestType}"),
-            testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${linuxDistro}-lifecycle-testing",
-            unsignedBinariesPrepareGoal: "prepare-${linuxDistro}",
-            label: buildLabel("Component testing", linuxDistro, phpVersion, shouldUseSignedBinaries, "componentTestType: ${componentTestType}"),
-            shouldUseSignedBinaries
+            args + [
+                context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing', suffix: args.componentTestType]),
+                prepareGoal: "prepare-${args.linuxDistro}",
+                testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${args.linuxDistro}-lifecycle-testing",
+                label: buildLabel(args + [prefix: 'Lifecycle testing', suffix: args.componentTestType])
+            ]
         )
     }
 }
 
-def phpUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries) {
+def phpUpgradeTesting(def args = [:]) {
     runTestingCommand(
-        phpVersion,
-        workspaceContext: buildWorkspaceContext("PHP-upgrade-testing", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        testingCommand: "PHP_VERSION=${phpVersion} make -C packaging ${linuxDistro}-php-upgrade-testing",
-        unsignedBinariesPrepareGoal: "prepare-${linuxDistro}",
-        label: buildLabel("PHP upgrade", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        shouldUseSignedBinaries
+        args + [
+            context: buildWorkspaceContext(args + [prefix: 'PHP-upgrade-testing']),
+            prepareGoal: "prepare-${args.linuxDistro}",
+            testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxDistro}-php-upgrade-testing",
+            label: buildLabel(args + [prefix: 'PHP upgrade testing'])
+        ]
     )
 }
 
-def agentUpgradeTesting(linuxDistro, phpVersion, shouldUseSignedBinaries) {
-    withEnv(["PHP_VERSION=${phpVersion}"]) {
-        initWorkspace(context: buildWorkspaceContext("Agent-upgrade-testing", linuxDistro, phpVersion, shouldUseSignedBinaries)) {
-            if (shouldUseSignedBinaries) {
+def agentUpgradeTesting(def args = [:]) {
+    withEnv(["PHP_VERSION=${args.phpVersion}"]) {
+        initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
+            if (args.shouldUseSignedBinaries) {
                 unstash "${env.SIGNED_ARTIFACTS}"
             } else {
-                packageGeneration(versions: [phpVersion], local: true)
+                packageGeneration(versions: [args.phpVersion], local: true)
                 unstash 'package'
             }
-            sh(script: "make -C packaging ${linuxDistro}-agent-upgrade-testing-local", label: buildLabel("Agent upgrade testing", linuxDistro, phpVersion, shouldUseSignedBinaries))
+            sh(script: "make -C packaging ${args.linuxDistro}-agent-upgrade-testing-local", label: buildLabel(args + [prefix: 'Agent upgrade testing']))
         }
     }
 }
 
-def phpApacheTesting(linuxDistro, phpVersion, shouldUseSignedBinaries) {
+def phpApacheTesting(def args = [:]) {
     runTestingCommand(
-        phpVersion,
-        workspaceContext: buildWorkspaceContext("PHP-lifecycle-testing-in-Apache", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        testingCommand: "make -C packaging ${linuxDistro}-lifecycle-testing-in-apache",
-        unsignedBinariesPrepareGoal: "prepare-${linuxDistro}-apache",
-        label: buildLabel("PHP lifecycle testing in Apache", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        shouldUseSignedBinaries
+        args + [
+            context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing-in-Apache']),
+            testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-apache",
+            prepareGoal: "prepare-${args.linuxDistro}-apache",
+            label: buildLabel(args + [prefix: 'Lifecycle testing in Apache'])
+        ]
     )
 }
 
-def phpFpmTesting(linuxDistro, phpVersion, shouldUseSignedBinaries) {
+def phpFpmTesting(def args = [:]) {
     runTestingCommand(
-        phpVersion,
-        workspaceContext: buildWorkspaceContext("PHP-lifecycle-testing-in-FPM", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        testingCommand: "make -C packaging ${linuxDistro}-lifecycle-testing-in-fpm",
-        unsignedBinariesPrepareGoal: "prepare-${linuxDistro}-fpm",
-        label: buildLabel("PHP lifecycle testing in FPM", linuxDistro, phpVersion, shouldUseSignedBinaries),
-        shouldUseSignedBinaries
+        args + [
+            context: buildWorkspaceContext(args + [prefix: 'Lifecycle-testing-in-FPM']),
+            testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-fpm",
+            prepareGoal: "prepare-${args.linuxDistro}-fpm",
+            label: buildLabel(args + [prefix: 'Lifecycle testing in FPM'])
+        ]
     )
 }
