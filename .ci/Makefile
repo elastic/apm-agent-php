@@ -129,7 +129,7 @@ get-draft-release: validate-tag-name  ## Get the draft release id for the given 
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature
-	.ci/download-verify.sh ${RELEASE_ID} ${TARGET}
+	.ci/download-verify.sh ${TAG_NAME} ${TARGET}
 
 validate-github-token:
 ifndef GITHUB_TOKEN
