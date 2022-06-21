@@ -8,7 +8,8 @@ GITHUB=github
 echo 'download artifacts'
 mkdir $GITHUB || true
 cd $GITHUB
-gh release download "$TAG_NAME"
+## TODO: Sergey Kleyman: Remove --repo "SergeyKleyman/apm-agent-php"
+gh release download "$TAG_NAME" --repo "SergeyKleyman/apm-agent-php"
 cd ..
 
 echo 'debug github artifacts'
