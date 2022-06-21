@@ -36,8 +36,13 @@ cd /app
 # Install 3rd party dependencies
 composer install
 
-# Run static_check_and_run_unit_tests
-composer run-script static_check_and_run_unit_tests
+# Run static checks
+composer run-script static_check
+
+# Run unit tests
+# run-test-command-with-timeout.sh <testCommand> <maxDuration> <maxTries>
+this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+"${this_script_dir}/run-test-command-with-timeout.sh" "composer run-script run_unit_tests" 10m 3
 
 # Generate junit output for phpstan
 composer phpstan-junit-report-for-ci

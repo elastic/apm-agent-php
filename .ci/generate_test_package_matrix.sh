@@ -2,7 +2,7 @@
 set -e
 
 #
-# component-testing
+# Component tests
 #
 for phpVersion in 7.2 7.3 7.4 8.0 8.1
 do
@@ -10,29 +10,29 @@ do
     do
         for componentTestsAppHostKind in http cli
         do
-            echo ${phpVersion},${linuxDistro},component-testing,run_component_tests_${componentTestsAppHostKind}
+            echo ${phpVersion},${linuxDistro},component,${componentTestsAppHostKind}
         done
     done
 done
 
 #
-# php-upgrade-testing
+# PHP upgrade tests
 #
-echo 7.2,rpm,php-upgrade-testing
+echo 7.2,rpm,php-upgrade
 
 #
-# agent-upgrade-testing
+# Agent upgrade tests
 #
 for phpVersion in 7.4 8.1
 do
     for linuxDistro in deb rpm
     do
-        echo ${phpVersion},${linuxDistro},agent-upgrade-testing
+        echo ${phpVersion},${linuxDistro},agent-upgrade
     done
 done
 
 #
-# lifecycle-testing-in-<app_server>
+# Lifecycle tests for <app_server>
 #
 for phpVersion in 7.2 7.3 7.4 8.0 8.1
 do
@@ -40,7 +40,7 @@ do
     do
         for appServer in apache fpm
         do
-            echo ${phpVersion},${linuxDistro},lifecycle-testing-in-${appServer}
+            echo ${phpVersion},${linuxDistro},lifecycle-in-${appServer}
         done
     done
 done

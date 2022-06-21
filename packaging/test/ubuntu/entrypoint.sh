@@ -48,19 +48,7 @@ function validate_if_agent_is_enabled() {
 }
 
 function validate_installation() {
-    # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
-    export ELASTIC_APM_ENABLED=false
-
-    ## Validate the installation works as expected with composer
-    composer install
-    /usr/sbin/rsyslogd
-    ## This env variable can be overriden
-    COMPONENT_TEST_SCRIPT="${COMPONENT_TEST_SCRIPT:-run_component_tests}"
-    if ! composer run-script "${COMPONENT_TEST_SCRIPT}" ; then
-        echo 'Something bad happened when running the tests, see the output from the syslog'
-        cat /var/log/syslog
-        exit 1
-    fi
+    ./.ci/component-test.sh "${COMPONENT_TEST_SCRIPT}"
 }
 
 ##############
