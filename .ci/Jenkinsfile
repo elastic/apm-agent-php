@@ -294,6 +294,7 @@ pipeline {
               withGhEnv(version: '2.4.0') {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
+                sh(script: 'make -f .ci/Makefile get-draft-release || true', label: 'debug - get-draft-release')
               }
             }
           }
@@ -343,6 +344,7 @@ pipeline {
                 ///////////////////////////////////////
                 withEnv(["ORG_NAME=SergeyKleyman"]) {
                     withGhEnv(version: '2.4.0') {
+                        echo "RELEASE_ID=${env.RELEASE_ID}"
                         githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
                     }
                 }
