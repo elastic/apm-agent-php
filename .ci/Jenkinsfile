@@ -338,9 +338,23 @@ pipeline {
           }
           options { skipDefaultCheckout() }
           steps {
-            withGhEnv(version: '2.4.0') {
-              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
-            }
+                ///////////////////////////////////////////////////////////////////////////
+                // TODO: Sergey Kleyman: REVERT target repo 'Publish release' from SergeyKleyman/apm-agent-php back to elastic/apm-agent-php
+                ///////////////////////////////////////
+                withEnv(["ORG_NAME=SergeyKleyman"]) {
+                    withGhEnv(version: '2.4.0') {
+                        githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+                    }
+                }
+                /////////////////////////////////////////
+                // OLD code
+                /////////////////////////////////////////
+//             withGhEnv(version: '2.4.0') {
+//               githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+//             }
+                ///////////////////////////////////////
+                // END
+                ///////////////////////////////////////////////////////////////////////////
           }
           post {
             success {
