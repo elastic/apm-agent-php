@@ -255,7 +255,9 @@ pipeline {
         stage('Test signed packages') {
           when {
             beforeAgent true
-            expression { isInternalCI() }
+            // TODO: Sergey Kleyman: Uncomment to re-enable stage('Test signed packages')
+            // expression { isInternalCI() }
+            expression { false }
           }
           options { skipDefaultCheckout() }
           steps {
