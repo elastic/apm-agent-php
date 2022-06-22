@@ -79,7 +79,7 @@ pipeline {
             }
           }
         }
-        stage('Build binaries and unit tests') {
+        stage('Build binaries and run basic tests (static analysis and unit tests)') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -271,7 +271,7 @@ pipeline {
             }
           }
         }
-        stage('Approve to publish') {
+        stage('Ask for approval to publish') {
           options { skipDefaultCheckout() }
           steps {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
