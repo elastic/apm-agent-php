@@ -293,14 +293,6 @@ pipeline {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
                 echo "RELEASE_ID=${env.RELEASE_ID}"
-                ////////////////////////////////////////////////////////////////////////////
-                // TODO: Sergey Kleyman: BEGIN: REMOVE temp print-out for debugging
-                ////////////////////////////////////////////
-                echo sh(script: 'gh api repos/{owner}/{repo}/releases', label: 'gh api repos/{owner}/{repo}/releases', returnStdout: true)
-                echo sh(script: 'gh api repos/SergeyKleyman/apm-agent-php/releases', label: 'gh api repos/SergeyKleyman/apm-agent-php/releases', returnStdout: true)
-                ////////////////////////////////////////////
-                // END
-                ////////////////////////////////////////////////////////////////////////////
               }
             }
           }
@@ -341,6 +333,13 @@ pipeline {
         stage('Publish release') {
           when {
             beforeAgent true
+            ////////////////////////////////////////////////////////////////////////////
+            // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable stage('Publish release')
+            ////////////////////////////////////////////
+            expression { false }
+            ////////////////////////////////////////////
+            // END
+            ////////////////////////////////////////////////////////////////////////////
             expression { return env.IS_APPROVED_TO_PUBLISH == 'true' }
           }
           options { skipDefaultCheckout() }
@@ -520,9 +519,9 @@ def generatePackageLifecycleTestMatrix(def args = [:]) {
                 ////////////////////////////////////////////////////////////////////////////
                 // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable 'agent-upgrade' tests
                 //////////////////////////////////////////
-                def parsedTestMatrixRow = testMatrixRow.split(',')
-                def testType = parsedTestMatrixRow[2]
-                if (testType.equals('agent-upgrade') && args.shouldUseSignedBinaries) return
+//                 def parsedTestMatrixRow = testMatrixRow.split(',')
+//                 def testType = parsedTestMatrixRow[2]
+//                 if (testType.equals('agent-upgrade') && args.shouldUseSignedBinaries) return
                 //////////////////////////////////////////
                 // END
                 ////////////////////////////////////////////////////////////////////////////
@@ -614,10 +613,10 @@ def phpUpgradeTesting(def args = [:]) {
 def agentUpgradeTesting(def args = [:]) {
     withEnv(["PHP_VERSION=${args.phpVersion}"]) {
         initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
+            packageGeneration(versions: [args.phpVersion], local: true)
             if (args.shouldUseSignedBinaries) {
                 unstash env.SIGNED_ARTIFACTS
             } else {
-                packageGeneration(versions: [args.phpVersion], local: true)
                 unstash 'package'
             }
             sh(script: "make -C packaging ${args.linuxDistro}-agent-upgrade-testing-local", label: buildLabel(args + [prefix: 'Agent upgrade testing']))
