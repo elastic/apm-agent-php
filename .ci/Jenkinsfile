@@ -199,7 +199,7 @@ pipeline {
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
-    stage('Prepare for release (internal-ci)') {
+    stage('Release (umbrella stage) (internal-ci)') {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
@@ -253,16 +253,17 @@ pipeline {
           }
         }
         stage('Test signed packages') {
-          when {
-            beforeAgent true
-            // TODO: Sergey Kleyman: Uncomment to re-enable stage('Test signed packages')
-            // expression { isInternalCI() }
-            expression { false }
-          }
+          // TODO: Sergey Kleyman: REMOVE
+//           when {
+//             beforeAgent true
+//             // TODO: Sergey Kleyman: Uncomment to re-enable stage('Test signed packages')
+//             // expression { false }
+//           }
           options { skipDefaultCheckout() }
           steps {
-            deleteDir()
-            unstash 'source'
+            // TODO: Sergey Kleyman: REMOVE
+            // deleteDir()
+            // unstash 'source'
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
           }
           post {
@@ -294,7 +295,7 @@ pipeline {
               withGhEnv(version: '2.4.0') {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
-                sh(script: 'make -f .ci/Makefile get-draft-release || true', label: 'debug - get-draft-release')
+                echo "RELEASE_ID=${env.RELEASE_ID}"
               }
             }
           }
