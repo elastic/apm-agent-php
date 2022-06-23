@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepare for release (bump version, etc.) (apm-ci)') {
+        stage('Prepare for release (change version, etc.) (apm-ci)') {
           options {
             skipDefaultCheckout()
           }
@@ -113,14 +113,14 @@ pipeline {
               }
               stage('Static analysis and unit tests') {
                 ////////////////////////////////////////////////////////////////////////////
-                // TODO: Sergey Kleyman: REMOVE to re-enable stage('Static analysis and unit tests')
-                //
+                // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable stage('Static analysis and unit tests')
+                ////////////////////////////////////////////
                 when {
                   beforeAgent true
                   expression { false }
                 }
-                //
-                // REMOVE - end
+                ////////////////////////////////////////////
+                // END
                 ////////////////////////////////////////////////////////////////////////////
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
@@ -224,10 +224,6 @@ pipeline {
       }
       stages {
         stage('Sign packages') {
-          when {
-            beforeAgent true
-            expression { isInternalCI() }
-          }
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -253,17 +249,18 @@ pipeline {
           }
         }
         stage('Test signed packages') {
-          // TODO: Sergey Kleyman: REMOVE
-//           when {
-//             beforeAgent true
-//             // TODO: Sergey Kleyman: Uncomment to re-enable stage('Test signed packages')
-//             // expression { false }
-//           }
           options { skipDefaultCheckout() }
+            ////////////////////////////////////////////////////////////////////////////
+            // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable stage('Test signed packages')
+            ////////////////////////////////////////////
+            when {
+              beforeAgent true
+              expression { false }
+            }
+            ////////////////////////////////////////////
+            // END
+            ////////////////////////////////////////////////////////////////////////////
           steps {
-            // TODO: Sergey Kleyman: REMOVE
-            // deleteDir()
-            // unstash 'source'
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
           }
           post {
@@ -281,7 +278,7 @@ pipeline {
             setEnvVar('IS_APPROVED_TO_PUBLISH', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
-        stage('Publish draft release') {
+        stage('Publish as draft release') {
           when {
             beforeAgent true
             expression { return env.IS_APPROVED_TO_PUBLISH == 'true' }
@@ -296,6 +293,14 @@ pipeline {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
                 echo "RELEASE_ID=${env.RELEASE_ID}"
+                ////////////////////////////////////////////////////////////////////////////
+                // TODO: Sergey Kleyman: BEGIN: REMOVE temp print-out for debugging
+                ////////////////////////////////////////////
+                echo sh(script: 'gh api repos/{owner}/{repo}/releases', label: 'gh api repos/{owner}/{repo}/releases', returnStdout: true)
+                echo sh(script: 'gh api repos/SergeyKleyman/apm-agent-php/releases', label: 'gh api repos/SergeyKleyman/apm-agent-php/releases', returnStdout: true)
+                ////////////////////////////////////////////
+                // END
+                ////////////////////////////////////////////////////////////////////////////
               }
             }
           }
@@ -340,24 +345,9 @@ pipeline {
           }
           options { skipDefaultCheckout() }
           steps {
-                ///////////////////////////////////////////////////////////////////////////
-                // TODO: Sergey Kleyman: REVERT target repo 'Publish release' from SergeyKleyman/apm-agent-php back to elastic/apm-agent-php
-                ///////////////////////////////////////
-                withEnv(["ORG_NAME=SergeyKleyman"]) {
-                    withGhEnv(version: '2.4.0') {
-                        echo "RELEASE_ID=${env.RELEASE_ID}"
-                        githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
-                    }
-                }
-                /////////////////////////////////////////
-                // OLD code
-                /////////////////////////////////////////
-//             withGhEnv(version: '2.4.0') {
-//               githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
-//             }
-                ///////////////////////////////////////
-                // END
-                ///////////////////////////////////////////////////////////////////////////
+            withGhEnv(version: '2.4.0') {
+              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+            }
           }
           post {
             success {
@@ -528,13 +518,13 @@ def generatePackageLifecycleTestMatrix(def args = [:]) {
         if (output?.trim()) {
             output.split('\n').each { testMatrixRow ->
                 ////////////////////////////////////////////////////////////////////////////
-                // TODO: Sergey Kleyman: REMOVE to re-enable 'agent-upgrade' tests
-                //
+                // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable 'agent-upgrade' tests
+                //////////////////////////////////////////
                 def parsedTestMatrixRow = testMatrixRow.split(',')
                 def testType = parsedTestMatrixRow[2]
                 if (testType.equals('agent-upgrade') && args.shouldUseSignedBinaries) return
-                //
-                // REMOVE - end
+                //////////////////////////////////////////
+                // END
                 ////////////////////////////////////////////////////////////////////////////
                 parallelTasks[testMatrixRow] = generatePackageLifecycleTestMatrixRow(testMatrixRow: testMatrixRow, shouldUseSignedBinaries: args.shouldUseSignedBinaries)
             }
