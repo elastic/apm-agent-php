@@ -253,10 +253,10 @@ pipeline {
             ////////////////////////////////////////////////////////////////////////////
             // TODO: Sergey Kleyman: BEGIN: REMOVE to re-enable stage('Test signed packages')
             ////////////////////////////////////////////
-            when {
-              beforeAgent true
-              expression { false }
-            }
+//             when {
+//               beforeAgent true
+//               expression { false }
+//             }
             ////////////////////////////////////////////
             // END
             ////////////////////////////////////////////////////////////////////////////
