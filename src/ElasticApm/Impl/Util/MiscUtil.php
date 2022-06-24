@@ -38,6 +38,7 @@ final class MiscUtil
 
     public static function buildFullAgentVersion(): string
     {
+        /* @phpstan-ignore-next-line */
         return ElasticApm::VERSION . (empty(self::CUSTOM_BUILD) ? '' : ('-' . self::CUSTOM_BUILD));
     }
 }
