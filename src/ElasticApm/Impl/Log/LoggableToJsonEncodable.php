@@ -65,7 +65,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_array($value)) {
-            if ($depth >= 7) {
+            if ($depth >= LogConsts::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -80,7 +80,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_object($value)) {
-            if ($depth >= 7) {
+            if ($depth >= LogConsts::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
