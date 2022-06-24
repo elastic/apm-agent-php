@@ -387,7 +387,7 @@ bool checkIfEnabledForCurrentRequest( const char* calledFromFunction )
         goto finally;
     }
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s", calledFromFunction );
 
     ResultCode resultCode;
     bool restartPending = false;

@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\DbgUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -106,7 +107,6 @@ final class CurlHandleWrapped implements LoggableInterface
 
     public function toLog(LogStreamInterface $stream): void
     {
-        // TODO: Sergey Kleyman: Implement: CurlHandleWrapped::toLog
-        $stream->toLogAs(['as int' => $this->asInt()]);
+        $stream->toLogAs(['type' => DbgUtil::getType($this->curlHandle), 'as int' => $this->asInt()]);
     }
 }
