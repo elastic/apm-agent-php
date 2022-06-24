@@ -86,11 +86,12 @@ final class ErrorTest extends ComponentTestCaseBase
      */
     private static function verifyAppCodeStacktraceTop(array $expectedStacktraceTop, ErrorData $err): void
     {
-        self::assertNotNull($err->exception);
+        $dbgInfo = LoggableToString::convert(['$err' => $err, '$expectedStacktraceTop' => $expectedStacktraceTop]);
+        self::assertNotNull($err->exception, $dbgInfo);
         $actualStacktrace = $err->exception->stacktrace;
-        self::assertNotNull($actualStacktrace);
-        self::assertNotEmpty($actualStacktrace);
-        self::assertGreaterThanOrEqual(count($expectedStacktraceTop), count($actualStacktrace));
+        self::assertNotNull($actualStacktrace, $dbgInfo);
+        self::assertNotEmpty($actualStacktrace, $dbgInfo);
+        self::assertGreaterThanOrEqual(count($expectedStacktraceTop), count($actualStacktrace), $dbgInfo);
 
         /** @var StacktraceFrame */
         $bottomFrame = TestArrayUtil::getLastValue($actualStacktrace);
@@ -176,22 +177,24 @@ final class ErrorTest extends ComponentTestCaseBase
                 ->withAppCodeArgs([self::INCLUDE_IN_ERROR_REPORTING => $includeInErrorReporting]),
             function (DataFromAgent $dataFromAgent) use ($includeInErrorReporting): void {
                 $err = $this->verifyError($dataFromAgent);
-                // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+                $dbgInfo = [];
+                $dbgInfo['$err'] = $err;
                 if (!$includeInErrorReporting) {
                     self::verifySubstituteError($err);
                     return;
                 }
 
                 $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
-                self::assertNotNull($err->exception);
+                self::assertNotNull($err->exception, LoggableToString::convert($dbgInfo));
                 // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
                 // was converted from notice to warning
                 // https://www.php.net/manual/en/migration80.incompatible.php
                 $expectedCode = self::undefinedVariablePhpErrorCode();
+                $dbgInfo['$expectedCode'] = $expectedCode;
                 $expectedType = PhpErrorUtil::getTypeName($expectedCode);
-                self::assertNotNull($expectedType, '$expectedCode: ' . $expectedCode);
-                self::assertSame($expectedType, $err->exception->type);
-                self::assertSame($expectedCode, $err->exception->code);
+                self::assertNotNull($expectedType, LoggableToString::convert($dbgInfo));
+                self::assertSame($expectedType, $err->exception->type, LoggableToString::convert($dbgInfo));
+                self::assertSame($expectedCode, $err->exception->code, LoggableToString::convert($dbgInfo));
                 $expectedMessage
                     = 'Undefined variable'
                       // "Undefined variable ..." message:
@@ -203,10 +206,11 @@ final class ErrorTest extends ComponentTestCaseBase
                       )
                       . 'undefinedVariable'
                       . ' in ' . $appCodeFile . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
-                self::assertSame($expectedMessage, $err->exception->message);
-                self::assertNull($err->exception->module);
+                $dbgInfo['$expectedMessage'] = $expectedMessage;
+                self::assertSame($expectedMessage, $err->exception->message, LoggableToString::convert($dbgInfo));
+                self::assertNull($err->exception->module, LoggableToString::convert($dbgInfo));
                 $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUndefinedVariableImpl()';
-                self::assertSame($culpritFunction, $err->culprit);
+                self::assertSame($culpritFunction, $err->culprit, LoggableToString::convert($dbgInfo));
 
                 $expectedStacktraceTop = [
                     [

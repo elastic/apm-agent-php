@@ -254,7 +254,7 @@ final class PhpPartFacade
         }
 
         try {
-            self::onPhpErrorImpl($type, $filename, $lineNumber, $message);
+            self::onPhpErrorImpl(__FUNCTION__, $type, $filename, $lineNumber, $message);
         } finally {
             self::exitedElasticApmCode();
         }
@@ -276,7 +276,7 @@ final class PhpPartFacade
         }
 
         try {
-            self::setLastThrownImpl($thrown);
+            self::setLastThrownImpl(__FUNCTION__, $thrown);
         } finally {
             self::exitedElasticApmCode();
         }
@@ -294,7 +294,7 @@ final class PhpPartFacade
         }
 
         try {
-            self::shutdownImpl();
+            self::shutdownImpl(__FUNCTION__);
         } finally {
             self::exitedElasticApmCode();
         }
@@ -303,8 +303,8 @@ final class PhpPartFacade
     /**
      * Called by elastic_apm extension
      *
-     * @param int   $maxEnabledLogLevel
-     * @param float $requestInitStartTime
+     * @param int    $maxEnabledLogLevel
+     * @param float  $requestInitStartTime
      *
      * @return bool
      */
@@ -383,8 +383,6 @@ final class PhpPartFacade
 
     /**
      * Called by elastic_apm extension
-     *
-     * @noinspection PhpUnused
      *
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
@@ -478,8 +476,7 @@ final class PhpPartFacade
     /**
      * Called by elastic_apm extension
      *
-     * @noinspection PhpUnused
-     *
+     * @param string $dbgCallDesc
      * @param int    $type
      * @param string $filename
      * @param int    $lineNumber
@@ -487,10 +484,15 @@ final class PhpPartFacade
      *
      * @return void
      */
-    private static function onPhpErrorImpl(int $type, string $filename, int $lineNumber, string $message): void
-    {
+    private static function onPhpErrorImpl(
+        string $dbgCallDesc,
+        int $type,
+        string $filename,
+        int $lineNumber,
+        string $message
+    ): void {
         self::callFromExtensionToTransaction(
-            __FUNCTION__,
+            $dbgCallDesc,
             function (
                 TransactionForExtensionRequest $transactionForExtensionRequest
             ) use (
@@ -507,31 +509,25 @@ final class PhpPartFacade
     /**
      * Called by elastic_apm extension
      *
-     * @noinspection PhpUnused
-     *
-     * @param mixed $thrown
+     * @param string $dbgCallDesc
+     * @param mixed  $thrown
      *
      * @return void
      */
-    private static function setLastThrownImpl($thrown): void
+    private static function setLastThrownImpl(string $dbgCallDesc, $thrown): void
     {
         self::callFromExtensionToTransaction(
-            __FUNCTION__,
+            $dbgCallDesc,
             function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($thrown): void {
                 $transactionForExtensionRequest->setLastThrown($thrown);
             }
         );
     }
 
-    /**
-     * Called by elastic_apm extension
-     *
-     * @noinspection PhpUnused
-     */
-    private static function shutdownImpl(): void
+    private static function shutdownImpl(string $dbgCallDesc): void
     {
         self::callFromExtensionToTransaction(
-            __FUNCTION__,
+            $dbgCallDesc,
             function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
                 $transactionForExtensionRequest->onShutdown();
             }
