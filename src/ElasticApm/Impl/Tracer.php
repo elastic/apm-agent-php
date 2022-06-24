@@ -98,7 +98,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         && $loggerProxy->log(
             'Constructing Tracer...',
             [
-                'Version of agent PHP part' => ElasticApm::VERSION . ElasticApm::VERSION_SUFFIX,
+                'Version of agent PHP part' => ElasticApm::VERSION,
                 'PHP_VERSION'               => PHP_VERSION,
                 'providedDependencies'      => $providedDependencies,
                 'effectiveLogLevel'         => LogLevel::intToName($this->config->effectiveLogLevel()),

@@ -18,5 +18,4 @@
  */
 #pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.5.2"
-#define PHP_ELASTIC_APM_VERSION_SUFFIX "-Fix_opcache_reset"
+#define PHP_ELASTIC_APM_VERSION "1.5.2-Fix_opcache_reset"
