@@ -94,6 +94,58 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
+static int g_currentReentrancyDepth = 0;
+enum { maxReentrancyDepth = 3 };
+
+bool validateReentrancyState()
+{
+    if ( g_currentReentrancyDepth < 0 )
+    {
+        ELASTIC_APM_LOG_CRITICAL( "g_currentReentrancyDepth (%d) should not be greater than maxReentrancyDepth (%d)", g_currentReentrancyDepth, maxReentrancyDepth );
+        return false;
+    }
+
+    if ( g_currentReentrancyDepth > maxReentrancyDepth )
+    {
+        ELASTIC_APM_LOG_CRITICAL( "g_currentReentrancyDepth (%d) should not be greater than maxReentrancyDepth (%d)", g_currentReentrancyDepth, maxReentrancyDepth );
+        return false;
+    }
+
+    return true;
+}
+
+bool tryToEnterElasticApmCode()
+{
+    if ( ! validateReentrancyState() )
+    {
+        return false;
+    }
+
+    if ( g_currentReentrancyDepth == maxReentrancyDepth )
+    {
+        ELASTIC_APM_LOG_WARNING( "Reached max reentrancy depth (%d)", maxReentrancyDepth );
+        return false;
+    }
+
+    ++g_currentReentrancyDepth;
+    return true;
+}
+
+void exitedElasticApmCode()
+{
+    if ( ! validateReentrancyState() )
+    {
+        return;
+    }
+
+    if ( g_currentReentrancyDepth == 0 )
+    {
+        ELASTIC_APM_LOG_CRITICAL( "g_currentReentrancyDepth should not be 0 when exiting Elastic APM code (maxReentrancyDepth: %d)", maxReentrancyDepth );
+        return;
+    }
+
+    --g_currentReentrancyDepth;
+}
 static pid_t g_pidOnRequestInit = -1;
 
 bool doesCurrentPidMatchPidOnRequestInit()
@@ -440,7 +492,11 @@ void elasticApmZendThrowExceptionHook(
 #endif
 )
 {
-    elasticApmZendThrowExceptionHookImpl( thrownObj );
+    if ( tryToEnterElasticApmCode() )
+    {
+        elasticApmZendThrowExceptionHookImpl( thrownObj );
+        exitedElasticApmCode();
+    }
 
     if ( originalZendThrowExceptionHook != NULL )
     {
@@ -605,9 +661,14 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
     goto finally;
 }
 
+
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 {
-    elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
+    if ( tryToEnterElasticApmCode() )
+    {
+        elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
+        exitedElasticApmCode();
+    }
 
     if ( originalZendErrorCallback != NULL )
     {

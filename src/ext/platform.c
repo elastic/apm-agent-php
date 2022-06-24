@@ -39,6 +39,7 @@
 #endif
 #include "util.h"
 #include "log.h"
+#include "elastic_apm_version.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
@@ -341,7 +342,12 @@ static String osSignalIdToName( int signalId )
 #define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
 
-#define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) \
+    do { \
+        ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ ); \
+        fprintf( stderr, fmt, ##__VA_ARGS__ ); \
+    } while ( false ) \
+    /**/
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
 void writeStackTraceToSyslog()
@@ -380,13 +386,14 @@ OsSignalHandler oldSignalHandler = NULL;
 void handleOsSignalLinux( int signalId )
 {
     ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER(
-            "Received signal %d (%s). %s"
+            "Elastic APM PHP Agent (version %s) received signal %d (%s). %s"
+            , PHP_ELASTIC_APM_VERSION
             , signalId, osSignalIdToName( signalId )
             ,
 #if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
               "Call stack below:"
 #else
-              "Call stack is not supported"
+              "Call stack is not supported."
 #endif
         );
 

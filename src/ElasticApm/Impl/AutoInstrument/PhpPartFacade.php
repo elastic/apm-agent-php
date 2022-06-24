@@ -48,6 +48,11 @@ final class PhpPartFacade
      */
     use HiddenConstructorTrait;
 
+    private const MAX_REENTRANCY_DEPTH = 3;
+
+    /** @var int */
+    private static $currentReentrancyDepth = 0;
+
     /** @var self|null */
     private static $singletonInstance = null;
 
@@ -77,6 +82,84 @@ final class PhpPartFacade
         $this->interceptionManager = new InterceptionManager($tracer);
     }
 
+    private static function validateReentrancyState(): bool
+    {
+        if (self::$currentReentrancyDepth < 0) {
+            BootstrapStageLogger::logCritical(
+                'currentReentrancyDepth (' . self::$currentReentrancyDepth . ') should not be less than 0.'
+                . ' MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+                __LINE__,
+                __FUNCTION__
+            );
+            return false;
+        }
+
+        if (self::$currentReentrancyDepth > self::MAX_REENTRANCY_DEPTH) {
+            BootstrapStageLogger::logCritical(
+                'currentReentrancyDepth (' . self::$currentReentrancyDepth
+                . ') should not be greater than MAX_REENTRANCY_DEPTH (' . self::MAX_REENTRANCY_DEPTH,
+                __LINE__,
+                __FUNCTION__
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private static function tryToEnterElasticApmCode(): bool
+    {
+        BootstrapStageLogger::logDebug(
+            'Trying to enter Elastic APM code... currentReentrancyDepth: ' . self::$currentReentrancyDepth
+            . '; MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+            __LINE__,
+            __FUNCTION__
+        );
+
+        if (!self::validateReentrancyState()) {
+            return false;
+        }
+
+        if (self::$currentReentrancyDepth == self::MAX_REENTRANCY_DEPTH) {
+            BootstrapStageLogger::logWarning(
+                'Reached max reentrancy depth (' . self::MAX_REENTRANCY_DEPTH . ')',
+                __LINE__,
+                __FUNCTION__
+            );
+            return false;
+        }
+
+        ++self::$currentReentrancyDepth;
+        return true;
+    }
+
+    private static function exitedElasticApmCode(): void
+    {
+        BootstrapStageLogger::logDebug(
+            'Exited Elastic APM code. currentReentrancyDepth: ' . self::$currentReentrancyDepth
+            . '; MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+            __LINE__,
+            __FUNCTION__
+        );
+
+        if (!self::validateReentrancyState()) {
+            return;
+        }
+
+        if (self::$currentReentrancyDepth == 0) {
+            BootstrapStageLogger::logCritical(
+                'currentReentrancyDepth (' . self::$currentReentrancyDepth
+                . ') should not be 0 when exiting Elastic APM code.'
+                . ' MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+
+        --self::$currentReentrancyDepth;
+    }
+
     /**
      * Called by elastic_apm extension
      *
@@ -88,6 +171,144 @@ final class PhpPartFacade
      * @return bool
      */
     public static function bootstrap(int $maxEnabledLogLevel, float $requestInitStartTime): bool
+    {
+        if (!self::tryToEnterElasticApmCode()) {
+            return false;
+        }
+
+        try {
+            return self::bootstrapImpl($maxEnabledLogLevel, $requestInitStartTime);
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param int         $interceptRegistrationId
+     * @param object|null $thisObj
+     * @param mixed       ...$interceptedCallArgs
+     *
+     * @return bool
+     */
+    public static function interceptedCallPreHook(
+        int $interceptRegistrationId,
+        ?object $thisObj,
+        ...$interceptedCallArgs
+    ): bool {
+        if (!self::tryToEnterElasticApmCode()) {
+            return false;
+        }
+
+        try {
+            return self::interceptedCallPreHookImpl(
+                $interceptRegistrationId,
+                $thisObj,
+                $interceptedCallArgs
+            );
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param bool  $hasExitedByException
+     * @param mixed $returnValueOrThrown
+     */
+    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    {
+        if (!self::tryToEnterElasticApmCode()) {
+            return;
+        }
+
+        try {
+            self::interceptedCallPostHookImpl($hasExitedByException, $returnValueOrThrown);
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param int    $type
+     * @param string $filename
+     * @param int    $lineNumber
+     * @param string $message
+     *
+     * @return void
+     */
+    public static function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    {
+        if (!self::tryToEnterElasticApmCode()) {
+            return;
+        }
+
+        try {
+            self::onPhpErrorImpl($type, $filename, $lineNumber, $message);
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     *
+     * @param mixed $thrown
+     *
+     * @return void
+     */
+    public static function setLastThrown($thrown): void
+    {
+        if (!self::tryToEnterElasticApmCode()) {
+            return;
+        }
+
+        try {
+            self::setLastThrown($thrown);
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     */
+    public static function shutdown(): void
+    {
+        if (!self::tryToEnterElasticApmCode()) {
+            return;
+        }
+
+        try {
+            self::shutdown();
+        } finally {
+            self::exitedElasticApmCode();
+        }
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @param int   $maxEnabledLogLevel
+     * @param float $requestInitStartTime
+     *
+     * @return bool
+     */
+    private static function bootstrapImpl(int $maxEnabledLogLevel, float $requestInitStartTime): bool
     {
         BootstrapStageLogger::configure($maxEnabledLogLevel);
         BootstrapStageLogger::logDebug(
@@ -137,15 +358,13 @@ final class PhpPartFacade
     /**
      * Called by elastic_apm extension
      *
-     * @noinspection PhpUnused
-     *
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
      * @param mixed       ...$interceptedCallArgs
      *
      * @return bool
      */
-    public static function interceptedCallPreHook(
+    private static function interceptedCallPreHookImpl(
         int $interceptRegistrationId,
         ?object $thisObj,
         ...$interceptedCallArgs
@@ -170,7 +389,7 @@ final class PhpPartFacade
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
      */
-    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    private static function interceptedCallPostHookImpl(bool $hasExitedByException, $returnValueOrThrown): void
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
@@ -268,7 +487,7 @@ final class PhpPartFacade
      *
      * @return void
      */
-    public static function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    private static function onPhpErrorImpl(int $type, string $filename, int $lineNumber, string $message): void
     {
         self::callFromExtensionToTransaction(
             __FUNCTION__,
@@ -294,7 +513,7 @@ final class PhpPartFacade
      *
      * @return void
      */
-    public static function setLastThrown($thrown): void
+    private static function setLastThrownImpl($thrown): void
     {
         self::callFromExtensionToTransaction(
             __FUNCTION__,
@@ -309,7 +528,7 @@ final class PhpPartFacade
      *
      * @noinspection PhpUnused
      */
-    public static function shutdown(): void
+    private static function shutdownImpl(): void
     {
         self::callFromExtensionToTransaction(
             __FUNCTION__,
