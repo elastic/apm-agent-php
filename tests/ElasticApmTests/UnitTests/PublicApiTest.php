@@ -240,7 +240,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
     public function testVersionShouldNotBeEmpty(): void
     {
         $this->assertNotEquals(strlen(ElasticApm::VERSION), 0, ElasticApm::VERSION);
-        $this->assertStringContainsString(MiscUtil::buildFullAgentVersion(), ElasticApm::VERSION);
+        $this->assertStringContainsString(ElasticApm::VERSION, MiscUtil::buildFullAgentVersion());
     }
 
     public function testSpanContextDestinationService(): void
