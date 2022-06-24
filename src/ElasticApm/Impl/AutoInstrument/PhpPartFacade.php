@@ -276,7 +276,7 @@ final class PhpPartFacade
         }
 
         try {
-            self::setLastThrown($thrown);
+            self::setLastThrownImpl($thrown);
         } finally {
             self::exitedElasticApmCode();
         }
@@ -294,7 +294,7 @@ final class PhpPartFacade
         }
 
         try {
-            self::shutdown();
+            self::shutdownImpl();
         } finally {
             self::exitedElasticApmCode();
         }
