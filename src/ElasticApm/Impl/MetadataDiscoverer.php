@@ -23,11 +23,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\MiscUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -104,7 +104,7 @@ final class MetadataDiscoverer
 
         $result->agent = new ServiceAgentData();
         $result->agent->name = self::AGENT_NAME;
-        $result->agent->version = ElasticApm::VERSION;
+        $result->agent->version = MiscUtil::buildFullAgentVersion();
 
         $result->language = $this->buildNameVersionData(MetadataDiscoverer::LANGUAGE_NAME, PHP_VERSION);
 

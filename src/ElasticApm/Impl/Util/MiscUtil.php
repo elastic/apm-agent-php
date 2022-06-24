@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -16,7 +18,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.5.2"
-#define PHP_ELASTIC_APM_CUSTOM_BUILD "Fix_opcache_reset"
+declare(strict_types=1);
+
+namespace Elastic\Apm\Impl\Util;
+
+use Elastic\Apm\ElasticApm;
+
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class MiscUtil
+{
+    use StaticClassTrait;
+
+    public const CUSTOM_BUILD = 'Fix_opcache_reset';
+
+    public static function buildFullAgentVersion(): string
+    {
+        return ElasticApm::VERSION . (empty(self::CUSTOM_BUILD) ? '' : ('-' . self::CUSTOM_BUILD));
+    }
+}

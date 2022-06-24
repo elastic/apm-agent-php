@@ -457,7 +457,7 @@ zend_module_entry elastic_apm_module_entry = {
 	PHP_RINIT(elastic_apm),			/* PHP_RINIT - Request initialization */
 	PHP_RSHUTDOWN(elastic_apm),		/* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(elastic_apm),			/* PHP_MINFO - Module info */
-	PHP_ELASTIC_APM_VERSION,		    /* Version */
+	PHP_ELASTIC_APM_VERSION,		/* Version */
 	PHP_MODULE_GLOBALS(elastic_apm), /* PHP_MODULE_GLOBALS */
 	NULL, 					        /* PHP_GINIT */
 	NULL,		                    /* PHP_GSHUTDOWN */

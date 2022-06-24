@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\ErrorExceptionData;
@@ -53,6 +52,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
+use Elastic\Apm\Impl\Util\MiscUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
@@ -622,7 +622,7 @@ final class ValidationUtil
         self::assertValidNameVersionData($serviceData->agent);
         assert($serviceData->agent !== null);
         self::assertThat($serviceData->agent->name === MetadataDiscoverer::AGENT_NAME);
-        self::assertThat($serviceData->agent->version === ElasticApm::VERSION);
+        self::assertThat($serviceData->agent->version === MiscUtil::buildFullAgentVersion());
         self::assertValidNullableKeywordString($serviceData->agent->ephemeralId);
 
         self::assertValidNameVersionData($serviceData->framework);

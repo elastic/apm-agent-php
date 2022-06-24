@@ -25,7 +25,6 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
@@ -38,6 +37,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use Elastic\Apm\Impl\Util\MiscUtil;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionBuilderInterface;
@@ -98,7 +98,7 @@ final class Tracer implements TracerInterface, LoggableInterface
         && $loggerProxy->log(
             'Constructing Tracer...',
             [
-                'Version of agent PHP part' => ElasticApm::VERSION,
+                'Version of agent PHP part' => MiscUtil::buildFullAgentVersion(),
                 'PHP_VERSION'               => PHP_VERSION,
                 'providedDependencies'      => $providedDependencies,
                 'effectiveLogLevel'         => LogLevel::intToName($this->config->effectiveLogLevel()),

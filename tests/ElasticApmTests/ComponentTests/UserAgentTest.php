@@ -23,10 +23,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\MetadataDiscoverer;
+use Elastic\Apm\Impl\Util\MiscUtil;
 use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgent;
@@ -35,7 +35,10 @@ use ElasticApmTests\ComponentTests\Util\TestProperties;
 
 final class UserAgentTest extends ComponentTestCaseBase
 {
-    private const AGENT_REPO_NAME_AND_VERSION = EventSender::AGENT_GITHUB_REPO_NAME . '/' . ElasticApm::VERSION;
+    private static function expectedAgentRepoNameAndVersion(): string
+    {
+        return EventSender::AGENT_GITHUB_REPO_NAME . '/' . MiscUtil::buildFullAgentVersion();
+    }
 
     /**
      * @return iterable<array{?string, ?string, string}>
@@ -56,19 +59,19 @@ final class UserAgentTest extends ComponentTestCaseBase
         yield [
             'My_serviceBa', // <- configuredServiceName
             null, // <- configuredServiceVersion
-            self::AGENT_REPO_NAME_AND_VERSION . ' (My_serviceBa)' //
+            self::expectedAgentRepoNameAndVersion() . ' (My_serviceBa)' //
         ];
 
         yield [
             null, // <- configuredServiceName
             'v42.7', // <- configuredServiceVersion
-            self::AGENT_REPO_NAME_AND_VERSION . ' (' . MetadataDiscoverer::DEFAULT_SERVICE_NAME . ' v42.7)'
+            self::expectedAgentRepoNameAndVersion() . ' (' . MetadataDiscoverer::DEFAULT_SERVICE_NAME . ' v42.7)'
         ];
 
         yield [
             'my Service', // <- configuredServiceName
             'v42.7', // <- configuredServiceVersion
-            self::AGENT_REPO_NAME_AND_VERSION . ' (my Service v42.7)'
+            self::expectedAgentRepoNameAndVersion() . ' (my Service v42.7)'
         ];
 
         $serviceNameWithIllegalChar = 'Service name with illegal char @';
@@ -77,7 +80,7 @@ final class UserAgentTest extends ComponentTestCaseBase
         yield [
             $serviceNameWithIllegalChar, // <- configuredServiceName
             $serviceVersionMaxKeywordStringLength . '_tail', // <- configuredServiceVersion
-            self::AGENT_REPO_NAME_AND_VERSION
+            self::expectedAgentRepoNameAndVersion()
             . ' (' . $serviceNameWithIllegalCharAdapted . ' ' . $serviceVersionMaxKeywordStringLength . ')'
         ];
 
@@ -88,7 +91,7 @@ final class UserAgentTest extends ComponentTestCaseBase
         yield [
             'myService', // <- configuredServiceName
             $configuredServiceVersion,
-            self::AGENT_REPO_NAME_AND_VERSION . ' (myService ' . $sanitizedServiceVersion . ')'
+            self::expectedAgentRepoNameAndVersion() . ' (myService ' . $sanitizedServiceVersion . ')'
         ];
     }
 
@@ -123,7 +126,7 @@ final class UserAgentTest extends ComponentTestCaseBase
             null /* <- configSetter */,
             null /* <- configuredServiceName */,
             null /* <- expectedUserAgentHeaderValue */,
-            self::AGENT_REPO_NAME_AND_VERSION . ' (' . MetadataDiscoverer::DEFAULT_SERVICE_NAME . ')'
+            self::expectedAgentRepoNameAndVersion() . ' (' . MetadataDiscoverer::DEFAULT_SERVICE_NAME . ')'
         );
     }
 

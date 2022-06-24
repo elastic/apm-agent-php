@@ -69,7 +69,12 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 
 void logSupportabilityInfo( LogLevel logLevel )
 {
-    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
+    ELASTIC_APM_LOG_WITH_LEVEL(
+            logLevel
+            , "Version of agent C part: %s%s%s"
+            , PHP_ELASTIC_APM_VERSION
+            , ( ELASTIC_APM_STRING_LITERAL_TO_VIEW( PHP_ELASTIC_APM_CUSTOM_BUILD ).length == 0 ? "" : "-" )
+            , PHP_ELASTIC_APM_CUSTOM_BUILD );
 
     ResultCode resultCode;
     enum
@@ -692,7 +697,10 @@ void elasticApmRequestInit()
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s", PHP_ELASTIC_APM_VERSION );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s%s%s"
+                                            , PHP_ELASTIC_APM_VERSION
+                                            , ( ELASTIC_APM_STRING_LITERAL_TO_VIEW( PHP_ELASTIC_APM_CUSTOM_BUILD ).length == 0 ? "" : "-" )
+                                            , PHP_ELASTIC_APM_CUSTOM_BUILD );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();

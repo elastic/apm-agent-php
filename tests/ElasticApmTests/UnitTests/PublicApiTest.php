@@ -28,6 +28,7 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\Util\MiscUtil;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
@@ -238,7 +239,8 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
     public function testVersionShouldNotBeEmpty(): void
     {
-        $this->assertTrue(strlen(ElasticApm::VERSION) != 0);
+        $this->assertNotEquals(strlen(ElasticApm::VERSION), 0, ElasticApm::VERSION);
+        $this->assertStringContainsString(MiscUtil::buildFullAgentVersion(), ElasticApm::VERSION);
     }
 
     public function testSpanContextDestinationService(): void

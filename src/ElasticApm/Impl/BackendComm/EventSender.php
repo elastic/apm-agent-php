@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\BackendComm;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
@@ -35,6 +34,7 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Util\MiscUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -74,7 +74,7 @@ final class EventSender implements EventSinkInterface
         //      apm-agent-ruby/4.4.0 (my_service)
         //      apm-agent-python/6.4.0 (my_service v42.7)
 
-        $headerValue = self::AGENT_GITHUB_REPO_NAME . '/' . ElasticApm::VERSION;
+        $headerValue = self::AGENT_GITHUB_REPO_NAME . '/' . MiscUtil::buildFullAgentVersion();
 
         $serviceNameVersionSuffix = $serviceName;
         // Escape characters not allowed in User-Agent. Taken from
