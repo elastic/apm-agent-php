@@ -376,10 +376,10 @@ void printMiscInfo( StructuredTextPrinter* structTxtPrinter )
         structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
 
     }
-    {
-        String columns[numberOfColumns] = { "Custom build", PHP_ELASTIC_APM_VERSION_SUFFIX };
-        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
-    }
+//    {
+//        String columns[numberOfColumns] = { "Custom build", PHP_ELASTIC_APM_VERSION_SUFFIX };
+//        structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
+//    }
     structTxtPrinter->printTableEnd( structTxtPrinter, numberOfColumns );
 }
 
