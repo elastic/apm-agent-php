@@ -35,7 +35,7 @@ final class ElasticApm
 {
     use StaticClassTrait;
 
-    public const VERSION = '1.5.2';
+    public const VERSION = '1.5.2-Fix_opcache_reset';
 
     /**
      * Begins a new transaction and sets it as the current transaction.

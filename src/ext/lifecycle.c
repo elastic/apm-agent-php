@@ -631,7 +631,7 @@ void elasticApmRequestInit()
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s", PHP_ELASTIC_APM_VERSION );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
