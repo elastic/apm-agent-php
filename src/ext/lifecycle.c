@@ -469,9 +469,10 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-        return;
-    }
+// TODO: Sergey Kleyman: Uncomment or Remove
+//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+//        return;
+//    }
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
 
@@ -600,9 +601,10 @@ static ZendErrorCallback originalZendErrorCallback = NULL;
 
 void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 {
-    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-        return;
-    }
+// TODO: Sergey Kleyman: Uncomment or Remove
+//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+//        return;
+//    }
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "type: %d (%s), fileName: %s, lineNumber: %u"
