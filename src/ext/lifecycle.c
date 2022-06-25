@@ -388,11 +388,11 @@ ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
 
 bool checkIfEnabledForCurrentRequest( const char* calledFromFunction )
 {
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s; g_isEnabledForCurrentRequest: %s", calledFromFunction, boolToString( g_isEnabledForCurrentRequest ) );
+
     if ( ! g_isEnabledForCurrentRequest ) {
         goto finally;
     }
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s", calledFromFunction );
 
     ResultCode resultCode;
     bool restartPending = false;
