@@ -140,7 +140,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
         }
 
         if ($result->stacktrace === null) {
-            $result->stacktrace = StacktraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
+            $result->stacktrace = StacktraceUtil::captureCurrent(10, /* hideElasticApmImpl: */ true);
         }
 
         return $result;
