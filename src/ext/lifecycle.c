@@ -742,19 +742,21 @@ void elasticApmRequestInit()
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
-    originalZendErrorCallback = zend_error_cb;
-    isOriginalZendErrorCallbackSet = true;
-    zend_error_cb = elasticApmZendErrorCallback;
-    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
-                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
-                           , elasticApmZendErrorCallback );
+    // TODO: Sergey Kleyman: Uncomment
+//    originalZendErrorCallback = zend_error_cb;
+//    isOriginalZendErrorCallbackSet = true;
+//    zend_error_cb = elasticApmZendErrorCallback;
+//    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
+//                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
+//                           , elasticApmZendErrorCallback );
 
-    originalZendThrowExceptionHook = zend_throw_exception_hook;
-    isOriginalZendThrowExceptionHookSet = true;
-    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                           , elasticApmZendThrowExceptionHook );
+    // TODO: Sergey Kleyman: Uncomment
+//    originalZendThrowExceptionHook = zend_throw_exception_hook;
+//    isOriginalZendThrowExceptionHookSet = true;
+//    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+//    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+//                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+//                           , elasticApmZendThrowExceptionHook );
 
     resultCode = resultSuccess;
 

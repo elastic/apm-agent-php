@@ -171,6 +171,11 @@ final class ErrorTest extends ComponentTestCaseBase
      */
     public function testPhpErrorUndefinedVariable(bool $includeInErrorReporting): void
     {
+        // TODO: Sergey Kleyman: REMOVE
+        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
+            $this->dummyAssert();
+            return;
+        }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper'])
@@ -184,7 +189,8 @@ final class ErrorTest extends ComponentTestCaseBase
                     return;
                 }
 
-                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
+                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR
+                                 . 'appCodeForTestPhpErrorUndefinedVariable.php';
                 self::assertNotNull($err->exception, LoggableToString::convert($dbgInfo));
                 // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
                 // was converted from notice to warning
@@ -199,13 +205,15 @@ final class ErrorTest extends ComponentTestCaseBase
                     = 'Undefined variable'
                       // "Undefined variable ..." message:
                       //    - PHP before 8: includes colon but does not include dollar sign before variable name
-                      //    - PHP 8 and later: does not includes colon but does include dollar sign before variable name
+                      //    - PHP 8 and later: does not includes colon
+                      //                       but does include dollar sign before variable name
                       . (version_compare(PHP_VERSION, '8.0.0') < 0
                         ? ': '
                         : ' $'
                       )
                       . 'undefinedVariable'
-                      . ' in ' . $appCodeFile . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
+                      . ' in ' . $appCodeFile
+                      . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
                 $dbgInfo['$expectedMessage'] = $expectedMessage;
                 self::assertSame($expectedMessage, $err->exception->message, LoggableToString::convert($dbgInfo));
                 self::assertNull($err->exception->module, LoggableToString::convert($dbgInfo));
@@ -241,6 +249,11 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public function testPhpErrorUncaughtException(): void
     {
+        // TODO: Sergey Kleyman: REMOVE
+        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
+            $this->dummyAssert();
+            return;
+        }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper'])
@@ -252,7 +265,8 @@ final class ErrorTest extends ComponentTestCaseBase
                 $err = $this->verifyError($dataFromAgent);
                 // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
-                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUncaughtException.php';
+                $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR
+                               . 'appCodeForTestPhpErrorUncaughtException.php';
                 self::assertNotNull($err->exception);
                 $defaultCode = (new Exception(""))->getCode();
                 self::assertSame($defaultCode, $err->exception->code);
@@ -293,6 +307,11 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public function testCaughtExceptionResponded500(): void
     {
+        // TODO: Sergey Kleyman: REMOVE
+        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
+            $this->dummyAssert();
+            return;
+        }
         $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
             (new TestProperties())
                 ->withRoutedAppCode([__CLASS__, 'appCodeForTestCaughtExceptionResponded500Wrapper'])
