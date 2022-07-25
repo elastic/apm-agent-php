@@ -23,42 +23,43 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
-use Elastic\Apm\SpanContextServiceInterface;
+use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends         ContextDataWrapper<Span>
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+final class SpanContextServiceTarget extends ContextDataWrapper implements SpanContextServiceTargetInterface
 {
-    use NoopObjectTrait;
+    /** @var SpanContextServiceTargetData */
+    private $data;
 
-    /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    public function __construct(Span $owner, SpanContextServiceTargetData $data)
     {
-        return NoopSpanContextDb::singletonInstance();
+        parent::__construct($owner);
+        $this->data = $data;
     }
 
     /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
+    public function setName(?string $name): void
     {
-        return NoopSpanContextDestination::singletonInstance();
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->data->name = Tracer::limitNullableKeywordString($name);
     }
 
     /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
+    public function setType(?string $type): void
     {
-        return NoopSpanContextHttp::singletonInstance();
-    }
+        if ($this->beforeMutating()) {
+            return;
+        }
 
-    public function service(): SpanContextServiceInterface
-    {
-        return NoopSpanContextService::singletonInstance();
+        $this->data->type = Tracer::limitNullableKeywordString($type);
     }
 }

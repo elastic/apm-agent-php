@@ -63,13 +63,25 @@ final class SpanContextData extends ExecutionSegmentContextData
      */
     public $http = null;
 
+    /**
+     * @var ?SpanContextServiceData
+     *
+     * Service related information can be sent per event.
+     * Provided information will override the more generic information from metadata,
+     * non provided fields will be set according to the metadata information.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.6.0/docs/spec/spans/span.json#L134
+     */
+    public $service = null;
+
     /** @inheritDoc */
     public function prepareForSerialization(): bool
     {
         return parent::prepareForSerialization()
                || SerializationUtil::prepareForSerialization(/* ref */ $this->db)
                || SerializationUtil::prepareForSerialization(/* ref */ $this->destination)
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->http);
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->http)
+               || SerializationUtil::prepareForSerialization(/* ref */ $this->service);
     }
 
     /** @inheritDoc */
@@ -80,6 +92,7 @@ final class SpanContextData extends ExecutionSegmentContextData
         SerializationUtil::addNameValueIfNotNull('db', $this->db, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('destination', $this->destination, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

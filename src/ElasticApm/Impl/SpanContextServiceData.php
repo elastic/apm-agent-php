@@ -23,42 +23,45 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
-use Elastic\Apm\SpanContextServiceInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
+ * An object containing contextual data about the destination for spans
+ *
+ * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
+ *
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+final class SpanContextServiceData implements OptionalSerializableDataInterface, LoggableInterface
 {
-    use NoopObjectTrait;
+    use LoggableTrait;
+
+    /**
+     * @var ?SpanContextServiceTargetData
+     *
+     * Target holds information about the outgoing service in case of an outgoing event
+     *
+     * @link https://github.com/elastic/apm-server/blob/v8.3.0/docs/spec/v2/span.json#L519
+     */
+    public $target = null;
 
     /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    public function prepareForSerialization(): bool
     {
-        return NoopSpanContextDb::singletonInstance();
+        return SerializationUtil::prepareForSerialization(/* ref */ $this->target);
     }
 
     /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
+    public function jsonSerialize()
     {
-        return NoopSpanContextDestination::singletonInstance();
-    }
+        $result = [];
 
-    /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
-    {
-        return NoopSpanContextHttp::singletonInstance();
-    }
+        SerializationUtil::addNameValueIfNotNull('target', $this->target, /* ref */ $result);
 
-    public function service(): SpanContextServiceInterface
-    {
-        return NoopSpanContextService::singletonInstance();
+        return SerializationUtil::postProcessResult($result);
     }
 }
