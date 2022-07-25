@@ -38,6 +38,7 @@ final class Constants
     public const TRACE_ID_SIZE_IN_BYTES = 16;
     public const ERROR_ID_SIZE_IN_BYTES = 16;
 
+    public const EXECUTION_SEGMENT_TYPE_DEFAULT = 'custom';
     public const TRANSACTION_TYPE_REQUEST = 'request';
     public const TRANSACTION_TYPE_CLI = 'cli';
 

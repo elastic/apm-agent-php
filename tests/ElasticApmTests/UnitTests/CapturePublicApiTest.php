@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
@@ -290,5 +291,25 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             self::assertSame(__FILE__, $topFrame->filename);
             self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
         }
+    }
+
+    public function testDefaultExecutionSegmentType(): void
+    {
+        // Act
+        ElasticApm::newTransaction('test_TX_name', '')->asCurrent()->begin();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_1_name', '');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_2_name', 'test_span_2_type');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentExecutionSegment()->end();
+
+        // Assert
+        $tx = $this->mockEventSink->singleTransaction();
+        $this->assertSame('test_TX_name', $tx->name);
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $tx->type);
+        $span1 = $this->mockEventSink->spanByName('test_span_1_name');
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $span1->type);
+        $span2 = $this->mockEventSink->spanByName('test_span_2_name');
+        $this->assertSame('test_span_2_type', $span2->type);
     }
 }
