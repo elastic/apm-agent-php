@@ -89,6 +89,7 @@ enum OptionId
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     optionId_memoryTrackingLevel,
     #endif
+    optionId_profilingInferredSpansEnabled,
     optionId_secretToken,
     optionId_serverTimeout,
     optionId_serverUrl,
@@ -140,6 +141,7 @@ struct ConfigSnapshot
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
+    bool profilingInferredSpansEnabled;
     String secretToken;
     String serverUrl;
     String serverTimeout;
@@ -267,6 +269,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
 #define ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
+#define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED "profiling_inferred_spans_enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_URL "server_url"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
