@@ -30,26 +30,12 @@ use Elastic\Apm\Impl\Util\WildcardListMatcher;
  *
  * @internal
  *
- * @extends OptionParser<WildcardListMatcher>
+ * @extends OptionWithDefaultValueMetadata<WildcardListMatcher>
  */
-final class WildcardListOptionParser extends OptionParser
+final class WildcardListOptionMetadata extends OptionWithDefaultValueMetadata
 {
-    public function parse(string $rawValue): WildcardListMatcher
+    public function __construct(WildcardListMatcher $defaultValue)
     {
-        return self::parseImpl($rawValue);
-    }
-
-    public static function parseImpl(string $rawValue): WildcardListMatcher
-    {
-        /**
-         * @return iterable<string>
-         */
-        $splitWildcardExpr = function () use ($rawValue): iterable {
-            foreach (explode(',', $rawValue) as $listElementRaw) {
-                yield trim($listElementRaw);
-            }
-        };
-
-        return new WildcardListMatcher($splitWildcardExpr());
+        parent::__construct(new WildcardListOptionParser(), $defaultValue);
     }
 }
