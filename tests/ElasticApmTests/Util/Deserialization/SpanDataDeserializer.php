@@ -285,4 +285,55 @@ final class SpanDataDeserializer
         SpanContextServiceTargetDataValidator::validate($result);
         return $result;
     }
+
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextServiceData
+     */
+    private static function deserializeContextServiceData($value): SpanContextServiceData
+    {
+        $result = new SpanContextServiceData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'target':
+                        $result->target = self::deserializeContextServiceDataTargetData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextServiceData($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextServiceTargetData
+     */
+    private static function deserializeContextServiceDataTargetData($value): SpanContextServiceTargetData
+    {
+        $result = new SpanContextServiceTargetData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'name':
+                        $result->name = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'type':
+                        $result->type = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanDataValidator::validateContextServiceTargetData($result);
+        return $result;
+    }
 }
