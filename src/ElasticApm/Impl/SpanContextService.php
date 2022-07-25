@@ -23,42 +23,37 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\NoopObjectTrait;
-use Elastic\Apm\SpanContextDbInterface;
-use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextHttpInterface;
-use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanContextServiceInterface;
+use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends         ContextDataWrapper<Span>
  */
-final class NoopSpanContext extends NoopExecutionSegmentContext implements SpanContextInterface
+final class SpanContextService extends ContextDataWrapper implements SpanContextServiceInterface
 {
-    use NoopObjectTrait;
+    /** @var SpanContextServiceData */
+    private $data;
 
-    /** @inheritDoc */
-    public function db(): SpanContextDbInterface
+    /** @var ?SpanContextServiceTarget */
+    private $target = null;
+
+    public function __construct(Span $owner, SpanContextServiceData $data)
     {
-        return NoopSpanContextDb::singletonInstance();
+        parent::__construct($owner);
+        $this->data = $data;
     }
 
-    /** @inheritDoc */
-    public function destination(): SpanContextDestinationInterface
+    public function target(): SpanContextServiceTargetInterface
     {
-        return NoopSpanContextDestination::singletonInstance();
-    }
+        if ($this->target === null) {
+            $this->data->target = new SpanContextServiceTargetData();
+            $this->target = new SpanContextServiceTarget($this->owner, $this->data->target);
+        }
 
-    /** @inheritDoc */
-    public function http(): SpanContextHttpInterface
-    {
-        return NoopSpanContextHttp::singletonInstance();
-    }
-
-    public function service(): SpanContextServiceInterface
-    {
-        return NoopSpanContextService::singletonInstance();
+        return $this->target;
     }
 }

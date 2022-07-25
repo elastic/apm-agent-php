@@ -45,4 +45,13 @@ interface SpanContextInterface extends ExecutionSegmentContextInterface
      * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
      */
     public function destination(): SpanContextDestinationInterface;
+
+    /**
+     * Returns an object for service related information can be sent per event.
+     * Provided information will override the more generic information from metadata,
+     * non provided fields will be set according to the metadata information.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.6.0/docs/spec/spans/span.json#L134
+     */
+    public function service(): SpanContextServiceInterface;
 }
