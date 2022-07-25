@@ -28,6 +28,8 @@ use Elastic\Apm\Impl\SpanContextDbData;
 use Elastic\Apm\Impl\SpanContextDestinationData;
 use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
+use Elastic\Apm\Impl\SpanContextServiceData;
+use Elastic\Apm\Impl\SpanContextServiceTargetData;
 use Elastic\Apm\Impl\SpanData;
 
 final class SpanDataValidator extends ExecutionSegmentDataValidator
@@ -93,6 +95,19 @@ final class SpanDataValidator extends ExecutionSegmentDataValidator
         }
     }
 
+    public static function validateContextServiceTargetData(SpanContextServiceTargetData $obj): void
+    {
+        self::validateNullableKeywordString($obj->name);
+        self::validateNullableKeywordString($obj->type);
+    }
+
+    public static function validateContextServiceData(SpanContextServiceData $obj): void
+    {
+        if ($obj->target !== null) {
+            self::validateContextServiceTargetData($obj->target);
+        }
+    }
+
     public static function validateContextData(SpanContextData $obj): void
     {
         self::validateExecutionSegmentContextData($obj);
@@ -101,12 +116,16 @@ final class SpanDataValidator extends ExecutionSegmentDataValidator
             self::validateContextDbData($obj->db);
         }
 
+        if ($obj->destination !== null) {
+            self::validateContextDestinationData($obj->destination);
+        }
+
         if ($obj->http !== null) {
             self::validateContextHttpData($obj->http);
         }
 
-        if ($obj->destination !== null) {
-            self::validateContextDestinationData($obj->destination);
+        if ($obj->service !== null) {
+            self::validateContextServiceData($obj->service);
         }
     }
 }
