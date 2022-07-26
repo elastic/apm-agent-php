@@ -46,6 +46,7 @@ final class OptionNames
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
     public const LOG_LEVEL_STDERR = 'log_level_stderr';
+    public const SANITIZE_FIELD_NAMES = 'sanitize_field_names';
     public const SECRET_TOKEN = 'secret_token';
     public const SERVER_TIMEOUT = 'server_timeout';
     public const SERVER_URL = 'server_url';

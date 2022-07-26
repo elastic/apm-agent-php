@@ -21,35 +21,45 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\WildcardListMatcher;
+use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @extends OptionParser<WildcardListMatcher>
+ * @extends         ContextDataWrapper<Span>
  */
-final class WildcardListOptionParser extends OptionParser
+final class SpanContextServiceTarget extends ContextDataWrapper implements SpanContextServiceTargetInterface
 {
-    public function parse(string $rawValue): WildcardListMatcher
+    /** @var SpanContextServiceTargetData */
+    private $data;
+
+    public function __construct(Span $owner, SpanContextServiceTargetData $data)
     {
-        return self::parseImpl($rawValue);
+        parent::__construct($owner);
+        $this->data = $data;
     }
 
-    public static function parseImpl(string $rawValue): WildcardListMatcher
+    /** @inheritDoc */
+    public function setName(?string $name): void
     {
-        /**
-         * @return iterable<string>
-         */
-        $splitWildcardExpr = function () use ($rawValue): iterable {
-            foreach (explode(',', $rawValue) as $listElementRaw) {
-                yield trim($listElementRaw);
-            }
-        };
+        if ($this->beforeMutating()) {
+            return;
+        }
 
-        return new WildcardListMatcher($splitWildcardExpr());
+        $this->data->name = Tracer::limitNullableKeywordString($name);
+    }
+
+    /** @inheritDoc */
+    public function setType(?string $type): void
+    {
+        if ($this->beforeMutating()) {
+            return;
+        }
+
+        $this->data->type = Tracer::limitNullableKeywordString($type);
     }
 }

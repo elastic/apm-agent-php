@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\SpanContextDbInterface;
 use Elastic\Apm\SpanContextDestinationInterface;
 use Elastic\Apm\SpanContextHttpInterface;
+use Elastic\Apm\SpanContextServiceInterface;
 use Elastic\Apm\SpanContextInterface;
 
 /**
@@ -48,6 +49,9 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
 
     /** @var SpanContextHttp|null */
     private $http = null;
+
+    /** @var SpanContextService|null */
+    private $service = null;
 
     public function __construct(Span $owner, SpanContextData $data)
     {
@@ -87,6 +91,17 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
         }
 
         return $this->http;
+    }
+
+    /** @inheritDoc */
+    public function service(): SpanContextServiceInterface
+    {
+        if ($this->service === null) {
+            $this->data->service = new SpanContextServiceData();
+            $this->service = new SpanContextService($this->owner, $this->data->service);
+        }
+
+        return $this->service;
     }
 
     /**

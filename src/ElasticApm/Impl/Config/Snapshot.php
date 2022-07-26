@@ -134,6 +134,9 @@ final class Snapshot implements LoggableInterface
     /** @var ?int */
     private $logLevelSyslog;
 
+    /** @var WildcardListMatcher */
+    private $sanitizeFieldNames;
+
     /** @var string */
     private $secretToken;
 
@@ -279,6 +282,11 @@ final class Snapshot implements LoggableInterface
     public function effectiveLogLevel(): int
     {
         return $this->effectiveLogLevel;
+    }
+
+    public function sanitizeFieldNames(): WildcardListMatcher
+    {
+        return $this->sanitizeFieldNames;
     }
 
     public function serverTimeout(): float

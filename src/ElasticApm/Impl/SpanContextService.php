@@ -21,35 +21,39 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\WildcardListMatcher;
+use Elastic\Apm\SpanContextServiceInterface;
+use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @extends OptionParser<WildcardListMatcher>
+ * @extends         ContextDataWrapper<Span>
  */
-final class WildcardListOptionParser extends OptionParser
+final class SpanContextService extends ContextDataWrapper implements SpanContextServiceInterface
 {
-    public function parse(string $rawValue): WildcardListMatcher
+    /** @var SpanContextServiceData */
+    private $data;
+
+    /** @var ?SpanContextServiceTarget */
+    private $target = null;
+
+    public function __construct(Span $owner, SpanContextServiceData $data)
     {
-        return self::parseImpl($rawValue);
+        parent::__construct($owner);
+        $this->data = $data;
     }
 
-    public static function parseImpl(string $rawValue): WildcardListMatcher
+    public function target(): SpanContextServiceTargetInterface
     {
-        /**
-         * @return iterable<string>
-         */
-        $splitWildcardExpr = function () use ($rawValue): iterable {
-            foreach (explode(',', $rawValue) as $listElementRaw) {
-                yield trim($listElementRaw);
-            }
-        };
+        if ($this->target === null) {
+            $this->data->target = new SpanContextServiceTargetData();
+            $this->target = new SpanContextServiceTarget($this->owner, $this->data->target);
+        }
 
-        return new WildcardListMatcher($splitWildcardExpr());
+        return $this->target;
     }
 }

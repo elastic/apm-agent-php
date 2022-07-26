@@ -21,35 +21,27 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\WildcardListMatcher;
+use Elastic\Apm\Impl\Util\NoopObjectTrait;
+use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
- *
- * @extends OptionParser<WildcardListMatcher>
  */
-final class WildcardListOptionParser extends OptionParser
+final class NoopSpanContextServiceTarget implements SpanContextServiceTargetInterface
 {
-    public function parse(string $rawValue): WildcardListMatcher
+    use NoopObjectTrait;
+
+    /** @inheritDoc */
+    public function setName(?string $name): void
     {
-        return self::parseImpl($rawValue);
     }
 
-    public static function parseImpl(string $rawValue): WildcardListMatcher
+    /** @inheritDoc */
+    public function setType(?string $type): void
     {
-        /**
-         * @return iterable<string>
-         */
-        $splitWildcardExpr = function () use ($rawValue): iterable {
-            foreach (explode(',', $rawValue) as $listElementRaw) {
-                yield trim($listElementRaw);
-            }
-        };
-
-        return new WildcardListMatcher($splitWildcardExpr());
     }
 }
