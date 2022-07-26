@@ -143,6 +143,6 @@ class __TwigTemplate_75e8e11777de6986a2d8f7ead416c59c extends Template
         </a>
     {% endif %}
 {{ form_end(form) }}
-", "admin/blog/_form.html.twig", "/var/www/symfony/symfony-demo/templates/admin/blog/_form.html.twig");
+", "admin/blog/_form.html.twig", "/var/www/symfony/templates/admin/blog/_form.html.twig");
     }
 }

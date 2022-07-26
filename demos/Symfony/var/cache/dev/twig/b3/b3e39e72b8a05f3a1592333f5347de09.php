@@ -199,6 +199,6 @@ class __TwigTemplate_1be76c523a44b3c5fb79d7cd33bd7188 extends Template
 
     {{ show_source_code(_self) }}
 {% endblock %}
-", "admin/blog/edit.html.twig", "/var/www/symfony/symfony-demo/templates/admin/blog/edit.html.twig");
+", "admin/blog/edit.html.twig", "/var/www/symfony/templates/admin/blog/edit.html.twig");
     }
 }

@@ -168,6 +168,6 @@ class __TwigTemplate_51772e9131483a40b46c7084fdfbc579 extends Template
         </div>
     </fieldset>
 {{ form_end(form) }}
-", "blog/_comment_form.html.twig", "/var/www/symfony/symfony-demo/templates/blog/_comment_form.html.twig");
+", "blog/_comment_form.html.twig", "/var/www/symfony/templates/blog/_comment_form.html.twig");
     }
 }

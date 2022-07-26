@@ -82,6 +82,6 @@ class __TwigTemplate_fbcfeb7d4117b0440ab1a87046a53ddd extends Template
         <i class=\"fa fa-rss\" aria-hidden=\"true\"></i> {{ 'menu.rss'|trans }}
     </a>
 </div>
-", "blog/_rss.html.twig", "/var/www/symfony/symfony-demo/templates/blog/_rss.html.twig");
+", "blog/_rss.html.twig", "/var/www/symfony/templates/blog/_rss.html.twig");
     }
 }

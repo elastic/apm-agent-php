@@ -115,6 +115,6 @@ class __TwigTemplate_74b9afeeea6e8cf026decc75646bb4e0 extends Template
         </div>
     </div>
 </div>
-", "blog/_delete_post_confirmation.html.twig", "/var/www/symfony/symfony-demo/templates/blog/_delete_post_confirmation.html.twig");
+", "blog/_delete_post_confirmation.html.twig", "/var/www/symfony/templates/blog/_delete_post_confirmation.html.twig");
     }
 }

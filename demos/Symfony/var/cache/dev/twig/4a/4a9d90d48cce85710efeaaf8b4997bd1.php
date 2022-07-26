@@ -400,6 +400,6 @@ class __TwigTemplate_0c9120631ee7d3f1220e2c6a7f14ed1d extends Template
 
     {{ show_source_code(_self) }}
 {% endblock %}
-", "security/login.html.twig", "/var/www/symfony/symfony-demo/templates/security/login.html.twig");
+", "security/login.html.twig", "/var/www/symfony/templates/security/login.html.twig");
     }
 }

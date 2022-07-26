@@ -226,6 +226,6 @@ class __TwigTemplate_157c2f30dfc757da17ae074a7ee5a29a extends Template
 
     {{ show_source_code(_self) }}
 {% endblock %}
-", "blog/search.html.twig", "/var/www/symfony/symfony-demo/templates/blog/search.html.twig");
+", "blog/search.html.twig", "/var/www/symfony/templates/blog/search.html.twig");
     }
 }

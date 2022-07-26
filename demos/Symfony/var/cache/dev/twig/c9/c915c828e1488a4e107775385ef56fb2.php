@@ -715,6 +715,6 @@ class __TwigTemplate_7b4b6aa2e819153161845e0636429571 extends Template
         <!-- Page rendered on {{ 'now'|format_datetime('long', 'long', '', 'UTC') }} -->
     </body>
 </html>
-", "base.html.twig", "/var/www/symfony/symfony-demo/templates/base.html.twig");
+", "base.html.twig", "/var/www/symfony/templates/base.html.twig");
     }
 }

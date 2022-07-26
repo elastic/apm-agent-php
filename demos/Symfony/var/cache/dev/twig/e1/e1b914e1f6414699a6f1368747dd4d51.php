@@ -155,6 +155,6 @@ class __TwigTemplate_efe0f527c7f5c92dd8df8fa8e840505b extends Template
         </span>
     </div>
 {% endblock %}
-", "form/fields.html.twig", "/var/www/symfony/symfony-demo/templates/form/fields.html.twig");
+", "form/fields.html.twig", "/var/www/symfony/templates/form/fields.html.twig");
     }
 }

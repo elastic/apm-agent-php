@@ -245,6 +245,6 @@ class __TwigTemplate_45e2d3b7583d69187bfb38c3fa2406c2 extends Template
         </div>
     </div>
 {% endblock %}
-", "default/homepage.html.twig", "/var/www/symfony/symfony-demo/templates/default/homepage.html.twig");
+", "default/homepage.html.twig", "/var/www/symfony/templates/default/homepage.html.twig");
     }
 }

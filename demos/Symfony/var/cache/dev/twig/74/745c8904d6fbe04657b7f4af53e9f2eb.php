@@ -203,6 +203,6 @@ class __TwigTemplate_592808a94d84562a9d482fa49e3c5c28 extends Template
 
     {{ show_source_code(_self) }}
 {% endblock %}
-", "user/edit.html.twig", "/var/www/symfony/symfony-demo/templates/user/edit.html.twig");
+", "user/edit.html.twig", "/var/www/symfony/templates/user/edit.html.twig");
     }
 }

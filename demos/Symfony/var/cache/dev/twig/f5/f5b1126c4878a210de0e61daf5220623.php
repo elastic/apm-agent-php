@@ -146,6 +146,6 @@ class __TwigTemplate_c08907ecf2e5eb30578816f7e4b0c127 extends Template
         {% endfor %}
     </div>
 {% endif %}
-", "default/_flash_messages.html.twig", "/var/www/symfony/symfony-demo/templates/default/_flash_messages.html.twig");
+", "default/_flash_messages.html.twig", "/var/www/symfony/templates/default/_flash_messages.html.twig");
     }
 }
