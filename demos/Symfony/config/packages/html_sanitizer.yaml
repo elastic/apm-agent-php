@@ -1,0 +1,5 @@
+framework:
+    html_sanitizer:
+        sanitizers:
+            default:
+                allow_safe_elements: true
