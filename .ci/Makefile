@@ -119,15 +119,12 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 		--draft \
 		--title "$(TAG_NAME)" \
 		--notes "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)." \
-		--repo SergeyKleyman/apm-agent-php \
+		--repo elastic/apm-agent-php \
 		build/packages/*.*
-		## TODO: Sergey Kleyman: REVERT --repo SergeyKleyman/apm-agent-php back to --repo elastic/apm-agent-php
 
 .PHONY: get-draft-release
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
-	@gh api repos/SergeyKleyman/apm-agent-php/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
-##	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
-## TODO: Sergey Kleyman: REVERT gh api repos/SergeyKleyman/apm-agent-php/releases back to repos/{owner}/{repo}/releases
+	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature
