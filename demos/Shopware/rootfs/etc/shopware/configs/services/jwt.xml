@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+    <services>
+        <service class="League\OAuth2\Server\CryptKey" id="shopware.private_key">
+            <argument>file://%kernel.project_dir%/config/jwt/private.pem</argument>
+            <argument>shopware</argument>
+            <argument>false</argument>
+        </service>
+        <service class="League\OAuth2\Server\CryptKey" id="shopware.public_key">
+            <argument>file://%kernel.project_dir%/config/jwt/public.pem</argument>
+            <argument/>
+            <argument>false</argument>
+        </service>
+    </services>
+</container>
