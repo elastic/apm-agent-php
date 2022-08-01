@@ -168,6 +168,32 @@ bool doesCurrentPidMatchPidOnRequestInit()
     return true;
 }
 
+//typedef void (* AstProcessCallback )( zend_ast* ast );
+//static bool originalAstProcessCallbackSet = false;
+//static AstProcessCallback originalAstProcessCallback;
+//static bool bootstrapTracerPhpPartCalled = false;
+
+static TimePoint g_requestInitStartTime;
+
+//void elasticApmAstProcessCallback( zend_ast* ast )
+//{
+//    if ( bootstrapTracerPhpPartCalled )
+//    {
+//        return;
+//    }
+//
+//    Tracer* const tracer = getGlobalTracer();
+//    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+//    ResultCode bootstrapResultCode = bootstrapTracerPhpPart( config, &g_requestInitStartTime );
+//    bootstrapTracerPhpPartCalled = true;
+//    ELASTIC_APM_LOG_WITH_LEVEL( bootstrapResultCode == resultSuccess ? logLevel_debug : logLevel_error, "bootstrapResultCode: %s (%d)", resultCodeToString( bootstrapResultCode ), bootstrapResultCode );
+//
+//    /* call the original zend_ast_process function if one was set */
+//    if ( originalAstProcessCallbackSet ) {
+//        originalAstProcessCallback( ast );
+//    }
+//}
+
 void elasticApmModuleInit( int type, int moduleNumber )
 {
     ELASTIC_APM_UNUSED( type );
@@ -181,6 +207,10 @@ void elasticApmModuleInit( int type, int moduleNumber )
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+//    originalAstProcessCallback = zend_ast_process;
+//    originalAstProcessCallbackSet = true;
+//    zend_ast_process = elasticApmAstProcessCallback;
 
     if ( ! tracer->isInited )
     {
@@ -693,8 +723,6 @@ static uint32_t g_nextFreeFunctionToInterceptId = 0;
 static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 static bool g_interceptedCallInProgress = false;
 
-static TimePoint g_requestInitStartTime;
-
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
@@ -728,7 +756,7 @@ ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String functionName )
     zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
     if ( funcEntry == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+        ELASTIC_APM_LOG_DEBUG( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
                                " functionName: `%s'", functionName );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
@@ -750,19 +778,18 @@ ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String functionName )
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
     return resultCode;
 
     failure:
     goto finally;
 }
 
-
 void registerCallbacksToInvokeBootstrapTracerPhpPart()
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
-    String funcNames[] = { "require", "include", "include", "require_once", "include_once" };
+    String funcNames[] = { "require", "include", "require_once", "include_once" };
 
     for ( int i = 0 ; i < ELASTIC_APM_STATIC_ARRAY_SIZE( funcNames ) ; ++i )
     {
