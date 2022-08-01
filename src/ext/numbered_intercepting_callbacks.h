@@ -33,7 +33,7 @@ numberedInterceptingCallback( uint32_t index, zend_execute_data* execute_data, z
 #define ELASTIC_APM_NUMBERED_INTERCEPTING_CALLBACK_NAME( n ) ELASTIC_APM_PP_CONCAT( elasticApmNumberedInterceptingCallback_, n )
 
 #define ELASTIC_APM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK( n ) \
-    ZEND_NAMED_FUNCTION( ELASTIC_APM_NUMBERED_INTERCEPTING_CALLBACK_NAME( n ) ) \
+    static ZEND_NAMED_FUNCTION( ELASTIC_APM_NUMBERED_INTERCEPTING_CALLBACK_NAME( n ) ) \
     { \
         numberedInterceptingCallback( n, INTERNAL_FUNCTION_PARAM_PASSTHRU ); \
     } \

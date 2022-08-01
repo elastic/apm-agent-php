@@ -21,6 +21,7 @@
 
 #include <stdbool.h>
 #include <zend_types.h>
+#include <zend_API.h>
 #include "basic_types.h"
 #include "StringView.h"
 #include "ResultCode.h"
@@ -42,3 +43,10 @@ ResultCode elasticApmSendToServer(
         , double serverTimeoutMilliseconds
         , StringView userAgentHttpHeader
         , StringView serializedEvents );
+
+struct CallToInterceptData
+{
+    zif_handler originalHandler;
+    zend_function* funcEntry;
+};
+typedef struct CallToInterceptData CallToInterceptData;

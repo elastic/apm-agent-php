@@ -40,6 +40,7 @@
 #include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "numbered_intercepting_callbacks.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -687,6 +688,105 @@ void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
     }
 }
 
+enum { maxFunctionsToIntercept = 100 };
+static uint32_t g_nextFreeFunctionToInterceptId = 0;
+static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
+static bool g_interceptedCallInProgress = false;
+
+static TimePoint g_requestInitStartTime;
+
+static
+void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
+{
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+
+    if ( g_interceptedCallInProgress )
+    {
+        ELASTIC_APM_LOG_TRACE( "There's already an intercepted call in progress");
+    }
+    else
+    {
+        g_interceptedCallInProgress = true;
+        Tracer* const tracer = getGlobalTracer();
+        const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+        ResultCode bootstrapResultCode = bootstrapTracerPhpPart( config, &g_requestInitStartTime );
+        ELASTIC_APM_LOG_WITH_LEVEL( bootstrapResultCode == resultSuccess ? logLevel_debug : logLevel_error, "bootstrapResultCode: %s (%d)", resultCodeToString( bootstrapResultCode ), bootstrapResultCode );
+        g_interceptedCallInProgress = false;
+    }
+
+    g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+}
+
+ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String functionName )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
+
+    ResultCode resultCode;
+
+    zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
+    if ( funcEntry == NULL )
+    {
+        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+                               " functionName: `%s'", functionName );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
+    {
+        ELASTIC_APM_LOG_ERROR( "Reached maxFunctionsToIntercept."
+                               " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
+                               , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    uint32_t interceptRegistrationId = g_nextFreeFunctionToInterceptId ++;
+    g_functionsToInterceptData[ interceptRegistrationId ].funcEntry = funcEntry;
+    g_functionsToInterceptData[ interceptRegistrationId ].originalHandler = funcEntry->internal_function.handler;
+    funcEntry->internal_function.handler = g_numberedInterceptingCallback[ interceptRegistrationId ];
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+
+void registerCallbacksToInvokeBootstrapTracerPhpPart()
+{
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+
+    String funcNames[] = { "require", "include", "include", "require_once", "include_once" };
+
+    for ( int i = 0 ; i < ELASTIC_APM_STATIC_ARRAY_SIZE( funcNames ) ; ++i )
+    {
+        addCallbacksToInvokeBootstrapTracerPhpPart( funcNames[ i ] );
+    }
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
+}
+
+void unregisterCallbacksToInvokeBootstrapTracerPhpPart()
+{
+    // We restore original handlers in the reverse order
+    // so that if the same function is registered for interception more than once
+    // the original handler will be restored correctly
+    ELASTIC_APM_FOR_EACH_BACKWARDS( i, g_nextFreeFunctionToInterceptId )
+    {
+        CallToInterceptData* data = &( g_functionsToInterceptData[ i ] );
+
+        data->funcEntry->internal_function.handler = data->originalHandler;
+    }
+
+    g_nextFreeFunctionToInterceptId = 0;
+}
+
 void elasticApmRequestInit()
 {
 #if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
@@ -700,8 +800,8 @@ void elasticApmRequestInit()
 
     g_pidOnRequestInit = getCurrentProcessId();
 
-    TimePoint requestInitStartTime;
-    getCurrentTime( &requestInitStartTime );
+    // TimePoint requestInitStartTime;
+    getCurrentTime( &g_requestInitStartTime );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s%s%s"
                                             , PHP_ELASTIC_APM_VERSION
@@ -738,7 +838,8 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
+    // ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
+    registerCallbacksToInvokeBootstrapTracerPhpPart();
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
@@ -821,6 +922,8 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &g_requestInitStartTime ) );
+
     setLastThrownIfAnyToTracerPhpPart();
 
     if ( isOriginalZendThrowExceptionHookSet )
@@ -851,6 +954,7 @@ void elasticApmRequestShutdown()
     // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
+    unregisterCallbacksToInvokeBootstrapTracerPhpPart();
 
     resultCode = resultSuccess;
 

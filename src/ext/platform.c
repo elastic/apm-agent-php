@@ -336,7 +336,7 @@ static String osSignalIdToName( int signalId )
 
 #define ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ... ) \
     do { \
-        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[PID: %d] [" levelName "] " fmt, getCurrentProcessId(), ##__VA_ARGS__ ); \
+        syslog( syslogLevel, "[" levelName "] " fmt, ##__VA_ARGS__ ); \
     } while ( 0 )
 
 #define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
@@ -344,8 +344,8 @@ static String osSignalIdToName( int signalId )
 
 #define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) \
     do { \
-        ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ ); \
-        fprintf( stderr, fmt, ##__VA_ARGS__ ); \
+        ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART " [PID: %d] [TID: %d] " fmt, (int)getCurrentProcessId(), (int)getCurrentThreadId(), ##__VA_ARGS__ ); \
+        fprintf( stderr, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART " [PID: %d] [TID: %d] " fmt, (int)getCurrentProcessId(), (int)getCurrentThreadId(), ##__VA_ARGS__ ); \
     } while ( false ) \
     /**/
 

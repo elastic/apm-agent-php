@@ -33,14 +33,26 @@
 #define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
 #define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
 
+static bool g_needToBootstrapTracerPhpPart = true;
+
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_needToBootstrapTracerPhpPart: %s, config->bootstrapPhpPartFile: %s"
+                                              , boolToString( g_needToBootstrapTracerPhpPart )
                                               , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
 
     ResultCode resultCode;
+
+    if ( ! g_needToBootstrapTracerPhpPart )
+    {
+        resultCode = resultSuccess;
+        ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "g_needToBootstrapTracerPhpPart: %s", boolToString( g_needToBootstrapTracerPhpPart ) );
+        return resultCode;
+    }
+    g_needToBootstrapTracerPhpPart = false;
+
     bool bootstrapTracerPhpPartRetVal;
     zval maxEnabledLevel;
     ZVAL_UNDEF( &maxEnabledLevel );
@@ -87,9 +99,17 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_needToBootstrapTracerPhpPart: %s", boolToString( g_needToBootstrapTracerPhpPart ) );
 
     ResultCode resultCode;
+
+    if ( g_needToBootstrapTracerPhpPart )
+    {
+        resultCode = resultSuccess;
+        ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "g_needToBootstrapTracerPhpPart: %s", boolToString( g_needToBootstrapTracerPhpPart ) );
+        return;
+    }
+    g_needToBootstrapTracerPhpPart = true;
 
     if ( config->bootstrapPhpPartFile == NULL )
     {

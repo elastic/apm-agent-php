@@ -74,12 +74,12 @@ UInt elasticApmGetNumberOfDynamicConfigOptions()
 
 enum { maxFunctionsToIntercept = numberedInterceptingCallbacksCount };
 static uint32_t g_nextFreeFunctionToInterceptId = 0;
-struct CallToInterceptData
-{
-    zif_handler originalHandler;
-    zend_function* funcEntry;
-};
-typedef struct CallToInterceptData CallToInterceptData;
+//struct CallToInterceptData
+//{
+//    zif_handler originalHandler;
+//    zend_function* funcEntry;
+//};
+//typedef struct CallToInterceptData CallToInterceptData;
 static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 
 static uint32_t g_interceptedCallInProgressRegistrationId = 0;
