@@ -125,6 +125,8 @@ PHP_INI_BEGIN()
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
     #endif
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_URL )
@@ -223,13 +225,23 @@ PHP_MSHUTDOWN_FUNCTION(elastic_apm)
     return SUCCESS;
 }
 
-/* {{{ bool elastic_apm_is_enabled()
+/* {{{ elastic_apm_is_enabled(): bool
  */
 PHP_FUNCTION( elastic_apm_is_enabled )
 {
     ZEND_PARSE_PARAMETERS_NONE();
 
     RETURN_BOOL( elasticApmIsEnabled() );
+}
+/* }}} */
+
+/* {{{ elastic_apm_force_bootstrap_php_part(): void
+ */
+PHP_FUNCTION( elastic_apm_force_bootstrap_php_part )
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    elasticApmForceBootstrapPhpPart();
 }
 /* }}} */
 
@@ -442,6 +454,7 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
     PHP_FE( elastic_apm_force_init_server_global_var, elastic_apm_force_init_server_global_var_arginfo )
+    PHP_FE( elastic_apm_force_bootstrap_php_part, elastic_apm_no_paramters_arginfo )
     PHP_FE_END
 };
 /* }}} */
@@ -457,7 +470,7 @@ zend_module_entry elastic_apm_module_entry = {
 	PHP_RINIT(elastic_apm),			/* PHP_RINIT - Request initialization */
 	PHP_RSHUTDOWN(elastic_apm),		/* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(elastic_apm),			/* PHP_MINFO - Module info */
-	PHP_ELASTIC_APM_VERSION,		/* Version */
+    PHP_ELASTIC_APM_FULL_VERSION,	/* Version */
 	PHP_MODULE_GLOBALS(elastic_apm), /* PHP_MODULE_GLOBALS */
 	NULL, 					        /* PHP_GINIT */
 	NULL,		                    /* PHP_GSHUTDOWN */

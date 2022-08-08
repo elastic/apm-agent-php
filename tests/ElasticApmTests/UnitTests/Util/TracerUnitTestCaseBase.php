@@ -27,8 +27,8 @@ use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use ElasticApmTests\ComponentTests\Util\AmbientContext;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 use RuntimeException;
 
 class TracerUnitTestCaseBase extends TestCaseBase
@@ -39,37 +39,27 @@ class TracerUnitTestCaseBase extends TestCaseBase
     /** @var TracerInterface */
     protected $tracer;
 
-    /**
-     * @param ?string      $name
-     * @param array<mixed> $data
-     * @param int|string   $dataName
-     */
-    public function __construct(?string $name = null, array $data = [], $dataName = '')
-    {
-        if (ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
-                . ' because it will cause a clash.'
-            );
-        }
-
-        parent::__construct($name, $data, $dataName);
-    }
-
     public function setUp(): void
     {
         $this->setUpTestEnv();
     }
 
+    /**
+     * @param null|Closure(TracerBuilderForTests): void $tracerBuildCallback
+     * @param bool                                      $shouldCreateMockEventSink
+     *
+     * @return void
+     */
     protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
         if ($shouldCreateMockEventSink) {
             $this->mockEventSink = new MockEventSink();
         }
 
+        /** @var TracerBuilderForTests */
         $builder = self::buildTracerForTests($shouldCreateMockEventSink ? $this->mockEventSink : null);
 
-        if (!is_null($tracerBuildCallback)) {
+        if ($tracerBuildCallback !== null) {
             $tracerBuildCallback($builder);
         }
 

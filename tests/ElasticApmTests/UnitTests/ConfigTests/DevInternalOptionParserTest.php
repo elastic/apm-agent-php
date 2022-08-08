@@ -54,15 +54,7 @@ class DevInternalOptionParserTest extends TestCaseBase
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
             $propName = $reflectionProperty->name;
             $subOptName = TextUtil::camelToSnakeCase($propName);
-            self::assertTrue(
-                in_array($subOptName, self::devInternalSubOptionNames(), /* strict */ true),
-                LoggableToString::convert(
-                    [
-                        'subOptName' => $subOptName,
-                        'propName' => $propName,
-                    ]
-                )
-            );
+            self::assertContains($subOptName, self::devInternalSubOptionNames());
             $snapshotProperties[] = $subOptName;
         }
 

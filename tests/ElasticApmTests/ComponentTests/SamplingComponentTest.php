@@ -25,26 +25,23 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
+use ElasticApmTests\Util\TransactionDataExpectations;
 
 final class SamplingComponentTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array{?AgentConfigSetter, ?float}>
+     * @return iterable<array{?float}>
      */
     public function rateConfigTestDataProvider(): iterable
     {
         foreach (SamplingTestSharedCode::rates() as $rate) {
-            if (is_null($rate)) {
-                yield [null, $rate];
-                continue;
-            }
-
-            yield [$this->randomConfigSetter(), $rate];
+            yield [$rate];
         }
     }
 
@@ -61,30 +58,47 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     /**
      * @dataProvider rateConfigTestDataProvider
      *
-     * @param AgentConfigSetter|null $configSetter
-     * @param float|null             $transactionSampleRate
+     * @param ?float $transactionSampleRate
      */
-    public function testTwoNestedSpans(?AgentConfigSetter $configSetter, ?float $transactionSampleRate): void
+    public function testTwoNestedSpans(?float $transactionSampleRate): void
     {
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForTwoNestedSpansTest'])
-            ->withAppCodeArgs(['transactionSampleRate' => $transactionSampleRate]);
-        if (is_null($transactionSampleRate)) {
-            self::assertNull($configSetter);
-        } else {
-            self::assertNotNull($configSetter);
-            $testProperties->withAgentConfig(
-                $configSetter->set(OptionNames::TRANSACTION_SAMPLE_RATE, strval($transactionSampleRate))
-            );
-        }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent) use ($transactionSampleRate): void {
-                SamplingTestSharedCode::assertResultsForTwoNestedSpansTest(
-                    $transactionSampleRate,
-                    $dataFromAgent->eventsFromAgent()
-                );
+        // Arrange
+
+        TransactionDataExpectations::$defaultIsSampled = null;
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($transactionSampleRate): void {
+                if ($transactionSampleRate !== null) {
+                    $appCodeParams->setAgentOption(
+                        OptionNames::TRANSACTION_SAMPLE_RATE,
+                        strval($transactionSampleRate)
+                    );
+                }
             }
         );
+
+        // Act
+
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTwoNestedSpansTest']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($transactionSampleRate): void {
+                $appCodeRequestParams->setAppCodeArgs(['transactionSampleRate' => $transactionSampleRate]);
+            }
+        );
+        $effectiveTransactionSampleRate = $transactionSampleRate ?? 1.0;
+        $minSpansCount = 0;
+        $maxSpansCount = 2;
+        if ($effectiveTransactionSampleRate === 1.0) {
+            $minSpansCount = $maxSpansCount;
+        } elseif ($effectiveTransactionSampleRate === 0.0) {
+            $maxSpansCount = $minSpansCount;
+        }
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans($minSpansCount, $maxSpansCount)
+        );
+
+        // Assert
+
+        SamplingTestSharedCode::assertResultsForTwoNestedSpansTest($transactionSampleRate, $dataFromAgent);
     }
 }

@@ -47,7 +47,7 @@ final class TextUtil
 
     public static function isNullOrEmptyString(?string $str): bool
     {
-        return is_null($str) || self::isEmptyString($str);
+        return $str === null || self::isEmptyString($str);
     }
 
     public static function isUpperCaseLetter(int $charAsInt): bool
@@ -135,7 +135,7 @@ final class TextUtil
                 }
             }
 
-            if (is_null($nonUnderscorePos)) {
+            if ($nonUnderscorePos === null) {
                 $inputRemainderPos = strlen($input);
                 break;
             }
@@ -169,6 +169,8 @@ final class TextUtil
      * @param string $input
      *
      * @return string
+     *
+     * @noinspection PhpUnused
      */
     public static function camelToPascalCase(string $input): string
     {
@@ -185,6 +187,7 @@ final class TextUtil
             return true;
         }
 
+        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
         return substr_compare(
             $text /* <- haystack */,
             $prefix /* <- needle */,
@@ -194,6 +197,11 @@ final class TextUtil
         ) === 0;
     }
 
+    public static function isPrefixOfIgnoreCase(string $prefix, string $text): bool
+    {
+        return self::isPrefixOf($prefix, $text, /* isCaseSensitive: */ false);
+    }
+
     public static function isSuffixOf(string $suffix, string $text, bool $isCaseSensitive = true): bool
     {
         $suffixLen = strlen($suffix);
@@ -201,6 +209,7 @@ final class TextUtil
             return true;
         }
 
+        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
         return substr_compare(
             $text /* <- haystack */,
             $suffix /* <- needle */,

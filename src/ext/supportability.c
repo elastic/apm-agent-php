@@ -372,7 +372,7 @@ void printMiscInfo( StructuredTextPrinter* structTxtPrinter )
     enum { numberOfColumns = 2 };
     structTxtPrinter->printTableBegin( structTxtPrinter, numberOfColumns );
     {
-        String columns[numberOfColumns] = { "Version", PHP_ELASTIC_APM_VERSION };
+        String columns[numberOfColumns] = { "Version", PHP_ELASTIC_APM_FULL_VERSION };
         structTxtPrinter->printTableRow( structTxtPrinter, ELASTIC_APM_STATIC_ARRAY_SIZE( columns ), columns );
     }
     if ( ELASTIC_APM_STRING_LITERAL_TO_VIEW( PHP_ELASTIC_APM_CUSTOM_BUILD ).length == 0 )

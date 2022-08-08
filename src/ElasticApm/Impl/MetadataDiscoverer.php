@@ -77,7 +77,7 @@ final class MetadataDiscoverer
         }
 
         $charsAdaptedName = preg_replace('/[^a-zA-Z0-9 _\-]/', '_', $configuredName);
-        return is_null($charsAdaptedName)
+        return $charsAdaptedName === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : Tracer::limitKeywordString($charsAdaptedName);
     }
@@ -117,18 +117,29 @@ final class MetadataDiscoverer
     {
         $result = new SystemData();
 
-        if ($config->hostname() !== null) {
-            $result->configuredHostname = Tracer::limitKeywordString($config->hostname());
+        $configuredHostname = $config->hostname();
+        if ($configuredHostname !== null) {
+            $result->configuredHostname = Tracer::limitKeywordString($configuredHostname);
             $result->hostname = $result->configuredHostname;
         } else {
-            $detectedHostname = gethostname();
-            if ($detectedHostname !== false) {
-                $result->detectedHostname = Tracer::limitKeywordString($detectedHostname);
-                $result->hostname = $result->detectedHostname;
+            $detectedHostname = self::detectHostname();
+            if ($detectedHostname !== null) {
+                $result->detectedHostname = $detectedHostname;
+                $result->hostname = $detectedHostname;
             }
         }
 
         return $result;
+    }
+
+    public static function detectHostname(): ?string
+    {
+        $detected = gethostname();
+        if ($detected === false) {
+            return null;
+        }
+
+        return Tracer::limitKeywordString($detected);
     }
 
     public function buildNameVersionData(?string $name, ?string $version): NameVersionData

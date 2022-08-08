@@ -23,31 +23,31 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
-use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\TransactionData;
-use Elastic\Apm\Impl\Util\IdGenerator;
 
 final class MockTransactionData extends TransactionData
 {
     use MockExecutionSegmentDataTrait;
 
-    /**
-     * @param MockSpanData[]        $childSpans
-     * @param MockTransactionData[] $childTransactions
-     */
-    public function __construct(array $childSpans = [], array $childTransactions = [])
+    /** @var MockTracer */
+    public $tracer;
+
+    public function __construct(?string $name, MockTracer $tracer, ?ExecutionSegmentData $parent)
     {
-        $this->constructMockExecutionSegmentDataTrait($childSpans, $childTransactions);
-        $this->setTraceId(IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES));
-        foreach ($this->childSpans as $child) {
-            $child->syncWithTransaction($this);
-            $this->startedSpansCount += $child->getTreeSpansCount();
+        $this->tracer = $tracer;
+        $this->constructMockExecutionSegmentDataTrait($name);
+        if ($parent === null) {
+            $this->traceId = $this->tracer->generateTraceId();
+        } else {
+            $this->traceId = $parent->traceId;
+            $this->parentId = $parent->id;
         }
-        $this->isSampled = true;
+        $this->sampleRate = 1.0;
     }
 
-    public function setTimestamp(float $timestamp): void
+    protected function getTransaction(): MockTransactionData
     {
-        $this->timestamp = $timestamp;
+        return $this;
     }
 }

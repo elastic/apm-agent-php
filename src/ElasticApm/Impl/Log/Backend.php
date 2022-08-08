@@ -65,7 +65,7 @@ final class Backend
 
         for (
             $currentLoggerData = $loggerData;
-            !is_null($currentLoggerData);
+            $currentLoggerData !== null;
             $currentLoggerData = $currentLoggerData->inheritedData
         ) {
             $result[] = $currentLoggerData->context;

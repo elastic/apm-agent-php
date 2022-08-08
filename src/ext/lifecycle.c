@@ -70,12 +70,7 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 
 void logSupportabilityInfo( LogLevel logLevel )
 {
-    ELASTIC_APM_LOG_WITH_LEVEL(
-            logLevel
-            , "Version of agent C part: %s%s%s"
-            , PHP_ELASTIC_APM_VERSION
-            , ( ELASTIC_APM_STRING_LITERAL_TO_VIEW( PHP_ELASTIC_APM_CUSTOM_BUILD ).length == 0 ? "" : "-" )
-            , PHP_ELASTIC_APM_CUSTOM_BUILD );
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: %s", PHP_ELASTIC_APM_FULL_VERSION );
 
     ResultCode resultCode;
     enum
@@ -723,8 +718,9 @@ static uint32_t g_nextFreeFunctionToInterceptId = 0;
 static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 static bool g_interceptedCallInProgress = false;
 
-static
-void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
+void unregisterCallbacksToInvokeBootstrapTracerPhpPart();
+
+void internalFunctionCallInterceptingImpl_bootstrapTracerPhpPart( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
@@ -735,6 +731,7 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
     else
     {
         g_interceptedCallInProgress = true;
+        unregisterCallbacksToInvokeBootstrapTracerPhpPart();
         Tracer* const tracer = getGlobalTracer();
         const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
         ResultCode bootstrapResultCode = bootstrapTracerPhpPart( config, &g_requestInitStartTime );
@@ -747,19 +744,18 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 }
 
-ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String functionName )
+static
+void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "functionName: `%s'", functionName );
+    internalFunctionCallInterceptingImpl_bootstrapTracerPhpPart( interceptRegistrationId, execute_data, return_value );
+}
+
+ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String className, String functionName )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: %s, functionName: %s", (className == NULL ? "N/A" : className), functionName );
 
     ResultCode resultCode;
-
-    zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
-    if ( funcEntry == NULL )
-    {
-        ELASTIC_APM_LOG_DEBUG( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
-                               " functionName: `%s'", functionName );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
+    zend_function* funcEntry = NULL;
 
     if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
     {
@@ -767,6 +763,34 @@ ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String functionName )
                                " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
                                , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( className == NULL )
+    {
+        funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
+        if ( funcEntry == NULL )
+        {
+            ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+                                   " functionName: `%s'", functionName );
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
+    }
+    else
+    {
+        zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
+        if ( classEntry == NULL )
+        {
+            ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
+
+        funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, functionName, strlen( functionName ) );
+        if ( funcEntry == NULL )
+        {
+            ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
+                                   " className: `%s'; functionName: `%s'", className, functionName );
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
     }
 
     uint32_t interceptRegistrationId = g_nextFreeFunctionToInterceptId ++;
@@ -789,12 +813,9 @@ void registerCallbacksToInvokeBootstrapTracerPhpPart()
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
-    String funcNames[] = { "require", "include", "require_once", "include_once" };
-
-    for ( int i = 0 ; i < ELASTIC_APM_STATIC_ARRAY_SIZE( funcNames ) ; ++i )
-    {
-        addCallbacksToInvokeBootstrapTracerPhpPart( funcNames[ i ] );
-    }
+    addCallbacksToInvokeBootstrapTracerPhpPart( /* className: */ NULL, "curl_init" );
+    /* className must be in lower case */
+    addCallbacksToInvokeBootstrapTracerPhpPart( /* className: */ "pdo", "__construct" );
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
@@ -821,19 +842,17 @@ void elasticApmRequestInit()
 #endif
 
     resetIfEnabledForCurrentRequest();
-    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-        return;
-    }
+    // TODO: Sergey Kleyman: Uncomment checkIfEnabledForCurrentRequest in elasticApmRequestInit
+//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+//        return;
+//    }
 
     g_pidOnRequestInit = getCurrentProcessId();
 
     // TimePoint requestInitStartTime;
     getCurrentTime( &g_requestInitStartTime );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s%s%s"
-                                            , PHP_ELASTIC_APM_VERSION
-                                            , ( ELASTIC_APM_STRING_LITERAL_TO_VIEW( PHP_ELASTIC_APM_CUSTOM_BUILD ).length == 0 ? "" : "-" )
-                                            , PHP_ELASTIC_APM_CUSTOM_BUILD );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s", PHP_ELASTIC_APM_FULL_VERSION );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -920,9 +939,10 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
 
 void elasticApmRequestShutdown()
 {
-    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-        return;
-    }
+    // TODO: Sergey Kleyman: Uncomment checkIfEnabledForCurrentRequest in elasticApmRequestShutdown
+//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+//        return;
+//    }
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -995,6 +1015,26 @@ void elasticApmRequestShutdown()
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
+void elasticApmForceBootstrapPhpPart()
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "timePointToEpochMicroseconds( &g_requestInitStartTime ): %"PRIu64, timePointToEpochMicroseconds( &g_requestInitStartTime ) );
+
+    ResultCode resultCode;
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &g_requestInitStartTime ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return;
 
     failure:

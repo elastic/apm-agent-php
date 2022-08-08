@@ -91,6 +91,20 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $this->data->parentId = $distributedTracingData->parentId;
         }
 
+        if ($distributedTracingData === null) {
+            $effectiveTransactionSampleRate = $this->tracer->getConfig()->effectiveTransactionSampleRate();
+            $isSampled = self::makeSamplingDecision($effectiveTransactionSampleRate);
+            /**
+             * @link https://github.com/elastic/apm/blob/main/specs/agents/tracing-sampling.md#non-sampled-transactions
+             * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0
+             */
+            $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
+        } else {
+            $isSampled = $distributedTracingData->isSampled;
+            // TODO: Sergey Kleyman: Implement: $sampleRateToMarkTransaction in Transaction::__construct
+            $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate ?? 1.0;
+        }
+
         parent::__construct(
             $this->data,
             $builder->tracer,
@@ -98,6 +112,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $traceId,
             $builder->name,
             $builder->type,
+            $sampleRateToMarkTransaction,
             $builder->timestamp
         );
 
@@ -105,9 +120,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
                                      ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                                      ->addContext('this', $this);
 
-        $this->data->isSampled = is_null($distributedTracingData)
-            ? $this->makeSamplingDecision()
-            : $distributedTracingData->isSampled;
+        $this->data->isSampled = $isSampled;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
@@ -143,16 +156,16 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->data->parentId;
     }
 
-    private function makeSamplingDecision(): bool
+    private static function makeSamplingDecision(float $sampleRate): bool
     {
-        if ($this->tracer->getConfig()->transactionSampleRate() === 0.0) {
+        if ($sampleRate === 0.0) {
             return false;
         }
-        if ($this->tracer->getConfig()->transactionSampleRate() === 1.0) {
+        if ($sampleRate === 1.0) {
             return true;
         }
 
-        return RandomUtil::generate01Float() < $this->tracer->getConfig()->transactionSampleRate();
+        return RandomUtil::generate01Float() < $sampleRate;
     }
 
     public function tracer(): Tracer
@@ -185,7 +198,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return NoopTransactionContext::singletonInstance();
         }
 
-        if (is_null($this->context)) {
+        if ($this->context === null) {
             $this->data->context = new TransactionContextData();
             $this->context = new TransactionContext($this, $this->data->context);
         }
@@ -195,7 +208,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     public function cloneContextData(): ?TransactionContextData
     {
-        if (is_null($this->data->context)) {
+        if ($this->data->context === null) {
             return null;
         }
         return clone $this->data->context;
@@ -275,7 +288,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $subtype,
             $action,
             $timestamp,
-            $isDropped
+            $isDropped,
+            $this->data->sampleRate // @phpstan-ignore-line
         );
     }
 
@@ -379,7 +393,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
-        if (is_null($this->currentSpan)) {
+        if ($this->currentSpan === null) {
             return $this->tracer->doCreateError($errorExceptionData, /* transaction: */ $this, /* span */ null);
         }
 
@@ -389,7 +403,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function getDistributedTracingData(): ?DistributedTracingData
     {
-        if (is_null($this->currentSpan)) {
+        if ($this->currentSpan === null) {
             return $this->doGetDistributedTracingData(/* span */ null);
         }
 
@@ -405,7 +419,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $result = new DistributedTracingData();
         $result->traceId = $this->data->traceId;
-        $result->parentId = is_null($span) ? $this->data->id : $span->getId();
+        $result->parentId = $span === null ? $this->data->id : $span->getId();
         $result->isSampled = $this->data->isSampled;
         return $result;
     }
@@ -519,7 +533,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
          * $this->breakdownMetricsPerTransaction is not null
          *
          * @var BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
-         * @noinspection PhpUnnecessaryLocalVariableInspection
          */
         $breakdownMetricsPerTransaction = $this->breakdownMetricsPerTransaction;
         $breakdownMetricsPerTransaction->addSpanSelfTime(
@@ -539,21 +552,19 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
-    /**
-     * @return string[]
-     */
+    /** @inheritDoc */
     protected static function propertiesExcludedFromLog(): array
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['config', 'logger', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
+            ['config', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
         );
     }
 
     /** @inheritDoc */
     public function toLog(LogStreamInterface $stream): void
     {
-        $currentSpanId = is_null($this->currentSpan) ? null : $this->currentSpan->getId();
+        $currentSpanId = $this->currentSpan === null ? null : $this->currentSpan->getId();
         parent::toLogLoggableTraitImpl(
             $stream,
             /* customPropValues */

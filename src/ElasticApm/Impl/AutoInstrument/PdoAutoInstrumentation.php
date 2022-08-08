@@ -355,6 +355,8 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
 
                 $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $spanSubtype, $statement);
 
+                $span->context()->destination()->setService('PDO', 'PDO', Constants::SPAN_TYPE_DB);
+
                 return self::createPostHookFromEndSpan($span);
             }
         );

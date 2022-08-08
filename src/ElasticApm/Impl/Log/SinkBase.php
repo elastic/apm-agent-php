@@ -55,7 +55,7 @@ abstract class SinkBase implements SinkInterface
             }
         }
 
-        if (is_null($includeStacktrace) ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
+        if ($includeStacktrace === null ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
             $combinedContext[LoggablePhpStacktrace::STACK_TRACE_KEY]
                 = LoggablePhpStacktrace::buildForCurrent($numberOfStackFramesToSkip + 1);
         }

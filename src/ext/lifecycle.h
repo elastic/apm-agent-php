@@ -29,3 +29,5 @@ void elasticApmModuleShutdown( int type, int moduleNumber );
 void elasticApmRequestInit();
 
 void elasticApmRequestShutdown();
+
+void elasticApmForceBootstrapPhpPart();

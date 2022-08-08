@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepare Release') {
+        stage('Prepare Release (apm-ci)') {
           options {
             skipDefaultCheckout()
           }
@@ -187,13 +187,13 @@ pipeline {
             }
           }
           steps {
-            generateSteps()
+            generateSteps("generate_stages_list.sh")
           }
         }
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
-    stage('Release') {
+    stage('Prepare Release (internal-ci)') {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
@@ -217,15 +217,6 @@ pipeline {
         RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
       }
       stages {
-        stage('Notify') {
-          options { skipDefaultCheckout() }
-          steps {
-            setEnvVar('PRE_RELEASE_STAGE', 'false')
-            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release ready to be pushed",
-                         body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
-            setEnvVar('RELEASE', askAndWait("You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
-          }
-        }
         stage('Signing CI') {
           when {
             beforeAgent true
@@ -257,36 +248,25 @@ pipeline {
         }
         stage('Test-Signed-Package') {
           options { skipDefaultCheckout() }
-          failFast false
-          matrix {
-            agent { label 'ubuntu-18.04 && immutable' }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0', '8.1'
-              }
-            }
-            stages {
-              stage('Release Test') {
-                steps {
-                  initWorkspace(context: "Signed-Test-${PHP_VERSION}") {
-                      unstash "${env.SIGNED_ARTIFACTS}"
-                      sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging install", label: 'package install'
-                  }
-                }
-                post {
-                  unsuccessful {
-                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
-                  }
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
+          steps {
+            generateSteps("generate_stages_list_smoke.sh")
+          }
+          post {
+            unsuccessful {
+              notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* got some test failures in the installers.", body: "Please review the signed binaries are healthy (<${env.RUN_DISPLAY_URL}|Open>)")
             }
           }
         }
-        stage('Release CI') {
+        stage('Approve to Publish') {
+          options { skipDefaultCheckout() }
+          steps {
+            setEnvVar('PRE_RELEASE_STAGE', 'false')
+            notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
+                         body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
+            setEnvVar('RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
+          }
+        }
+        stage('Draft Release') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -297,44 +277,54 @@ pipeline {
             unstash 'source'
             dir("${BASE_DIR}") {
               unstash "${env.SIGNED_ARTIFACTS}"
-              withCredentials([string(credentialsId: '2a9602aa-ab9f-4e52-baf3-b71ca88469c7', variable: 'GITHUB_TOKEN')]) {
-                sh script: 'make -f .ci/Makefile release', label: 'release'
+              withGhEnv(version: '2.4.0') {
+                sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
+                setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
               }
             }
           }
           post {
             success {
-              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Draft Release *${env.TAG_NAME}* has been created", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }
           }
         }
-        stage('Test-Released-Package') {
+        stage('Test-Published-Package') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
           options { skipDefaultCheckout() }
-          failFast false
-          matrix {
-            agent { label 'ubuntu-18.04 && immutable' }
-            axes {
-              axis {
-                name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0', '8.1'
+          steps {
+            dir("${BASE_DIR}") {
+              withGhEnv(version: '2.4.0') {
+                sh(script: "RELEASE_ID=${RELEASE_ID} TARGET=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
               }
             }
-            stages {
-              stage('Release Test') {
-                steps {
-                  initWorkspace(context: "Release-Test-${PHP_VERSION}") {
-                      sh script: "PHP_VERSION=${PHP_VERSION} RELEASE_VERSION=${env.TAG_NAME.replaceAll('^v', '')} make -C packaging install-release-github", label: 'package install-release-github'
-                  }
-                }
-                post {
-                  unsuccessful {
-                    notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Release *${env.TAG_NAME}* published with some test failures in the installers.", body: "Please review the signed and released binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
-                  }
-                  always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
-                  }
-                }
-              }
+          }
+          post {
+            always {
+              archiveArtifacts(allowEmptyArchive: true, artifacts: "${BASE_DIR}/build/packages/target.sha512, ${BASE_DIR}/github/github.sha512")
+            }
+            unsuccessful {
+              notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Draft Release *${env.TAG_NAME}*: artifacts mismatch.", body: "Please review the signed and drafted binaries are healthy\nBuild: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
+            }
+          }
+        }
+        stage('Publish Release') {
+          when {
+            beforeAgent true
+            expression { return env.RELEASE == 'true' }
+          }
+          options { skipDefaultCheckout() }
+          steps {
+            withGhEnv(version: '2.4.0') {
+              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+            }
+          }
+          post {
+            success {
+              notifyStatus(slackStatus: 'good', subject: "[${env.REPO}] Release *${env.TAG_NAME}* has been published", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)\nRelease URL: ${env.RELEASE_URL_MESSAGE}")
             }
           }
         }
@@ -343,7 +333,7 @@ pipeline {
         failure {
           notifyStatus(slackStatus: 'danger', subject: "[${env.REPO}] Release *${env.TAG_NAME}* failed", body: "Build: (<${env.RUN_DISPLAY_URL}|here>)")
         }
-        always {
+        success {
           script {
             currentBuild.description = "${currentBuild.description?.trim() ? currentBuild.description : ''} released"
           }
@@ -437,16 +427,6 @@ def prepareWorkspace(def args = [:], Closure body){
   }
 }
 
-// TODO: create an input step to avoid this try/catch and return true/false
-def askAndWait(message) {
-  try {
-    input(message: message, ok: 'Yes')
-    return true
-  } catch(err) {
-    return false
-  }
-}
-
 def notifyStatus(def args = [:]) {
   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
                       slackColor: args.slackStatus,
@@ -487,7 +467,7 @@ def prepareRelease() {
                                      base: 'main')
     notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}] Prepare ${params.VERSION} release steps to be validated.",
                  body: """Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours ONLY If no changes are required. Otherwise stop it and review the (<${pr}|PR>).""")
-    if (askAndWait("You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
+    if (prompt(message: "You are about to release version ${params.VERSION}. If you approve then changes will be committed and pushed. Review ${pr}.")) {
       // Update branch.
       sh(label: "Git branch ${env.BRANCH_NAME}", script: """git checkout ${env.BRANCH_NAME}""")
       sh(label: 'Git rebase', script: """git rebase ${branchName}""")
@@ -502,10 +482,10 @@ def prepareRelease() {
   }
 }
 
-def generateSteps() {
+def generateSteps(file) {
   def parallelTasks = [:]
   dir("${BASE_DIR}"){
-    def output = sh(label: '.ci/generate_stages_list.sh', script: '.ci/generate_stages_list.sh', returnStdout: true)
+    def output = sh(label: ".ci/${file}", script: ".ci/${file}", returnStdout: true)
     if (output?.trim()) {
       output.split('\n').each { content ->
         parallelTasks[content] = generateStep(content)
@@ -543,6 +523,9 @@ def generateStep(String content){
         withEnv(["COMPONENT_TEST_SCRIPT=${parsedContent[3]}"]) {
           lifecycleTesting(php, dist, env.COMPONENT_TEST_SCRIPT)
         }
+      }
+      if (target.equals('signed-testing')) {
+        signedTesting(php, dist)
       }
     }
   }
@@ -591,5 +574,18 @@ def phpFpmTesting(php, dist) {
     packageWorkspace(context: "PHP-FPM-Testing-${php}-${dist}", prepareGoal: "prepare-${dist}-fpm") {
       sh(script: "make -C packaging ${dist}-lifecycle-testing-in-fpm", label: "${dist}-lifecycle-testing-in-fpm")
     }
+  }
+}
+
+def signedTesting(php, dist) {
+  try {
+    withEnv(["PHP_VERSION=${php}"]) {
+      initWorkspace(context: "Signed-Testing-${php}-${dist}") {
+        unstash "${env.SIGNED_ARTIFACTS}"
+        sh(script: "PHP_VERSION=${php} make -C packaging ${dist}-install", label: "package ${dist}-install")
+      }
+    }
+  } finally {
+    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
   }
 }

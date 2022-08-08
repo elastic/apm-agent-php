@@ -50,7 +50,7 @@ final class CallerInfo implements LoggableInterface
 
     public function __construct(?string $file, ?int $line, ?string $class, ?string $function)
     {
-        $this->file = is_null($file) ? null : LoggablePhpStacktrace::adaptSourceCodeFilePath($file);
+        $this->file =  $file === null ? null : LoggablePhpStacktrace::adaptSourceCodeFilePath($file);
         $this->line = $line;
         $this->class = $class;
         $this->function = $function;

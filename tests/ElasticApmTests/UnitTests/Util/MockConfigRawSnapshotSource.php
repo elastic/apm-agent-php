@@ -25,9 +25,9 @@ namespace ElasticApmTests\UnitTests\Util;
 
 use Elastic\Apm\Impl\Config\RawSnapshotFromArray;
 use Elastic\Apm\Impl\Config\RawSnapshotInterface;
-use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface as ConfigRawSnapshotSourceInterface;
+use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 
-class MockConfigRawSnapshotSource implements ConfigRawSnapshotSourceInterface
+final class MockConfigRawSnapshotSource implements RawSnapshotSourceInterface
 {
     /** @var array<string, string> */
     private $optNameToRawValue = [];
@@ -38,6 +38,7 @@ class MockConfigRawSnapshotSource implements ConfigRawSnapshotSourceInterface
         return $this;
     }
 
+    /** @inheritDoc */
     public function currentSnapshot(array $optionNameToMeta): RawSnapshotInterface
     {
         return new RawSnapshotFromArray($this->optNameToRawValue);

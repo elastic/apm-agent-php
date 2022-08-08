@@ -64,7 +64,8 @@ final class Span extends ExecutionSegment implements SpanInterface
         ?string $subtype,
         ?string $action,
         ?float $timestamp,
-        bool $isDropped
+        bool $isDropped,
+        float $sampleRate
     ) {
         $this->data = new SpanData();
         $this->parentExecutionSegment = $parentExecutionSegment;
@@ -77,6 +78,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             $containingTransaction->getTraceId(),
             $name,
             $type,
+            $sampleRate,
             $timestamp
         );
 
@@ -104,7 +106,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace', 'context']
+            ['containingTransaction', 'parentSpan', 'stacktrace', 'context']
         );
     }
 
@@ -144,7 +146,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             return NoopSpanContext::singletonInstance();
         }
 
-        if (is_null($this->context)) {
+        if ($this->context === null) {
             $this->data->context = new SpanContextData();
             $this->context = new SpanContext($this, $this->data->context);
         }

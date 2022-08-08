@@ -387,7 +387,7 @@ void handleOsSignalLinux( int signalId )
 {
     ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER(
             "Elastic APM PHP Agent (version %s) received signal %d (%s). %s"
-            , PHP_ELASTIC_APM_VERSION
+            , PHP_ELASTIC_APM_FULL_VERSION
             , signalId, osSignalIdToName( signalId )
             ,
 #if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )

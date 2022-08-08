@@ -25,16 +25,12 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Log\Logger;
-use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {
     use HttpServerProcessTrait;
-
-    /** @var Logger */
-    private $logger;
 
     public function __construct()
     {
@@ -45,13 +41,6 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
         parent::__construct();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
-
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Received request',
@@ -61,7 +50,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected static function isStatusCheck(): bool
     {
-        return $_SERVER['REQUEST_URI'] === TestEnvBase::STATUS_CHECK_URI;
+        return $_SERVER['REQUEST_URI'] === HttpServerHandle::STATUS_CHECK_URI;
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
@@ -72,18 +61,14 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function processConfig(): void
     {
-        TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerId),
-            LoggableToString::convert(AmbientContext::testConfig())
-        );
-        TestAssertUtil::assertThat(
-            !is_null(AmbientContext::testConfig()->sharedDataPerProcess->thisServerPort),
-            LoggableToString::convert(AmbientContext::testConfig())
+        TestCase::assertNotNull(
+            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
+            LoggableToString::convert(AmbientContextForTests::testConfig())
         );
 
         parent::processConfig();
 
-        AmbientContext::reconfigure(
+        AmbientContextForTests::reconfigure(
             new RequestHeadersRawSnapshotSource(
                 function (string $headerName): ?string {
                     $headerKey = 'HTTP_' . $headerName;
@@ -93,15 +78,17 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         );
     }
 
-    protected function runImpl(): void
+    protected function runImpl(?string &$topLevelCodeId): void
     {
-        $response = self::verifyServerId(AmbientContext::testConfig()->sharedDataPerRequest->serverId);
+        $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
+        TestCase::assertNotNull($dataPerRequest);
+        $response = self::verifySpawnedProcessId($dataPerRequest->spawnedProcessId);
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
             self::sendResponse($response);
             return;
         }
 
-        $this->callAppCode();
+        $this->callAppCode(/* ref */ $topLevelCodeId);
     }
 
     private static function sendResponse(ResponseInterface $response): void

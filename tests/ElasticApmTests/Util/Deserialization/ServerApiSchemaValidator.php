@@ -28,10 +28,11 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\TestsRootDir;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\ExternalTestData;
+use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
+use PHPUnit\Framework\TestCase;
 
 final class ServerApiSchemaValidator
 {
@@ -66,11 +67,6 @@ final class ServerApiSchemaValidator
 
     /** @var array<string> */
     private $tempFilePaths = [];
-
-    private static function pathToSpecsRootDir(): string
-    {
-        return TestsRootDir::$fullPath . '/APM_Server_intake_API_schema';
-    }
 
     private static function isAdditionalPropertiesCandidate(string $key): bool
     {
@@ -167,7 +163,7 @@ final class ServerApiSchemaValidator
         $validator->validate(
             $deserializedRawData,
             (object)($this->loadSchema(
-                self::normalizePath(self::pathToSpecsRootDir() . '/' . $relativePathToSchema),
+                ExternalTestData::fullPathForFileInApmServerIntakeApiSchemaDir($relativePathToSchema),
                 $allowAdditionalProperties
             )),
             Constraint::CHECK_MODE_VALIDATE_SCHEMA
@@ -175,15 +171,6 @@ final class ServerApiSchemaValidator
         if (!$validator->isValid()) {
             throw self::buildException($relativePathToSchema, $validator, $serializedData);
         }
-    }
-
-    private static function normalizePath(string $absolutePath): string
-    {
-        $result = realpath($absolutePath);
-        if ($result === false) {
-            throw ValidationUtil::buildException("realpath failed. absolutePath: `$absolutePath'");
-        }
-        return $result;
     }
 
     /**
@@ -224,9 +211,7 @@ final class ServerApiSchemaValidator
             JsonUtil::encode($schema, /* prettyPrint: */ true),
             /* flags */ LOCK_EX
         );
-        if ($numberOfBytesWritten === false) {
-            throw ValidationUtil::buildException("Failed to write to temp file `$pathToTempFile'");
-        }
+        TestCase::assertNotFalse($numberOfBytesWritten, "Failed to write to temp file `$pathToTempFile'");
         return $pathToTempFile;
     }
 
@@ -238,9 +223,7 @@ final class ServerApiSchemaValidator
     private static function loadSchemaAndResolveRefs(string $absolutePath): array
     {
         $fileContents = file_get_contents($absolutePath);
-        if ($fileContents === false) {
-            throw ValidationUtil::buildException("Failed to load schema from `$absolutePath'");
-        }
+        TestCase::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
         $decodedSchema = JsonUtil::decode($fileContents, /* asAssocArray */ true);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
@@ -274,7 +257,9 @@ final class ServerApiSchemaValidator
      */
     private static function loadRefAndMerge(string $absolutePath, array &$refParentNode, string $refValue): void
     {
-        $schemaFromRef = self::loadSchemaAndResolveRefs(self::normalizePath(dirname($absolutePath) . '/' . $refValue));
+        $schemaFromRef = self::loadSchemaAndResolveRefs(
+            FileUtilForTests::normalizePath(dirname($absolutePath) . '/' . $refValue)
+        );
         foreach ($schemaFromRef as $key => $value) {
             if (!array_key_exists($key, $refParentNode)) {
                 $refParentNode[$key] = $value;
@@ -347,12 +332,12 @@ final class ServerApiSchemaValidator
                 $dstArray = &$decodedSchemaNode[$key];
                 /** @var array<mixed, mixed> $value */
                 foreach ($value as $subKey => $subValue) {
-                    if (array_key_exists($key, $dstArray)) {
-                        throw ValidationUtil::buildException(
-                            'Failed to merge because key already exists.'
-                            . LoggableToString::convert(['subKey' => $subKey, 'key' => $key, 'subValue' => $subValue])
-                        );
-                    }
+                    TestCase::assertArrayNotHasKey(
+                        $key,
+                        $dstArray,
+                        'Failed to merge because key already exists.'
+                        . LoggableToString::convert(['subKey' => $subKey, 'key' => $key, 'subValue' => $subValue])
+                    );
                     $dstArray[$subKey] = $subValue;
                 }
             }

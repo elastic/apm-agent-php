@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanInterface;
 use Throwable;
@@ -74,6 +75,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         string $traceId,
         string $name,
         string $type,
+        float $sampleRate,
         ?float $timestamp = null
     ) {
         $monotonicClockNow = $tracer->getClock()->getMonotonicClockCurrentTime();
@@ -87,6 +89,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
+        $this->data->sampleRate = $sampleRate;
 
         if ($this->containingTransaction()->getConfig()->breakdownMetrics()) {
             $this->breakdownMetricsSelfTimeTracker = new BreakdownMetricsSelfTimeTracker($monotonicClockNow);
@@ -115,7 +118,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
      */
     protected static function propertiesExcludedFromLog(): array
     {
-        return ['tracer', 'logger'];
+        return ['tracer'];
     }
 
     public function isSampled(): bool
@@ -281,7 +284,9 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->type = Tracer::limitKeywordString($type);
+        $this->data->type = TextUtil::isEmptyString($type)
+            ? Constants::EXECUTION_SEGMENT_TYPE_DEFAULT
+            : Tracer::limitKeywordString($type);
     }
 
     /** @inheritDoc */

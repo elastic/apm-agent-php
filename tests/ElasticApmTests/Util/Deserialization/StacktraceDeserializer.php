@@ -24,41 +24,36 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\StacktraceFrame;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\Util\DataValidator;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
 final class StacktraceDeserializer
 {
     /**
      *
-     * @param mixed $deserializedRawData
+     * @param mixed $value
      *
      * @return StacktraceFrame[]
      */
-    public static function deserialize($deserializedRawData): array
+    public static function deserialize($value): array
     {
+        $deserializedRawData = DeserializationUtil::assertDecodedJsonMap($value);
         /** @var StacktraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
 
-        ValidationUtil::assertThat(is_array($deserializedRawData));
+        TestCase::assertIsArray($deserializedRawData);
         /** @var array<mixed, mixed> $deserializedRawData */
 
         foreach ($deserializedRawData as $key => $value) {
-            ValidationUtil::assertThat($key === $nextExpectedIndex);
+            TestCase::assertSame($nextExpectedIndex, $key);
             /** @var array<string, mixed> $value */
             $frames[] = self::deserializeFrame($value);
             ++$nextExpectedIndex;
         }
 
-        ValidationUtil::assertValidStacktrace($frames);
-
+        DataValidator::validateStacktrace($frames);
         return $frames;
     }
 
@@ -76,30 +71,28 @@ final class StacktraceDeserializer
         /** @var string|null */
         $function = null;
 
-        ValidationUtil::assertThat(is_array($deserializedRawData));
+        TestCase::assertIsArray($deserializedRawData);
         /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':
-                    $filename = ValidationUtil::assertValidStacktraceFrameFilename($value);
+                    $filename = DataValidator::validateStacktraceFrameFilename($value);
                     break;
 
                 case 'function':
-                    $function = ValidationUtil::assertValidStacktraceFrameFilename($value);
+                    $function = DataValidator::validateStacktraceFrameFilename($value);
                     break;
 
                 case 'lineno':
-                    $lineNumber = ValidationUtil::assertValidStacktraceFrameLineNumber($value);
+                    $lineNumber = DataValidator::validateStacktraceFrameLineNumber($value);
                     break;
 
                 default:
-                    throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
+                    throw DeserializationUtil::buildException("Unknown key: span_count->`$key'");
             }
         }
-
-        ValidationUtil::assertThat(!is_null($filename));
         TestCase::assertNotNull($filename);
-        ValidationUtil::assertThat($lineNumber !== -1);
+        TestCase::assertNotSame(-1, $lineNumber);
 
         $result = new StacktraceFrame($filename, $lineNumber);
         $result->function = $function;

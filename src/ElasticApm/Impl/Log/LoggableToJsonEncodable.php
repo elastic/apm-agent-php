@@ -54,7 +54,7 @@ final class LoggableToJsonEncodable
      */
     public static function convert($value, int $depth)
     {
-        if (is_null($value)) {
+        if ($value === null) {
             return null;
         }
 
@@ -352,7 +352,7 @@ final class LoggableToJsonEncodable
     {
         $class = get_class($object);
         $valueInCache = ArrayUtil::getValueIfKeyExistsElse($class, self::$isDtoObjectCache, null);
-        if (!is_null($valueInCache)) {
+        if ($valueInCache !== null) {
             return $valueInCache;
         }
 

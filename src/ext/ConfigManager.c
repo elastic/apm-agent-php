@@ -596,6 +596,8 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, profilingInferredSpansEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, sanitizeFieldNames )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
@@ -817,6 +819,18 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             memoryTrackingLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            profilingInferredSpansEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_SECRET_METADATA(
+            buildStringOptionMetadata,
+            sanitizeFieldNames,
+            ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,

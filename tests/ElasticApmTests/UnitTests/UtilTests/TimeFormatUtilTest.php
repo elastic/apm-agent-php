@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Util\TimeUtil;
-use ElasticApmTests\ComponentTests\Util\TimeFormatUtil;
+use ElasticApmTests\Util\TimeFormatUtilForTests;
 use PHPUnit\Framework\TestCase;
 
 class TimeFormatUtilTest extends TestCase
@@ -83,6 +83,9 @@ class TimeFormatUtilTest extends TestCase
      */
     public function testFormatDurationInMicroseconds(float $durationInMicroseconds, string $expectedFormatted): void
     {
-        $this->assertSame($expectedFormatted, TimeFormatUtil::formatDurationInMicroseconds($durationInMicroseconds));
+        $this->assertSame(
+            $expectedFormatted,
+            TimeFormatUtilForTests::formatDurationInMicroseconds($durationInMicroseconds)
+        );
     }
 }

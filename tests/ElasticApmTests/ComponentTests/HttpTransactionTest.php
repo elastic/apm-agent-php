@@ -27,14 +27,13 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
-use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\HttpConsts;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
-use RuntimeException;
+use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 
 final class HttpTransactionTest extends ComponentTestCaseBase
 {
@@ -57,28 +56,43 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public function testHttpMethod(string $httpMethod): void
     {
-        if (!$this->testEnv->isHttp()) {
-            self::dummyAssert();
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeEmpty'])
-                ->withHttpMethod($httpMethod),
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
-                /**
-                 * @see HttpServerTestEnvBase::verifyRootTransactionName()
-                 * @see HttpServerTestEnvBase::verifyRootTransactionType()
-                 * @see HttpServerTestEnvBase::verifyRootTransactionContext()
-                 */
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainHttpAppCodeHost();
+        /** @var ?UrlParts */
+        $expectedUrlParts = null;
+        $appCodeHost->sendHttpRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
+            function (HttpAppCodeRequestParams $appCodeRequestParams) use ($httpMethod, &$expectedUrlParts): void {
+                $appCodeRequestParams->httpRequestMethod = $httpMethod;
+                $expectedUrlParts = $appCodeRequestParams->urlParts;
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        self::assertNotNull($expectedUrlParts);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame($httpMethod . ' /', $tx->name);
+        self::assertSame(Constants::TRANSACTION_TYPE_REQUEST, $tx->type);
+        self::assertNotNull($tx->context);
+        self::assertNotNull($tx->context->request);
+        self::assertSame($httpMethod, $tx->context->request->method);
+        self::assertNotNull($tx->context->request->url);
+        self::assertSame(HttpServerHandle::DEFAULT_HOST, $tx->context->request->url->domain);
+        self::assertNotNull($expectedUrlParts->port);
+        $expectedFullUrl
+            = $expectedUrlParts->scheme . '://' . HttpServerHandle::DEFAULT_HOST . ':' . $expectedUrlParts->port . '/';
+        self::assertSame($expectedFullUrl, $tx->context->request->url->full);
+        self::assertSame($expectedFullUrl, $tx->context->request->url->original);
+        self::assertSame($expectedUrlParts->scheme, $tx->context->request->url->protocol);
+        self::assertSame('/', $tx->context->request->url->path);
+        self::assertSame($expectedUrlParts->port, $tx->context->request->url->port);
+        self::assertSame(null, $tx->context->request->url->query);
     }
 
     /**
-     * @return iterable<array<UrlParts>>
+     * @return iterable<array{string, ?string}>
      */
     public function dataProviderForUrlParts(): iterable
     {
@@ -87,7 +101,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
                 null, 'k1=v1', 'k1=v1&k2=v2', 'key_without_value', 'key_without_value=', '=value_without_key',
             ];
             foreach ($queries as $query) {
-                yield [TestProperties::newDefaultUrlParts()->path($path)->query($query)];
+                yield [$path, $query];
             }
         }
     }
@@ -95,24 +109,29 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     /**
      * @dataProvider dataProviderForUrlParts
      *
-     * @param UrlParts $urlParts
+     * @param string  $path
+     * @param ?string $query
      */
-    public function testUrlParts(UrlParts $urlParts): void
+    public function testUrlParts(string $path, ?string $query): void
     {
-        if (!$this->testEnv->isHttp()) {
-            self::dummyAssert();
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeEmpty'])
-                ->withUrlParts($urlParts),
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
-                /** @see HttpServerTestEnvBase::verifyRootTransactionName */
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainHttpAppCodeHost();
+        $appCodeHost->sendHttpRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
+            function (HttpAppCodeRequestParams $appCodeRequestParams) use ($path, $query): void {
+                $appCodeRequestParams->urlParts->path($path)->query($query);
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertNotNull($tx->context);
+        self::assertNotNull($tx->context->request);
+        self::assertNotNull($tx->context->request->url);
+        self::assertSame($path, $tx->context->request->url->path);
+        self::assertSame($query, $tx->context->request->url->query);
     }
 
     /**
@@ -121,7 +140,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     public static function appCodeForHttpStatus(array $args): void
     {
         $customHttpStatus = ArrayUtil::getValueIfKeyExistsElse('customHttpStatus', $args, null);
-        if (!is_null($customHttpStatus)) {
+        if ($customHttpStatus !== null) {
             /** @var int $customHttpStatus */
             http_response_code($customHttpStatus);
         }
@@ -151,17 +170,21 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public function testHttpStatus(?int $customHttpStatus, string $expectedTxResult, string $expectedTxOutcome): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForHttpStatus'])
-                ->withAppCodeArgs(['customHttpStatus' => $customHttpStatus])
-                ->withExpectedStatusCode($customHttpStatus ?? HttpConsts::STATUS_OK),
-            function (DataFromAgent $dataFromAgent) use ($expectedTxResult, $expectedTxOutcome): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                self::assertSame($this->testEnv->isHttp() ? $expectedTxResult : null, $tx->result);
-                self::assertSame($this->testEnv->isHttp() ? $expectedTxOutcome : null, $tx->outcome);
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForHttpStatus']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($customHttpStatus): void {
+                $appCodeRequestParams->setAppCodeArgs(['customHttpStatus' => $customHttpStatus]);
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams && $customHttpStatus !== null) {
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = $customHttpStatus;
+                }
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame(self::isMainAppCodeHostHttp() ? $expectedTxResult : null, $tx->result);
+        self::assertSame(self::isMainAppCodeHostHttp() ? $expectedTxOutcome : null, $tx->outcome);
     }
 
     public static function appCodeForSetResultManually(): void
@@ -171,15 +194,12 @@ final class HttpTransactionTest extends ComponentTestCaseBase
 
     public function testSetResultManually(): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForSetResultManually'])
-                ->withExpectedStatusCode(HttpConsts::STATUS_OK),
-            function (DataFromAgent $dataFromAgent): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                self::assertSame('my manually set result', $tx->result);
-            }
-        );
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForSetResultManually']));
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame('my manually set result', $tx->result);
     }
 
     /**
@@ -200,21 +220,20 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public function testSetOutcomeManually(bool $shouldSetOutcomeManually): void
     {
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withRoutedAppCode([__CLASS__, 'appCodeForSetOutcomeManually'])
-                ->withAppCodeArgs(['shouldSetOutcomeManually' => $shouldSetOutcomeManually])
-                ->withExpectedStatusCode(HttpConsts::STATUS_OK),
-            function (DataFromAgent $dataFromAgent) use ($shouldSetOutcomeManually): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                self::assertSame(
-                    $shouldSetOutcomeManually
-                        ? Constants::OUTCOME_UNKNOWN
-                        : ($this->testEnv->isHttp() ? Constants::OUTCOME_SUCCESS : null),
-                    $tx->outcome
-                );
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForSetOutcomeManually']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($shouldSetOutcomeManually): void {
+                $appCodeRequestParams->setAppCodeArgs(['shouldSetOutcomeManually' => $shouldSetOutcomeManually]);
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        $expectedOutcome = $shouldSetOutcomeManually
+            ? Constants::OUTCOME_UNKNOWN
+            : (self::isMainAppCodeHostHttp() ? Constants::OUTCOME_SUCCESS : null);
+        self::assertSame($expectedOutcome, $tx->outcome);
     }
 
     /**
@@ -224,25 +243,25 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     {
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar'),
+            (new UrlParts())->path('/foo/12345/bar'),
             'GET /foo/*/bar',
         ];
 
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765'),
+            (new UrlParts())->path('/foo/12345/bar/98765'),
             'GET /foo/12345/bar/98765',
         ];
 
         yield [
             '/foo/*/bar/*',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765'),
+            (new UrlParts())->path('/foo/12345/bar/98765'),
             'GET /foo/*/bar/*',
         ];
 
         yield [
             '/foo/*/bar/*',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/98765/4321'),
+            (new UrlParts())->path('/foo/12345/bar/98765/4321'),
             'GET /foo/*/bar/*',
         ];
 
@@ -253,19 +272,19 @@ final class HttpTransactionTest extends ComponentTestCaseBase
 
         yield [
             '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
-            TestProperties::newDefaultUrlParts()->path('/foo_a/12345/bar_a/98765'),
+            (new UrlParts())->path('/foo_a/12345/bar_a/98765'),
             'GET /foo_a/*/bar_a/*',
         ];
 
         yield [
             '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
-            TestProperties::newDefaultUrlParts()->path('/FOO_A/12345/BAR_A/98765'),
+            (new UrlParts())->path('/FOO_A/12345/BAR_A/98765'),
             'GET /FOO_A/12345/BAR_A/98765',
         ];
 
         yield [
             '(?-i)/foo_a/*/bar_a/*, /foo_b/*/bar_b/*',
-            TestProperties::newDefaultUrlParts()->path('/FOO_B/12345/BAR_B/98765'),
+            (new UrlParts())->path('/FOO_B/12345/BAR_B/98765'),
             'GET /foo_b/*/bar_b/*',
         ];
 
@@ -276,13 +295,13 @@ final class HttpTransactionTest extends ComponentTestCaseBase
 
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            (new UrlParts())->path('/foo/12345/bar')->query('query_key=query_val'),
             'GET /foo/*/bar',
         ];
 
         yield [
             '/foo/*/bar?query_key=query_val',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            (new UrlParts())->path('/foo/12345/bar')->query('query_key=query_val'),
             'GET /foo/12345/bar',
         ];
     }
@@ -299,25 +318,29 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         UrlParts $urlParts,
         string $expectedTxName
     ): void {
-        if (!$this->testEnv->isHttp()) {
-            self::dummyAssert();
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            (new TestProperties())
-                ->withAgentConfig($this->randomConfigSetter()->set(OptionNames::URL_GROUPS, $urlGroupsConfigVal))
-                ->withRoutedAppCode([__CLASS__, 'appCodeEmpty'])
-                ->withUrlParts($urlParts)
-                ->withExpectedTransactionName($expectedTxName),
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
-                /** @see HttpServerTestEnvBase::verifyRootTransactionName */
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($urlGroupsConfigVal): void {
+                $appCodeParams->setAgentOption(OptionNames::URL_GROUPS, $urlGroupsConfigVal);
             }
         );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($urlParts, $expectedTxName): void {
+                $appCodeRequestParams->expectedTransactionName->setValue($expectedTxName);
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
+                }
+            }
+        );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertSame($expectedTxName, $tx->name);
     }
 
-    private const APP_CODE_ARGS_KEY_EXPECTED_SHOULD_BE_IGNORED = 'APP_CODE_ARGS_KEY_EXPECTED_SHOULD_BE_IGNORED';
     private const IGNORED_TX_REPLACEMENT_NAME = 'ignored TX replacement name';
     private const IGNORED_TX_REPLACEMENT_TYPE = 'ignored TX replacement type';
     private const TRANSACTION_IGNORE_URLS_CUSTOM_HTTP_STATUS = 217;
@@ -329,19 +352,19 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     {
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar'),
+            (new UrlParts())->path('/foo/12345/bar'),
             true /* <- expectedShouldBeIgnored */,
         ];
 
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/6789'),
+            (new UrlParts())->path('/foo/12345/bar/6789'),
             false /* <- expectedShouldBeIgnored */,
         ];
 
         yield [
             '/foo/*/bar/*',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar/6789'),
+            (new UrlParts())->path('/foo/12345/bar/6789'),
             true /* <- expectedShouldBeIgnored */,
         ];
 
@@ -352,13 +375,13 @@ final class HttpTransactionTest extends ComponentTestCaseBase
 
         yield [
             '/foo/*/bar',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            (new UrlParts())->path('/foo/12345/bar')->query('query_key=query_val'),
             true /* <- expectedShouldBeIgnored */,
         ];
 
         yield [
             '/foo/*/bar?query_key=query_val',
-            TestProperties::newDefaultUrlParts()->path('/foo/12345/bar')->query('query_key=query_val'),
+            (new UrlParts())->path('/foo/12345/bar')->query('query_key=query_val'),
             false /* <- expectedShouldBeIgnored */,
         ];
     }
@@ -368,21 +391,8 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public static function appCodeTransactionIgnoreUrlsConfig(array $appCodeArgs): void
     {
-        $expectedShouldBeIgnored
-            = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_EXPECTED_SHOULD_BE_IGNORED);
-        $isTxNoop = ElasticApm::getCurrentTransaction()->isNoop();
-
-        if ($expectedShouldBeIgnored !== $isTxNoop) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    '$expectedShouldBeIgnored is not equal to $isTxNoop',
-                    [
-                        'expectedShouldBeIgnored' => $expectedShouldBeIgnored,
-                        'isTxNoop'                => $isTxNoop,
-                    ]
-                )
-            );
-        }
+        $expectedShouldBeIgnored = self::getMandatoryAppCodeArg($appCodeArgs, 'expectedShouldBeIgnored');
+        self::assertSame($expectedShouldBeIgnored, ElasticApm::getCurrentTransaction()->isNoop());
 
         if ($expectedShouldBeIgnored) {
             ElasticApm::captureTransaction(
@@ -401,44 +411,44 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      *
      * @param string   $transactionIgnoreUrlsConfigVal
      * @param UrlParts $urlParts
-     * @param bool   $expectedShouldBeIgnored
+     * @param bool     $expectedShouldBeIgnored
      */
     public function testTransactionIgnoreUrlsConfig(
         string $transactionIgnoreUrlsConfigVal,
         UrlParts $urlParts,
         bool $expectedShouldBeIgnored
     ): void {
-        if (!$this->testEnv->isHttp()) {
-            self::dummyAssert();
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
-
-        $configSetter = $this->randomConfigSetter();
-        $configSetter->set(OptionNames::TRANSACTION_IGNORE_URLS, $transactionIgnoreUrlsConfigVal);
-        $testProperties = (new TestProperties())
-            ->withAgentConfig($configSetter)
-            ->withRoutedAppCode([__CLASS__, 'appCodeTransactionIgnoreUrlsConfig'])
-            ->withUrlParts($urlParts)
-            ->withAppCodeArgs([self::APP_CODE_ARGS_KEY_EXPECTED_SHOULD_BE_IGNORED => $expectedShouldBeIgnored])
-            ->withExpectedStatusCode(self::TRANSACTION_IGNORE_URLS_CUSTOM_HTTP_STATUS);
-        if ($expectedShouldBeIgnored) {
-            $testProperties->shouldVerifyRootTransaction(false);
-        }
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent) use ($expectedShouldBeIgnored): void {
-                $tx = $this->verifyTransactionWithoutSpans($dataFromAgent);
-                if ($expectedShouldBeIgnored) {
-                    $this->assertSame(self::IGNORED_TX_REPLACEMENT_NAME, $tx->name);
-                    $this->assertSame(self::IGNORED_TX_REPLACEMENT_TYPE, $tx->type);
-                    $this->assertNull($tx->result);
-                    $this->assertNull($tx->outcome);
-                } else {
-                    self::assertSame('HTTP 2xx', $tx->result);
-                    self::assertSame(Constants::OUTCOME_SUCCESS, $tx->outcome);
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($transactionIgnoreUrlsConfigVal): void {
+                $appCodeParams->setAgentOption(OptionNames::TRANSACTION_IGNORE_URLS, $transactionIgnoreUrlsConfigVal);
+            }
+        );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeTransactionIgnoreUrlsConfig']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($urlParts, $expectedShouldBeIgnored): void {
+                $appCodeRequestParams->setAppCodeArgs(['expectedShouldBeIgnored' => $expectedShouldBeIgnored]);
+                $appCodeRequestParams->shouldVerifyRootTransaction = !$expectedShouldBeIgnored;
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
+                    $appCodeRequestParams->expectedHttpResponseStatusCode
+                        = self::TRANSACTION_IGNORE_URLS_CUSTOM_HTTP_STATUS;
                 }
             }
         );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        if ($expectedShouldBeIgnored) {
+            $this->assertSame(self::IGNORED_TX_REPLACEMENT_NAME, $tx->name);
+            $this->assertSame(self::IGNORED_TX_REPLACEMENT_TYPE, $tx->type);
+            $this->assertNull($tx->result);
+            $this->assertNull($tx->outcome);
+        } else {
+            self::assertSame('HTTP 2xx', $tx->result);
+            self::assertSame(Constants::OUTCOME_SUCCESS, $tx->outcome);
+        }
     }
 }

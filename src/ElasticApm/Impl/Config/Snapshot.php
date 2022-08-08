@@ -24,12 +24,9 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Config;
 
 use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 
 /**
@@ -92,6 +89,9 @@ final class Snapshot implements LoggableInterface
     use SnapshotTrait;
     use LoggableTrait;
 
+    public const LOG_LEVEL_STDERR_DEFAULT = LogLevel::CRITICAL;
+    public const LOG_LEVEL_SYSLOG_DEFAULT = LogLevel::INFO;
+
     /** @var array<string, mixed> */
     private $optNameToParsedValue;
 
@@ -134,6 +134,9 @@ final class Snapshot implements LoggableInterface
     /** @var ?int */
     private $logLevelSyslog;
 
+    /** @var WildcardListMatcher */
+    private $sanitizeFieldNames;
+
     /** @var string */
     private $secretToken;
 
@@ -164,6 +167,15 @@ final class Snapshot implements LoggableInterface
     /** @var bool */
     private $verifyServerCert;
 
+    /** @var int */
+    private $effectiveLogLevel;
+
+    /** @var float */
+    private $effectiveTransactionSampleRate;
+
+    /** @var string */
+    private $effectiveTransactionSampleRateAsString;
+
     /**
      * Snapshot constructor.
      *
@@ -171,10 +183,55 @@ final class Snapshot implements LoggableInterface
      */
     public function __construct(array $optNameToParsedValue, LoggerFactory $loggerFactory)
     {
-        $this->optNameToParsedValue = $optNameToParsedValue;
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
 
+        $this->setEffectiveLogLevel();
+        $this->setEffectiveTransactionSampleRate();
+
         $this->devInternalParsed = new SnapshotDevInternal($this->devInternal, $loggerFactory);
+    }
+
+    private function setEffectiveLogLevel(): void
+    {
+        $this->effectiveLogLevel = max(
+            ($this->logLevelStderr ?? $this->logLevel) ?? self::LOG_LEVEL_STDERR_DEFAULT,
+            ($this->logLevelSyslog ?? $this->logLevel) ?? self::LOG_LEVEL_SYSLOG_DEFAULT
+        );
+    }
+
+    private function setEffectiveTransactionSampleRate(): void
+    {
+        if ($this->transactionSampleRate === 0.0) {
+            $this->effectiveTransactionSampleRate = 0.0;
+            $this->effectiveTransactionSampleRateAsString = '0';
+            return;
+        }
+
+        if ($this->transactionSampleRate === 1.0) {
+            $this->effectiveTransactionSampleRate = 1.0;
+            $this->effectiveTransactionSampleRateAsString = '1';
+            return;
+        }
+
+        if ($this->transactionSampleRate < 0.0001) {
+            $this->effectiveTransactionSampleRate = 0.0001;
+            $this->effectiveTransactionSampleRateAsString = '0.0001';
+            return;
+        }
+
+        $this->effectiveTransactionSampleRate = round(
+            $this->transactionSampleRate,
+            4 /* <- precision - number of decimal digits */
+        );
+        $asString = number_format(
+            $this->effectiveTransactionSampleRate,
+            /* number of decimal digits: */ 4,
+            /* decimal_separator: */ '.',
+            /* thousands_separator - without thousands separator: */ ''
+        );
+        // Remove trailing zeros if there any
+        $asString = preg_replace('/\.?0+$/', '', $asString) ?? $asString;
+        $this->effectiveTransactionSampleRateAsString = $asString;
     }
 
     /**
@@ -224,9 +281,12 @@ final class Snapshot implements LoggableInterface
 
     public function effectiveLogLevel(): int
     {
-        $effectiveLogLevelStderr = ($this->logLevelStderr ?? $this->logLevel) ?? LogLevel::INFO;
-        $effectiveLogLevelSyslog = ($this->logLevelSyslog ?? $this->logLevel) ?? LogLevel::CRITICAL;
-        return max($effectiveLogLevelStderr, $effectiveLogLevelSyslog, $this->logLevel ?? LogLevel::OFF);
+        return $this->effectiveLogLevel;
+    }
+
+    public function sanitizeFieldNames(): WildcardListMatcher
+    {
+        return $this->sanitizeFieldNames;
     }
 
     public function serverTimeout(): float
@@ -259,9 +319,14 @@ final class Snapshot implements LoggableInterface
         return $this->transactionMaxSpans;
     }
 
-    public function transactionSampleRate(): float
+    public function effectiveTransactionSampleRate(): float
     {
-        return $this->transactionSampleRate;
+        return $this->effectiveTransactionSampleRate;
+    }
+
+    public function effectiveTransactionSampleRateAsString(): string
+    {
+        return $this->effectiveTransactionSampleRateAsString;
     }
 
     public function urlGroups(): ?WildcardListMatcher

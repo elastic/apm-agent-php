@@ -36,6 +36,11 @@ final class WildcardListOptionParser extends OptionParser
 {
     public function parse(string $rawValue): WildcardListMatcher
     {
+        return self::parseImpl($rawValue);
+    }
+
+    public static function parseImpl(string $rawValue): WildcardListMatcher
+    {
         /**
          * @return iterable<string>
          */
