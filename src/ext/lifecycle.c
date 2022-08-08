@@ -370,21 +370,54 @@ ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
-    zval include_scripts_param;
-    ZVAL_BOOL( &include_scripts_param, false );
-    zval params[] = { include_scripts_param };
+    zend_function* opcacheGetStatusFuncEntry = NULL;
+    zend_execute_data* newCallFrame = NULL;
+    zval* include_scripts_param = NULL;
+    bool shouldFreeNewCallFrameArgs = false;
+    bool shouldPopNewCallFrame = false;
     zval opcacheGetStatusRetVal;
-    ZVAL_UNDEF( &opcacheGetStatusRetVal );
-    int opcacheGetStatusCallRetVal = SUCCESS;
-    zval opcacheGetStatusFuncFuncName;
-    ZVAL_UNDEF( &opcacheGetStatusFuncFuncName );
+    ZVAL_NULL( &opcacheGetStatusRetVal );
 
-    ZVAL_STRINGL( &opcacheGetStatusFuncFuncName, ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME, ELASTIC_APM_OPCACHE_GET_STATUS_FUNC_NAME_LEN );
-    opcacheGetStatusCallRetVal = call_user_function( CG(function_table), /* object */ NULL, &opcacheGetStatusFuncFuncName, &opcacheGetStatusRetVal, ELASTIC_APM_STATIC_ARRAY_SIZE( params ), params );
-    if ( opcacheGetStatusCallRetVal != SUCCESS )
+    opcacheGetStatusFuncEntry = getOpcacheGetStatusFuncEntry();
+    if ( opcacheGetStatusFuncEntry == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d", opcacheGetStatusCallRetVal );
+        ELASTIC_APM_LOG_ERROR( "getOpcacheGetStatusFuncEntry() returned NULL");
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    newCallFrame = zend_vm_stack_push_call_frame(
+            /* call_info */ ZEND_CALL_TOP_FUNCTION | ZEND_CALL_DYNAMIC
+            , opcacheGetStatusFuncEntry
+            , /* num_args */ 1
+            , /* object_or_called_scope */ NULL );
+    if ( newCallFrame == NULL )
+    {
+        ELASTIC_APM_LOG_ERROR( "zend_vm_stack_push_call_frame() returned NULL");
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    include_scripts_param = ZEND_CALL_ARG( newCallFrame, 1 );
+    if ( include_scripts_param == NULL )
+    {
+        ELASTIC_APM_LOG_ERROR( "ZEND_CALL_ARG( newCallFrame, 1 ) returned NULL");
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+    ZVAL_BOOL( /* out */ include_scripts_param, false );
+    shouldFreeNewCallFrameArgs = true;
+
+    newCallFrame->prev_execute_data = EG(current_execute_data);
+    EG(current_execute_data) = newCallFrame;
+    shouldPopNewCallFrame = true;
+
+    opcacheGetStatusFuncEntry->internal_function.handler( newCallFrame, &opcacheGetStatusRetVal );
+
+    if ( Z_TYPE( opcacheGetStatusRetVal ) == IS_FALSE )
+    {
+        ELASTIC_APM_LOG_ERROR( "opcache_get_status() returned false (which means failure) - considering OpCache NOT being in restart state" );
+        *restartPending = false;
+        *restartInProgress = false;
+        resultCode = resultSuccess;
+        goto finally;
     }
 
     if ( Z_TYPE( opcacheGetStatusRetVal ) != IS_ARRAY )
@@ -403,7 +436,21 @@ ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
     finally:
 
     zval_dtor( &opcacheGetStatusRetVal );
-    zval_dtor( &opcacheGetStatusFuncFuncName );
+
+    if ( shouldPopNewCallFrame )
+    {
+        EG(current_execute_data) = newCallFrame->prev_execute_data;
+    }
+
+    if ( shouldFreeNewCallFrameArgs )
+    {
+        zend_vm_stack_free_args( newCallFrame );
+    }
+
+    if ( newCallFrame != NULL )
+    {
+        zend_vm_stack_free_call_frame( newCallFrame );
+    }
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
@@ -842,10 +889,9 @@ void elasticApmRequestInit()
 #endif
 
     resetIfEnabledForCurrentRequest();
-    // TODO: Sergey Kleyman: Uncomment checkIfEnabledForCurrentRequest in elasticApmRequestInit
-//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-//        return;
-//    }
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+        return;
+    }
 
     g_pidOnRequestInit = getCurrentProcessId();
 
@@ -939,10 +985,9 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
 
 void elasticApmRequestShutdown()
 {
-    // TODO: Sergey Kleyman: Uncomment checkIfEnabledForCurrentRequest in elasticApmRequestShutdown
-//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
-//        return;
-//    }
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) ) {
+        return;
+    }
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
