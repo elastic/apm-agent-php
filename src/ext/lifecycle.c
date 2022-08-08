@@ -385,11 +385,22 @@ ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
+//
+// zend_vm_stack_push_call_frame() signature changed in PHP 7.4
+// from
+//      zend_execute_data *zend_vm_stack_push_call_frame(uint32_t call_info, zend_function *func, uint32_t num_args, zend_class_entry *called_scope, zend_object *object)
+// to
+//      zend_execute_data *zend_vm_stack_push_call_frame(uint32_t call_info, zend_function *func, uint32_t num_args, void *object_or_called_scope)
+//
     newCallFrame = zend_vm_stack_push_call_frame(
             /* call_info */ ZEND_CALL_TOP_FUNCTION | ZEND_CALL_DYNAMIC
             , opcacheGetStatusFuncEntry
             , /* num_args */ 1
-            , /* object_or_called_scope */ NULL );
+            , /* before 7.4 - called_scope | after 7.4 - object_or_called_scope */ NULL
+#if PHP_VERSION_ID < 70400
+            , /* before 7.4 - object */ NULL
+#endif
+    );
     if ( newCallFrame == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_vm_stack_push_call_frame() returned NULL");
