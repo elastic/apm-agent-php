@@ -542,9 +542,7 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-// TODO: Sergey Kleyman: Uncomment or Remove
-//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) )
-    if ( ! g_isEnabledForCurrentRequest )
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) )
     {
         return;
     }
@@ -676,9 +674,7 @@ static ZendErrorCallback originalZendErrorCallback = NULL;
 
 void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 {
-// TODO: Sergey Kleyman: Uncomment or Remove
-//    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) )
-    if ( ! g_isEnabledForCurrentRequest )
+    if ( ! checkIfEnabledForCurrentRequest( __FUNCTION__ ) )
     {
         return;
     }
@@ -935,21 +931,19 @@ void elasticApmRequestInit()
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
-    // TODO: Sergey Kleyman: Uncomment
-//    originalZendErrorCallback = zend_error_cb;
-//    isOriginalZendErrorCallbackSet = true;
-//    zend_error_cb = elasticApmZendErrorCallback;
-//    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
-//                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
-//                           , elasticApmZendErrorCallback );
+    originalZendErrorCallback = zend_error_cb;
+    isOriginalZendErrorCallbackSet = true;
+    zend_error_cb = elasticApmZendErrorCallback;
+    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
+                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
+                           , elasticApmZendErrorCallback );
 
-    // TODO: Sergey Kleyman: Uncomment
-//    originalZendThrowExceptionHook = zend_throw_exception_hook;
-//    isOriginalZendThrowExceptionHookSet = true;
-//    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-//    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-//                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-//                           , elasticApmZendThrowExceptionHook );
+    originalZendThrowExceptionHook = zend_throw_exception_hook;
+    isOriginalZendThrowExceptionHookSet = true;
+    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                           , elasticApmZendThrowExceptionHook );
 
     resultCode = resultSuccess;
 

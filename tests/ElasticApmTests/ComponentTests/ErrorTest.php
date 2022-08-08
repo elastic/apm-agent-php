@@ -183,11 +183,6 @@ final class ErrorTest extends ComponentTestCaseBase
      */
     public function testPhpErrorUndefinedVariable(bool $includeInErrorReporting): void
     {
-        // TODO: Sergey Kleyman: REMOVE
-        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
-            $this->dummyAssert();
-            return;
-        }
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
         $appCodeHost->sendRequest(
@@ -258,11 +253,6 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public function testPhpErrorUncaughtException(): void
     {
-        // TODO: Sergey Kleyman: REMOVE
-        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
-            $this->dummyAssert();
-            return;
-        }
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
         $appCodeHost->sendRequest(
@@ -322,11 +312,6 @@ final class ErrorTest extends ComponentTestCaseBase
 
     public function testCaughtExceptionResponded500(): void
     {
-        // TODO: Sergey Kleyman: REMOVE
-        if (version_compare(PHP_VERSION, '8.2.0') < 0) {
-            $this->dummyAssert();
-            return;
-        }
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
         $appCodeHost->sendRequest(
