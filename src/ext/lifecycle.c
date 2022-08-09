@@ -472,49 +472,53 @@ ResultCode getOpCacheStatus( bool* restartPending, bool* restartInProgress )
 
 bool checkIfEnabledForCurrentRequest( const char* calledFromFunction )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s; g_isEnabledForCurrentRequest: %s", calledFromFunction, boolToString( g_isEnabledForCurrentRequest ) );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s", calledFromFunction );
+    return true;
 
-    if ( ! g_isEnabledForCurrentRequest ) {
-        goto finally;
-    }
-
-    ResultCode resultCode;
-    bool restartPending = false;
-    bool restartInProgress = false;
-
-    if ( isOpCacheEnabled() )
-    {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( getOpCacheStatus( &restartPending, &restartInProgress ) );
-        if ( restartPending )
-        {
-            g_isEnabledForCurrentRequest = false;
-            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY "'] is true";
-            goto finally;
-        }
-        if ( restartInProgress )
-        {
-            g_isEnabledForCurrentRequest = false;
-            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY "'] is true";
-            goto finally;
-        }
-    }
-
-    g_isEnabledForCurrentRequest = true;
-    g_isEnabledForCurrentRequestReason = "Passed all checks";
-
-    finally:
-
-    ELASTIC_APM_LOG_DEBUG( "Elastic APM is %s for the current request. Reason: %s. Check called from %s"
-                           , (g_isEnabledForCurrentRequest ? "enabled" : "DISABLED")
-                           , g_isEnabledForCurrentRequestReason
-                           , calledFromFunction );
-    return g_isEnabledForCurrentRequest;
-
-    failure:
-    ELASTIC_APM_LOG_DEBUG( "Failed to check if enabled for current request - defaulting to DISABLED" );
-    g_isEnabledForCurrentRequest = false;
-    g_isEnabledForCurrentRequestReason = "Failed to check";
-    goto finally;
+// TODO: Sergey Kleyman: Uncomment - implementation of checkIfEnabledForCurrentRequest
+//    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Check called from %s; g_isEnabledForCurrentRequest: %s", calledFromFunction, boolToString( g_isEnabledForCurrentRequest ) );
+//
+//    if ( ! g_isEnabledForCurrentRequest ) {
+//        goto finally;
+//    }
+//
+//    ResultCode resultCode;
+//    bool restartPending = false;
+//    bool restartInProgress = false;
+//
+//    if ( isOpCacheEnabled() )
+//    {
+//        ELASTIC_APM_CALL_IF_FAILED_GOTO( getOpCacheStatus( &restartPending, &restartInProgress ) );
+//        if ( restartPending )
+//        {
+//            g_isEnabledForCurrentRequest = false;
+//            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_PENDING_KEY "'] is true";
+//            goto finally;
+//        }
+//        if ( restartInProgress )
+//        {
+//            g_isEnabledForCurrentRequest = false;
+//            g_isEnabledForCurrentRequestReason = "opcache_get_status()['" ELASTIC_APM_OPCACHE_GET_STATUS_RESTART_IN_PROGRESS_KEY "'] is true";
+//            goto finally;
+//        }
+//    }
+//
+//    g_isEnabledForCurrentRequest = true;
+//    g_isEnabledForCurrentRequestReason = "Passed all checks";
+//
+//    finally:
+//
+//    ELASTIC_APM_LOG_DEBUG( "Elastic APM is %s for the current request. Reason: %s. Check called from %s"
+//                           , (g_isEnabledForCurrentRequest ? "enabled" : "DISABLED")
+//                           , g_isEnabledForCurrentRequestReason
+//                           , calledFromFunction );
+//    return g_isEnabledForCurrentRequest;
+//
+//    failure:
+//    ELASTIC_APM_LOG_DEBUG( "Failed to check if enabled for current request - defaulting to DISABLED" );
+//    g_isEnabledForCurrentRequest = false;
+//    g_isEnabledForCurrentRequestReason = "Failed to check";
+//    goto finally;
 }
 
 bool resetIfEnabledForCurrentRequest()
@@ -707,6 +711,8 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
 
     ResultCode resultCode;
     char* locallyFormattedMessage = NULL;
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
 #       if ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_MSG_VA_LIST == 1
     va_list messageArgsCopy;
@@ -715,6 +721,8 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
     vspprintf( /* out */ &locallyFormattedMessage, 0, messageFormat, messageArgsCopy );
     va_end( messageArgsCopy );
 #       endif
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &g_requestInitStartTime ) );
 
     setLastThrownIfAnyToTracerPhpPart();
 
