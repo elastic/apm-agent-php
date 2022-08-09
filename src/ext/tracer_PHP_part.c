@@ -178,11 +178,11 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ &preHookRetVal ) );
-    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %s (%u)", zend_get_type_by_const( Z_TYPE( preHookRetVal ) ), Z_TYPE( preHookRetVal ) );
 
     if ( Z_TYPE( preHookRetVal ) != IS_FALSE && Z_TYPE( preHookRetVal ) != IS_TRUE )
     {
-        ELASTIC_APM_LOG_ERROR( "Call to PHP part returned value that is not bool. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+        ELASTIC_APM_LOG_ERROR( "Call to PHP part returned value that is not bool. Return value type: %s (%u)", zend_get_type_by_const( Z_TYPE( preHookRetVal ) ), Z_TYPE( preHookRetVal ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
     shouldCallPostHook = ( Z_TYPE( preHookRetVal ) == IS_TRUE );
