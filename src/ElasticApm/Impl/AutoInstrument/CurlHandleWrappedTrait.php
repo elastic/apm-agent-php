@@ -27,6 +27,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
+use Elastic\Apm\Impl\Util\DbgUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -106,6 +107,6 @@ trait CurlHandleWrappedTrait
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs(['as int' => $this->asInt()]);
+        $stream->toLogAs(['curlHandle type' => DbgUtil::getType($this->curlHandle), 'as int' => $this->asInt()]);
     }
 }

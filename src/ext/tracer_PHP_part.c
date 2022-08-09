@@ -200,10 +200,32 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     goto finally;
 }
 
+static inline
+Int64 zvalAsInt( zval* val )
+{
+    if ( Z_TYPE_P( val ) == IS_OBJECT )
+    {
+        const zend_object* const zObj = Z_OBJ_P( val );
+        return (Int64)( zObj->handle );
+    }
+
+    if ( Z_TYPE_P( val ) == IS_RESOURCE )
+    {
+        const zend_resource* const zRes = Z_RES_P( val );
+        return (Int64)( zRes->handle );
+    }
+
+    return 0;
+}
+
 void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
 {
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u"
-                                              , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u"
+                                              "; interceptedCallRetValOrThrown type: %s (%u)"
+                                              "; interceptedCallRetValOrThrown as int: %"PRId64
+                                              , dbgInterceptRegistrationId
+                                              , zend_get_type_by_const( Z_TYPE_P( interceptedCallRetValOrThrown ) ) , Z_TYPE_P( interceptedCallRetValOrThrown )
+                                              , zvalAsInt( interceptedCallRetValOrThrown ) );
 
     ResultCode resultCode;
     zval phpPartArgs[ 2 ];

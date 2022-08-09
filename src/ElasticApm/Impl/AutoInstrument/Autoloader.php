@@ -58,12 +58,13 @@ final class Autoloader
     {
         // Example of $fqClassName: Elastic\Apm\Impl\Util\Assert
 
-        BootstrapStageLogger::logTrace("Entered with fqClassName: `$fqClassName'", __LINE__, __FUNCTION__);
+        BootstrapStageLogger::logTrace("Entered with fqClassName: `$fqClassName'", __FILE__, __LINE__, __FUNCTION__);
 
         if (!self::shouldAutoloadCodeForClass($fqClassName)) {
             BootstrapStageLogger::logTrace(
                 "shouldAutoloadCodeForClass returned false."
                 . " fqClassName: `$fqClassName'",
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -80,6 +81,7 @@ final class Autoloader
         if (file_exists($classSrcFileAbsolute)) {
             BootstrapStageLogger::logTrace(
                 "About to execute require `$classSrcFileAbsolute' ...",
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -89,6 +91,7 @@ final class Autoloader
             BootstrapStageLogger::logTrace(
                 "File with the code for class doesn't exist."
                 . " classSrcFile: `$classSrcFileAbsolute'. fqClassName: `$fqClassName'",
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );

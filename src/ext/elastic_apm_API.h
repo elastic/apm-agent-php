@@ -50,3 +50,15 @@ struct CallToInterceptData
     zend_function* funcEntry;
 };
 typedef struct CallToInterceptData CallToInterceptData;
+
+struct ClassAndFunctionNames
+{
+    String className;
+    String functionName;
+};
+typedef struct ClassAndFunctionNames ClassAndFunctionNames;
+enum { g_callsToBootstrapPhpPartCount = 2 };
+extern ClassAndFunctionNames g_callsToBootstrapPhpPart[ g_callsToBootstrapPhpPartCount ];
+
+void initForwardInterceptedCallToAutoInstrumentation();
+bool forwardInterceptedCallToAutoInstrumentation( String className, String functionName, zend_execute_data* execute_data, zval* return_value );

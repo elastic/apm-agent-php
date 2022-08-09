@@ -775,9 +775,8 @@ void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
     }
 }
 
-enum { maxFunctionsToIntercept = 100 };
 static uint32_t g_nextFreeFunctionToInterceptId = 0;
-static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
+static CallToInterceptData g_functionsToInterceptData[ g_callsToBootstrapPhpPartCount ];
 static bool g_interceptedCallInProgress = false;
 
 void unregisterCallbacksToInvokeBootstrapTracerPhpPart();
@@ -786,6 +785,7 @@ void internalFunctionCallInterceptingImpl_bootstrapTracerPhpPart( uint32_t inter
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
+    zif_handler originalHandler = g_functionsToInterceptData[ interceptRegistrationId ].originalHandler;
     if ( g_interceptedCallInProgress )
     {
         ELASTIC_APM_LOG_TRACE( "There's already an intercepted call in progress");
@@ -801,7 +801,10 @@ void internalFunctionCallInterceptingImpl_bootstrapTracerPhpPart( uint32_t inter
         g_interceptedCallInProgress = false;
     }
 
-    g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+    if ( forwardInterceptedCallToAutoInstrumentation( g_callsToBootstrapPhpPart[ interceptRegistrationId ].className, g_callsToBootstrapPhpPart[ interceptRegistrationId ].functionName, execute_data, return_value ) )
+    {
+        originalHandler( execute_data, return_value );
+    }
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 }
@@ -819,11 +822,11 @@ ResultCode addCallbacksToInvokeBootstrapTracerPhpPart( String className, String 
     ResultCode resultCode;
     zend_function* funcEntry = NULL;
 
-    if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
+    if ( g_nextFreeFunctionToInterceptId >= g_callsToBootstrapPhpPartCount )
     {
         ELASTIC_APM_LOG_ERROR( "Reached maxFunctionsToIntercept."
-                               " maxFunctionsToIntercept: %u. g_nextFreeFunctionToInterceptId: %u."
-                               , maxFunctionsToIntercept, g_nextFreeFunctionToInterceptId );
+                               " g_callsToBootstrapPhpPartCount: %u. g_nextFreeFunctionToInterceptId: %u."
+                               , g_callsToBootstrapPhpPartCount, g_nextFreeFunctionToInterceptId );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
@@ -875,9 +878,11 @@ void registerCallbacksToInvokeBootstrapTracerPhpPart()
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
 
-    addCallbacksToInvokeBootstrapTracerPhpPart( /* className: */ NULL, "curl_init" );
-    /* className must be in lower case */
-    addCallbacksToInvokeBootstrapTracerPhpPart( /* className: */ "pdo", "__construct" );
+    initForwardInterceptedCallToAutoInstrumentation();
+    ELASTIC_APM_FOR_EACH_INDEX( i, g_callsToBootstrapPhpPartCount )
+    {
+        addCallbacksToInvokeBootstrapTracerPhpPart( g_callsToBootstrapPhpPart[ i ].className, g_callsToBootstrapPhpPart[ i ].functionName );
+    }
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
@@ -913,7 +918,7 @@ void elasticApmRequestInit()
     // TimePoint requestInitStartTime;
     getCurrentTime( &g_requestInitStartTime );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent version: %s", PHP_ELASTIC_APM_FULL_VERSION );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Elastic APM PHP Agent's C part version: %s. Built against PHP version: %s", PHP_ELASTIC_APM_FULL_VERSION, PHP_VERSION );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();

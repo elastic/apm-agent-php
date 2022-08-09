@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 use PDO;
 use PDOStatement;
@@ -149,7 +150,12 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     && $loggerProxy->log(
                         'The first received argument for PDO::__construct call is not a string'
                         . ' but PDO::__construct is expected to have Data Source Name (DSN) as the first argument ',
-                        ['interceptedCallThis' => $interceptedCallThis]
+                        [
+                            'DbgUtil::getType($dsn)' => DbgUtil::getType($dsn),
+                            '$dsn' => $dsn,
+                            '$interceptedCallArgs' => $interceptedCallArgs,
+                            'interceptedCallThis' => $interceptedCallThis
+                        ]
                     );
                     return null; // no post-hook
                 }

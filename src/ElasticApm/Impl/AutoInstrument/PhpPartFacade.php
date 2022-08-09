@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
+use Elastic\Apm\Impl\Util\MiscUtil;
 use RuntimeException;
 use Throwable;
 
@@ -72,6 +73,7 @@ final class PhpPartFacade
         if ($tracer === null) {
             BootstrapStageLogger::logDebug(
                 'Cutting bootstrap sequence short - tracing is disabled',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -88,6 +90,7 @@ final class PhpPartFacade
             BootstrapStageLogger::logCritical(
                 'currentReentrancyDepth (' . self::$currentReentrancyDepth . ') should not be less than 0.'
                 . ' MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -98,6 +101,7 @@ final class PhpPartFacade
             BootstrapStageLogger::logCritical(
                 'currentReentrancyDepth (' . self::$currentReentrancyDepth
                 . ') should not be greater than MAX_REENTRANCY_DEPTH (' . self::MAX_REENTRANCY_DEPTH,
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -112,6 +116,7 @@ final class PhpPartFacade
         BootstrapStageLogger::logDebug(
             'Trying to enter Elastic APM code... currentReentrancyDepth: ' . self::$currentReentrancyDepth
             . '; MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+            __FILE__,
             __LINE__,
             __FUNCTION__
         );
@@ -123,6 +128,7 @@ final class PhpPartFacade
         if (self::$currentReentrancyDepth == self::MAX_REENTRANCY_DEPTH) {
             BootstrapStageLogger::logWarning(
                 'Reached max reentrancy depth (' . self::MAX_REENTRANCY_DEPTH . ')',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -138,6 +144,7 @@ final class PhpPartFacade
         BootstrapStageLogger::logDebug(
             'Exited Elastic APM code. currentReentrancyDepth: ' . self::$currentReentrancyDepth
             . '; MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+            __FILE__,
             __LINE__,
             __FUNCTION__
         );
@@ -151,6 +158,7 @@ final class PhpPartFacade
                 'currentReentrancyDepth (' . self::$currentReentrancyDepth
                 . ') should not be 0 when exiting Elastic APM code.'
                 . ' MAX_REENTRANCY_DEPTH: ' . self::MAX_REENTRANCY_DEPTH,
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -312,7 +320,11 @@ final class PhpPartFacade
     {
         BootstrapStageLogger::configure($maxEnabledLogLevel);
         BootstrapStageLogger::logDebug(
-            'Starting bootstrap sequence...' . " maxEnabledLogLevel: $maxEnabledLogLevel",
+            'Starting bootstrap sequence...'
+            . "; Version of agent's PHP part: " . MiscUtil::buildFullAgentVersion()
+            . "; PHP version: " . phpversion()
+            . "; maxEnabledLogLevel: $maxEnabledLogLevel",
+            __FILE__,
             __LINE__,
             __FUNCTION__
         );
@@ -321,6 +333,7 @@ final class PhpPartFacade
             BootstrapStageLogger::logCritical(
                 'bootstrap() is called even though singleton instance is already created'
                 . ' (probably bootstrap() is called more than once)',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -333,13 +346,14 @@ final class PhpPartFacade
             BootstrapStageLogger::logCriticalThrowable(
                 $throwable,
                 'One of the steps in bootstrap sequence let a throwable escape',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
             return false;
         }
 
-        BootstrapStageLogger::logDebug('Successfully completed bootstrap sequence', __LINE__, __FUNCTION__);
+        BootstrapStageLogger::logDebug('Successfully completed bootstrap sequence', __FILE__, __LINE__, __FUNCTION__);
         return true;
     }
 
@@ -360,14 +374,14 @@ final class PhpPartFacade
      *
      * @param int         $interceptRegistrationId
      * @param object|null $thisObj
-     * @param mixed       ...$interceptedCallArgs
+     * @param mixed[]     $interceptedCallArgs
      *
      * @return bool
      */
     private static function interceptedCallPreHookImpl(
         int $interceptRegistrationId,
         ?object $thisObj,
-        ...$interceptedCallArgs
+        array $interceptedCallArgs
     ): bool {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         if ($interceptionManager === null) {
@@ -411,6 +425,7 @@ final class PhpPartFacade
     {
         BootstrapStageLogger::logDebug(
             'Starting to handle ' . $dbgCallDesc . ' call from extension...',
+            __FILE__,
             __LINE__,
             __FUNCTION__
         );
@@ -419,6 +434,7 @@ final class PhpPartFacade
             BootstrapStageLogger::logWarning(
                 'Received ' . $dbgCallDesc . ' call from extension but singleton instance is not created'
                 . ' (probably because bootstrap sequence failed)',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -432,6 +448,7 @@ final class PhpPartFacade
                 $throwable,
                 'Handling ' . $dbgCallDesc
                 . ' call from extension let a throwable escape - skipping the rest of the steps',
+                __FILE__,
                 __LINE__,
                 __FUNCTION__
             );
@@ -440,6 +457,7 @@ final class PhpPartFacade
 
         BootstrapStageLogger::logDebug(
             'Successfully finished handling ' . $dbgCallDesc . ' call from extension...',
+            __FILE__,
             __LINE__,
             __FUNCTION__
         );
@@ -462,6 +480,7 @@ final class PhpPartFacade
                     BootstrapStageLogger::logDebug(
                         'Received shutdown call from extension but transactionForExtensionRequest is null'
                         . ' - just returning...',
+                        __FILE__,
                         __LINE__,
                         __FUNCTION__
                     );

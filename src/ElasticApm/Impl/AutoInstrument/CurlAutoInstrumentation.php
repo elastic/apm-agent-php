@@ -180,7 +180,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         switch ($funcId) {
             case self::CURL_INIT_ID:
             case self::CURL_COPY_HANDLE_ID:
-                $this->setTrackerHandle($curlHandleTracker, $returnValueOrThrown);
+                $this->setTrackerHandle($curlHandleTracker, $returnValueOrThrown, $dbgFuncName);
                 return;
 
             // no need to handle self::CURL_CLOSE because null is returned in preHook
@@ -196,10 +196,16 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         }
     }
 
-    private function addToHandleIdToTracker(int $handleId, CurlHandleTracker $curlHandleTracker): void
-    {
+    private function addToHandleIdToTracker(
+        int $handleId,
+        CurlHandleTracker $curlHandleTracker,
+        string $dbgFuncName
+    ): void {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Adding to curl handle ID to CurlHandleTracker map...', ['handleId' => $handleId]);
+        && $loggerProxy->log(
+            'Adding to curl handle ID to CurlHandleTracker map...',
+            ['handleId' => $handleId, 'dbgFuncName' => $dbgFuncName, 'curlHandleTracker' => $curlHandleTracker]
+        );
 
         $handleIdToTrackerCount = count($this->handleIdToTracker);
         if ($handleIdToTrackerCount >= self::HANDLE_TRACKER_MAX_COUNT_HIGH_WATER_MARK) {
@@ -219,6 +225,26 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /**
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return ?CurlHandleWrapped
+     */
+    private static function extractCurlHandleFromArgsImpl(array $interceptedCallArgs): ?CurlHandleWrapped
+    {
+        if (count($interceptedCallArgs) == 0) {
+            return null;
+        }
+
+        $curlHandle = $interceptedCallArgs[0];
+        if (!CurlHandleWrapped::isValidValue($curlHandle)) {
+            return null;
+        }
+
+        /** @var resource|object $curlHandle */
+        return new CurlHandleWrapped($curlHandle);
+    }
+
+    /**
      * @param Logger  $logger
      * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
@@ -230,27 +256,21 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         string $dbgFuncName,
         array $interceptedCallArgs
     ): ?CurlHandleWrapped {
-        if (count($interceptedCallArgs) !== 0) {
-            $curlHandle = $interceptedCallArgs[0];
-            if (CurlHandleWrapped::isValidValue($curlHandle)) {
-                /** @var resource|object $curlHandle */
-                return new CurlHandleWrapped($curlHandle);
+        $curlHandleWrapped = self::extractCurlHandleFromArgsImpl($interceptedCallArgs);
+        if ($curlHandleWrapped === null) {
+            $ctxToLog = [
+                'dbgFuncName'                 => $dbgFuncName,
+                'count($interceptedCallArgs)' => count($interceptedCallArgs),
+            ];
+            if (count($interceptedCallArgs) !== 0) {
+                $ctxToLog['$interceptedCallArgs[0]'] = DbgUtil::getType($interceptedCallArgs[0]);
+                $ctxToLog['interceptedCallArgs'] = $logger->possiblySecuritySensitive($interceptedCallArgs);
             }
+            ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Expected curl handle to be the first argument but it is not', $ctxToLog);
         }
-
-        $ctxToLog = [
-            'functionName'                => $dbgFuncName,
-            'count($interceptedCallArgs)' => count($interceptedCallArgs),
-        ];
-        if (count($interceptedCallArgs) !== 0) {
-            $ctxToLog['firstArgumentType'] = DbgUtil::getType($interceptedCallArgs[0]);
-            $ctxToLog['interceptedCallArgs'] = $logger->possiblySecuritySensitive($interceptedCallArgs);
-        }
-        ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Expected curl handle to be the first argument but it is not', $ctxToLog);
-        return null;
+        return $curlHandleWrapped;
     }
-
 
     /**
      * @param string  $dbgFuncName
@@ -269,7 +289,10 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
 
         if (!array_key_exists($handleId, $this->handleIdToTracker)) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Not found in curl handle ID to CurlHandleTracker map', ['handleId' => $handleId]);
+            && $loggerProxy->log(
+                'Not found in curl handle ID to CurlHandleTracker map',
+                ['handleId' => $handleId, 'dbgFuncName' => $dbgFuncName]
+            );
             return null;
         }
 
@@ -336,12 +359,13 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     /**
      * @param CurlHandleTracker $curlHandleTracker
      * @param mixed             $curlHandle
+     * @param string            $dbgFuncName
      */
-    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle): void
+    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle, string $dbgFuncName): void
     {
         $handleId = $curlHandleTracker->setHandle($curlHandle);
         if ($handleId !== null) {
-            $this->addToHandleIdToTracker($handleId, $curlHandleTracker);
+            $this->addToHandleIdToTracker($handleId, $curlHandleTracker, $dbgFuncName);
         }
     }
 

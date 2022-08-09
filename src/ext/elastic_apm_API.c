@@ -84,6 +84,76 @@ static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 
 static uint32_t g_interceptedCallInProgressRegistrationId = 0;
 
+ClassAndFunctionNames g_callsToBootstrapPhpPart[ g_callsToBootstrapPhpPartCount ] =
+{
+    { .className = NULL, .functionName = "curl_init" }
+    /* className must be in lower case */
+    , { .className = "pdo", .functionName = "__construct" }
+};
+
+bool g_callsToBootstrapPhpPart_interceptRegistrationIds_is_set[ g_callsToBootstrapPhpPartCount ];
+uint32_t g_callsToBootstrapPhpPart_interceptRegistrationIds[ g_callsToBootstrapPhpPartCount ];
+
+void initForwardInterceptedCallToAutoInstrumentation()
+{
+    ELASTIC_APM_FOR_EACH_INDEX( i, g_callsToBootstrapPhpPartCount )
+    {
+        g_callsToBootstrapPhpPart_interceptRegistrationIds_is_set[ i ] = false;
+    }
+}
+
+static inline
+bool areNamesEqual( String name1, String name2 )
+{
+    return strcmp( name1, name2 ) == 0;
+}
+
+static inline
+bool areOptionalNamesEqual( String name1, String name2 )
+{
+    if ( ( name1 == NULL ) || ( name2 == NULL ) )
+    {
+        return ( name1 == NULL ) == ( name2 == NULL );
+    }
+    return areNamesEqual( name1, name2 );
+}
+
+void setInterceptRegistrationIdForForward( String className, String functionName, uint32_t interceptRegistrationId )
+{
+    ELASTIC_APM_FOR_EACH_INDEX( i, g_callsToBootstrapPhpPartCount )
+    {
+        if ( ! ( areOptionalNamesEqual( className, g_callsToBootstrapPhpPart[ i ].className ) && areNamesEqual( functionName, g_callsToBootstrapPhpPart[ i ].functionName ) ) )
+        {
+            continue;
+        }
+
+        g_callsToBootstrapPhpPart_interceptRegistrationIds_is_set[ i ] = true;
+        g_callsToBootstrapPhpPart_interceptRegistrationIds[ i ] = interceptRegistrationId;
+        return;
+    }
+}
+
+bool forwardInterceptedCallToAutoInstrumentation( String className, String functionName, zend_execute_data* execute_data, zval* return_value )
+{
+    ELASTIC_APM_FOR_EACH_INDEX( i, g_callsToBootstrapPhpPartCount )
+    {
+        if ( ! g_callsToBootstrapPhpPart_interceptRegistrationIds_is_set[ i ] )
+        {
+            continue;
+        }
+
+        if ( ! ( areOptionalNamesEqual( className, g_callsToBootstrapPhpPart[ i ].className ) && areNamesEqual( functionName, g_callsToBootstrapPhpPart[ i ].functionName ) ) )
+        {
+            continue;
+        }
+
+        internalFunctionCallInterceptingImpl( g_callsToBootstrapPhpPart_interceptRegistrationIds[ i ], execute_data, return_value );
+        return true;
+    }
+
+    return false;
+}
+
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
@@ -129,7 +199,7 @@ void resetCallInterceptionOnRequestShutdown()
     g_nextFreeFunctionToInterceptId = 0;
 }
 
-bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* interceptRegistrationId )
+bool addToFunctionsToInterceptData( String className, String functionName, zend_function* funcEntry, uint32_t* interceptRegistrationId )
 {
     if ( g_nextFreeFunctionToInterceptId >= maxFunctionsToIntercept )
     {
@@ -143,6 +213,7 @@ bool addToFunctionsToInterceptData( zend_function* funcEntry, uint32_t* intercep
     g_functionsToInterceptData[ *interceptRegistrationId ].funcEntry = funcEntry;
     g_functionsToInterceptData[ *interceptRegistrationId ].originalHandler = funcEntry->internal_function.handler;
     funcEntry->internal_function.handler = g_numberedInterceptingCallback[ *interceptRegistrationId ];
+    setInterceptRegistrationIdForForward( className, functionName, *interceptRegistrationId );
 
     return true;
 }
@@ -169,7 +240,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
+    if ( ! addToFunctionsToInterceptData( className, methodName, funcEntry, interceptRegistrationId ) )
     {
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
@@ -199,7 +270,7 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    if ( ! addToFunctionsToInterceptData( funcEntry, interceptRegistrationId ) )
+    if ( ! addToFunctionsToInterceptData( /* className */ NULL, functionName, funcEntry, interceptRegistrationId ) )
     {
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }

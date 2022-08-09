@@ -42,6 +42,7 @@ final class BootstrapStageLogger
 
     public static function logTrace(
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -54,6 +55,7 @@ final class BootstrapStageLogger
          */
             ELASTIC_APM_LOG_LEVEL_TRACE,
             $message,
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc
         );
@@ -61,6 +63,7 @@ final class BootstrapStageLogger
 
     public static function logDebug(
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -73,6 +76,7 @@ final class BootstrapStageLogger
          */
             ELASTIC_APM_LOG_LEVEL_DEBUG,
             $message,
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc
         );
@@ -80,6 +84,7 @@ final class BootstrapStageLogger
 
     public static function logWarning(
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -92,6 +97,7 @@ final class BootstrapStageLogger
          */
             ELASTIC_APM_LOG_LEVEL_WARNING,
             $message,
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc
         );
@@ -99,6 +105,7 @@ final class BootstrapStageLogger
 
     public static function logCritical(
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -111,6 +118,7 @@ final class BootstrapStageLogger
          */
             ELASTIC_APM_LOG_LEVEL_CRITICAL,
             $message,
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc
         );
@@ -119,6 +127,7 @@ final class BootstrapStageLogger
     public static function logCriticalThrowable(
         Throwable $throwable,
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -126,6 +135,7 @@ final class BootstrapStageLogger
             $message . '.'
             . ' ' . get_class($throwable) . ': ' . $throwable->getMessage()
             . PHP_EOL . 'Stack trace:' . PHP_EOL . $throwable->getTraceAsString(),
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc
         );
@@ -134,6 +144,7 @@ final class BootstrapStageLogger
     private static function logLevel(
         int $statementLevel,
         string $message,
+        string $srcCodeFile,
         int $srcCodeLine,
         string $srcCodeFunc
     ): void {
@@ -151,7 +162,7 @@ final class BootstrapStageLogger
             0 /* $isForced */,
             $statementLevel,
             'Bootstrap' /* category */,
-            __FILE__,
+            $srcCodeFile,
             $srcCodeLine,
             $srcCodeFunc,
             $message
