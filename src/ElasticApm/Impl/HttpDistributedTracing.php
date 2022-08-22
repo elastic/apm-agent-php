@@ -451,7 +451,7 @@ final class HttpDistributedTracing
 
     private function validateTraceStateKey(string $key): bool
     {
-        return str_contains($key, '@')
+        return TextUtil::contains($key, '@')
             ? $this->validateMultiTenantTraceStateKey($key)
             : (preg_match(self::TRACE_STATE_MAX_ID_REGEX, $key) === 1);
     }

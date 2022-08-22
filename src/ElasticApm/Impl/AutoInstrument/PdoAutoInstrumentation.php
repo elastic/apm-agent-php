@@ -219,12 +219,12 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function beginDbSpan(string $name, string $subtype, ?string $statement): SpanInterface
+    private function beginDbSpan(string $name, string $spanSubtype, ?string $statement): SpanInterface
     {
         $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
             $name,
             Constants::SPAN_TYPE_DB,
-            $subtype,
+            $spanSubtype,
             Constants::SPAN_ACTION_DB_QUERY
         );
 
@@ -232,9 +232,14 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
             $span->context()->db()->setStatement($statement);
         }
 
-        $span->context()->destination()->setService($subtype, $subtype, $subtype);
+        self::setService($span, $spanSubtype);
 
         return $span;
+    }
+
+    private static function setService(SpanInterface $span, string $spanSubtype): void
+    {
+        $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
     }
 
     private function pdoExec(RegistrationContextInterface $ctx): void
@@ -355,7 +360,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
 
                 $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $spanSubtype, $statement);
 
-                $span->context()->destination()->setService('PDO', 'PDO', Constants::SPAN_TYPE_DB);
+                self::setService($span, $spanSubtype);
 
                 return self::createPostHookFromEndSpan($span);
             }
