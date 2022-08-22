@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\DistributedTracingDataInternal;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\CharSetForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
@@ -401,139 +400,151 @@ class HttpDistributedTracingTest extends TestCaseBase
         return $result;
     }
 
-    /**
-     * @param ?string              $elasticVendorValue
-     * @param array<array<string>> $otherVendorsHeaderValues
-     *
-     * @return ?string
-     */
-    private static function buildOutgoingTraceState(
-        ?string $elasticVendorValue,
-        array $otherVendorsHeaderValues
-    ): ?string {
-        $resultParts = [];
-        if ($elasticVendorValue !== null) {
-            $resultParts[] = $elasticVendorValue;
-        }
-        $resultParts = array_merge($resultParts, $otherVendorsHeaderValues);
-        return ArrayUtil::isEmpty($resultParts) ? null : join(',', $resultParts);
-    }
-
-    /**
-     * @return iterable<array{array<string>, ?bool, ?string}>
-     */
-    private static function dataSetsToTestTraceStateMaxPairsCount(): iterable
-    {
-        $maxPairsCount = HttpDistributedTracing::TRACE_STATE_MAX_PAIRS_COUNT;
-
-        yield [[], /* expectedIsValid: */ null, /* expectedOutgoingTraceState: */ null];
-
-        $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
-        yield [[$otherVendors], true, self::buildOutgoingTraceState(null, [$otherVendors])];
-
-        $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
-        $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount + 1, $maxPairsCount + 2);
-        yield [
-            [$otherVendorsPart1, $otherVendorsPart2],
-            true,
-            self::buildOutgoingTraceState(null, [$otherVendorsPart1])
-        ];
-
-        $elasticVendor = 'es=s:0';
-        $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
-        yield [[$elasticVendor, $otherVendors], true, self::buildOutgoingTraceState($elasticVendor, [$otherVendors])];
-
-        $elasticVendor = 'es=s:0.0';
-        $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
-        $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount, $maxPairsCount + 1);
-        yield [
-            [$elasticVendor, $otherVendorsPart1, $otherVendorsPart2],
-            true,
-            self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1])
-        ];
-
-        $elasticVendor = 'es=s:0.1234';
-        $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount / 2);
-        $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount / 2 + 1, $maxPairsCount - 1);
-        yield [
-            [$otherVendorsPart1, $elasticVendor, $otherVendorsPart2],
-            true /* <- expectedIsValid */,
-            self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1, $otherVendorsPart2])
-        ];
-
-        $elasticVendor = 'es=s:0.4321';
-        $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
-        $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount, $maxPairsCount + 1);
-        yield [
-            [$otherVendorsPart1, $elasticVendor, $otherVendorsPart2],
-            true,
-            self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1])
-        ];
-
-        $elasticVendor = 'es=s:1';
-        $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
-        yield [[$otherVendors, $elasticVendor], true, self::buildOutgoingTraceState($elasticVendor, [$otherVendors])];
-
-        $elasticVendor = 'es=s:1.0';
-        $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
-        yield [[$otherVendors, $elasticVendor], true, self::buildOutgoingTraceState(null, [$otherVendors])];
-
-        $elasticVendor = 'es=s:1.000';
-        $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount / 2);
-        $otherVendorsPart2a = self::generateOtherVendorKeyValuePairs($maxPairsCount / 2 + 1, $maxPairsCount);
-        $otherVendorsPart2b = self::generateOtherVendorKeyValuePairs($maxPairsCount + 1, $maxPairsCount + 2);
-        yield [
-            [$otherVendorsPart1, $otherVendorsPart2a . ', ' . $otherVendorsPart2b, $elasticVendor],
-            true,
-            self::buildOutgoingTraceState(null, [$otherVendorsPart1, $otherVendorsPart2a])
-        ];
-    }
-
-    /**
-     * @return iterable<array{array<string>, ?bool, ?string}>
-     */
-    public function dataProviderForOutgoingTraceState(): iterable
-    {
-        yield from self::dataSetsToTestTraceStateMaxPairsCount();
-    }
-
-    /**
-     * @dataProvider dataProviderForOutgoingTraceState
-     *
-     * @param string[] $traceStateHeaderValues
-     * @param ?bool   $expectedIsValid
-     * @param ?string $expectedOutgoingTraceState
-     */
-    public function testOutgoingTraceState(
-        array $traceStateHeaderValues,
-        ?bool $expectedIsValid,
-        ?string $expectedOutgoingTraceState
-    ): void {
-        $actualIsTraceParentValid = true;
-        /** @var ?bool */
-        $actualIsTraceStateValid = null;
-        $httpDistributedTracing = new HttpDistributedTracing(AmbientContextForTests::loggerFactory());
-        $distTracingData = $httpDistributedTracing->parseHeadersImpl(
-            ['01-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01'],
-            $traceStateHeaderValues,
-            $actualIsTraceParentValid /* <- ref */,
-            $actualIsTraceStateValid /* <- ref */
-        );
-        $dbgMsg = LoggableToString::convert(
-            [
-                'traceStateHeaderValues'     => $traceStateHeaderValues,
-                'expectedIsValid'            => $expectedIsValid,
-                'expectedOutgoingTraceState' => $expectedOutgoingTraceState,
-                'actualIsTraceParentValid'   => $actualIsTraceParentValid,
-                'actualIsTraceStateValid'    => $actualIsTraceStateValid,
-                'distTracingData'            => $distTracingData,
-            ],
-            true /* <- prettyPrint */
-        );
-
-        self::assertNotNull($distTracingData, $dbgMsg);
-        self::assertTrue($actualIsTraceParentValid, $dbgMsg);
-        self::assertSame($expectedIsValid, $actualIsTraceStateValid, $dbgMsg);
-        self::assertSame($expectedOutgoingTraceState, $distTracingData->outgoingTraceState, $dbgMsg);
-    }
+    // /**
+    //  * @param ?string              $elasticVendorValue
+    //  * @param array<array<string>> $otherVendorsHeaderValues
+    //  *
+    //  * @return ?string
+    //  */
+    // private static function buildOutgoingTraceState(
+    //     ?string $elasticVendorValue,
+    //     array $otherVendorsHeaderValues
+    // ): ?string {
+    //     $resultParts = [];
+    //     if ($elasticVendorValue !== null) {
+    //         $resultParts[] = $elasticVendorValue;
+    //     }
+    //     $resultParts = array_merge($resultParts, $otherVendorsHeaderValues);
+    //     return ArrayUtil::isEmpty($resultParts) ? null : join(',', $resultParts);
+    // }
+    //
+    // /**
+    //  * @return iterable<array{array<string>, ?bool, ?string}>
+    //  */
+    // private static function dataSetsToTestTraceStateMaxPairsCount(): iterable
+    // {
+    //     $maxPairsCount = HttpDistributedTracing::TRACE_STATE_MAX_PAIRS_COUNT;
+    //
+    //     yield [
+    //         [], /* expectedIsValid: */
+    //         null, /* expectedOutgoingTraceState: */
+    //         null,
+    //     ];
+    //
+    //     $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
+    //     yield [[$otherVendors], true, self::buildOutgoingTraceState(null, [$otherVendors])];
+    //
+    //     $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
+    //     $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount + 1, $maxPairsCount + 2);
+    //     yield [
+    //         [$otherVendorsPart1, $otherVendorsPart2],
+    //         true,
+    //         self::buildOutgoingTraceState(null, [$otherVendorsPart1]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:0';
+    //     $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
+    //     yield [
+    //         [$elasticVendor, $otherVendors],
+    //         true,
+    //         self::buildOutgoingTraceState($elasticVendor, [$otherVendors]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:0.0';
+    //     $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
+    //     $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount, $maxPairsCount + 1);
+    //     yield [
+    //         [$elasticVendor, $otherVendorsPart1, $otherVendorsPart2],
+    //         true,
+    //         self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:0.1234';
+    //     $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount / 2);
+    //     $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount / 2 + 1, $maxPairsCount - 1);
+    //     yield [
+    //         [$otherVendorsPart1, $elasticVendor, $otherVendorsPart2],
+    //         true /* <- expectedIsValid */,
+    //         self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1, $otherVendorsPart2]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:0.4321';
+    //     $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
+    //     $otherVendorsPart2 = self::generateOtherVendorKeyValuePairs($maxPairsCount, $maxPairsCount + 1);
+    //     yield [
+    //         [$otherVendorsPart1, $elasticVendor, $otherVendorsPart2],
+    //         true,
+    //         self::buildOutgoingTraceState($elasticVendor, [$otherVendorsPart1]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:1';
+    //     $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount - 1);
+    //     yield [
+    //         [$otherVendors, $elasticVendor],
+    //         true,
+    //         self::buildOutgoingTraceState($elasticVendor, [$otherVendors]),
+    //     ];
+    //
+    //     $elasticVendor = 'es=s:1.0';
+    //     $otherVendors = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount);
+    //     yield [[$otherVendors, $elasticVendor], true, self::buildOutgoingTraceState(null, [$otherVendors])];
+    //
+    //     $elasticVendor = 'es=s:1.000';
+    //     $otherVendorsPart1 = self::generateOtherVendorKeyValuePairs(1, $maxPairsCount / 2);
+    //     $otherVendorsPart2a = self::generateOtherVendorKeyValuePairs($maxPairsCount / 2 + 1, $maxPairsCount);
+    //     $otherVendorsPart2b = self::generateOtherVendorKeyValuePairs($maxPairsCount + 1, $maxPairsCount + 2);
+    //     yield [
+    //         [$otherVendorsPart1, $otherVendorsPart2a . ', ' . $otherVendorsPart2b, $elasticVendor],
+    //         true,
+    //         self::buildOutgoingTraceState(null, [$otherVendorsPart1, $otherVendorsPart2a]),
+    //     ];
+    // }
+    //
+    // /**
+    //  * @return iterable<array{array<string>, ?bool, ?string}>
+    //  */
+    // public function dataProviderForOutgoingTraceState(): iterable
+    // {
+    //     yield from self::dataSetsToTestTraceStateMaxPairsCount();
+    // }
+    //
+    // /**
+    //  * @dataProvider dataProviderForOutgoingTraceState
+    //  *
+    //  * @param string[] $traceStateHeaderValues
+    //  * @param ?bool   $expectedIsValid
+    //  * @param ?string $expectedOutgoingTraceState
+    //  */
+    // public function testOutgoingTraceState(
+    //     array $traceStateHeaderValues,
+    //     ?bool $expectedIsValid,
+    //     ?string $expectedOutgoingTraceState
+    // ): void {
+    //     $actualIsTraceParentValid = true;
+    //     /** @var ?bool */
+    //     $actualIsTraceStateValid = null;
+    //     $httpDistributedTracing = new HttpDistributedTracing(AmbientContextForTests::loggerFactory());
+    //     $distTracingData = $httpDistributedTracing->parseHeadersImpl(
+    //         ['01-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01'],
+    //         $traceStateHeaderValues,
+    //         $actualIsTraceParentValid /* <- ref */,
+    //         $actualIsTraceStateValid /* <- ref */
+    //     );
+    //     $dbgMsg = LoggableToString::convert(
+    //         [
+    //             'traceStateHeaderValues'     => $traceStateHeaderValues,
+    //             'expectedIsValid'            => $expectedIsValid,
+    //             'expectedOutgoingTraceState' => $expectedOutgoingTraceState,
+    //             'actualIsTraceParentValid'   => $actualIsTraceParentValid,
+    //             'actualIsTraceStateValid'    => $actualIsTraceStateValid,
+    //             'distTracingData'            => $distTracingData,
+    //         ],
+    //         true /* <- prettyPrint */
+    //     );
+    //
+    //     self::assertNotNull($distTracingData, $dbgMsg);
+    //     self::assertTrue($actualIsTraceParentValid, $dbgMsg);
+    //     self::assertSame($expectedIsValid, $actualIsTraceStateValid, $dbgMsg);
+    //     self::assertSame($expectedOutgoingTraceState, $distTracingData->outgoingTraceState, $dbgMsg);
+    // }
 }
