@@ -220,7 +220,7 @@ pipeline {
         stage('Signing CI') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { isInternalCI() }
           }
           options { skipDefaultCheckout() }
           steps {
