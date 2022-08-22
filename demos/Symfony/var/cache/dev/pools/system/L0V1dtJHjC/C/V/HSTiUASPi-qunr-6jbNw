@@ -1,0 +1,3 @@
+<?php //Symfony%255CComponent%255CSecurity%255CCore%255CUser%255CPasswordAuthenticatedUserInterface%2523getPassword
+
+return [PHP_INT_MAX, []];

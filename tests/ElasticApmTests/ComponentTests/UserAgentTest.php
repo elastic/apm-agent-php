@@ -27,11 +27,10 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\MetadataDiscoverer;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestEnvBase;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
 
 final class UserAgentTest extends ComponentTestCaseBase
 {
@@ -93,34 +92,34 @@ final class UserAgentTest extends ComponentTestCaseBase
     }
 
     private function impl(
-        ?AgentConfigSetter $configSetter,
         ?string $configuredServiceName,
         ?string $configuredServiceVersion,
         string $expectedUserAgentHeaderValue
     ): void {
-        $testProperties = (new TestProperties())->withRoutedAppCode([__CLASS__, 'appCodeEmpty']);
-        if ($configSetter !== null) {
-            self::assertTrue(($configuredServiceName !== null) || ($configuredServiceVersion !== null));
-            if ($configuredServiceName !== null) {
-                $configSetter->set(OptionNames::SERVICE_NAME, $configuredServiceName);
-            }
-            if ($configuredServiceVersion !== null) {
-                $configSetter->set(OptionNames::SERVICE_VERSION, $configuredServiceVersion);
-            }
-            $testProperties->withAgentConfig($configSetter);
-        }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent) use ($expectedUserAgentHeaderValue): void {
-                TestEnvBase::verifyUserAgentHttpRequestHeader($expectedUserAgentHeaderValue, $dataFromAgent);
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($configuredServiceName, $configuredServiceVersion): void {
+                if ($configuredServiceName !== null) {
+                    $appCodeParams->setAgentOption(OptionNames::SERVICE_NAME, $configuredServiceName);
+                }
+                if ($configuredServiceVersion !== null) {
+                    $appCodeParams->setAgentOption(OptionNames::SERVICE_VERSION, $configuredServiceVersion);
+                }
             }
         );
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        foreach ($dataFromAgent->intakeApiRequests as $intakeApiRequest) {
+            DataFromAgentPlusRawValidator::verifyUserAgentIntakeApiHttpRequestHeader(
+                $expectedUserAgentHeaderValue,
+                $intakeApiRequest->headers
+            );
+        }
     }
 
     public function testDefaultConfig(): void
     {
         $this->impl(
-            null /* <- configSetter */,
             null /* <- configuredServiceName */,
             null /* <- expectedUserAgentHeaderValue */,
             self::AGENT_REPO_NAME_AND_VERSION . ' (' . MetadataDiscoverer::DEFAULT_SERVICE_NAME . ')'
@@ -140,7 +139,6 @@ final class UserAgentTest extends ComponentTestCaseBase
         string $expectedUserAgentHeaderValue
     ): void {
         $this->impl(
-            $this->randomConfigSetter(),
             $configuredServiceName,
             $configuredServiceVersion,
             $expectedUserAgentHeaderValue

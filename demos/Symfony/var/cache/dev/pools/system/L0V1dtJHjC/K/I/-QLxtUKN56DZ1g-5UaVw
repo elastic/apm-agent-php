@@ -1,0 +1,3 @@
+<?php //ArrayAccess%2523offsetUnset
+
+return [PHP_INT_MAX, []];

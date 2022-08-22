@@ -30,6 +30,6 @@ class GlobalTracerTest extends TracerUnitTestCaseBase
 {
     public function testGlobalTracerIsInitializedOnFirstAccess(): void
     {
-        $this->assertNotNull(GlobalTracerHolder::get());
+        $this->assertNotNull(GlobalTracerHolder::getValue());
     }
 }

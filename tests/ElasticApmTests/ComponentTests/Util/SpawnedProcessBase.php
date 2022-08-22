@@ -45,6 +45,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     use LoggableTrait;
 
     public const FAILURE_PROCESS_EXIT_CODE = 234;
+    public const DBG_PROCESS_NAME_ENV_VAR_NAME = 'DBG_PROCESS_NAME';
 
     /** @var Logger */
     private $logger;
@@ -57,7 +58,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
         && $loggerProxy->log(
             'Done',
             [
-                'AmbientContext::testConfig()' => AmbientContext::testConfig(),
+                'AmbientContext::testConfig()' => AmbientContextForTests::testConfig(),
                 'Environment variables'        => getenv(),
             ]
         );
@@ -65,25 +66,24 @@ abstract class SpawnedProcessBase implements LoggableInterface
 
     private static function buildLogger(): Logger
     {
-        return AmbientContext::loggerFactory()->loggerForClass(
+        return AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         );
     }
-
     protected function processConfig(): void
     {
-        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::SHARED_DATA_PER_PROCESS_OPTION_NAME);
+        self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
-            TestAssertUtil::assertThat(
-                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId),
-                LoggableToString::convert(AmbientContext::testConfig())
+            TestCase::assertNotNull(
+                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId,
+                LoggableToString::convert(AmbientContextForTests::testConfig())
             );
-            TestAssertUtil::assertThat(
-                !is_null(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
-                LoggableToString::convert(AmbientContext::testConfig())
+            TestCase::assertNotNull(
+                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort,
+                LoggableToString::convert(AmbientContextForTests::testConfig())
             );
         }
     }
@@ -98,7 +98,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
         LoggingSubsystem::$isInTestingContext = true;
 
         try {
-            AmbientContext::init(/* dbgProcessName */ ClassNameUtil::fqToShort(get_called_class()));
+            $dbgProcessName = getenv(self::DBG_PROCESS_NAME_ENV_VAR_NAME);
+            TestCase::assertIsString($dbgProcessName);
+            AmbientContextForTests::init($dbgProcessName);
             $thisObj = new static(); // @phpstan-ignore-line
 
             if (!$thisObj->shouldAgentBeEnabled()) {
@@ -111,7 +113,6 @@ abstract class SpawnedProcessBase implements LoggableInterface
                 $thisObj->registerWithResourcesCleaner();
             }
 
-            /** @noinspection PsalmAdvanceCallableParamsInspection */
             $runImpl($thisObj);
         } catch (Throwable $throwable) {
             $level = Level::CRITICAL;
@@ -145,8 +146,8 @@ abstract class SpawnedProcessBase implements LoggableInterface
      */
     protected static function getRequiredTestOption(string $optName)
     {
-        $optValue = AmbientContext::testConfig()->getOptionValueByName($optName);
-        if (is_null($optValue)) {
+        $optValue = AmbientContextForTests::testConfig()->getOptionValueByName($optName);
+        if ($optValue === null) {
             $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
@@ -154,8 +155,8 @@ abstract class SpawnedProcessBase implements LoggableInterface
                     [
                         'optName'        => $optName,
                         'envVarName'     => $envVarName,
-                        'dbgProcessName' => AmbientContext::dbgProcessName(),
-                        'testConfig'     => AmbientContext::testConfig(),
+                        'dbgProcessName' => AmbientContextForTests::dbgProcessName(),
+                        'testConfig'     => AmbientContextForTests::testConfig(),
                     ]
                 )
             );
@@ -181,15 +182,15 @@ abstract class SpawnedProcessBase implements LoggableInterface
             'Registering with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...'
         );
 
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort);
-        TestCase::assertNotNull(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId);
-        $response = TestHttpClientUtil::sendRequest(
+        TestCase::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort);
+        TestCase::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId);
+        $response = HttpClientUtilForTests::sendRequest(
             HttpConsts::METHOD_POST,
             (new UrlParts())
                 ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
-                ->port(AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerPort),
-            SharedDataPerRequest::fromServerId(
-                AmbientContext::testConfig()->sharedDataPerProcess->resourcesCleanerServerId
+                ->port(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort),
+            TestInfraDataPerRequest::withSpawnedProcessId(
+                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId
             ),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );

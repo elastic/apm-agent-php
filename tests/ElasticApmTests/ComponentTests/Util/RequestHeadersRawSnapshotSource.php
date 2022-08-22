@@ -57,7 +57,7 @@ final class RequestHeadersRawSnapshotSource implements RawSnapshotSourceInterfac
 
         foreach ($optionNameToMeta as $optionName => $optionMeta) {
             $headerValue = ($this->getHeaderValue)(self::optionNameToHeaderName($optionName));
-            if (!is_null($headerValue)) {
+            if ($headerValue !== null) {
                 $optionNameToHeaderValue[$optionName] = $headerValue;
             }
         }

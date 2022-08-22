@@ -24,60 +24,49 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\ExecutionSegmentData;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\TraceDataValidator;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-abstract class ExecutionSegmentDataDeserializer extends DataDeserializer
+final class ExecutionSegmentDataDeserializer
 {
-    /** @var ExecutionSegmentData */
-    private $result;
-
-    protected function __construct(ExecutionSegmentData $result)
-    {
-        $this->result = $result;
-    }
+    use StaticClassTrait;
 
     /**
-     * @param string $key
-     * @param mixed  $value
+     * @param mixed                $key
+     * @param mixed                $value
+     * @param ExecutionSegmentData $result
      *
      * @return bool
      */
-    protected function deserializeKeyValue(string $key, $value): bool
+    public static function deserializeKeyValue($key, $value, ExecutionSegmentData $result): bool
     {
         switch ($key) {
             case 'duration':
-                $this->result->duration = ValidationUtil::assertValidDuration($value);
+                $result->duration = DataValidator::validateDuration($value);
                 return true;
-
             case 'id':
-                $this->result->id = ValidationUtil::assertValidExecutionSegmentId($value);
+                $result->id = ExecutionSegmentDataValidator::validateId($value);
                 return true;
-
             case 'name':
-                $this->result->name = ValidationUtil::assertValidKeywordString($value);
+                $result->name = DataValidator::validateKeywordString($value);
                 return true;
-
             case 'outcome':
-                $this->result->outcome = ValidationUtil::assertValidOutcome($value);
+                $result->outcome = ExecutionSegmentDataValidator::validateOutcome($value);
                 return true;
-
+            case 'sample_rate':
+                $result->sampleRate = ExecutionSegmentDataValidator::validateNullableSampleRate($value);
+                return true;
             case 'timestamp':
-                $this->result->timestamp = ValidationUtil::assertValidTimestamp($value);
+                $result->timestamp = DataValidator::validateTimestamp($value);
                 return true;
-
             case 'trace_id':
-                $this->result->traceId = ValidationUtil::assertValidTraceId($value);
+                $result->traceId = TraceDataValidator::validateId($value);
                 return true;
-
             case 'type':
-                $this->result->type = ValidationUtil::assertValidKeywordString($value);
+                $result->type = DataValidator::validateKeywordString($value);
                 return true;
-
             default:
                 return false;
         }

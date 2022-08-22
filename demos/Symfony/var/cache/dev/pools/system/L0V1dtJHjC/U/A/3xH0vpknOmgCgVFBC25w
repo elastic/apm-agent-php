@@ -1,0 +1,3 @@
+<?php //App%255CController%255CBlogController
+
+return [PHP_INT_MAX, []];

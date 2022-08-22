@@ -36,19 +36,17 @@ use React\EventLoop\LoopInterface;
 use React\Http\Message\Response;
 use React\Promise\Promise;
 
-final class MockApmServer extends StatefulHttpServerProcessBase
+final class MockApmServer extends TestInfraHttpServerProcessBase
 {
     public const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
     private const INTAKE_API_URI = '/intake/v2/events';
     public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
     public const FROM_INDEX_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'FROM_INDEX';
     public const INTAKE_API_REQUESTS_JSON_KEY = 'intake_api_requests_received_from_agent';
+    public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
     /** @var int */
     public static $pendingDataRequestNextId = 1;
-
-    /** @var Logger */
-    private $logger;
 
     /** @var LoopInterface */
     private $reactLoop;
@@ -59,13 +57,16 @@ final class MockApmServer extends StatefulHttpServerProcessBase
     /** @var Map<int, MockApmServerPendingDataRequest> */
     private $pendingDataRequests;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct()
     {
         parent::__construct();
 
         $this->pendingDataRequests = new Map();
 
-        $this->logger = AmbientContext::loggerFactory()->loggerForClass(
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
@@ -73,6 +74,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         )->addContext('this', $this);
     }
 
+    /** @inheritDoc */
     protected function beforeLoopRun(LoopInterface $loop): void
     {
         $this->reactLoop = $loop;
@@ -96,7 +98,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
     }
 
-    protected function shouldRequestHaveServerId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
     }
@@ -111,7 +113,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
         }
 
         $newRequest = new IntakeApiRequest();
-        $newRequest->timeReceivedAtServer = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $newRequest->timeReceivedAtApmServer = Clock::singletonInstance()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
         $this->receivedIntakeApiRequests[] = $newRequest;
@@ -165,7 +167,7 @@ final class MockApmServer extends StatefulHttpServerProcessBase
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = self::$pendingDataRequestNextId++;
                 $timer = $this->reactLoop->addTimer(
-                    TestEnvBase::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
+                    self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
                         $this->fulfillTimedOutPendingDataRequest($pendingDataRequestId);
                     }
@@ -203,7 +205,6 @@ final class MockApmServer extends StatefulHttpServerProcessBase
 
     private function fulfillTimedOutPendingDataRequest(int $pendingDataRequestId): void
     {
-        /** @noinspection PhpRedundantOptionalArgumentInspection */
         $pendingDataRequest = $this->pendingDataRequests->remove($pendingDataRequestId, /* default: */ null);
         if ($pendingDataRequest === null) {
             // If request is already fulfilled then just return

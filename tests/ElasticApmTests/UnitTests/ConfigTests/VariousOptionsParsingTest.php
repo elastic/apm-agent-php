@@ -234,8 +234,6 @@ class VariousOptionsParsingTest extends TestCaseBase
      *
      * @param string                $optMetaDbgDesc
      * @param OptionMetadata<mixed> $optMeta
-     *
-     * @noinspection PhpUnusedParameterInspection
      */
     public function testParseInvalidValue(string $optMetaDbgDesc, OptionMetadata $optMeta): void
     {
@@ -300,12 +298,10 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @dataProvider   allOptionsMetadataProvider
+     * @dataProvider allOptionsMetadataProvider
      *
      * @param string                $optMetaDbgDesc
      * @param OptionMetadata<mixed> $optMeta
-     *
-     * @noinspection   PhpUnusedParameterInspection
      */
     public function testParseValidValue(string $optMetaDbgDesc, OptionMetadata $optMeta): void
     {

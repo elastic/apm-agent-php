@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
@@ -256,16 +257,16 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
         // Assert
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToTransaction);
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToSpan);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToTransaction);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToSpan);
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToError);
-        foreach ($this->mockEventSink->eventsFromAgent->idToError as $error) {
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToError);
+        foreach ($this->mockEventSink->dataFromAgent->idToError as $error) {
             self::assertSame($throwingRunData['traceId'], $error->traceId);
             self::assertSame($throwingRunData['transactionId'], $error->transactionId);
-            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->eventsFromAgent->idToTransaction);
-            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->eventsFromAgent->idToSpan);
-            self::assertArrayHasKey($error->id, $this->mockEventSink->eventsFromAgent->idToError);
+            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->dataFromAgent->idToTransaction);
+            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->dataFromAgent->idToSpan);
+            self::assertArrayHasKey($error->id, $this->mockEventSink->dataFromAgent->idToError);
             self::assertTrue(
                 $error->parentId === $throwingRunData['spanId']
                 || $error->parentId === $throwingRunData['transactionId']
@@ -290,5 +291,25 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             self::assertSame(__FILE__, $topFrame->filename);
             self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
         }
+    }
+
+    public function testDefaultExecutionSegmentType(): void
+    {
+        // Act
+        ElasticApm::newTransaction('test_TX_name', '')->asCurrent()->begin();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_1_name', '');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_2_name', 'test_span_2_type');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentExecutionSegment()->end();
+
+        // Assert
+        $tx = $this->mockEventSink->singleTransaction();
+        $this->assertSame('test_TX_name', $tx->name);
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $tx->type);
+        $span1 = $this->mockEventSink->spanByName('test_span_1_name');
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $span1->type);
+        $span2 = $this->mockEventSink->spanByName('test_span_2_name');
+        $this->assertSame('test_span_2_type', $span2->type);
     }
 }

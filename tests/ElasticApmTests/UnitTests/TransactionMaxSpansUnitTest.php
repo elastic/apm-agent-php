@@ -30,6 +30,7 @@ use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
+use ElasticApmTests\Util\TransactionDataExpectations;
 
 class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 {
@@ -63,18 +64,20 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         ///////////////////////////////
         // Assert
 
-        SharedCode::assertResults($testArgs, $this->mockEventSink->eventsFromAgent);
+        SharedCode::assertResults($testArgs, $this->mockEventSink->dataFromAgent);
     }
 
     public function testVariousCombinations(): void
     {
+        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        TransactionDataExpectations::$defaultIsSampled = null;
         /** @var Args $testArgs */
         foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
             if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
                 continue;
             }
 
-            GlobalTracerHolder::unset();
+            GlobalTracerHolder::unsetValue();
             $this->mockEventSink->clear();
             $this->variousCombinationsTestImpl($testArgs);
         }

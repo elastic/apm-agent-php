@@ -47,8 +47,12 @@ final class EnabledLoggerProxy
     /** @var bool|null */
     private $includeStacktrace = null;
 
-    public function __construct(int $statementLevel, int $srcCodeLine, string $srcCodeFunc, LoggerData $loggerData)
-    {
+    public function __construct(
+        int $statementLevel,
+        int $srcCodeLine,
+        string $srcCodeFunc,
+        LoggerData $loggerData
+    ) {
         $this->statementLevel = $statementLevel;
         $this->srcCodeLine = $srcCodeLine;
         $this->srcCodeFunc = $srcCodeFunc;

@@ -62,6 +62,12 @@ final class AllOptionsMetadata
             OptionNames::LOG_LEVEL                => new NullableLogLevelOptionMetadata(),
             OptionNames::LOG_LEVEL_STDERR         => new NullableLogLevelOptionMetadata(),
             OptionNames::LOG_LEVEL_SYSLOG         => new NullableLogLevelOptionMetadata(),
+            // https://github.com/elastic/apm/blob/e1ac6ecc841b525148cb293df9d852994d877773/specs/agents/sanitization.md#sanitize_field_names-configuration
+            OptionNames::SANITIZE_FIELD_NAMES     => new WildcardListOptionMetadata(
+                WildcardListOptionParser::parseImpl(
+                    'password, passwd, pwd, secret, *key, *token*, *session*, *credit*, *card*, *auth*, set-cookie'
+                )
+            ),
             OptionNames::SECRET_TOKEN             => new NullableStringOptionMetadata(),
             OptionNames::SERVER_TIMEOUT           => new DurationOptionMetadata(
                 0.0 /* <- minValidValueInMilliseconds */,

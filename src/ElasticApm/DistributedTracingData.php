@@ -26,7 +26,7 @@ namespace Elastic\Apm;
 use Closure;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 
-final class DistributedTracingData
+class DistributedTracingData
 {
     /** @var string */
     public $traceId;

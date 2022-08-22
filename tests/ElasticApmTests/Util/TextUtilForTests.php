@@ -25,11 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
 final class TextUtilForTests
 {
     use StaticClassTrait;
@@ -82,5 +77,10 @@ final class TextUtilForTests
         $result .= substr($text, $prevPos, $currentPos - $prevPos);
 
         return $result;
+    }
+
+    public static function contains(string $haystack, string $needle): bool
+    {
+        return strpos($haystack, $needle) !== false;
     }
 }

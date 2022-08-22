@@ -34,7 +34,7 @@ class TimeRelatedApiUsingMockClockTest extends TracerUnitTestCaseBase
 
     public function setUp(): void
     {
-        $this->mockClock = new MockClock();
+        $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder): void {
                 $builder->withClock($this->mockClock);

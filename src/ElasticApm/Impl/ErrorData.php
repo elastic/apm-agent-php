@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 
 /**
@@ -144,19 +145,20 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
         $result->timestamp = $tracer->getClock()->getSystemClockCurrentTime();
         $result->id = IdGenerator::generateId(Constants::ERROR_ID_SIZE_IN_BYTES);
 
-        if (!is_null($transaction)) {
+        if ($transaction !== null) {
             $result->transaction = ErrorTransactionData::build($transaction);
             $result->context = $transaction->cloneContextData();
             $result->traceId = $transaction->getTraceId();
             $result->transactionId = $transaction->getId();
-            $result->parentId = is_null($span) ? $transaction->getId() : $span->getId();
+            $result->parentId = ($span === null ? $transaction->getId() : $span->getId());
         }
 
         if (
-            !empty($errorExceptionData->stacktrace)
+            $errorExceptionData->stacktrace !== null
+            && !ArrayUtil::isEmpty($errorExceptionData->stacktrace)
             && ($topFrameFunction = $errorExceptionData->stacktrace[0]->function) !== null
         ) {
-            $result->culprit = $topFrameFunction;
+            $result->culprit = Tracer::limitKeywordString($topFrameFunction);
         }
 
         $result->exception = $errorExceptionData;
@@ -179,7 +181,7 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
         SerializationUtil::addNameValueIfNotNull('transaction_id', $this->transactionId, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
 
-        if (!is_null($this->transaction)) {
+        if ($this->transaction !== null) {
             SerializationUtil::addNameValueIfNotEmpty(
                 'transaction',
                 $this->transaction->jsonSerialize(),
@@ -187,7 +189,7 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
             );
         }
 
-        if (!is_null($this->context)) {
+        if ($this->context !== null) {
             SerializationUtil::addNameValueIfNotEmpty(
                 'context',
                 $this->context->jsonSerialize(),
@@ -197,7 +199,7 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
 
         SerializationUtil::addNameValueIfNotNull('culprit', $this->culprit, /* ref */ $result);
 
-        if (!is_null($this->exception)) {
+        if ($this->exception !== null) {
             SerializationUtil::addNameValueIfNotEmpty(
                 'exception',
                 $this->exception->jsonSerialize(),

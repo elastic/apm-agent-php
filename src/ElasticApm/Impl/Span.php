@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\SpanContextInterface;
@@ -64,7 +63,8 @@ final class Span extends ExecutionSegment implements SpanInterface
         ?string $subtype,
         ?string $action,
         ?float $timestamp,
-        bool $isDropped
+        bool $isDropped,
+        ?float $sampleRate
     ) {
         $this->data = new SpanData();
         $this->parentExecutionSegment = $parentExecutionSegment;
@@ -77,6 +77,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             $containingTransaction->getTraceId(),
             $name,
             $type,
+            $sampleRate,
             $timestamp
         );
 
@@ -104,7 +105,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     {
         return array_merge(
             parent::propertiesExcludedFromLog(),
-            ['containingTransaction', 'parentSpan', 'logger', 'stacktrace', 'context']
+            ['containingTransaction', 'parentSpan', 'stacktrace', 'context']
         );
     }
 
@@ -144,7 +145,7 @@ final class Span extends ExecutionSegment implements SpanInterface
             return NoopSpanContext::singletonInstance();
         }
 
-        if (is_null($this->context)) {
+        if ($this->context === null) {
             $this->data->context = new SpanContextData();
             $this->context = new SpanContext($this, $this->data->context);
         }
@@ -173,7 +174,7 @@ final class Span extends ExecutionSegment implements SpanInterface
     }
 
     /** @inheritDoc */
-    public function getDistributedTracingData(): ?DistributedTracingData
+    public function getDistributedTracingDataInternal(): ?DistributedTracingDataInternal
     {
         $spanAsParent = $this->shouldBeSentToApmServer() ? $this : null;
         return $this->containingTransaction->doGetDistributedTracingData($spanAsParent);

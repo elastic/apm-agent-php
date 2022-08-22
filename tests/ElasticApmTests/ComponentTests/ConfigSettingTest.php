@@ -31,17 +31,22 @@ use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetterIni;
+use ElasticApmTests\ComponentTests\Util\AgentConfigSourceKind;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\Util\TransactionDataExpectations;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class ConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';
     private const APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE = 'APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE';
+
+    private const APP_CODE_RESPONSE_HTTP_STATUS_CODE = 234;
 
     /**
      * @return array<string, array<string|int, mixed>>
@@ -110,7 +115,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         ];
 
         return [
-            OptionNames::API_KEY                  => $stringRawToParsedValues(['my_api_key', "\t\n  my api key "]),
+            OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
             OptionNames::ASYNC_BACKEND_COMM       => $boolRawToParsedValues(),
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
@@ -122,11 +127,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
-            OptionNames::SECRET_TOKEN             => $stringRawToParsedValues([" my_secret_token \t"]),
+            OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
+            OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
             OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,
-            OptionNames::SERVICE_NAME             => $stringRawToParsedValues([' \t my_service_name \t']),
+            OptionNames::SERVICE_NAME             => $stringRawToParsedValues(['my service \t name']),
             OptionNames::SERVICE_NODE_NAME        => $stringRawToParsedValues([' my_service_node_name  \t ']),
-            OptionNames::SERVICE_VERSION          => $stringRawToParsedValues([" my_service_version"]),
+            OptionNames::SERVICE_VERSION          => $stringRawToParsedValues(['my service version ! 123']),
             OptionNames::TRANSACTION_IGNORE_URLS  => $wildcardListRawToParsedValues,
             OptionNames::TRANSACTION_MAX_SPANS    => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE  => $doubleRawToParsedValues,
@@ -148,20 +154,20 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array{AgentConfigSetter, string, string, mixed}>>
+     * @return iterable<array{AgentConfigSourceKind, string, string, mixed}>>
      */
     public function dataProviderForTestAllWaysToSetConfig(): iterable
     {
         $optNameToRawToParsedValue = self::buildOptionNameToRawToValue();
 
-        foreach ($this->allConfigSetters as $configSetter) {
+        foreach (AgentConfigSourceKind::all() as $agentConfigSourceKind) {
             foreach ($optNameToRawToParsedValue as $optName => $optRawToValue) {
                 foreach ($optRawToValue as $optRawVal => $optExpectedVal) {
-                    if ($configSetter instanceof AgentConfigSetterIni) {
+                    if ($agentConfigSourceKind === AgentConfigSourceKind::iniFile()) {
                         $optRawToValue = str_replace("\n", "\t", $optRawToValue);
                     }
                     $optExpectedVal = $optExpectedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
-                    yield [$configSetter, $optName, strval($optRawVal), $optExpectedVal];
+                    yield [$agentConfigSourceKind, $optName, strval($optRawVal), $optExpectedVal];
                 }
             }
         }
@@ -173,15 +179,11 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        self::appAssertTrue(
-            is_string($optName),
-            '$optName should be a string',
-            ['$optName actual type' => DbgUtil::getType($optName)]
-        );
+        TestCase::assertIsString($optName);
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::get();
+        $tracer = GlobalTracerHolder::getValue();
         if (!($tracer instanceof Tracer)) {
             throw new RuntimeException(
                 ExceptionUtil::buildMessage('$tracer is not an instance of Tracer class', ['$tracer' => $tracer])
@@ -211,40 +213,46 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             );
         }
 
-        http_response_code(234);
+        http_response_code(self::APP_CODE_RESPONSE_HTTP_STATUS_CODE);
     }
 
     /**
      * @dataProvider dataProviderForTestAllWaysToSetConfig
      *
-     * @param AgentConfigSetter $configSetter
-     * @param string            $optName
-     * @param string            $optRawVal
-     * @param mixed             $optExpectedVal
+     * @param AgentConfigSourceKind $agentConfigSourceKind
+     * @param string                $optName
+     * @param string                $optRawVal
+     * @param mixed                 $optExpectedVal
      */
     public function testAllWaysToSetConfig(
-        AgentConfigSetter $configSetter,
+        AgentConfigSourceKind $agentConfigSourceKind,
         string $optName,
         string $optRawVal,
         $optExpectedVal
     ): void {
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForTestAllWaysToSetConfig'])
-            ->withAppCodeArgs(
-                [
-                    self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
-                    self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal,
-                ]
-            )
-            ->withExpectedStatusCode(234);
-        $configSetter->set($optName, $optRawVal);
-        $testProperties->withAgentConfig($configSetter);
-
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent): void {
-                $this->verifyTransactionWithoutSpans($dataFromAgent);
+        TransactionDataExpectations::$defaultIsSampled = null;
+        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {
+                $appCodeParams->setDefaultAgentConfigSource($agentConfigSourceKind);
+                $appCodeParams->setAgentOption($optName, $optRawVal);
             }
         );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllWaysToSetConfig']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($optName, $optExpectedVal): void {
+                $appCodeRequestParams->setAppCodeArgs(
+                    [
+                        self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
+                        self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal,
+                    ]
+                );
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = self::APP_CODE_RESPONSE_HTTP_STATUS_CODE;
+                }
+            }
+        );
+        $this->waitForOneEmptyTransaction($testCaseHandle);
     }
 }

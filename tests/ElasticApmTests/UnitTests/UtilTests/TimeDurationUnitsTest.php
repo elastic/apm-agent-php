@@ -36,7 +36,7 @@ class TimeDurationUnitsTest extends TestCase
         foreach (DurationUnits::$suffixAndIdPairs as $suffixAndIdPair) {
             $suffix = $suffixAndIdPair[0];
             $suffixLength = strlen($suffix);
-            if (!is_null($prevSuffixLength)) {
+            if ($prevSuffixLength !== null) {
                 self::assertLessThanOrEqual($prevSuffixLength, $suffixLength);
             }
             $prevSuffixLength = $suffixLength;

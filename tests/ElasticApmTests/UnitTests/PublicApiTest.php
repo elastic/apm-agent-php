@@ -230,7 +230,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertValidTransactionAndItsSpans(
+        $this->assertValidTransactionAndSpans(
             $this->mockEventSink->singleTransaction(),
             $this->mockEventSink->idToSpan()
         );

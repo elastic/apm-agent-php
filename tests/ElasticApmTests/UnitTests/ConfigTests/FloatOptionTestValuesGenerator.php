@@ -113,13 +113,13 @@ class FloatOptionTestValuesGenerator extends NumericOptionTestValuesGeneratorBas
             $result->add(floatval($intInterestingValue));
         }
 
-        if (!is_null($this->optionParser()->minValidValue())) {
+        if ($this->optionParser()->minValidValue() !== null) {
             $result->add(
                 $this->optionParser()->minValidValue(),
                 $this->optionParser()->minValidValue() / 2
             );
         }
-        if (!is_null($this->optionParser()->maxValidValue())) {
+        if ($this->optionParser()->maxValidValue() !== null) {
             $result->add(
                 $this->optionParser()->maxValidValue(),
                 $this->optionParser()->maxValidValue() / 2

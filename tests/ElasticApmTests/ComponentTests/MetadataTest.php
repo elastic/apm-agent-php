@@ -27,10 +27,9 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestEnvBase;
+use ElasticApmTests\Util\MetadataValidator;
+use PHPUnit\Framework\TestCase;
 
 final class MetadataTest extends ComponentTestCaseBase
 {
@@ -51,26 +50,17 @@ final class MetadataTest extends ComponentTestCaseBase
         ];
     }
 
-    private function environmentConfigTestImpl(
-        ?AgentConfigSetter $configSetter,
-        ?string $configured,
-        ?string $expected
-    ): void {
-        $this->configTestImpl(
-            $configSetter,
-            $configured,
-            function (AgentConfigSetter $configSetter, string $configured): void {
-                $configSetter->set(OptionNames::ENVIRONMENT, $configured);
-            },
-            function (DataFromAgent $dataFromAgent) use ($expected): void {
-                TestEnvBase::verifyEnvironment($expected, $dataFromAgent);
-            }
-        );
+    private function environmentConfigTestImpl(?string $configured, ?string $expected): void
+    {
+        $dataFromAgent = $this->configTestImpl(OptionNames::ENVIRONMENT, $configured);
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->environment);
+        }
     }
 
     public function testDefaultEnvironment(): void
     {
-        $this->environmentConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
+        $this->environmentConfigTestImpl(/* configured: */ null, /* expected: */ null);
     }
 
     /**
@@ -80,40 +70,26 @@ final class MetadataTest extends ComponentTestCaseBase
      */
     public function testCustomEnvironment(string $configured): void
     {
-        $this->environmentConfigTestImpl(
-            $this->randomConfigSetter(),
-            $configured, /* expected: */
-            Tracer::limitKeywordString($configured)
-        );
+        $this->environmentConfigTestImpl($configured, /* expected: */ Tracer::limitKeywordString($configured));
     }
 
     public function testInvalidEnvironmentTooLong(): void
     {
         $expected = self::generateDummyMaxKeywordString();
-        $this->environmentConfigTestImpl($this->randomConfigSetter(), /* configured: */ $expected . '_tail', $expected);
+        $this->environmentConfigTestImpl(/* configured: */ $expected . '_tail', $expected);
     }
 
-    private function serviceNameConfigTestImpl(
-        ?AgentConfigSetter $configSetter,
-        ?string $configured,
-        string $expected
-    ): void {
-        $this->configTestImpl(
-            $configSetter,
-            $configured,
-            function (AgentConfigSetter $configSetter, string $configured): void {
-                $configSetter->set(OptionNames::SERVICE_NAME, $configured);
-            },
-            function (DataFromAgent $dataFromAgent) use ($expected): void {
-                TestEnvBase::verifyServiceName($expected, $dataFromAgent);
-            }
-        );
+    private function serviceNameConfigTestImpl(?string $configured, string $expected): void
+    {
+        $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NAME, $configured);
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->name);
+        }
     }
 
     public function testDefaultServiceName(): void
     {
         $this->serviceNameConfigTestImpl(
-            null /* <- configSetter */,
             null /* <- configured */,
             MetadataDiscoverer::DEFAULT_SERVICE_NAME /* <- expected */
         );
@@ -122,88 +98,78 @@ final class MetadataTest extends ComponentTestCaseBase
     public function testCustomServiceName(): void
     {
         $configured = 'custom service name';
-        $this->serviceNameConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
+        $this->serviceNameConfigTestImpl($configured, /* expected: */ $configured);
     }
 
     public function testInvalidServiceNameChars(): void
     {
         $this->serviceNameConfigTestImpl(
-            $this->randomConfigSetter(),
-            /* configured: */ '1CUSTOM -@- sErvIcE -+- NaMe9',
-            /* expected:   */ '1CUSTOM -_- sErvIcE -_- NaMe9'
+            '1CUSTOM -@- sErvIcE -+- NaMe9' /* <- configured */,
+            '1CUSTOM -_- sErvIcE -_- NaMe9' /* <- expected */
         );
     }
 
     public function testInvalidServiceNameTooLong(): void
     {
         $this->serviceNameConfigTestImpl(
-            $this->randomConfigSetter(),
-            /* configured: */ '[' . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
-                              . ','
-                              . ';'
-                              . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']' . '_tail',
-            /* expected:   */ '_' . str_repeat('A', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2)
-                              . '_'
-                              . '_'
-                              . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . '_'
+            /* configured: */
+            '[' . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+            . ','
+            . ';'
+            . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2) . ']' . '_tail',
+            /* expected: */
+            '_' . str_repeat('A', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2)
+            . '_'
+            . '_'
+            . str_repeat('B', Constants::KEYWORD_STRING_MAX_LENGTH / 2 - 2) . '_'
         );
     }
 
-    private function serviceVersionConfigTestImpl(
-        ?AgentConfigSetter $configSetter,
-        ?string $configured,
-        ?string $expected
-    ): void {
-        $this->configTestImpl(
-            $configSetter,
-            $configured,
-            function (AgentConfigSetter $configSetter, string $configured): void {
-                $configSetter->set(OptionNames::SERVICE_VERSION, $configured);
-            },
-            function (DataFromAgent $dataFromAgent) use ($expected): void {
-                TestEnvBase::verifyServiceVersion($expected, $dataFromAgent);
-            }
-        );
+    private function serviceVersionConfigTestImpl(?string $configured, ?string $expected): void
+    {
+        $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_VERSION, $configured);
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->version);
+        }
     }
 
     public function testDefaultServiceVersion(): void
     {
-        $this->serviceVersionConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
+        $this->serviceVersionConfigTestImpl(/* configured: */ null, /* expected: */ null);
     }
 
     public function testCustomServiceVersion(): void
     {
         $configured = 'v1.5.4-alpha@CI#.!?.';
-        $this->serviceVersionConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
+        $this->serviceVersionConfigTestImpl($configured, /* expected: */ $configured);
     }
 
     public function testInvalidServiceVersionTooLong(): void
     {
         $expected = self::generateDummyMaxKeywordString();
-        $this->serviceVersionConfigTestImpl(
-            $this->randomConfigSetter(),
-            /* configured: */ $expected . '_tail',
-            $expected
-        );
+        $this->serviceVersionConfigTestImpl(/* configured: */ $expected . '_tail', $expected);
     }
 
-    private function hostnameConfigTestImpl(?AgentConfigSetter $configSetter, ?string $configured): void
+    private function hostnameConfigTestImpl(?string $configured): void
     {
-        $this->configTestImpl(
-            $configSetter,
-            $configured,
-            function (AgentConfigSetter $configSetter, string $configured): void {
-                $configSetter->set(OptionNames::HOSTNAME, $configured);
-            },
-            function (DataFromAgent $dataFromAgent) use ($configured): void {
-                TestEnvBase::verifyHostname($configured, $dataFromAgent);
-            }
-        );
+        $dataFromAgent = $this->configTestImpl(OptionNames::HOSTNAME, $configured);
+
+        $expectedConfiguredHostname = Tracer::limitNullableKeywordString($configured);
+        $expectedDetectedHostname
+            = $expectedConfiguredHostname === null ? MetadataDiscoverer::detectHostname() : null;
+
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            MetadataValidator::verifyHostnames(
+                $expectedConfiguredHostname,
+                $expectedDetectedHostname,
+                $metadata->system
+            );
+        }
     }
 
     public function testDefaultHostname(): void
     {
-        $this->hostnameConfigTestImpl(/* configSetter: */ null, /* configured: */ null);
+        $this->hostnameConfigTestImpl(/* configured: */ null);
     }
 
     /**
@@ -213,44 +179,31 @@ final class MetadataTest extends ComponentTestCaseBase
      */
     public function testCustomHostname(string $configured): void
     {
-        $this->hostnameConfigTestImpl($this->randomConfigSetter(), $configured);
+        $this->hostnameConfigTestImpl($configured);
     }
 
-    private function serviceNodeNameConfigTestImpl(
-        ?AgentConfigSetter $configSetter,
-        ?string $configured,
-        ?string $expected
-    ): void {
-        $this->configTestImpl(
-            $configSetter,
-            $configured,
-            function (AgentConfigSetter $configSetter, string $configured): void {
-                $configSetter->set(OptionNames::SERVICE_NODE_NAME, $configured);
-            },
-            function (DataFromAgent $dataFromAgent) use ($expected): void {
-                TestEnvBase::verifyServiceNodeName($expected, $dataFromAgent);
-            }
-        );
+    private function serviceNodeNameConfigTestImpl(?string $configured, ?string $expected): void
+    {
+        $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NODE_NAME, $configured);
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
+        }
     }
 
     public function testDefaultServiceNodeName(): void
     {
-        $this->serviceNodeNameConfigTestImpl(/* configSetter: */ null, /* configured: */ null, /* expected: */ null);
+        $this->serviceNodeNameConfigTestImpl(/* configured: */ null, /* expected: */ null);
     }
 
     public function testCustomServiceNodeName(): void
     {
         $configured = 'alpha-centauri node@CI#.!?.';
-        $this->serviceNodeNameConfigTestImpl($this->randomConfigSetter(), $configured, /* expected: */ $configured);
+        $this->serviceNodeNameConfigTestImpl($configured, /* expected: */ $configured);
     }
 
     public function testInvalidServiceNodeNameTooLong(): void
     {
         $expected = self::generateDummyMaxKeywordString();
-        $this->serviceNodeNameConfigTestImpl(
-            $this->randomConfigSetter(),
-            /* configured: */ $expected . '_tail',
-            $expected
-        );
+        $this->serviceNodeNameConfigTestImpl(/* configured: */ $expected . '_tail', $expected);
     }
 }

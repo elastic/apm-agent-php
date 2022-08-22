@@ -217,7 +217,7 @@ final class StacktraceTestSharedCode
         $checkedSpansCount = 0;
         /** @var SpanData $span */
         foreach ($idToSpan as $span) {
-            $labels = is_null($span->context) ? [] : $span->context->labels;
+            $labels = $span->context === null ? [] : $span->context->labels;
             if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {
                 self::assertPartImplOneSpan($expectedData, $span);
                 ++$checkedSpansCount;

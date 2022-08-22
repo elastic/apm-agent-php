@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use LogicException;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
