@@ -331,9 +331,8 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($urlParts, $expectedTxName): void {
                 $appCodeRequestParams->expectedTransactionName->setValue($expectedTxName);
-                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
-                }
+                self::assertInstanceOf(HttpAppCodeRequestParams::class, $appCodeRequestParams);
+                $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
             }
         );
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);

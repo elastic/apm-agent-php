@@ -98,6 +98,16 @@ class ComponentTestCaseBase extends TestCaseBase
         return AmbientContextForTests::testConfig()->appCodeHostKind()->isHttp();
     }
 
+    protected function skipIfMainAppCodeHostIsNotCliScript(): bool
+    {
+        if (self::isMainAppCodeHostHttp()) {
+            self::dummyAssert();
+            return true;
+        }
+
+        return false;
+    }
+
     protected function skipIfMainAppCodeHostIsNotHttp(): bool
     {
         if (!self::isMainAppCodeHostHttp()) {

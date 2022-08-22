@@ -47,6 +47,8 @@ final class TransactionForExtensionRequest
 {
     private const DEFAULT_NAME = 'Unnamed transaction';
 
+    private const LARAVEL_ARTISAN_COMMAND_SCRIPT = 'artisan';
+
     /** @var Tracer */
     private $tracer;
 
@@ -370,22 +372,45 @@ final class TransactionForExtensionRequest
     private function discoverCliName(): string
     {
         global $argc, $argv;
-        if (isset($argc) && ($argc > 0) && isset($argv) && !empty($argv[0])) {
-            $cliScriptName = basename($argv[0]);
+
+        if (
+            !isset($argc)
+            || ($argc <= 0)
+            || !isset($argv)
+            || (count($argv) == 0)
+            || !is_string($argv[0])
+            || TextUtil::isEmptyString($argv[0])
+        ) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Successfully discovered CLI script name - using it for transaction name',
-                ['cliScriptName' => $cliScriptName]
+                'Could not discover CLI script name - using default transaction name',
+                ['DEFAULT_NAME' => self::DEFAULT_NAME]
+            );
+            return self::DEFAULT_NAME;
+        }
+
+        $cliScriptName = basename($argv[0]);
+        if (
+            ($argc < 2)
+            || (count($argv) < 2)
+            || ($cliScriptName !== self::LARAVEL_ARTISAN_COMMAND_SCRIPT)
+        ) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Using CLI script name as transaction name',
+                ['cliScriptName' => $cliScriptName, 'argc' => $argc, 'argv' => $argv]
             );
             return $cliScriptName;
         }
 
+        $txName = $cliScriptName . ' ' . $argv[1];
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Could not discover CLI script name - using default transaction name',
-            ['DEFAULT_NAME' => self::DEFAULT_NAME]
+            'CLI script is Laravel ' . self::LARAVEL_ARTISAN_COMMAND_SCRIPT . ' command with arguments'
+            . ' - including the first argument in transaction name',
+            ['txName' => $txName, 'argc' => $argc, 'argv' => $argv]
         );
-        return self::DEFAULT_NAME;
+        return $txName;
     }
 
     /**

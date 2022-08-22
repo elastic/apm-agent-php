@@ -29,8 +29,6 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 
 final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
 {
-    private const SCRIPT_TO_RUN_APP_CODE_HOST = 'runCliScriptAppCodeHost.php';
-
     /** @var ResourcesCleanerHandle */
     private $resourcesCleaner;
 
@@ -56,7 +54,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     /** @inheritDoc */
     public function sendRequest(AppCodeTarget $appCodeTarget, ?Closure $setParamsFunc = null): void
     {
-        $requestParams = new AppCodeRequestParams($appCodeTarget);
+        $requestParams = new CliScriptAppCodeRequestParams($appCodeTarget);
         if ($setParamsFunc !== null) {
             $setParamsFunc($requestParams);
         }
@@ -66,7 +64,10 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         && $loggerProxy->log('Starting...');
 
         $cmdLine = TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
-                   . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"';
+                   . ' "' . __DIR__ . DIRECTORY_SEPARATOR . $requestParams->scriptToRunAppCodeHost . '"';
+        foreach ($requestParams->scriptToRunAppCodeHostArgs as $scriptToRunAppCodeHostArg) {
+            $cmdLine .= ' ' . $scriptToRunAppCodeHostArg;
+        }
 
         $envVars = TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(),
@@ -84,9 +85,9 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         $this->afterAppCodeInvocation($appCodeInvocation);
     }
 
-    private function setAppCodeRequestParamsExpected(AppCodeRequestParams $appCodeRequestParams): void
+    private function setAppCodeRequestParamsExpected(CliScriptAppCodeRequestParams $appCodeRequestParams): void
     {
-        $appCodeRequestParams->expectedTransactionName->setValueIfNotSet(self::SCRIPT_TO_RUN_APP_CODE_HOST);
+        $appCodeRequestParams->expectedTransactionName->setValueIfNotSet($appCodeRequestParams->scriptToRunAppCodeHost);
         $appCodeRequestParams->expectedTransactionType->setValueIfNotSet(Constants::TRANSACTION_TYPE_CLI);
     }
 }
