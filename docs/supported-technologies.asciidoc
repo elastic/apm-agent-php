@@ -38,7 +38,7 @@ We support automatic instrumentation for the following web frameworks.
 |
 
 |Laravel
-|6
+|6, 7, 8, 9
 
 |===
 
@@ -53,7 +53,7 @@ We support automatic instrumentation for the following data access technologies.
 
 |PHP Data Objects (PDO)
 |
-|The agent automatically creates DB spans for all your PDO queries. This includes PDO queries executed by object relational mappers (ORM) like Doctrine.
+|The agent automatically creates DB spans for all your PDO queries. This includes PDO queries executed by object relational mappers (ORM) like Doctrine & Eloquent.
 
 |===
 
