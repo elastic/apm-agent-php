@@ -428,13 +428,12 @@ def prepareWorkspace(def args = [:], Closure body){
 }
 
 def notifyStatus(def args = [:]) {
-// TODO: Sergey Kleyman: UNCOMMENT to re-enable Slack notifications
-//   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
-//                       slackColor: args.slackStatus,
-//                       slackCredentialsId: 'jenkins-slack-integration-token',
-//                       to: "${env.NOTIFY_TO}",
-//                       subject: args.subject,
-//                       body: args.body)
+  releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
+                      slackColor: args.slackStatus,
+                      slackCredentialsId: 'jenkins-slack-integration-token',
+                      to: "${env.NOTIFY_TO}",
+                      subject: args.subject,
+                      body: args.body)
 }
 
 def prepareRelease() {
