@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepare for release (change version, etc.) (apm-ci)') {
+        stage('Prepare for release (set version, etc.)') {
           options {
             skipDefaultCheckout()
           }
@@ -79,7 +79,7 @@ pipeline {
             }
           }
         }
-        stage('Build binaries and basic testing (umbrella stage)') {
+        stage('Build binaries and basic testing') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -177,7 +177,7 @@ pipeline {
             }
           }
         }
-        stage('Test packages (component tests, etc.)') {
+        stage('Test packages') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -217,7 +217,7 @@ pipeline {
         RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
       }
       stages {
-        stage('Sign packages (internal-ci)') {
+        stage('Sign packages') {
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -242,7 +242,7 @@ pipeline {
             }
           }
         }
-        stage('Test signed packages (internal-ci)') {
+        stage('Test signed packages') {
           options { skipDefaultCheckout() }
           steps {
             generateSteps("generate_stages_list_smoke.sh")
@@ -253,7 +253,7 @@ pipeline {
             }
           }
         }
-        stage('Ask for approval to publish (internal-ci)') {
+        stage('Ask for approval to publish') {
           options { skipDefaultCheckout() }
           steps {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
@@ -262,7 +262,7 @@ pipeline {
             setEnvVar('RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
-        stage('Publish as draft release (internal-ci)') {
+        stage('Publish as draft release') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -285,7 +285,7 @@ pipeline {
             }
           }
         }
-        stage('Verify draft release checksum (internal-ci)') {
+        stage('Verify draft release checksum') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -307,7 +307,7 @@ pipeline {
             }
           }
         }
-        stage('Publish release (convert draft to regular) (internal-ci)') {
+        stage('Publish release (draft -> regular)') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
