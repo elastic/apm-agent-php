@@ -30,8 +30,10 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
 use mysqli;
+use mysqli_result;
 use mysqli_stmt;
 
 /**
@@ -43,8 +45,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
-    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE
-        = 'Elastic_APM_dynamically_attached_property_DB_span_subtype';
+    private const DYNAMICALLY_ATTACHED_PROPERTY_MYSQLI_QUERY = 'Elastic_APM_dynamically_attached_property_mysqli_query';
 
     /** @var Logger */
     private $logger;
@@ -80,183 +81,205 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             return;
         }
 
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_query');
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_connect');
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_fetch_array');
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_ping');
-        $this->registerDelegatingToHandleTracker($ctx, 'mysqli_fetch_object');
-        $this->mysqliConstruct($ctx);
-        $this->mysqliQuery($ctx);
-        $this->mysqliPrepare($ctx);
-        $this->mysqliStatementExecute($ctx);
+        $this->interceptCallsToConstructWithOneArg($ctx, 'mysqli', '__construct', 'mysqli_connect');
+        $this->interceptCallsToQuery($ctx);
+        $this->interceptCallsToPrepare($ctx);
+        $this->interceptCallsToExecute($ctx);
+        $this->interceptCallsWithoutArg($ctx, 'mysqli', 'ping', 'mysqli_ping');
+        $this->interceptCallsWithOneArg($ctx, 'mysqli', 'select_db', 'mysqli_select_db');
     }
 
-    public function registerDelegatingToHandleTracker(
+    private function interceptCallsToConstructWithOneArg(
         RegistrationContextInterface $ctx,
-        string $funcName
+        string                       $className,
+        string                       $methodName,
+        string                       $funcName
+    ): void {
+        $preHook = function ($interceptedCallThis, array $interceptedCallArgs) use ($funcName): ?callable {
+            return $this->createSpan($interceptedCallArgs, $funcName);
+        };
+
+        $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
+    }
+
+    private function interceptCallsWithOneArg(
+        RegistrationContextInterface $ctx,
+        string                       $className,
+        string                       $methodName,
+        string                       $funcName
+    ): void {
+        $preHook = function (
+            ?object $interceptedCallThis,
+            array   $interceptedCallArgs,
+            ?string $className,
+            string  $funcName
+        ): ?callable {
+            return $this->createSpan($interceptedCallArgs, $funcName);
+        };
+
+        $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
+    }
+
+    private function createSpan(array $interceptedCallArgs, string $funcName): ?callable
+    {
+        $query = $this->generateStatement($interceptedCallArgs[0], $funcName);
+        $spanName = $query ?? $funcName . '(' . $interceptedCallArgs[0] . ')';
+
+        return self::createPostHookFromEndSpan(
+            $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $query)
+        );
+    }
+
+    private function interceptCallsWithoutArg(
+        RegistrationContextInterface $ctx,
+        string                       $className,
+        string                       $methodName,
+        string                       $funcName
+    ): void {
+        $preHook = function (
+            ?object $interceptedCallThis,
+            array   $interceptedCallArgs,
+            ?string $className,
+            string  $funcName
+        ): ?callable {
+            $spanName = $className ? 'mysqli->' . $funcName : $funcName . '()';
+            return self::createPostHookFromEndSpan(
+                $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, null)
+            );
+        };
+
+        $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
+    }
+
+    private function interceptCallsToQuery(RegistrationContextInterface $ctx): void
+    {
+        $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+            $query = $interceptedCallArgs[1];
+            $spanName = $interceptedCallArgs[0];
+
+            return self::createPostHookFromEndSpan(
+                $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $query)
+            );
+        };
+
+        $this->interceptCallsTo($ctx, 'mysqli', 'query', 'mysqli_query', $preHook);
+    }
+
+    private function interceptCallsToPrepare(RegistrationContextInterface $ctx): void
+    {
+        $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+            if (count($interceptedCallArgs) < 1) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Number of received arguments for call is less than expected.');
+
+                return null;
+            }
+
+            $query = $interceptedCallArgs[0];
+
+            return function (
+                int  $numberOfStackFramesToSkip,
+                bool $hasExitedByException,
+                     $returnValueOrThrown
+            ) use (
+                $query
+            ): void {
+                if (!$hasExitedByException) {
+                    self::setDynamicallyAttachedProperty(
+                        $returnValueOrThrown,
+                        self::DYNAMICALLY_ATTACHED_PROPERTY_MYSQLI_QUERY,
+                        $query
+                    );
+                }
+            };
+        };
+
+        $this->interceptCallsTo($ctx, 'mysqli', 'prepare', 'mysqli_prepare', $preHook);
+    }
+
+    private function interceptCallsTo(
+        RegistrationContextInterface $ctx,
+        string                       $className,
+        string                       $methodName,
+        string                       $funcName,
+        callable                     $preHook
     ): void {
         $ctx->interceptCallsToFunction(
-            $funcName,
-            /**
-             * @param mixed[] $interceptedCallArgs Intercepted call arguments
-             *
-             * @return callable
-             *
-             * @phpstan-return callable(int, bool, mixed): mixed
-             */
-            function (array $interceptedCallArgs) use ($funcName): ?callable {
-                $firstArg = $interceptedCallArgs[1];
-                $statement = (
-                    $firstArg instanceof mysqli
-                    && isset($firstArg->mysqliQuery) // @phpstan-ignore-line
-                    && is_string($firstArg->mysqliQuery)
-                )
-                    ? $interceptedCallArgs[1]->mysqliQuery
-                    : null;
+            $funcName, function (array $interceptedCallArgs) use ($preHook, $funcName): ?callable {
+            if (count($interceptedCallArgs) < 1) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Number of received arguments for call is less than expected.');
 
-                $spanSubtype = self::getDynamicallyAttachedProperty(
-                    (object)["args" => $interceptedCallArgs],
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL /* <- defaultValue */
-                );
-                /** @var string $spanSubtype */
-
-                $span = $this->beginDbSpan($statement ?? $funcName, $spanSubtype, $statement);
-
-                $span->context()->destination()->setService('mysqli', 'mysql', Constants::SPAN_TYPE_DB);
-
-                return self::createPostHookFromEndSpan($span);
+                return null;
             }
+
+            return $preHook($interceptedCallArgs[0], array_slice($interceptedCallArgs, 1), null, $funcName);
+        }
         );
-    }
-
-    /**
-     * @param string  $funcName
-     * @param int     $funcId
-     * @param mixed[] $interceptedCallArgs Intercepted call arguments
-     *
-     * @return callable
-     * @phpstan-return callable(int, bool, mixed): mixed
-     */
-
-
-    /**
-     * @param string  $funcName
-     * @param int     $funcId
-     * @param mixed[] $interceptedCallArgs Intercepted call arguments
-     *
-     * @return callable
-     * @phpstan-return callable(int, bool, mixed): mixed
-     */
-
-
-    /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed  $val
-     *
-     * @return void
-     */
-    private static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        $obj->{$propName} = $val;
-    }
-
-    /**
-     * @param ?object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
-     *
-     * @return mixed
-     */
-    private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
-    {
-        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
-    }
-
-    private function mysqliConstruct(RegistrationContextInterface $ctx): void
-    {
-        $ctx->interceptCallsToMethod(
-            'mysqli',
-            '__construct',
-            /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
-             *
-             * @return callable
-             */
-            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-                if (!($interceptedCallThis instanceof mysqli)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class mysqli',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
-                }
-
-                $dbSpanSubtype = 'mysql';
-                self::setDynamicallyAttachedProperty(
-                    $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    $dbSpanSubtype
-                );
-
-                return null; // no post-hook
-            }
-        );
-    }
-
-    private function mysqliInterceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
-    {
 
         $ctx->interceptCallsToMethod(
-            'mysqli',
+            $className,
             $methodName,
-            /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
-             *
-             * @return callable
-             */
-            function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName): ?callable {
-                if (!($interceptedCallThis instanceof mysqli)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class mysqli',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
-                }
-
-                if (count($interceptedCallArgs) > 0) {
-                    $statement = $interceptedCallArgs[0];
-                    if (!is_string($statement)) {
-                        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                        && $loggerProxy->log(
-                            'The first received argument for mysqli::' . $methodName . ' call is not a string'
-                            . ' so statement cannot be captured',
-                            ['interceptedCallThis' => $interceptedCallThis]
-                        );
-                        $statement = null;
-                    }
-                } else {
-                    $statement = null;
-                }
-                /** @var ?string $statement */
-
-                $spanSubtype = self::getDynamicallyAttachedProperty(
-                    $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL /* <- defaultValue */
-                );
-                /** @var string $spanSubtype */
-
-                $span = $this->beginDbSpan($statement ?? ('mysqli->' . $methodName), $spanSubtype, $statement);
-
-                return self::createPostHookFromEndSpan($span);
+            function (?object $interceptedCallThis, array $interceptedCallArgs) use (
+                $preHook,
+                $className,
+                $methodName
+            ): ?callable {
+                return $preHook($interceptedCallThis, $interceptedCallArgs, $className, $methodName);
             }
         );
+    }
+
+    private function interceptCallsToExecute(RegistrationContextInterface $ctx): void
+    {
+        $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+            if (!$interceptedCallThis instanceof mysqli_stmt) {
+                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Unexpected argument type',
+                    ['interceptedThis type' => DbgUtil::getType($interceptedCallThis)]
+                );
+
+                return null;
+            }
+
+            $query = self::getDynamicallyAttachedProperty(
+                $interceptedCallThis,
+                self::DYNAMICALLY_ATTACHED_PROPERTY_MYSQLI_QUERY,
+                null /* <- defaultValue */
+            );
+            /** @var ?string $query */
+
+            $span = $this->beginDbSpan(
+                $query ?? 'mysqli_stmt execute', Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                $query
+            );
+
+            $span->context()->destination()->setService(
+                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                Constants::SPAN_TYPE_DB
+            );
+
+            return self::createPostHookFromEndSpan($span);
+        };
+
+        $this->interceptCallsTo(
+            $ctx,
+            'mysqli_stmt',
+            'execute',
+            'mysqli_stmt_execute',
+            $preHook
+        );
+    }
+
+    private function generateStatement($firstArg, $method): ?string
+    {
+        if (($method != 'mysqli_query') && ($method != 'query')) {
+            return null;
+        }
+
+        return (isset($firstArg) && is_string($firstArg)) ? $firstArg : null;
     }
 
     private function beginDbSpan(string $name, string $subtype, ?string $statement): SpanInterface
@@ -277,119 +300,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         return $span;
     }
 
-
-    private function mysqliQuery(RegistrationContextInterface $ctx): void
+    private static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
     {
-        $this->mysqliInterceptCallToSpan($ctx, 'query');
+        $obj->{$propName} = $val;
     }
 
-
-    private function mysqliPrepare(RegistrationContextInterface $ctx): void
+    private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
     {
-        $ctx->interceptCallsToMethod(
-            'mysqli',
-            'prepare',
-            /**
-             * Pre-hook
-             *
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
-             *
-             * @return callable
-             */
-            function (
-                ?object $interceptedCallThis,
-                /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
-            ): ?callable {
-                if (!($interceptedCallThis instanceof mysqli)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class mysqli',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
-                }
-
-                $spanSubtype = self::getDynamicallyAttachedProperty(
-                    $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL /* <- defaultValue */
-                );
-
-                /**
-                 * Post-hook
-                 *
-                 * @param int   $numberOfStackFramesToSkip
-                 * @param bool  $hasExitedByException
-                 * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
-                 */
-                return function (
-                    int $numberOfStackFramesToSkip,
-                    bool $hasExitedByException,
-                    $returnValueOrThrown
-                ) use (
-                    $spanSubtype
-                ): void {
-                    if ($hasExitedByException || $returnValueOrThrown === false) {
-                        return;
-                    }
-
-                    if (!($returnValueOrThrown instanceof mysqli_stmt)) {
-                        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                        && $loggerProxy->log(
-                            'returnValueOrThrown is not an instance of class mysqli_stmt',
-                            ['returnValueOrThrown' => $returnValueOrThrown]
-                        );
-                        return;
-                    }
-
-                    self::setDynamicallyAttachedProperty(
-                        $returnValueOrThrown,
-                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                        $spanSubtype
-                    );
-                };
-            }
-        );
-    }
-
-    private function mysqliStatementExecute(RegistrationContextInterface $ctx, array $interceptedCallArgs = []): void
-    {
-        $ctx->interceptCallsToMethod(
-            'mysqli_stmt',
-            'execute',
-            /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
-             *
-             * @return callable
-             *
-             */
-            function (
-                ?object $interceptedCallThis,
-                /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
-            ): ?callable {
-                $statement = (
-                    $interceptedCallThis instanceof mysqli_stmt
-                    && isset($interceptedCallThis->mysqliQuery) // @phpstan-ignore-line
-                    && is_string($interceptedCallThis->mysqliQuery)
-                )
-                    ? $interceptedCallThis->mysqliQuery
-                    : null;
-
-                $spanSubtype = self::getDynamicallyAttachedProperty(
-                    $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL /* <- defaultValue */
-                );
-                /** @var string $spanSubtype */
-
-                $span = $this->beginDbSpan($statement ?? 'mysqli_stmt->execute', $spanSubtype, $statement);
-
-                $span->context()->destination()->setService('mysqli', 'mysql', Constants::SPAN_TYPE_DB);
-
-                return self::createPostHookFromEndSpan($span);
-            }
-        );
+        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
     }
 }
