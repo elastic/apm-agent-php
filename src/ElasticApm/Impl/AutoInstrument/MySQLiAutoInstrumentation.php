@@ -32,8 +32,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
-use mysqli;
-use mysqli_result;
 use mysqli_stmt;
 
 /**
@@ -86,7 +84,14 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         $this->interceptCallsToPrepare($ctx);
         $this->interceptCallsToExecute($ctx);
         $this->interceptCallsWithoutArg($ctx, 'mysqli', 'ping', 'mysqli_ping');
+        $this->interceptCallsWithoutArg($ctx, 'mysqli', 'close', 'mysqli_close');
+        $this->interceptCallsWithoutArg($ctx, 'mysqli', 'begin_transaction', 'mysqli_begin_transaction');
+        $this->interceptCallsWithoutArg($ctx, 'mysqli', 'commit', 'mysqli_commit');
+        $this->interceptCallsWithoutArg($ctx, 'mysqli', 'rollback', 'mysqli_rollback');
         $this->interceptCallsWithOneArg($ctx, 'mysqli', 'select_db', 'mysqli_select_db');
+        $this->interceptCallsWithOneArg($ctx, 'mysqli', 'set_charset', 'mysqli_set_charset');
+        $this->interceptCallsWithOneArg($ctx, 'mysqli', 'autocommit', 'mysqli_autocommit');
+        $this->interceptCallsWithOneArg($ctx, 'mysqli', 'kill', 'mysqli_kill');
     }
 
     private function interceptCallsToConstructWithOneArg(
@@ -95,8 +100,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         string                       $methodName,
         string                       $funcName
     ): void {
-        $preHook = function ($interceptedCallThis, array $interceptedCallArgs) use ($funcName): ?callable {
-            return $this->createSpan($interceptedCallArgs, $funcName);
+        $preHook = function (
+            $interceptedCallThis,
+            array $interceptedCallArgs,
+            ?string $className,
+            string $funcName
+        ): ?callable {
+            return $this->createSpan($interceptedCallArgs, $funcName, $className);
         };
 
         $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
@@ -114,16 +124,26 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             ?string $className,
             string  $funcName
         ): ?callable {
-            return $this->createSpan($interceptedCallArgs, $funcName);
+            return $this->createSpan($interceptedCallArgs, $funcName, $className);
         };
 
         $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
     }
 
-    private function createSpan(array $interceptedCallArgs, string $funcName): ?callable
+    private function createSpan(array $interceptedCallArgs, string $funcName, string $className = null): ?callable
     {
-        $query = $this->generateStatement($interceptedCallArgs[0], $funcName);
-        $spanName = $query ?? $funcName . '(' . $interceptedCallArgs[0] . ')';
+        if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+            return null;
+        }
+
+        $firstArg = $interceptedCallArgs[0];
+
+        $query = (isset($firstArg) && is_string($firstArg)) ? $firstArg : null;
+        $spanName = $funcName . '(' . $firstArg . ')';
+
+        if ($className) {
+            $spanName = 'mysqli->' . $funcName . '(' . $firstArg . ')';
+        }
 
         return self::createPostHookFromEndSpan(
             $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $query)
@@ -154,6 +174,10 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     private function interceptCallsToQuery(RegistrationContextInterface $ctx): void
     {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+                return null;
+            }
+
             $query = $interceptedCallArgs[1];
             $spanName = $interceptedCallArgs[0];
 
@@ -168,19 +192,16 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     private function interceptCallsToPrepare(RegistrationContextInterface $ctx): void
     {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-            if (count($interceptedCallArgs) < 1) {
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Number of received arguments for call is less than expected.');
-
+            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
                 return null;
             }
 
             $query = $interceptedCallArgs[0];
 
             return function (
-                int  $numberOfStackFramesToSkip,
+                int $numberOfStackFramesToSkip,
                 bool $hasExitedByException,
-                     $returnValueOrThrown
+                $returnValueOrThrown
             ) use (
                 $query
             ): void {
@@ -206,10 +227,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     ): void {
         $ctx->interceptCallsToFunction(
             $funcName, function (array $interceptedCallArgs) use ($preHook, $funcName): ?callable {
-            if (count($interceptedCallArgs) < 1) {
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Number of received arguments for call is less than expected.');
-
+            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
                 return null;
             }
 
@@ -273,15 +291,6 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function generateStatement($firstArg, $method): ?string
-    {
-        if (($method != 'mysqli_query') && ($method != 'query')) {
-            return null;
-        }
-
-        return (isset($firstArg) && is_string($firstArg)) ? $firstArg : null;
-    }
-
     private function beginDbSpan(string $name, string $subtype, ?string $statement): SpanInterface
     {
         $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
@@ -308,5 +317,17 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
     {
         return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
+    }
+
+    private function checkArgumentsForExistence($interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) < 1) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Number of received arguments for call is less than expected.');
+
+            return false;
+        }
+
+        return true;
     }
 }
