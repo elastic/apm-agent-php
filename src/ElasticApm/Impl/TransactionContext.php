@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionContextRequestInterface;
+use Elastic\Apm\TransactionContextUserInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -41,6 +42,9 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
     /** @var TransactionContextRequest|null */
     private $request = null;
 
+    /** @var TransactionContextUser|null */
+    private $user = null;
+
     public function __construct(Transaction $owner, TransactionContextData $data)
     {
         parent::__construct($owner, $data);
@@ -56,5 +60,16 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
         }
 
         return $this->request;
+    }
+
+    /** @inheritDoc */
+    public function user(): TransactionContextUserInterface
+    {
+        if ($this->user === null) {
+            $this->data->user = new TransactionContextUserData();
+            $this->user = new TransactionContextUser($this->owner, $this->data->user);
+        }
+
+        return $this->user;
     }
 }

@@ -538,4 +538,20 @@ class PublicApiTest extends TracerUnitTestCaseBase
         $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expected, $reportedSpan->outcome);
     }
+
+    public function testTransactionSetUserContext(): void
+    {
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->context()->user()->setId('test_user_id');
+        $tx->context()->user()->setEmail('test_user_email');
+        $tx->context()->user()->setUsername('test_user_username');
+        $tx->end();
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertNotNull($reportedTx->context);
+        $this->assertNotNull($reportedTx->context->user);
+        $this->assertSame('test_user_id', $reportedTx->context->user->id);
+        $this->assertSame('test_user_email', $reportedTx->context->user->email);
+        $this->assertSame('test_user_username', $reportedTx->context->user->username);
+    }
 }

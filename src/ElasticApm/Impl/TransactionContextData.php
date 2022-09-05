@@ -47,11 +47,19 @@ final class TransactionContextData extends ExecutionSegmentContextData
      */
     public $request = null;
 
+    /**
+     * @var TransactionContextUserData|null
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/context.json#L49
+     */
+    public $user = null;
+
     /** @inheritDoc */
     public function prepareForSerialization(): bool
     {
         return parent::prepareForSerialization()
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->request);
+            || SerializationUtil::prepareForSerialization(/* ref */ $this->request)
+            || SerializationUtil::prepareForSerialization(/* ref */ $this->user);
     }
 
     /** @inheritDoc */
@@ -60,6 +68,8 @@ final class TransactionContextData extends ExecutionSegmentContextData
         $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
 
         SerializationUtil::addNameValueIfNotNull('request', $this->request, /* ref */ $result);
+
+        SerializationUtil::addNameValueIfNotNull('user', $this->user, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }
