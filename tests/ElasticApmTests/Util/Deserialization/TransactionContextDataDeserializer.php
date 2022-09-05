@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util\Deserialization;
 use Elastic\Apm\Impl\TransactionContextData;
 use Elastic\Apm\Impl\TransactionContextRequestData;
 use Elastic\Apm\Impl\TransactionContextRequestUrlData;
+use Elastic\Apm\Impl\TransactionContextUserData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataValidator;
 use ElasticApmTests\Util\TransactionDataValidator;
@@ -52,6 +53,9 @@ final class TransactionContextDataDeserializer
                 switch ($key) {
                     case 'request':
                         $result->request = self::deserializeRequestData($value);
+                        return true;
+                    case 'user':
+                        $result->user = self::deserializeUserData($value);
                         return true;
                     default:
                         return false;
@@ -128,6 +132,35 @@ final class TransactionContextDataDeserializer
             }
         );
         TransactionDataValidator::validateContextRequestUrlData($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return TransactionContextUserData
+     */
+    private static function deserializeUserData($value): TransactionContextUserData
+    {
+        $result = new TransactionContextUserData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'id':
+                        $result->id = is_int($value) ? $value : DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'email':
+                        $result->email = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'username':
+                        $result->username = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
         return $result;
     }
 }

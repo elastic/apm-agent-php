@@ -32,4 +32,12 @@ interface TransactionContextInterface extends ExecutionSegmentContextInterface
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json
      */
     public function request(): TransactionContextRequestInterface;
+
+    /**
+     * Returns an object thant can be used to collect information about logged in user
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/context.json#L49
+     * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/user.json
+     */
+    public function user(): TransactionContextUserInterface;
 }
