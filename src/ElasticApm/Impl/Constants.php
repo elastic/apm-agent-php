@@ -19,6 +19,8 @@
  * under the License.
  */
 
+/** @noinspection RequiredAttributes */
+
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
@@ -57,12 +59,12 @@ final class Constants
     public const SPAN_TYPE_DB_SUBTYPE_INFORMIX = 'informix';
     public const SPAN_TYPE_DB_SUBTYPE_UNKNOWN = 'unknown_DB';
 
-    public const SPAN_ACTION_DB_QUERY = 'query';
+    public const SPAN_TYPE_DB_ACTION_QUERY = 'query';
+
+    public const SQLITE_TEMP_DB = '<temporary database>';
 
     public const SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP = 'http';
 
-    public const SPAN_TYPE_DB_ACTION_EXEC = 'exec';
-    public const SPAN_TYPE_DB_ACTION_QUERY = 'query';
 
     public const OUTCOME_SUCCESS = 'success';
     public const OUTCOME_FAILURE = 'failure';

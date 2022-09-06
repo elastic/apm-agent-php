@@ -67,6 +67,30 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     }
 
     /**
+     * @param object $obj
+     * @param string $propName
+     * @param mixed  $val
+     *
+     * @return void
+     */
+    protected static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
+    {
+        $obj->{$propName} = $val;
+    }
+
+    /**
+     * @param ?object $obj
+     * @param string  $propName
+     * @param mixed   $defaultValue
+     *
+     * @return mixed
+     */
+    protected static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
+    {
+        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
+    }
+
+    /**
      * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array

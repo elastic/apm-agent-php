@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
 use PDO;
 use PDOStatement;
@@ -43,11 +44,17 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
-    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE
-        = 'Elastic_APM_dynamically_attached_property_DB_span_subtype';
+    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE
+        = 'Elastic_APM_dynamically_attached_property_DB_type';
+
+    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME
+        = 'Elastic_APM_dynamically_attached_property_DB_name';
 
     /** @var Logger */
     private $logger;
+
+    /** @var DataSourceNameParser */
+    private $dataSourceNameParser;
 
     public function __construct(Tracer $tracer)
     {
@@ -59,6 +66,8 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        $this->dataSourceNameParser = new DataSourceNameParser($tracer->loggerFactory());
     }
 
     /** @inheritDoc */
@@ -86,30 +95,6 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
         $this->pdoPrepare($ctx);
         // $this->pdoCommit($ctx);
         $this->pdoStatementExecute($ctx);
-    }
-
-    /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed  $val
-     *
-     * @return void
-     */
-    private static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        $obj->{$propName} = $val;
-    }
-
-    /**
-     * @param ?object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
-     *
-     * @return mixed
-     */
-    private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
-    {
-        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
     }
 
     private function pdoConstruct(RegistrationContextInterface $ctx): void
@@ -154,15 +139,25 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     return null; // no post-hook
                 }
 
-                /** var string */
-                $dbSpanSubtype = '';
-                DataSourceNameParser::parse($dsn, /* ref */ $dbSpanSubtype);
-                self::setDynamicallyAttachedProperty(
-                    $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                    $dbSpanSubtype
-                );
-
+                /** var ?string */
+                $dbType = null;
+                /** var ?string */
+                $dbName = null;
+                $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
+                if ($dbType !== null) {
+                    self::setDynamicallyAttachedProperty(
+                        $interceptedCallThis,
+                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
+                        $dbType
+                    );
+                }
+                if ($dbName !== null) {
+                    self::setDynamicallyAttachedProperty(
+                        $interceptedCallThis,
+                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+                        $dbName
+                    );
+                }
                 return null; // no post-hook
             }
         );
@@ -205,41 +200,56 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                 }
                 /** @var ?string $statement */
 
-                $spanSubtype = self::getDynamicallyAttachedProperty(
+                /** @var string $dbType */
+                $dbType = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
-                /** @var string $spanSubtype */
 
-                $span = $this->beginDbSpan($statement ?? ('PDO->' . $methodName), $spanSubtype, $statement);
+                /** @var ?string $dbName */
+                $dbName = self::getDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+                    null /* <- defaultValue */
+                );
+
+                $span = $this->beginDbSpan($statement ?? ('PDO->' . $methodName), $dbType, $dbName, $statement);
 
                 return self::createPostHookFromEndSpan($span);
             }
         );
     }
 
-    private function beginDbSpan(string $name, string $spanSubtype, ?string $statement): SpanInterface
+    private function beginDbSpan(string $name, string $dbType, ?string $dbName, ?string $statement): SpanInterface
     {
         $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
             $name,
             Constants::SPAN_TYPE_DB,
-            $spanSubtype,
-            Constants::SPAN_ACTION_DB_QUERY
+            $dbType /* <- subtype */,
+            Constants::SPAN_TYPE_DB_ACTION_QUERY
         );
 
-        if ($statement !== null) {
-            $span->context()->db()->setStatement($statement);
-        }
+        $span->context()->db()->setStatement($statement);
 
-        self::setService($span, $spanSubtype);
+        self::setService($span, $dbType, $dbName);
 
         return $span;
     }
 
-    private static function setService(SpanInterface $span, string $spanSubtype): void
+    private static function setService(SpanInterface $span, string $dbType, ?string $dbName): void
     {
-        $span->context()->destination()->setService($spanSubtype, $spanSubtype, $spanSubtype);
+        $destinationServiceResource = $dbType;
+        if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {
+            $destinationServiceResource .= '/' . $dbName;
+        }
+        $span->context()->destination()->setService(
+            $destinationServiceResource,
+            $destinationServiceResource,
+            Constants::SPAN_TYPE_DB
+        );
+        $span->context()->service()->target()->setName($dbName);
+        $span->context()->service()->target()->setType($dbType);
     }
 
     private function pdoExec(RegistrationContextInterface $ctx): void
@@ -284,9 +294,9 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     return null; // no post-hook
                 }
 
-                $spanSubtype = self::getDynamicallyAttachedProperty(
+                $dbType = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
@@ -302,7 +312,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     bool $hasExitedByException,
                     $returnValueOrThrown
                 ) use (
-                    $spanSubtype
+                    $dbType
                 ): void {
                     if ($hasExitedByException || $returnValueOrThrown === false) {
                         return;
@@ -319,8 +329,8 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
 
                     self::setDynamicallyAttachedProperty(
                         $returnValueOrThrown,
-                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
-                        $spanSubtype
+                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
+                        $dbType
                     );
                 };
             }
@@ -351,16 +361,23 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     ? $interceptedCallThis->queryString
                     : null;
 
-                $spanSubtype = self::getDynamicallyAttachedProperty(
+                /** @var string $dbType */
+                $dbType = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_SPAN_SUBTYPE,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
                     Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
-                /** @var string $spanSubtype */
 
-                $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $spanSubtype, $statement);
+                /** @var ?string $dbName */
+                $dbName = self::getDynamicallyAttachedProperty(
+                    $interceptedCallThis,
+                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+                    null /* <- defaultValue */
+                );
 
-                self::setService($span, $spanSubtype);
+                $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $dbType, $dbName, $statement);
+
+                self::setService($span, $dbType, $dbName);
 
                 return self::createPostHookFromEndSpan($span);
             }
