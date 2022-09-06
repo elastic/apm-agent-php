@@ -27,12 +27,27 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\DataSourceNameParser;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use ElasticApmTests\Util\TestCaseBase;
 
 class DataSourceNameParserTest extends TestCaseBase
 {
+    private const EXPECTED_DB_TYPE = 'EXPECTED_DB_TYPE';
+    private const EXPECTED_DB_NAME = 'EXPECTED_DB_NAME';
+
     /**
-     * @return iterable<array{string, string}>
+     * @return array<string, ?string>
+     */
+    private static function buildExpected(?string $dbType, ?string $dbName): array
+    {
+        return [
+            self::EXPECTED_DB_TYPE => $dbType,
+            self::EXPECTED_DB_NAME => $dbName
+        ];
+    }
+
+    /**
+     * @return iterable<array{string, array<string, ?string>}>
      */
     public function dataProviderForTest(): iterable
     {
@@ -40,131 +55,327 @@ class DataSourceNameParserTest extends TestCaseBase
         //
         // SQLite
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE;
 
-        // https://www.php.net/manual/en/ref.pdo-sqlite.php
-        yield ['sqlite:/tmp/foo.db', Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE];
-        // https://stackoverflow.com/questions/2425531/create-sqlite-database-in-memory
-        yield ['sqlite::memory:', Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE];
+        // https://www.php.net/manual/en/ref.pdo-sqlite.connection.php
+        // To access a database on disk, the absolute path has to be appended to the DSN prefix.
+        yield [
+            'sqlite:/opt/databases/mydb.sq3',
+            self::buildExpected($dbType, /* dbName: */ '/opt/databases/mydb.sq3')
+        ];
+        // To create a database in memory, :memory: has to be appended to the DSN prefix
+        yield [
+            'sqlite::memory:',
+            self::buildExpected($dbType, /* dbName: */ 'memory')
+        ];
+        // If the DSN consists of the DSN prefix only, a temporary database is used,
+        // which is deleted when the connection is closed
+        yield [
+            'sqlite:',
+            self::buildExpected($dbType, /* dbName: */ Constants::SQLITE_TEMP_DB)
+        ];
 
-        //////////////////////////////
-        //
-        // MySQL
-        //
+        yield [
+            'sqlite',
+            self::buildExpected(/* dbType: */ null, /* dbName: */ null)
+        ];
 
-        // https://www.php.net/manual/en/ref.pdo-mysql.php
-        yield ['mysql:host=xxx;port=xxx;dbname=xxx', Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL];
+        // //////////////////////////////
+        // //
+        // // MySQL
+        // //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL;
+
+        // https://www.php.net/manual/en/ref.pdo-mysql.connection.php
+        yield [
+            'mysql:host=localhost;dbname=my_db_1',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_1')
+        ];
+        yield [
+            'mysql:host=localhost;port=3307;dbname=my_db_2',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_2')
+        ];
+        yield [
+            'mysql:host=localhost;port=3307;dbname=my_db_3;something_else',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_3')
+        ];
+        yield [
+            'mysql:unix_socket=/tmp/mysql.sock;dbname=my_db_4',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_4')
+        ];
+        yield [
+            'mysql:unix_socket=/tmp/mysql.sock;dbname=my_db_5;something_else',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_5')
+        ];
+        yield [
+            'mysql:dbname=my_db_6',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_6')
+        ];
+        yield [
+            'mysql:dbname=my_db_7;',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_7')
+        ];
+        yield [
+            'mysql:dbname = my_db_8  ;something_else',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_8')
+        ];
+        yield [
+            "mysql:something_else;dbname\t= my_db_9  \t",
+            self::buildExpected($dbType, /* dbName: */ 'my_db_9')
+        ];
+        yield [
+            'mysql:dbname=;something_else',
+            self::buildExpected($dbType, /* dbName: */ '')
+        ];
+        yield [
+            'mysql:something_else;dbname=',
+            self::buildExpected($dbType, /* dbName: */ '')
+        ];
+        yield [
+            'mysql:dbname;something_else',
+            self::buildExpected($dbType, /* dbName: */ null)
+        ];
+        yield [
+            'mysql:something_else;dbname',
+            self::buildExpected($dbType, /* dbName: */ null)
+        ];
 
         //////////////////////////////
         //
         // PostgreSQL
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_POSTGRESQL;
 
-        // https://www.postgresqltutorial.com/postgresql-php/connect/
-        yield ['pgsql:host=1;port=2;dbname=3;user=4;password=5', Constants::SPAN_TYPE_DB_SUBTYPE_POSTGRESQL];
+        // https://www.php.net/manual/en/ref.pdo-pgsql.connection.php
+        yield [
+            'pgsql:host=localhost;port=5432;dbname=testdb;user=bruce;password=mypass',
+            self::buildExpected($dbType, /* dbName: */ 'testdb')
+        ];
 
-        //////////////////////////////
-        //
-        // Oracle
-        //
+        // //////////////////////////////
+        // //
+        // // Oracle
+        // //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ORACLE;
+
+        // https://www.php.net/manual/en/ref.pdo-oci.connection.php
+        // Connect to a database defined in tnsnames.ora
+        yield [
+            'oci:dbname=mydb',
+            self::buildExpected($dbType, /* dbName: */ 'mydb')
+        ];
+        // Connect using the Oracle Instant Client
+        yield [
+            'oci:dbname=//localhost:1521/mydb',
+            self::buildExpected($dbType, /* dbName: */ '//localhost:1521/mydb')
+        ];
 
         // https://www.php.net/manual/en/ref.pdo-oci.php
-        yield ['oci:dbname=DB_FOO;host=10.10.48.245', Constants::SPAN_TYPE_DB_SUBTYPE_ORACLE];
-        $oracleTns = '(DESCRIPTION =
-                            (ADDRESS_LIST =
-                              (ADDRESS = (PROTOCOL = TCP)(HOST = yourip)(PORT = 1521))
-                            )
-                            (CONNECT_DATA =
-                              (SERVICE_NAME = orcl)
-                            )
-                      )';
-        yield ['oci:dbname=' . $oracleTns, Constants::SPAN_TYPE_DB_SUBTYPE_ORACLE];
+        yield [
+            'oci:dbname=my_db_1;host=10.10.48.245',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_1')
+        ];
+        yield [
+            'oci:;dbname=my_db_2;host=10.10.48.245',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_2')
+        ];
+        yield [
+            'oci:;host=10.10.48.245;dbname=my_db_3',
+            self::buildExpected($dbType, /* dbName: */ 'my_db_3')
+        ];
 
         //////////////////////////////
         //
         // Microsoft SQL Server
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL;
+
+        // https://www.php.net/manual/en/ref.pdo-sqlsrv.connection.php
+        yield [
+            'sqlsrv:Server=localhost;Database=testdb',
+            self::buildExpected($dbType, /* dbName: */ 'testdb')
+        ];
 
         // https://docs.microsoft.com/en-us/sql/connect/php/pdo-query?view=sql-server-ver15
-        yield ['sqlsrv:server=(local) ; Database = AdventureWorks', Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL];
-        yield ['sqlsrv:server=my_serverName ; Database = my_databaseName', Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL];
+        yield [
+            'sqlsrv:server=(local) ; Database = AdventureWorks',
+            self::buildExpected($dbType, /* dbName: */ 'AdventureWorks')
+        ];
+        yield [
+            'sqlsrv:server=my_serverName ; database = my_databaseName',
+            self::buildExpected($dbType, /* dbName: */ 'my_databaseName')
+        ];
+
+        // https://www.php.net/manual/en/ref.pdo-dblib.connection.php
+        yield [
+            'mssql:host=localhost;dbname=testdb',
+            self::buildExpected($dbType, /* dbName: */ 'testdb')
+        ];
 
         // https://www.php.net/manual/en/ref.pdo-dblib.php
-        yield ['dblib:host=my_hostname:1234;dbname=my_dbname', Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL];
+        yield [
+            'dblib:host=my_hostname:1234;dbname=my_dbname',
+            self::buildExpected($dbType, /* dbName: */ 'my_dbname')
+        ];
+        yield [
+            'dblib:version=7.0;charset=UTF-8;host=domain.example.com;dbname=example;',
+            self::buildExpected($dbType, /* dbName: */ 'example')
+        ];
 
         //////////////////////////////
         //
         //  IBM DB2
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2;
 
         // https://www.php.net/manual/en/ref.pdo-ibm.connection.php
-        yield ['ibm:DSN=DB2_9', Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2];
+        // ... connecting to an DB2 database cataloged as DB2_9 in db2cli.ini:
+        // db2cli.ini:
+        //      [DB2_9]
+        //      Database=testdb
+        yield [
+            'ibm:DSN=DB2_9',
+            self::buildExpected($dbType, /* dbName: */ 'DSN=DB2_9')
+        ];
         yield [
             'ibm:DRIVER={IBM DB2 ODBC DRIVER};DATABASE=testdb;HOSTNAME=11.22.33.444;PORT=56789;PROTOCOL=TCPIP;',
-            Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2,
+            self::buildExpected($dbType, /* dbName: */ 'testdb')
         ];
-        yield [
-            'ibm:DRIVER={IBM DB2 ODBC DRIVER};DATABASE=testdb;HOSTNAME=11.22.33.444;PORT=56789;PROTOCOL=TCPIP;'
-            . 'UID=testuser;PWD=testpass',
-            Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2,
-        ];
-
-        // https://www.ibm.com/docs/en/db2/11.5?topic=pdo-connecting-data-server-database
-        yield ['ibm:SAMPLE', Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2];
 
         //////////////////////////////
         //
         // ODBC
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ODBC;
 
-        // https://www.php.net/manual/en/ref.pdo-odbc.php
-        yield ['odbc:SOURCENAME', Constants::SPAN_TYPE_DB_SUBTYPE_ODBC];
+        // https://www.php.net/manual/en/ref.pdo-odbc.connection.php
+        // ... connecting to an ODBC database cataloged as testdb in the ODBC driver manager
+        yield [
+            'odbc:testdb',
+            self::buildExpected($dbType, /* dbName: */ 'DSN=testdb')
+        ];
+        // connecting to an IBM DB2 database named SAMPLE using the full ODBC DSN
+        // ... connecting to an IBM DB2 database named SAMPLE using the full ODBC DSN syntax
+        // yield [
+        //     'odbc:DRIVER={IBM DB2 ODBC DRIVER};HOSTNAME=localhost;PORT=50000;DATABASE=SAMPLE;PROTOCOL=TCPIP'
+        //     . ';UID=db2inst1;PWD=ibmdb2;',
+        //     self::buildExpected(Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2, /* dbName: */ 'SAMPLE'),
+        // ];
 
         //////////////////////////////
         //
         // CUBRID
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_CUBRID;
 
-        // https://www.php.net/manual/en/ref.pdo-cubrid.php
-        yield ['cubrid:dbname=demodb;host=localhost;port=33000', Constants::SPAN_TYPE_DB_SUBTYPE_CUBRID];
+        // https://www.php.net/manual/en/ref.pdo-cubrid.connection.php
+        yield [
+            'cubrid:host=localhost;port=33000;dbname=demodb',
+            self::buildExpected($dbType, /* dbName: */ 'demodb')
+        ];
 
         //////////////////////////////
         //
         // Firebird
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_FIREBIRD;
+
+        // https://www.php.net/manual/en/ref.pdo-firebird.connection.php
+        // ... connecting to Firebird databases
+        yield [
+            'firebird:dbname=/path/to/DATABASE.FDB',
+            self::buildExpected($dbType, /* dbName: */ '/path/to/DATABASE.FDB')
+        ];
+        // ... connecting to a Firebird database using hostname port and path
+        yield [
+            'firebird:dbname=hostname/port:/path/to/DATABASE.FDB',
+            self::buildExpected($dbType, /* dbName: */ 'hostname/port:/path/to/DATABASE.FDB')
+        ];
+        // ... connecting to a Firebird database employee.fdb using localhost
+        yield [
+            'firebird:dbname=localhost:/var/lib/firebird/2.5/data/employee.fdb',
+            self::buildExpected($dbType, /* dbName: */ 'localhost:/var/lib/firebird/2.5/data/employee.fdb')
+        ];
+        // ... connecting to a Firebird database test.fdb which has been created using dialect 1
+        yield [
+            'firebird:dbname=localhost:/var/lib/firebird/2.5/data/test.fdb;charset=utf-8;dialect=1',
+            self::buildExpected($dbType, /* dbName: */ 'localhost:/var/lib/firebird/2.5/data/test.fdb')
+        ];
 
         // https://www.php.net/manual/en/ref.pdo-firebird.php
-        yield ['firebird:dbname=T:\\Klimreg.GDB', Constants::SPAN_TYPE_DB_SUBTYPE_FIREBIRD];
+        yield [
+            'firebird:dbname=T:\Klimreg.GDB',
+            self::buildExpected($dbType, /* dbName: */ 'T:\Klimreg.GDB')
+        ];
 
         //////////////////////////////
         //
         // Informix
         //
+        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_INFORMIX;
+
+        // https://www.php.net/manual/en/ref.pdo-informix.connection.php
+        // ... connecting to an Informix database cataloged as Infdrv33 in odbc.ini
+        yield [
+            'informix:DSN=Infdrv33',
+            self::buildExpected($dbType, /* dbName: */ 'DSN=Infdrv33')
+        ];
+        // ...  connecting to an Informix database named common_db using the Informix connection string syntax
+        yield [
+            "informix:host=host.domain.com; service=9800;
+                database=common_db; server=ids_server; protocol=onsoctcp;
+                EnableScrollableCursors=1",
+            self::buildExpected($dbType, /* dbName: */ 'common_db'),
+        ];
 
         // https://www.ibm.com/docs/en/informix-servers/14.10?topic=SSGU8G_14.1.0/com.ibm.virtapp.doc/TD_item2.htm
         yield [
-            'informix:host=informixva; service=9088;database=stores; server=demo_on; protocol=onsoctcp;'
-            . 'EnableScrollableCursors=1;', Constants::SPAN_TYPE_DB_SUBTYPE_INFORMIX,
+            "informix:host=informixva; service=9088;
+                database=stores; server=demo_on; protocol=onsoctcp;
+                EnableScrollableCursors=1;",
+            self::buildExpected($dbType, /* dbName: */ 'stores'),
         ];
 
         //////////////////////////////
         //
-        // Unknown
+        // Unknown DB type
         //
+        $dbType = null;
 
-        yield ['dummy' . 'EnableScrollableCursors=1;', Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN];
+        yield [
+            'dummy' . 'EnableScrollableCursors=1;',
+            self::buildExpected($dbType, /* dbName: */ null)
+        ];
+
+        yield [
+            'dummy:' . 'dbname=unused_name;',
+            self::buildExpected($dbType, /* dbName: */ null)
+        ];
     }
 
     /**
      * @dataProvider dataProviderForTest
      *
      * @param string $dsn
-     * @param string $expectedSubtype
+     * @param array<string, ?string> $expected
      */
-    public function test(string $dsn, string $expectedSubtype): void
+    public function test(string $dsn, array $expected): void
     {
-        /** var string */
-        $actualSubtype = '';
-        DataSourceNameParser::parse($dsn, /* ref */ $actualSubtype);
-        self::assertEquals($expectedSubtype, $actualSubtype);
+        /** var ?string */
+        $actualDbType = null;
+        /** var ?string */
+        $actualDbName = null;
+        $parser = new DataSourceNameParser(self::noopLoggerFactory());
+        $parser->parse($dsn, /* ref */ $actualDbType, /* ref */ $actualDbName);
+        $dbgCtx = LoggableToString::convert(
+            [
+                '$dsn' => $dsn,
+                '$expected' => $expected,
+                '$actualDbType' => $actualDbType,
+                '$actualDbName' => $actualDbName,
+            ]
+        );
+        self::assertSame($expected[self::EXPECTED_DB_TYPE], $actualDbType, $dbgCtx);
+        self::assertSame($expected[self::EXPECTED_DB_NAME], $actualDbName, $dbgCtx);
     }
 }
