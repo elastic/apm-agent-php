@@ -80,7 +80,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         }
 
         $this->interceptCallsToConstructWithOneArg($ctx, 'mysqli', '__construct', 'mysqli_connect');
-        $this->interceptCallsToQuery($ctx);
+        $this->interceptCallsToQuery($ctx, 'query', 'mysqli_query');
+        $this->interceptCallsToQuery($ctx, 'multi_query', 'mysqli_multi_query');
+        $this->interceptCallsToQuery($ctx, 'real_query', 'mysqli_real_query');
         $this->interceptCallsToPrepare($ctx);
         $this->interceptCallsToExecute($ctx);
         $this->interceptCallsWithoutArg($ctx, 'mysqli', 'ping', 'mysqli_ping');
@@ -132,21 +134,19 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function createSpan(array $interceptedCallArgs, string $funcName, string $className = null): ?callable
     {
-        if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+        if(!$this->hasOneArgument($interceptedCallArgs)){
             return null;
         }
 
         $firstArg = $interceptedCallArgs[0];
-
-        $query = (isset($firstArg) && is_string($firstArg)) ? $firstArg : null;
         $spanName = $funcName . '(' . $firstArg . ')';
 
         if ($className) {
-            $spanName = 'mysqli->' . $funcName . '(' . $firstArg . ')';
+            $spanName = $className . '->' . $spanName;
         }
 
         return self::createPostHookFromEndSpan(
-            $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $query)
+            $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, null)
         );
     }
 
@@ -171,28 +171,27 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
     }
 
-    private function interceptCallsToQuery(RegistrationContextInterface $ctx): void
+    private function interceptCallsToQuery(RegistrationContextInterface $ctx, string $methodName, string $funcName): void
     {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+            if(!$this->hasOneArgument($interceptedCallArgs)){
                 return null;
             }
 
-            $query = $interceptedCallArgs[1];
-            $spanName = $interceptedCallArgs[0];
+            $statement = $interceptedCallArgs[0];
 
             return self::createPostHookFromEndSpan(
-                $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $query)
+                $this->beginDbSpan($statement, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $statement)
             );
         };
 
-        $this->interceptCallsTo($ctx, 'mysqli', 'query', 'mysqli_query', $preHook);
+        $this->interceptCallsTo($ctx, 'mysqli', $methodName, $funcName, $preHook);
     }
 
     private function interceptCallsToPrepare(RegistrationContextInterface $ctx): void
     {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+            if(!$this->hasOneArgument($interceptedCallArgs)){
                 return null;
             }
 
@@ -227,13 +226,12 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     ): void {
         $ctx->interceptCallsToFunction(
             $funcName, function (array $interceptedCallArgs) use ($preHook, $funcName): ?callable {
-            if(!$this->checkArgumentsForExistence($interceptedCallArgs)){
+            if(!$this->hasOneArgument($interceptedCallArgs)){
                 return null;
             }
 
             return $preHook($interceptedCallArgs[0], array_slice($interceptedCallArgs, 1), null, $funcName);
-        }
-        );
+        });
 
         $ctx->interceptCallsToMethod(
             $className,
@@ -319,7 +317,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
     }
 
-    private function checkArgumentsForExistence($interceptedCallArgs): bool
+    private function hasOneArgument($interceptedCallArgs): bool
     {
         if (count($interceptedCallArgs) < 1) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
