@@ -21,19 +21,32 @@ RUN apt-get -qq install -y software-properties-common --no-install-recommends \
         php${PHP_VERSION}-curl \
         php${PHP_VERSION}-mbstring \
         php${PHP_VERSION}-mysql \
+        php-sqlite \
         php${PHP_VERSION}-sqlite \
         php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*
+
+RUN php -v
+RUN php -m
+RUN php${PHP_VERSION} -v
+RUN php${PHP_VERSION} -m
 
 ## Enable the new installed PHP version.
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \
     && a2enmod php${PHP_VERSION}
 
+RUN apt-get -y install \
+        php-sqlite \
+        php${PHP_VERSION}-sqlite
+
+RUN php -v
+RUN php -m
+RUN php${PHP_VERSION} -v
+RUN php${PHP_VERSION} -m
+
 ENV TYPE=deb
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 WORKDIR /src
-
-# RUN php -m
 
 ENTRYPOINT ["/bin/entrypoint.sh"]
