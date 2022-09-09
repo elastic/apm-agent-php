@@ -25,4 +25,16 @@ namespace ElasticApmTests\Util;
 
 class ExecutionSegmentDataExpectations extends EventDataExpectations
 {
+    /** @var Optional<string> */
+    public $name;
+
+    /** @var Optional<string> */
+    public $type;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->name = new Optional();
+        $this->type = new Optional();
+    }
 }

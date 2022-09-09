@@ -46,7 +46,7 @@ final class CurlHandleWrappedForTests implements LoggableInterface
     public function __construct($curlHandle)
     {
         $this->constructCurlHandleWrappedTrait($curlHandle);
-        $this->tempFileForVerboseOutput = TempFileUtilForTests::createTempIniFile('curl_verbose');
+        $this->tempFileForVerboseOutput = TempFileUtilForTests::createTempFile('curl_verbose');
     }
 
     /**
@@ -104,7 +104,7 @@ final class CurlHandleWrappedForTests implements LoggableInterface
 
     public function close(): void
     {
-        TempFileUtilForTests::deleteTempIniFile($this->tempFileForVerboseOutput);
+        TempFileUtilForTests::deleteTempFile($this->tempFileForVerboseOutput);
         curl_close($this->curlHandle); // @phpstan-ignore-line
     }
 }

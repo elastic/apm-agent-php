@@ -25,4 +25,20 @@ namespace ElasticApmTests\Util;
 
 final class SpanDataExpectations extends ExecutionSegmentDataExpectations
 {
+    /** @var Optional<?string> */
+    public $action = null;
+
+    /** @var SpanContextDataExpectations */
+    public $context;
+
+    /** @var Optional<?string> */
+    public $subtype = null;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->action = new Optional();
+        $this->context = new SpanContextDataExpectations();
+        $this->subtype = new Optional();
+    }
 }

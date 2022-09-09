@@ -36,7 +36,7 @@ final class TempFileUtilForTests
 {
     use StaticClassTrait;
 
-    public static function createTempIniFile(string $type): string
+    public static function createTempFile(string $type): string
     {
         $fileNamePrefix = 'Elastic_APM_PHP_Agent_component_tests_-_' . $type . '_-_';
         $tempFileFullPath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
@@ -44,7 +44,11 @@ final class TempFileUtilForTests
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Failed to create a temporary INI file',
-                    ['sys_get_temp_dir' => sys_get_temp_dir(), '$fileNamePrefix' => $fileNamePrefix]
+                    [
+                        'type'               => $type,
+                        'sys_get_temp_dir()' => sys_get_temp_dir(),
+                        'fileNamePrefix'     => $fileNamePrefix,
+                    ]
                 )
             );
         }
@@ -52,7 +56,7 @@ final class TempFileUtilForTests
         return $tempFileFullPath;
     }
 
-    public static function deleteTempIniFile(string $tempFileFullPath): void
+    public static function deleteTempFile(string $tempFileFullPath): void
     {
         if (!file_exists($tempFileFullPath)) {
             return;

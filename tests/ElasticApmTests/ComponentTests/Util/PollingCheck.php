@@ -25,7 +25,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TimeFormatUtilForTests;
 
@@ -59,7 +58,7 @@ final class PollingCheck
     }
 
     /**
-     * @param Closure $check
+     * @param Closure                   $check
      *
      * @phpstan-param   Closure(): bool $check
      *
@@ -80,6 +79,7 @@ final class PollingCheck
             ++$numberOfAttempts;
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting attempt ' . $numberOfAttempts . ' to check if ' . $this->dbgDesc . '...');
+            /** @noinspection PhpIfWithCommonPartsInspection */
             if ($check()) {
                 $elapsedTime = $sinceStarted->elapsedInMicroseconds();
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -100,9 +100,9 @@ final class PollingCheck
                 && $loggerProxy->log(
                     'Still checking if ' . $this->dbgDesc . '...',
                     [
-                        'elapsedTime' => TimeFormatUtilForTests::formatDurationInMicroseconds($elapsedTime),
+                        'elapsedTime'      => TimeFormatUtilForTests::formatDurationInMicroseconds($elapsedTime),
                         'numberOfAttempts' => $numberOfAttempts,
-                        'maxWaitTime' =>
+                        'maxWaitTime'      =>
                             TimeFormatUtilForTests::formatDurationInMicroseconds($this->maxWaitTimeInMicroseconds),
                     ]
                 );

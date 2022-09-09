@@ -70,12 +70,21 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
      * @param object $obj
      * @param string $propName
      * @param mixed  $val
-     *
-     * @return void
      */
     protected static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
     {
         $obj->{$propName} = $val;
+    }
+
+    /**
+     * @param object               $obj
+     * @param array<string, mixed> $propNameVals
+     */
+    protected static function setDynamicallyAttachedProperties(object $obj, array $propNameVals): void
+    {
+        foreach ($propNameVals as $propName => $propVal) {
+            self::setDynamicallyAttachedProperty($obj, $propName, $propVal);
+        }
     }
 
     /**
@@ -88,6 +97,27 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     protected static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
     {
         return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
+    }
+
+    /**
+     * @param ?object  $obj
+     * @param string[] $propNames
+     *
+     * @return array<string, mixed>
+     */
+    protected static function getDynamicallyAttachedProperties(?object $obj, array $propNames): array
+    {
+        if ($obj === null) {
+            return [];
+        }
+
+        $propNameVals = [];
+        foreach ($propNames as $propName) {
+            if (isset($obj->{$propName})) {
+                $propNameVals[$propName] = $obj->{$propName};
+            }
+        }
+        return $propNameVals;
     }
 
     /**

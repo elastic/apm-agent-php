@@ -48,7 +48,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     ) {
         $dbgProcessName = ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '(' . $dbgInstanceName . ')';
         $appCodeHostParams = new AppCodeHostParams($dbgProcessName);
-        $appCodeHostParams->spawnedProcessId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
+        $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
         $setParamsFunc($appCodeHostParams);
 
         parent::__construct($testCaseHandle, $appCodeHostParams, new AgentConfigSourceBuilder($appCodeHostParams));
@@ -83,7 +83,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
 
         $envVars = TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(getenv()),
-            $this->appCodeHostParams->spawnedProcessId,
+            $this->appCodeHostParams->spawnedProcessInternalId,
             null /* <- targetServerPort */,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName

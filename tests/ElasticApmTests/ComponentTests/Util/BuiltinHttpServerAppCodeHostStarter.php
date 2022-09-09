@@ -75,11 +75,11 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(string $spawnedProcessId, int $port): array
+    protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
     {
         return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(getenv()),
-            $spawnedProcessId,
+            $spawnedProcessInternalId,
             $port,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName

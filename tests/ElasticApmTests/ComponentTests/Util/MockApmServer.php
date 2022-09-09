@@ -98,7 +98,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
     }
 
-    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
     }

@@ -23,10 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\BoolUtil;
 use PHPUnit\Framework\TestCase;
 
 final class MetricSetDataValidator extends DataValidator

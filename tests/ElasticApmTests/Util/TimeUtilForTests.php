@@ -23,20 +23,19 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-class EventDataExpectations extends DataExpectationsBase
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class TimeUtilForTests
 {
-    /** @var float */
-    public $timestampBefore;
+    use StaticClassTrait;
 
-    /** @var float */
-    public $timestampAfter;
-
-    public function __construct()
+    public static function compareTimestamps(float $t1, float $t2): int
     {
-        $this->timestampBefore = PhpUnitExtensionBase::$timestampBeforeTest;
-        $this->timestampAfter
-            = PhpUnitExtensionBase::$timestampAfterTest ?? Clock::singletonInstance()->getSystemClockCurrentTime();
+        return ($t1 < $t2) ? -1 : (($t1 == $t2) ? 0 : 1);
     }
 }

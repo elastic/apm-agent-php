@@ -477,4 +477,17 @@ class TestCaseBase extends TestCase
             $forceEnableFlakyAssertions
         );
     }
+
+    /**
+     * @template T
+     *
+     * @param Optional<T> $expected
+     * @param T           $actual
+     */
+    public static function assertSameExpectedOptional(Optional $expected, $actual): void
+    {
+        if ($expected->isValueSet()) {
+            self::assertSame($expected->getValue(), $actual);
+        }
+    }
 }
