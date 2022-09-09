@@ -6,7 +6,7 @@ RUN apt-get -qq update \
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
-COPY entrypoint2.sh /bin
+COPY entrypoint.sh /bin
 
 ## Install the specific PHP version in addition with apache2
 ARG PHP_VERSION=7.2
@@ -34,4 +34,6 @@ ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 WORKDIR /src
 
-ENTRYPOINT ["/bin/entrypoint2.sh"]
+# RUN php -m
+
+ENTRYPOINT ["/bin/entrypoint.sh"]
