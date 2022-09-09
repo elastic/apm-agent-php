@@ -7,6 +7,7 @@ RUN apt-get -qq update \
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 COPY entrypoint.sh /bin
+RUN echo $(grep -i elastic -A 15 /bin/entrypoint.sh)
 
 ## Install the specific PHP version in addition with apache2
 ARG PHP_VERSION=7.2
