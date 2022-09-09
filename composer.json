@@ -85,6 +85,9 @@
         "run_component_tests_configured_filter": [
             "phpunit -c phpunit_component_tests.xml --filter"
         ],
+        "run_component_tests_cli_filter": [
+            "ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script phpunit -c phpunit_component_tests.xml --filter"
+        ],
         "run_component_tests_http_filter": [
             "ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server phpunit -c phpunit_component_tests.xml --filter"
         ],
@@ -92,14 +95,14 @@
             "composer run-script run_component_tests_http",
             "composer run-script run_component_tests_cli"
         ],
-        "run_component_tests_http": [
-            "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server",
-            "composer run-script run_component_tests_configured"
-        ],
         "run_component_tests_cli": [
             "@putenv ELASTIC_APM_ENABLED=false",
             "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
+            "composer run-script run_component_tests_configured"
+        ],
+        "run_component_tests_http": [
+            "@putenv ELASTIC_APM_ENABLED=false",
+            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server",
             "composer run-script run_component_tests_configured"
         ],
         "run_tests": [
