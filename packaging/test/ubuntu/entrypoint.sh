@@ -58,6 +58,9 @@ function validate_installation() {
     echo 'Set environment variables:'
     set | grep -i elastic
 
+    this_script_full_path="${BASH_SOURCE[0]}"
+    grep 'function validate_installation' -A 15 "${this_script_full_path}"
+
     ## Validate the installation works as expected with composer
     composer install
     /usr/sbin/rsyslogd

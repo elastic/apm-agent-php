@@ -14,7 +14,7 @@ ENV PHP_VERSION=$PHP_VERSION
 RUN apt-get -qq install -y software-properties-common --no-install-recommends \
     && add-apt-repository ppa:ondrej/php \
     && apt-get -qq update \
-    && apt-get -qq install -y \
+    && apt-get -y install \
         apache2 \
         libapache2-mod-fcgid \
         php${PHP_VERSION} \
