@@ -40,7 +40,7 @@ use PDOStatement;
  *
  * @internal
  */
-final class PdoAutoInstrumentation extends AutoInstrumentationBase
+final class PDOAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 

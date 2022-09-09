@@ -31,14 +31,13 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
-use ElasticApmTests\ComponentTests\Util\ResourcesCleaner;
 use ElasticApmTests\ComponentTests\Util\TempFileUtilForTests;
 use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
 use ElasticApmTests\Util\SpanDataExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
 
-final class PdoTest extends ComponentTestCaseBase
+final class PDOTest extends ComponentTestCaseBase
 {
     private const DB_NAME_KEY = 'DB_NAME';
     private const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
