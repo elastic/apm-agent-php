@@ -112,6 +112,12 @@ final class PdoTest extends ComponentTestCaseBase
         self::assertSame($expectedDbConnectionString, $actualDbConnectionString, $dbgCtx);
     }
 
+    public function testPrerequisitesSatisfied(): void
+    {
+        $extensionName = 'pdo_sqlite';
+        self::assertTrue(extension_loaded($extensionName), 'Required extension ' . $extensionName . ' is not loaded');
+    }
+
     /**
      * @return iterable<array{array<string, mixed>}>
      */

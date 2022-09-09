@@ -147,7 +147,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
                     return true;
                 }
 
-                // Keep environment variables explicitly configure to be passed through
+                // Keep environment variables explicitly configured to be passed through
                 if (AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
                     return true;
                 }

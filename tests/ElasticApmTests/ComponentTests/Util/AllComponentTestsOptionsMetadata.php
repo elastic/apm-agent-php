@@ -66,7 +66,7 @@ final class AllComponentTestsOptionsMetadata
             self::APP_CODE_PHP_INI_OPTION_NAME => new NullableStringOptionMetadata(),
             'delete_temp_php_ini' => new BoolOptionMetadata(true),
             'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
-            'log_level' => new LogLevelOptionMetadata(LogLevel::DEBUG),
+            'log_level' => new LogLevelOptionMetadata(LogLevel::TRACE),
             self::DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
                     $deserializedObj = new TestInfraDataPerProcess();
