@@ -14,7 +14,16 @@ ENV PHP_VERSION=$PHP_VERSION
 RUN apt-get -qq install -y software-properties-common --no-install-recommends \
     && add-apt-repository ppa:ondrej/php \
     && apt-get -qq update \
-    && apt-get -qq install -y apache2 libapache2-mod-fcgid php${PHP_VERSION}-curl php${PHP_VERSION}-fpm php${PHP_VERSION}-mbstring php${PHP_VERSION}-mysql php${PHP_VERSION}-xml php${PHP_VERSION} \
+    && apt-get -qq install -y \
+        apache2 \
+        libapache2-mod-fcgid \
+        php${PHP_VERSION} \
+        php${PHP_VERSION}-curl \
+        php${PHP_VERSION}-fpm \
+        php${PHP_VERSION}-mbstring \
+        php${PHP_VERSION}-mysql \
+        php${PHP_VERSION}-sqlite \
+        php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*
 
 ## Enabled the just installed PHP and the fcgi.
