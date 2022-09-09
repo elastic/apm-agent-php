@@ -49,4 +49,6 @@ ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 WORKDIR /src
 
+# RUN php -m
+
 ENTRYPOINT ["/bin/entrypoint.sh"]
