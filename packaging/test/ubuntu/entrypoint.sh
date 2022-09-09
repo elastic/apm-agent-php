@@ -51,14 +51,16 @@ function validate_installation() {
     # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
     export ELASTIC_APM_ENABLED=false
 
-    this_script_full_path="${BASH_SOURCE[0]}"
-    grep 'function validate_installation' -A 15 "${this_script_full_path}"
+    echo 'Installed PHP extensions:'
+    php -m
+    echo 'Set environment variables:'
+    set | grep ELASTIC || true
 
     ## Validate the installation works as expected with composer
     composer install
     /usr/sbin/rsyslogd
     ## This env variable can be overriden
-    COMPONENT_TEST_SCRIPT="${COMPONENT_TEST_SCRIPT:-run_component_tests}"
+    COMPONENT_TEST_SCRIPT=${COMPONENT_TEST_SCRIPT:-run_component_tests}
     if ! composer run-script ${COMPONENT_TEST_SCRIPT} ; then
         echo 'Something bad happened when running the tests, see the output from the syslog'
         cat /var/log/syslog
@@ -69,12 +71,6 @@ function validate_installation() {
 ##############
 #### MAIN ####
 ##############
-
-echo 'Installed PHP extensions:'
-php -m
-echo 'Set environment variables:'
-set | grep -i elastic || true
-
 if [[ "${TYPE}" == "deb" || "${TYPE}" == "deb-uninstall" ]] ; then
     ls -l $BUILD_PACKAGES
     ## Install debian package and configure the agent accordingly

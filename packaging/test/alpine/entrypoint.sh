@@ -49,10 +49,8 @@ validate_installation() {
 
     echo 'Installed PHP extensions:'
     php -m
-    echo 'PHP info:'
-    php -i
     echo 'Set environment variables:'
-    set | grep -i elastic
+    set | grep ELASTIC || true
 
     ## Validate the installation works as expected with composer
     composer install
