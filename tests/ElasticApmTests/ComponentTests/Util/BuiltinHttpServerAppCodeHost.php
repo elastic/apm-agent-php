@@ -94,7 +94,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     {
         $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
         TestCase::assertNotNull($dataPerRequest);
-        $response = self::verifySpawnedProcessId($dataPerRequest->spawnedProcessId);
+        $response = self::verifySpawnedProcessInternalId($dataPerRequest->spawnedProcessInternalId);
         if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
             self::sendResponse($response);
             return;

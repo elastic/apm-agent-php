@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
@@ -206,7 +207,7 @@ final class TestCaseHandle implements LoggableInterface
             $this->additionalHttpAppCodeHost->tearDown();
         }
 
-        $this->resourcesCleaner->signalToExit();
+        $this->resourcesCleaner->signalAndWaitForItToExit();
     }
 
     private function addPortInUse(int $port): void
@@ -288,5 +289,37 @@ final class TestCaseHandle implements LoggableInterface
         $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
         $dataFromAgentAccumulator->addIntakeApiRequests($newIntakeApiRequests);
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
+    }
+
+    public function registerFileToDelete(string $fullPath): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Registering file to delete with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...',
+            ['fullPath' => $fullPath]
+        );
+
+        $response = HttpClientUtilForTests::sendRequest(
+            HttpConsts::METHOD_POST,
+            (new UrlParts())
+                ->path(ResourcesCleaner::REGISTER_FILE_TO_DELETE_URI_PATH)
+                ->port($this->resourcesCleaner->getPort()),
+            TestInfraDataPerRequest::withSpawnedProcessInternalId(
+                $this->resourcesCleaner->getSpawnedProcessInternalId()
+            ),
+            [ResourcesCleaner::PATH_QUERY_HEADER_NAME => $fullPath]
+        );
+        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+            throw new RuntimeException(
+                'Failed to register with '
+                . ClassNameUtil::fqToShort(ResourcesCleaner::class)
+            );
+        }
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Successfully registered file to delete with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class),
+            ['fullPath' => $fullPath]
+        );
     }
 }

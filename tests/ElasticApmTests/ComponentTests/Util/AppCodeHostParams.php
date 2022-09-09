@@ -50,7 +50,7 @@ class AppCodeHostParams implements LoggableInterface
     private $agentOptions = [];
 
     /** @var string */
-    public $spawnedProcessId;
+    public $spawnedProcessInternalId;
 
     /** @var Logger */
     private $logger;

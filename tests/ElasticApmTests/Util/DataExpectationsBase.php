@@ -21,47 +21,46 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
-class HttpServerHandle implements LoggableInterface
+class DataExpectationsBase implements LoggableInterface
 {
     use LoggableTrait;
 
-    public const DEFAULT_HOST = '127.0.0.1';
-    public const STATUS_CHECK_URI = '/elastic_apm_php_tests_status_check';
-    public const PID_KEY = 'pid';
-
-    /** @var int */
-    private $spawnedProcessOsId;
-
-    /** @var string */
-    private $spawnedProcessInternalId;
-
-    /** @var int */
-    private $port;
-
-    public function __construct(int $spawnedProcessOsId, string $spawnedProcessInternalId, int $port)
+    public function isEmpty(): bool
     {
-        $this->spawnedProcessOsId = $spawnedProcessOsId;
-        $this->spawnedProcessInternalId = $spawnedProcessInternalId;
-        $this->port = $port;
+        return self::isEmptyImpl($this);
     }
 
-    public function getSpawnedProcessOsId(): int
+    /**
+     * @param mixed $val
+     *
+     * @return bool
+     */
+    private static function isEmptyImpl($val): bool
     {
-        return $this->spawnedProcessOsId;
-    }
+        if ($val === null) {
+            return true;
+        }
 
-    public function getSpawnedProcessInternalId(): string
-    {
-        return $this->spawnedProcessInternalId;
-    }
+        if ($val instanceof Optional) {
+            if (!$val->isValueSet()) {
+                return true;
+            }
+            return self::isEmptyImpl($val->getValue());
+        }
 
-    public function getPort(): int
-    {
-        return $this->port;
+        if (is_object($val)) {
+            foreach (get_object_vars($val) as $propVal) {
+                if (!self::isEmptyImpl($propVal)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

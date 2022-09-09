@@ -105,7 +105,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return;
         }
 
-        TempFileUtilForTests::deleteTempIniFile($this->tempIniFileFullPath);
+        TempFileUtilForTests::deleteTempFile($this->tempIniFileFullPath);
     }
 
     /**
@@ -312,7 +312,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
 
     private function createTempIniFile(): string
     {
-        $tempIniFileFullPath = TempFileUtilForTests::createTempIniFile('php_ini');
+        $tempIniFileFullPath = TempFileUtilForTests::createTempFile('php_ini');
         $this->writeTempIniContent($tempIniFileFullPath);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

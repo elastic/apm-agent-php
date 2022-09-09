@@ -54,7 +54,7 @@ final class BuiltinHttpServerAppCodeHostHandle extends HttpAppCodeHostHandle
             $resourcesCleaner,
             $portsInUse
         );
-        $appCodeHostParams->spawnedProcessId = $httpServerHandle->getSpawnedProcessId();
+        $appCodeHostParams->spawnedProcessInternalId = $httpServerHandle->getSpawnedProcessInternalId();
 
         parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder, $httpServerHandle);
     }

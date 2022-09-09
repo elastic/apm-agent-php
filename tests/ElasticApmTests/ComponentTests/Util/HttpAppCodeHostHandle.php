@@ -121,7 +121,8 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
     private function buildRequestParams(AppCodeTarget $appCodeTarget): HttpAppCodeRequestParams
     {
         $requestParams = new HttpAppCodeRequestParams($this->httpServerHandle, $appCodeTarget);
-        $requestParams->dataPerRequest->spawnedProcessId = $this->httpServerHandle->getSpawnedProcessId();
+        $requestParams->dataPerRequest->spawnedProcessInternalId
+            = $this->httpServerHandle->getSpawnedProcessInternalId();
         return $requestParams;
     }
 

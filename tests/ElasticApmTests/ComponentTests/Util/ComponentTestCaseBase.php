@@ -27,7 +27,6 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase

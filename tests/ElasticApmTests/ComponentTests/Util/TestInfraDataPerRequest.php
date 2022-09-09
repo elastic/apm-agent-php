@@ -34,12 +34,12 @@ final class TestInfraDataPerRequest extends TestInfraData
     public $appCodeArguments = null;
 
     /** @var string */
-    public $spawnedProcessId;
+    public $spawnedProcessInternalId;
 
-    public static function withSpawnedProcessId(string $spawnedProcessId): self
+    public static function withSpawnedProcessInternalId(string $spawnedProcessInternalId): self
     {
         $result = new TestInfraDataPerRequest();
-        $result->spawnedProcessId = $spawnedProcessId;
+        $result->spawnedProcessInternalId = $spawnedProcessInternalId;
         return $result;
     }
 

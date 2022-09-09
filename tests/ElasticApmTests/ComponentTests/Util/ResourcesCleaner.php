@@ -36,9 +36,14 @@ use React\Http\Message\Response;
 final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
+    public const REGISTER_FILE_TO_DELETE_URI_PATH = '/register_file_to_delete';
     public const CLEAN_AND_EXIT_URI_PATH = '/clean_resources_and_exit';
 
     public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
+    public const PATH_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PATH';
+
+    /** @var Set<string> */
+    private $filesToDeletePaths;
 
     /** @var Set<int> */
     private $processesToTerminateIds;
@@ -50,6 +55,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         parent::__construct();
 
+        $this->filesToDeletePaths = new Set();
         $this->processesToTerminateIds = new Set();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -89,6 +95,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     private function cleanAndExit(): void
     {
         $this->cleanSpawnedProcesses();
+        $this->cleanFiles();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting...');
@@ -97,16 +104,10 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 
     private function cleanSpawnedProcesses(): void
     {
-        if ($this->processesToTerminateIds->isEmpty()) {
-            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('There are no spawned processes to terminate');
-            return;
-        }
-
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Terminating spawned processes...',
-            ['spawnedProcessesCount' => $this->processesToTerminateIds->count()]
+            ['processesToTerminateIds count' => $this->processesToTerminateIds->count()]
         );
 
         foreach ($this->processesToTerminateIds as $spawnedProcessesId) {
@@ -127,10 +128,39 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         }
     }
 
+    private function cleanFiles(): void
+    {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Deleting files...',
+            ['filesToDeletePaths count' => $this->filesToDeletePaths->count()]
+        );
+
+        foreach ($this->filesToDeletePaths as $fileToDeletePath) {
+            if (!file_exists($fileToDeletePath)) {
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'File does not exist - so there is nothing to delete',
+                    ['fileToDeletePath' => $fileToDeletePath]
+                );
+                continue;
+            }
+
+            $unlinkRetVal = unlink($fileToDeletePath);
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Called unlink() to delete file',
+                ['fileToDeletePath' => $fileToDeletePath, 'unlinkRetVal' => $unlinkRetVal]
+            );
+        }
+    }
+
     protected function processRequest(ServerRequestInterface $request): ResponseInterface
     {
         if ($request->getUri()->getPath() === self::REGISTER_PROCESS_TO_TERMINATE_URI_PATH) {
             return $this->registerProcessToTerminate($request);
+        } elseif ($request->getUri()->getPath() === self::REGISTER_FILE_TO_DELETE_URI_PATH) {
+            return $this->registerFileToDelete($request);
         } elseif ($request->getUri()->getPath() === self::CLEAN_AND_EXIT_URI_PATH) {
             $this->cleanAndExit();
             // this return is not actually reachable
@@ -147,7 +177,20 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Successfully registered process to terminate',
-            ['pid' => $pid, 'spawnedProcessesCount' => $this->processesToTerminateIds->count()]
+            ['pid' => $pid, 'processesToTerminateIds count' => $this->processesToTerminateIds->count()]
+        );
+
+        return new Response(HttpConsts::STATUS_OK);
+    }
+
+    protected function registerFileToDelete(ServerRequestInterface $request): ResponseInterface
+    {
+        $path = self::getRequiredRequestHeader($request, self::PATH_QUERY_HEADER_NAME);
+        $this->filesToDeletePaths->add($path);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Successfully registered file to delete',
+            ['path' => $path, 'filesToDeletePaths count' => $this->filesToDeletePaths->count()]
         );
 
         return new Response(HttpConsts::STATUS_OK);

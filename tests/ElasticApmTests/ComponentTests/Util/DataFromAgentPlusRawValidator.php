@@ -64,18 +64,22 @@ final class DataFromAgentPlusRawValidator extends DataValidator
 
     private function validateIntakeApiRequest(IntakeApiRequest $intakeApiRequest): void
     {
-        $appCodeHostParams = $this->findAppCodeHostsParamsBySpawnedProcessId($intakeApiRequest->agentEphemeralId);
+        $appCodeHostParams
+            = $this->findAppCodeHostsParamsBySpawnedProcessInternalId($intakeApiRequest->agentEphemeralId);
         $this->validateIntakeApiHttpRequestHeaders($intakeApiRequest->headers, $appCodeHostParams);
     }
 
-    private function findAppCodeHostsParamsBySpawnedProcessId(string $spawnedProcessId): AppCodeHostParams
-    {
+    private function findAppCodeHostsParamsBySpawnedProcessInternalId(
+        string $spawnedProcessInternalId
+    ): AppCodeHostParams {
         foreach ($this->expectations->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
-            if ($appCodeHostParams->spawnedProcessId === $spawnedProcessId) {
+            if ($appCodeHostParams->spawnedProcessInternalId === $spawnedProcessInternalId) {
                 return $appCodeHostParams;
             }
         }
-        TestCase::fail('AppCodeHostParams with spawnedProcessId `' . $spawnedProcessId . '\' not found');
+        TestCase::fail(
+            'AppCodeHostParams with spawnedProcessInternalId `' . $spawnedProcessInternalId . '\' not found'
+        );
     }
 
     /**

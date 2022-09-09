@@ -23,20 +23,21 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Clock;
-
-class EventDataExpectations extends DataExpectationsBase
+class SpanContextHttpDataExpectations extends DataExpectationsBase
 {
-    /** @var float */
-    public $timestampBefore;
+    /** @var Optional<?string> */
+    public $url = null;
 
-    /** @var float */
-    public $timestampAfter;
+    /** @var Optional<?int> */
+    public $statusCode = null;
+
+    /** @var Optional<?string> */
+    public $method = null;
 
     public function __construct()
     {
-        $this->timestampBefore = PhpUnitExtensionBase::$timestampBeforeTest;
-        $this->timestampAfter
-            = PhpUnitExtensionBase::$timestampAfterTest ?? Clock::singletonInstance()->getSystemClockCurrentTime();
+        $this->url = new Optional();
+        $this->statusCode = new Optional();
+        $this->method = new Optional();
     }
 }
