@@ -21,32 +21,21 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests\ConfigTests;
+namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
-use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\Util\RangeUtilForTests;
-use ElasticApmTests\Util\IterableUtilForTests;
-use ElasticApmTests\Util\RandomUtilForTests;
-use ElasticApmTests\Util\TextUtilForTests;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
- * @implements OptionTestValuesGeneratorInterface<null>
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
  */
-final class CustomOptionTestValuesGenerator implements OptionTestValuesGeneratorInterface
+final class TimeUtilForTests
 {
-    use SingletonInstanceTrait;
+    use StaticClassTrait;
 
-    /**
-     * @return iterable<OptionTestValidValue<null>>
-     */
-    public function validValues(): iterable
+    public static function compareTimestamps(float $t1, float $t2): int
     {
-        return [];
-    }
-
-    public function invalidRawValues(): iterable
-    {
-        return [];
+        return ($t1 < $t2) ? -1 : (($t1 == $t2) ? 0 : 1);
     }
 }

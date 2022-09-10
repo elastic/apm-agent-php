@@ -58,7 +58,7 @@ pipeline {
             }
           }
         }
-        stage('Prepare Release (apm-ci)') {
+        stage('Prepare for release (set version, etc.)') {
           options {
             skipDefaultCheckout()
           }
@@ -79,7 +79,7 @@ pipeline {
             }
           }
         }
-        stage('BuildAndTest') {
+        stage('Build binaries and basic testing') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -99,7 +99,7 @@ pipeline {
               }
             }
             stages {
-              stage('Build') {
+              stage('Build PHP extension') {
                 steps {
                   initWorkspace(context: "Build-${PHP_VERSION}") {
                     // When running in the CI with multiple parallel stages
@@ -111,7 +111,7 @@ pipeline {
                   }
                 }
               }
-              stage('Static check and Unit Tests') {
+              stage('Static analysis and unit tests') {
                 when {
                   beforeAgent true
                   not { expression { isInternalCI() } }
@@ -129,7 +129,7 @@ pipeline {
                   }
                 }
               }
-              stage('Generate for package') {
+              stage('Build parts for packages') {
                 steps {
                   withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
                     dir("${BASE_DIR}"){
@@ -158,7 +158,7 @@ pipeline {
                                 string(name: 'GITHUB_CHECK_SHA1', value: env.GIT_BASE_COMMIT) ])
           }
         }
-        stage('Package Generation') {
+        stage('Build packages') {
           when {
             beforeAgent true
             expression { return env.ONLY_DOCS == "false" }
@@ -177,7 +177,7 @@ pipeline {
             }
           }
         }
-        stage('Package lifecycle testing') {
+        stage('Test packages') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -193,7 +193,7 @@ pipeline {
       }
     }
     // This meta-stage happens in the internal-ci instance to be able to sign the artifacts correctly.
-    stage('Prepare Release (internal-ci)') {
+    stage('Release (umbrella stage) (internal-ci)') {
       options {
         skipDefaultCheckout()
         timeout(time: 12, unit: 'HOURS')
@@ -217,11 +217,7 @@ pipeline {
         RELEASE_URL_MESSAGE = "(<https://github.com/elastic/apm-agent-php/releases/tag/${env.TAG_NAME}|${env.TAG_NAME}>)"
       }
       stages {
-        stage('Signing CI') {
-          when {
-            beforeAgent true
-            expression { return env.RELEASE == 'true' }
-          }
+        stage('Sign packages') {
           options { skipDefaultCheckout() }
           steps {
             deleteDir()
@@ -246,7 +242,7 @@ pipeline {
             }
           }
         }
-        stage('Test-Signed-Package') {
+        stage('Test signed packages') {
           options { skipDefaultCheckout() }
           steps {
             generateSteps("generate_stages_list_smoke.sh")
@@ -257,7 +253,7 @@ pipeline {
             }
           }
         }
-        stage('Approve to Publish') {
+        stage('Ask for approval to publish') {
           options { skipDefaultCheckout() }
           steps {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
@@ -266,7 +262,7 @@ pipeline {
             setEnvVar('RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
-        stage('Draft Release') {
+        stage('Publish as draft release') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -289,7 +285,7 @@ pipeline {
             }
           }
         }
-        stage('Test-Published-Package') {
+        stage('Verify draft release checksum') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }
@@ -311,7 +307,7 @@ pipeline {
             }
           }
         }
-        stage('Publish Release') {
+        stage('Publish release (draft -> regular)') {
           when {
             beforeAgent true
             expression { return env.RELEASE == 'true' }

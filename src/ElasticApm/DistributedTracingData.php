@@ -26,7 +26,7 @@ namespace Elastic\Apm;
 use Closure;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 
-final class DistributedTracingData
+class DistributedTracingData
 {
     /** @var string */
     public $traceId;
@@ -36,16 +36,6 @@ final class DistributedTracingData
 
     /** @var bool */
     public $isSampled;
-
-    /**
-     * @var ?float
-     *
-     * @link https://github.com/elastic/apm/blob/master/specs/agents/tracing-sampling.md#propagation
-     */
-    public $stateSampleRate = null;
-
-    /** @var array<string> */
-    public $stateOtherVendors = [];
 
     /**
      * @deprecated Deprecated since version 1.3 - use injectHeaders() instead

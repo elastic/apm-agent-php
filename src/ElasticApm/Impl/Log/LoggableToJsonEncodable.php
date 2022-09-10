@@ -40,6 +40,8 @@ final class LoggableToJsonEncodable
 {
     use StaticClassTrait;
 
+    private const MAX_DEPTH = 7;
+
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK = 10000;
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK
         = 2 * self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK;
@@ -65,7 +67,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_array($value)) {
-            if ($depth >= 7) {
+            if ($depth >= self::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -80,7 +82,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_object($value)) {
-            if ($depth >= 7) {
+            if ($depth >= self::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),

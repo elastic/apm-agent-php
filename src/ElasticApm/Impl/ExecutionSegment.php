@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -75,7 +76,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         string $traceId,
         string $name,
         string $type,
-        float $sampleRate,
+        ?float $sampleRate,
         ?float $timestamp = null
     ) {
         $monotonicClockNow = $tracer->getClock()->getMonotonicClockCurrentTime();
@@ -288,6 +289,17 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             ? Constants::EXECUTION_SEGMENT_TYPE_DEFAULT
             : Tracer::limitKeywordString($type);
     }
+
+    /** @inheritDoc */
+    public function getDistributedTracingData(): ?DistributedTracingData
+    {
+        return $this->getDistributedTracingDataInternal();
+    }
+
+    /**
+     * Returns distributed tracing data
+     */
+    abstract public function getDistributedTracingDataInternal(): ?DistributedTracingDataInternal;
 
     /** @inheritDoc */
     public function injectDistributedTracingHeaders(Closure $headerInjector): void

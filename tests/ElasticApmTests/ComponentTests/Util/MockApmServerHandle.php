@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -39,7 +40,11 @@ final class MockApmServerHandle extends HttpServerHandle
 
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
-        parent::__construct($httpSpawnedProcessHandle->getSpawnedProcessId(), $httpSpawnedProcessHandle->getPort());
+        parent::__construct(
+            $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
+            $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
+            $httpSpawnedProcessHandle->getPort()
+        );
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -62,7 +67,7 @@ final class MockApmServerHandle extends HttpServerHandle
             (new UrlParts())
                 ->path(MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS)
                 ->port($this->getPort()),
-            TestInfraDataPerRequest::withSpawnedProcessId($this->getSpawnedProcessId()),
+            TestInfraDataPerRequest::withSpawnedProcessInternalId($this->getSpawnedProcessInternalId()),
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
         );
 
@@ -70,8 +75,8 @@ final class MockApmServerHandle extends HttpServerHandle
             throw new RuntimeException('Received unexpected status code');
         }
 
-        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
         /** @var array<string, mixed> $decodedBody */
+        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
 
         $requestsJson = $decodedBody[MockApmServer::INTAKE_API_REQUESTS_JSON_KEY];
         /** @var array<array<string, mixed>> $requestsJson */
@@ -82,7 +87,7 @@ final class MockApmServerHandle extends HttpServerHandle
             $newIntakeApiRequests[] = $newIntakeApiRequest;
         }
 
-        if (empty($newIntakeApiRequests)) {
+        if (ArrayUtil::isEmpty($newIntakeApiRequests)) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Fetched NO new intake API requests received from agent');
         } else {

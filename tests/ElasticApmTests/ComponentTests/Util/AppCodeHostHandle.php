@@ -27,8 +27,6 @@ use Closure;
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Log\Logger;
-use ElasticApmTests\Util\LogCategoryForTests;
 
 abstract class AppCodeHostHandle implements LoggableInterface
 {
@@ -43,9 +41,6 @@ abstract class AppCodeHostHandle implements LoggableInterface
     /** @var AgentConfigSourceBuilder */
     protected $agentConfigSourceBuilder;
 
-    /** @var Logger */
-    protected $logger;
-
     /**
      * @param TestCaseHandle           $testCaseHandle
      * @param AppCodeHostParams        $appCodeHostParams
@@ -59,13 +54,6 @@ abstract class AppCodeHostHandle implements LoggableInterface
         $this->testCaseHandle = $testCaseHandle;
         $this->appCodeHostParams = $appCodeHostParams;
         $this->agentConfigSourceBuilder = $agentConfigSourceBuilder;
-
-        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
     }
 
     /**
@@ -73,11 +61,6 @@ abstract class AppCodeHostHandle implements LoggableInterface
      * @param null|Closure(AppCodeRequestParams): void $setParamsFunc
      */
     abstract public function sendRequest(AppCodeTarget $appCodeTarget, ?Closure $setParamsFunc = null): void;
-
-    public function tearDown(): void
-    {
-        $this->agentConfigSourceBuilder->tearDown();
-    }
 
     protected function beforeAppCodeInvocation(AppCodeRequestParams $appCodeRequestParams): AppCodeInvocation
     {

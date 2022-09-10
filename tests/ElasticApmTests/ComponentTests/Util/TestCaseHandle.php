@@ -42,11 +42,8 @@ final class TestCaseHandle implements LoggableInterface
 
     public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
 
-    /** @var Logger */
-    private $logger;
-
-    /** @var int[] */
-    private $portsInUse = [];
+    /** @var ?AppCodeInvocation */
+    public $appCodeInvocation = null;
 
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
@@ -60,8 +57,11 @@ final class TestCaseHandle implements LoggableInterface
     /** @var ?HttpAppCodeHostHandle */
     protected $additionalHttpAppCodeHost = null;
 
-    /** @var ?AppCodeInvocation */
-    public $appCodeInvocation = null;
+    /** @var Logger */
+    private $logger;
+
+    /** @var int[] */
+    private $portsInUse = [];
 
     public function __construct()
     {
@@ -157,9 +157,9 @@ final class TestCaseHandle implements LoggableInterface
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
                 [
-                    'expected event counts' => $expectedEventCounts,
-                    'actual event counts' => $dataFromAgentAccumulator->dbgCounts(),
-                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator
+                    'expected event counts'     => $expectedEventCounts,
+                    'actual event counts'       => $dataFromAgentAccumulator->dbgCounts(),
+                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator,
                 ]
             )
         );
@@ -199,14 +199,7 @@ final class TestCaseHandle implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Tearing down...');
 
-        if ($this->mainAppCodeHost !== null) {
-            $this->mainAppCodeHost->tearDown();
-        }
-        if ($this->additionalHttpAppCodeHost !== null) {
-            $this->additionalHttpAppCodeHost->tearDown();
-        }
-
-        $this->resourcesCleaner->signalToExit();
+        $this->resourcesCleaner->signalAndWaitForItToExit();
     }
 
     private function addPortInUse(int $port): void
@@ -288,5 +281,10 @@ final class TestCaseHandle implements LoggableInterface
         $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
         $dataFromAgentAccumulator->addIntakeApiRequests($newIntakeApiRequests);
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
+    }
+
+    public function getResourcesClient(): ResourcesClient
+    {
+        return $this->resourcesCleaner->getClient();
     }
 }

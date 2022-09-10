@@ -21,13 +21,23 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
-final class DataForVerification
+class SpanContextDestinationServiceDataExpectations extends DataExpectationsBase
 {
-    /** @var DataFromAgentPlusRawExpectations */
-    public $expectations;
+    /** @var Optional<string> */
+    public $name;
 
-    /** @var DataFromAgentPlusRaw */
-    public $actual;
+    /** @var Optional<string> */
+    public $resource;
+
+    /** @var Optional<string> */
+    public $type;
+
+    public function __construct()
+    {
+        $this->name = new Optional();
+        $this->resource = new Optional();
+        $this->type = new Optional();
+    }
 }

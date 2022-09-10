@@ -170,12 +170,6 @@ final class Snapshot implements LoggableInterface
     /** @var int */
     private $effectiveLogLevel;
 
-    /** @var float */
-    private $effectiveTransactionSampleRate;
-
-    /** @var string */
-    private $effectiveTransactionSampleRateAsString;
-
     /**
      * Snapshot constructor.
      *
@@ -186,7 +180,7 @@ final class Snapshot implements LoggableInterface
         $this->setPropertiesToValuesFrom($optNameToParsedValue);
 
         $this->setEffectiveLogLevel();
-        $this->setEffectiveTransactionSampleRate();
+        $this->adaptTransactionSampleRate();
 
         $this->devInternalParsed = new SnapshotDevInternal($this->devInternal, $loggerFactory);
     }
@@ -199,39 +193,22 @@ final class Snapshot implements LoggableInterface
         );
     }
 
-    private function setEffectiveTransactionSampleRate(): void
+    private function adaptTransactionSampleRate(): void
     {
         if ($this->transactionSampleRate === 0.0) {
-            $this->effectiveTransactionSampleRate = 0.0;
-            $this->effectiveTransactionSampleRateAsString = '0';
             return;
         }
 
-        if ($this->transactionSampleRate === 1.0) {
-            $this->effectiveTransactionSampleRate = 1.0;
-            $this->effectiveTransactionSampleRateAsString = '1';
+        $minNonZeroValue = 0.0001;
+        if ($this->transactionSampleRate < $minNonZeroValue) {
+            $this->transactionSampleRate = $minNonZeroValue;
             return;
         }
 
-        if ($this->transactionSampleRate < 0.0001) {
-            $this->effectiveTransactionSampleRate = 0.0001;
-            $this->effectiveTransactionSampleRateAsString = '0.0001';
-            return;
-        }
-
-        $this->effectiveTransactionSampleRate = round(
+        $this->transactionSampleRate = round(
             $this->transactionSampleRate,
             4 /* <- precision - number of decimal digits */
         );
-        $asString = number_format(
-            $this->effectiveTransactionSampleRate,
-            /* number of decimal digits: */ 4,
-            /* decimal_separator: */ '.',
-            /* thousands_separator - without thousands separator: */ ''
-        );
-        // Remove trailing zeros if there any
-        $asString = preg_replace('/\.?0+$/', '', $asString) ?? $asString;
-        $this->effectiveTransactionSampleRateAsString = $asString;
     }
 
     /**
@@ -319,14 +296,9 @@ final class Snapshot implements LoggableInterface
         return $this->transactionMaxSpans;
     }
 
-    public function effectiveTransactionSampleRate(): float
+    public function transactionSampleRate(): float
     {
-        return $this->effectiveTransactionSampleRate;
-    }
-
-    public function effectiveTransactionSampleRateAsString(): string
-    {
-        return $this->effectiveTransactionSampleRateAsString;
+        return $this->transactionSampleRate;
     }
 
     public function urlGroups(): ?WildcardListMatcher

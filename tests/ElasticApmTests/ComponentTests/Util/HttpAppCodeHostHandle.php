@@ -26,13 +26,18 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Closure;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Monolog\Test\TestCase;
 
 class HttpAppCodeHostHandle extends AppCodeHostHandle
 {
     /** @var HttpServerHandle */
     protected $httpServerHandle;
+
+    /** @var Logger */
+    private $logger;
 
     public function __construct(
         TestCaseHandle $testCaseHandle,
@@ -42,6 +47,13 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
     ) {
         parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder);
         $this->httpServerHandle = $httpServerHandle;
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
     }
 
     public function getPort(): int
@@ -109,7 +121,8 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
     private function buildRequestParams(AppCodeTarget $appCodeTarget): HttpAppCodeRequestParams
     {
         $requestParams = new HttpAppCodeRequestParams($this->httpServerHandle, $appCodeTarget);
-        $requestParams->dataPerRequest->spawnedProcessId = $this->httpServerHandle->getSpawnedProcessId();
+        $requestParams->dataPerRequest->spawnedProcessInternalId
+            = $this->httpServerHandle->getSpawnedProcessInternalId();
         return $requestParams;
     }
 

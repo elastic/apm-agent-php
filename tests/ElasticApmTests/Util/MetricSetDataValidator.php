@@ -23,9 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\MetricSetData;
-use Elastic\Apm\Impl\Util\BoolUtil;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use PHPUnit\Framework\TestCase;
 
 final class MetricSetDataValidator extends DataValidator
@@ -77,7 +76,7 @@ final class MetricSetDataValidator extends DataValidator
     {
         TestCase::assertTrue(is_array($samples));
         /** @var array<mixed, mixed> $samples */
-        TestCase::assertTrue(!empty($samples));
+        TestCase::assertTrue(!ArrayUtil::isEmpty($samples));
 
         foreach ($samples as $key => $valueArr) {
             self::validateKeywordString($key);

@@ -27,10 +27,8 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
@@ -449,9 +447,14 @@ final class CurlHandleTracker implements LoggableInterface
         $this->setContextPreHook();
 
         if ($isHttp) {
-            $distributedTracingData = $this->span->getDistributedTracingData();
-            if ($distributedTracingData !== null) {
-                $this->injectDistributedTracingHeader($distributedTracingData);
+            $headersToInjectFormattedLines = [];
+            $this->span->injectDistributedTracingHeaders(
+                function (string $headerName, string $headerValue) use (&$headersToInjectFormattedLines): void {
+                    $headersToInjectFormattedLines[] = $headerName . ': ' . $headerValue;
+                }
+            );
+            if (!ArrayUtil::isEmpty($headersToInjectFormattedLines)) {
+                $this->injectDistributedTracingHeaders($headersToInjectFormattedLines);
             }
         }
     }
@@ -609,41 +612,29 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param DistributedTracingData $data
+     * @param string[] $headersToInjectFormattedLines
      */
-    private function injectDistributedTracingHeader(DistributedTracingData $data): void
+    private function injectDistributedTracingHeaders(array $headersToInjectFormattedLines): void
     {
-        $traceParentHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
-        $headers = array_merge(
-            $this->headersSetByApp,
-            [HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ': ' . $traceParentHeaderValue]
-        );
+        $headers = array_merge($this->headersSetByApp, $headersToInjectFormattedLines);
 
         $logger = $this->logger->inherit()->addAllContext(
             [
-                'traceParentHeaderValue' => $traceParentHeaderValue,
-                'headers'                => $this->logger->possiblySecuritySensitive($headers),
+                'headersToInjectFormattedLines' => $headersToInjectFormattedLines,
+                'headers'                       => $this->logger->possiblySecuritySensitive($headers),
             ]
         );
 
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Injecting outgoing ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header...'
-        );
+        && $loggerProxy->log('Injecting outgoing HTTP request headers for distributed tracing...');
 
         $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
         if ($setOptRetVal) {
             ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Successfully injected outgoing '
-                . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header'
-            );
+            && $loggerProxy->log('Successfully injected outgoing HTTP request headers for distributed tracing');
         } else {
             ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Failed to inject outgoing '
-                . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header'
-            );
+            && $loggerProxy->log('Failed to inject outgoing HTTP request headers for distributed tracing');
         }
     }
 

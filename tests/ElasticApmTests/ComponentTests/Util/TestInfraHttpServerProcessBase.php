@@ -26,7 +26,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 use ErrorException;
 use Exception;
 use PHPUnit\Framework\TestCase;
@@ -44,9 +47,19 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct()
     {
         parent::__construct();
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
 
         set_error_handler(
             function (
@@ -147,7 +160,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
     }
 
-    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return true;
     }
@@ -172,7 +185,11 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
                     'Sending response ...',
-                    ['statusCode' => $response->getStatusCode(), 'reasonPhrase' => $response->getReasonPhrase()]
+                    [
+                        'statusCode'   => $response->getStatusCode(),
+                        'reasonPhrase' => $response->getReasonPhrase(),
+                        'body'         => $response->getBody(),
+                    ]
                 );
             } else {
                 TestCase::assertInstanceOf(Promise::class, $response);
@@ -199,7 +216,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
-        if ($this->shouldRequestHaveSpawnedProcessId($request)) {
+        if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
             $testConfigForRequest = TestConfigUtil::read(
                 AmbientContextForTests::dbgProcessName(),
                 new RequestHeadersRawSnapshotSource(
@@ -209,13 +226,13 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 )
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
-            $verifySpawnedProcessIdResponse
-                = self::verifySpawnedProcessId($testConfigForRequest->dataPerRequest->spawnedProcessId);
+            $verifySpawnedProcessInternalIdResponse
+                = self::verifySpawnedProcessInternalId($testConfigForRequest->dataPerRequest->spawnedProcessInternalId);
             if (
-                $verifySpawnedProcessIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
+                $verifySpawnedProcessInternalIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
                 || $request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI
             ) {
-                return $verifySpawnedProcessIdResponse;
+                return $verifySpawnedProcessInternalIdResponse;
             }
         }
 
@@ -225,7 +242,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     protected static function getRequestHeader(ServerRequestInterface $request, string $headerName): ?string
     {
         $headerValues = $request->getHeader($headerName);
-        if (empty($headerValues)) {
+        if (ArrayUtil::isEmpty($headerValues)) {
             return null;
         }
         if (count($headerValues) !== 1) {

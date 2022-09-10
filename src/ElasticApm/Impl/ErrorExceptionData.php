@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
 /**
@@ -113,8 +114,8 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
             $namespace = '';
             $shortName = '';
             ClassNameUtil::splitFqClassName(get_class($throwable), /* ref */ $namespace, /* ref */ $shortName);
-            $result->module = empty($namespace) ? null : $namespace;
-            $result->type = empty($shortName) ? null : $shortName;
+            $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
+            $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
             $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
         }
