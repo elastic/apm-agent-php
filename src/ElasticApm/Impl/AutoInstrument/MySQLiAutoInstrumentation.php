@@ -98,9 +98,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptCallsToConstructWithOneArg(
         RegistrationContextInterface $ctx,
-        string                       $className,
-        string                       $methodName,
-        string                       $funcName
+        string $className,
+        string $methodName,
+        string $funcName
     ): void {
         $preHook = function (
             $interceptedCallThis,
@@ -116,15 +116,15 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptCallsWithOneArg(
         RegistrationContextInterface $ctx,
-        string                       $className,
-        string                       $methodName,
-        string                       $funcName
+        string $className,
+        string $methodName,
+        string $funcName
     ): void {
         $preHook = function (
             ?object $interceptedCallThis,
-            array   $interceptedCallArgs,
+            array $interceptedCallArgs,
             ?string $className,
-            string  $funcName
+            string $funcName
         ): ?callable {
             return $this->createSpan($interceptedCallArgs, $funcName, $className);
         };
@@ -134,7 +134,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function createSpan(array $interceptedCallArgs, string $funcName, string $className = null): ?callable
     {
-        if(!$this->hasOneArgument($interceptedCallArgs)){
+        if (!$this->hasOneArgument($interceptedCallArgs)) {
             return null;
         }
 
@@ -152,15 +152,15 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptCallsWithoutArg(
         RegistrationContextInterface $ctx,
-        string                       $className,
-        string                       $methodName,
-        string                       $funcName
+        string $className,
+        string $methodName,
+        string $funcName
     ): void {
         $preHook = function (
             ?object $interceptedCallThis,
-            array   $interceptedCallArgs,
+            array $interceptedCallArgs,
             ?string $className,
-            string  $funcName
+            string $funcName
         ): ?callable {
             $spanName = $className ? 'mysqli->' . $funcName : $funcName . '()';
             return self::createPostHookFromEndSpan(
@@ -171,10 +171,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
     }
 
-    private function interceptCallsToQuery(RegistrationContextInterface $ctx, string $methodName, string $funcName): void
-    {
+    private function interceptCallsToQuery(
+        RegistrationContextInterface $ctx,
+        string $methodName,
+        string $funcName
+    ): void {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-            if(!$this->hasOneArgument($interceptedCallArgs)){
+            if (!$this->hasOneArgument($interceptedCallArgs)) {
                 return null;
             }
 
@@ -191,7 +194,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     private function interceptCallsToPrepare(RegistrationContextInterface $ctx): void
     {
         $preHook = function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-            if(!$this->hasOneArgument($interceptedCallArgs)){
+            if (!$this->hasOneArgument($interceptedCallArgs)) {
                 return null;
             }
 
@@ -219,24 +222,29 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptCallsTo(
         RegistrationContextInterface $ctx,
-        string                       $className,
-        string                       $methodName,
-        string                       $funcName,
-        callable                     $preHook
+        string $className,
+        string $methodName,
+        string $funcName,
+        callable $preHook
     ): void {
         $ctx->interceptCallsToFunction(
-            $funcName, function (array $interceptedCallArgs) use ($preHook, $funcName): ?callable {
-            if(!$this->hasOneArgument($interceptedCallArgs)){
-                return null;
-            }
+            $funcName,
+            function (array $interceptedCallArgs) use ($preHook, $funcName): ?callable {
+                if (!$this->hasOneArgument($interceptedCallArgs)) {
+                    return null;
+                }
 
-            return $preHook($interceptedCallArgs[0], array_slice($interceptedCallArgs, 1), null, $funcName);
-        });
+                return $preHook($interceptedCallArgs[0], array_slice($interceptedCallArgs, 1), null, $funcName);
+            }
+        );
 
         $ctx->interceptCallsToMethod(
             $className,
             $methodName,
-            function (?object $interceptedCallThis, array $interceptedCallArgs) use (
+            function (
+                ?object $interceptedCallThis,
+                array $interceptedCallArgs
+            ) use (
                 $preHook,
                 $className,
                 $methodName
@@ -267,7 +275,8 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             /** @var ?string $query */
 
             $span = $this->beginDbSpan(
-                $query ?? 'mysqli_stmt execute', Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                $query ?? 'mysqli_stmt execute',
+                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
                 $query
             );
 

@@ -89,9 +89,9 @@ final class InterceptionManager
      * @return bool
      */
     public function interceptedCallPreHook(
-        int     $interceptRegistrationId,
+        int $interceptRegistrationId,
         ?object $thisObj,
-        array   $interceptedCallArgs
+        array $interceptedCallArgs
     ): bool {
         $localLogger = $this->logger->inherit()->addAllContext(
             [
@@ -146,9 +146,9 @@ final class InterceptionManager
      *                                                             or the object thrown by the intercepted call
      */
     public function interceptedCallPostHook(
-        int  $numberOfStackFramesToSkip,
+        int $numberOfStackFramesToSkip,
         bool $hasExitedByException,
-             $returnValueOrThrown
+        $returnValueOrThrown
     ): void {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
