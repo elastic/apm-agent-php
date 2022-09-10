@@ -25,41 +25,22 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use Elastic\Apm\Impl\AutoInstrument\MySQLiAutoInstrumentation;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
-/**
- * @group requires_external_services
- * @group requires_mysql_external_service
- */
 final class MySQLiTest extends ComponentTestCaseBase
 {
     public function testPrerequisitesSatisfied(): void
     {
         $extensionName = 'mysqli';
         self::assertTrue(extension_loaded($extensionName), 'Required extension ' . $extensionName . ' is not loaded');
+    }
 
-        $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
-        ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['testConfig' => AmbientContextForTests::testConfig()]);
-
-        self::assertNotNull(AmbientContextForTests::testConfig()->mysqlHost);
-        self::assertNotNull(AmbientContextForTests::testConfig()->mysqlPort);
-        self::assertNotFalse(filter_var(AmbientContextForTests::testConfig()->mysqlPort, FILTER_VALIDATE_INT));
-        $portAsInt = intval(AmbientContextForTests::testConfig()->mysqlPort);
-        self::assertNotNull(AmbientContextForTests::testConfig()->mysqlUser);
-        self::assertNotNull(AmbientContextForTests::testConfig()->mysqlPassword);
-        self::assertNotNull(AmbientContextForTests::testConfig()->mysqlDb);
-
-        $mySQLi = mysqli_connect(
-            AmbientContextForTests::testConfig()->mysqlHost,
-            AmbientContextForTests::testConfig()->mysqlUser,
-            AmbientContextForTests::testConfig()->mysqlPassword,
-            AmbientContextForTests::testConfig()->mysqlDb,
-            $portAsInt
+    public function testIsAutoInstrumentationEnabled(): void
+    {
+        $this->implTestIsAutoInstrumentationEnabled(
+            MySQLiAutoInstrumentation::class /* <- instrClass */,
+            ['mysqli', 'db'] /* <- expectedNames */
         );
-        self::assertNotFalse($mySQLi);
-        self::assertNotNull($mySQLi);
-        self::assertTrue($mySQLi->ping());
     }
 }

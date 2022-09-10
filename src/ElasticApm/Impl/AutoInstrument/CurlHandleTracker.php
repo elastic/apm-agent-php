@@ -441,7 +441,7 @@ final class CurlHandleTracker implements LoggableInterface
             $spanName,
             Constants::SPAN_TYPE_EXTERNAL,
             /* subtype: */
-            $isHttp ? Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP : null
+            $isHttp ? Constants::SPAN_SUBTYPE_HTTP : null
         );
 
         $this->setContextPreHook();
