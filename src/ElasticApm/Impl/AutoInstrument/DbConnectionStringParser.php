@@ -35,7 +35,7 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
  *
  * @internal
  */
-final class DataSourceNameParser implements LoggableInterface
+final class DbConnectionStringParser implements LoggableInterface
 {
     use LoggableTrait;
 

@@ -25,10 +25,8 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegment;
-use Elastic\Apm\Impl\ExecutionSegmentContext;
 use Elastic\Apm\Impl\ExecutionSegmentContextData;
 use Elastic\Apm\Impl\ExecutionSegmentData;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use PHPUnit\Framework\TestCase;
 
 abstract class ExecutionSegmentDataValidator extends DataValidator
@@ -47,8 +45,9 @@ abstract class ExecutionSegmentDataValidator extends DataValidator
 
     protected function validateImpl(): void
     {
-        self::validateKeywordString($this->actual->name);
-        self::validateKeywordString($this->actual->type);
+        self::assertSameKeywordStringExpectedOptional($this->expectations->name, $this->actual->name);
+        self::assertSameKeywordStringExpectedOptional($this->expectations->type, $this->actual->type);
+
         self::validateId($this->actual->id);
         TraceDataValidator::validateId($this->actual->traceId);
 

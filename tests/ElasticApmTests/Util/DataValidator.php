@@ -99,6 +99,36 @@ abstract class DataValidator implements LoggableInterface
     }
 
     /**
+     * @param Optional<string> $expected
+     * @param string           $actual
+     */
+    public static function assertSameKeywordStringExpectedOptional(Optional $expected, string $actual): void
+    {
+        self::validateKeywordString($actual);
+        TestCaseBase::assertSameExpectedOptional($expected, $actual);
+    }
+
+    /**
+     * @param Optional<?string> $expected
+     * @param ?string           $actual
+     */
+    public static function assertSameNullableKeywordStringExpectedOptional(Optional $expected, ?string $actual): void
+    {
+        self::validateNullableKeywordString($actual);
+        TestCaseBase::assertSameExpectedOptional($expected, $actual);
+    }
+
+    /**
+     * @param Optional<?string> $expected
+     * @param ?string           $actual
+     */
+    public static function assertSameNullableNonKeywordStringExpectedOptional(Optional $expected, ?string $actual): void
+    {
+        self::validateNullableNonKeywordString($actual);
+        TestCaseBase::assertSameExpectedOptional($expected, $actual);
+    }
+
+    /**
      * @param mixed $nonKeywordString
      *
      * @return string

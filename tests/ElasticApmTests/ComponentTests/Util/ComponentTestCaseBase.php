@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
@@ -51,6 +53,15 @@ class ComponentTestCaseBase extends TestCaseBase
 
     public static function appCodeEmpty(): void
     {
+    }
+
+    protected static function buildResourcesClientForAppCode(): ResourcesClient
+    {
+        $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
+        TestCase::assertNotNull($resCleanerId);
+        $resCleanerPort = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort;
+        TestCase::assertNotNull($resCleanerPort);
+        return new ResourcesClient($resCleanerId, $resCleanerPort);
     }
 
     /**
@@ -134,5 +145,64 @@ class ComponentTestCaseBase extends TestCaseBase
         $this->assertSame(0, $tx->droppedSpansCount);
         $this->assertNull($tx->parentId);
         return $tx;
+    }
+
+    /**
+     * @param class-string<AutoInstrumentationBase> $instrClassName
+     * @param string[]                              $expectedNames
+     *
+     * @return void
+     */
+    protected static function implTestIsAutoInstrumentationEnabled(string $instrClassName, array $expectedNames): void
+    {
+        /** @var AutoInstrumentationBase $instr */
+        $instr = new $instrClassName(self::buildTracerForTests()->build());
+        $actualNames = $instr->otherNames();
+        $actualNames[] = $instr->name();
+        self::assertEqualLists($expectedNames, $actualNames);
+        self::assertTrue($instr->isEnabled());
+
+        /**
+         * @param string $name
+         *
+         * @return iterable<string>
+         */
+        $genDisabledVariants = function (string $name): iterable {
+            yield $name;
+            yield '*' . $name;
+            yield $name . '*';
+            yield '*' . $name . '*';
+            yield '*someOtherDummyInstrumentationA*, ' . $name;
+            yield $name . ', *someOtherDummyInstrumentationB*';
+            yield '*someOtherDummyInstrumentationA*, ' . $name . ', *someOtherDummyInstrumentationB*';
+        };
+
+        foreach ($expectedNames as $name) {
+            foreach ($genDisabledVariants($name) as $disableInstrumentationsOptVal) {
+                $tracer = self::buildTracerForTests()
+                              ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
+                              ->build();
+                $instr = new $instrClassName($tracer);
+                self::assertFalse($instr->isEnabled(), $disableInstrumentationsOptVal);
+            }
+        }
+
+        /**
+         * @param string $name
+         *
+         * @return iterable<string>
+         */
+        $genEnabledVariants = function (): iterable {
+            yield '*someOtherDummyInstrumentation*';
+            yield '*someOtherDummyInstrumentationA*,  *someOtherDummyInstrumentationB*';
+        };
+
+        foreach ($genEnabledVariants() as $disableInstrumentationsOptVal) {
+            $tracer = self::buildTracerForTests()
+                          ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
+                          ->build();
+            $instr = new $instrClassName($tracer);
+            self::assertTrue($instr->isEnabled(), $disableInstrumentationsOptVal);
+        }
     }
 }

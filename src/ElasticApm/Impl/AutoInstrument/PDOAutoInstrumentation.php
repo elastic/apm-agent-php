@@ -40,7 +40,7 @@ use PDOStatement;
  *
  * @internal
  */
-final class PdoAutoInstrumentation extends AutoInstrumentationBase
+final class PDOAutoInstrumentation extends AutoInstrumentationBase
 {
     use AutoInstrumentationTrait;
 
@@ -50,10 +50,15 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
     private const DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME
         = 'Elastic_APM_dynamically_attached_property_DB_name';
 
+    private const DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE = [
+        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
+        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+    ];
+
     /** @var Logger */
     private $logger;
 
-    /** @var DataSourceNameParser */
+    /** @var DbConnectionStringParser */
     private $dataSourceNameParser;
 
     public function __construct(Tracer $tracer)
@@ -67,7 +72,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
             __FILE__
         )->addContext('this', $this);
 
-        $this->dataSourceNameParser = new DataSourceNameParser($tracer->loggerFactory());
+        $this->dataSourceNameParser = new DbConnectionStringParser($tracer->loggerFactory());
     }
 
     /** @inheritDoc */
@@ -144,20 +149,14 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                 /** var ?string */
                 $dbName = null;
                 $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
+                $dynamicallyAttachedProperties = [];
                 if ($dbType !== null) {
-                    self::setDynamicallyAttachedProperty(
-                        $interceptedCallThis,
-                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-                        $dbType
-                    );
+                    $dynamicallyAttachedProperties[self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE] = $dbType;
                 }
                 if ($dbName !== null) {
-                    self::setDynamicallyAttachedProperty(
-                        $interceptedCallThis,
-                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
-                        $dbName
-                    );
+                    $dynamicallyAttachedProperties[self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME] = $dbName;
                 }
+                self::setDynamicallyAttachedProperties($interceptedCallThis, $dynamicallyAttachedProperties);
                 return null; // no post-hook
             }
         );
@@ -243,11 +242,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
         if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {
             $destinationServiceResource .= '/' . $dbName;
         }
-        $span->context()->destination()->setService(
-            $destinationServiceResource,
-            $destinationServiceResource,
-            Constants::SPAN_TYPE_DB
-        );
+        $span->context()->destination()->setService($destinationServiceResource, $destinationServiceResource, $dbType);
         $span->context()->service()->target()->setName($dbName);
         $span->context()->service()->target()->setType($dbType);
     }
@@ -294,10 +289,9 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     return null; // no post-hook
                 }
 
-                $dbType = self::getDynamicallyAttachedProperty(
+                $dynPropsToPropagate = self::getDynamicallyAttachedProperties(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                    self::DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE
                 );
 
                 /**
@@ -312,7 +306,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                     bool $hasExitedByException,
                     $returnValueOrThrown
                 ) use (
-                    $dbType
+                    $dynPropsToPropagate
                 ): void {
                     if ($hasExitedByException || $returnValueOrThrown === false) {
                         return;
@@ -327,11 +321,7 @@ final class PdoAutoInstrumentation extends AutoInstrumentationBase
                         return;
                     }
 
-                    self::setDynamicallyAttachedProperty(
-                        $returnValueOrThrown,
-                        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-                        $dbType
-                    );
+                    self::setDynamicallyAttachedProperties($returnValueOrThrown, $dynPropsToPropagate);
                 };
             }
         );

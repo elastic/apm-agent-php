@@ -23,11 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
 final class ProcessUtilForTests
@@ -42,6 +40,18 @@ final class ProcessUtilForTests
 
         exec($cmd, $cmdOutput, $cmdExitCode);
         return $cmdExitCode === 0;
+    }
+
+    public static function waitForProcessToExit(string $dbgProcessDesc, int $pid, int $maxWaitTimeInMicroseconds): bool
+    {
+        return (new PollingCheck(
+            $dbgProcessDesc . ' process (PID: ' . $pid . ') exited' /* <- dbgDesc */,
+            $maxWaitTimeInMicroseconds
+        ))->run(
+            function () use ($pid) {
+                return !self::doesProcessExist($pid);
+            }
+        );
     }
 
     public static function terminateProcess(int $pid): bool
@@ -121,9 +131,9 @@ final class ProcessUtilForTests
             'Process started',
             [
                 'newProcessInfo' => $newProcessInfo,
-                'exitCode' => $exitCode,
-                'adaptedCmd' => $adaptedCmd,
-                'envVars' => $envVars,
+                'exitCode'       => $exitCode,
+                'adaptedCmd'     => $adaptedCmd,
+                'envVars'        => $envVars,
             ]
         );
     }

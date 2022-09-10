@@ -21,19 +21,15 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests;
+namespace ElasticApmTests\Util;
 
-use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-
-final class PdoTest extends ComponentTestCaseBase
+class SpanContextDbDataExpectations extends DataExpectationsBase
 {
-    public function test(): void
+    /** @var Optional<?string> */
+    public $statement;
+
+    public function __construct()
     {
-        // Arrange
-
-        // Act
-
-        // Assert
-        self::dummyAssert();
+        $this->statement = new Optional();
     }
 }

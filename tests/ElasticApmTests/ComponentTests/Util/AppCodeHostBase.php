@@ -101,7 +101,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         TestCase::assertNotNull($dataPerRequest);
         $logCtx = ['dataPerRequest' => $dataPerRequest];
 
-        self::setAgentEphemeralIdToSpawnedProcessId();
+        self::setAgentEphemeralIdToSpawnedProcessInternalId();
 
         TestCase::assertNotNull($dataPerRequest->appCodeTarget);
         $topLevelCodeId = $dataPerRequest->appCodeTarget->appCodeTopLevelId;
@@ -138,7 +138,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         && $loggerProxy->log('Call to application code completed', $logCtx);
     }
 
-    public static function setAgentEphemeralIdToSpawnedProcessId(): void
+    public static function setAgentEphemeralIdToSpawnedProcessInternalId(): void
     {
         $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -147,7 +147,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
             __FILE__
         );
 
-        $agentEphemeralId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessId;
+        $agentEphemeralId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessInternalId;
         TestCase::assertNotEmpty($agentEphemeralId);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

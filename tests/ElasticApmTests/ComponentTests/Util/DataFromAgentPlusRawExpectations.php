@@ -104,8 +104,8 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $metadataExpectations
                 = self::buildMetadataExpectationsForHost($transactionExpectations, $appCodeHostParams);
-            $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessId);
-            $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessId] = $metadataExpectations;
+            $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessInternalId);
+            $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessInternalId] = $metadataExpectations;
         }
     }
 

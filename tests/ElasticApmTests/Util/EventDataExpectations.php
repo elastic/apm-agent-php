@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Clock;
 
-class EventDataExpectations
+class EventDataExpectations extends DataExpectationsBase
 {
     /** @var float */
     public $timestampBefore;

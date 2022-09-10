@@ -23,19 +23,49 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use GuzzleHttp\Exception\GuzzleException;
+use PHPUnit\Framework\TestCase;
 
 final class ResourcesCleanerHandle extends HttpServerHandle
 {
+    private const MAX_WAIT_TO_EXIT_MICROSECONDS = 10 * 1000 * 1000; // 10 seconds
+
+    /** @var ResourcesClient */
+    private $resourcesClient;
+
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
-        parent::__construct($httpSpawnedProcessHandle->getSpawnedProcessId(), $httpSpawnedProcessHandle->getPort());
+        parent::__construct(
+            $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
+            $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
+            $httpSpawnedProcessHandle->getPort()
+        );
+
+        $this->resourcesClient = new ResourcesClient($this->getSpawnedProcessInternalId(), $this->getPort());
     }
 
-    public function signalToExit(): void
+    public function getClient(): ResourcesClient
+    {
+        return $this->resourcesClient;
+    }
+
+    public function signalAndWaitForItToExit(): void
+    {
+        $this->signalToExit();
+
+        $hasExited = ProcessUtilForTests::waitForProcessToExit(
+            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessDesc */,
+            $this->getSpawnedProcessOsId(),
+            self::MAX_WAIT_TO_EXIT_MICROSECONDS
+        );
+        TestCase::assertTrue($hasExited, LoggableToString::convert(['$this' => $this]));
+    }
+
+    private function signalToExit(): void
     {
         $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -53,7 +83,7 @@ final class ResourcesCleanerHandle extends HttpServerHandle
             HttpClientUtilForTests::sendRequest(
                 HttpConsts::METHOD_POST,
                 (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->getPort()),
-                TestInfraDataPerRequest::withSpawnedProcessId($this->getSpawnedProcessId())
+                TestInfraDataPerRequest::withSpawnedProcessInternalId($this->getSpawnedProcessInternalId())
             );
         } catch (GuzzleException $ex) {
             // clean-and-exit request is expected to throw

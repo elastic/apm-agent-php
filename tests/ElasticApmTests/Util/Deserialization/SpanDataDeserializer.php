@@ -34,6 +34,13 @@ use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataValidator;
 use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\SpanContextDataValidator;
+use ElasticApmTests\Util\SpanContextDbDataValidator;
+use ElasticApmTests\Util\SpanContextDestinationDataValidator;
+use ElasticApmTests\Util\SpanContextDestinationServiceDataValidator;
+use ElasticApmTests\Util\SpanContextHttpDataValidator;
+use ElasticApmTests\Util\SpanContextServiceDataValidator;
+use ElasticApmTests\Util\SpanContextServiceTargetDataValidator;
 use ElasticApmTests\Util\SpanDataValidator;
 
 final class SpanDataDeserializer
@@ -116,7 +123,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextData($result);
+        SpanContextDataValidator::validate($result);
         return $result;
     }
 
@@ -140,7 +147,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDbData($result);
+        SpanContextDbDataValidator::validate($result);
         return $result;
     }
 
@@ -164,7 +171,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDestinationData($result);
+        SpanContextDestinationDataValidator::validate($result);
         return $result;
     }
 
@@ -194,7 +201,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDestinationServiceData($result);
+        SpanContextDestinationServiceDataValidator::validate($result);
         return $result;
     }
 
@@ -224,7 +231,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextHttpData($result);
+        SpanContextHttpDataValidator::validate($result);
         return $result;
     }
 
@@ -248,7 +255,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextServiceData($result);
+        SpanContextServiceDataValidator::validate($result);
         return $result;
     }
 
@@ -275,7 +282,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextServiceTargetData($result);
+        SpanContextServiceTargetDataValidator::validate($result);
         return $result;
     }
 }

@@ -25,15 +25,15 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Impl\AutoInstrument\DataSourceNameParser;
+use Elastic\Apm\Impl\AutoInstrument\DbConnectionStringParser;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use ElasticApmTests\Util\TestCaseBase;
 
-class DataSourceNameParserTest extends TestCaseBase
+class DbConnectionStringParserTest extends TestCaseBase
 {
-    private const EXPECTED_DB_TYPE = 'EXPECTED_DB_TYPE';
-    private const EXPECTED_DB_NAME = 'EXPECTED_DB_NAME';
+    private const EXPECTED_DB_TYPE_KEY = 'EXPECTED_DB_TYPE';
+    private const EXPECTED_DB_NAME_KEY = 'EXPECTED_DB_NAME';
 
     /**
      * @return array<string, ?string>
@@ -41,8 +41,8 @@ class DataSourceNameParserTest extends TestCaseBase
     private static function buildExpected(?string $dbType, ?string $dbName): array
     {
         return [
-            self::EXPECTED_DB_TYPE => $dbType,
-            self::EXPECTED_DB_NAME => $dbName
+            self::EXPECTED_DB_TYPE_KEY => $dbType,
+            self::EXPECTED_DB_NAME_KEY => $dbName
         ];
     }
 
@@ -365,7 +365,7 @@ class DataSourceNameParserTest extends TestCaseBase
         $actualDbType = null;
         /** var ?string */
         $actualDbName = null;
-        $parser = new DataSourceNameParser(self::noopLoggerFactory());
+        $parser = new DbConnectionStringParser(self::noopLoggerFactory());
         $parser->parse($dsn, /* ref */ $actualDbType, /* ref */ $actualDbName);
         $dbgCtx = LoggableToString::convert(
             [
@@ -375,7 +375,7 @@ class DataSourceNameParserTest extends TestCaseBase
                 '$actualDbName' => $actualDbName,
             ]
         );
-        self::assertSame($expected[self::EXPECTED_DB_TYPE], $actualDbType, $dbgCtx);
-        self::assertSame($expected[self::EXPECTED_DB_NAME], $actualDbName, $dbgCtx);
+        self::assertSame($expected[self::EXPECTED_DB_TYPE_KEY], $actualDbType, $dbgCtx);
+        self::assertSame($expected[self::EXPECTED_DB_NAME_KEY], $actualDbName, $dbgCtx);
     }
 }

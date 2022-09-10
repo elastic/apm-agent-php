@@ -80,24 +80,16 @@ final class MetadataValidator extends DataValidator
 
     private function validateServiceData(): void
     {
-        $serviceData = $this->actual->service;
-        self::validateServiceDataEx($serviceData);
+        $expected = $this->expectations;
+        $actual = $this->actual->service;
+        self::validateServiceDataEx($actual);
 
         $this->validateServiceAgentData();
 
-        if ($this->expectations->serviceName->isValueSet()) {
-            TestCase::assertSame($this->expectations->serviceName->getValue(), $serviceData->name);
-        }
-        $expectedNodeConfiguredName = $this->expectations->serviceNodeConfiguredName;
-        if ($expectedNodeConfiguredName->isValueSet()) {
-            TestCase::assertSame($expectedNodeConfiguredName->getValue(), $serviceData->nodeConfiguredName);
-        }
-        if ($this->expectations->serviceVersion->isValueSet()) {
-            TestCase::assertSame($this->expectations->serviceVersion->getValue(), $serviceData->version);
-        }
-        if ($this->expectations->serviceEnvironment->isValueSet()) {
-            TestCase::assertSame($this->expectations->serviceEnvironment->getValue(), $serviceData->environment);
-        }
+        TestCaseBase::assertSameExpectedOptional($expected->serviceName, $actual->name);
+        TestCaseBase::assertSameExpectedOptional($expected->serviceNodeConfiguredName, $actual->nodeConfiguredName);
+        TestCaseBase::assertSameExpectedOptional($expected->serviceVersion, $actual->version);
+        TestCaseBase::assertSameExpectedOptional($expected->serviceEnvironment, $actual->environment);
     }
 
     public static function validateServiceDataEx(ServiceData $serviceData): void
@@ -125,19 +117,18 @@ final class MetadataValidator extends DataValidator
 
     private function validateServiceAgentData(): void
     {
-        $serviceAgentData = $this->actual->service->agent;
-        if ($serviceAgentData === null) {
+        $expected = $this->expectations;
+        $actual = $this->actual->service->agent;
+        if ($actual === null) {
             TestCase::assertTrue(
-                !$this->expectations->agentEphemeralId->isValueSet()
-                || $this->expectations->agentEphemeralId->getValue() === null
+                !$expected->agentEphemeralId->isValueSet()
+                || $expected->agentEphemeralId->getValue() === null
             );
             return;
         }
-        self::validateServiceAgentDataEx($serviceAgentData);
+        self::validateServiceAgentDataEx($actual);
 
-        if ($this->expectations->agentEphemeralId->isValueSet()) {
-            TestCase::assertSame($this->expectations->agentEphemeralId->getValue(), $serviceAgentData->ephemeralId);
-        }
+        TestCaseBase::assertSameExpectedOptional($expected->agentEphemeralId, $actual->ephemeralId);
     }
 
     public static function validateServiceAgentDataEx(ServiceAgentData $serviceAgentData): void
