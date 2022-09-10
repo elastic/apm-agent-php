@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -52,6 +53,15 @@ class ComponentTestCaseBase extends TestCaseBase
 
     public static function appCodeEmpty(): void
     {
+    }
+
+    protected static function buildResourcesClientForAppCode(): ResourcesClient
+    {
+        $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
+        TestCase::assertNotNull($resCleanerId);
+        $resCleanerPort = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort;
+        TestCase::assertNotNull($resCleanerPort);
+        return new ResourcesClient($resCleanerId, $resCleanerPort);
     }
 
     /**

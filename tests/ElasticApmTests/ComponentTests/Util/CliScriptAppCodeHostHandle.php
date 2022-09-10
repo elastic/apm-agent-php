@@ -51,7 +51,8 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
         $setParamsFunc($appCodeHostParams);
 
-        parent::__construct($testCaseHandle, $appCodeHostParams, new AgentConfigSourceBuilder($appCodeHostParams));
+        $agentConfigSourceBuilder = new AgentConfigSourceBuilder($resourcesCleaner->getClient(), $appCodeHostParams);
+        parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder);
 
         $this->resourcesCleaner = $resourcesCleaner;
 

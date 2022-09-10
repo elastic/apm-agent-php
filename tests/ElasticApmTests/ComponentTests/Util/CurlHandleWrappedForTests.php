@@ -43,10 +43,10 @@ final class CurlHandleWrappedForTests implements LoggableInterface
      *
      * @noinspection PhpMissingParamTypeInspection
      */
-    public function __construct($curlHandle)
+    public function __construct(ResourcesClient $resourcesClient, $curlHandle)
     {
         $this->constructCurlHandleWrappedTrait($curlHandle);
-        $this->tempFileForVerboseOutput = TempFileUtilForTests::createTempFile('curl_verbose');
+        $this->tempFileForVerboseOutput = $resourcesClient->createTempFile('curl_verbose');
     }
 
     /**
@@ -57,9 +57,10 @@ final class CurlHandleWrappedForTests implements LoggableInterface
         $this->setOpt(CURLOPT_VERBOSE, true);
 
         $assertMsg = LoggableToString::convert(['$this' => $this]);
-        /** @var null|string|bool */
+        /** @var null|string|bool $retVal */
+        /** @noinspection PhpUnusedLocalVariableInspection */
         $retVal = null;
-        /** @var null|resource|false */
+        /** @var null|resource|false $verboseOutputFile */
         $verboseOutputFile = null;
         $hasVerboseOutputWritten = false;
         try {
@@ -104,7 +105,6 @@ final class CurlHandleWrappedForTests implements LoggableInterface
 
     public function close(): void
     {
-        TempFileUtilForTests::deleteTempFile($this->tempFileForVerboseOutput);
         curl_close($this->curlHandle); // @phpstan-ignore-line
     }
 }

@@ -98,7 +98,6 @@ prepare-apk:  ## Build the docker image for the apk smoke tests
 
 .PHONY: prepare-deb-apache
 prepare-deb-apache:  ## Build the docker image for the deb smoke tests for apache
-	docker image rm $@ || true ## TODO: Sergey Kleyman: BEGIN: REMOVE: Temporarily delete docker image to force rebuilding it
 	cd $(PWD)/packaging/test/ubuntu ;\
 	docker build --file apache/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . ;\
 	cd -

@@ -25,7 +25,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\AutoInstrument\PDOAutoInstrumentation;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
@@ -35,7 +34,6 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
-use ElasticApmTests\ComponentTests\Util\TempFileUtilForTests;
 use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
 use ElasticApmTests\Util\SpanDataExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
@@ -243,8 +241,8 @@ final class PDOTest extends ComponentTestCaseBase
 
         $dbName = $dbNameArg;
         if ($dbNameArg === self::FILE_DB_NAME) {
-            $dbFileFullPath = TempFileUtilForTests::createTempFile(ClassNameUtil::fqToShort(__CLASS__) . '_temp_DB');
-            $testCaseHandle->registerFileToDelete($dbFileFullPath);
+            $resourcesClient = $testCaseHandle->getResourcesClient();
+            $dbFileFullPath = $resourcesClient->createTempFile(ClassNameUtil::fqToShort(__CLASS__) . '_temp_DB');
             $dbName = $dbFileFullPath;
             $appCodeArgs[self::DB_NAME_KEY] = $dbName;
         }

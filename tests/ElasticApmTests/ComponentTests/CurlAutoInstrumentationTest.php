@@ -58,22 +58,23 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
         $dataPerRequest = new TestInfraDataPerRequest();
         $dataPerRequest->deserializeFromString($dataPerRequestSerialized);
 
-        /** @var ?CurlHandleWrappedForTests */
+        /** @var ?CurlHandleWrappedForTests $curlHandle */
         $curlHandle = null;
         try {
             $curlHandle = HttpClientUtilForTests::createCurlHandleToSendRequestToAppCode(
                 (new UrlParts())->host(HttpServerHandle::DEFAULT_HOST)->port($serverPort),
-                $dataPerRequest
+                $dataPerRequest,
+                self::buildResourcesClientForAppCode()
             );
             $curlExecRetVal = $curlHandle->exec();
             self::assertNotFalse(
                 $curlExecRetVal,
                 LoggableToString::convert(
                     [
-                        '$curlHandle->errno()' => $curlHandle->errno(),
-                        '$curlHandle->error()' => $curlHandle->error(),
+                        '$curlHandle->errno()'         => $curlHandle->errno(),
+                        '$curlHandle->error()'         => $curlHandle->error(),
                         '$curlHandle->verboseOutput()' => $curlHandle->verboseOutput(),
-                        '$dataPerRequest' => $dataPerRequest,
+                        '$dataPerRequest'              => $dataPerRequest,
                     ]
                 )
             );

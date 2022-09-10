@@ -31,7 +31,6 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
@@ -43,11 +42,8 @@ final class TestCaseHandle implements LoggableInterface
 
     public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
 
-    /** @var Logger */
-    private $logger;
-
-    /** @var int[] */
-    private $portsInUse = [];
+    /** @var ?AppCodeInvocation */
+    public $appCodeInvocation = null;
 
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
@@ -61,8 +57,11 @@ final class TestCaseHandle implements LoggableInterface
     /** @var ?HttpAppCodeHostHandle */
     protected $additionalHttpAppCodeHost = null;
 
-    /** @var ?AppCodeInvocation */
-    public $appCodeInvocation = null;
+    /** @var Logger */
+    private $logger;
+
+    /** @var int[] */
+    private $portsInUse = [];
 
     public function __construct()
     {
@@ -141,7 +140,7 @@ final class TestCaseHandle implements LoggableInterface
 
     public function waitForDataFromAgent(
         ExpectedEventCounts $expectedEventCounts,
-        bool $shouldValidate = true
+        bool                $shouldValidate = true
     ): DataFromAgentPlusRaw {
         TestCase::assertNotNull($this->appCodeInvocation);
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
@@ -158,9 +157,9 @@ final class TestCaseHandle implements LoggableInterface
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
                 [
-                    'expected event counts' => $expectedEventCounts,
-                    'actual event counts' => $dataFromAgentAccumulator->dbgCounts(),
-                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator
+                    'expected event counts'     => $expectedEventCounts,
+                    'actual event counts'       => $dataFromAgentAccumulator->dbgCounts(),
+                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator,
                 ]
             )
         );
@@ -200,13 +199,6 @@ final class TestCaseHandle implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Tearing down...');
 
-        if ($this->mainAppCodeHost !== null) {
-            $this->mainAppCodeHost->tearDown();
-        }
-        if ($this->additionalHttpAppCodeHost !== null) {
-            $this->additionalHttpAppCodeHost->tearDown();
-        }
-
         $this->resourcesCleaner->signalAndWaitForItToExit();
     }
 
@@ -242,7 +234,7 @@ final class TestCaseHandle implements LoggableInterface
 
     private function startBuiltinHttpServerAppCodeHost(
         Closure $setParamsFunc,
-        string $dbgInstanceName
+        string  $dbgInstanceName
     ): BuiltinHttpServerAppCodeHostHandle {
         $result = new BuiltinHttpServerAppCodeHostHandle(
             $this,
@@ -283,7 +275,7 @@ final class TestCaseHandle implements LoggableInterface
     }
 
     private function pollForDataFromAgent(
-        ExpectedEventCounts $expectedEventCounts,
+        ExpectedEventCounts             $expectedEventCounts,
         DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
     ): bool {
         $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
@@ -291,35 +283,8 @@ final class TestCaseHandle implements LoggableInterface
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
     }
 
-    public function registerFileToDelete(string $fullPath): void
+    public function getResourcesClient(): ResourcesClient
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Registering file to delete with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...',
-            ['fullPath' => $fullPath]
-        );
-
-        $response = HttpClientUtilForTests::sendRequest(
-            HttpConsts::METHOD_POST,
-            (new UrlParts())
-                ->path(ResourcesCleaner::REGISTER_FILE_TO_DELETE_URI_PATH)
-                ->port($this->resourcesCleaner->getPort()),
-            TestInfraDataPerRequest::withSpawnedProcessInternalId(
-                $this->resourcesCleaner->getSpawnedProcessInternalId()
-            ),
-            [ResourcesCleaner::PATH_QUERY_HEADER_NAME => $fullPath]
-        );
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
-            throw new RuntimeException(
-                'Failed to register with '
-                . ClassNameUtil::fqToShort(ResourcesCleaner::class)
-            );
-        }
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Successfully registered file to delete with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class),
-            ['fullPath' => $fullPath]
-        );
+        return $this->resourcesCleaner->getClient();
     }
 }

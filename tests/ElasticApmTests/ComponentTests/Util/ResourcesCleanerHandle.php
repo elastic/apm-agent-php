@@ -34,6 +34,9 @@ final class ResourcesCleanerHandle extends HttpServerHandle
 {
     private const MAX_WAIT_TO_EXIT_MICROSECONDS = 10 * 1000 * 1000; // 10 seconds
 
+    /** @var ResourcesClient */
+    private $resourcesClient;
+
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
         parent::__construct(
@@ -41,6 +44,13 @@ final class ResourcesCleanerHandle extends HttpServerHandle
             $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
             $httpSpawnedProcessHandle->getPort()
         );
+
+        $this->resourcesClient = new ResourcesClient($this->getSpawnedProcessInternalId(), $this->getPort());
+    }
+
+    public function getClient(): ResourcesClient
+    {
+        return $this->resourcesClient;
     }
 
     public function signalAndWaitForItToExit(): void

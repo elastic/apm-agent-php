@@ -46,7 +46,7 @@ final class BuiltinHttpServerAppCodeHostHandle extends HttpAppCodeHostHandle
         $appCodeHostParams = new HttpAppCodeHostParams($dbgProcessName);
         $setParamsFunc($appCodeHostParams);
 
-        $agentConfigSourceBuilder = new AgentConfigSourceBuilder($appCodeHostParams);
+        $agentConfigSourceBuilder = new AgentConfigSourceBuilder($resourcesCleaner->getClient(), $appCodeHostParams);
 
         $httpServerHandle = BuiltinHttpServerAppCodeHostStarter::startBuiltinHttpServerAppCodeHost(
             $appCodeHostParams,

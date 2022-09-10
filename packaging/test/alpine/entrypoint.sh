@@ -47,6 +47,8 @@ validate_installation() {
     # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
     export ELASTIC_APM_ENABLED=false
 
+    echo 'PHP version:'
+    php -v
     echo 'Installed PHP extensions:'
     php -m
     echo 'Set environment variables:'
