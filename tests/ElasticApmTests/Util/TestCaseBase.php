@@ -347,13 +347,20 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
-    protected function getLogger(string $namespace, string $className, string $srcCodeFile): Logger
+    /**
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     *
+     * @return Logger
+     */
+    protected function getLogger(string $namespace, string $fqClassName, string $srcCodeFile): Logger
     {
         if ($this->logger === null) {
             $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
                 LogCategoryForTests::TEST,
                 $namespace,
-                $className,
+                $fqClassName,
                 $srcCodeFile
             )->addContext('this', $this);
         }
@@ -362,12 +369,19 @@ class TestCaseBase extends TestCase
         return $this->logger;
     }
 
-    public static function getLoggerStatic(string $namespace, string $className, string $srcCodeFile): Logger
+    /**
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     *
+     * @return Logger
+     */
+    public static function getLoggerStatic(string $namespace, string $fqClassName, string $srcCodeFile): Logger
     {
         return AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST,
             $namespace,
-            $className,
+            $fqClassName,
             $srcCodeFile
         );
     }

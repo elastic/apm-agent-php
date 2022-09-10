@@ -1,8 +1,20 @@
 FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
+RUN apt-get update && apt-get install -y
 RUN apt-get -qq update \
-    && apt-get -qq install -y dpkg-sig gnupg gnupg2 git procps zlib1g-dev libzip-dev wget unzip rsyslog --no-install-recommends
+    && apt-get -qq  --no-install-recommends  -y install \
+        apt-transport-https \
+        dpkg-sig \
+        git \
+        gnupg \
+        gnupg2 \
+        libzip-dev \
+        procps \
+        rsyslog \
+        wget \
+        unzip \
+        zlib1g-dev
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 

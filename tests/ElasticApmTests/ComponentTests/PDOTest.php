@@ -25,8 +25,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
+use Elastic\Apm\Impl\AutoInstrument\PDOAutoInstrumentation;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
@@ -39,6 +43,8 @@ use PDO;
 
 final class PDOTest extends ComponentTestCaseBase
 {
+    private const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
+    private const IS_PDO_INSTRUMENTATION_ENABLED_KEY = 'IS_PDO_INSTRUMENTATION_ENABLED';
     private const DB_NAME_KEY = 'DB_NAME';
     private const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
     private const MESSAGES_KEY = 'MESSAGES';
@@ -117,19 +123,51 @@ final class PDOTest extends ComponentTestCaseBase
         self::assertTrue(extension_loaded($extensionName), 'Required extension ' . $extensionName . ' is not loaded');
     }
 
+    public function testIsAutoInstrumentationEnabled(): void
+    {
+        $this->implTestIsAutoInstrumentationEnabled(
+            PDOAutoInstrumentation::class /* <- instrClass */,
+            ['pdo', 'db'] /* <- expectedNames */
+        );
+    }
+
     /**
      * @return iterable<array{array<string, mixed>}>
      */
-    public function dataProviderForTest(): iterable
+    public function dataProviderForTestAutoInstrumentation(): iterable
     {
+        $disableInstrumentationsVariants = [
+            null => true,
+            'pdo' => false,
+            'db' => false
+        ];
+
         $dbNames = [];
-        // TODO: Sergey Kleyman: UNCOMMENT
-        // $dbNames[] = self::MEMORY_DB_NAME;
-        // $dbNames[] = self::TEMP_DB_NAME;
+        $dbNames[] = self::MEMORY_DB_NAME;
+        $dbNames[] = self::TEMP_DB_NAME;
         $dbNames[] = self::FILE_DB_NAME;
-        foreach ($dbNames as $dbName) {
-            foreach ([false, true] as $wrapInTx) {
-                yield [[self::DB_NAME_KEY => $dbName, self::WRAP_IN_TX_KEY => $wrapInTx]];
+
+        /**
+         * @param string[] $variants
+         *
+         * @return string[]
+         */
+        $onlyIfEnabled = function (array $variants, bool $isEnabled): array {
+            return $isEnabled ? $variants : [$variants[0]];
+        };
+
+        foreach ($disableInstrumentationsVariants as $disableInstrumentationsOptVal => $isPDOInstrumentationEnabled) {
+            foreach ($onlyIfEnabled($dbNames, $isPDOInstrumentationEnabled) as $dbName) {
+                foreach ($onlyIfEnabled([false, true], $isPDOInstrumentationEnabled) as $wrapInTx) {
+                    yield [
+                        [
+                            self::DISABLE_INSTRUMENTATIONS_KEY       => $disableInstrumentationsOptVal,
+                            self::IS_PDO_INSTRUMENTATION_ENABLED_KEY => $isPDOInstrumentationEnabled,
+                            self::DB_NAME_KEY                        => $dbName,
+                            self::WRAP_IN_TX_KEY                     => $wrapInTx,
+                        ],
+                    ];
+                }
             }
         }
     }
@@ -137,7 +175,7 @@ final class PDOTest extends ComponentTestCaseBase
     /**
      * @param array<string, mixed> $appCodeArgs
      */
-    public static function appCode(array $appCodeArgs): void
+    public static function appCodeForTestAutoInstrumentation(array $appCodeArgs): void
     {
         $dbName = self::getMandatoryAppCodeArg($appCodeArgs, self::DB_NAME_KEY);
         self::assertIsString($dbName);
@@ -183,12 +221,17 @@ final class PDOTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderForTest
+     * @dataProvider dataProviderForTestAutoInstrumentation
      *
      * @param array<string, mixed> $testArgs
      */
-    public function test(array $testArgs): void
+    public function testAutoInstrumentation(array $testArgs): void
     {
+        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg($testArgs, self::DISABLE_INSTRUMENTATIONS_KEY);
+        self::assertIsString($disableInstrumentationsOptVal);
+        $isPDOInstrumentationEnabled
+            = self::getMandatoryAppCodeArg($testArgs, self::IS_PDO_INSTRUMENTATION_ENABLED_KEY);
+        self::assertIsBool($isPDOInstrumentationEnabled);
         $dbNameArg = $testArgs[self::DB_NAME_KEY];
         self::assertIsString($dbNameArg);
         $wrapInTx = $testArgs[self::WRAP_IN_TX_KEY];
@@ -217,15 +260,21 @@ final class PDOTest extends ComponentTestCaseBase
         $expectationsBuilder = new DbSpanDataExpectationsBuilder($sharedExpectations);
         /** @var SpanDataExpectations[] $expectedSpans */
         $expectedSpans = [];
-        $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
-        foreach ($messages as $ignored) {
-            $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);
+        if ($isPDOInstrumentationEnabled) {
+            $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
+            foreach ($messages as $ignored) {
+                $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);
+            }
+            $expectedSpans[] = $expectationsBuilder->fromStatement(self::SELECT_SQL);
         }
-        $expectedSpans[] = $expectationsBuilder->fromStatement(self::SELECT_SQL);
 
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($disableInstrumentationsOptVal): void {
+                $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
+            }
+        );
         $appCodeHost->sendRequest(
-            AppCodeTarget::asRouted([__CLASS__, 'appCode']),
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAutoInstrumentation']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($appCodeArgs): void {
                 $appCodeRequestParams->setAppCodeArgs($appCodeArgs);
             }
