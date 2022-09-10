@@ -140,7 +140,7 @@ final class TestCaseHandle implements LoggableInterface
 
     public function waitForDataFromAgent(
         ExpectedEventCounts $expectedEventCounts,
-        bool                $shouldValidate = true
+        bool $shouldValidate = true
     ): DataFromAgentPlusRaw {
         TestCase::assertNotNull($this->appCodeInvocation);
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
@@ -234,7 +234,7 @@ final class TestCaseHandle implements LoggableInterface
 
     private function startBuiltinHttpServerAppCodeHost(
         Closure $setParamsFunc,
-        string  $dbgInstanceName
+        string $dbgInstanceName
     ): BuiltinHttpServerAppCodeHostHandle {
         $result = new BuiltinHttpServerAppCodeHostHandle(
             $this,
@@ -275,7 +275,7 @@ final class TestCaseHandle implements LoggableInterface
     }
 
     private function pollForDataFromAgent(
-        ExpectedEventCounts             $expectedEventCounts,
+        ExpectedEventCounts $expectedEventCounts,
         DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
     ): bool {
         $newIntakeApiRequests = $this->mockApmServer->fetchNewData();

@@ -25,8 +25,11 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\UrlParts;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\CurlHandleWrappedForTests;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpClientUtilForTests;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 use ElasticApmTests\ComponentTests\Util\TestInfraDataPerRequest;
@@ -95,32 +98,36 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public function testLocalClientServer(): void
     {
-        // $testCaseHandle = $this->getTestCaseHandle();
-        // $serverAppCode = $testCaseHandle->ensureAdditionalHttpAppCodeHost();
-        // $clientAppCode = $testCaseHandle->ensureMainAppCodeHost();
-        // $clientAppCode->sendRequest(
-        //     AppCodeTarget::asRouted([__CLASS__, 'appCodeClient']),
-        //     function (AppCodeRequestParams $reqParams) use ($serverAppCode): void {
-        //         $dataPerRequest = $serverAppCode->buildDataPerRequest(
-        //             AppCodeTarget::asRouted([__CLASS__, 'appCodeServer'])
-        //         );
-        //         $reqParams->setAppCodeArgs(
-        //             [
-        //                 self::SERVER_PORT_KEY                      => $serverAppCode->getPort(),
-        //                 self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY => $dataPerRequest->serializeToString(),
-        //             ]
-        //         );
-        //     }
-        // );
-        //
-        // /**
-        //  * transactions (2): client side + server side
-        //  * spans (1): curl client side
-        //  */
-        // $dataFromAgent
-        //     = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(2)->spans(1));
         // TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientServer
-        self::dummyAssert();
+        if (PHP_MAJOR_VERSION < 9) {
+            self::dummyAssert();
+            return;
+        }
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $serverAppCode = $testCaseHandle->ensureAdditionalHttpAppCodeHost();
+        $clientAppCode = $testCaseHandle->ensureMainAppCodeHost();
+        $clientAppCode->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeClient']),
+            function (AppCodeRequestParams $reqParams) use ($serverAppCode): void {
+                $dataPerRequest = $serverAppCode->buildDataPerRequest(
+                    AppCodeTarget::asRouted([__CLASS__, 'appCodeServer'])
+                );
+                $reqParams->setAppCodeArgs(
+                    [
+                        self::SERVER_PORT_KEY                      => $serverAppCode->getPort(),
+                        self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY => $dataPerRequest->serializeToString(),
+                    ]
+                );
+            }
+        );
+
+        /**
+         * transactions (2): client side + server side
+         * spans (1): curl client side
+         */
+        $dataFromAgent
+            = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(2)->spans(1));
     }
 
     public function testLocalClientExternalServer(): void
