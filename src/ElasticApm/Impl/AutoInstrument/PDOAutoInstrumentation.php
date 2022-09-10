@@ -203,7 +203,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 $dbType = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
                     self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                    Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
                 /** @var ?string $dbName */
@@ -226,7 +226,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             $name,
             Constants::SPAN_TYPE_DB,
             $dbType /* <- subtype */,
-            Constants::SPAN_TYPE_DB_ACTION_QUERY
+            Constants::SPAN_ACTION_QUERY
         );
 
         $span->context()->db()->setStatement($statement);
@@ -355,7 +355,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 $dbType = self::getDynamicallyAttachedProperty(
                     $interceptedCallThis,
                     self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-                    Constants::SPAN_TYPE_DB_SUBTYPE_UNKNOWN /* <- defaultValue */
+                    Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
                 /** @var ?string $dbName */

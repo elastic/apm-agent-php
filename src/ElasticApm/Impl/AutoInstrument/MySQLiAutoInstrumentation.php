@@ -132,6 +132,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         $this->interceptCallsTo($ctx, $className, $methodName, $funcName, $preHook);
     }
 
+    /**
+     * @param mixed[] $interceptedCallArgs
+     * @param string  $funcName
+     * @param ?string $className
+     *
+     * @return ?callable
+     */
     private function createSpan(array $interceptedCallArgs, string $funcName, string $className = null): ?callable
     {
         if (!$this->hasOneArgument($interceptedCallArgs)) {
@@ -146,7 +153,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         }
 
         return self::createPostHookFromEndSpan(
-            $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, null)
+            $this->beginDbSpan($spanName, Constants::SPAN_SUBTYPE_MYSQL, null)
         );
     }
 
@@ -164,7 +171,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         ): ?callable {
             $spanName = $className ? 'mysqli->' . $funcName : $funcName . '()';
             return self::createPostHookFromEndSpan(
-                $this->beginDbSpan($spanName, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, null)
+                $this->beginDbSpan($spanName, Constants::SPAN_SUBTYPE_MYSQL, null)
             );
         };
 
@@ -184,7 +191,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             $statement = $interceptedCallArgs[0];
 
             return self::createPostHookFromEndSpan(
-                $this->beginDbSpan($statement, Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL, $statement)
+                $this->beginDbSpan($statement, Constants::SPAN_SUBTYPE_MYSQL, $statement)
             );
         };
 
@@ -276,13 +283,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
             $span = $this->beginDbSpan(
                 $query ?? 'mysqli_stmt execute',
-                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                Constants::SPAN_SUBTYPE_MYSQL,
                 $query
             );
 
             $span->context()->destination()->setService(
-                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
-                Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL,
+                Constants::SPAN_SUBTYPE_MYSQL,
+                Constants::SPAN_SUBTYPE_MYSQL,
                 Constants::SPAN_TYPE_DB
             );
 
@@ -304,7 +311,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             $name,
             Constants::SPAN_TYPE_DB,
             $subtype,
-            Constants::SPAN_ACTION_DB_QUERY
+            Constants::SPAN_ACTION_QUERY
         );
 
         if ($statement !== null) {
@@ -316,17 +323,12 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         return $span;
     }
 
-    private static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        $obj->{$propName} = $val;
-    }
-
-    private static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
-    {
-        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
-    }
-
-    private function hasOneArgument($interceptedCallArgs): bool
+    /**
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    private function hasOneArgument(array $interceptedCallArgs): bool
     {
         if (count($interceptedCallArgs) < 1) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
