@@ -1,20 +1,9 @@
 FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y
 RUN apt-get -qq update \
-    && apt-get -qq  --no-install-recommends  -y install \
-        apt-transport-https \
-        dpkg-sig \
-        git \
-        gnupg \
-        gnupg2 \
-        libzip-dev \
-        procps \
-        rsyslog \
-        wget \
-        unzip \
-        zlib1g-dev
+    && apt-get -qq -y --no-install-recommends install apt-utils \
+    && apt-get -qq -y --no-install-recommends install apt-transport-https dpkg-sig gnupg gnupg2 git procps zlib1g-dev libzip-dev wget unzip rsyslog
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -23,10 +12,10 @@ COPY entrypoint.sh /bin
 ## Install the specific PHP version in addition with apache2
 ARG PHP_VERSION=7.2
 ENV PHP_VERSION=$PHP_VERSION
-RUN apt-get -qq install -y software-properties-common --no-install-recommends \
+RUN apt-get -qq -y --no-install-recommends install software-properties-common \
     && add-apt-repository ppa:ondrej/php \
     && apt-get -qq update \
-    && apt-get -y install \
+    && apt-get -qq -y --no-install-recommends install \
         apache2 \
         php${PHP_VERSION} \
         libapache2-mod-php \
@@ -37,15 +26,9 @@ RUN apt-get -qq install -y software-properties-common --no-install-recommends \
         php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 ## Enable the new installed PHP version.
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \
     && a2enmod php${PHP_VERSION}
-
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
 
 ENV TYPE=deb
 ENV VERSION=
