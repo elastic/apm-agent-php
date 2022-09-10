@@ -16,7 +16,13 @@ RUN apt-get -qq install -y software-properties-common --no-install-recommends \
     && apt-get -qq update \
     && apt-get -y install \
         apache2 \
+        php${PHP_VERSION} \
         libapache2-mod-php \
+        php${PHP_VERSION}-curl \
+        php${PHP_VERSION}-mbstring \
+        php${PHP_VERSION}-mysql \
+        php${PHP_VERSION}-sqlite \
+        php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*
 
 RUN echo "php -v: $(php -v)"
@@ -25,18 +31,6 @@ RUN echo "php -m: $(php -m)"
 ## Enable the new installed PHP version.
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \
     && a2enmod php${PHP_VERSION}
-
-RUN apt-get -qq install -y software-properties-common --no-install-recommends \
-    && add-apt-repository ppa:ondrej/php \
-    && apt-get -qq update \
-    && apt-get -y install \
-        php${PHP_VERSION}-curl \
-        php${PHP_VERSION}-mbstring \
-        php${PHP_VERSION}-mysql \
-        php${PHP_VERSION}-sqlite \
-        php${PHP_VERSION}-xml \
-        libapache2-mod-php \
-    && rm -rf /var/lib/apt/lists/*
 
 RUN echo "php -v: $(php -v)"
 RUN echo "php -m: $(php -m)"
