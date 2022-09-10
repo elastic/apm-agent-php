@@ -58,8 +58,9 @@ validate_installation() {
     composer install
     syslogd
     ## This env variable can be overriden
-    COMPONENT_TEST_SCRIPT="${COMPONENT_TEST_SCRIPT:-run_component_tests}"
-    if ! composer run-script "${COMPONENT_TEST_SCRIPT}" ; then
+    ## COMPONENT_TEST_SCRIPT is not wrapped in quotes on purpose because it might contained multiple space separated strings
+    COMPONENT_TEST_SCRIPT=${COMPONENT_TEST_SCRIPT:-run_component_tests}
+    if ! composer run-script ${COMPONENT_TEST_SCRIPT} ; then
         echo 'Something bad happened when running the tests, see the output from the syslog'
         cat /var/log/messages
         exit 1
