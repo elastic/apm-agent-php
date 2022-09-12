@@ -160,7 +160,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
     }
 
-    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return true;
     }
@@ -216,7 +216,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
-        if ($this->shouldRequestHaveSpawnedProcessId($request)) {
+        if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
             $testConfigForRequest = TestConfigUtil::read(
                 AmbientContextForTests::dbgProcessName(),
                 new RequestHeadersRawSnapshotSource(
@@ -226,13 +226,13 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 )
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
-            $verifySpawnedProcessIdResponse
-                = self::verifySpawnedProcessId($testConfigForRequest->dataPerRequest->spawnedProcessId);
+            $verifySpawnedProcessInternalIdResponse
+                = self::verifySpawnedProcessInternalId($testConfigForRequest->dataPerRequest->spawnedProcessInternalId);
             if (
-                $verifySpawnedProcessIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
+                $verifySpawnedProcessInternalIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
                 || $request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI
             ) {
-                return $verifySpawnedProcessIdResponse;
+                return $verifySpawnedProcessInternalIdResponse;
             }
         }
 

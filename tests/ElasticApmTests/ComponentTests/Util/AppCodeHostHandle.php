@@ -62,11 +62,6 @@ abstract class AppCodeHostHandle implements LoggableInterface
      */
     abstract public function sendRequest(AppCodeTarget $appCodeTarget, ?Closure $setParamsFunc = null): void;
 
-    public function tearDown(): void
-    {
-        $this->agentConfigSourceBuilder->tearDown();
-    }
-
     protected function beforeAppCodeInvocation(AppCodeRequestParams $appCodeRequestParams): AppCodeInvocation
     {
         $timestampBefore = Clock::singletonInstance()->getSystemClockCurrentTime();

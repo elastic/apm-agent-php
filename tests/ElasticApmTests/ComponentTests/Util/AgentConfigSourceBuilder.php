@@ -46,13 +46,16 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     /** @var Logger */
     private $logger;
 
+    /** @var ResourcesClient */
+    private $resourcesClient;
+
     /** @var AppCodeHostParams */
     private $appCodeHostParams;
 
     /** @var ?string */
     private $tempIniFileFullPath = null;
 
-    public function __construct(AppCodeHostParams $appCodeHostParams)
+    public function __construct(ResourcesClient $resourcesClient, AppCodeHostParams $appCodeHostParams)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -61,6 +64,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
+        $this->resourcesClient = $resourcesClient;
         $this->appCodeHostParams = $appCodeHostParams;
     }
 
@@ -83,29 +87,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return AmbientContextForTests::testConfig()->appCodePhpIni;
         }
 
-        if ($this->tempIniFileFullPath === null) {
-            $this->tempIniFileFullPath = $this->createTempIniFile();
-        }
-
-        return $this->tempIniFileFullPath;
-    }
-
-    /**
-     * TODO: Sergey Kleyman: Move responsibility for deleting  temp files to ResourcesCleaner
-     *
-     * @return void
-     */
-    public function tearDown(): void
-    {
-        if ($this->tempIniFileFullPath === null) {
-            return;
-        }
-
-        if (!AmbientContextForTests::testConfig()->deleteTempPhpIni) {
-            return;
-        }
-
-        TempFileUtilForTests::deleteTempIniFile($this->tempIniFileFullPath);
+        return $this->ensureTempIniFileCreated();
     }
 
     /**
@@ -147,7 +129,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
                     return true;
                 }
 
-                // Keep environment variables explicitly configure to be passed through
+                // Keep environment variables explicitly configured to be passed through
                 if (AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
                     return true;
                 }
@@ -310,9 +292,15 @@ final class AgentConfigSourceBuilder implements LoggableInterface
         }
     }
 
-    private function createTempIniFile(): string
+    private function ensureTempIniFileCreated(): string
     {
-        $tempIniFileFullPath = TempFileUtilForTests::createTempIniFile('php_ini');
+        if ($this->tempIniFileFullPath !== null) {
+            return $this->tempIniFileFullPath;
+        }
+
+        $shouldBeDeletedOnTestExit = AmbientContextForTests::testConfig()->deleteTempPhpIni;
+        $tempIniFileFullPath = $this->resourcesClient->createTempFile('php_ini', $shouldBeDeletedOnTestExit);
+
         $this->writeTempIniContent($tempIniFileFullPath);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

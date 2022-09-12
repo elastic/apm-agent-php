@@ -21,13 +21,21 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util;
 
-final class DataForVerification
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class TimeUtilForTests
 {
-    /** @var DataFromAgentPlusRawExpectations */
-    public $expectations;
+    use StaticClassTrait;
 
-    /** @var DataFromAgentPlusRaw */
-    public $actual;
+    public static function compareTimestamps(float $t1, float $t2): int
+    {
+        return ($t1 < $t2) ? -1 : (($t1 == $t2) ? 0 : 1);
+    }
 }
