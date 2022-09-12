@@ -22,7 +22,7 @@ endif::[]
 // CHANGELOG_AUTOMATION_KEYWORD
 
 [[release-notes-v1.6.1]]
-=== v1.6.1 - 2022/09/06
+=== v1.6.1 - 2022/09/12
 * Fixed: Current implementation for Improved Granularity for SQL Databases doesn't account for SQL USE statement: {pull}759[#759]
 
 [[release-notes-v1.6]]
