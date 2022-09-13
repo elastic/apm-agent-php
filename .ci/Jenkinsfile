@@ -255,13 +255,13 @@ pipeline {
             setEnvVar('PRE_RELEASE_STAGE', 'false')
             notifyStatus(slackStatus: 'warning', subject: "[${env.REPO}@${env.TAG_NAME}] Release ready to be published",
                          body: "Please (<${env.BUILD_URL}input|approve>) it or reject within 12 hours.\n Changes: ${env.TAG_NAME}")
-            setEnvVar('RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
+            setEnvVar('HAS_APPROVAL_TO_PUBLISH_RELEASE', prompt(message: "You are about to release version ${env.TAG_NAME}. Do you wish to release it?"))
           }
         }
         stage('Publish as draft release') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.HAS_APPROVAL_TO_PUBLISH_RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -284,7 +284,7 @@ pipeline {
         stage('Verify draft release checksum') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.HAS_APPROVAL_TO_PUBLISH_RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
@@ -306,7 +306,7 @@ pipeline {
         stage('Publish release (draft -> regular)') {
           when {
             beforeAgent true
-            expression { return env.RELEASE == 'true' }
+            expression { return env.HAS_APPROVAL_TO_PUBLISH_RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
           steps {
