@@ -112,10 +112,12 @@ endif
 
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-	pwd
-	ls -l .
-	ls -l build
-	ls -l build/packages
+	#
+	# Sergey Kleyman:
+	# 	Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+	# 	This change should be kept in a temporary (for tests only) PR
+	# 	and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+	#
 	gh \
 		release \
 		create \
@@ -123,12 +125,6 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 		--draft \
 		--title "$(TAG_NAME)" \
 		--notes "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)." \
-		\ #
-		\ # Sergey Kleyman:
-		\ # 	Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
-		\ # 	This change should be kept in a temporary (for tests only) PR
-		\ # 	and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
-		\ #
 		--repo SergeyKleyman/apm-agent-php \
 		build/packages/*.*
 
