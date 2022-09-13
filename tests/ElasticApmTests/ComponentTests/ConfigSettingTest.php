@@ -41,6 +41,9 @@ use ElasticApmTests\Util\TransactionDataExpectations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class ConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';

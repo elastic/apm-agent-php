@@ -37,6 +37,9 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class DynamicConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';

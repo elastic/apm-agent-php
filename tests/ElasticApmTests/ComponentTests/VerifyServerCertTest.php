@@ -31,6 +31,9 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class VerifyServerCertTest extends ComponentTestCaseBase
 {
     /**

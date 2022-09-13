@@ -29,6 +29,9 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class ApiKeySecretTokenTest extends ComponentTestCaseBase
 {
     private function apiKeyConfigTestImpl(?string $configuredApiKey, ?string $configuredSecretToken): void
