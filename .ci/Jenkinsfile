@@ -426,9 +426,9 @@ def prepareWorkspace(def args = [:], Closure body){
 def notifyStatus(def args = [:]) {
 //
 // Sergey Kleyman:
-//      Disabled Slack notifications to avoid noise while testing changes to release CI pipeline
+//      Disabled Slack notifications to avoid noise while testing changes to release CI pipeline.
 //      This change should be kept in a temporary (for tests only) PR
-//      and it should NEVER be merged to any "releasable" branches.
+//      and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
 //
 //   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
 //                       slackColor: args.slackStatus,
