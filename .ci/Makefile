@@ -119,12 +119,24 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 		--draft \
 		--title "$(TAG_NAME)" \
 		--notes "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)." \
-		--repo elastic/apm-agent-php \
+		\ #
+		\ # Sergey Kleyman:
+		\ # 	Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+		\ # 	This change should be kept in a temporary (for tests only) PR
+		\ # 	and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+		\ #
+		--repo SergeyKleyman/apm-agent-php \
 		build/packages/*.*
 
 .PHONY: get-draft-release
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
-	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
+	#
+	# Sergey Kleyman:
+	# 		Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+	#		This change should be kept in a temporary (for tests only) PR
+	#		and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+	#
+	@gh api repos/SergeyKleyman/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature

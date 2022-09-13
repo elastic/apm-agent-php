@@ -9,7 +9,13 @@ mkdir $GITHUB || true
 cd $GITHUB
 ## TODO: wait for https://github.com/cli/cli/pull/5442
 ## gh release download --release-id ${RELEASE_ID}
-gh release download "$TAG_NAME"
+#
+# Sergey Kleyman:
+# 		Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+#		This change should be kept in a temporary (for tests only) PR
+#		and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+#
+gh release download "$TAG_NAME" --repo "SergeyKleyman/apm-agent-php"
 cd ..
 
 echo 'debug github artifacts'
