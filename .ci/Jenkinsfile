@@ -424,12 +424,18 @@ def prepareWorkspace(def args = [:], Closure body){
 }
 
 def notifyStatus(def args = [:]) {
-  releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
-                      slackColor: args.slackStatus,
-                      slackCredentialsId: 'jenkins-slack-integration-token',
-                      to: "${env.NOTIFY_TO}",
-                      subject: args.subject,
-                      body: args.body)
+//
+// Sergey Kleyman:
+//      Disabled Slack notifications to avoid noise while testing changes to release CI pipeline
+//      This change should be kept in a temporary (for tests only) PR
+//      and it should NEVER be merged to any "releasable" branches.
+//
+//   releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
+//                       slackColor: args.slackStatus,
+//                       slackCredentialsId: 'jenkins-slack-integration-token',
+//                       to: "${env.NOTIFY_TO}",
+//                       subject: args.subject,
+//                       body: args.body)
 }
 
 def prepareRelease() {
