@@ -35,6 +35,9 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class HttpTransactionTest extends ComponentTestCaseBase
 {
     /**

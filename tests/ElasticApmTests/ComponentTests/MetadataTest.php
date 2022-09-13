@@ -31,6 +31,9 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\Util\MetadataValidator;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class MetadataTest extends ComponentTestCaseBase
 {
     /**

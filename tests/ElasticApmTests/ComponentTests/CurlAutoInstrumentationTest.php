@@ -35,6 +35,9 @@ use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 use ElasticApmTests\ComponentTests\Util\TestInfraDataPerRequest;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 {
     private const SERVER_PORT_KEY = 'SERVER_PORT';

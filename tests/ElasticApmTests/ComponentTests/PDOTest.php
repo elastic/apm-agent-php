@@ -39,6 +39,9 @@ use ElasticApmTests\Util\SpanDataExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class PDOTest extends ComponentTestCaseBase
 {
     private const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
