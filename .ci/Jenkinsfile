@@ -112,10 +112,6 @@ pipeline {
                 }
               }
               stage('Static analysis and unit tests') {
-                when {
-                  beforeAgent true
-                  not { expression { isInternalCI() } }
-                }
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     dir("${BASE_DIR}"){
