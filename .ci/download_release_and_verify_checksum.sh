@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -xeo pipefail
 
 release_tag="${1}"
