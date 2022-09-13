@@ -9,7 +9,13 @@ downloaded_artifacts_location="./github"
 echo "Downloading artifacts to ${downloaded_artifacts_location} ..."
 mkdir -p "${downloaded_artifacts_location}"
 pushd "${downloaded_artifacts_location}"
-gh release download "${release_tag}"
+#
+# Sergey Kleyman:
+# 		Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+#		This change should be kept in a temporary (for tests only) PR
+#		and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+#
+gh release download "${release_tag}" --repo "SergeyKleyman/apm-agent-php"
 popd
 
 ls -l "${original_artifacts_location}"
