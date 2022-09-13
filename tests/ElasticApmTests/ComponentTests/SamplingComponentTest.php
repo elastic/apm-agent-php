@@ -33,6 +33,9 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 use ElasticApmTests\Util\TransactionDataExpectations;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class SamplingComponentTest extends ComponentTestCaseBase
 {
     private const TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY = 'transactionSampleRateOptValue';

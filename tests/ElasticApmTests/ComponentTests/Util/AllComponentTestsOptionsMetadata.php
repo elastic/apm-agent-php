@@ -81,6 +81,11 @@ final class AllComponentTestsOptionsMetadata
                     return $deserializedObj;
                 }
             ),
+            'mysql_host' => new NullableStringOptionMetadata(),
+            'mysql_port' => new NullableStringOptionMetadata(),
+            'mysql_user' => new NullableStringOptionMetadata(),
+            'mysql_password' => new NullableStringOptionMetadata(),
+            'mysql_db' => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;
