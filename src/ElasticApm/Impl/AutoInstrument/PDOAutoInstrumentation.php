@@ -25,13 +25,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
+use Elastic\Apm\Impl\AutoInstrument\Util\DbAutoInstrumentationUtil;
+use Elastic\Apm\Impl\AutoInstrument\Util\DbConnectionStringParser;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\SpanInterface;
 use PDO;
 use PDOStatement;
 
@@ -42,21 +42,16 @@ use PDOStatement;
  */
 final class PDOAutoInstrumentation extends AutoInstrumentationBase
 {
-    use AutoInstrumentationTrait;
-
-    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE
-        = 'Elastic_APM_dynamically_attached_property_DB_type';
-
-    private const DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME
-        = 'Elastic_APM_dynamically_attached_property_DB_name';
-
     private const DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE = [
-        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
-        self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
+        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
     ];
 
     /** @var Logger */
     private $logger;
+
+    /** @var AutoInstrumentationUtil */
+    private $util;
 
     /** @var DbConnectionStringParser */
     private $dataSourceNameParser;
@@ -71,6 +66,8 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
 
         $this->dataSourceNameParser = new DbConnectionStringParser($tracer->loggerFactory());
     }
@@ -108,55 +105,43 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             'PDO',
             '__construct',
             /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             * @param ?object $interceptedCallThis
+             * @param mixed[] $interceptedCallArgs
              *
              * @return callable
              */
             function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
-                if (!($interceptedCallThis instanceof PDO)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class PDO',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
+                if (!$this->util->verifyInstanceOf(PDO::class, $interceptedCallThis)) {
+                    return null;
                 }
-
-                if (count($interceptedCallArgs) < 1) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'Number of received arguments for PDO::__construct call is less than expected.'
-                        . 'PDO::__construct is expected to have at least one argument (Data Source Name - DSN)',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
+                /** @var PDO $interceptedCallThis */
+                if (!$this->util->verifyMinArgsCount(1, $interceptedCallArgs)) {
+                    return null;
                 }
-
                 $dsn = $interceptedCallArgs[0];
-                if (!is_string($dsn)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'The first received argument for PDO::__construct call is not a string'
-                        . ' but PDO::__construct is expected to have Data Source Name (DSN) as the first argument ',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
+                if (!$this->util->verifyIsString($dsn)) {
+                    return null;
                 }
+                /** @var string $dsn */
 
-                /** var ?string */
+                /** @var ?string $dbType */
                 $dbType = null;
-                /** var ?string */
+                /** @var ?string $dbName */
                 $dbName = null;
                 $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
                 $dynamicallyAttachedProperties = [];
                 if ($dbType !== null) {
-                    $dynamicallyAttachedProperties[self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE] = $dbType;
+                    $dynamicallyAttachedProperties[DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE]
+                        = $dbType;
                 }
                 if ($dbName !== null) {
-                    $dynamicallyAttachedProperties[self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME] = $dbName;
+                    $dynamicallyAttachedProperties[DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME]
+                        = $dbName;
                 }
-                self::setDynamicallyAttachedProperties($interceptedCallThis, $dynamicallyAttachedProperties);
+                $this->util->setDynamicallyAttachedProperties(
+                    $interceptedCallThis,
+                    $dynamicallyAttachedProperties
+                );
                 return null; // no post-hook
             }
         );
@@ -168,20 +153,16 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             'PDO',
             $methodName,
             /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             * @param ?object $interceptedCallThis
+             * @param mixed[] $interceptedCallArgs
              *
              * @return callable
              */
             function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName): ?callable {
-                if (!($interceptedCallThis instanceof PDO)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class PDO',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
+                if (!$this->util->verifyInstanceOf(PDO::class, $interceptedCallThis)) {
+                    return null;
                 }
+                /** @var PDO $interceptedCallThis */
 
                 if (count($interceptedCallArgs) > 0) {
                     $statement = $interceptedCallArgs[0];
@@ -200,51 +181,30 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 /** @var ?string $statement */
 
                 /** @var string $dbType */
-                $dbType = self::getDynamicallyAttachedProperty(
+                $dbType = $this->util->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
+                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
                     Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
                 /** @var ?string $dbName */
-                $dbName = self::getDynamicallyAttachedProperty(
+                $dbName = $this->util->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
                     null /* <- defaultValue */
                 );
 
-                $span = $this->beginDbSpan($statement ?? ('PDO->' . $methodName), $dbType, $dbName, $statement);
-
-                return self::createPostHookFromEndSpan($span);
+                return AutoInstrumentationUtil::createPostHookFromEndSpan(
+                    DbAutoInstrumentationUtil::beginDbSpan(
+                        'PDO' /* <- className */,
+                        $methodName,
+                        $dbType,
+                        $dbName,
+                        $statement
+                    )
+                );
             }
         );
-    }
-
-    private function beginDbSpan(string $name, string $dbType, ?string $dbName, ?string $statement): SpanInterface
-    {
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-            $name,
-            Constants::SPAN_TYPE_DB,
-            $dbType /* <- subtype */,
-            Constants::SPAN_ACTION_QUERY
-        );
-
-        $span->context()->db()->setStatement($statement);
-
-        self::setService($span, $dbType, $dbName);
-
-        return $span;
-    }
-
-    private static function setService(SpanInterface $span, string $dbType, ?string $dbName): void
-    {
-        $destinationServiceResource = $dbType;
-        if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {
-            $destinationServiceResource .= '/' . $dbName;
-        }
-        $span->context()->destination()->setService($destinationServiceResource, $destinationServiceResource, $dbType);
-        $span->context()->service()->target()->setName($dbName);
-        $span->context()->service()->target()->setType($dbType);
     }
 
     private function pdoExec(RegistrationContextInterface $ctx): void
@@ -271,25 +231,21 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             /**
              * Pre-hook
              *
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             * @param ?object $interceptedCallThis
+             * @param mixed[] $interceptedCallArgs
              *
-             * @return callable
+             * @return null|callable(int, bool, mixed): void
              */
             function (
                 ?object $interceptedCallThis,
                 /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
             ): ?callable {
-                if (!($interceptedCallThis instanceof PDO)) {
-                    ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'interceptedCallThis is not an instance of class PDO',
-                        ['interceptedCallThis' => $interceptedCallThis]
-                    );
-                    return null; // no post-hook
+                if (!$this->util->verifyInstanceOf(PDO::class, $interceptedCallThis)) {
+                    return null;
                 }
+                /** @var PDO $interceptedCallThis */
 
-                $dynPropsToPropagate = self::getDynamicallyAttachedProperties(
+                $dynPropsToPropagate = $this->util->getDynamicallyAttachedProperties(
                     $interceptedCallThis,
                     self::DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE
                 );
@@ -321,7 +277,10 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                         return;
                     }
 
-                    self::setDynamicallyAttachedProperties($returnValueOrThrown, $dynPropsToPropagate);
+                    $this->util->setDynamicallyAttachedProperties(
+                        $returnValueOrThrown,
+                        $dynPropsToPropagate
+                    );
                 };
             }
         );
@@ -333,8 +292,8 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             'PDOStatement',
             'execute',
             /**
-             * @param object|null $interceptedCallThis Intercepted call $this
-             * @param mixed[]     $interceptedCallArgs Intercepted call arguments
+             * @param ?object $interceptedCallThis
+             * @param mixed[]     $interceptedCallArgs
              *
              * @return callable
              *
@@ -343,33 +302,41 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 ?object $interceptedCallThis,
                 /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
             ): ?callable {
+                if (!$this->util->verifyInstanceOf(PDOStatement::class, $interceptedCallThis)) {
+                    return null;
+                }
+                /** @var PDOStatement $interceptedCallThis */
+
                 $statement = (
-                    $interceptedCallThis instanceof PDOStatement
-                    && isset($interceptedCallThis->queryString) // @phpstan-ignore-line
-                    && is_string($interceptedCallThis->queryString)
+                    isset($interceptedCallThis->queryString)
+                    && $this->util->verifyIsString($interceptedCallThis->queryString)
                 )
                     ? $interceptedCallThis->queryString
                     : null;
 
                 /** @var string $dbType */
-                $dbType = self::getDynamicallyAttachedProperty(
+                $dbType = $this->util->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_TYPE,
+                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
                     Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
 
                 /** @var ?string $dbName */
-                $dbName = self::getDynamicallyAttachedProperty(
+                $dbName = $this->util->getDynamicallyAttachedProperty(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTY_DB_NAME,
+                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
                     null /* <- defaultValue */
                 );
 
-                $span = $this->beginDbSpan($statement ?? 'PDOStatement->execute', $dbType, $dbName, $statement);
-
-                self::setService($span, $dbType, $dbName);
-
-                return self::createPostHookFromEndSpan($span);
+                return AutoInstrumentationUtil::createPostHookFromEndSpan(
+                    DbAutoInstrumentationUtil::beginDbSpan(
+                        'PDOStatement' /* <- className */,
+                        'execute' /* <- methodName */,
+                        $dbType,
+                        $dbName,
+                        $statement
+                    )
+                );
             }
         );
     }

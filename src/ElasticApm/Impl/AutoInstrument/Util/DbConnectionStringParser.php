@@ -21,7 +21,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;

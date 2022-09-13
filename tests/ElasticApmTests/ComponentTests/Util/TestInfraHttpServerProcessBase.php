@@ -103,10 +103,9 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     public static function run(): void
     {
         self::runSkeleton(
-            function (SpawnedProcessBase $thisObjArg): void {
-                /** var StatefulHttpServerProcessBase */
-                $thisObj = $thisObjArg;
-                $thisObj->runImpl(); // @phpstan-ignore-line
+            function (SpawnedProcessBase $thisObj): void {
+                /** @var self $thisObj */
+                $thisObj->runImpl();
             }
         );
     }

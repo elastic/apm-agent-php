@@ -21,27 +21,37 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+namespace ElasticApmTests\ComponentTests\MySQLi;
 
-interface RegistrationContextInterface
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use mysqli_stmt;
+
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class MySQLiStmtWrapped implements LoggableInterface
 {
-    /**
-     * @param string                                $className
-     * @param string                                $methodName
-     * @param callable(?object, mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToMethod(
-        string $className,
-        string $methodName,
-        callable $preHook
-    ): void;
+    use LoggableTrait;
 
-    /**
-     * @param string                       $functionName
-     * @param callable(mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToFunction(
-        string $functionName,
-        callable $preHook
-    ): void;
+    /** @var mysqli_stmt */
+    private $wrappedObj;
+
+    /** @var ApiKind */
+    private $apiKind;
+
+    public function __construct(mysqli_stmt $wrappedObj, ApiKind $apiKind)
+    {
+        $this->wrappedObj = $wrappedObj;
+        $this->apiKind = $apiKind;
+    }
+
+    public function execute(): bool
+    {
+        return $this->apiKind->isOOP()
+            ? $this->wrappedObj->execute()
+            : mysqli_stmt_execute($this->wrappedObj);
+    }
 }

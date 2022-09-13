@@ -45,14 +45,12 @@ use PDO;
 final class PDOTest extends ComponentTestCaseBase
 {
     private const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
-    private const IS_PDO_INSTRUMENTATION_ENABLED_KEY = 'IS_PDO_INSTRUMENTATION_ENABLED';
+    private const IS_INSTRUMENTATION_ENABLED_KEY = 'IS_INSTRUMENTATION_ENABLED';
     private const DB_NAME_KEY = 'DB_NAME';
     private const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
     private const MESSAGES_KEY = 'MESSAGES';
 
     private const CONNECTION_STRING_PREFIX = 'sqlite:';
-
-    private const EXPECTED_DB_TYPE = 'sqlite';
 
     public const TEMP_DB_NAME = '<temporary database>';
     public const MEMORY_DB_NAME = 'memory';
@@ -60,7 +58,7 @@ final class PDOTest extends ComponentTestCaseBase
 
     private const CREATE_TABLE_SQL
         = /** @lang text */
-        'CREATE TABLE IF NOT EXISTS messages (
+        'CREATE TABLE messages (
             id INTEGER PRIMARY KEY,
             text TEXT,
             time INTEGER)';
@@ -157,15 +155,15 @@ final class PDOTest extends ComponentTestCaseBase
             return $isEnabled ? $variants : [$variants[0]];
         };
 
-        foreach ($disableInstrumentationsVariants as $disableInstrumentationsOptVal => $isPDOInstrumentationEnabled) {
-            foreach ($onlyIfEnabled($dbNames, $isPDOInstrumentationEnabled) as $dbName) {
-                foreach ($onlyIfEnabled([false, true], $isPDOInstrumentationEnabled) as $wrapInTx) {
+        foreach ($disableInstrumentationsVariants as $disableInstrumentationsOptVal => $isInstrumentationEnabled) {
+            foreach ($onlyIfEnabled($dbNames, $isInstrumentationEnabled) as $dbName) {
+                foreach ($onlyIfEnabled([false, true], $isInstrumentationEnabled) as $wrapInTx) {
                     yield [
                         [
-                            self::DISABLE_INSTRUMENTATIONS_KEY       => $disableInstrumentationsOptVal,
-                            self::IS_PDO_INSTRUMENTATION_ENABLED_KEY => $isPDOInstrumentationEnabled,
-                            self::DB_NAME_KEY                        => $dbName,
-                            self::WRAP_IN_TX_KEY                     => $wrapInTx,
+                            self::DISABLE_INSTRUMENTATIONS_KEY   => $disableInstrumentationsOptVal,
+                            self::IS_INSTRUMENTATION_ENABLED_KEY => $isInstrumentationEnabled,
+                            self::DB_NAME_KEY                    => $dbName,
+                            self::WRAP_IN_TX_KEY                 => $wrapInTx,
                         ],
                     ];
                 }
@@ -184,7 +182,6 @@ final class PDOTest extends ComponentTestCaseBase
         self::assertIsBool($wrapInTx);
         $messages = self::getMandatoryAppCodeArg($appCodeArgs, self::MESSAGES_KEY);
         self::assertIsArray($messages);
-
 
         $pdo = new PDO(self::buildConnectionString($dbName));
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -230,9 +227,8 @@ final class PDOTest extends ComponentTestCaseBase
     {
         $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg($testArgs, self::DISABLE_INSTRUMENTATIONS_KEY);
         self::assertIsString($disableInstrumentationsOptVal);
-        $isPDOInstrumentationEnabled
-            = self::getMandatoryAppCodeArg($testArgs, self::IS_PDO_INSTRUMENTATION_ENABLED_KEY);
-        self::assertIsBool($isPDOInstrumentationEnabled);
+        $isInstrumentationEnabled = self::getMandatoryAppCodeArg($testArgs, self::IS_INSTRUMENTATION_ENABLED_KEY);
+        self::assertIsBool($isInstrumentationEnabled);
         $dbNameArg = $testArgs[self::DB_NAME_KEY];
         self::assertIsString($dbNameArg);
         $wrapInTx = $testArgs[self::WRAP_IN_TX_KEY];
@@ -257,11 +253,11 @@ final class PDOTest extends ComponentTestCaseBase
         ];
         $appCodeArgs[self::MESSAGES_KEY] = $messages;
 
-        $sharedExpectations = DbSpanDataExpectationsBuilder::default(self::EXPECTED_DB_TYPE, $dbName);
+        $sharedExpectations = DbSpanDataExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
         $expectationsBuilder = new DbSpanDataExpectationsBuilder($sharedExpectations);
         /** @var SpanDataExpectations[] $expectedSpans */
         $expectedSpans = [];
-        if ($isPDOInstrumentationEnabled) {
+        if ($isInstrumentationEnabled) {
             $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
             foreach ($messages as $ignored) {
                 $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);

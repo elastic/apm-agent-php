@@ -21,27 +21,19 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+namespace Elastic\Apm\Impl\Config;
 
-interface RegistrationContextInterface
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ *
+ * @extends NullableOptionMetadata<int>
+ */
+final class NullableIntOptionMetadata extends NullableOptionMetadata
 {
-    /**
-     * @param string                                $className
-     * @param string                                $methodName
-     * @param callable(?object, mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToMethod(
-        string $className,
-        string $methodName,
-        callable $preHook
-    ): void;
-
-    /**
-     * @param string                       $functionName
-     * @param callable(mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToFunction(
-        string $functionName,
-        callable $preHook
-    ): void;
+    public function __construct(?int $minValidValue, ?int $maxValidValue)
+    {
+        parent::__construct(new IntOptionParser($minValidValue, $maxValidValue));
+    }
 }

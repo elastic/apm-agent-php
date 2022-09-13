@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
 use Elastic\Apm\Impl\Config\LogLevelOptionMetadata;
+use Elastic\Apm\Impl\Config\NullableIntOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableWildcardListOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionMetadata;
@@ -64,9 +65,6 @@ final class AllComponentTestsOptionsMetadata
             self::APP_CODE_HOST_KIND_OPTION_NAME => new NullableAppCodeHostKindOptionMetadata(),
             'app_code_php_exe' => new NullableStringOptionMetadata(),
             self::APP_CODE_PHP_INI_OPTION_NAME => new NullableStringOptionMetadata(),
-            'delete_temp_php_ini' => new BoolOptionMetadata(true),
-            'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
-            'log_level' => new LogLevelOptionMetadata(LogLevel::TRACE),
             self::DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
                     $deserializedObj = new TestInfraDataPerProcess();
@@ -81,8 +79,11 @@ final class AllComponentTestsOptionsMetadata
                     return $deserializedObj;
                 }
             ),
+            'delete_temp_php_ini' => new BoolOptionMetadata(true),
+            'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
+            'log_level' => new LogLevelOptionMetadata(LogLevel::TRACE),
             'mysql_host' => new NullableStringOptionMetadata(),
-            'mysql_port' => new NullableStringOptionMetadata(),
+            'mysql_port' => new NullableIntOptionMetadata(1, 65535),
             'mysql_user' => new NullableStringOptionMetadata(),
             'mysql_password' => new NullableStringOptionMetadata(),
             'mysql_db' => new NullableStringOptionMetadata(),

@@ -26,14 +26,14 @@ namespace ElasticApmTests\Util;
 /**
  * @extends DataExpectationsBuilder<SpanDataExpectations>
  */
-final class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
+class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
 {
     public const DEFAULT_SPAN_TYPE = 'db';
     public const DEFAULT_SPAN_ACTION = 'query';
 
-    public function __construct(SpanDataExpectations $shared)
+    public function __construct(SpanDataExpectations $prototype)
     {
-        parent::__construct($shared);
+        parent::__construct($prototype);
     }
 
     public static function default(string $dbType, ?string $dbName): SpanDataExpectations
@@ -55,10 +55,10 @@ final class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
         return $result;
     }
 
-    private function startNew(): SpanDataExpectations
+    protected function startNew(): SpanDataExpectations
     {
         $result = new SpanDataExpectations();
-        $this->copyFromSharedTo($result);
+        $this->copyFromPrototypeTo($result);
         return $result;
     }
 

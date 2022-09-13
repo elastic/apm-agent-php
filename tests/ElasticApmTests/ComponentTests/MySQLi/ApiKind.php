@@ -21,17 +21,19 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests;
+namespace ElasticApmTests\ComponentTests\MySQLi;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class MySQLiApiKind implements LoggableInterface
+final class ApiKind implements LoggableInterface
 {
     use LoggableTrait;
 
@@ -40,6 +42,9 @@ final class MySQLiApiKind implements LoggableInterface
 
     /** @var ?self */
     private static $oop = null;
+
+    /** @var self[] */
+    private static $allValues;
 
     /** @var string */
     private $asString;
@@ -54,14 +59,30 @@ final class MySQLiApiKind implements LoggableInterface
         return $this->asString;
     }
 
+    public function isOOP(): bool
+    {
+        return $this === self::$oop;
+    }
+
+    public static function fromString(string $asString): ApiKind
+    {
+        foreach (self::allValues() as $val) {
+            if ($val->asString() === $asString) {
+                return $val;
+            }
+        }
+        TestCase::fail(LoggableToString::convert(['$asString' => $asString]));
+    }
+
     private static function ensureInited(): void
     {
         if (self::$procedural !== null) {
             return;
         }
 
-        self::$procedural = new self('procedural');
         self::$oop = new self('object-oriented programming');
+        self::$procedural = new self('procedural');
+        self::$allValues = [self::$oop, self::$procedural];
     }
 
     public static function procedural(): self
@@ -76,5 +97,14 @@ final class MySQLiApiKind implements LoggableInterface
         self::ensureInited();
         /** @var self self::$oop */
         return self::$oop;
+    }
+
+    /**
+     * @return self[]
+     */
+    public static function allValues(): array
+    {
+        self::ensureInited();
+        return self::$allValues;
     }
 }
