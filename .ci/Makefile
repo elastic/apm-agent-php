@@ -101,7 +101,7 @@ ifndef PREVIOUS_TAG
 	@echo "Please set PREVIOUS_TAG in the environment to create the changelog"
 	exit 1
 endif
-	@docker run --rm -t \
+	docker run --rm -t \
 		--volume "$(PWD)":/app \
 		--workdir /app \
 		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
@@ -112,7 +112,11 @@ endif
 
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-	@gh \
+	pwd
+	ls -l .
+	ls -l build
+	ls -l build/packages
+	gh \
 		release \
 		create \
 		"$(TAG_NAME)" \
@@ -124,7 +128,7 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 
 .PHONY: get-draft-release
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
-	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
+	gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature
