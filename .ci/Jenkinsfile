@@ -333,13 +333,6 @@ pipeline {
         stage('Publish release (draft -> regular)') {
           when {
             beforeAgent true
-            //
-            // Sergey Kleyman:
-            //        Disabled 'Publish release' stage because  publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
-            //        This change should be kept in a temporary (for tests only) PR
-            //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
-            //
-            // expression { false }
             expression { return env.RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
@@ -350,15 +343,9 @@ pipeline {
             //        This change should be kept in a temporary (for tests only) PR
             //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
             //
-            withEnv(["ORG=SergeyKleyman_ORG_env", "ORG_NAME=SergeyKleyman_ORG_NAME_env", "ORGNAME=SergeyKleyman_ORGNAME_env"
-                    , "OWNER=SergeyKleyman_OWNER_env", "OWNER_NAME=SergeyKleyman_OWNER_NAME_env", "OWNERNAME=SergeyKleyman_OWNERNAME_env"
-                    , "REPO=apm-agent-php_REPO_env", "REPO_NAME=apm-agent-php_REPO_NAME_env", "REPONAME=apm-agent-php_REPONAME_env"]) {
+            withEnv(["ORG_NAME=SergeyKleyman", "REPO_NAME=apm-agent-php"]) {
               withGhEnv(version: '2.4.0') {
-                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}"
-                    , org: "SergeyKleyman_org_arg", orgName: "SergeyKleyman_orgName_arg", org_name: "SergeyKleyman_org_name_arg"
-                    , owner: "SergeyKleyman_owner_arg", ownerName: "SergeyKleyman_ownerName_arg", owner_name: "SergeyKleyman_owner_name_arg"
-                    , repo: "apm-agent-php_repo_arg", repoName: "apm-agent-php_repoName_arg", repo_name: "apm-agent-php_repo_name_arg"
-                )
+                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
               }
             }
           }
