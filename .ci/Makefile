@@ -112,10 +112,6 @@ endif
 
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-	pwd
-	ls -l .
-	ls -l build
-	ls -l build/packages
 	gh \
 		release \
 		create \
