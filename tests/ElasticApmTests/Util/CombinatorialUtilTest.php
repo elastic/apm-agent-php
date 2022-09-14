@@ -67,6 +67,7 @@ class CombinatorialUtilTest extends TestCaseBase
             $permutationsAsArray(['a', 'b', 'c'], 3)
         );
     }
+
     public function testCartesianProduct(): void
     {
         /**
