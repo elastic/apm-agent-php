@@ -276,6 +276,7 @@ pipeline {
               withGhEnv(version: '2.4.0') {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
+                echo "RELEASE_ID: '${env.RELEASE_ID}'"
               }
             }
           }
