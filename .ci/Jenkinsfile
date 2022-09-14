@@ -306,7 +306,7 @@ pipeline {
               //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
               //
               withGhEnv(version: '2.4.0') {
-                sh(script: "RELEASE_ID=${RELEASE_ID} TARGET=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
+                sh(script: "TAG_NAME=${TAG_NAME} ORIGINAL_ARTIFACTS_LOCATION=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
               }
             }
           }
