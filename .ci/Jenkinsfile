@@ -243,16 +243,6 @@ pipeline {
           }
         }
         stage('Test signed packages') {
-          when {
-            beforeAgent true
-            //
-            // Sergey Kleyman:
-            //        Disabled 'Test signed packages' stage because  publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
-            //        This change should be kept in a temporary (for tests only) PR
-            //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
-            //
-            expression { false }
-          }
           options { skipDefaultCheckout() }
           steps {
             generateSteps("generate_stages_list_smoke.sh")
