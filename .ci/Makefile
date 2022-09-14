@@ -136,7 +136,7 @@ get-draft-release: validate-tag-name  ## Get the draft release id for the given 
 	#		This change should be kept in a temporary (for tests only) PR
 	#		and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
 	#
-	gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
+	gh api repos/SergeyKleyman/apm-agent-php/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature
