@@ -11,18 +11,8 @@ echo "Downloading artifacts for tag \'${release_tag}\' to \'${downloaded_package
 mkdir -p "${downloaded_packages_location}"
 pushd "${downloaded_packages_location}"
 
-try_count=0
-while [[ ${try_count} -lt 3 ]]; do
-    ((++try_count))
-    set +e
-    gh release download "${release_tag}"
-    exit_code=$?
-    set -e
-    if [ "${exit_code}" -eq "0" ]; then
-        break
-    fi
-    sleep 10
-done
+this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+"${this_script_dir}/run_command_with_timeout_and_retries.sh" --timeout=10 --max-tries=3 --wait-time-before-retry=10 --retry-on-error=yes -- gh release download "${release_tag}"
 
 ls -l .
 echo 'Verifying that downloaded artifacts pass the downloaded checksums...'

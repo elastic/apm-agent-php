@@ -1,100 +1,121 @@
 #!/usr/bin/env bash
-set -xe
+#set -xe
+set -e
 
 #
-# run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --sleep-time-before-retry=<number of seconds> --wait-time-before-retry=<number of seconds> --retry-on-error -- <command_to_run>
+# run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --wait-time-before-retry=<number of seconds> --retry-on-error=yes -- <command_to_run>
 #
+
+timeout_default=10
+timeout=${timeout_default}
+max_tries_default=3
+max_tries=${max_tries_default}
+wait_time_before_retry_default=10
+wait_time_before_retry=${wait_time_before_retry_default}
+retry_on_error_default=yes
+retry_on_error=${retry_on_error_default}
+command_to_run=()
+
+function print_command_line_help () {
+    defaults="Default values:"
+    new_line_indent="\n\t"
+    script_name="$( basename "${BASH_SOURCE[0]}" )"
+    cli_format="Command line format:${new_line_indent}${script_name}"
+
+    cli_format="${cli_format} [--timeout=<number of seconds>]"
+    defaults="${defaults}${new_line_indent}timeout: ${timeout_default} (i.e., ${timeout_default} seconds)"
+
+    cli_format="${cli_format} [--max-tries=<number>]"
+    defaults="${defaults}${new_line_indent}max-tries: ${max_tries_default}"
+
+    cli_format="${cli_format} [--wait-time-before-retry=<number of seconds>]"
+    defaults="${defaults}${new_line_indent}wait-time-before-retry: ${wait_time_before_retry_default} (i.e., ${wait_time_before_retry_default} seconds)"
+
+    cli_format="${cli_format} [--retry-on-error=<yes|no>]"
+    defaults="${defaults}${new_line_indent}retry-on-error: ${retry_on_error_default}"
+
+    cli_format="${cli_format} [--help]"
+    defaults="${defaults}${new_line_indent}retry-on-error: ${retry_on_error_default}"
+
+    cli_format="${cli_format} -- <command_to_run>"
+
+    echo -e "${cli_format}"
+    echo -e "${defaults}"
+}
 
 function parse_command_line_arguments () {
+    all_args="$*"
+    is_inside_command_to_run=no
     for arg in "$@"; do
-      shift
-      case "$arg" in
-        '--help')   set -- "$@" '-h'   ;;
-        '--number') set -- "$@" '-n'   ;;
-        '--rest')   set -- "$@" '-r'   ;;
-        '--ws')     set -- "$@" '-w'   ;;
-        *)          set -- "$@" "$arg" ;;
-      esac
+        shift
+        case "${arg}" in
+            --timeout=*)
+                    timeout="${arg#*=}"
+                    ;;
+            --max-tries=*)
+                    max_tries="${arg#*=}"
+                    ;;
+            --wait-time-before-retry=*)
+                    wait_time_before_retry="${arg#*=}"
+                    ;;
+            --retry-on-error=*)
+                    retry_on_error="${arg#*=}"
+                    ;;
+            '--')
+                    is_inside_command_to_run=yes
+                    ;;
+            '--help')
+                    print_command_line_help
+                    exit 0
+                    ;;
+            *)
+                    if [ "${is_inside_command_to_run}" = "no" ]; then
+                        echo "Error: Unknown argument: \`${arg}' (all the arguments: \`${all_args}')"
+                        print_command_line_help
+                        exit 1
+                    fi
+                    command_to_run+=("${arg}")
+                    ;;
+
+        esac
     done
 
-    # NOTE: This requires GNU getopt.
-    # On Mac OS X and FreeBSD, you have to install this separately; see below.
-    TEMP=$(getopt --long timeout:,debugfile:,minheap:,maxheap: \
-                  -n 'javawrap' -- "$@")
+    echo "timeout: ${timeout}"
+    echo "max_tries: ${max_tries}"
+    echo "wait_time_before_retry: ${wait_time_before_retry}"
+    echo "retry_on_error: ${retry_on_error}"
+    echo "command_to_run: \`${command_to_run[*]}'"
+}
 
-    if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+function main () {
+    parse_command_line_arguments "$@"
 
-    # Note the quotes around '$TEMP': they are essential!
-    eval set -- "$TEMP"
+    try_count=0
+    while [[ ${try_count} -lt ${max_tries} ]]; do
+        ((++try_count))
+        echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) ..."
+        set +e
+        # shellcheck disable=SC2086
+        timeout "${timeout}" "${command_to_run[@]}"
+        exit_code=$?
+        set -e
+        if [ "${exit_code}" -eq "0" ]; then
+            echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) finished successfully"
+            break
+        fi
 
-    VERBOSE=false
-    DEBUG=false
-    MEMORY=
-    DEBUGFILE=
-    JAVA_MISC_OPT=
-    while true; do
-      case "$1" in
-        -v | --verbose ) VERBOSE=true; shift ;;
-        -d | --debug ) DEBUG=true; shift ;;
-        -m | --memory ) MEMORY="$2"; shift 2 ;;
-        --debugfile ) DEBUGFILE="$2"; shift 2 ;;
-        --minheap )
-          JAVA_MISC_OPT="$JAVA_MISC_OPT -XX:MinHeapFreeRatio=$2"; shift 2 ;;
-        --maxheap )
-          JAVA_MISC_OPT="$JAVA_MISC_OPT -XX:MaxHeapFreeRatio=$2"; shift 2 ;;
-        -- ) shift; break ;;
-        * ) break ;;
-      esac
+        # timeout returns 124 when the time limit is reached
+        if [ "${exit_code}" -eq "124" ]; then
+            echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) timed out"
+            continue
+        fi
+
+        echo "\`${command_to_run[*]}' (try ${try_count} out of max ${max_tries}) exited with an error code ${exit_code}"
+        if [ "${retry_on_error}" = "yes" ]; then
+            continue
+        fi
+        exit "${exit_code}"
     done
 }
 
-if [ -n "$1" ]; then
-    timeout="$1"
-else
-    echo "The 1st parameter (timeout in seconds) is mandatory"
-fi
-
-if [ -n "$2" ]; then
-    max_tries="$2"
-else
-    echo "The 2nd parameter (max_tries) is mandatory"
-fi
-
-if [ -n "$3" ]; then
-    retry_on_error="$3"
-else
-    echo "The 3rd parameter (retry_on_error: retry_on_error or no_retry_on_error) is mandatory"
-fi
-
-if [ -n "$4" ]; then
-    command_to_run="${*:4}"
-else
-    echo "The 4th (and the rest) parameter(s) (command_to_run) is mandatory"
-fi
-
-try_count=0
-while [[ ${try_count} -lt ${max_tries} ]]; do
-    ((++try_count))
-    echo "Running ${command_to_run} (try ${try_count} out of ${max_tries}) ..."
-    set +e
-    # shellcheck disable=SC2086
-    timeout "${timeout}" ${command_to_run}
-    exit_code=${PIPESTATUS[0]}
-    set -e
-    if [ "${exit_code}" -eq "0" ]; then
-        echo "${command_to_run} (try ${try_count} out of ${max_tries}) finished successfully"
-        break
-    fi
-
-    # timeout returns 124 when the time limit is reached
-    if [ "${exit_code}" -eq "124" ]; then
-        echo "${command_to_run} (try ${try_count} out of ${max_tries}) timed out"
-        continue
-    fi
-
-    echo "${command_to_run} (try ${try_count} out of max ${max_tries}) exited with an error code ${exit_code}"
-    if [ "${retry_on_error}" = "retry_on_error" ]; then
-        continue
-    fi
-    exit "${exit_code}"
-done
+main "$@"
