@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-
 set -xeo pipefail
 
 release_tag="${1}"
-original_artifacts_location="${2}"
-downloaded_artifacts_location="./github"
+original_packages_location="${2}"
+downloaded_packages_location="./packages_downloaded_from_GitHub"
 
-echo "Downloading artifacts to ${downloaded_artifacts_location} ..."
-mkdir -p "${downloaded_artifacts_location}"
-pushd "${downloaded_artifacts_location}"
-gh release download "${release_tag}"
+this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+this_script_dir="$( realpath "${this_script_dir}" )"
+
+ls -l "${original_packages_location}"
+
+echo "Downloading artifacts for tag \'${release_tag}\' to \'${downloaded_packages_location}\' ..."
+mkdir -p "${downloaded_packages_location}"
+pushd "${downloaded_packages_location}"
+
+"${this_script_dir}/run_command_with_timeout_and_retries.sh" --timeout=10 --max-tries=3 --wait-time-before-retry=10 --retry-on-error=yes -- gh release download "${release_tag}"
+
+ls -l .
+echo 'Verifying that downloaded artifacts pass the downloaded checksums...'
+sha512sum --check ./*.sha512
 popd
 
-ls -l "${original_artifacts_location}"
-ls -l "${downloaded_artifacts_location}"
-
-echo 'Verifying that downloaded artifacts pass the downloaded checksums...'
-sha512sum --check *.sha512
-
-sort "${original_artifacts_location}"/*.sha512 > original_artifacts.sha512
-sort "${downloaded_artifacts_location}"/*.sha512 > downloaded_artifacts.sha512
+sort "${original_packages_location}"/*.sha512 > original_artifacts.sha512
+sort "${downloaded_packages_location}"/*.sha512 > downloaded_artifacts.sha512
 cat original_artifacts.sha512
 cat downloaded_artifacts.sha512
 
