@@ -512,10 +512,10 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
         lifecycleTesting(testingArgs)
       }
       if (testingType.equals('lifecycle-apache')) {
-        lifecycleTestingServer(testingArgs + [serverType: 'apache'])
+        lifecycleTestingOnProdServerKind(testingArgs + [prodServerKind: 'apache'])
       }
       if (testingType.equals('lifecycle-fpm')) {
-        lifecycleTestingProdServerType(testingArgs + [serverType: 'fpm'])
+        lifecycleTestingOnProdServerKind(testingArgs + [prodServerKind: 'fpm'])
       }
       if (testingType.equals('php-upgrade')) {
         phpUpgradeTesting(testingArgs)
@@ -562,11 +562,11 @@ def lifecycleTesting(def args = [:]) {
   )
 }
 
-def lifecycleTestingProdServerType(def args = [:]) {
+def lifecycleTestingOnProdServerKind(def args = [:]) {
   runTestingCommand(
     args + [
       prepareGoal: "prepare-${args.linuxDistro}-${args.serverType}",
-      testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-${args.serverType}",
+      testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-${args.prodServerKind}",
     ]
   )
 }
