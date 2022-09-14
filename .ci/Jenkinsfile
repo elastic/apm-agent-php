@@ -323,6 +323,13 @@ pipeline {
         stage('Publish release (draft -> regular)') {
           when {
             beforeAgent true
+            //
+            // Sergey Kleyman:
+            //        Disabled 'Publish release' stage because  publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+            //        This change should be kept in a temporary (for tests only) PR
+            //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+            //
+            // expression { false }
             expression { return env.RELEASE == 'true' }
           }
           options { skipDefaultCheckout() }
@@ -333,8 +340,16 @@ pipeline {
             //        This change should be kept in a temporary (for tests only) PR
             //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
             //
-            withGhEnv(version: '2.4.0') {
-              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+            withEnv(["ORG=SergeyKleyman", "ORG_NAME=SergeyKleyman", "ORGNAME=SergeyKleyman", "REPO=apm-agent-ph", "REPO_NAME=apm-agent-ph", "REPONAME=apm-agent-ph"]) {
+              withGhEnv(version: '2.4.0') {
+                echo "ORG: '${env.ORG}'"
+                echo "ORG_NAME: '${env.ORG_NAME}'"
+                echo "ORGNAME: '${env.ORGNAME}'"
+                echo "REPO: '${env.REPO}'"
+                echo "REPO_NAME: '${env.REPO_NAME}'"
+                echo "REPONAME: '${env.REPONAME}'"
+                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}", org: "SergeyKleyman", orgName: "SergeyKleyman", org_name: "SergeyKleyman", repo: "apm-agent-php", repoName: "apm-agent-php", repo_name: "apm-agent-php")
+              }
             }
           }
           post {
