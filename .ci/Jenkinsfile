@@ -295,7 +295,7 @@ pipeline {
           steps {
             dir("${BASE_DIR}") {
               withGhEnv(version: '2.4.0') {
-                sh(script: "TAG_NAME=${TAG_NAME} ORIGINAL_ARTIFACTS_LOCATION=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
+                sh(script: "TAG_NAME=${TAG_NAME} ORIGINAL_PACKAGES_LOCATION=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
               }
             }
           }
