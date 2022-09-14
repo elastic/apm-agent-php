@@ -18,7 +18,7 @@ pushd "${downloaded_packages_location}"
 
 ls -l .
 echo 'Verifying that downloaded artifacts pass the downloaded checksums...'
-sha512sum --check *.sha512
+sha512sum --check ./*.sha512
 popd
 
 sort "${original_packages_location}"/*.sha512 > original_artifacts.sha512
