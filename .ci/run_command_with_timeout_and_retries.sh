@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-#set -xe
 set -e
 
 #
-# run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --wait-time-before-retry=<number of seconds> --retry-on-error=yes -- <command_to_run>
+# run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --wait-time-before-retry=<number of seconds> --retry-on-error=<yes|no> -- <command_to_run>
 #
 
 timeout_default=10

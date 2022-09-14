@@ -5,13 +5,15 @@ release_tag="${1}"
 original_packages_location="${2}"
 downloaded_packages_location="./packages_downloaded_from_GitHub"
 
+this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+this_script_dir="$( realpath "${this_script_dir}" )"
+
 ls -l "${original_packages_location}"
 
 echo "Downloading artifacts for tag \'${release_tag}\' to \'${downloaded_packages_location}\' ..."
 mkdir -p "${downloaded_packages_location}"
 pushd "${downloaded_packages_location}"
 
-this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
 #
 # Sergey Kleyman:
 # 		Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
@@ -22,7 +24,7 @@ this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
 ls -l .
 echo 'Verifying that downloaded artifacts pass the downloaded checksums...'
-sha512sum --check *.sha512
+sha512sum --check ./*.sha512
 popd
 
 sort "${original_packages_location}"/*.sha512 > original_artifacts.sha512
