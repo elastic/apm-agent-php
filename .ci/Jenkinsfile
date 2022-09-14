@@ -522,7 +522,7 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
       def testingType = parsedTestMatrixRow[2]
       testingArgs['testingType'] = testingType
       testingArgs['componentTestsAppHostKind'] = parsedTestMatrixRow[3]
-      if (testType.equals('lifecycle')) {
+      if (testingType.equals('lifecycle')) {
         lifecycleTesting(testingArgs)
       }
       if (testingType.equals('lifecycle-apache')) {
