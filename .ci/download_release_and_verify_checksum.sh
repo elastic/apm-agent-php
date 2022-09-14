@@ -5,7 +5,7 @@ release_tag="${1}"
 original_artifacts_location="${2}"
 downloaded_artifacts_location="./github"
 
-echo "Downloading artifacts to ${downloaded_artifacts_location} ..."
+echo "Downloading artifacts for tag \'${release_tag}\' to \'${downloaded_artifacts_location}\' ..."
 mkdir -p "${downloaded_artifacts_location}"
 pushd "${downloaded_artifacts_location}"
 gh release download "${release_tag}"
