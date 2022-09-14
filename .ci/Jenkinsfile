@@ -579,7 +579,7 @@ def lifecycleTesting(def args = [:]) {
 def lifecycleTestingOnProdServerKind(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxDistro}-${args.serverType}",
+      prepareGoal: "prepare-${args.linuxDistro}-${args.prodServerKind}",
       testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-${args.prodServerKind}",
     ]
   )
