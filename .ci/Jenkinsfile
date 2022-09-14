@@ -273,12 +273,6 @@ pipeline {
             unstash 'source'
             dir("${BASE_DIR}") {
               unstash "${env.SIGNED_ARTIFACTS}"
-              //
-              // Sergey Kleyman:
-              //        Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
-              //        This change should be kept in a temporary (for tests only) PR
-              //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
-              //
               withGhEnv(version: '2.4.0') {
                 sh(script: 'make -f .ci/Makefile draft-release', label: 'draft-release')
                 setEnvVar('RELEASE_ID', sh(script: 'make -f .ci/Makefile get-draft-release', label: 'get-draft-release', returnStdout: true)?.trim())
@@ -300,12 +294,6 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             dir("${BASE_DIR}") {
-              //
-              // Sergey Kleyman:
-              //        Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
-              //        This change should be kept in a temporary (for tests only) PR
-              //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
-              //
               withGhEnv(version: '2.4.0') {
                 sh(script: "TAG_NAME=${TAG_NAME} ORIGINAL_PACKAGES_LOCATION=build/packages make -f .ci/Makefile download-verify", label: 'download-verify')
               }
