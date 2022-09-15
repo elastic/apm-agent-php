@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-# Make sure this list is in sync with the one in Jenkinsfile
+# Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
+# - generate_package_lifecycle_test_matrix.sh
+# - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
 supportedPhpVersions=(7.2 7.3 7.4 8.0 8.1)
 
 #
