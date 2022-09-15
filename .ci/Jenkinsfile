@@ -482,19 +482,19 @@ def prepareRelease() {
 }
 
 def generatePackageLifecycleTestMatrix(def args = [:]) {
-    def parallelTasks = [:]
-    dir("${BASE_DIR}") {
-      def generateScript = ".ci/generate_package_lifecycle_test_matrix.sh"
-      def output = sh(label: generateScript, script: generateScript, returnStdout: true)
-      if (output?.trim()) {
-        output.split('\n').each { testMatrixRow ->
-          parallelTasks[testMatrixRow] = generatePackageLifecycleTestMatrixRow(testMatrixRow: testMatrixRow, shouldUseSignedBinaries: args.shouldUseSignedBinaries)
-        }
-      } else {
-        error("${generateScript} returned empty set of data")
+  def parallelTasks = [:]
+  dir("${BASE_DIR}") {
+    def generateScript = ".ci/generate_package_lifecycle_test_matrix.sh"
+    def output = sh(label: generateScript, script: generateScript, returnStdout: true)
+    if (output?.trim()) {
+      output.split('\n').each { testMatrixRow ->
+        parallelTasks[testMatrixRow] = generatePackageLifecycleTestMatrixRow(testMatrixRow: testMatrixRow, shouldUseSignedBinaries: args.shouldUseSignedBinaries)
       }
+    } else {
+      error("${generateScript} returned empty set of data")
     }
-    parallel(parallelTasks)
+  }
+  parallel(parallelTasks)
 }
 
 def generatePackageLifecycleTestMatrixRow(def args = [:]){
