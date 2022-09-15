@@ -2,6 +2,9 @@
 
 @Library('apm@current') _
 
+// Make sure this list is in sync with the one in generate_package_lifecycle_test_matrix.sh
+final SUPPORTED_PHP_VERSIONS = ['7.2', '7.3', '7.4', '8.0', '8.1']
+
 pipeline {
   agent { label 'ubuntu-18.04 && immutable' }
   environment {
@@ -91,7 +94,7 @@ pipeline {
             axes {
               axis {
                 name 'PHP_VERSION'
-                values '7.2', '7.3', '7.4', '8.0', '8.1'
+                values SUPPORTED_PHP_VERSIONS
               }
               axis {
                 name 'DOCKERFILE'
@@ -162,7 +165,7 @@ pipeline {
           options { skipDefaultCheckout() }
           steps {
             initWorkspace(context: "Package", tab: 'artifacts') {
-                packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1'])
+                packageGeneration(versions: SUPPORTED_PHP_VERSIONS)
             }
           }
           post {
