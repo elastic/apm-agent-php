@@ -49,11 +49,9 @@ final class TimeUtil
      *
      * @see ClockInterface::getMonotonicClockCurrentTime() For the description
      */
-    public static function calcDurationInMicroseconds(float $beginTime, float $endTime): float
+    public static function calcDurationInMicrosecondsClampNegativeToZero(float $beginTime, float $endTime): float
     {
-        $diff = $endTime - $beginTime;
-        $diff = $diff < 0 ? 0 : $diff;
-        return $diff;
+        return ($endTime >= $beginTime) ? ($endTime - $beginTime) : 0;
     }
 
     /**
@@ -64,9 +62,11 @@ final class TimeUtil
      *
      * @see ClockInterface::getMonotonicClockCurrentTime() For the description
      */
-    public static function calcDuration(float $beginTime, float $endTime): float
+    public static function calcDurationInMillisecondsClampNegativeToZero(float $beginTime, float $endTime): float
     {
-        return self::microsecondsToMilliseconds(self::calcDurationInMicroseconds($beginTime, $endTime));
+        return self::microsecondsToMilliseconds(
+            self::calcDurationInMicrosecondsClampNegativeToZero($beginTime, $endTime)
+        );
     }
 
     public static function microsecondsToMilliseconds(float $microseconds): float
@@ -87,5 +87,10 @@ final class TimeUtil
     public static function secondsToMicroseconds(float $seconds): float
     {
         return $seconds * self::NUMBER_OF_MICROSECONDS_IN_SECOND;
+    }
+
+    public static function microsecondsToSeconds(float $microseconds): float
+    {
+        return $microseconds / self::NUMBER_OF_MICROSECONDS_IN_SECOND;
     }
 }

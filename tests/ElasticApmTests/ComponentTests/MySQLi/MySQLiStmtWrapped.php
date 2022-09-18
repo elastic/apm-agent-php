@@ -39,19 +39,36 @@ final class MySQLiStmtWrapped implements LoggableInterface
     /** @var mysqli_stmt */
     private $wrappedObj;
 
-    /** @var ApiKind */
-    private $apiKind;
+    /** @var bool */
+    private $isOOPApi;
 
-    public function __construct(mysqli_stmt $wrappedObj, ApiKind $apiKind)
+    public function __construct(mysqli_stmt $wrappedObj, bool $isOOPApi)
     {
         $this->wrappedObj = $wrappedObj;
-        $this->apiKind = $apiKind;
+        $this->isOOPApi = $isOOPApi;
+    }
+
+    /**
+     * @param string $types
+     * @param mixed  $var
+     * @param mixed  ...$vars
+     *
+     * @return bool
+     */
+    public function bindParam(string $types, &$var, &...$vars): bool
+    {
+        return $this->isOOPApi
+            ? $this->wrappedObj->bind_param($types, $var, ...$vars)
+            : mysqli_stmt_bind_param($this->wrappedObj, $types, $var, ...$vars);
     }
 
     public function execute(): bool
     {
-        return $this->apiKind->isOOP()
-            ? $this->wrappedObj->execute()
-            : mysqli_stmt_execute($this->wrappedObj);
+        return $this->isOOPApi ? $this->wrappedObj->execute() : mysqli_stmt_execute($this->wrappedObj);
+    }
+
+    public function close(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->close() : mysqli_stmt_close($this->wrappedObj);
     }
 }

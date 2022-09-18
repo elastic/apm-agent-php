@@ -33,25 +33,18 @@ use ElasticApmTests\Util\SpanDataExpectations;
  */
 final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanDataExpectationsBuilder
 {
-    /** @var ApiKind */
-    private $apiKind;
+    /** @var bool */
+    private $isOOPApi;
 
-    public function __construct(ApiKind $apiKind, SpanDataExpectations $shared)
+    public function __construct(bool $isOOPApi, SpanDataExpectations $shared)
     {
         parent::__construct($shared);
-        $this->apiKind = $apiKind;
+        $this->isOOPApi = $isOOPApi;
     }
 
     private static function buildFuncName(string $className, string $methodName): string
     {
         return $className . '_' . $methodName;
-    }
-
-    private function buildSpanName(string $className, string $methodName, ?string $funcName): string
-    {
-        return $this->apiKind->isOOP()
-            ? ($className . '->' . $methodName)
-            : ($funcName ?? self::buildFuncName($className, $methodName));
     }
 
     /**
@@ -61,10 +54,10 @@ final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanDataExpectationsBu
      *
      * @return SpanDataExpectations
      */
-    public function fromFuncName(string $className, string $methodName, ?string $funcName = null): SpanDataExpectations
+    public function fromNames(string $className, string $methodName, ?string $funcName = null): SpanDataExpectations
     {
-        $result = $this->startNew();
-        $result->name->setValue($this->buildSpanName($className, $methodName, $funcName));
-        return $result;
+        return $this->isOOPApi
+            ? $this->fromClassMethodNames($className, $methodName)
+            : $this->fromFuncName($funcName ?? self::buildFuncName($className, $methodName));
     }
 }

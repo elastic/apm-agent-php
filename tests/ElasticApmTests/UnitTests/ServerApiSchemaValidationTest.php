@@ -68,7 +68,6 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         // Make sure serialized data passes validation before we corrupt it
         $validateSerializedEvent($serializedEvent);
 
-        /** @noinspection PsalmAdvanceCallableParamsInspection */
         $testImpl($serializedEvent, $validateSerializedEvent);
     }
 
@@ -139,7 +138,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
         $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
 
-        /** @var array<mixed, mixed> */
+        /** @var array<mixed, mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
         $this->assertArrayNotHasKey($unknownPropertyName, $parentJsonNode);
         $parentJsonNode[$unknownPropertyName] = $unknownPropertyValue;

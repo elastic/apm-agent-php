@@ -30,12 +30,12 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ExternalTestData;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\CharSetForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
-class HttpDistributedTracingTest extends TestCaseBase
+class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 {
     /** @var ?CharSetForTests */
     private static $validVendorIdSuffixChars = null;

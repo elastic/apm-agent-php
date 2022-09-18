@@ -26,7 +26,6 @@ namespace ElasticApmTests\ComponentTests\MySQLi;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use mysqli;
-use mysqli_stmt;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -40,32 +39,25 @@ final class MySQLiWrapped implements LoggableInterface
     /** @var mysqli */
     private $wrappedObj;
 
-    /** @var ApiKind */
-    private $apiKind;
+    /** @var bool */
+    private $isOOPApi;
 
-    public function __construct(mysqli $wrappedObj, ApiKind $apiKind)
+    public function __construct(mysqli $wrappedObj, bool $isOOPApi)
     {
         $this->wrappedObj = $wrappedObj;
-        $this->apiKind = $apiKind;
-    }
-
-    public function setCharSet(string $charset): bool
-    {
-        return $this->apiKind->isOOP()
-            ? $this->wrappedObj->set_charset($charset)
-            : mysqli_set_charset($this->wrappedObj, $charset);
+        $this->isOOPApi = $isOOPApi;
     }
 
     public function ping(): bool
     {
-        return $this->apiKind->isOOP()
+        return $this->isOOPApi
             ? $this->wrappedObj->ping()
             : mysqli_ping($this->wrappedObj);
     }
 
     public function selectDb(string $dbName): bool
     {
-        return $this->apiKind->isOOP()
+        return $this->isOOPApi
             ? $this->wrappedObj->select_db($dbName)
             : mysqli_select_db($this->wrappedObj, $dbName);
     }
@@ -77,10 +69,56 @@ final class MySQLiWrapped implements LoggableInterface
      */
     public function query(string $query)
     {
-        $result = $this->apiKind->isOOP()
-            ? $this->wrappedObj->query($query)
-            : mysqli_query($this->wrappedObj, $query);
-        return is_bool($result) ? $result : new MySQLiResultWrapped($result, $this->apiKind);
+        $result = $this->isOOPApi ? $this->wrappedObj->query($query) : mysqli_query($this->wrappedObj, $query);
+        return is_bool($result) ? $result : new MySQLiResultWrapped($result, $this->isOOPApi);
+    }
+
+    public function realQuery(string $query): bool
+    {
+        return $this->isOOPApi
+            ? $this->wrappedObj->real_query($query)
+            : mysqli_real_query($this->wrappedObj, $query);
+    }
+
+    public function multiQuery(string $query): bool
+    {
+        return $this->isOOPApi
+            ? $this->wrappedObj->multi_query($query)
+            : mysqli_multi_query($this->wrappedObj, $query);
+    }
+
+    public function moreResults(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->more_results() : mysqli_more_results($this->wrappedObj);
+    }
+
+    public function nextResult(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->next_result() : mysqli_next_result($this->wrappedObj);
+    }
+
+    /**
+     * @return false|MySQLiResultWrapped
+     */
+    public function storeResult()
+    {
+        $result = $this->isOOPApi ? $this->wrappedObj->store_result() : mysqli_store_result($this->wrappedObj);
+        return $result === false ? false : new MySQLiResultWrapped($result, $this->isOOPApi);
+    }
+
+    public function beginTransaction(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->begin_transaction() : mysqli_begin_transaction($this->wrappedObj);
+    }
+
+    public function commit(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->commit() : mysqli_commit($this->wrappedObj);
+    }
+
+    public function rollback(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->rollback() : mysqli_rollback($this->wrappedObj);
     }
 
     /**
@@ -90,9 +128,19 @@ final class MySQLiWrapped implements LoggableInterface
      */
     public function prepare(string $query)
     {
-        $result = $this->apiKind->isOOP()
+        $result = $this->isOOPApi
             ? $this->wrappedObj->prepare($query)
             : mysqli_prepare($this->wrappedObj, $query);
-        return $result === false ? false : new MySQLiStmtWrapped($result, $this->apiKind);
+        return $result === false ? false : new MySQLiStmtWrapped($result, $this->isOOPApi);
+    }
+
+    public function error(): string
+    {
+        return $this->isOOPApi ? $this->wrappedObj->error : mysqli_error($this->wrappedObj);
+    }
+
+    public function close(): bool
+    {
+        return $this->isOOPApi ? $this->wrappedObj->close() : mysqli_close($this->wrappedObj);
     }
 }

@@ -28,7 +28,7 @@ namespace Elastic\Apm\Impl\Log;
  *
  * @internal
  */
-final class DefaultSink extends SinkBase
+final class SinkToCExt extends SinkBase
 {
     protected function consumePreformatted(
         int $statementLevel,

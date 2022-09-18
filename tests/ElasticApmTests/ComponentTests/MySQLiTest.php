@@ -27,18 +27,24 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\AutoInstrument\MySQLiAutoInstrumentation;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\MySQLi\ApiFacade;
-use ElasticApmTests\ComponentTests\MySQLi\ApiKind;
 use ElasticApmTests\ComponentTests\MySQLi\MySQLiDbSpanDataExpectationsBuilder;
+use ElasticApmTests\ComponentTests\MySQLi\MySQLiResultWrapped;
+use ElasticApmTests\ComponentTests\MySQLi\MySQLiWrapped;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
+use ElasticApmTests\ComponentTests\Util\AutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
-use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\SpanDataExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
+use PHPUnit\Framework\TestCase;
 
 /**
  * @group requires_external_services
@@ -46,42 +52,55 @@ use ElasticApmTests\Util\SpanSequenceValidator;
  */
 final class MySQLiTest extends ComponentTestCaseBase
 {
-    private const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
-    private const IS_INSTRUMENTATION_ENABLED_KEY = 'IS_INSTRUMENTATION_ENABLED';
-    private const API_KIND_KEY = 'API_KIND';
-    private const HOST_KEY = 'HOST';
-    private const PORT_KEY = 'PORT';
-    private const USER_KEY = 'USER';
-    private const PASSWORD_KEY = 'PASSWORD';
-    private const DB_NAME_KEY = 'DB_NAME';
-    private const USE_SELECT_DB_KEY = 'USE_SELECT_DB';
-    private const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
-    private const MESSAGES_KEY = 'MESSAGES';
+    private const IS_OOP_API_KEY = 'IS_OOP_API';
+
+    public const CONNECT_DB_NAME_KEY = 'CONNECT_DB_NAME';
+    public const WORK_DB_NAME_KEY = 'WORK_DB_NAME';
+
+    private const QUERY_KIND_KEY = 'QUERY_KIND';
+    private const QUERY_KIND_QUERY = 'query';
+    private const QUERY_KIND_REAL_QUERY = 'real_query';
+    private const QUERY_KIND_MULTI_QUERY = 'multi_query';
+    private const QUERY_KIND_ALL_VALUES
+        = [self::QUERY_KIND_QUERY, self::QUERY_KIND_REAL_QUERY, self::QUERY_KIND_MULTI_QUERY];
 
     private const DB_TYPE = 'mysql';
 
-    // private const DROP_DATABASE_IF_EXISTS_SQL_PREFIX
-    //     = /** @lang text */
-    //     'DROP DATABASE IF EXISTS ';
-    //
-    // private const CREATE_DATABASE_SQL_PREFIX
-    //     = /** @lang text */
-    //     'CREATE DATABASE ';
+    private const MESSAGES
+        = [
+            'Just testing...'    => 1,
+            'More testing...'    => 22,
+            'SQLite3 is cool...' => 333,
+        ];
 
-    // private const CREATE_TABLE_SQL
-    //     = /** @lang text */
-    //     'CREATE TABLE messages (
-    //         id INTEGER PRIMARY KEY,
-    //         text TEXT,
-    //         time INTEGER)';
-    //
-    // private const INSERT_SQL
-    //     = /** @lang text */
-    //     'INSERT INTO messages (text, time) VALUES (:text, :time)';
-    //
-    // private const SELECT_SQL
-    //     = /** @lang text */
-    //     'SELECT * FROM messages';
+    private const DROP_DATABASE_IF_EXISTS_SQL_PREFIX
+        = /** @lang text */
+        'DROP DATABASE IF EXISTS ';
+
+    private const CREATE_DATABASE_SQL_PREFIX
+        = /** @lang text */
+        'CREATE DATABASE ';
+
+    private const CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX
+        = /** @lang text */
+        'CREATE DATABASE IF NOT EXISTS ';
+
+    private const CREATE_TABLE_SQL
+        = /** @lang text */
+        'CREATE TABLE messages (
+            id INT AUTO_INCREMENT,
+            text TEXT,
+            time INTEGER,
+            PRIMARY KEY(id)
+        )';
+
+    private const INSERT_SQL
+        = /** @lang text */
+        'INSERT INTO messages (text, time) VALUES (?, ?)';
+
+    private const SELECT_SQL
+        = /** @lang text */
+        'SELECT * FROM messages';
 
     public function testPrerequisitesSatisfied(): void
     {
@@ -104,50 +123,197 @@ final class MySQLiTest extends ComponentTestCaseBase
     }
 
     /**
+     * @param MySQLiWrapped $mySQLi
+     * @param string[]      $queries
+     * @param string        $kind
+     *
+     * @return void
+     */
+    private static function runQueriesUsingKind(MySQLiWrapped $mySQLi, array $queries, string $kind): void
+    {
+        switch ($kind) {
+            case self::QUERY_KIND_MULTI_QUERY:
+                $multiQuery = '';
+                foreach ($queries as $query) {
+                    if (!TextUtil::isEmptyString($multiQuery)) {
+                        $multiQuery .= ';';
+                    }
+                    $multiQuery .= $query;
+                }
+                TestCase::assertTrue($mySQLi->multiQuery($multiQuery));
+                while (true) {
+                    $result = $mySQLi->storeResult();
+                    if ($result === false) {
+                        TestCase::assertEmpty($mySQLi->error());
+                    } else {
+                        $result->close();
+                    }
+                    if (!$mySQLi->moreResults()) {
+                        break;
+                    }
+                    TestCase::assertTrue($mySQLi->nextResult());
+                }
+                break;
+            case self::QUERY_KIND_REAL_QUERY:
+                foreach ($queries as $query) {
+                    TestCase::assertTrue($mySQLi->realQuery($query));
+                }
+                break;
+            case self::QUERY_KIND_QUERY:
+                foreach ($queries as $query) {
+                    TestCase::assertTrue($mySQLi->query($query));
+                }
+                break;
+            default:
+                TestCase::fail();
+        }
+    }
+
+    /**
+     * @param MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder
+     * @param string[]                            $queries
+     * @param string                              $kind
+     * @param SpanDataExpectations[]             &$expectedSpans
+     */
+    private static function addExpectationsForQueriesUsingKind(
+        MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder,
+        array $queries,
+        string $kind,
+        /* out */ array &$expectedSpans
+    ): void {
+        switch ($kind) {
+            case self::QUERY_KIND_MULTI_QUERY:
+                $multiQuery = '';
+                foreach ($queries as $query) {
+                    if (!TextUtil::isEmptyString($multiQuery)) {
+                        $multiQuery .= ';';
+                    }
+                    $multiQuery .= $query;
+                }
+                $expectedSpans[] = $expectationsBuilder->fromStatement($multiQuery);
+                break;
+            case self::QUERY_KIND_QUERY:
+            case self::QUERY_KIND_REAL_QUERY:
+                foreach ($queries as $query) {
+                    $expectedSpans[] = $expectationsBuilder->fromStatement($query);
+                }
+                break;
+            default:
+                TestCase::fail();
+        }
+    }
+
+    /**
+     * @return string[]
+     */
+    private static function allDbNames(): array
+    {
+        $defaultDbName = AmbientContextForTests::testConfig()->mysqlDb;
+        TestCase::assertNotNull($defaultDbName);
+        return [$defaultDbName, $defaultDbName . '_ALT'];
+    }
+
+    /**
+     * @return string[]
+     */
+    private static function queriesToResetDbState(): array
+    {
+        $queries = [];
+        foreach (self::allDbNames() as $dbName) {
+            $queries[] = self::DROP_DATABASE_IF_EXISTS_SQL_PREFIX . $dbName;
+        }
+        $queries[] = self::CREATE_DATABASE_SQL_PREFIX . AmbientContextForTests::testConfig()->mysqlDb;
+        return $queries;
+    }
+
+    private static function resetDbState(MySQLiWrapped $mySQLi, string $queryKind): void
+    {
+        $queries = self::queriesToResetDbState();
+        self::runQueriesUsingKind($mySQLi, $queries, $queryKind);
+    }
+
+    /**
+     * @param MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder
+     * @param string                              $queryKind
+     * @param SpanDataExpectations[]             &$expectedSpans
+     */
+    private static function addExpectationsForResetDbState(
+        MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder,
+        string $queryKind,
+        /* out */ array &$expectedSpans
+    ): void {
+        $queries = self::queriesToResetDbState();
+        self::addExpectationsForQueriesUsingKind($expectationsBuilder, $queries, $queryKind, /* out */ $expectedSpans);
+    }
+
+    /**
      * @return iterable<array{array<string, mixed>}>
      */
     public function dataProviderForTestAutoInstrumentation(): iterable
     {
         $disableInstrumentationsVariants = [
-            null     => true,
+            ''       => true,
             'mysqli' => false,
             'db'     => false,
         ];
 
-        /**
-         * @param mixed[] $variants
-         *
-         * @return string[]
-         */
-        $onlyIfEnabled = function (array $variants, bool $isEnabled): array {
-            return $isEnabled ? $variants : [$variants[0]];
-        };
+        $defaultDbName = AmbientContextForTests::testConfig()->mysqlDb;
 
-        // TODO: Sergey Kleyman: UNCOMMENT
-        // foreach ($disableInstrumentationsVariants as $disableInstrumentationsOptVal => $isInstrumentationEnabled) {
-        foreach ([null => true] as $disableInstrumentationsOptVal => $isInstrumentationEnabled) {
-            // TODO: Sergey Kleyman: UNCOMMENT
-            // foreach ($onlyIfEnabled(MySQLiApiKind::allValues(), $isInstrumentationEnabled) as $apiKind) {
-            foreach ([ApiKind::procedural()] as $apiKind) {
-                // TODO: Sergey Kleyman: UNCOMMENT
-                // foreach ($onlyIfEnabled([false, true], $isInstrumentationEnabled) as $wrapInTx) {
-                foreach ([false] as $wrapInTx) {
-                    // TODO: Sergey Kleyman: UNCOMMENT
-                    // foreach ($onlyIfEnabled([false, true], $isInstrumentationEnabled) as $useSelectDb) {
-                    foreach ([false] as $useSelectDb) {
-                        yield [
-                            [
-                                self::DISABLE_INSTRUMENTATIONS_KEY   => $disableInstrumentationsOptVal,
-                                self::IS_INSTRUMENTATION_ENABLED_KEY => $isInstrumentationEnabled,
-                                self::API_KIND_KEY                   => $apiKind,
-                                self::USE_SELECT_DB_KEY              => $useSelectDb,
-                                self::WRAP_IN_TX_KEY                 => $wrapInTx,
-                            ],
-                        ];
-                    }
-                }
-            }
+        /** @var iterable<array{array<string, mixed>}> $result */
+        $result = (new DataProviderForTestBuilder())
+            ->addGeneratorOnlyFirstValueCombinable(
+                AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator(
+                    $disableInstrumentationsVariants
+                )
+            )
+            ->addBoolKeyedDimensionAllValuesCombinable(self::IS_OOP_API_KEY)
+            ->addCartesianProductOnlyFirstValueCombinable(
+                [
+                    self::CONNECT_DB_NAME_KEY => [$defaultDbName, null],
+                    self::WORK_DB_NAME_KEY    => self::allDbNames(),
+                ]
+            )
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::QUERY_KIND_KEY, self::QUERY_KIND_ALL_VALUES)
+            ->addGeneratorOnlyFirstValueCombinable(
+                DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator()
+            )
+            ->wrapResultIntoArray()
+            ->build();
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     * @param ?bool               &$isOOPApi
+     * @param ?string             &$connectDbName
+     * @param ?string             &$workDbName
+     * @param ?string             &$queryKind
+     * @param ?bool               &$wrapInTx
+     * @param ?bool               &$rollback
+     */
+    public static function extractSharedArgs(
+        array $args,
+        /* out */ ?bool &$isOOPApi,
+        /* out */ ?string &$connectDbName,
+        /* out */ ?string &$workDbName,
+        /* out */ ?string &$queryKind,
+        /* out */ ?bool &$wrapInTx,
+        /* out */ ?bool &$rollback
+    ): void {
+        $isOOPApi = self::getMandatoryAppCodeArg($args, self::IS_OOP_API_KEY);
+        self::assertIsBool($isOOPApi);
+        $connectDbName = self::getMandatoryAppCodeArg($args, self::CONNECT_DB_NAME_KEY);
+        if ($connectDbName !== null) {
+            self::assertIsString($connectDbName);
         }
+        $workDbName = self::getMandatoryAppCodeArg($args, self::WORK_DB_NAME_KEY);
+        self::assertIsString($workDbName);
+        $queryKind = self::getMandatoryAppCodeArg($args, self::QUERY_KIND_KEY);
+        self::assertIsString($queryKind);
+        $wrapInTx = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
+        self::assertIsBool($wrapInTx);
+        $rollback = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+        self::assertIsBool($rollback);
     }
 
     /**
@@ -155,73 +321,74 @@ final class MySQLiTest extends ComponentTestCaseBase
      */
     public static function appCodeForTestAutoInstrumentation(array $appCodeArgs): void
     {
-        $apiKindAsString = self::getMandatoryAppCodeArg($appCodeArgs, self::API_KIND_KEY);
-        self::assertIsString($apiKindAsString);
-        $apiKind = ApiKind::fromString($apiKindAsString);
-        $host = self::getMandatoryAppCodeArg($appCodeArgs, self::HOST_KEY);
+        self::extractSharedArgs(
+            $appCodeArgs,
+            /* out */ $isOOPApi,
+            /* out */ $connectDbName,
+            /* out */ $workDbName,
+            /* out */ $queryKind,
+            /* out */ $wrapInTx,
+            /* out */ $rollback
+        );
+        $host = self::getMandatoryAppCodeArg($appCodeArgs, DbAutoInstrumentationUtilForTests::HOST_KEY);
         self::assertIsString($host);
-        $port = self::getMandatoryAppCodeArg($appCodeArgs, self::PORT_KEY);
+        $port = self::getMandatoryAppCodeArg($appCodeArgs, DbAutoInstrumentationUtilForTests::PORT_KEY);
         self::assertIsInt($port);
-        $user = self::getMandatoryAppCodeArg($appCodeArgs, self::USER_KEY);
+        $user = self::getMandatoryAppCodeArg($appCodeArgs, DbAutoInstrumentationUtilForTests::USER_KEY);
         self::assertIsString($user);
-        $password = self::getMandatoryAppCodeArg($appCodeArgs, self::PASSWORD_KEY);
+        $password = self::getMandatoryAppCodeArg($appCodeArgs, DbAutoInstrumentationUtilForTests::PASSWORD_KEY);
         self::assertIsString($password);
-        $dbName = self::getMandatoryAppCodeArg($appCodeArgs, self::DB_NAME_KEY);
-        self::assertIsString($dbName);
 
-        $useSelectDb = self::getMandatoryAppCodeArg($appCodeArgs, self::USE_SELECT_DB_KEY);
-        self::assertIsBool($useSelectDb);
-        $wrapInTx = self::getMandatoryAppCodeArg($appCodeArgs, self::WRAP_IN_TX_KEY);
-        self::assertIsBool($wrapInTx);
-        $messages = self::getMandatoryAppCodeArg($appCodeArgs, self::MESSAGES_KEY);
-        self::assertIsArray($messages);
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-        $mySQLiApiFacade = new ApiFacade($apiKind);
-        $mySQLi = $mySQLiApiFacade->connect($host, $port, $user, $password, $useSelectDb ? null : $dbName);
+        $mySQLiApiFacade = new ApiFacade($isOOPApi);
+        $mySQLi = $mySQLiApiFacade->connect($host, $port, $user, $password, $connectDbName);
         self::assertNotNull($mySQLi);
         self::assertTrue($mySQLi->ping());
 
-        // self::assertNotFalse($mySQLi->query(self::DROP_DATABASE_IF_EXISTS_SQL_PREFIX . $dbName));
-        // self::assertNotFalse($mySQLi->query(self::CREATE_DATABASE_SQL_PREFIX . $dbName));
-        //
-        // if ($useSelectDb) {
-        //     self::assertTrue($mySQLi->selectDb($dbName));
-        // }
+        if ($connectDbName !== $workDbName) {
+            self::assertTrue($mySQLi->query(self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName));
+            self::assertTrue($mySQLi->selectDb($workDbName));
+        }
 
-        // self::assertTrue($mySQLi->query());
+        self::assertTrue($mySQLi->query(self::CREATE_TABLE_SQL));
 
-        // $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        // if ($wrapInTx) {
-        //     $pdo->beginTransaction();
-        // }
-        //
-        // $pdo->exec(self::CREATE_TABLE_SQL);
-        //
-        // $stmt = $pdo->prepare(self::INSERT_SQL);
-        // self::assertNotFalse($stmt);
-        // $boundMsgText = '';
-        // $boundMsgTime = 0;
-        // $stmt->bindParam(':text', /* ref */ $boundMsgText);
-        // $stmt->bindParam(':time', /* ref */ $boundMsgTime);
-        // foreach ($messages as $msgText => $msgTime) {
-        //     $boundMsgText = $msgText;
-        //     $boundMsgTime = $msgTime;
-        //     $stmt->execute();
-        // }
-        //
-        // $queryResult = $pdo->query(self::SELECT_SQL);
-        // self::assertNotFalse($queryResult);
-        // foreach ($queryResult as $row) {
-        //     $dbgCtx = LoggableToString::convert(['$row' => $row, '$queryResult' => $queryResult]);
-        //     $msgText = $row['text'];
-        //     self::assertIsString($msgText);
-        //     self::assertArrayHasKey($msgText, $messages, $dbgCtx);
-        //     self::assertEquals($messages[$msgText], $row['time'], $dbgCtx);
-        // }
-        //
-        // if ($wrapInTx) {
-        //     $pdo->commit();
-        // }
+        if ($wrapInTx) {
+            self::assertTrue($mySQLi->beginTransaction());
+        }
+
+        self::assertNotFalse($stmt = $mySQLi->prepare(self::INSERT_SQL));
+        foreach (self::MESSAGES as $msgText => $msgTime) {
+            self::assertTrue($stmt->bindParam('si', $msgText, $msgTime));
+            self::assertTrue($stmt->execute());
+        }
+        self::assertTrue($stmt->close());
+
+        self::assertInstanceOf(MySQLiResultWrapped::class, $queryResult = $mySQLi->query(self::SELECT_SQL));
+        self::assertSame(count(self::MESSAGES), $queryResult->numRows());
+        $rowCount = 0;
+        while (true) {
+            $row = $queryResult->fetchAssoc();
+            if (!is_array($row)) {
+                self::assertNull($row);
+                self::assertSame(count(self::MESSAGES), $rowCount);
+                break;
+            }
+            ++$rowCount;
+            $dbgCtx = LoggableToString::convert(['$row' => $row, '$queryResult' => $queryResult]);
+            $msgText = $row['text'];
+            self::assertIsString($msgText);
+            self::assertArrayHasKey($msgText, self::MESSAGES, $dbgCtx);
+            self::assertEquals(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
+        }
+        $queryResult->close();
+
+        if ($wrapInTx) {
+            self::assertTrue($rollback ? $mySQLi->rollback() : $mySQLi->commit());
+        }
+
+        self::resetDbState($mySQLi, $queryKind);
+        self::assertTrue($mySQLi->close());
     }
 
     /**
@@ -231,76 +398,84 @@ final class MySQLiTest extends ComponentTestCaseBase
      */
     public function testAutoInstrumentation(array $testArgs): void
     {
+        TestCase::assertNotCount(0, self::MESSAGES);
+
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
-        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg($testArgs, self::DISABLE_INSTRUMENTATIONS_KEY);
-        if ($disableInstrumentationsOptVal !== null) {
-            self::assertIsString($disableInstrumentationsOptVal);
-        }
-        $isInstrumentationEnabled = self::getMandatoryAppCodeArg($testArgs, self::IS_INSTRUMENTATION_ENABLED_KEY);
+        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg(
+            $testArgs,
+            AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY
+        );
+        self::assertIsString($disableInstrumentationsOptVal);
+        $isInstrumentationEnabled = self::getMandatoryAppCodeArg(
+            $testArgs,
+            AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY
+        );
         self::assertIsBool($isInstrumentationEnabled);
-        $apiKind = $testArgs[self::API_KIND_KEY];
-        self::assertInstanceOf(ApiKind::class, $apiKind);
-        $useSelectDb = $testArgs[self::USE_SELECT_DB_KEY];
-        self::assertIsBool($useSelectDb);
-        $wrapInTx = $testArgs[self::WRAP_IN_TX_KEY];
-        self::assertIsBool($wrapInTx);
+
+        self::extractSharedArgs(
+            $testArgs,
+            /* out */ $isOOPApi,
+            /* out */ $connectDbName,
+            /* out */ $workDbName,
+            /* out */ $queryKind,
+            /* out */ $wrapInTx,
+            /* out */ $rollback
+        );
 
         $testCaseHandle = $this->getTestCaseHandle();
 
         $appCodeArgs = $testArgs;
 
-        $appCodeArgs[self::API_KIND_KEY] = $apiKind->asString();
-
-        $appCodeArgs[self::HOST_KEY] = AmbientContextForTests::testConfig()->mysqlHost;
-        $appCodeArgs[self::PORT_KEY] = AmbientContextForTests::testConfig()->mysqlPort;
-        $appCodeArgs[self::USER_KEY] = AmbientContextForTests::testConfig()->mysqlUser;
-        $appCodeArgs[self::PASSWORD_KEY] = AmbientContextForTests::testConfig()->mysqlPassword;
-        $dbName = AmbientContextForTests::testConfig()->mysqlDb;
-        self::assertNotNull($dbName);
-        if ($useSelectDb) {
-            $dbName .= '-2';
-        }
-        $appCodeArgs[self::DB_NAME_KEY] = $dbName;
-
-        $messages = [
-            'Just testing...'    => 1,
-            'More testing...'    => 22,
-            'SQLite3 is cool...' => 333,
-        ];
-        $appCodeArgs[self::MESSAGES_KEY] = $messages;
+        $appCodeArgs[DbAutoInstrumentationUtilForTests::HOST_KEY] = AmbientContextForTests::testConfig()->mysqlHost;
+        $appCodeArgs[DbAutoInstrumentationUtilForTests::PORT_KEY] = AmbientContextForTests::testConfig()->mysqlPort;
+        $appCodeArgs[DbAutoInstrumentationUtilForTests::USER_KEY] = AmbientContextForTests::testConfig()->mysqlUser;
+        $appCodeArgs[DbAutoInstrumentationUtilForTests::PASSWORD_KEY]
+            = AmbientContextForTests::testConfig()->mysqlPassword;
 
         $sharedExpectations
-            = DbSpanDataExpectationsBuilder::default(self::DB_TYPE, $useSelectDb ? null : $dbName);
-        $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder($apiKind, $sharedExpectations);
+            = MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $connectDbName);
+        $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder($isOOPApi, $sharedExpectations);
         /** @var SpanDataExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
-            $expectedSpans[] = $expectationsBuilder->fromFuncName('mysqli', '__construct', 'mysqli_connect');
-            $expectedSpans[] = $expectationsBuilder->fromFuncName('mysqli', 'ping');
+            $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', '__construct', 'mysqli_connect');
+            $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'ping');
 
-            // $expectedSpans[]
-            //     = $expectationsBuilder->fromStatement(self::DROP_DATABASE_IF_EXISTS_SQL_PREFIX . $dbName);
-            // $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_DATABASE_SQL_PREFIX . $dbName);
-            // if ($useSelectDb) {
-            //     $expectationsBuilder->setPrototype(
-            //         DbSpanDataExpectationsBuilder::default(self::DB_TYPE, $dbName)
-            //     );
-            //     $expectedSpans[] = $expectationsBuilder->fromFuncName('mysqli', 'select_db');
-            // }
+            if ($connectDbName !== $workDbName) {
+                $expectedSpans[] = $expectationsBuilder->fromStatement(
+                    self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName
+                );
+                $expectationsBuilder->setPrototype(
+                    MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $workDbName)
+                );
+                $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'select_db');
+            }
 
-            // $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
-            // foreach ($messages as $ignored) {
-            //     $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);
-            // }
-            // $expectedSpans[] = $expectationsBuilder->fromStatement(self::SELECT_SQL);
+            $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
+
+            if ($wrapInTx) {
+                $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'begin_transaction');
+            }
+
+            foreach (self::MESSAGES as $ignored) {
+                $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);
+            }
+
+            $expectedSpans[] = $expectationsBuilder->fromStatement(self::SELECT_SQL);
+
+            if ($wrapInTx) {
+                $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', $rollback ? 'rollback' : 'commit');
+            }
+
+            self::addExpectationsForResetDbState($expectationsBuilder, $queryKind, /* out */ $expectedSpans);
         }
 
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($disableInstrumentationsOptVal): void {
-                if ($disableInstrumentationsOptVal !== null) {
+                if (!empty($disableInstrumentationsOptVal)) {
                     $appCodeParams->setAgentOption(
                         OptionNames::DISABLE_INSTRUMENTATIONS,
                         $disableInstrumentationsOptVal

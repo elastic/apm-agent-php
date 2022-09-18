@@ -21,55 +21,53 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl;
+namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\ClockInterface;
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class Clock implements ClockInterface
+final class ClockVerifyingMonotonicityForTests implements ClockInterface
 {
     use SingletonInstanceTrait;
 
-    /** @var bool */
-    private $hrtimeExits;
+    /** @var ?float */
+    private $lastSystemTime = null;
 
-    public function __construct()
+    /** @var ?float */
+    private $lastMonotonicTime = null;
+
+    private static function checkAgainstUpdateLast(float $current, /* ref */ ?float &$last): float
     {
-        $this->hrtimeExits = function_exists('hrtime');
+        if ($last !== null) {
+            TestCaseBase::assertLessThanOrEqualTimestamp($last, $current);
+        }
+        $last = $current;
+        return $current;
     }
 
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
-        // Return value should be in microseconds
-        // while microtime(/* as_float: */ true) returns in seconds with microseconds being the fractional part
-        return round(TimeUtil::secondsToMicroseconds(microtime(/* as_float: */ true)));
+        return self::checkAgainstUpdateLast(
+            Clock::singletonInstance()->getSystemClockCurrentTime(),
+            /* ref */ $this->lastSystemTime
+        );
     }
 
     /** @inheritDoc */
     public function getMonotonicClockCurrentTime(): float
     {
-        return $this->hrtimeExits ? self::getHighResolutionCurrentTime() : $this->getSystemClockCurrentTime();
-    }
-
-    private static function getHighResolutionCurrentTime(): float
-    {
-        // hrtime(/* get_as_number */ true):
-        //      the nanoseconds are returned as integer (64bit platforms) or float (32bit platforms)
-        /**
-         * hrtime is available from PHP 7.3.0 (https://www.php.net/manual/en/function.hrtime.php) and we support 7.2.*
-         * so we suppress static analysis warning
-         * but at runtime we call hrtime only if it exists
-         *
-         * @see getMonotonicClockCurrentTime
-         *
-         * @phpstan-ignore-next-line
-         */
-        return round(TimeUtil::nanosecondsToMicroseconds((float)(hrtime(/* as_number */ true))));
+        return self::checkAgainstUpdateLast(
+            Clock::singletonInstance()->getMonotonicClockCurrentTime(),
+            /* ref */ $this->lastMonotonicTime
+        );
     }
 }

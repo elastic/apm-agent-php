@@ -42,6 +42,9 @@ final class TestCaseHandle implements LoggableInterface
 
     public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
 
+    public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
+    public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
+
     /** @var ?AppCodeInvocation */
     public $appCodeInvocation = null;
 
@@ -169,6 +172,17 @@ final class TestCaseHandle implements LoggableInterface
             $expectations = new DataFromAgentPlusRawExpectations(
                 $this->appCodeInvocation,
                 ArrayUtilForTests::getLastValue($dataFromAgent->intakeApiRequests)->timeReceivedAtApmServer
+            );
+
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Before DataFromAgentPlusRawValidator::validate ...',
+                [
+                    'expectations'                       => $expectations,
+                    'dataFromAgent'                      => $dataFromAgent,
+                    self::SERIALIZED_EXPECTATIONS_KEY    => serialize($expectations),
+                    self::SERIALIZED_DATA_FROM_AGENT_KEY => serialize($dataFromAgent),
+                ]
             );
             DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
             return $dataFromAgent;

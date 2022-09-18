@@ -42,6 +42,9 @@ use PDOStatement;
  */
 final class PDOAutoInstrumentation extends AutoInstrumentationBase
 {
+    private const PDO_CLASS_NAME = 'PDO';
+    private const PDO_STATEMENT_CLASS_NAME = 'PDOStatement';
+
     private const DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE = [
         DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
         DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
@@ -91,18 +94,21 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             return;
         }
 
-        $this->pdoConstruct($ctx);
-        $this->pdoExec($ctx);
-        $this->pdoQuery($ctx);
-        $this->pdoPrepare($ctx);
-        // $this->pdoCommit($ctx);
-        $this->pdoStatementExecute($ctx);
+        $this->interceptPDOConstruct($ctx);
+        $this->interceptPDOExec($ctx);
+        $this->interceptPDOQuery($ctx);
+        $this->interceptPDOPrepare($ctx);
+        $this->interceptPDOStatementExecute($ctx);
+
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'beginTransaction');
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'commit');
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'rollBack');
     }
 
-    private function pdoConstruct(RegistrationContextInterface $ctx): void
+    private function interceptPDOConstruct(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
-            'PDO',
+            self::PDO_CLASS_NAME,
             '__construct',
             /**
              * @param ?object $interceptedCallThis
@@ -147,10 +153,13 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function pdoInterceptCallToSpan(RegistrationContextInterface $ctx, string $methodName): void
-    {
+    private function interceptPDOMethodToSpan(
+        RegistrationContextInterface $ctx,
+        string $methodName,
+        bool $isFirstArgStatement
+    ): void {
         $ctx->interceptCallsToMethod(
-            'PDO',
+            self::PDO_CLASS_NAME,
             $methodName,
             /**
              * @param ?object $interceptedCallThis
@@ -158,25 +167,26 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
              *
              * @return callable
              */
-            function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName): ?callable {
+            function (
+                ?object $interceptedCallThis,
+                array $interceptedCallArgs
+            ) use (
+                $methodName,
+                $isFirstArgStatement
+            ): ?callable {
                 if (!$this->util->verifyInstanceOf(PDO::class, $interceptedCallThis)) {
                     return null;
                 }
                 /** @var PDO $interceptedCallThis */
 
-                if (count($interceptedCallArgs) > 0) {
-                    $statement = $interceptedCallArgs[0];
-                    if (!is_string($statement)) {
-                        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                        && $loggerProxy->log(
-                            'The first received argument for PDO::' . $methodName . ' call is not a string'
-                            . ' so statement cannot be captured',
-                            ['interceptedCallThis' => $interceptedCallThis]
-                        );
-                        $statement = null;
+                $statement = null;
+                if ($isFirstArgStatement) {
+                    if (
+                        $this->util->verifyMinArgsCount(1, $interceptedCallArgs)
+                        && $this->util->verifyIsString($interceptedCallArgs[0])
+                    ) {
+                        $statement = $interceptedCallArgs[0];
                     }
-                } else {
-                    $statement = null;
                 }
                 /** @var ?string $statement */
 
@@ -196,7 +206,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
                 return AutoInstrumentationUtil::createPostHookFromEndSpan(
                     DbAutoInstrumentationUtil::beginDbSpan(
-                        'PDO' /* <- className */,
+                        self::PDO_CLASS_NAME,
                         $methodName,
                         $dbType,
                         $dbName,
@@ -207,26 +217,25 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function pdoExec(RegistrationContextInterface $ctx): void
+    private function interceptPDOExec(RegistrationContextInterface $ctx): void
     {
-        $this->pdoInterceptCallToSpan($ctx, 'exec');
+        $this->interceptPDOMethodToSpan($ctx, 'exec', /* isFirstArgStatement */ true);
     }
 
-    private function pdoQuery(RegistrationContextInterface $ctx): void
+    private function interceptPDOQuery(RegistrationContextInterface $ctx): void
     {
-        $this->pdoInterceptCallToSpan($ctx, 'query');
+        $this->interceptPDOMethodToSpan($ctx, 'query', /* isFirstArgStatement */ true);
     }
 
-    // private function pdoCommit(RegistrationContextInterface $ctx): void
-    // {
-    //     $this->interceptCallToSpan($ctx, 'commit');
-    // }
+    private function interceptPDOMethodToSpanAsFuncCall(RegistrationContextInterface $ctx, string $methodName): void
+    {
+        $this->interceptPDOMethodToSpan($ctx, $methodName, /* isFirstArgStatement */ false);
+    }
 
-
-    private function pdoPrepare(RegistrationContextInterface $ctx): void
+    private function interceptPDOPrepare(RegistrationContextInterface $ctx): void
     {
         $ctx->interceptCallsToMethod(
-            'PDO',
+            self::PDO_CLASS_NAME,
             'prepare',
             /**
              * Pre-hook
@@ -286,11 +295,13 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function pdoStatementExecute(RegistrationContextInterface $ctx): void
+    private function interceptPDOStatementExecute(RegistrationContextInterface $ctx): void
     {
+        $className = self::PDO_STATEMENT_CLASS_NAME;
+        $methodName = 'execute';
         $ctx->interceptCallsToMethod(
-            'PDOStatement',
-            'execute',
+            $className,
+            $methodName,
             /**
              * @param ?object $interceptedCallThis
              * @param mixed[]     $interceptedCallArgs
@@ -301,6 +312,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             function (
                 ?object $interceptedCallThis,
                 /** @noinspection PhpUnusedParameterInspection */ array $interceptedCallArgs
+            ) use (
+                $className,
+                $methodName
             ): ?callable {
                 if (!$this->util->verifyInstanceOf(PDOStatement::class, $interceptedCallThis)) {
                     return null;
@@ -330,8 +344,8 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
                 return AutoInstrumentationUtil::createPostHookFromEndSpan(
                     DbAutoInstrumentationUtil::beginDbSpan(
-                        'PDOStatement' /* <- className */,
-                        'execute' /* <- methodName */,
+                        $className,
+                        $methodName,
                         $dbType,
                         $dbName,
                         $statement

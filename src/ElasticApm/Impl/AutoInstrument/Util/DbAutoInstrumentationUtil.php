@@ -69,7 +69,7 @@ final class DbAutoInstrumentationUtil
         return $span;
     }
 
-    private static function setServiceForDbSpan(SpanInterface $span, string $dbType, ?string $dbName): void
+    public static function setServiceForDbSpan(SpanInterface $span, string $dbType, ?string $dbName): void
     {
         $destinationServiceResource = $dbType;
         if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {

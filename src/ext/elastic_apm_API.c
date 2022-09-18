@@ -153,15 +153,17 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "className: `%s'; methodName: `%s'", className, methodName );
 
     ResultCode resultCode;
+    zend_class_entry* classEntry = NULL;
+    zend_function* funcEntry = NULL;
 
-    zend_class_entry* classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
+    classEntry = zend_hash_str_find_ptr( CG( class_table ), className, strlen( className ) );
     if ( classEntry == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( CG( class_table ), ... ) failed. className: `%s'", className );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    zend_function* funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
+    funcEntry = zend_hash_str_find_ptr( &classEntry->function_table, methodName, strlen( methodName ) );
     if ( funcEntry == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( &classEntry->function_table, ... ) failed."
@@ -191,10 +193,10 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
     ResultCode resultCode;
 
-    zend_function* funcEntry = zend_hash_str_find_ptr( EG( function_table ), functionName, strlen( functionName ) );
+    zend_function* funcEntry = zend_hash_str_find_ptr( CG( function_table ), functionName, strlen( functionName ) );
     if ( funcEntry == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( EG( function_table ), ... ) failed."
+        ELASTIC_APM_LOG_ERROR( "zend_hash_str_find_ptr( CG( function_table ), ... ) failed."
                                " functionName: `%s'", functionName );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }

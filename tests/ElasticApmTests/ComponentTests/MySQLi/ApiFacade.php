@@ -42,10 +42,10 @@ final class ApiFacade implements LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var ApiKind */
-    private $apiKind;
+    /** @var bool */
+    private $isOOPApi;
 
-    public function __construct(ApiKind $apiKind)
+    public function __construct(bool $isOOPApi)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -54,9 +54,7 @@ final class ApiFacade implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
-        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-
-        $this->apiKind = $apiKind;
+        $this->isOOPApi = $isOOPApi;
     }
 
     public function connect(
@@ -72,9 +70,9 @@ final class ApiFacade implements LoggableInterface
             ['host' => $host, 'port' => $port, 'username' => $username, 'password' => $password, 'dbName' => $dbName]
         );
 
-        $wrappedObj = $this->apiKind->isOOP()
+        $wrappedObj = $this->isOOPApi
             ? new mysqli($host, $username, $password, $dbName, $port)
             : mysqli_connect($host, $username, $password, $dbName, $port);
-        return ($wrappedObj instanceof mysqli) ? new MySQLiWrapped($wrappedObj, $this->apiKind) : null;
+        return ($wrappedObj instanceof mysqli) ? new MySQLiWrapped($wrappedObj, $this->isOOPApi) : null;
     }
 }

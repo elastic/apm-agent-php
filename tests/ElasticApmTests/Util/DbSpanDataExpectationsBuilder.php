@@ -23,10 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-/**
- * @extends DataExpectationsBuilder<SpanDataExpectations>
- */
-class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
+class DbSpanDataExpectationsBuilder extends SpanDataExpectationsBuilder
 {
     public const DEFAULT_SPAN_TYPE = 'db';
     public const DEFAULT_SPAN_ACTION = 'query';
@@ -55,13 +52,6 @@ class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
         return $result;
     }
 
-    protected function startNew(): SpanDataExpectations
-    {
-        $result = new SpanDataExpectations();
-        $this->copyFromPrototypeTo($result);
-        return $result;
-    }
-
     private static function buildNameFromStatement(string $statement): string
     {
         return $statement;
@@ -72,13 +62,6 @@ class DbSpanDataExpectationsBuilder extends DataExpectationsBuilder
         $result = $this->startNew();
         $result->name->setValue(self::buildNameFromStatement($statement));
         $result->context->db->statement->setValue($statement);
-        return $result;
-    }
-
-    public function fromName(string $name): SpanDataExpectations
-    {
-        $result = $this->startNew();
-        $result->name->setValue($name);
         return $result;
     }
 }

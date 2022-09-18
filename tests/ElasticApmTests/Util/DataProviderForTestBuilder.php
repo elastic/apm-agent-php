@@ -23,116 +23,327 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use PHPUnit\Framework\TestCase;
 
 final class DataProviderForTestBuilder
 {
     /** @var bool[] */
-    private $shouldCombineOnlyWithDefaultValuesForOthers = [];
+    private $onlyFirstValueCombinable = [];
 
-    /** @var bool[] */
-    private $isOneDimension = [];
+    /** @var array<callable(array<mixed, mixed>): iterable<array<mixed, mixed>>> */
+    private $generators = [];
 
-    /** @var array<array<array<string|int, mixed>>> */
-    private $generatorsConvertedToArrays = [];
+    /** @var bool */
+    private $shouldWrapResultIntoArray = false;
 
-    private function __construct()
+    private function assertValid(): void
     {
-    }
-
-    public static function startNew(): self
-    {
-        return new self();
+        TestCase::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
     }
 
     /**
-     * @param iterable<mixed> $generator
+     * @param bool $onlyFirstValueCombinable
+     * @param callable(array<mixed, mixed>): iterable<array<mixed, mixed>> $generator
      *
      * @return $this
      */
-    public function addDimensionCombineOnlyWithDefaultValuesForOthers(iterable $generator): self
+    public function addGenerator(bool $onlyFirstValueCombinable, callable $generator): self
     {
-        return $this->addDimension(/* shouldCombineOnlyWithDefaultValuesForOthers: */ true, $generator);
-    }
+        $this->assertValid();
 
-    /**
-     * @param iterable<mixed> $generator
-     *
-     * @return $this
-     */
-    public function addDimensionCombineWithAllValuesForOthers(iterable $generator): self
-    {
-        return $this->addDimension(/* shouldCombineOnlyWithDefaultValuesForOthers: */ false, $generator);
-    }
+        $this->onlyFirstValueCombinable[] = $onlyFirstValueCombinable;
+        TestCase::assertFalse(IterableUtilForTests::isEmpty($generator([])));
+        $this->generators[] = $generator;
 
-    /**
-     * @param bool            $shouldCombineOnlyWithDefaultValuesForOthers
-     * @param iterable<mixed> $generator
-     *
-     * @return $this
-     */
-    public function addDimension(
-        bool $shouldCombineOnlyWithDefaultValuesForOthers,
-        iterable $generator
-    ): self {
-        $this->shouldCombineOnlyWithDefaultValuesForOthers[] = $shouldCombineOnlyWithDefaultValuesForOthers;
-        $this->isOneDimension[] = true;
-        $this->generatorsConvertedToArrays[] = IterableUtilForTests::toArray($generator);
-
+        $this->assertValid();
         return $this;
     }
 
     /**
-     * @param bool            $shouldCombineOnlyWithDefaultValuesForOthers
-     * @param iterable<mixed> $generator
+     * @param callable(array<mixed, mixed> $resultSoFar): iterable<array<mixed, mixed>> $generator
      *
      * @return $this
      */
-    public function addMultipleDimensions(
-        bool $shouldCombineOnlyWithDefaultValuesForOthers,
-        iterable $generator
-    ): self {
-        $this->shouldCombineOnlyWithDefaultValuesForOthers[] = $shouldCombineOnlyWithDefaultValuesForOthers;
-        $this->isOneDimension[] = false;
-        $this->generatorsConvertedToArrays[] = IterableUtilForTests::toArray($generator);
+    public function addGeneratorOnlyFirstValueCombinable(callable $generator): self
+    {
+        return $this->addGenerator(/* onlyFirstValueCombinable: */ true, $generator);
+    }
+
+    /**
+     * @param callable(array<mixed, mixed>): iterable<array<mixed, mixed>> $generator
+     *
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addGeneratorAllValuesCombinable(callable $generator): self
+    {
+        return $this->addGenerator(/* onlyFirstValueCombinable: */ false, $generator);
+    }
+
+    /**
+     * @param bool                   $onlyFirstValueCombinable
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
+     */
+    public function addDimension(bool $onlyFirstValueCombinable, iterable $iterable): self
+    {
+        $this->addGenerator(
+            $onlyFirstValueCombinable,
+            /**
+             * @param array<mixed, mixed> $resultSoFar
+             * @return iterable<array<mixed, mixed>>
+             */
+            function (array $resultSoFar) use ($iterable): iterable {
+                $expectedKeyForList = 0;
+                foreach ($iterable as $key => $val) {
+                    yield array_merge($resultSoFar, ($key === $expectedKeyForList) ? [$val] : [$key => $val]);
+                    ++$expectedKeyForList;
+                }
+            }
+        );
         return $this;
     }
 
     /**
-     * @return array<mixed>
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
      */
-    private function buildDefaultGeneratedValues(): iterable
+    public function addDimensionOnlyFirstValueCombinable(iterable $iterable): self
     {
-        $generatedValues = [];
-        $i = 0;
-        foreach ($this->generatorsConvertedToArrays as $generatorConvertedToArray) {
-            TestCase::assertTrue($this->isOneDimension[$i]);
-            TestCase::assertNotCount(0, $generatorConvertedToArray);
-            $generatedValues[] = $generatorConvertedToArray[0];
-            ++$i;
+        return $this->addDimension(/* onlyFirstValueCombinable: */ true, $iterable);
+    }
+
+    /**
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
+     */
+    public function addDimensionAllValuesCombinable(iterable $iterable): self
+    {
+        return $this->addDimension(/* onlyFirstValueCombinable: */ false, $iterable);
+    }
+
+    /**
+     * @param string                 $dimensionKey
+     * @param bool                   $onlyFirstValueCombinable
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
+     */
+    public function addKeyedDimension(string $dimensionKey, bool $onlyFirstValueCombinable, iterable $iterable): self
+    {
+        $this->addGenerator(
+            $onlyFirstValueCombinable,
+            /**
+             * @param array<mixed, mixed> $resultSoFar
+             * @return iterable<array<mixed, mixed>>
+             */
+            function (array $resultSoFar) use ($dimensionKey, $iterable): iterable {
+                $expectedKeyForList = 0;
+                foreach ($iterable as $key => $val) {
+                    TestCase::assertSame($expectedKeyForList, $key);
+                    yield array_merge($resultSoFar, [$dimensionKey => $val]);
+                    ++$expectedKeyForList;
+                }
+            }
+        );
+        return $this;
+    }
+
+    /**
+     * @param string                 $dimensionKey
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
+     */
+    public function addKeyedDimensionOnlyFirstValueCombinable(string $dimensionKey, iterable $iterable): self
+    {
+        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true, $iterable);
+    }
+
+    /**
+     * @param string                      $dimensionKey
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addKeyedDimensionAllValuesCombinable(string $dimensionKey, iterable $iterable): self
+    {
+        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false, $iterable);
+    }
+
+    /**
+     * @param bool $onlyFirstValueCombinable
+     *
+     * @return $this
+     */
+    public function addBoolDimension(bool $onlyFirstValueCombinable): self
+    {
+        $this->addDimension($onlyFirstValueCombinable, IterableUtilForTests::ALL_BOOL_VALUES);
+        return $this;
+    }
+
+    /** @noinspection PhpUnused */
+    public function addBoolDimensionOnlyFirstValueCombinable(): self
+    {
+        return $this->addBoolDimension(/* onlyFirstValueCombinable: */ true);
+    }
+
+    /** @noinspection PhpUnused */
+    public function addBoolDimensionAllValuesCombinable(): self
+    {
+        return $this->addBoolDimension(/* onlyFirstValueCombinable: */ false);
+    }
+
+    /**
+     * @param string $dimensionKey
+     * @param bool   $onlyFirstValueCombinable
+     *
+     * @return $this
+     */
+    public function addBoolKeyedDimension(string $dimensionKey, bool $onlyFirstValueCombinable): self
+    {
+        $this->addKeyedDimension($dimensionKey, $onlyFirstValueCombinable, IterableUtilForTests::ALL_BOOL_VALUES);
+        return $this;
+    }
+
+    /**
+     * @param string $dimensionKey
+     *
+     * @return $this
+     */
+    public function addBoolKeyedDimensionOnlyFirstValueCombinable(string $dimensionKey): self
+    {
+        return $this->addBoolKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true);
+    }
+
+    /**
+     * @param string $dimensionKey
+     *
+     * @return $this
+     */
+    public function addBoolKeyedDimensionAllValuesCombinable(string $dimensionKey): self
+    {
+        return $this->addBoolKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false);
+    }
+
+    /**
+     * @param iterable<mixed> $iterable
+     *
+     * @return mixed
+     */
+    private static function getIterableFirstValue(iterable $iterable)
+    {
+        TestCase::assertTrue(IterableUtilForTests::getFirstValue($iterable, /* out */ $value));
+        return $value;
+    }
+
+    /**
+     * @param int                 $genIndexForAllValues
+     * @param array<mixed, mixed> $resultSoFar
+     * @param int                 $currentGenIndex
+     *
+     * @return iterable<array<mixed, mixed>>
+     */
+    private function buildImpl(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex): iterable
+    {
+        TestCase::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
+        if ($currentGenIndex === count($this->generators)) {
+            yield $this->shouldWrapResultIntoArray ? [$resultSoFar] : $resultSoFar;
+            return;
         }
-        return $generatedValues;
+
+        $iterable = $this->generators[$currentGenIndex]($resultSoFar);
+        $shouldGenAfterFirst
+            = ($currentGenIndex === $genIndexForAllValues) || (!$this->onlyFirstValueCombinable[$currentGenIndex]);
+        $resultsToGen = $shouldGenAfterFirst ? $iterable : [self::getIterableFirstValue($iterable)];
+        $shouldGenFirst = ($genIndexForAllValues === 0) || ($currentGenIndex !== $genIndexForAllValues);
+        $resultsToGen = $shouldGenFirst ? $resultsToGen : IterableUtilForTests::skipFirst($resultsToGen);
+
+        foreach ($resultsToGen as $resultSoFarPlusCurrent) {
+            /** @var array<mixed, mixed> $resultSoFarPlusCurrent */
+            yield from $this->buildImpl($genIndexForAllValues, $resultSoFarPlusCurrent, $currentGenIndex + 1);
+        }
     }
 
     /**
-     * @param array<mixed> $generatedValues
+     * @param array<mixed, iterable<mixed>> $iterables
      *
-     * @return array<string|int, mixed>
+     * @return callable(array<mixed, mixed> $resultSoFar): iterable<array<mixed, mixed>> $generator
      */
-    private static function convertGeneratedValues(array $generatedValues): array
+    public static function cartesianProductGenerator(array $iterables): callable
     {
-        return $generatedValues;
+        /**
+         * @param array<string|int, mixed> $resultSoFar
+         *
+         * @return iterable<array<string|int, mixed>>
+         */
+        return function (array $resultSoFar) use ($iterables): iterable {
+            $cartesianProduct = CombinatorialUtilForTests::cartesianProduct($iterables);
+            foreach ($cartesianProduct as $cartesianProductRow) {
+                yield array_merge($resultSoFar, $cartesianProductRow);
+            }
+        };
     }
 
     /**
-     * @return iterable<array<string|int, mixed>>
+     * @param array<mixed, iterable<mixed>> $iterables
+     *
+     * @return $this
+     */
+    public function addCartesianProduct(bool $onlyFirstValueCombinable, array $iterables): self
+    {
+        return $this->addGenerator($onlyFirstValueCombinable, self::cartesianProductGenerator($iterables));
+    }
+
+    /**
+     * @param array<mixed, iterable<mixed>> $iterables
+     *
+     * @return $this
+     */
+    public function addCartesianProductOnlyFirstValueCombinable(array $iterables): self
+    {
+        return $this->addCartesianProduct(/* onlyFirstValueCombinable: */ true, $iterables);
+    }
+
+    /**
+     * @param array<mixed, iterable<mixed>> $iterables
+     *
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addCartesianProductAllValuesCombinable(array $iterables): self
+    {
+        return $this->addCartesianProduct(/* onlyFirstValueCombinable: */ false, $iterables);
+    }
+
+    public function wrapResultIntoArray(): self
+    {
+        $this->assertValid();
+        $this->shouldWrapResultIntoArray = true;
+        return $this;
+    }
+
+    /**
+     * @return iterable<array<mixed, mixed>>
      */
     public function build(): iterable
     {
-        $generatedValues = $this->buildDefaultGeneratedValues();
-        foreach ($this->shouldCombineOnlyWithDefaultValuesForOthers as $shouldCombineOnlyWithDefaultValuesForOthers) {
-            TestCase::assertTrue($shouldCombineOnlyWithDefaultValuesForOthers);
+        $this->assertValid();
+        TestCase::assertNotCount(0, $this->generators);
+
+        for ($genIndexForAllValues = 0; $genIndexForAllValues < count($this->generators); ++$genIndexForAllValues) {
+            if ($genIndexForAllValues !== 0 && !$this->onlyFirstValueCombinable[$genIndexForAllValues]) {
+                continue;
+            }
+            yield from $this->buildImpl($genIndexForAllValues, /* resultSoFar: */ [], 0 /* currentGenIndex */);
         }
-        return self::convertGeneratedValues($generatedValues);
     }
 }

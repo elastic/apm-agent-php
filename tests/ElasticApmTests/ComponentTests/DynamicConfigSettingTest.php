@@ -24,10 +24,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
@@ -115,9 +113,7 @@ final class DynamicConfigSettingTest extends ComponentTestCaseBase
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::getValue();
-        TestCase::assertInstanceOf(Tracer::class, $tracer);
-        /** @var Tracer $tracer */
+        $tracer = self::getTracerFromAppCode();
 
         $optActualVal = $tracer->getConfig()->parsedValueFor($optName);
 
