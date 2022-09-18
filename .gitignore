@@ -39,3 +39,6 @@ build/
 
 # Backup files when using sed
 .bck
+
+# For local development
+/z_local*
