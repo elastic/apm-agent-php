@@ -112,6 +112,17 @@ final class MySQLiTest extends ComponentTestCaseBase
         self::assertNotNull(AmbientContextForTests::testConfig()->mysqlUser);
         self::assertNotNull(AmbientContextForTests::testConfig()->mysqlPassword);
         self::assertNotNull(AmbientContextForTests::testConfig()->mysqlDb);
+
+        $mySQLiApiFacade = new ApiFacade(/* isOOPApi */ true);
+        $mySQLi = $mySQLiApiFacade->connect(
+            AmbientContextForTests::testConfig()->mysqlHost,
+            AmbientContextForTests::testConfig()->mysqlPort,
+            AmbientContextForTests::testConfig()->mysqlUser,
+            AmbientContextForTests::testConfig()->mysqlPassword,
+            AmbientContextForTests::testConfig()->mysqlDb
+        );
+        self::assertNotNull($mySQLi);
+        self::assertTrue($mySQLi->ping());
     }
 
     public function testIsAutoInstrumentationEnabled(): void

@@ -115,7 +115,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         try {
             $this->runHttpServer();
         } catch (Exception $ex) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
         }
     }
