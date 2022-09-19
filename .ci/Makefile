@@ -118,7 +118,7 @@ endif
 #
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
-	@gh \
+	gh \
 		release \
 		create \
 		"$(TAG_NAME)" \
