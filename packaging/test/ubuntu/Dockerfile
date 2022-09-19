@@ -4,8 +4,6 @@ FROM php:${PHP_VERSION}-fpm
 RUN echo "php -v: $(php -v)"
 RUN echo "php -m: $(php -m)"
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
-
 RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install \
         dpkg-sig \
@@ -28,6 +26,8 @@ RUN docker-php-ext-install \
 
 RUN echo "php -v: $(php -v)"
 RUN echo "php -m: $(php -m)"
+
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 ENV TYPE=deb
 ENV VERSION=
