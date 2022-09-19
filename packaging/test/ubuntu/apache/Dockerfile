@@ -22,9 +22,13 @@ RUN apt-get -qq -y --no-install-recommends install software-properties-common \
         php${PHP_VERSION}-curl \
         php${PHP_VERSION}-mbstring \
         php${PHP_VERSION}-mysql \
+        php${PHP_VERSION}-mysqli \
         php${PHP_VERSION}-sqlite \
         php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*
+
+RUN echo "php -v: $(php -v)"
+RUN echo "php -m: $(php -m)"
 
 ## Enable the new installed PHP version.
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \

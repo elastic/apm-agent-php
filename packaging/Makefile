@@ -7,7 +7,6 @@ PHP_VERSION?=7.2
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
-COMPONENT_TEST_SCRIPT?=run_component_tests
 export FPM_FLAGS=
 
 .PHONY: help
@@ -34,7 +33,6 @@ create-%: prepare  ## Create the specific package
 		-v $(PWD):/app \
 		-e TYPE=$* \
 		-e NAME=$(NAME) \
-		-e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" \
 		-e VERSION=$(VERSION) \
 		-e OUTPUT=$(OUTPUT) \
 		-e FPM_FLAGS=${FPM_FLAGS} \
@@ -128,46 +126,46 @@ prepare-rpm:  ## Build the docker image for the rpm smoke tests
 
 .PHONY: apk-install
 apk-install: prepare-apk  ## Install the apk installer to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-apk
+	$(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
 
 .PHONY: deb-install
 deb-install: prepare-deb  ## Install the deb installer to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
 
 .PHONY: tar-install
 tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-tar
+	TYPE=tar $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
 
 .PHONY: rpm-install
 rpm-install: prepare-rpm  ## Install the rpm installer to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	TYPE=rpm $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: deb-install-in-apache
 deb-install-in-apache: prepare-deb-apache  ## Install the deb installer to run some smoke tests in apache
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb-apache
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-apache
 
 .PHONY: deb-install-in-fpm
 deb-install-in-fpm: prepare-deb-fpm  ## Install the deb installer to run some smoke tests in fpm
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb-fpm
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-fpm
 
 .PHONY: install
 install: apk-install deb-install rpm-install tar-install  ## Install all the distributions
 
 .PHONY: apk-install-release-github
 apk-install-release-github: prepare-apk  ## Install the apk installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-apk
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
 
 .PHONY: deb-install-release-github
 deb-install-release-github: prepare-deb  ## Install the deb installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
 
 .PHONY: rpm-install-release-github
 rpm-install-release-github: prepare-rpm  ## Install the rpm installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=release-github -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: tar-install-release-github
 tar-install-release-github: prepare-tar  ## Install the tar installer from a given release to run some smoke tests
-	@docker run --rm -v $(PWD):/src -w /src -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e VERSION=$(RELEASE_VERSION) -e TYPE=release-tar-github -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-tar
+	GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) VERSION=$(RELEASE_VERSION) TYPE=release-tar-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
 
 .PHONY: install-release-github
 install-release-github: apk-install-release-github deb-install-release-github rpm-install-release-github tar-install-release-github  ## Install all the distributions for a given release using the downloaded binaries
@@ -177,45 +175,45 @@ lifecycle-testing: apk-lifecycle-testing deb-lifecycle-testing rpm-lifecycle-tes
 
 .PHONY: apk-lifecycle-testing
 apk-lifecycle-testing: prepare-apk  ## Lifecycle testing for the apk installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=apk-uninstall -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-apk
+	TYPE=apk-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
 
 .PHONY: deb-lifecycle-testing
 deb-lifecycle-testing: prepare-deb  ## Lifecycle testing for the deb installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
 
 .PHONY: deb-lifecycle-testing-in-apache
 deb-lifecycle-testing-in-apache: prepare-deb-apache  ## Lifecycle testing for the deb installer with apache
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb-apache
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-apache
 
 .PHONY: deb-lifecycle-testing-in-fpm
 deb-lifecycle-testing-in-fpm: prepare-deb-fpm  ## Lifecycle testing for the deb installer with fpm
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=deb-uninstall -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb-fpm
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-fpm
 
 .PHONY: rpm-lifecycle-testing
 rpm-lifecycle-testing: prepare-rpm  ## Lifecycle testing for the rpm installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=rpm-uninstall -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	TYPE=rpm-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: tar-lifecycle-testing
 tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=tar-uninstall -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-tar
+	TYPE=tar-uninstall $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
 
 .PHONY: rpm-php-upgrade-testing
 rpm-php-upgrade-testing: PHP_VERSION="7.2"  ### Force the PHP version to start with.
 rpm-php-upgrade-testing: prepare-rpm  ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
-	@docker run --rm -v $(PWD):/src -w /src -e TYPE=php-upgrade -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	TYPE=php-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: rpm-agent-upgrade-testing
 rpm-agent-upgrade-testing: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: deb-agent-upgrade-testing
 deb-agent-upgrade-testing: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
 
 .PHONY: rpm-agent-upgrade-testing-local
 rpm-agent-upgrade-testing-local: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
 
 .PHONY: deb-agent-upgrade-testing-local
 deb-agent-upgrade-testing-local: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
-	@docker run --rm -v $(PWD):/src -w /src -e VERSION=$(RELEASE_VERSION) -e GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) -e TYPE=agent-upgrade-local -e PACKAGE=$(NAME) -e COMPONENT_TEST_SCRIPT="$(COMPONENT_TEST_SCRIPT)" prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb

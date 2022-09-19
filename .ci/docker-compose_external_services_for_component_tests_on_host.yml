@@ -1,0 +1,6 @@
+version: '2.1'
+
+services:
+    elastic-apm-php-component-tests-mysql:
+        ports:
+            - "${ELASTIC_APM_PHP_TESTS_MYSQL_HOST}:${ELASTIC_APM_PHP_TESTS_MYSQL_PORT}:3306"
