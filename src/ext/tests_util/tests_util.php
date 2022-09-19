@@ -70,3 +70,11 @@ function elasticApmIsOsWindows(): bool
 {
     return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 }
+
+elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_STDERR')", getenv('ELASTIC_APM_LOG_LEVEL_STDERR'), 'CRITICAL');
+/** @noinspection PhpUndefinedFunctionInspection, PhpUndefinedConstantInspection */
+elasticApmAssertSame(
+    "elastic_apm_get_config_option_by_name('log_level_stderr')",
+    elastic_apm_get_config_option_by_name('log_level_stderr'),
+    ELASTIC_APM_LOG_LEVEL_CRITICAL
+);
