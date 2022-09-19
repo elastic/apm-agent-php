@@ -6,11 +6,19 @@ set -e
 # - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
 supportedPhpVersions=(7.2 7.3 7.4 8.0 8.1)
 
+function echoWithSuffixVariantsFromTestGroup () {
+    rowSoFar="$1"
+    for testGroup in no_ext_svc with_ext_svc
+    do
+        echo "${rowSoFar},${testGroup}"
+    done
+}
+
 function echoWithSuffixVariantsFromComponentTestsAppHostKind () {
     rowSoFar="$1"
     for componentTestsAppHostKind in http cli
     do
-        echo "${rowSoFar},${componentTestsAppHostKind}"
+        echoWithSuffixVariantsFromTestGroup "${rowSoFar},${componentTestsAppHostKind}"
     done
 }
 
@@ -36,7 +44,7 @@ do
     for appServer in apache fpm
     do
         testingType=lifecycle-${appServer}
-        echo "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKind}"
+        echoWithSuffixVariantsFromTestGroup "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKind}"
     done
 done
 

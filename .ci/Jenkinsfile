@@ -508,10 +508,11 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
       testingArgs['shouldUseSignedBinaries'] = args.shouldUseSignedBinaries
       def parsedTestMatrixRow = args.testMatrixRow.split(',')
       testingArgs['phpVersion'] = parsedTestMatrixRow[0]
-      testingArgs['linuxDistro'] = parsedTestMatrixRow[1]
+      testingArgs['linuxPackageType'] = parsedTestMatrixRow[1]
       def testingType = parsedTestMatrixRow[2]
       testingArgs['testingType'] = testingType
       testingArgs['componentTestsAppHostKind'] = parsedTestMatrixRow[3]
+      testingArgs['componentTestsGroup'] = convertComponentTestsGroupShortNameToLong(parsedTestMatrixRow[4])
       if (testingType.equals('lifecycle')) {
         lifecycleTesting(testingArgs)
       }
@@ -531,10 +532,29 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
   }
 }
 
+def convertComponentTestsGroupShortNameToLong(String shortName) {
+  switch (shortName) {
+    case "no_ext_svc":
+      return "does_not_require_external_services"
+      break
+    case "with_ext_svc":
+      return "requires_external_services"
+      break
+    default:
+      error("Unknown short tests group name: `${shortName}'")
+  }
+}
+
 def runTestingCommand(def args = [:]) {
   try {
     args['context'] = buildWorkspaceContext(args)
-    withEnv(["PHP_VERSION=${args.phpVersion}", "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"]) {
+    withEnv(
+      [
+        "PHP_VERSION=${args.phpVersion}"
+        , "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"
+        , "ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP=${args.componentTestsGroup}"
+      ]
+    ) {
       packageWorkspace(args) {
         sh(script: args.testingCommand, label: buildLabel(args))
       }
@@ -545,23 +565,24 @@ def runTestingCommand(def args = [:]) {
 }
 
 def buildWorkspaceContext(def args = [:]) {
-  return "${args.testingType}-${args.linuxDistro}-PHP-${args.phpVersion}-${args.componentTestsAppHostKind}"
+  return "${args.testingType}-${args.linuxPackageType}-PHP-${args.phpVersion}-${args.componentTestsAppHostKind}"
   + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
 }
 
 def buildLabel(def args = [:]) {
   return "${args.testingType} testing for"
-  + " Linux: ${args.linuxDistro}"
+  + " Linux: ${args.linuxPackageType}"
   + ", PHP: ${args.phpVersion}"
   + ", componentTestsAppHostKind: ${args.componentTestsAppHostKind}"
+  + ", testGroup: ${args.testGroup}"
   + ", shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
 }
 
 def lifecycleTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxDistro}",
-      testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing"
+      prepareGoal: "prepare-${args.linuxPackageType}",
+      testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing"
     ]
   )
 }
@@ -569,8 +590,8 @@ def lifecycleTesting(def args = [:]) {
 def lifecycleTestingOnProdServerKind(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxDistro}-${args.prodServerKind}",
-      testingCommand: "make -C packaging ${args.linuxDistro}-lifecycle-testing-in-${args.prodServerKind}",
+      prepareGoal: "prepare-${args.linuxPackageType}-${args.prodServerKind}",
+      testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing-in-${args.prodServerKind}",
     ]
   )
 }
@@ -578,8 +599,8 @@ def lifecycleTestingOnProdServerKind(def args = [:]) {
 def phpUpgradeTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxDistro}",
-      testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxDistro}-php-upgrade-testing"
+      prepareGoal: "prepare-${args.linuxPackageType}",
+      testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxPackageType}-php-upgrade-testing"
     ]
   )
 }
@@ -593,7 +614,7 @@ def agentUpgradeTesting(def args = [:]) {
       } else {
           unstash 'package'
       }
-      sh(script: "make -C packaging ${args.linuxDistro}-agent-upgrade-testing-local", label: buildLabel(args + [prefix: 'Agent upgrade testing']))
+      sh(script: "make -C packaging ${args.linuxPackageType}-agent-upgrade-testing-local", label: buildLabel(args + [prefix: 'Agent upgrade testing']))
     }
   }
 }
