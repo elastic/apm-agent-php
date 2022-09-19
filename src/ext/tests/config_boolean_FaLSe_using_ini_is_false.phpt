@@ -2,8 +2,9 @@
 Boolean configuration option value 'FaLSe' (in this case using ini file) should be interpreted as false and it should be case insensitive
 --SKIPIF--
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
+--ENV--
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
 elastic_apm.enabled=FaLSe
 --FILE--
 <?php

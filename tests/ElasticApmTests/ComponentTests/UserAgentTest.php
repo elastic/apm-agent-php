@@ -32,6 +32,9 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class UserAgentTest extends ComponentTestCaseBase
 {
     private const AGENT_REPO_NAME_AND_VERSION = EventSender::AGENT_GITHUB_REPO_NAME . '/' . ElasticApm::VERSION;
