@@ -44,27 +44,7 @@ validate_if_agent_is_enabled() {
 }
 
 validate_installation() {
-    # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
-    export ELASTIC_APM_ENABLED=false
-
-    echo 'PHP version:'
-    php -v
-    echo 'Installed PHP extensions:'
-    php -m
-    echo 'Set environment variables:'
-    set | grep ELASTIC || true
-
-    ## Validate the installation works as expected with composer
-    composer install
-    syslogd
-    ## This env variable can be overriden
-    ## COMPONENT_TEST_SCRIPT is not wrapped in quotes on purpose because it might contained multiple space separated strings
-    COMPONENT_TEST_SCRIPT=${COMPONENT_TEST_SCRIPT:-run_component_tests}
-    if ! composer run-script ${COMPONENT_TEST_SCRIPT} ; then
-        echo 'Something bad happened when running the tests, see the output from the syslog'
-        cat /var/log/messages
-        exit 1
-    fi
+    .ci/run_component_tests_in_docker.sh || exit $?
 }
 
 ##############
