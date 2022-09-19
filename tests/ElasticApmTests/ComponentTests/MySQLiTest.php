@@ -59,6 +59,7 @@ final class MySQLiTest extends ComponentTestCaseBase
             $portAsInt
         );
         self::assertNotFalse($mySQLi);
+        self::assertNotNull($mySQLi);
         self::assertTrue($mySQLi->ping());
     }
 }
