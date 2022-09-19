@@ -61,7 +61,11 @@ function parse_command_line_arguments () {
                     retry_on_error="${arg#*=}"
                     ;;
             '--')
-                    is_inside_command_to_run=yes
+                    if [ "${is_inside_command_to_run}" = "no" ]; then
+                        is_inside_command_to_run=yes
+                    else
+                        command_to_run+=("${arg}")
+                    fi
                     ;;
             '--help')
                     print_command_line_help
