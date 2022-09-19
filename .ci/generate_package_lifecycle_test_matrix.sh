@@ -6,45 +6,47 @@ set -e
 # - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
 supportedPhpVersions=(7.2 7.3 7.4 8.0 8.1)
 
+function echoWithSuffixVariantsFromComponentTestsAppHostKind () {
+    rowSoFar="$1"
+    for componentTestsAppHostKind in http cli
+    do
+        echo "${rowSoFar},${componentTestsAppHostKind}"
+    done
+}
+
 #
 # Lifecycle tests
 #
 testingType=lifecycle
 for phpVersion in "${supportedPhpVersions[@]}"
 do
-    for linuxDistro in apk deb rpm tar
+    for linuxPackageType in apk deb rpm tar
     do
-        for componentTestsAppHostKind in http cli
-        do
-            echo ${phpVersion},${linuxDistro},${testingType},${componentTestsAppHostKind}
-        done
+        echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
     done
 done
 
 #
 # Lifecycle tests for <app_server> (only for deb linuxDistro and http componentTestsAppHostKind)
 #
-linuxDistro=deb
+linuxPackageType=deb
 componentTestsAppHostKind=http
 for phpVersion in "${supportedPhpVersions[@]}"
 do
     for appServer in apache fpm
     do
         testingType=lifecycle-${appServer}
-        echo ${phpVersion},${linuxDistro},${testingType},${componentTestsAppHostKind}
+        echo "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKind}"
     done
 done
 
 #
 # PHP upgrade tests (only for rpm Linux distro)
 #
-testingType=php-upgrade
 phpVersion=7.2
-linuxDistro=rpm
-for componentTestsAppHostKind in http cli
-do
-    echo ${phpVersion},${linuxDistro},${testingType},${componentTestsAppHostKind}
-done
+linuxPackageType=rpm
+testingType=php-upgrade
+echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
 
 #
 # Agent upgrade tests
@@ -52,11 +54,8 @@ done
 testingType=agent-upgrade
 for phpVersion in 7.4 8.1
 do
-    for linuxDistro in deb rpm
+    for linuxPackageType in deb rpm
     do
-        for componentTestsAppHostKind in http cli
-        do
-            echo ${phpVersion},${linuxDistro},${testingType},${componentTestsAppHostKind}
-        done
+        echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
     done
 done
