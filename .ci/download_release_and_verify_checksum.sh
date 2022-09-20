@@ -14,7 +14,11 @@ echo "Downloading artifacts for tag \'${release_tag}\' to \'${downloaded_package
 mkdir -p "${downloaded_packages_location}"
 pushd "${downloaded_packages_location}"
 
-"${this_script_dir}/run_command_with_timeout_and_retries.sh" --timeout=10 --max-tries=3 --wait-time-before-retry=10 --retry-on-error=yes -- gh release download "${release_tag}"
+run_command_with_timeout_and_retries_args=(--retry-on-error=yes)
+run_command_with_timeout_and_retries_args=(--max-tries=3 "${run_command_with_timeout_and_retries_args[@]}")
+run_command_with_timeout_and_retries_args=(--wait-time-before-retry=60 "${run_command_with_timeout_and_retries_args[@]}")
+run_command_with_timeout_and_retries_args=(--increase-wait-time-before-retry-exponentially=yes "${run_command_with_timeout_and_retries_args[@]}")
+"${this_script_dir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- gh release download "${release_tag}"
 
 ls -l .
 echo 'Verifying that downloaded artifacts pass the downloaded checksums...'
