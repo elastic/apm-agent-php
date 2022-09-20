@@ -566,7 +566,7 @@ def runTestingCommand(def args = [:]) {
       [
         "PHP_VERSION=${args.phpVersion}"
         , "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"
-        , "ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP=${args.componentTestsGroup}"
+        , "ELASTIC_APM_PHP_TESTS_GROUP=${args.componentTestsGroup}"
       ]
     ) {
       packageWorkspace(args) {
