@@ -99,7 +99,7 @@ function main () {
         echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) ..."
         set +e
         # shellcheck disable=SC2086
-        timeout "${timeout}" "${command_to_run[@]}"
+        timeout --foreground "${timeout}" "${command_to_run[@]}"
         exit_code=$?
         set -e
         if [ "${exit_code}" -eq "0" ]; then
