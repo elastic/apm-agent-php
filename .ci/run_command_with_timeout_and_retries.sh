@@ -5,30 +5,41 @@ set -e
 # run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --wait-time-before-retry=<number of seconds> --retry-on-error=<yes|no> -- <command_to_run>
 #
 
-timeout_default=10
+timeout_default=0
 timeout=${timeout_default}
-max_tries_default=3
+increase_timeout_exponentially_default=no
+increase_timeout_exponentially=${increase_timeout_exponentially_default}
+max_tries_default=1
 max_tries=${max_tries_default}
-wait_time_before_retry_default=10
+wait_time_before_retry_default=0
 wait_time_before_retry=${wait_time_before_retry_default}
-retry_on_error_default=yes
+increase_wait_time_before_retry_exponentially_default=no
+increase_wait_time_before_retry_exponentially=${increase_wait_time_before_retry_exponentially_default}
+retry_on_error_default=no
 retry_on_error=${retry_on_error_default}
 command_to_run=()
 
 function print_command_line_help () {
-    defaults="Default values:"
-    new_line_indent="\n\t"
+    local defaults="Default values:"
+    local new_line_indent="\n\t"
+    local script_name
     script_name="$( basename "${BASH_SOURCE[0]}" )"
-    cli_format="Command line format:${new_line_indent}${script_name}"
+    local cli_format="Command line format:${new_line_indent}${script_name}"
 
     cli_format="${cli_format} [--timeout=<number of seconds>]"
     defaults="${defaults}${new_line_indent}timeout: ${timeout_default} (i.e., ${timeout_default} seconds)"
+
+    cli_format="${cli_format} [--increase-timeout-exponentially=<yes|no>]"
+    defaults="${defaults}${new_line_indent}increase-timeout-exponentially: ${increase_timeout_exponentially_default}"
 
     cli_format="${cli_format} [--max-tries=<number>]"
     defaults="${defaults}${new_line_indent}max-tries: ${max_tries_default}"
 
     cli_format="${cli_format} [--wait-time-before-retry=<number of seconds>]"
     defaults="${defaults}${new_line_indent}wait-time-before-retry: ${wait_time_before_retry_default} (i.e., ${wait_time_before_retry_default} seconds)"
+
+    cli_format="${cli_format} [--increase-wait-time-before-retry-exponentially=<yes|no>]"
+    defaults="${defaults}${new_line_indent}increase-wait-time-before-retry-exponentially: ${increase_wait_time_before_retry_exponentially_default}"
 
     cli_format="${cli_format} [--retry-on-error=<yes|no>]"
     defaults="${defaults}${new_line_indent}retry-on-error: ${retry_on_error_default}"
@@ -43,19 +54,25 @@ function print_command_line_help () {
 }
 
 function parse_command_line_arguments () {
-    all_args="$*"
-    is_inside_command_to_run=no
+    local all_args="$*"
+    local is_inside_command_to_run=no
     for arg in "$@"; do
         shift
         case "${arg}" in
             --timeout=*)
                     timeout="${arg#*=}"
                     ;;
+            --increase-timeout-exponentially=*)
+                    increase_timeout_exponentially="${arg#*=}"
+                    ;;
             --max-tries=*)
                     max_tries="${arg#*=}"
                     ;;
             --wait-time-before-retry=*)
                     wait_time_before_retry="${arg#*=}"
+                    ;;
+            --increase-wait-time-before-retry-exponentially=*)
+                    increase_wait_time_before_retry_exponentially="${arg#*=}"
                     ;;
             --retry-on-error=*)
                     retry_on_error="${arg#*=}"
@@ -84,8 +101,10 @@ function parse_command_line_arguments () {
     done
 
     echo "timeout: ${timeout}"
+    echo "increase_timeout_exponentially: ${increase_timeout_exponentially}"
     echo "max_tries: ${max_tries}"
     echo "wait_time_before_retry: ${wait_time_before_retry}"
+    echo "increase_wait_time_before_retry_exponentially: ${increase_wait_time_before_retry_exponentially}"
     echo "retry_on_error: ${retry_on_error}"
     echo "command_to_run: \`${command_to_run[*]}'"
 }
@@ -93,13 +112,31 @@ function parse_command_line_arguments () {
 function main () {
     parse_command_line_arguments "$@"
 
-    try_count=0
+    local try_count=0
+    local current_timeout="${timeout}"
+    local current_wait_time_before_retry="${wait_time_before_retry}"
     while [[ ${try_count} -lt ${max_tries} ]]; do
         ((++try_count))
-        echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) ..."
+
+        if [ "${increase_timeout_exponentially}" = "yes" ] && [ "${try_count}" -ne "1" ]; then
+            current_timeout=$((current_timeout * 2))
+        fi
+
+        if [ "${wait_time_before_retry}" -ne "0" ] && [ "${try_count}" -ne "1" ]; then
+            if [ "${increase_wait_time_before_retry_exponentially}" = "yes" ] && [ "${try_count}" -gt "2" ]; then
+                current_wait_time_before_retry=$((current_wait_time_before_retry * 2))
+            fi
+            echo "Sleeping ${current_wait_time_before_retry} seconds before next try ..."
+            sleep "${current_wait_time_before_retry}"
+        fi
+
+        echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout}) ..."
         set +e
-        # shellcheck disable=SC2086
-        timeout --foreground "${timeout}" "${command_to_run[@]}"
+        if [ "${current_timeout}" -eq "0" ]; then
+            "${command_to_run[@]}"
+        else
+            timeout --foreground "${current_timeout}" "${command_to_run[@]}"
+        fi
         exit_code=$?
         set -e
         if [ "${exit_code}" -eq "0" ]; then
@@ -109,16 +146,19 @@ function main () {
 
         # timeout returns 124 when the time limit is reached
         if [ "${exit_code}" -eq "124" ]; then
-            echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) timed out"
+            echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout}) timed out"
             continue
         fi
 
-        echo "\`${command_to_run[*]}' (try ${try_count} out of max ${max_tries}) exited with an error code ${exit_code}"
+        echo "\`${command_to_run[*]}' (try ${try_count} out of max ${max_tries}, current timeout: ${current_timeout}) exited with an error code ${exit_code}"
         if [ "${retry_on_error}" = "yes" ]; then
             continue
         fi
-        exit "${exit_code}"
+
+        break
     done
+
+    exit "${exit_code}"
 }
 
 main "$@"

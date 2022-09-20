@@ -39,20 +39,24 @@ function printInfoAboutEnvironment () {
 }
 
 function runComponentTests () {
-    composerRunScriptArgs=${COMPONENT_TEST_SCRIPT}
+    local composerRunScriptArgs=${COMPONENT_TEST_SCRIPT}
 
     if [ "${COMPONENT_TEST_SCRIPT}" != "run_component_tests" ] && [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ]; then
         composerRunScriptArgs="${composerRunScriptArgs} --group ${ELASTIC_APM_PHP_TESTS_GROUP}"
     fi
+    local composerCommand="composer run-script -- ${composerRunScriptArgs}"
 
-    timeoutInMinutes=60
-    timeoutInSeconds=$((timeoutInMinutes*60))
-    composerCommand="composer run-script -- ${composerRunScriptArgs}"
+    local initialTimeoutInMinutes=15
+    local initialTimeoutInSeconds=$((initialTimeoutInMinutes*60))
+    local run_command_with_timeout_and_retries_args=(--retry-on-error=no)
+    run_command_with_timeout_and_retries_args=(--timeout="${initialTimeoutInSeconds}" "${run_command_with_timeout_and_retries_args[@]}")
+    run_command_with_timeout_and_retries_args=(--max-tries=3 "${run_command_with_timeout_and_retries_args[@]}")
+    run_command_with_timeout_and_retries_args=(--increase-timeout-exponentially=yes "${run_command_with_timeout_and_retries_args[@]}")
+
     set +e
-    # composerCommand is not wrapped in quotes on purpose because it might contained multiple space separated strings
-    # shellcheck disable=SC2086
-    .ci/run_command_with_timeout_and_retries.sh --timeout=${timeoutInSeconds} --retry-on-error=no -- ${composerCommand}
-    composerCommandExitCode=$?
+    # shellcheck disable=SC2086 # composerCommand is not wrapped in quotes on purpose because it might contained multiple space separated strings
+    .ci/run_command_with_timeout_and_retries.sh "${run_command_with_timeout_and_retries_args[@]}" -- ${composerCommand}
+    local composerCommandExitCode=$?
     set -e
 
     if [ ${composerCommandExitCode} -ne 0 ]; then
