@@ -135,7 +135,7 @@ function main () {
         if [ "${current_timeout}" -eq "0" ]; then
             "${command_to_run[@]}"
         else
-            timeout --foreground "${current_timeout}" "${command_to_run[@]}"
+            timeout "${current_timeout}" "${command_to_run[@]}"
         fi
         exit_code=$?
         set -e
