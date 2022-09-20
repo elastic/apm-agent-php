@@ -41,8 +41,8 @@ function printInfoAboutEnvironment () {
 function runComponentTests () {
     composerRunScriptArgs=${COMPONENT_TEST_SCRIPT}
 
-    if [ "${COMPONENT_TEST_SCRIPT}" != "run_component_tests" ] && [ -n "${ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP}" ]; then
-        composerRunScriptArgs="${composerRunScriptArgs} --group ${ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP}"
+    if [ "${COMPONENT_TEST_SCRIPT}" != "run_component_tests" ] && [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ]; then
+        composerRunScriptArgs="${composerRunScriptArgs} --group ${ELASTIC_APM_PHP_TESTS_GROUP}"
     fi
 
     timeoutInMinutes=60
