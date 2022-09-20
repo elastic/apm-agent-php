@@ -43,12 +43,12 @@ function buildDockerEnvVarsCommandLinePart () {
 }
 
 function doesTestsGroupNeedExternalServices () {
-    if [ -z "${ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP}" ] ; then
+    if [ -z "${ELASTIC_APM_PHP_TESTS_GROUP}" ] ; then
         echo "true"
         return
     fi
 
-    case "${ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP}" in
+    case "${ELASTIC_APM_PHP_TESTS_GROUP}" in
         'does_not_require_external_services')
                 echo "false"
                 return
@@ -58,7 +58,7 @@ function doesTestsGroupNeedExternalServices () {
                 return
                 ;;
         *)
-                echo "Unknown tests group name: \`${ELASTIC_APM_PHP_TESTS_COMPONENT_TESTS_GROUP}\'"
+                echo "Unknown tests group name: \`${ELASTIC_APM_PHP_TESTS_GROUP}\'"
                 exit 1
                 ;;
     esac
