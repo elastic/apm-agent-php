@@ -12,6 +12,7 @@ function shouldPassEnvVarToDocker () {
     # Pass all the environment variables whose names start with ELASTIC_APM_
     if [[ ${envVarNameToCheck} == "ELASTIC_APM_"* ]]; then
         echo "true"
+        return
     fi
 
     local envVarNamesToPassToDocker=(COMPONENT_TEST_SCRIPT GITHUB_RELEASES_URL PACKAGE TYPE VERSION)
@@ -20,6 +21,7 @@ function shouldPassEnvVarToDocker () {
     do
         if [ "${envVarNameToCheck}" == "${envVarNameToPassToDocker}" ] ; then
             echo "true"
+            return
         fi
     done
 
