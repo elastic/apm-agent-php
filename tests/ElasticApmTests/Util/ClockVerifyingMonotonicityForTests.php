@@ -25,10 +25,10 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\ClockInterface;
+use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
-use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\TestCase;
 
@@ -74,11 +74,14 @@ final class ClockVerifyingMonotonicityForTests implements ClockInterface
                     'last as number'   => number_format($last),
                     'current as number'    => number_format($current),
                 ];
-                $msg = ($isExpectedMonotonic ? 'Monotonic' : 'System') . ' clock has gone backwards';
-                ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                $logLevel = $isExpectedMonotonic ? Level::CRITICAL : Level::WARNING;
+                $msg =
+                    ($isExpectedMonotonic ? 'Monotonic' : 'System')
+                    . ' clock has gone backwards';
+                ($loggerProxy = $this->logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__))
                 && $loggerProxy->log($msg, $logCtx);
                 if ($isExpectedMonotonic) {
-                    TestCaseBase::fail($msg . '; ' . LoggableToString::convert($logCtx));
+                    TestCase::fail($msg . '; ' . LoggableToString::convert($logCtx));
                 }
             }
         }
