@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\MySQLi;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use mysqli;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -136,7 +137,9 @@ final class MySQLiWrapped implements LoggableInterface
 
     public function error(): string
     {
-        return $this->isOOPApi ? $this->wrappedObj->error : mysqli_error($this->wrappedObj);
+        $result = $this->isOOPApi ? $this->wrappedObj->error : mysqli_error($this->wrappedObj);
+        TestCase::assertNotNull($result);
+        return $result;
     }
 
     public function close(): bool
