@@ -536,10 +536,8 @@ def convertComponentTestsGroupShortNameToLong(String shortName) {
   switch (shortName) {
     case "no_ext_svc":
       return "does_not_require_external_services"
-      break
     case "with_ext_svc":
       return "requires_external_services"
-      break
     default:
       error("Unknown short tests group name: `${shortName}'")
   }
