@@ -5,13 +5,11 @@ Setting configuration option to invalid value via ini file
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
-elastic_apm.log_level_stderr=critical
 elastic_apm.enabled=not valid boolean value
 elastic_apm.assert_level=|:/:\:|
 elastic_apm.secret_token=\|<>|/
 elastic_apm.server_url=<\/\/>
 elastic_apm.service_name=/\><\/
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

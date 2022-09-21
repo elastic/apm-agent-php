@@ -5,16 +5,10 @@ Setting configuration option to invalid value via environment variables
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=not_valid_boolean_value
-ELASTIC_APM_LOG_FILE=|:/:\:|
-ELASTIC_APM_LOG_LEVEL=not valid log level
-ELASTIC_APM_LOG_LEVEL_FILE=not valid log level
-ELASTIC_APM_LOG_LEVEL_SYSLOG=not valid log level
-ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=not valid log level
+ELASTIC_APM_ASSERT_LEVEL=|:/:\:|
 ELASTIC_APM_SECRET_TOKEN=\|<>|/
 ELASTIC_APM_SERVER_URL=<\/\/>
 ELASTIC_APM_SERVICE_NAME=/\><\/
---INI--
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);
@@ -23,7 +17,7 @@ require __DIR__ . '/../tests_util/tests_util.php';
 //////////////////////////////////////////////
 ///////////////  enabled
 
-elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLED'), 'not valid boolean value');
+elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLED'), 'not_valid_boolean_value');
 
 elasticApmAssertSame("elastic_apm_is_enabled()", elastic_apm_is_enabled(), true);
 

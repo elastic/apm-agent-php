@@ -38,7 +38,6 @@ use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;

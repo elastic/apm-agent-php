@@ -25,8 +25,11 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\ClockInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\SingletonInstanceTrait;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -38,16 +41,46 @@ final class ClockVerifyingMonotonicityForTests implements ClockInterface
 {
     use SingletonInstanceTrait;
 
+    /** @var Logger */
+    private $logger;
+
     /** @var ?float */
     private $lastSystemTime = null;
 
     /** @var ?float */
     private $lastMonotonicTime = null;
 
-    private static function checkAgainstUpdateLast(float $current, /* ref */ ?float &$last): float
+    private function __construct()
     {
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
+    }
+
+    private function checkAgainstUpdateLast(
+        float $current,
+        bool $isExpectedMonotonic,
+        /* ref */ ?float &$last
+    ): float {
         if ($last !== null) {
-            TestCaseBase::assertLessThanOrEqualTimestamp($last, $current);
+            if ($current + TestCaseBase::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS < $last) {
+                $logCtx =                 [
+                    'last as duration' => TimeFormatUtilForTests::formatDurationInMicroseconds($last),
+                    'current as duration'  => TimeFormatUtilForTests::formatDurationInMicroseconds($current),
+                    'current - last'     => TimeFormatUtilForTests::formatDurationInMicroseconds($current - $last),
+                    'last as number'   => number_format($last),
+                    'current as number'    => number_format($current),
+                ];
+                $msg = ($isExpectedMonotonic ? 'Monotonic' : 'System') . ' clock has gone backwards';
+                ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log($msg, $logCtx);
+                if ($isExpectedMonotonic) {
+                    TestCaseBase::fail($msg . '; ' . LoggableToString::convert($logCtx));
+                }
+            }
         }
         $last = $current;
         return $current;
@@ -56,8 +89,9 @@ final class ClockVerifyingMonotonicityForTests implements ClockInterface
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
-        return self::checkAgainstUpdateLast(
+        return $this->checkAgainstUpdateLast(
             Clock::singletonInstance()->getSystemClockCurrentTime(),
+            /* isExpectedMonotonic */ false,
             /* ref */ $this->lastSystemTime
         );
     }
@@ -65,8 +99,9 @@ final class ClockVerifyingMonotonicityForTests implements ClockInterface
     /** @inheritDoc */
     public function getMonotonicClockCurrentTime(): float
     {
-        return self::checkAgainstUpdateLast(
+        return $this->checkAgainstUpdateLast(
             Clock::singletonInstance()->getMonotonicClockCurrentTime(),
+            /* isExpectedMonotonic */ true,
             /* ref */ $this->lastMonotonicTime
         );
     }
