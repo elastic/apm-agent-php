@@ -40,7 +40,7 @@ final class PollingCheck
     private $maxWaitTimeInMicroseconds;
 
     /** @var int */
-    private $sleepTimeInMicroseconds = 100 * 1000; // 100 milliseconds
+    private $sleepTimeInMicroseconds = 1000 * 1000; // 1 second
 
     /** @var int */
     private $reportIntervalInMicroseconds = 1000 * 1000; // 1 second

@@ -26,10 +26,8 @@ namespace ElasticApmTests\UnitTests\Util;
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
-use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
-use RuntimeException;
 
 class TracerUnitTestCaseBase extends TestCaseBase
 {
@@ -56,7 +54,6 @@ class TracerUnitTestCaseBase extends TestCaseBase
             $this->mockEventSink = new MockEventSink();
         }
 
-        /** @var TracerBuilderForTests */
         $builder = self::buildTracerForTests($shouldCreateMockEventSink ? $this->mockEventSink : null);
 
         if ($tracerBuildCallback !== null) {

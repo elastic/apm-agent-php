@@ -586,7 +586,7 @@ def buildLabel(def args = [:]) {
   + " Linux: ${args.linuxPackageType}"
   + ", PHP: ${args.phpVersion}"
   + ", componentTestsAppHostKind: ${args.componentTestsAppHostKind}"
-  + ", testGroup: ${args.testGroup}"
+  + ", componentTestsGroup: ${args.componentTestsGroup}"
   + ", shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
 }
 

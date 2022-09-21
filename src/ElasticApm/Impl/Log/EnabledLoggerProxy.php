@@ -44,7 +44,7 @@ final class EnabledLoggerProxy
     /** @var LoggerData */
     private $loggerData;
 
-    /** @var bool|null */
+    /** @var ?bool */
     private $includeStacktrace = null;
 
     public function __construct(
@@ -59,9 +59,9 @@ final class EnabledLoggerProxy
         $this->loggerData = $loggerData;
     }
 
-    public function includeStacktrace(): self
+    public function includeStacktrace(bool $shouldIncludeStacktrace = true): self
     {
-        $this->includeStacktrace = true;
+        $this->includeStacktrace = $shouldIncludeStacktrace;
         return $this;
     }
 

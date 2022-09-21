@@ -26,10 +26,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -42,14 +44,6 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
     public function __construct()
     {
-        if (!ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                'Environment hosting component tests application code should have '
-                . ElasticApmExtensionUtil::EXTENSION_NAME . ' extension loaded.'
-                . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
-            );
-        }
-
         parent::__construct();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -76,11 +70,29 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
             function (SpawnedProcessBase $thisObj) use (&$topLevelCodeId): void {
                 TestCase::assertInstanceOf(self::class, $thisObj);
 
+                if (!ElasticApmExtensionUtil::isLoaded()) {
+                    throw new RuntimeException(
+                        'Environment hosting component tests application code should have '
+                        . ElasticApmExtensionUtil::EXTENSION_NAME . ' extension loaded.'
+                        . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
+                    );
+                }
+
+                self::installClockVerifyingMonotonicityForTests();
+
                 self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME);
 
                 $thisObj->runImpl(/* ref */ $topLevelCodeId);
             }
         );
+    }
+
+    public static function installClockVerifyingMonotonicityForTests(): void
+    {
+        $tracer = ComponentTestCaseBase::getTracerFromAppCode();
+        $currentClock = $tracer->getClock();
+        TestCase::assertInstanceOf(Clock::class, $currentClock);
+        $tracer->setClock(ClockVerifyingMonotonicityForTests::singletonInstance());
     }
 
     protected function registerWithResourcesCleaner(): void

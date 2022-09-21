@@ -87,8 +87,10 @@ class SelfTimeTracker implements LoggableInterface
 
     private function stopTimer(float $monotonicClockNow): void
     {
-        $this->accumulatedSelfTimeInMicroseconds
-            += TimeUtil::calcDurationInMicroseconds($this->currentSelfTimeSegmentBeginTime, $monotonicClockNow);
+        $this->accumulatedSelfTimeInMicroseconds += TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+            $this->currentSelfTimeSegmentBeginTime,
+            $monotonicClockNow
+        );
     }
 
     public function accumulatedSelfTimeInMicroseconds(): float

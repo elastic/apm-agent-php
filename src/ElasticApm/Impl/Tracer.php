@@ -72,7 +72,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var Transaction|null */
+    /** @var ?Transaction */
     private $currentTransaction = null;
 
     /** @var bool */
@@ -381,6 +381,11 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function getClock(): ClockInterface
     {
         return $this->clock;
+    }
+
+    public function setClock(ClockInterface $clock): void
+    {
+        $this->clock = $clock;
     }
 
     public function isNoop(): bool

@@ -263,15 +263,10 @@ final class Span extends ExecutionSegment implements SpanInterface
         if ($this->parentExecutionSegment === $this->containingTransaction) {
             return null;
         }
-        /**
-         * Local variable to workaround PHPStan not having a way to declare that
-         * $this->parentExecutionSegment is a Span
-         *
-         * @var Span $parentSpan
-         * @noinspection PhpUnnecessaryLocalVariableInspection
-         */
-        $parentSpan = $this->parentExecutionSegment;
-        return $parentSpan;
+
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
+        return $this->parentExecutionSegment; // @phpstan-ignore-line
+        // It seems there's no way to tell PHPStan that $this->parentExecutionSegment is a Span
     }
 
     /** @inheritDoc */

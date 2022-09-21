@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Runner\BeforeTestHook;
@@ -52,7 +51,8 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
 
     public function executeBeforeTest(string $test): void
     {
-        self::$timestampBeforeTest = Clock::singletonInstance()->getSystemClockCurrentTime();
+        self::$timestampBeforeTest
+            = ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
         self::$timestampAfterTest = null;
         TransactionDataExpectations::setDefaults();
     }

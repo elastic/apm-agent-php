@@ -35,29 +35,26 @@ final class Clock implements ClockInterface
 {
     use SingletonInstanceTrait;
 
-    /** @var ?float */
-    private static $lastSystemClockCurrentTime = null;
+    /** @var bool */
+    private $hrtimeExits;
+
+    public function __construct()
+    {
+        $this->hrtimeExits = function_exists('hrtime');
+    }
 
     /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
         // Return value should be in microseconds
-        // while microtime(/* get_as_float: */ true) returns in seconds with microseconds being the fractional part
-        $current = round(TimeUtil::secondsToMicroseconds(microtime(/* get_as_float: */ true)));
-        if (self::$lastSystemClockCurrentTime === null) {
-            self::$lastSystemClockCurrentTime = $current;
-        } else {
-            if ($current < self::$lastSystemClockCurrentTime) {
-                $current = self::$lastSystemClockCurrentTime;
-            }
-        }
-        return $current;
+        // while microtime(/* as_float: */ true) returns in seconds with microseconds being the fractional part
+        return round(TimeUtil::secondsToMicroseconds(microtime(/* as_float: */ true)));
     }
 
     /** @inheritDoc */
     public function getMonotonicClockCurrentTime(): float
     {
-        return function_exists('hrtime') ? self::getHighResolutionCurrentTime() : $this->getSystemClockCurrentTime();
+        return $this->hrtimeExits ? self::getHighResolutionCurrentTime() : $this->getSystemClockCurrentTime();
     }
 
     private static function getHighResolutionCurrentTime(): float
@@ -71,9 +68,8 @@ final class Clock implements ClockInterface
          *
          * @see getMonotonicClockCurrentTime
          *
-         * @noinspection PhpElementIsNotAvailableInCurrentPhpVersionInspection
          * @phpstan-ignore-next-line
          */
-        return round(TimeUtil::nanosecondsToMicroseconds((float)(hrtime(/* get_as_number */ true))));
+        return round(TimeUtil::nanosecondsToMicroseconds((float)(hrtime(/* as_number */ true))));
     }
 }

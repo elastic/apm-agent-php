@@ -16,3 +16,8 @@ parameters:
         # elastic_apm_* functions are provided by the extension
         #
         - '#^Function elastic_apm_[a-z_]* not found\.$#'
+
+        #
+        # Property PDOStatement::$queryString (string) in isset() is not nullable.
+        #
+        - '#^Property .* in isset\(\) is not nullable\.$#'

@@ -103,10 +103,9 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     public static function run(): void
     {
         self::runSkeleton(
-            function (SpawnedProcessBase $thisObjArg): void {
-                /** var StatefulHttpServerProcessBase */
-                $thisObj = $thisObjArg;
-                $thisObj->runImpl(); // @phpstan-ignore-line
+            function (SpawnedProcessBase $thisObj): void {
+                /** @var self $thisObj */
+                $thisObj->runImpl();
             }
         );
     }
@@ -116,7 +115,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         try {
             $this->runHttpServer();
         } catch (Exception $ex) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
         }
     }

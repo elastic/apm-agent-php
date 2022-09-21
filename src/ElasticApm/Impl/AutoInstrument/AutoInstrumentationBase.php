@@ -25,7 +25,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 
 /**
@@ -35,14 +38,23 @@ use Elastic\Apm\Impl\Tracer;
  */
 abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, LoggableInterface
 {
-    use AutoInstrumentationTrait;
+    use LoggableTrait;
 
     /** @var Tracer */
     protected $tracer;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct(Tracer $tracer)
     {
         $this->tracer = $tracer;
+        $this->logger = $tracer->loggerFactory()->loggerForClass(
+            LogCategory::AUTO_INSTRUMENTATION,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        );
     }
 
     /** @inheritDoc */
@@ -67,57 +79,20 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     }
 
     /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed  $val
-     */
-    protected static function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        $obj->{$propName} = $val;
-    }
-
-    /**
-     * @param object               $obj
-     * @param array<string, mixed> $propNameVals
-     */
-    protected static function setDynamicallyAttachedProperties(object $obj, array $propNameVals): void
-    {
-        foreach ($propNameVals as $propName => $propVal) {
-            self::setDynamicallyAttachedProperty($obj, $propName, $propVal);
-        }
-    }
-
-    /**
-     * @param ?object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
+     * @param mixed[] $interceptedCallArgs
      *
-     * @return mixed
+     * @return bool
      */
-    protected static function getDynamicallyAttachedProperty(?object $obj, string $propName, $defaultValue)
+    protected function verifyAtLeastOneArgument(array $interceptedCallArgs): bool
     {
-        return ($obj !== null) && isset($obj->{$propName}) ? $obj->{$propName} : $defaultValue;
-    }
+        if (count($interceptedCallArgs) < 1) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Number of received arguments for call is less than expected.');
 
-    /**
-     * @param ?object  $obj
-     * @param string[] $propNames
-     *
-     * @return array<string, mixed>
-     */
-    protected static function getDynamicallyAttachedProperties(?object $obj, array $propNames): array
-    {
-        if ($obj === null) {
-            return [];
+            return false;
         }
 
-        $propNameVals = [];
-        foreach ($propNames as $propName) {
-            if (isset($obj->{$propName})) {
-                $propNameVals[$propName] = $obj->{$propName};
-            }
-        }
-        return $propNameVals;
+        return true;
     }
 
     /**

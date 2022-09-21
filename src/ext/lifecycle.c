@@ -131,6 +131,7 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
 
     logSupportabilityInfo( logLevel_debug );

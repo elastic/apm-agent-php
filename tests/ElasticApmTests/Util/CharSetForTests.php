@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Ds\Set;
-use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use IteratorAggregate;
 use PHPUnit\Framework\TestCase;
 use Traversable;
