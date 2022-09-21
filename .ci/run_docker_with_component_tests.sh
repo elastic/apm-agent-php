@@ -4,6 +4,8 @@ set -xe
 thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
 thisScriptDir="$( realpath "${thisScriptDir}" )"
 
+shouldStartExternalServices=false
+
 function shouldPassEnvVarToDocker () {
     envVarNameToCheck="$1"
 
@@ -64,7 +66,15 @@ function doesTestsGroupNeedExternalServices () {
     esac
 }
 
+function cleanup () {
+    if [ "${shouldStartExternalServices}" == "true" ] ; then
+        "${thisScriptDir}/stop_external_services_for_component_tests.sh"
+    fi
+}
+
 function main () {
+    trap cleanup EXIT
+
     shouldStartExternalServices=$(doesTestsGroupNeedExternalServices)
     if [ "${shouldStartExternalServices}" == "true" ] ; then
         source "${thisScriptDir}/env_vars_for_external_services_for_component_tests.sh"
@@ -79,10 +89,6 @@ function main () {
     fi
     # shellcheck disable=SC2154 # dockerRunCmdVariablePart is assigned by buildDockerEnvVarsCommandLinePart
     docker run --rm -v "${repoRootDir}:/src" -w /src "${dockerRunCmdVariablePart[@]}" "$@"
-
-    if [ "${shouldStartExternalServices}" == "true" ] ; then
-        "${thisScriptDir}/stop_external_services_for_component_tests.sh"
-    fi
 }
 
 main "$@"
