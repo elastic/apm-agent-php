@@ -176,13 +176,17 @@ final class TestCaseHandle implements LoggableInterface
 
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Before DataFromAgentPlusRawValidator::validate ...',
+                'Before DataFromAgentPlusRawValidator::validate: data that can be used for '
+                . ClassNameUtil::fqToShort(DataFromAgentPlusRawValidatorDebugTest::class),
                 [
-                    'expectations'                       => $expectations,
-                    'dataFromAgent'                      => $dataFromAgent,
                     self::SERIALIZED_EXPECTATIONS_KEY    => serialize($expectations),
                     self::SERIALIZED_DATA_FROM_AGENT_KEY => serialize($dataFromAgent),
                 ]
+            );
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Before DataFromAgentPlusRawValidator::validate',
+                ['expectations' => $expectations, 'dataFromAgent' => $dataFromAgent]
             );
             DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
             return $dataFromAgent;

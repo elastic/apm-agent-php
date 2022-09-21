@@ -268,7 +268,11 @@ final class MySQLiTest extends ComponentTestCaseBase
             'db'     => false,
         ];
 
-        $defaultDbName = AmbientContextForTests::testConfig()->mysqlDb;
+        /** @var array<?string> $connectDbNameVariants */
+        $connectDbNameVariants = [AmbientContextForTests::testConfig()->mysqlDb];
+        if (ApiFacade::canDbNameBeNull()) {
+            $connectDbNameVariants[] = null;
+        }
 
         /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
@@ -280,7 +284,7 @@ final class MySQLiTest extends ComponentTestCaseBase
             ->addBoolKeyedDimensionAllValuesCombinable(self::IS_OOP_API_KEY)
             ->addCartesianProductOnlyFirstValueCombinable(
                 [
-                    self::CONNECT_DB_NAME_KEY => [$defaultDbName, null],
+                    self::CONNECT_DB_NAME_KEY => $connectDbNameVariants,
                     self::WORK_DB_NAME_KEY    => self::allDbNames(),
                 ]
             )

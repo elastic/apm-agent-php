@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use mysqli;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -57,6 +58,11 @@ final class ApiFacade implements LoggableInterface
         $this->isOOPApi = $isOOPApi;
     }
 
+    public static function canDbNameBeNull(): bool
+    {
+        return version_compare(PHP_VERSION, '7.4.0') >= 0;
+    }
+
     public function connect(
         string $host,
         int $port,
@@ -69,6 +75,10 @@ final class ApiFacade implements LoggableInterface
             'Entered',
             ['host' => $host, 'port' => $port, 'username' => $username, 'password' => $password, 'dbName' => $dbName]
         );
+
+        if (!self::canDbNameBeNull()) {
+            TestCase::assertNotNull($dbName);
+        }
 
         $wrappedObj = $this->isOOPApi
             ? new mysqli($host, $username, $password, $dbName, $port)
