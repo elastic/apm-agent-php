@@ -1,9 +1,6 @@
 ARG PHP_VERSION=7.2
 FROM php:${PHP_VERSION}-fpm-alpine
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 RUN apk update \
   && apk add \
     autoconf \
@@ -23,9 +20,6 @@ RUN docker-php-ext-install \
     mysqli \
     pdo_sqlite
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app/src/ext
@@ -36,7 +30,7 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/build/junit.xml
 ENV CMOCKA_MESSAGE_OUTPUT=XML
 ENV CMOCKA_XML_FILE=/app/build/alpine-${PHP_VERSION}-%g-unit-tests-junit.xml
-        
+
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
     && make clean \
