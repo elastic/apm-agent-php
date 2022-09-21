@@ -21,3 +21,13 @@ parameters:
         # Property PDOStatement::$queryString (string) in isset() is not nullable.
         #
         - '#^Property .* in isset\(\) is not nullable\.$#'
+
+        #
+        # Parameter #4 $database of class mysqli constructor expects string, string|null given.
+        #
+        - '#^Parameter \#4 \$database of class mysqli constructor expects string,.* string\|null given\.$#'
+
+        #
+        # Parameter #4 $dbname of function mysqli_connect expects string, string|null given.
+        #
+        - '#^Parameter \#4 \$dbname of function mysqli_connect expects string,.* string\|null given\.$#'
