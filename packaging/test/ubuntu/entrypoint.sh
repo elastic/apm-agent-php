@@ -47,8 +47,8 @@ function validate_if_agent_is_enabled() {
     fi
 }
 
-function validate_installation() {
-    .ci/run_component_tests_in_docker.sh || exit $?
+function validate_agent_installation() {
+    .ci/validate_agent_installation.sh || exit $?
 }
 
 ##############
@@ -89,7 +89,7 @@ validate_if_agent_is_enabled
 if case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     echo 'Validate installation runs after the agent upgrade.'
 else
-    validate_installation
+    validate_agent_installation
 fi
 
 ## Validate the uninstallation works as expected
@@ -113,5 +113,5 @@ elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     validate_if_agent_is_enabled
 
     ## Run some tests
-    validate_installation
+    validate_agent_installation
 fi

@@ -43,8 +43,8 @@ validate_if_agent_is_enabled() {
     fi
 }
 
-validate_installation() {
-    .ci/run_component_tests_in_docker.sh || exit $?
+validate_agent_installation() {
+    .ci/validate_agent_installation.sh || exit $?
 }
 
 ##############
@@ -62,7 +62,7 @@ fi
 
 validate_if_agent_is_enabled
 
-validate_installation
+validate_agent_installation
 
 ## Validate the uninstallation works as expected
 set -ex
