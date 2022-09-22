@@ -29,6 +29,9 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
+
 # To support tar and rpm packages
 ENV TYPE=rpm
 ENV VERSION=

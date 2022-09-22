@@ -89,7 +89,7 @@ final class Snapshot implements LoggableInterface
     use SnapshotTrait;
     use LoggableTrait;
 
-    public const LOG_LEVEL_STDERR_DEFAULT = LogLevel::ERROR;
+    public const LOG_LEVEL_STDERR_DEFAULT = LogLevel::CRITICAL;
     public const LOG_LEVEL_SYSLOG_DEFAULT = LogLevel::INFO;
 
     /** @var array<string, mixed> */

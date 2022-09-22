@@ -767,7 +767,7 @@ String logSinkTypeName[numberOfLogSinkTypes] =
 
 LogLevel defaultLogLevelPerSinkType[numberOfLogSinkTypes] =
         {
-                [logSink_stderr] = logLevel_error,
+                [logSink_stderr] = logLevel_critical,
                 #ifndef PHP_WIN32
                 [ logSink_syslog ] = logLevel_info,
                 #endif
