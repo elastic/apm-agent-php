@@ -103,10 +103,9 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     public static function run(): void
     {
         self::runSkeleton(
-            function (SpawnedProcessBase $thisObjArg): void {
-                /** var StatefulHttpServerProcessBase */
-                $thisObj = $thisObjArg;
-                $thisObj->runImpl(); // @phpstan-ignore-line
+            function (SpawnedProcessBase $thisObj): void {
+                /** @var self $thisObj */
+                $thisObj->runImpl();
             }
         );
     }
@@ -116,7 +115,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         try {
             $this->runHttpServer();
         } catch (Exception $ex) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
         }
     }
@@ -218,12 +217,12 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
         if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
             $testConfigForRequest = TestConfigUtil::read(
-                AmbientContextForTests::dbgProcessName(),
                 new RequestHeadersRawSnapshotSource(
                     function (string $headerName) use ($request): ?string {
                         return self::getRequestHeader($request, $headerName);
                     }
-                )
+                ),
+                AmbientContextForTests::loggerFactory()
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
             $verifySpawnedProcessInternalIdResponse

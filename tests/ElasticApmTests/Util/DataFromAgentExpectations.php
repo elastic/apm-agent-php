@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-class DataFromAgentExpectations
+class DataFromAgentExpectations extends DataExpectationsBase
 {
     /** @var ErrorDataExpectations */
     public $error;

@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
@@ -64,7 +63,7 @@ abstract class AppCodeHostHandle implements LoggableInterface
 
     protected function beforeAppCodeInvocation(AppCodeRequestParams $appCodeRequestParams): AppCodeInvocation
     {
-        $timestampBefore = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $timestampBefore = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         return new AppCodeInvocation($appCodeRequestParams, $timestampBefore);
     }
 

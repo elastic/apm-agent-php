@@ -53,6 +53,6 @@ trait MockExecutionSegmentDataTrait
     public function end(): void
     {
         $timestampEnd = $this->getTransaction()->tracer->getCurrentTime();
-        $this->duration = TimeUtil::calcDuration($this->timestamp, $timestampEnd);
+        $this->duration = TimeUtil::calcDurationInMillisecondsClampNegativeToZero($this->timestamp, $timestampEnd);
     }
 }

@@ -23,6 +23,9 @@ RUN docker-php-ext-install \
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
+
 ENV TYPE=deb
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=

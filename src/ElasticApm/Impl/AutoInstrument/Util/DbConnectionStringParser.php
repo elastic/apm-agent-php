@@ -21,7 +21,7 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
@@ -84,44 +84,44 @@ final class DbConnectionStringParser implements LoggableInterface
         $dsnKey = null;
         switch ($dbTypePrefix) {
             case 'cubrid':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_CUBRID;
+                $dbType = Constants::SPAN_SUBTYPE_CUBRID;
                 break;
             case 'dblib':
             case 'mssql':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL;
+                $dbType = Constants::SPAN_SUBTYPE_MSSQL;
                 break;
             case 'firebird':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_FIREBIRD;
+                $dbType = Constants::SPAN_SUBTYPE_FIREBIRD;
                 break;
             case 'ibm':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2;
+                $dbType = Constants::SPAN_SUBTYPE_IBM_DB2;
                 $dbNameKey = 'database';
                 $dsnKey = 'DSN';
                 break;
             case 'informix':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_INFORMIX;
+                $dbType = Constants::SPAN_SUBTYPE_INFORMIX;
                 $dbNameKey = 'database';
                 $dsnKey = 'DSN';
                 break;
             case 'mysql':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL;
+                $dbType = Constants::SPAN_SUBTYPE_MYSQL;
                 break;
             case 'oci':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ORACLE;
+                $dbType = Constants::SPAN_SUBTYPE_ORACLE;
                 break;
             case 'odbc':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ODBC;
+                $dbType = Constants::SPAN_SUBTYPE_ODBC;
                 self::extractDbNameODBC($dbConnectionString, $posAfterDbTypePrefix, /* ref */ $dbName);
                 return;
             case 'pgsql':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_POSTGRESQL;
+                $dbType = Constants::SPAN_SUBTYPE_POSTGRESQL;
                 break;
             case 'sqlite':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE;
+                $dbType = Constants::SPAN_SUBTYPE_SQLITE;
                 self::extractDbNameSQLite($dbConnectionString, $posAfterDbTypePrefix, /* ref */ $dbName);
                 return;
             case 'sqlsrv':
-                $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL;
+                $dbType = Constants::SPAN_SUBTYPE_MSSQL;
                 $dbNameKey = 'database';
                 break;
             default:

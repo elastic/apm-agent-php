@@ -34,6 +34,8 @@ final class IterableUtilForTests
 {
     use StaticClassTrait;
 
+    public const ALL_BOOL_VALUES = [true, false];
+
     /**
      * @param iterable<mixed> $iterable
      *
@@ -42,7 +44,7 @@ final class IterableUtilForTests
     public static function count(iterable $iterable): int
     {
         $result = 0;
-        foreach ($iterable as $iterableValue) {
+        foreach ($iterable as $ignored) {
             ++$result;
         }
         return $result;
@@ -55,30 +57,61 @@ final class IterableUtilForTests
      */
     public static function isEmpty(iterable $iterable): bool
     {
-        foreach ($iterable as $iterableValue) {
+        /** @noinspection PhpLoopNeverIteratesInspection */
+        foreach ($iterable as $ignored) {
             return false;
         }
         return true;
     }
 
     /**
-     * @template T
+     * @param iterable<mixed> $iterable
+     * @param mixed          &$valOut
      *
-     * @param iterable<T> $iterable
-     *
-     * @return array<T>
+     * @return bool
      */
-    public static function toArray(iterable $iterable): array
+    public static function getFirstValue(iterable $iterable, /* out */ &$valOut): bool
+    {
+        /** @noinspection PhpLoopNeverIteratesInspection */
+        foreach ($iterable as $val) {
+            $valOut = $val;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param iterable<mixed, mixed> $iterable
+     *
+     * @return iterable<mixed, mixed>
+     */
+    public static function skipFirst(iterable $iterable): iterable
+    {
+        $isFirst = true;
+        foreach ($iterable as $key => $val) {
+            if ($isFirst) {
+                $isFirst = false;
+                continue;
+            }
+            yield $key => $val;
+        }
+    }
+
+    /**
+     * @param iterable<mixed> $iterable
+     *
+     * @return array<mixed>
+     */
+    public static function toList(iterable $iterable): array
     {
         if (is_array($iterable)) {
             return $iterable;
         }
 
         $result = [];
-        foreach ($iterable as $value) {
-            $result[] = $value;
+        foreach ($iterable as $val) {
+            $result[] = $val;
         }
-
         return $result;
     }
 }

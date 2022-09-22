@@ -44,13 +44,18 @@ final class Backend
         $this->maxEnabledLevel = $maxEnabledLevel;
         $this->logSink = $logSink ??
                          (ElasticApmExtensionUtil::isLoaded()
-                             ? new DefaultSink()
+                             ? new SinkToCExt()
                              : NoopLogSink::singletonInstance());
     }
 
-    public function maxEnabledLevel(): int
+    public function getMaxEnabledLevel(): int
     {
         return $this->maxEnabledLevel;
+    }
+
+    public function setMaxEnabledLevel(int $maxEnabledLevel): void
+    {
+        $this->maxEnabledLevel = $maxEnabledLevel;
     }
 
     /**

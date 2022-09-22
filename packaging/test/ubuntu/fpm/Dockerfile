@@ -32,6 +32,9 @@ RUN apt-get -qq -y --no-install-recommends install software-properties-common \
 RUN update-alternatives --set php /usr/bin/php${PHP_VERSION} \
     && a2enmod proxy_fcgi setenvif
 
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
+
 ENV TYPE=deb
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=

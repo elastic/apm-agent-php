@@ -25,6 +25,8 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
@@ -53,6 +55,14 @@ class ComponentTestCaseBase extends TestCaseBase
 
     public static function appCodeEmpty(): void
     {
+    }
+
+    public static function getTracerFromAppCode(): Tracer
+    {
+        $tracer = GlobalTracerHolder::getValue();
+        TestCase::assertInstanceOf(Tracer::class, $tracer);
+        /** @var Tracer $tracer */
+        return $tracer;
     }
 
     protected static function buildResourcesClientForAppCode(): ResourcesClient

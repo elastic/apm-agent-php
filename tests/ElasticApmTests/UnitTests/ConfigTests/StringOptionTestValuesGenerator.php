@@ -78,7 +78,8 @@ final class StringOptionTestValuesGenerator implements OptionTestValuesGenerator
         yield 'abc';
         yield 'abC 123 Xyz';
 
-        $charsToUse = IterableUtilForTests::toArray(self::charsToUse());
+        /** @var array<int> $charsToUse */
+        $charsToUse = IterableUtilForTests::toList(self::charsToUse());
 
         $stringFromAllCharsToUse = '';
         foreach ($charsToUse as $charToUse) {

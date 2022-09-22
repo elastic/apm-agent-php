@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
@@ -89,7 +90,7 @@ final class TransactionForExtensionRequest
         }
         $name = self::isCliScript() ? $this->discoverCliName() : $this->discoverHttpName();
         $type = self::isCliScript() ? Constants::TRANSACTION_TYPE_CLI : Constants::TRANSACTION_TYPE_REQUEST;
-        $timestamp = $this->discoverTimestamp($requestInitStartTime);
+        $timestamp = $this->discoverStartTime($requestInitStartTime);
         $distributedTracingHeaders = $this->getDistributedTracingHeaders();
         $distributedTracingHeaderExtractor = function (string $headerName) use ($distributedTracingHeaders): ?string {
             return ArrayUtil::getValueIfKeyExistsElse($headerName, $distributedTracingHeaders, null);
@@ -509,25 +510,50 @@ final class TransactionForExtensionRequest
         return $name;
     }
 
-    private function discoverTimestamp(float $requestInitStartTime): float
+    private function discoverStartTime(float $requestInitStartTime): float
     {
         $serverRequestTimeAsString = self::getMandatoryServerVarElement('REQUEST_TIME_FLOAT');
         if ($serverRequestTimeAsString === null) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Using requestInitStartTime for transaction serverRequestTimeInMicroseconds',
+                'Using requestInitStartTime for transaction start time'
+                . ' because $_SERVER[\'REQUEST_TIME_FLOAT\'] is not set',
                 ['requestInitStartTime' => $requestInitStartTime]
             );
             return $requestInitStartTime;
         }
 
         $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
-        $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * 1000000;
+        $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * TimeUtil::NUMBER_OF_MICROSECONDS_IN_SECOND;
+        if ($requestInitStartTime < $serverRequestTimeInMicroseconds) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Using requestInitStartTime for transaction start time'
+                . ' because $_SERVER[\'REQUEST_TIME_FLOAT\'] is later'
+                . ' (further into the future) than requestInitStartTime',
+                [
+                    'requestInitStartTime'             => $requestInitStartTime,
+                    '$_SERVER[\'REQUEST_TIME_FLOAT\']' => $serverRequestTimeInMicroseconds,
+                    '$_SERVER[\'REQUEST_TIME_FLOAT\'] - requestInitStartTime (seconds)'
+                                                       => TimeUtil::microsecondsToSeconds(
+                                                           $serverRequestTimeInMicroseconds - $requestInitStartTime
+                                                       ),
+                ]
+            );
+            return $requestInitStartTime;
+        }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Using $_SERVER[\'REQUEST_TIME_FLOAT\'] for transaction serverRequestTimeInMicroseconds',
-            ['serverRequestTimeInMicroseconds' => $serverRequestTimeInMicroseconds]
+            'Using $_SERVER[\'REQUEST_TIME_FLOAT\'] for transaction start time',
+            [
+                '$_SERVER[\'REQUEST_TIME_FLOAT\']' => $serverRequestTimeInMicroseconds,
+                'requestInitStartTime'             => $requestInitStartTime,
+                'requestInitStartTime - $_SERVER[\'REQUEST_TIME_FLOAT\'] (seconds)'
+                                                   => TimeUtil::microsecondsToSeconds(
+                                                       $serverRequestTimeInMicroseconds - $requestInitStartTime
+                                                   ),
+            ]
         );
 
         return $serverRequestTimeInMicroseconds;

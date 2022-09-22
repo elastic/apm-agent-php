@@ -122,7 +122,7 @@ abstract class HttpServerStarter
                 return new HttpServerHandle($pid, $currentTrySpawnedProcessInternalId, $currentTryPort);
             }
 
-            ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Failed to start HTTP server');
         }
 
@@ -187,7 +187,7 @@ abstract class HttpServerStarter
                 }
 
                 if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
-                    ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                    ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
                         'Received non-OK status code in response to status check',
                         ['receivedStatusCode' => $response->getStatusCode()]
@@ -210,10 +210,10 @@ abstract class HttpServerStarter
 
         if (!$checkResult) {
             if ($lastThrown === null) {
-                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Failed to send request to check HTTP server status');
             } else {
-                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->logThrowable($lastThrown, 'Failed to send request to check HTTP server status');
             }
         }

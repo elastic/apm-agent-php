@@ -161,7 +161,7 @@ typedef struct ConfigSnapshot ConfigSnapshot;
 struct ConfigManager;
 typedef struct ConfigManager ConfigManager;
 
-ResultCode newConfigManager( ConfigManager** pCfgManager );
+ResultCode newConfigManager( ConfigManager** pCfgManager, bool isLoggingRelatedOnly );
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager );
 ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* didConfigChange );
 void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager );

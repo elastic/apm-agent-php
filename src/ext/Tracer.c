@@ -123,6 +123,31 @@ void ensureInternalChecksLevelHasLatestConfig( Tracer* tracer, const ConfigSnaps
             : config->internalChecksLevel;
 }
 
+ResultCode ensureLoggerInitialConfigIsLatest( Tracer* tracer )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( tracer );
+
+    ResultCode resultCode;
+    ConfigManager* loggingRelatedOnlyConfigManager = NULL;
+    bool didConfigChange = false;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( newConfigManager( &loggingRelatedOnlyConfigManager, /* isLoggingRelatedOnly */ true ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureConfigManagerHasLatestConfig( loggingRelatedOnlyConfigManager, &didConfigChange ) );
+    ensureLoggerHasLatestConfig( &tracer->logger, getConfigManagerCurrentSnapshot( loggingRelatedOnlyConfigManager ) );
+
+    resultCode = resultSuccess;
+
+    finally:
+    if ( loggingRelatedOnlyConfigManager != NULL )
+    {
+        deleteConfigManagerAndSetToNull( &loggingRelatedOnlyConfigManager );
+    }
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
 ResultCode ensureAllComponentsHaveLatestConfig( Tracer* tracer )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( tracer );
@@ -185,7 +210,7 @@ ResultCode constructTracer( Tracer* tracer )
     constructMemoryTracker( &tracer->memTracker );
     #endif
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( newConfigManager( &tracer->configManager ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( newConfigManager( &tracer->configManager, /* isLoggingRelatedOnly */ false ) );
 
     resultCode = resultSuccess;
     tracer->isInited = true;

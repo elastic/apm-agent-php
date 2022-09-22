@@ -38,6 +38,11 @@ final class FlakyAssertions
     /** @var ?bool */
     private static $areEnabled = null;
 
+    public static function setEnabled(bool $areEnabled): void
+    {
+        self::$areEnabled = $areEnabled;
+    }
+
     private static function areEnabled(): bool
     {
         if (self::$areEnabled === null) {
