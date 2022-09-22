@@ -72,7 +72,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var Transaction|null */
+    /** @var ?Transaction */
     private $currentTransaction = null;
 
     /** @var bool */
@@ -105,7 +105,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             ]
         );
 
-        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
+        $this->clock = $providedDependencies->clock ?? new Clock($this->loggerFactory);
 
         $this->eventSink = $providedDependencies->eventSink ??
                            (ElasticApmExtensionUtil::isLoaded()

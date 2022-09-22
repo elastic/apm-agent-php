@@ -36,6 +36,7 @@ use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -259,14 +260,22 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @param array<mixed, mixed> $actual
+     */
+    public static function assertArrayIsList(array $actual): void
+    {
+        TestCase::assertTrue(ArrayUtil::isList($actual), LoggableToString::convert(['$actual' => $actual]));
+    }
+
+    /**
      * @param mixed[] $expected
      * @param mixed[] $actual
      */
-    public static function assertEqualLists(array $expected, array $actual): void
+    public static function assertEqualLists(array $expected, array $actual, string $message = ''): void
     {
         self::assertTrue(sort(/* ref */ $expected));
         self::assertTrue(sort(/* ref */ $actual));
-        self::assertEqualsCanonicalizing($expected, $actual);
+        self::assertEqualsCanonicalizing($expected, $actual, $message);
     }
 
     /**
@@ -276,7 +285,7 @@ class TestCaseBase extends TestCase
      */
     public static function getIdsFromIdToMap(array $idToXyzMap): array
     {
-        /** @var string[] */
+        /** @var string[] $result */
         $result = [];
         foreach ($idToXyzMap as $id => $_) {
             $result[] = strval($id);
@@ -287,6 +296,7 @@ class TestCaseBase extends TestCase
     public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
         return TracerBuilderForTests::startNew()
+                                    ->withClock(AmbientContextForTests::clock())
                                     ->withLogSink(NoopLogSink::singletonInstance())
                                     ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
     }
@@ -347,13 +357,20 @@ class TestCaseBase extends TestCase
         yield [false];
     }
 
-    protected function getLogger(string $namespace, string $className, string $srcCodeFile): Logger
+    /**
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     *
+     * @return Logger
+     */
+    protected function getLogger(string $namespace, string $fqClassName, string $srcCodeFile): Logger
     {
         if ($this->logger === null) {
             $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
                 LogCategoryForTests::TEST,
                 $namespace,
-                $className,
+                $fqClassName,
                 $srcCodeFile
             )->addContext('this', $this);
         }
@@ -362,12 +379,19 @@ class TestCaseBase extends TestCase
         return $this->logger;
     }
 
-    public static function getLoggerStatic(string $namespace, string $className, string $srcCodeFile): Logger
+    /**
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     *
+     * @return Logger
+     */
+    public static function getLoggerStatic(string $namespace, string $fqClassName, string $srcCodeFile): Logger
     {
         return AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST,
             $namespace,
-            $className,
+            $fqClassName,
             $srcCodeFile
         );
     }
@@ -443,7 +467,15 @@ class TestCaseBase extends TestCase
                 new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS),
                 new LessThan($after)
             ),
-            ' before: ' . number_format($before) . ', after: ' . number_format($after)
+            LoggableToString::convert(
+                [
+                    'before as duration' => TimeUtil::formatDurationInMicroseconds($before),
+                    'after as duration'  => TimeUtil::formatDurationInMicroseconds($after),
+                    'after - before'     => TimeUtil::formatDurationInMicroseconds($after - $before),
+                    'before as number'   => number_format($before),
+                    'after as number'    => number_format($after),
+                ]
+            )
         );
     }
 
@@ -476,5 +508,18 @@ class TestCaseBase extends TestCase
             null /* <- expected */,
             $forceEnableFlakyAssertions
         );
+    }
+
+    /**
+     * @template T
+     *
+     * @param Optional<T> $expected
+     * @param T           $actual
+     */
+    public static function assertSameExpectedOptional(Optional $expected, $actual): void
+    {
+        if ($expected->isValueSet()) {
+            self::assertSame($expected->getValue(), $actual);
+        }
     }
 }

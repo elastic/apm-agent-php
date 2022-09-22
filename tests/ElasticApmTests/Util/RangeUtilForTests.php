@@ -59,13 +59,13 @@ final class RangeUtilForTests
     }
 
     /**
-     * @param int $begin
-     * @param int $end
+     * @param int $first
+     * @param int $last
      *
      * @return iterable<int>
      */
-    public static function generateFromToIncluding(int $begin, int $end): iterable
+    public static function generateFromToIncluding(int $first, int $last): iterable
     {
-        return self::generate($begin, $end + 1);
+        return self::generate($first, $last + 1);
     }
 }

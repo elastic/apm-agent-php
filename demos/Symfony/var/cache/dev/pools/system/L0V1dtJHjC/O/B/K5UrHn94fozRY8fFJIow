@@ -1,0 +1,3 @@
+<?php //App%255CKernel
+
+return [PHP_INT_MAX, []];

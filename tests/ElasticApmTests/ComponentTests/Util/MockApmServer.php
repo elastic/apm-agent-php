@@ -24,10 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Map;
-use Elastic\Apm\Impl\Clock;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\LoopInterface;
@@ -55,11 +56,21 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     /** @var Map<int, MockApmServerPendingDataRequest> */
     private $pendingDataRequests;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct()
     {
         parent::__construct();
 
         $this->pendingDataRequests = new Map();
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
     }
 
     /** @inheritDoc */
@@ -86,7 +97,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
     }
 
-    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
+    protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
     }
@@ -101,7 +112,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         }
 
         $newRequest = new IntakeApiRequest();
-        $newRequest->timeReceivedAtApmServer = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $newRequest->timeReceivedAtApmServer = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
         $this->receivedIntakeApiRequests[] = $newRequest;

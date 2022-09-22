@@ -25,9 +25,7 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
@@ -41,6 +39,9 @@ use ElasticApmTests\Util\TransactionDataExpectations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class ConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';
@@ -127,6 +128,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
+            OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
             OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
             OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,
             OptionNames::SERVICE_NAME             => $stringRawToParsedValues(['my service \t name']),
@@ -182,12 +184,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::get();
-        if (!($tracer instanceof Tracer)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage('$tracer is not an instance of Tracer class', ['$tracer' => $tracer])
-            );
-        }
+        $tracer = self::getTracerFromAppCode();
 
         $optActualVal = $tracer->getConfig()->parsedValueFor($optName);
 

@@ -93,6 +93,22 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
+static pid_t g_pidOnRequestInit = -1;
+
+bool doesCurrentPidMatchPidOnRequestInit()
+{
+    pid_t currentPid = getCurrentProcessId();
+    if ( g_pidOnRequestInit != currentPid )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Process ID on request init doesn't match the current process ID"
+                               " (maybe the current process is a child process forked after the request started?)"
+                               "; g_pidOnRequestInit: %d, currentPid: %d"
+                               , (int)g_pidOnRequestInit, (int)currentPid );
+        return false;
+    }
+    return true;
+}
+
 void elasticApmModuleInit( int type, int moduleNumber )
 {
     ELASTIC_APM_UNUSED( type );
@@ -115,6 +131,7 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
 
     logSupportabilityInfo( logLevel_debug );
@@ -164,6 +181,14 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     ResultCode resultCode;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    if ( ! doesCurrentPidMatchPidOnRequestInit() )
+    {
+        resultCode = resultSuccess;
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+        ELASTIC_APM_UNUSED( resultCode );
+        return;
+    }
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
@@ -427,6 +452,8 @@ void elasticApmRequestInit()
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
+    g_pidOnRequestInit = getCurrentProcessId();
+
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
@@ -519,6 +546,12 @@ void elasticApmRequestShutdown()
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    if ( ! doesCurrentPidMatchPidOnRequestInit() )
+    {
+        resultCode = resultSuccess;
+        goto finally;
+    }
 
     if ( ! tracer->isInited )
     {

@@ -9,12 +9,19 @@ RUN apk update \
     perl-utils \
     procps \
     rsyslog \
+    sqlite-dev \
     unzip \
     wget
 
-COPY --from=composer:2.0.13 /usr/bin/composer /usr/bin/composer
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mysqli \
+    pdo_sqlite
 
-RUN php -v
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
 
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=

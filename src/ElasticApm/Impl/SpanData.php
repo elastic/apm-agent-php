@@ -38,10 +38,10 @@ class SpanData extends ExecutionSegmentData
     /** @var string */
     public $transactionId;
 
-    /** @var string|null */
+    /** @var ?string */
     public $action = null;
 
-    /** @var string|null */
+    /** @var ?string */
     public $subtype = null;
 
     /** @var StacktraceFrame[]|null */

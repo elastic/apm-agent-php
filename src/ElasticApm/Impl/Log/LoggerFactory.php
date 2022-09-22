@@ -38,12 +38,20 @@ final class LoggerFactory
         $this->backend = $backend;
     }
 
+    /**
+     * @param string       $category
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     *
+     * @return Logger
+     */
     public function loggerForClass(
         string $category,
         string $namespace,
-        string $className,
+        string $fqClassName,
         string $srcCodeFile
     ): Logger {
-        return Logger::makeRoot($category, $namespace, $className, $srcCodeFile, $this->backend);
+        return Logger::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $this->backend);
     }
 }

@@ -1,0 +1,3 @@
+<?php //App%255CKernel%2523configureRoutes
+
+return [PHP_INT_MAX, []];

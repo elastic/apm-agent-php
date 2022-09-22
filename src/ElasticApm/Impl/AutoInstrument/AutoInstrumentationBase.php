@@ -25,7 +25,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 
 /**
@@ -35,14 +38,23 @@ use Elastic\Apm\Impl\Tracer;
  */
 abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, LoggableInterface
 {
-    use AutoInstrumentationTrait;
+    use LoggableTrait;
 
     /** @var Tracer */
     protected $tracer;
 
+    /** @var Logger */
+    private $logger;
+
     public function __construct(Tracer $tracer)
     {
         $this->tracer = $tracer;
+        $this->logger = $tracer->loggerFactory()->loggerForClass(
+            LogCategory::AUTO_INSTRUMENTATION,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        );
     }
 
     /** @inheritDoc */
@@ -61,6 +73,23 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
             if ($disabledInstrumentationsMatcher->match($otherName) !== null) {
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    protected function verifyAtLeastOneArgument(array $interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) < 1) {
+            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Number of received arguments for call is less than expected.');
+
+            return false;
         }
 
         return true;

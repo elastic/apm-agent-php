@@ -1,0 +1,3 @@
+<?php //Symfony%255CComponent%255CHttpKernel%255CKernel%2523getContainerClass
+
+return [PHP_INT_MAX, []];

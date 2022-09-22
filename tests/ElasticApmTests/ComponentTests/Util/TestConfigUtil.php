@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use RuntimeException;
 
@@ -53,8 +54,8 @@ final class TestConfigUtil
     }
 
     public static function read(
-        string $dbgProcessName,
-        ?RawSnapshotSourceInterface $additionalConfigSource
+        ?RawSnapshotSourceInterface $additionalConfigSource,
+        LoggerFactory $loggerFactory
     ): TestConfigSnapshot {
         $envVarConfigSource = new EnvVarsRawSnapshotSource(TestConfigUtil::ENV_VAR_NAME_PREFIX);
         $configSource =  $additionalConfigSource === null
@@ -65,7 +66,7 @@ final class TestConfigUtil
                     $envVarConfigSource,
                 ]
             );
-        $parser = new Parser(AmbientContextForTests::buildLoggerFactory($dbgProcessName, LogLevel::ERROR));
+        $parser = new Parser($loggerFactory);
         $allOptsMeta = AllComponentTestsOptionsMetadata::get();
         $optNameToParsedValue = $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta));
         return new TestConfigSnapshot($optNameToParsedValue);
@@ -82,7 +83,7 @@ final class TestConfigUtil
             );
         }
 
-        if (GlobalTracerHolder::get()->isRecording()) {
+        if (GlobalTracerHolder::getValue()->isRecording()) {
             throw new RuntimeException('Tracer should not be recording component tests auxiliary processes');
         }
     }

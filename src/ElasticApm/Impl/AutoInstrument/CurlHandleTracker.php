@@ -26,17 +26,17 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Closure;
-use Elastic\Apm\DistributedTracingData;
+use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\EnabledAssertProxy;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\InternalFailureException;
@@ -59,7 +59,7 @@ use const CURLOPT_URL;
  */
 final class CurlHandleTracker implements LoggableInterface
 {
-    use AutoInstrumentationTrait;
+    use LoggableTrait;
 
     private const GET_HTTP_METHOD = 'GET';
     private const HEAD_HTTP_METHOD = 'HEAD';
@@ -72,20 +72,20 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var Logger */
     private $logger;
 
+    /** @var AutoInstrumentationUtil */
+    private $util;
+
     /** @var CurlHandleWrapped */
     private $curlHandle;
 
-    /** @var string|null */
+    /** @var ?string */
     private $url = null;
 
-    /** @var string|null */
+    /** @var ?string */
     private $httpMethod = 'GET';
 
     /** @var mixed[] */
     private $headersSetByApp = [];
-
-    /** @var mixed[]|null */
-    private $savedHeadersBeforeInjection = null;
 
     /** @var SpanInterface */
     private $span;
@@ -100,6 +100,8 @@ final class CurlHandleTracker implements LoggableInterface
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
     }
 
     public function copy(): CurlHandleTracker
@@ -131,7 +133,9 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function setUrl($value): void
     {
-        $this->verifyValueType(is_string($value), 'string', $value);
+        if (!$this->util->verifyIsString($value)) {
+            return;
+        }
         /** @var string $value */
         $this->url = $value;
     }
@@ -255,64 +259,17 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param bool   $isOfExpectedType
-     * @param string $dbgExpectedType
-     * @param mixed  $dbgValue
-     *
-     * @return bool
-     */
-    private function verifyValueType(bool $isOfExpectedType, string $dbgExpectedType, $dbgValue): bool
-    {
-        if (!$isOfExpectedType) {
-            throw new InternalFailureException(
-                ExceptionUtil::buildMessage(
-                    'Unexpected value type',
-                    [
-                        'expectedType' => $dbgExpectedType,
-                        'actualType'   => DbgUtil::getType($dbgValue),
-                        'value'        => $this->logger->possiblySecuritySensitive($dbgValue),
-                        'this'         => $this,
-                    ]
-                )
-            );
-        }
-
-        return true;
-    }
-
-    /**
      * @param mixed $returnValue
      *
      * @return bool
      */
     private function isSuccess($returnValue): bool
     {
-        $this->verifyValueType(is_bool($returnValue), 'bool', $returnValue);
+        if (!$this->util->verifyIsBool($returnValue)) {
+            return false;
+        }
         /** @var bool $returnValue */
         return $returnValue;
-    }
-
-    /**
-     * @param int     $expectedMinNumberOfArgs
-     * @param mixed[] $interceptedCallArgs
-     *
-     * @return void
-     */
-    private function verifyMinNumberOfArguments(int $expectedMinNumberOfArgs, array $interceptedCallArgs): void
-    {
-        if (count($interceptedCallArgs) < $expectedMinNumberOfArgs) {
-            throw new InternalFailureException(
-                ExceptionUtil::buildMessage(
-                    'Number of arguments is less than expected',
-                    [
-                        'expectedMinNumberOfArgs' => $expectedMinNumberOfArgs,
-                        'actual'                  => count($interceptedCallArgs),
-                        'interceptedCallArgs'     => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
-                        'this'                    => $this,
-                    ]
-                )
-            );
-        }
     }
 
     /**
@@ -325,40 +282,58 @@ final class CurlHandleTracker implements LoggableInterface
             return;
         }
 
-        $this->verifyMinNumberOfArguments(2, $interceptedCallArgs);
+        if (!$this->util->verifyMinArgsCount(2, $interceptedCallArgs)) {
+            return;
+        }
 
         $this->processSetOpt(
             $interceptedCallArgs[1],
             /**
-             * @return mixed
+             * @param mixed &$optVal
+             *
+             * @return bool
              */
-            function () use ($interceptedCallArgs) {
-                $this->verifyMinNumberOfArguments(3, $interceptedCallArgs);
-                return $interceptedCallArgs[2];
+            function (&$optVal) use ($interceptedCallArgs) {
+                if (!$this->util->verifyMinArgsCount(3, $interceptedCallArgs)) {
+                    return false;
+                }
+                $optVal = $interceptedCallArgs[2];
+                return true;
             }
         );
     }
 
     /**
-     * @param mixed                    $optionId
-     * @param Closure                  $getOptionValue
-     *
-     * @phpstan-param Closure(): mixed $getOptionValue
+     * @param mixed                         $optionId
+     * @param Closure(mixed &$optVal): bool $getOptionValue
      */
     private function processSetOpt($optionId, Closure $getOptionValue): void
     {
-        $this->verifyValueType(is_int($optionId), 'int', $optionId);
+        if (!$this->util->verifyIsInt($optionId)) {
+            return;
+        }
+
         switch ($optionId) {
             case CURLOPT_CUSTOMREQUEST:
-                $optionValue = $getOptionValue();
-                $this->verifyValueType(is_string($optionValue), 'string', $optionValue);
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
+                if (!$this->util->verifyIsString($optionValue)) {
+                    return;
+                }
                 /** @var string $optionValue */
                 $this->httpMethod = $optionValue;
                 break;
 
             case CURLOPT_HTTPHEADER:
-                $optionValue = $getOptionValue();
-                $this->verifyValueType(is_array($optionValue), 'array', $optionValue);
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
+                if (!$this->util->verifyIsArray($optionValue)) {
+                    return;
+                }
                 /** @var mixed[] $optionValue */
                 $this->headersSetByApp = $optionValue;
                 break;
@@ -369,7 +344,10 @@ final class CurlHandleTracker implements LoggableInterface
                 break;
 
             case CURLOPT_NOBODY:
-                $optionValue = $getOptionValue();
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
                 // Based on https://github.com/curl/curl/blob/curl-7_73_0/lib/setopt.c#L269
                 if ($optionValue) {
                     $this->httpMethod = self::HEAD_HTTP_METHOD;
@@ -380,7 +358,10 @@ final class CurlHandleTracker implements LoggableInterface
 
             case CURLOPT_POST:
                 // Based on https://github.com/curl/curl/blob/curl-7_73_0/lib/setopt.c#L616
-                $optionValue = $getOptionValue();
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
                 $this->httpMethod = $optionValue ? self::POST_HTTP_METHOD : self::GET_HTTP_METHOD;
                 break;
 
@@ -391,12 +372,19 @@ final class CurlHandleTracker implements LoggableInterface
 
             case CURLOPT_PUT:
                 // Based on https://github.com/curl/curl/blob/curl-7_73_0/lib/setopt.c#L292
-                $optionValue = $getOptionValue();
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
                 $this->httpMethod = $optionValue ? self::PUT_HTTP_METHOD : self::GET_HTTP_METHOD;
                 break;
 
             case CURLOPT_URL:
-                $this->setUrl($getOptionValue());
+                $optionValue = null;
+                if (!$getOptionValue(/* ref */ $optionValue)) {
+                    return;
+                }
+                $this->setUrl($optionValue);
                 break;
         }
     }
@@ -411,19 +399,26 @@ final class CurlHandleTracker implements LoggableInterface
             return;
         }
 
-        $this->verifyMinNumberOfArguments(2, $interceptedCallArgs);
+        if (!$this->util->verifyMinArgsCount(2, $interceptedCallArgs)) {
+            return;
+        }
         $optionsIdToValue = $interceptedCallArgs[1];
-        $this->verifyValueType(is_array($optionsIdToValue), 'array', $optionsIdToValue);
+        if (!$this->util->verifyIsArray($optionsIdToValue)) {
+            return;
+        }
         /** @var array<mixed, mixed> $optionsIdToValue */
 
         foreach ($optionsIdToValue as $optionId => $optionValue) {
             $this->processSetOpt(
                 $optionId,
                 /**
-                 * @return mixed
+                 * @param mixed &$optVal
+                 *
+                 * @return bool
                  */
-                function () use ($optionValue) {
-                    return $optionValue;
+                function (&$optVal) use ($optionValue): bool {
+                    $optVal = $optionValue;
+                    return true;
                 }
             );
         }
@@ -445,15 +440,20 @@ final class CurlHandleTracker implements LoggableInterface
             $spanName,
             Constants::SPAN_TYPE_EXTERNAL,
             /* subtype: */
-            $isHttp ? Constants::SPAN_TYPE_EXTERNAL_SUBTYPE_HTTP : null
+            $isHttp ? Constants::SPAN_SUBTYPE_HTTP : null
         );
 
         $this->setContextPreHook();
 
         if ($isHttp) {
-            $distributedTracingData = $this->span->getDistributedTracingData();
-            if ($distributedTracingData !== null) {
-                $this->injectDistributedTracingHeader($distributedTracingData);
+            $headersToInjectFormattedLines = [];
+            $this->span->injectDistributedTracingHeaders(
+                function (string $headerName, string $headerValue) use (&$headersToInjectFormattedLines): void {
+                    $headersToInjectFormattedLines[] = $headerName . ': ' . $headerValue;
+                }
+            );
+            if (!ArrayUtil::isEmpty($headersToInjectFormattedLines)) {
+                $this->injectDistributedTracingHeaders($headersToInjectFormattedLines);
             }
         }
     }
@@ -477,7 +477,7 @@ final class CurlHandleTracker implements LoggableInterface
         ?int $port,
         ?int $defaultPortForScheme
     ): ?string {
-        /** @var string|null */
+        /** @var ?string $result */
         $result = null;
 
         if ($scheme !== null) {
@@ -498,12 +498,12 @@ final class CurlHandleTracker implements LoggableInterface
         ?int $port,
         ?int $defaultPortForScheme
     ): ?string {
-        /** @var string|null */
+        /** @var ?string $result */
         $result = null;
 
         self::appendOrSetString(/* ref */ $result, $host);
 
-        /** @var string|null */
+        /** @var ?string $portSuffix */
         $portSuffix = null;
         if ($port === null) {
             if ($defaultPortForScheme !== null) {
@@ -570,6 +570,17 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPostHook(): void
     {
+        $errorCode = $this->curlHandle->errno();
+        if ($errorCode !== 0) {
+            $this->span->setOutcome(Constants::OUTCOME_FAILURE);
+            $customErrorData = new CustomErrorData();
+            $customErrorData->code = $errorCode;
+            $customErrorData->type = curl_strerror($errorCode);
+            $customErrorData->message = $this->curlHandle->error();
+            $this->span->createCustomError($customErrorData);
+            return;
+        }
+
         $responseStatusCode = $this->curlHandle->getResponseStatusCode();
         if (is_int($responseStatusCode)) {
             $this->span->context()->http()->setStatusCode($responseStatusCode);
@@ -589,24 +600,9 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function curlExecPostHook(int $numberOfStackFramesToSkip, $returnValue): void
     {
-        if ($this->savedHeadersBeforeInjection !== null) {
-            $this->headersSetByApp = $this->savedHeadersBeforeInjection;
-            $this->savedHeadersBeforeInjection = null;
-
-            $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $this->headersSetByApp);
-            if ($setOptRetVal) {
-                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Successfully restored headers as they were before injection');
-            } else {
-                $this->savedHeadersBeforeInjection = null;
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Failed to restore headers as they were before injection');
-            }
-        }
-
         $this->setContextPostHook();
 
-        self::endSpan(
+        AutoInstrumentationUtil::endSpan(
             $numberOfStackFramesToSkip + 1,
             $this->span,
             false /* <- hasExitedByException */,
@@ -615,43 +611,29 @@ final class CurlHandleTracker implements LoggableInterface
     }
 
     /**
-     * @param DistributedTracingData $data
+     * @param string[] $headersToInjectFormattedLines
      */
-    private function injectDistributedTracingHeader(DistributedTracingData $data): void
+    private function injectDistributedTracingHeaders(array $headersToInjectFormattedLines): void
     {
-        $traceParentHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
-        $headers = array_merge(
-            $this->headersSetByApp,
-            [HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ': ' . $traceParentHeaderValue]
-        );
+        $headers = array_merge($this->headersSetByApp, $headersToInjectFormattedLines);
 
         $logger = $this->logger->inherit()->addAllContext(
             [
-                'traceParentHeaderValue' => $traceParentHeaderValue,
-                'headers'                => $this->logger->possiblySecuritySensitive($headers),
+                'headersToInjectFormattedLines' => $headersToInjectFormattedLines,
+                'headers'                       => $this->logger->possiblySecuritySensitive($headers),
             ]
         );
 
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Injecting outgoing ' . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header...'
-        );
+        && $loggerProxy->log('Injecting outgoing HTTP request headers for distributed tracing...');
 
-        $this->savedHeadersBeforeInjection = $this->headersSetByApp;
         $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
         if ($setOptRetVal) {
             ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Successfully injected outgoing '
-                . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header'
-            );
+            && $loggerProxy->log('Successfully injected outgoing HTTP request headers for distributed tracing');
         } else {
-            $this->savedHeadersBeforeInjection = null;
             ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Failed to inject outgoing '
-                . HttpDistributedTracing::TRACE_PARENT_HEADER_NAME . ' HTTP request header'
-            );
+            && $loggerProxy->log('Failed to inject outgoing HTTP request headers for distributed tracing');
         }
     }
 

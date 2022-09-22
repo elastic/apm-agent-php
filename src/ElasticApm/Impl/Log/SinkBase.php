@@ -48,7 +48,7 @@ abstract class SinkBase implements SinkInterface
 
         // Traverse $contextsStack in reverse order since the data most specific to the log statement is on top
         for (end($contextsStack); key($contextsStack) !== null; prev($contextsStack)) {
-            /** @var array<string, mixed> */
+            /** @var array<string, mixed> $currentContext */
             $currentContext = current($contextsStack);
             foreach ($currentContext as $key => $value) {
                 $combinedContext[$key] = $value;

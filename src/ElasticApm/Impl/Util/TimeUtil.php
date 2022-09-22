@@ -49,11 +49,9 @@ final class TimeUtil
      *
      * @see ClockInterface::getMonotonicClockCurrentTime() For the description
      */
-    public static function calcDurationInMicroseconds(float $beginTime, float $endTime): float
+    public static function calcDurationInMicrosecondsClampNegativeToZero(float $beginTime, float $endTime): float
     {
-        $diff = $endTime - $beginTime;
-        $diff = $diff < 0 ? 0 : $diff;
-        return $diff;
+        return ($endTime >= $beginTime) ? ($endTime - $beginTime) : 0;
     }
 
     /**
@@ -64,9 +62,11 @@ final class TimeUtil
      *
      * @see ClockInterface::getMonotonicClockCurrentTime() For the description
      */
-    public static function calcDuration(float $beginTime, float $endTime): float
+    public static function calcDurationInMillisecondsClampNegativeToZero(float $beginTime, float $endTime): float
     {
-        return self::microsecondsToMilliseconds(self::calcDurationInMicroseconds($beginTime, $endTime));
+        return self::microsecondsToMilliseconds(
+            self::calcDurationInMicrosecondsClampNegativeToZero($beginTime, $endTime)
+        );
     }
 
     public static function microsecondsToMilliseconds(float $microseconds): float
@@ -87,5 +87,96 @@ final class TimeUtil
     public static function secondsToMicroseconds(float $seconds): float
     {
         return $seconds * self::NUMBER_OF_MICROSECONDS_IN_SECOND;
+    }
+
+    public static function microsecondsToSeconds(float $microseconds): float
+    {
+        return $microseconds / self::NUMBER_OF_MICROSECONDS_IN_SECOND;
+    }
+
+    private static function calcWholeTimesAndRemainderForFloat(
+        float $largeVal,
+        int $smallVal,
+        float &$wholeTimes,
+        float &$remainder
+    ): void {
+        $wholeTimes = floor($largeVal / $smallVal);
+        $remainder = $largeVal - ($smallVal * $wholeTimes);
+    }
+
+    public static function formatDurationInMicroseconds(float $durationInMicroseconds): string
+    {
+        if ($durationInMicroseconds === 0.0) {
+            return '0us';
+        }
+
+        $isNegative = ($durationInMicroseconds < 0);
+        $microsecondsTotalFloat = abs($durationInMicroseconds);
+        $microsecondsTotalWhole = floor($microsecondsTotalFloat);
+        $microsecondsFraction = $microsecondsTotalFloat - $microsecondsTotalWhole;
+
+        $millisecondsTotalWhole = 0.0;
+        $microsecondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $microsecondsTotalWhole,
+            TimeUtil::NUMBER_OF_MICROSECONDS_IN_MILLISECOND,
+            /* ref */ $millisecondsTotalWhole,
+            /* ref */ $microsecondsRemainder
+        );
+
+        $secondsTotalWhole = 0.0;
+        $millisecondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $millisecondsTotalWhole,
+            TimeUtil::NUMBER_OF_MILLISECONDS_IN_SECOND,
+            /* ref */ $secondsTotalWhole,
+            /* ref */ $millisecondsRemainder
+        );
+
+        $minutesTotalWhole = 0.0;
+        $secondsRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $secondsTotalWhole,
+            TimeUtil::NUMBER_OF_SECONDS_IN_MINUTE,
+            /* ref */ $minutesTotalWhole,
+            /* ref */ $secondsRemainder
+        );
+
+        $hoursTotalWhole = 0.0;
+        $minutesRemainder = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $minutesTotalWhole,
+            TimeUtil::NUMBER_OF_MINUTES_IN_HOUR,
+            /* ref */ $hoursTotalWhole,
+            /* ref */ $minutesRemainder
+        );
+
+        $hoursRemainder = 0.0;
+        $daysTotalWhole = 0.0;
+        self::calcWholeTimesAndRemainderForFloat(
+            $hoursTotalWhole,
+            TimeUtil::NUMBER_OF_HOURS_IN_DAY,
+            /* ref */ $daysTotalWhole,
+            /* ref */ $hoursRemainder
+        );
+
+        $appendRemainder = function (string $appendTo, float $remainder, string $units): string {
+            if ($remainder === 0.0) {
+                return $appendTo;
+            }
+
+            $remainderAsString = ($remainder === floor($remainder)) ? strval(intval($remainder)) : strval($remainder);
+            return $appendTo . (TextUtil::isEmptyString($appendTo) ? '' : ' ') . $remainderAsString . $units;
+        };
+
+        $result = '';
+        $result = $appendRemainder($result, $daysTotalWhole, 'd');
+        $result = $appendRemainder($result, $hoursRemainder, 'h');
+        $result = $appendRemainder($result, $minutesRemainder, 'm');
+        $result = $appendRemainder($result, $secondsRemainder, 's');
+        $result = $appendRemainder($result, $millisecondsRemainder, 'ms');
+        $result = $appendRemainder($result, $microsecondsRemainder + $microsecondsFraction, 'us');
+
+        return ($isNegative ? '-' : '') . $result;
     }
 }

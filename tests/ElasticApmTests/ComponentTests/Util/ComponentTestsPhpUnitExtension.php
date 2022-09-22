@@ -36,8 +36,6 @@ use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
-use ElasticApmTests\Util\TestCaseBase;
-use ElasticApmTests\Util\TimeFormatUtilForTests;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -72,7 +70,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         parent::__construct(self::DBG_PROCESS_NAME);
 
-        GlobalTracerHolder::set(NoopTracer::singletonInstance());
+        GlobalTracerHolder::setValue(NoopTracer::singletonInstance());
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -98,7 +96,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             'Test starting...',
             [
                 'test'                  => $test,
-                'testEnvId'             => self::$currentTestCaseId,
+                'currentTestCaseId'     => self::$currentTestCaseId,
                 'Environment variables' => getenv(),
             ]
         );
@@ -110,9 +108,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         // Round to milliseconds
         $roundedDurationInSeconds = round($durationInSeconds, /* precision */ 3);
-        return TimeFormatUtilForTests::formatDurationInMicroseconds(
-            TimeUtil::secondsToMicroseconds($roundedDurationInSeconds)
-        );
+        return TimeUtil::formatDurationInMicroseconds(TimeUtil::secondsToMicroseconds($roundedDurationInSeconds));
     }
 
     public function executeAfterSuccessfulTest(string $test, /* test duration in seconds */ float $time): void

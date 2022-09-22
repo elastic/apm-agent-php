@@ -55,6 +55,7 @@ struct Tracer
 typedef struct Tracer Tracer;
 
 ResultCode constructTracer( Tracer* tracer );
+ResultCode ensureLoggerInitialConfigIsLatest( Tracer* tracer );
 ResultCode ensureAllComponentsHaveLatestConfig( Tracer* tracer );
 const ConfigSnapshot* getTracerCurrentConfigSnapshot( const Tracer* tracer );
 void moveTracerToFailedState( Tracer* tracer );

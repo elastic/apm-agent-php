@@ -25,14 +25,17 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 
 final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
 {
-    private const SCRIPT_TO_RUN_APP_CODE_HOST = 'runCliScriptAppCodeHost.php';
-
     /** @var ResourcesCleanerHandle */
     private $resourcesCleaner;
+
+    /** @var Logger */
+    private $logger;
 
     /**
      * @param Closure(AppCodeHostParams): void $setParamsFunc
@@ -45,18 +48,26 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     ) {
         $dbgProcessName = ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '(' . $dbgInstanceName . ')';
         $appCodeHostParams = new AppCodeHostParams($dbgProcessName);
-        $appCodeHostParams->spawnedProcessId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
+        $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
         $setParamsFunc($appCodeHostParams);
 
-        parent::__construct($testCaseHandle, $appCodeHostParams, new AgentConfigSourceBuilder($appCodeHostParams));
+        $agentConfigSourceBuilder = new AgentConfigSourceBuilder($resourcesCleaner->getClient(), $appCodeHostParams);
+        parent::__construct($testCaseHandle, $appCodeHostParams, $agentConfigSourceBuilder);
 
         $this->resourcesCleaner = $resourcesCleaner;
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
     }
 
     /** @inheritDoc */
     public function sendRequest(AppCodeTarget $appCodeTarget, ?Closure $setParamsFunc = null): void
     {
-        $requestParams = new AppCodeRequestParams($appCodeTarget);
+        $requestParams = new CliScriptAppCodeRequestParams($appCodeTarget);
         if ($setParamsFunc !== null) {
             $setParamsFunc($requestParams);
         }
@@ -66,11 +77,14 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         && $loggerProxy->log('Starting...');
 
         $cmdLine = TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
-                   . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::SCRIPT_TO_RUN_APP_CODE_HOST . '"';
+                   . ' "' . __DIR__ . DIRECTORY_SEPARATOR . $requestParams->scriptToRunAppCodeHost . '"';
+        foreach ($requestParams->scriptToRunAppCodeHostArgs as $scriptToRunAppCodeHostArg) {
+            $cmdLine .= ' ' . $scriptToRunAppCodeHostArg;
+        }
 
         $envVars = TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
-            $this->agentConfigSourceBuilder->getEnvVars(),
-            $this->appCodeHostParams->spawnedProcessId,
+            $this->agentConfigSourceBuilder->getEnvVars(getenv()),
+            $this->appCodeHostParams->spawnedProcessInternalId,
             null /* <- targetServerPort */,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName
@@ -84,9 +98,9 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         $this->afterAppCodeInvocation($appCodeInvocation);
     }
 
-    private function setAppCodeRequestParamsExpected(AppCodeRequestParams $appCodeRequestParams): void
+    private function setAppCodeRequestParamsExpected(CliScriptAppCodeRequestParams $appCodeRequestParams): void
     {
-        $appCodeRequestParams->expectedTransactionName->setValueIfNotSet(self::SCRIPT_TO_RUN_APP_CODE_HOST);
+        $appCodeRequestParams->expectedTransactionName->setValueIfNotSet($appCodeRequestParams->scriptToRunAppCodeHost);
         $appCodeRequestParams->expectedTransactionType->setValueIfNotSet(Constants::TRANSACTION_TYPE_CLI);
     }
 }

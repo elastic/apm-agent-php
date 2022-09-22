@@ -18,4 +18,4 @@
  */
 #pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.5"
+#define PHP_ELASTIC_APM_VERSION "1.6.1"

@@ -50,10 +50,10 @@ class AppCodeHostParams implements LoggableInterface
     private $agentOptions = [];
 
     /** @var string */
-    public $spawnedProcessId;
+    public $spawnedProcessInternalId;
 
     /** @var Logger */
-    protected $logger;
+    private $logger;
 
     public function __construct(string $dbgProcessName)
     {

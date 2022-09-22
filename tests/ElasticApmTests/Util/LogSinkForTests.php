@@ -81,7 +81,7 @@ final class LogSinkForTests extends SinkBase
         }
     }
 
-    private static function levelToString(int $level): string
+    public static function levelToString(int $level): string
     {
         switch ($level) {
             case Level::OFF:

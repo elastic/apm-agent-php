@@ -1,0 +1,3 @@
+<?php //Symfony%255CBundle%255CFrameworkBundle%255CController%255CAbstractController%2523createNotFoundException
+
+return [PHP_INT_MAX, []];

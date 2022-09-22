@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use Monolog\Test\TestCase;
+use PHPUnit\Framework\TestCase;
 
 final class ArrayUtilForTests
 {

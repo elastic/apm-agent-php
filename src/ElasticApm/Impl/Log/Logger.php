@@ -42,16 +42,25 @@ final class Logger
         $this->maxEnabledLevel = $maxEnabledLevel;
     }
 
+    /**
+     * @param string       $category
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     * @param Backend      $backend
+     *
+     * @return static
+     */
     public static function makeRoot(
         string $category,
         string $namespace,
-        string $className,
+        string $fqClassName,
         string $srcCodeFile,
         Backend $backend
     ): self {
         return new self(
-            LoggerData::makeRoot($category, $namespace, $className, $srcCodeFile, $backend),
-            $backend->maxEnabledLevel()
+            LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend),
+            $backend->getMaxEnabledLevel()
         );
     }
 

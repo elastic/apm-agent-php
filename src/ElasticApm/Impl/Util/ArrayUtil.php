@@ -54,9 +54,9 @@ final class ArrayUtil
     }
 
     /**
-     * @param string|int    $key
-     * @param array<string|int, mixed>  $array
-     * @param mixed         $fallbackValue
+     * @param string|int               $key
+     * @param array<string|int, mixed> $array
+     * @param mixed                    $fallbackValue
      *
      * @return mixed
      *
@@ -176,5 +176,32 @@ final class ArrayUtil
         }
 
         return $array[$key];
+    }
+
+    /**
+     * @param array<mixed, mixed> $array
+     *
+     * @return bool
+     */
+    public static function isEmpty(array $array): bool
+    {
+        return count($array) === 0;
+    }
+
+    /**
+     * @param array<mixed, mixed> $array
+     *
+     * @return bool
+     */
+    public static function isList(array $array): bool
+    {
+        $expectedKey = 0;
+        foreach ($array as $key => $_) {
+            if ($key !== $expectedKey) {
+                return false;
+            }
+            ++$expectedKey;
+        }
+        return true;
     }
 }

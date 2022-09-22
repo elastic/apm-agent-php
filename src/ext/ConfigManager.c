@@ -103,6 +103,7 @@ struct OptionMetadata
     StringView iniName;
     bool isSecret;
     bool isDynamic;
+    bool isLoggingRelated;
     ParsedOptionValue defaultValue;
     InterpretIniRawValueFunc interpretIniRawValue;
     ParseRawValueFunc parseRawValue;
@@ -165,6 +166,7 @@ typedef struct ConfigManagerCurrentState ConfigManagerCurrentState;
 
 struct ConfigManager
 {
+    bool isLoggingRelatedOnly;
     ConfigMetadata meta;
     ConfigManagerCurrentState current;
 };
@@ -410,6 +412,7 @@ static OptionMetadata buildStringOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseStringValue,
@@ -418,6 +421,33 @@ static OptionMetadata buildStringOptionMetadata(
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedStringValueToZval
     };
+}
+
+static OptionMetadata buildLoggingRelatedStringOptionMetadata(
+        String name
+        , StringView iniName
+        , bool isSecret
+        , bool isDynamic
+        , String defaultValue
+        , SetConfigSnapshotFieldFunc setFieldFunc
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
+{
+    return (OptionMetadata)
+            {
+                    .name = name,
+                    .iniName = iniName,
+                    .isSecret = isSecret,
+                    .isDynamic = isDynamic,
+                    .isLoggingRelated = true,
+                    .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
+                    .interpretIniRawValue = &interpretStringIniRawValue,
+                    .parseRawValue = &parseStringValue,
+                    .streamParsedValue = &streamParsedString,
+                    .setField = setFieldFunc,
+                    .getField = getFieldFunc,
+                    .parsedValueToZval = &parsedStringValueToZval
+            };
 }
 
 static OptionMetadata buildBoolOptionMetadata(
@@ -436,6 +466,7 @@ static OptionMetadata buildBoolOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_bool, .u.boolValue = defaultValue },
         .interpretIniRawValue = &interpretBoolIniRawValue,
         .parseRawValue = &parseBoolValue,
@@ -463,6 +494,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_duration, .u.durationValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseDurationValue,
@@ -479,6 +511,7 @@ static OptionMetadata buildEnumOptionMetadata(
         , StringView iniName
         , bool isSecret
         , bool isDynamic
+        , bool isLoggingRelated
         , int defaultValue
         , InterpretIniRawValueFunc interpretIniRawValue
         , SetConfigSnapshotFieldFunc setFieldFunc
@@ -493,6 +526,7 @@ static OptionMetadata buildEnumOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = isLoggingRelated,
         .defaultValue = { .type = parsedOptionValueType_int, .u.intValue = defaultValue },
         .interpretIniRawValue = interpretIniRawValue,
         .parseRawValue = &parseEnumValue,
@@ -596,6 +630,8 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, profilingInferredSpansEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, sanitizeFieldNames )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
@@ -642,7 +678,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 #define ELASTIC_APM_INIT_DYNAMIC_METADATA( buildFunc, fieldName, optName, defaultValue ) \
     ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ false, /* isDynamic */ true, defaultValue )
 
-#define ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
+#define ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, isLoggingRelated, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -654,6 +690,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
             , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
             , /* isSecret */ false \
             , isDynamic \
+            , isLoggingRelated \
             , defaultValue \
             , interpretIniRawValue \
             , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
@@ -669,10 +706,10 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
     )
 
 #define ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
-    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, /* isDynamic */ false, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg )
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, /* isDynamic */ false, /* isLoggingRelated */ false, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg )
 
 #define ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, isDynamic ) \
-    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, /* isLoggingRelated */ true, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
 
 #define ELASTIC_APM_INIT_LOG_LEVEL_METADATA( fieldName, optName ) \
     ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, /* isDynamic: */ false )
@@ -783,7 +820,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* isUniquePrefixEnough: */ true );
 
     ELASTIC_APM_INIT_METADATA(
-            buildStringOptionMetadata,
+            buildLoggingRelatedStringOptionMetadata,
             logFile,
             ELASTIC_APM_CFG_OPT_NAME_LOG_FILE,
             /* defaultValue: */ NULL );
@@ -817,6 +854,18 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             memoryTrackingLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            profilingInferredSpansEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_SECRET_METADATA(
+            buildStringOptionMetadata,
+            sanitizeFieldNames,
+            ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,
@@ -900,13 +949,15 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 
 static
 void parseCombinedRawConfigSnapshot(
-        const OptionMetadata* optsMeta,
+        ConfigManager* cfgManager,
         const CombinedRawConfigSnapshot* combinedRawCfgSnapshot,
         ConfigSnapshot* cfgSnapshot )
 {
-    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
     ELASTIC_APM_ASSERT_VALID_PTR( combinedRawCfgSnapshot );
     ELASTIC_APM_ASSERT_VALID_PTR( cfgSnapshot );
+
+    const OptionMetadata* const optsMeta = cfgManager->meta.optionsMeta;
 
     ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
@@ -918,6 +969,11 @@ void parseCombinedRawConfigSnapshot(
         const String sourceDescription = combinedRawCfgSnapshot->sourceDescriptions[ optId ];
         ParsedOptionValue parsedOptValue;
         ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
+
+        if ( cfgManager->isLoggingRelatedOnly && !optMeta->isLoggingRelated )
+        {
+            continue;
+        }
 
         if ( interpretedRawValue == NULL )
         {
@@ -1249,14 +1305,6 @@ bool areEqualCombinedRawConfigSnapshots( const CombinedRawConfigSnapshot* snapsh
     return true;
 }
 
-static
-void logConfigChange( const ConfigManager* cfgManager, const ConfigRawData* newRawData )
-{
-    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
-    ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
-
-}
-
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
@@ -1283,8 +1331,7 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
         goto finally;
     }
 
-    parseCombinedRawConfigSnapshot( cfgManager->meta.optionsMeta, &newRawData->combined, &newCfgSnapshot );
-    logConfigChange( cfgManager, newRawData );
+    parseCombinedRawConfigSnapshot( cfgManager, &newRawData->combined, &newCfgSnapshot );
     deleteConfigRawDataAndSetToNull( /* in,out */ &cfgManager->current.rawData );
     cfgManager->current.rawData = newRawData;
     cfgManager->current.snapshot = newCfgSnapshot;
@@ -1463,7 +1510,7 @@ void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager )
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
 }
 
-ResultCode newConfigManager( ConfigManager** pNewCfgManager )
+ResultCode newConfigManager( ConfigManager** pNewCfgManager, bool isLoggingRelatedOnly )
 {
     ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewCfgManager );
 
@@ -1473,6 +1520,7 @@ ResultCode newConfigManager( ConfigManager** pNewCfgManager )
     ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
     ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
+    cfgManager->isLoggingRelatedOnly = isLoggingRelatedOnly;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );
     initConfigManagerCurrentState( &cfgManager->meta, /* out */ &cfgManager->current );
 

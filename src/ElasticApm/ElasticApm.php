@@ -35,7 +35,7 @@ final class ElasticApm
 {
     use StaticClassTrait;
 
-    public const VERSION = '1.5';
+    public const VERSION = '1.6.1';
 
     /**
      * Begins a new transaction and sets it as the current transaction.
@@ -58,7 +58,8 @@ final class ElasticApm
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        return GlobalTracerHolder::get()->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
+        return GlobalTracerHolder::getValue()
+                                 ->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
     }
 
     /**
@@ -86,7 +87,7 @@ final class ElasticApm
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        return GlobalTracerHolder::get()->captureCurrentTransaction(
+        return GlobalTracerHolder::getValue()->captureCurrentTransaction(
             $name,
             $type,
             $callback,
@@ -102,7 +103,7 @@ final class ElasticApm
      */
     public static function getCurrentTransaction(): TransactionInterface
     {
-        return GlobalTracerHolder::get()->getCurrentTransaction();
+        return GlobalTracerHolder::getValue()->getCurrentTransaction();
     }
 
     /**
@@ -114,7 +115,7 @@ final class ElasticApm
      */
     public static function getCurrentExecutionSegment(): ExecutionSegmentInterface
     {
-        return GlobalTracerHolder::get()->getCurrentExecutionSegment();
+        return GlobalTracerHolder::getValue()->getCurrentExecutionSegment();
     }
 
     /**
@@ -138,7 +139,7 @@ final class ElasticApm
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        return GlobalTracerHolder::get()->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
+        return GlobalTracerHolder::getValue()->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
     }
 
     /**
@@ -169,7 +170,7 @@ final class ElasticApm
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        return GlobalTracerHolder::get()->captureTransaction(
+        return GlobalTracerHolder::getValue()->captureTransaction(
             $name,
             $type,
             $callback,
@@ -192,7 +193,7 @@ final class ElasticApm
      */
     public static function newTransaction(string $name, string $type): TransactionBuilderInterface
     {
-        return GlobalTracerHolder::get()->newTransaction($name, $type);
+        return GlobalTracerHolder::getValue()->newTransaction($name, $type);
     }
 
     /**
@@ -208,7 +209,7 @@ final class ElasticApm
      */
     public static function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return GlobalTracerHolder::get()->createErrorFromThrowable($throwable);
+        return GlobalTracerHolder::getValue()->createErrorFromThrowable($throwable);
     }
 
     /**
@@ -224,7 +225,7 @@ final class ElasticApm
      */
     public static function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return GlobalTracerHolder::get()->createCustomError($customErrorData);
+        return GlobalTracerHolder::getValue()->createCustomError($customErrorData);
     }
 
     /**
@@ -232,7 +233,7 @@ final class ElasticApm
      */
     public static function pauseRecording(): void
     {
-        GlobalTracerHolder::get()->pauseRecording();
+        GlobalTracerHolder::getValue()->pauseRecording();
     }
 
     /**
@@ -240,7 +241,7 @@ final class ElasticApm
      */
     public static function resumeRecording(): void
     {
-        GlobalTracerHolder::get()->resumeRecording();
+        GlobalTracerHolder::getValue()->resumeRecording();
     }
 
     /**
@@ -252,6 +253,6 @@ final class ElasticApm
     public static function getSerializedCurrentDistributedTracingData(): string
     {
         /** @noinspection PhpDeprecationInspection */
-        return GlobalTracerHolder::get()->getSerializedCurrentDistributedTracingData();
+        return GlobalTracerHolder::getValue()->getSerializedCurrentDistributedTracingData();
     }
 }

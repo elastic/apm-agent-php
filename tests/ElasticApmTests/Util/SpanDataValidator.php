@@ -23,11 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\SpanContextData;
-use Elastic\Apm\Impl\SpanContextDbData;
-use Elastic\Apm\Impl\SpanContextDestinationData;
-use Elastic\Apm\Impl\SpanContextDestinationServiceData;
-use Elastic\Apm\Impl\SpanContextHttpData;
 use Elastic\Apm\Impl\SpanData;
 
 final class SpanDataValidator extends ExecutionSegmentDataValidator
@@ -50,63 +45,23 @@ final class SpanDataValidator extends ExecutionSegmentDataValidator
     {
         parent::validateImpl();
 
-        self::validateNullableKeywordString($this->actual->action);
+        self::assertSameNullableKeywordStringExpectedOptional($this->expectations->action, $this->actual->action);
+
+        if ($this->actual->context !== null) {
+            SpanContextDataValidator::validate($this->actual->context, $this->expectations->context);
+        }
+
         self::validateId($this->actual->parentId);
+
         if ($this->actual->stacktrace !== null) {
             self::validateStacktrace($this->actual->stacktrace);
         }
-        self::validateNullableKeywordString($this->actual->subtype);
 
-        if ($this->actual->context !== null) {
-            self::validateContextData($this->actual->context);
-        }
+        self::assertSameNullableKeywordStringExpectedOptional($this->expectations->subtype, $this->actual->subtype);
     }
 
     public static function validate(SpanData $actual, ?SpanDataExpectations $expectations = null): void
     {
         (new self($expectations ?? new SpanDataExpectations(), $actual))->validateImpl();
-    }
-
-    public static function validateContextDbData(SpanContextDbData $obj): void
-    {
-        self::validateNullableNonKeywordString($obj->statement);
-    }
-
-    public static function validateContextHttpData(SpanContextHttpData $obj): void
-    {
-        self::validateNullableNonKeywordString($obj->url);
-        self::validateNullableHttpStatusCode($obj->statusCode);
-        self::validateNullableKeywordString($obj->method);
-    }
-
-    public static function validateContextDestinationServiceData(SpanContextDestinationServiceData $obj): void
-    {
-        self::validateKeywordString($obj->name);
-        self::validateKeywordString($obj->resource);
-        self::validateKeywordString($obj->type);
-    }
-
-    public static function validateContextDestinationData(SpanContextDestinationData $obj): void
-    {
-        if ($obj->service !== null) {
-            self::validateContextDestinationServiceData($obj->service);
-        }
-    }
-
-    public static function validateContextData(SpanContextData $obj): void
-    {
-        self::validateExecutionSegmentContextData($obj);
-
-        if ($obj->db !== null) {
-            self::validateContextDbData($obj->db);
-        }
-
-        if ($obj->http !== null) {
-            self::validateContextHttpData($obj->http);
-        }
-
-        if ($obj->destination !== null) {
-            self::validateContextDestinationData($obj->destination);
-        }
     }
 }

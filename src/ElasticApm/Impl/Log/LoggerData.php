@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Util\DbgUtil;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -38,7 +36,7 @@ final class LoggerData
     /** @var string */
     public $namespace;
 
-    /** @var string */
+    /** @var class-string */
     public $fqClassName;
 
     /** @var string */
@@ -53,6 +51,14 @@ final class LoggerData
     /** @var Backend */
     public $backend;
 
+    /**
+     * @param string          $category
+     * @param string          $namespace
+     * @param class-string    $fqClassName
+     * @param string          $srcCodeFile
+     * @param Backend         $backend
+     * @param LoggerData|null $inheritedData
+     */
     private function __construct(
         string $category,
         string $namespace,
@@ -69,6 +75,15 @@ final class LoggerData
         $this->inheritedData = $inheritedData;
     }
 
+    /**
+     * @param string       $category
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     * @param Backend      $backend
+     *
+     * @return static
+     */
     public static function makeRoot(
         string $category,
         string $namespace,

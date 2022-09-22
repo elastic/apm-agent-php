@@ -28,10 +28,19 @@ use Elastic\Apm\Impl\SpanContextDbData;
 use Elastic\Apm\Impl\SpanContextDestinationData;
 use Elastic\Apm\Impl\SpanContextDestinationServiceData;
 use Elastic\Apm\Impl\SpanContextHttpData;
+use Elastic\Apm\Impl\SpanContextServiceData;
+use Elastic\Apm\Impl\SpanContextServiceTargetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataValidator;
 use ElasticApmTests\Util\ExecutionSegmentDataValidator;
+use ElasticApmTests\Util\SpanContextDataValidator;
+use ElasticApmTests\Util\SpanContextDbDataValidator;
+use ElasticApmTests\Util\SpanContextDestinationDataValidator;
+use ElasticApmTests\Util\SpanContextDestinationServiceDataValidator;
+use ElasticApmTests\Util\SpanContextHttpDataValidator;
+use ElasticApmTests\Util\SpanContextServiceDataValidator;
+use ElasticApmTests\Util\SpanContextServiceTargetDataValidator;
 use ElasticApmTests\Util\SpanDataValidator;
 
 final class SpanDataDeserializer
@@ -100,18 +109,21 @@ final class SpanDataDeserializer
                     case 'db':
                         $result->db = self::deserializeContextDbData($value);
                         return true;
+                    case 'destination':
+                        $result->destination = self::deserializeContextDestinationData($value);
+                        return true;
                     case 'http':
                         $result->http = self::deserializeContextHttpData($value);
                         return true;
-                    case 'destination':
-                        $result->destination = self::deserializeContextDestinationData($value);
+                    case 'service':
+                        $result->service = self::deserializeContextServiceData($value);
                         return true;
                     default:
                         return false;
                 }
             }
         );
-        SpanDataValidator::validateContextData($result);
+        SpanContextDataValidator::validate($result);
         return $result;
     }
 
@@ -135,7 +147,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDbData($result);
+        SpanContextDbDataValidator::validate($result);
         return $result;
     }
 
@@ -159,7 +171,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDestinationData($result);
+        SpanContextDestinationDataValidator::validate($result);
         return $result;
     }
 
@@ -189,7 +201,7 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextDestinationServiceData($result);
+        SpanContextDestinationServiceDataValidator::validate($result);
         return $result;
     }
 
@@ -219,7 +231,58 @@ final class SpanDataDeserializer
                 }
             }
         );
-        SpanDataValidator::validateContextHttpData($result);
+        SpanContextHttpDataValidator::validate($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextServiceData
+     */
+    private static function deserializeContextServiceData($value): SpanContextServiceData
+    {
+        $result = new SpanContextServiceData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'target':
+                        $result->target = self::deserializeContextServiceDataTargetData($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanContextServiceDataValidator::validate($result);
+        return $result;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return SpanContextServiceTargetData
+     */
+    private static function deserializeContextServiceDataTargetData($value): SpanContextServiceTargetData
+    {
+        $result = new SpanContextServiceTargetData();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'name':
+                        $result->name = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    case 'type':
+                        $result->type = DataValidator::validateNullableKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+        SpanContextServiceTargetDataValidator::validate($result);
         return $result;
     }
 }

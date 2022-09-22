@@ -24,9 +24,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\TracerBuilder;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
 
@@ -35,7 +34,7 @@ class TransactionSampleRateTest extends TracerUnitTestCaseBase
     /**
      * @return iterable<array{string, string}>
      */
-    public function dataProviderForEffectiveTransactionSampleRate(): iterable
+    public function dataProviderForTransactionSampleRate(): iterable
     {
         yield ['0', '0'];
         yield ['0.0', '0'];
@@ -67,12 +66,12 @@ class TransactionSampleRateTest extends TracerUnitTestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderForEffectiveTransactionSampleRate
+     * @dataProvider dataProviderForTransactionSampleRate
      *
      * @param string $configured
      * @param string $expectedAsString
      */
-    public function testEffectiveTransactionSampleRate(string $configured, string $expectedAsString): void
+    public function testTransactionSampleRate(string $configured, string $expectedAsString): void
     {
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder) use ($configured): void {
@@ -83,7 +82,8 @@ class TransactionSampleRateTest extends TracerUnitTestCaseBase
         /** @var Tracer $tracer */
         $tracer = $this->tracer;
         self::assertInstanceOf(Tracer::class, $tracer);
-        self::assertSame($expectedAsString, $tracer->getConfig()->effectiveTransactionSampleRateAsString());
-        self::assertSame(floatval($expectedAsString), $tracer->getConfig()->effectiveTransactionSampleRate());
+        $actual = $tracer->getConfig()->transactionSampleRate();
+        self::assertSame($expectedAsString, HttpDistributedTracing::convertSampleRateToString($actual));
+        self::assertSame(floatval($expectedAsString), $actual);
     }
 }

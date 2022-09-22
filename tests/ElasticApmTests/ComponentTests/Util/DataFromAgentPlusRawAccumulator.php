@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
@@ -73,7 +74,15 @@ final class DataFromAgentPlusRawAccumulator implements LoggableInterface
             TestCase::assertCount(1, $dataFromAgent->metadatas);
             $metadata = $dataFromAgent->metadatas[0];
             TestCase::assertNotNull($metadata->service->agent);
-            TestCase::assertNotNull($metadata->service->agent->ephemeralId);
+            TestCase::assertNotNull(
+                $metadata->service->agent->ephemeralId,
+                LoggableToString::convert(
+                    [
+                        '$intakeApiRequests' => $intakeApiRequests,
+                        '$metadata'          => $metadata,
+                    ]
+                )
+            );
             $intakeApiRequest->agentEphemeralId = $metadata->service->agent->ephemeralId;
             $this->result->intakeApiRequests[] = $intakeApiRequest;
             foreach (get_object_vars($dataFromAgent) as $propName => $propValue) {

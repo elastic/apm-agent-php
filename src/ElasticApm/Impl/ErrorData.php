@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 
 /**
@@ -153,7 +154,8 @@ class ErrorData implements SerializableDataInterface, LoggableInterface
         }
 
         if (
-            !empty($errorExceptionData->stacktrace)
+            $errorExceptionData->stacktrace !== null
+            && !ArrayUtil::isEmpty($errorExceptionData->stacktrace)
             && ($topFrameFunction = $errorExceptionData->stacktrace[0]->function) !== null
         ) {
             $result->culprit = Tracer::limitKeywordString($topFrameFunction);
