@@ -27,9 +27,6 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
         php-xml \
     && yum clean all
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
 # Disable agent for auxiliary PHP processes to reduce noise in logs
