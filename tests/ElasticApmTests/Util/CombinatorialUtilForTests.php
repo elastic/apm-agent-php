@@ -75,10 +75,10 @@ final class CombinatorialUtilForTests
     }
 
     /**
-     * @param array<string, mixed>           $values
-     * @param array<string, iterable<mixed>> $restOfIterables
+     * @param array<mixed, mixed>           $values
+     * @param array<mixed, iterable<mixed>> $restOfIterables
      *
-     * @return iterable<array<string, mixed>>
+     * @return iterable<array<mixed, mixed>>
      */
     private static function cartesianProductImpl(array $values, array $restOfIterables): iterable
     {
@@ -92,7 +92,7 @@ final class CombinatorialUtilForTests
         foreach ($currentIterableAsArray as $currentIterableKey => $currentIterable) {
             foreach ($currentIterable as $value) {
                 yield from self::cartesianProductImpl(
-                    $values + [$currentIterableKey => $value],
+                    array_merge($values, [$currentIterableKey => $value]),
                     $restOfIterablesForChildCalls
                 );
             }
@@ -100,9 +100,9 @@ final class CombinatorialUtilForTests
     }
 
     /**
-     * @param array<string, iterable<mixed>> $iterables
+     * @param array<mixed, iterable<mixed>> $iterables
      *
-     * @return iterable<array<string, mixed>>
+     * @return iterable<array<mixed, mixed>>
      */
     public static function cartesianProduct(array $iterables): iterable
     {

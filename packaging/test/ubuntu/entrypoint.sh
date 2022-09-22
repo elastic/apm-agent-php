@@ -47,28 +47,8 @@ function validate_if_agent_is_enabled() {
     fi
 }
 
-function validate_installation() {
-    # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
-    export ELASTIC_APM_ENABLED=false
-
-    echo 'PHP version:'
-    php -v
-    echo 'Installed PHP extensions:'
-    php -m
-    echo 'Set environment variables:'
-    set | grep ELASTIC || true
-
-    ## Validate the installation works as expected with composer
-    composer install
-    /usr/sbin/rsyslogd
-    ## This env variable can be overriden
-    ## COMPONENT_TEST_SCRIPT is not wrapped in quotes on purpose because it might contained multiple space separated strings
-    COMPONENT_TEST_SCRIPT=${COMPONENT_TEST_SCRIPT:-run_component_tests}
-    if ! composer run-script ${COMPONENT_TEST_SCRIPT} ; then
-        echo 'Something bad happened when running the tests, see the output from the syslog'
-        cat /var/log/syslog
-        exit 1
-    fi
+function validate_agent_installation() {
+    .ci/validate_agent_installation.sh || exit $?
 }
 
 ##############
@@ -109,7 +89,7 @@ validate_if_agent_is_enabled
 if case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     echo 'Validate installation runs after the agent upgrade.'
 else
-    validate_installation
+    validate_agent_installation
 fi
 
 ## Validate the uninstallation works as expected
@@ -133,5 +113,5 @@ elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     validate_if_agent_is_enabled
 
     ## Run some tests
-    validate_installation
+    validate_agent_installation
 fi

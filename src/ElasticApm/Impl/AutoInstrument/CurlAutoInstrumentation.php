@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
@@ -100,11 +101,9 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         $ctx->interceptCallsToFunction(
             $funcName,
             /**
-             * @param mixed[] $interceptedCallArgs Intercepted call arguments
+             * @param mixed[] $interceptedCallArgs
              *
-             * @return callable
-             *
-             * @phpstan-return callable(int, bool, mixed): mixed
+             * @return null|callable(int, bool, mixed): void
              */
             function (array $interceptedCallArgs) use ($funcName, $funcId): ?callable {
                 return $this->preHook($funcName, $funcId, $interceptedCallArgs);
@@ -117,8 +116,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
      * @param int     $funcId
      * @param mixed[] $interceptedCallArgs Intercepted call arguments
      *
-     * @return callable
-     * @phpstan-return callable(int, bool, mixed): mixed
+     * @return null|callable(int, bool, mixed): void
      */
     private function preHook(string $funcName, int $funcId, array $interceptedCallArgs): ?callable
     {
@@ -172,7 +170,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        self::assertInterceptedCallNotExitedByException(
+        AutoInstrumentationUtil::assertInterceptedCallNotExitedByException(
             $hasExitedByException,
             ['functionName' => $dbgFuncName]
         );

@@ -23,11 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\Util\LogSinkForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -40,15 +40,24 @@ final class AmbientContextForTests
     /** @var string */
     private $dbgProcessName;
 
+    /** @var LogBackend */
+    private $logBackend;
+
     /** @var LoggerFactory */
     private $loggerFactory;
 
     /** @var TestConfigSnapshot */
     private $testConfig;
 
+    /** @var Clock */
+    private $clock;
+
     private function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
+        $this->logBackend = new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName));
+        $this->loggerFactory = new LoggerFactory($this->logBackend);
+        $this->clock = new Clock($this->loggerFactory);
         $this->readAndApplyConfig(/* additionalConfigSource */ null);
     }
 
@@ -83,22 +92,10 @@ final class AmbientContextForTests
         self::getSingletonInstance()->readAndApplyConfig($additionalConfigSource);
     }
 
-    public static function reconfigureLogLevel(int $newLevel): void
-    {
-        $configSource = new MockConfigRawSnapshotSource();
-        $configSource->set(OptionNames::LOG_LEVEL, LogSinkForTests::levelToString($newLevel));
-        self::reconfigure($configSource);
-    }
-
     private function readAndApplyConfig(?RawSnapshotSourceInterface $additionalConfigSource): void
     {
-        $this->testConfig = TestConfigUtil::read($this->dbgProcessName, $additionalConfigSource);
-        $this->loggerFactory = self::buildLoggerFactory($this->dbgProcessName, $this->testConfig->logLevel);
-    }
-
-    public static function buildLoggerFactory(string $dbgProcessName, int $logLevel): LoggerFactory
-    {
-        return new LoggerFactory(new LogBackend($logLevel, new LogSinkForTests($dbgProcessName)));
+        $this->testConfig = TestConfigUtil::read($additionalConfigSource, $this->loggerFactory);
+        $this->logBackend->setMaxEnabledLevel($this->testConfig->logLevel);
     }
 
     public static function dbgProcessName(): string
@@ -114,5 +111,10 @@ final class AmbientContextForTests
     public static function loggerFactory(): LoggerFactory
     {
         return self::getSingletonInstance()->loggerFactory;
+    }
+
+    public static function clock(): Clock
+    {
+        return self::getSingletonInstance()->clock;
     }
 }

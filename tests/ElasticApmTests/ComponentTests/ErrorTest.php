@@ -41,6 +41,9 @@ use ElasticApmTests\Util\DummyExceptionForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
 use Exception;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class ErrorTest extends ComponentTestCaseBase
 {
     private const STACK_TRACE_FILE_NAME = 'STACK_TRACE_FILE_NAME';

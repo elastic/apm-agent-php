@@ -50,7 +50,12 @@ final class RegistrationContext implements RegistrationContextInterface
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method(strtolower($className), $methodName);
+        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method(
+            // PHP internals store classes, methods and functions in a hashtable
+            // where key is a name converted to lower case
+            strtolower($className),
+            strtolower($methodName)
+        );
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(
                 $this->dbgCurrentPluginIndex,
@@ -71,14 +76,16 @@ final class RegistrationContext implements RegistrationContextInterface
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_function($functionName);
+        // PHP internals store classes, methods and functions in a hashtable
+        // where key is a name converted to lower case
+        $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_function(strtolower($functionName));
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(
                 $this->dbgCurrentPluginIndex,
                 $this->dbgCurrentPluginDesc,
                 $functionName /* <- dbgInterceptedCallDesc */,
                 function (
-                    /** @noinspection PhpUnusedParameterInspection */ ?object $interceptedCallThis,
+                    ?object $interceptedCallThis,
                     array $interceptedCallArgs
                 ) use ($preHook): ?callable {
                     return $preHook($interceptedCallArgs);

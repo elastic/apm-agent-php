@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use Monolog\Test\TestCase;
+use PHPUnit\Framework\TestCase;
 
 class HttpAppCodeHostHandle extends AppCodeHostHandle
 {

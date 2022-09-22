@@ -29,22 +29,30 @@ namespace ElasticApmTests\Util;
 abstract class DataExpectationsBuilder
 {
     /** @var TDataExpectations */
-    public $shared;
+    public $prototype;
 
     /**
-     * @param TDataExpectations $shared
+     * @param TDataExpectations $prototype
      */
-    public function __construct(DataExpectationsBase $shared)
+    public function __construct(DataExpectationsBase $prototype)
     {
-        $this->shared = $shared;
+        $this->setPrototype($prototype);
+    }
+
+    /**
+     * @param TDataExpectations $prototype
+     */
+    public function setPrototype(DataExpectationsBase $prototype): void
+    {
+        $this->prototype = $prototype;
     }
 
     /**
      * @param TDataExpectations $expectations
      */
-    protected function copyFromSharedTo($expectations): void
+    protected function copyFromPrototypeTo($expectations): void
     {
-        foreach (get_object_vars($this->shared) as $propName => $propVal) {
+        foreach (get_object_vars($this->prototype) as $propName => $propVal) {
             $expectations->{$propName} = self::deepClone($propVal);
         }
     }

@@ -39,6 +39,9 @@ use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\Util\TransactionDataExpectations;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 {
     public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_0;

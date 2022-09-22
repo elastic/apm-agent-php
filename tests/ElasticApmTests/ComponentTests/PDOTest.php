@@ -32,32 +32,37 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
+use ElasticApmTests\ComponentTests\Util\AutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
 use ElasticApmTests\Util\SpanDataExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
 
+/**
+ * @group does_not_require_external_services
+ */
 final class PDOTest extends ComponentTestCaseBase
 {
-    private const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
-    private const IS_PDO_INSTRUMENTATION_ENABLED_KEY = 'IS_PDO_INSTRUMENTATION_ENABLED';
-    private const DB_NAME_KEY = 'DB_NAME';
-    private const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
-    private const MESSAGES_KEY = 'MESSAGES';
-
     private const CONNECTION_STRING_PREFIX = 'sqlite:';
-
-    private const EXPECTED_DB_TYPE = 'sqlite';
 
     public const TEMP_DB_NAME = '<temporary database>';
     public const MEMORY_DB_NAME = 'memory';
     public const FILE_DB_NAME = '<file DB>';
 
+    private const MESSAGES
+        = [
+            'Just testing...'    => 1,
+            'More testing...'    => 22,
+            'SQLite3 is cool...' => 333,
+        ];
+
     private const CREATE_TABLE_SQL
         = /** @lang text */
-        'CREATE TABLE IF NOT EXISTS messages (
+        'CREATE TABLE messages (
             id INTEGER PRIMARY KEY,
             text TEXT,
             time INTEGER)';
@@ -135,9 +140,9 @@ final class PDOTest extends ComponentTestCaseBase
     public function dataProviderForTestAutoInstrumentation(): iterable
     {
         $disableInstrumentationsVariants = [
-            null => true,
+            ''    => true,
             'pdo' => false,
-            'db' => false
+            'db'  => false,
         ];
 
         $dbNames = [];
@@ -145,29 +150,40 @@ final class PDOTest extends ComponentTestCaseBase
         $dbNames[] = self::TEMP_DB_NAME;
         $dbNames[] = self::FILE_DB_NAME;
 
-        /**
-         * @param string[] $variants
-         *
-         * @return string[]
-         */
-        $onlyIfEnabled = function (array $variants, bool $isEnabled): array {
-            return $isEnabled ? $variants : [$variants[0]];
-        };
+        /** @var iterable<array{array<string, mixed>}> $result */
+        $result = (new DataProviderForTestBuilder())
+            ->addGeneratorOnlyFirstValueCombinable(
+                AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator(
+                    $disableInstrumentationsVariants
+                )
+            )
+            ->addKeyedDimensionOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $dbNames)
+            ->addGeneratorOnlyFirstValueCombinable(
+                DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator()
+            )
+            ->wrapResultIntoArray()
+            ->build();
+        return $result;
+    }
 
-        foreach ($disableInstrumentationsVariants as $disableInstrumentationsOptVal => $isPDOInstrumentationEnabled) {
-            foreach ($onlyIfEnabled($dbNames, $isPDOInstrumentationEnabled) as $dbName) {
-                foreach ($onlyIfEnabled([false, true], $isPDOInstrumentationEnabled) as $wrapInTx) {
-                    yield [
-                        [
-                            self::DISABLE_INSTRUMENTATIONS_KEY       => $disableInstrumentationsOptVal,
-                            self::IS_PDO_INSTRUMENTATION_ENABLED_KEY => $isPDOInstrumentationEnabled,
-                            self::DB_NAME_KEY                        => $dbName,
-                            self::WRAP_IN_TX_KEY                     => $wrapInTx,
-                        ],
-                    ];
-                }
-            }
-        }
+    /**
+     * @param array<string, mixed> $args
+     * @param ?string             &$dbName
+     * @param ?bool               &$wrapInTx
+     * @param ?bool               &$rollback
+     */
+    public static function extractSharedArgs(
+        array $args,
+        /* out */ ?string &$dbName,
+        /* out */ ?bool &$wrapInTx,
+        /* out */ ?bool &$rollback
+    ): void {
+        $dbName = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
+        self::assertIsString($dbName);
+        $wrapInTx = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
+        self::assertIsBool($wrapInTx);
+        $rollback = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+        self::assertIsBool($rollback);
     }
 
     /**
@@ -175,46 +191,43 @@ final class PDOTest extends ComponentTestCaseBase
      */
     public static function appCodeForTestAutoInstrumentation(array $appCodeArgs): void
     {
-        $dbName = self::getMandatoryAppCodeArg($appCodeArgs, self::DB_NAME_KEY);
-        self::assertIsString($dbName);
-        $wrapInTx = self::getMandatoryAppCodeArg($appCodeArgs, self::WRAP_IN_TX_KEY);
-        self::assertIsBool($wrapInTx);
-        $messages = self::getMandatoryAppCodeArg($appCodeArgs, self::MESSAGES_KEY);
-        self::assertIsArray($messages);
-
+        self::extractSharedArgs(
+            $appCodeArgs,
+            /* out */ $dbName,
+            /* out */ $wrapInTx,
+            /* out */ $rollback
+        );
 
         $pdo = new PDO(self::buildConnectionString($dbName));
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
         if ($wrapInTx) {
-            $pdo->beginTransaction();
+            self::assertTrue($pdo->beginTransaction());
         }
 
-        $pdo->exec(self::CREATE_TABLE_SQL);
+        self::assertNotFalse($pdo->exec(self::CREATE_TABLE_SQL));
 
-        $stmt = $pdo->prepare(self::INSERT_SQL);
-        self::assertNotFalse($stmt);
+        self::assertNotFalse($stmt = $pdo->prepare(self::INSERT_SQL));
         $boundMsgText = '';
         $boundMsgTime = 0;
-        $stmt->bindParam(':text', /* ref */ $boundMsgText);
-        $stmt->bindParam(':time', /* ref */ $boundMsgTime);
-        foreach ($messages as $msgText => $msgTime) {
+        self::assertTrue($stmt->bindParam(':text', /* ref */ $boundMsgText));
+        self::assertTrue($stmt->bindParam(':time', /* ref */ $boundMsgTime));
+        foreach (self::MESSAGES as $msgText => $msgTime) {
             $boundMsgText = $msgText;
             $boundMsgTime = $msgTime;
-            $stmt->execute();
+            self::assertTrue($stmt->execute());
         }
 
-        $queryResult = $pdo->query(self::SELECT_SQL);
-        self::assertNotFalse($queryResult);
+        self::assertNotFalse($queryResult = $pdo->query(self::SELECT_SQL));
         foreach ($queryResult as $row) {
             $dbgCtx = LoggableToString::convert(['$row' => $row, '$queryResult' => $queryResult]);
             $msgText = $row['text'];
             self::assertIsString($msgText);
-            self::assertArrayHasKey($msgText, $messages, $dbgCtx);
-            self::assertEquals($messages[$msgText], $row['time'], $dbgCtx);
+            self::assertArrayHasKey($msgText, self::MESSAGES, $dbgCtx);
+            self::assertEquals(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
 
         if ($wrapInTx) {
-            $pdo->commit();
+            self::assertTrue($rollback ? $pdo->rollback() : $pdo->commit());
         }
     }
 
@@ -225,15 +238,22 @@ final class PDOTest extends ComponentTestCaseBase
      */
     public function testAutoInstrumentation(array $testArgs): void
     {
-        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg($testArgs, self::DISABLE_INSTRUMENTATIONS_KEY);
+        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg(
+            $testArgs,
+            AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY
+        );
         self::assertIsString($disableInstrumentationsOptVal);
-        $isPDOInstrumentationEnabled
-            = self::getMandatoryAppCodeArg($testArgs, self::IS_PDO_INSTRUMENTATION_ENABLED_KEY);
-        self::assertIsBool($isPDOInstrumentationEnabled);
-        $dbNameArg = $testArgs[self::DB_NAME_KEY];
-        self::assertIsString($dbNameArg);
-        $wrapInTx = $testArgs[self::WRAP_IN_TX_KEY];
-        self::assertIsBool($wrapInTx);
+        $isInstrumentationEnabled = self::getMandatoryAppCodeArg(
+            $testArgs,
+            AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY
+        );
+
+        self::extractSharedArgs(
+            $testArgs,
+            /* out */ $dbNameArg,
+            /* out */ $wrapInTx,
+            /* out */ $rollback
+        );
 
         $testCaseHandle = $this->getTestCaseHandle();
 
@@ -244,31 +264,37 @@ final class PDOTest extends ComponentTestCaseBase
             $resourcesClient = $testCaseHandle->getResourcesClient();
             $dbFileFullPath = $resourcesClient->createTempFile(ClassNameUtil::fqToShort(__CLASS__) . '_temp_DB');
             $dbName = $dbFileFullPath;
-            $appCodeArgs[self::DB_NAME_KEY] = $dbName;
+            $appCodeArgs[DbAutoInstrumentationUtilForTests::DB_NAME_KEY] = $dbName;
         }
 
-        $messages = [
-            'Just testing...'    => 1,
-            'More testing...'    => 22,
-            'SQLite3 is cool...' => 333,
-        ];
-        $appCodeArgs[self::MESSAGES_KEY] = $messages;
-
-        $sharedExpectations = DbSpanDataExpectationsBuilder::default(self::EXPECTED_DB_TYPE, $dbName);
+        $sharedExpectations = DbSpanDataExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
         $expectationsBuilder = new DbSpanDataExpectationsBuilder($sharedExpectations);
         /** @var SpanDataExpectations[] $expectedSpans */
         $expectedSpans = [];
-        if ($isPDOInstrumentationEnabled) {
+        if ($isInstrumentationEnabled) {
+            if ($wrapInTx) {
+                $expectedSpans[] = $expectationsBuilder->fromClassMethodNames('PDO', 'beginTransaction');
+            }
+
             $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL);
-            foreach ($messages as $ignored) {
+            foreach (self::MESSAGES as $ignored) {
                 $expectedSpans[] = $expectationsBuilder->fromStatement(self::INSERT_SQL);
             }
             $expectedSpans[] = $expectationsBuilder->fromStatement(self::SELECT_SQL);
+
+            if ($wrapInTx) {
+                $expectedSpans[] = $expectationsBuilder->fromClassMethodNames('PDO', $rollback ? 'rollBack' : 'commit');
+            }
         }
 
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($disableInstrumentationsOptVal): void {
-                $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
+                if (!empty($disableInstrumentationsOptVal)) {
+                    $appCodeParams->setAgentOption(
+                        OptionNames::DISABLE_INSTRUMENTATIONS,
+                        $disableInstrumentationsOptVal
+                    );
+                }
             }
         );
         $appCodeHost->sendRequest(

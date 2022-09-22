@@ -14,7 +14,9 @@
     },
     "require-dev": {
         "ext-curl": "*",
+        "ext-mysqli": "*",
         "ext-pdo": "*",
+        "ext-pdo_sqlite": "*",
         "guzzlehttp/guzzle": "^6.5.5||^7.4.4",
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",
@@ -66,8 +68,8 @@
             "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=200M"
         ],
         "static_check": [
-            "composer run-script php_codesniffer_check",
-            "composer run-script phpstan"
+            "composer run-script -- php_codesniffer_check",
+            "composer run-script -- phpstan"
         ],
         "run_unit_tests": [
             "phpunit"
@@ -76,42 +78,35 @@
             "phpunit --filter"
         ],
         "static_check_and_run_unit_tests": [
-            "composer run-script static_check",
-            "composer run-script run_unit_tests"
+            "composer run-script -- static_check",
+            "composer run-script -- run_unit_tests"
         ],
         "run_component_tests_configured": [
             "phpunit -c phpunit_component_tests.xml"
         ],
-        "run_component_tests_configured_filter": [
-            "phpunit -c phpunit_component_tests.xml --filter"
-        ],
         "run_component_tests_cli_filter": [
-            "ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script phpunit -c phpunit_component_tests.xml --filter"
+            "composer run-script -- run_component_tests_cli --filter"
         ],
         "run_component_tests_http_filter": [
-            "ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server phpunit -c phpunit_component_tests.xml --filter"
+            "composer run-script -- run_component_tests_http --filter"
         ],
         "run_component_tests": [
-            "composer run-script run_component_tests_http",
-            "composer run-script run_component_tests_cli"
+            "composer run-script -- run_component_tests_http",
+            "composer run-script -- run_component_tests_cli"
         ],
         "run_component_tests_cli": [
-            "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
-            "composer run-script run_component_tests_configured"
+            "ELASTIC_APM_ENABLED=false ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script composer run-script -- run_component_tests_configured"
         ],
         "run_component_tests_http": [
-            "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server",
-            "composer run-script run_component_tests_configured"
+            "ELASTIC_APM_ENABLED=false ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server composer run-script -- run_component_tests_configured"
         ],
         "run_tests": [
-            "composer run-script run_unit_tests",
-            "composer run-script run_component_tests"
+            "composer run-script -- run_unit_tests",
+            "composer run-script -- run_component_tests"
         ],
         "static_check_and_run_tests": [
-            "composer run-script static_check",
-            "composer run-script run_tests"
+            "composer run-script -- static_check",
+            "composer run-script -- run_tests"
         ]
     }
 }

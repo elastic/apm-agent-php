@@ -3,7 +3,7 @@ Setting configuration options to non-default value (in this case using environme
 --SKIPIF--
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=0
 ELASTIC_APM_LOG_FILE=non-default_log_file_value.txt
 ELASTIC_APM_LOG_LEVEL=CRITICAL

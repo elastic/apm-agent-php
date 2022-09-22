@@ -68,28 +68,29 @@ class DataFromAgentValidator extends DataValidator
         $this->validateTraces();
     }
 
+    /**
+     * @template T of \Elastic\Apm\Impl\ExecutionSegmentData
+     *
+     * @param array<string, T> $idToExecSegments
+     *
+     * @return array<string, array<string, T>>
+     */
+    private static function groupByTraceId(array $idToExecSegments): array
+    {
+        $result = [];
+        foreach ($idToExecSegments as $execSegment) {
+            if (!array_key_exists($execSegment->traceId, $result)) {
+                $result[$execSegment->traceId] = [];
+            }
+            $result[$execSegment->traceId][$execSegment->id] = $execSegment;
+        }
+        return $result;
+    }
+
     private function validateTraces(): void
     {
-        /**
-         * @template T of ExecutionSegmentData
-         *
-         * @param array<string, T> $srcArray
-         *
-         * @return array<string, array<string, T>>
-         */
-        $groupByTraceId = function (array $srcArray): array {
-            $result = [];
-            foreach ($srcArray as $srcArrayElement) {
-                if (array_key_exists($srcArrayElement->traceId, $result)) {
-                    $result[$srcArrayElement->traceId] = [];
-                }
-                $result[$srcArrayElement->traceId][$srcArrayElement->id] = $srcArrayElement;
-            }
-            return $result;
-        };
-
-        $transactionsByTraceId = $groupByTraceId($this->actual->idToTransaction);
-        $spansByTraceId = $groupByTraceId($this->actual->idToSpan);
+        $transactionsByTraceId = self::groupByTraceId($this->actual->idToTransaction);
+        $spansByTraceId = self::groupByTraceId($this->actual->idToSpan);
         TestCaseBase::assertListArrayIsSubsetOf(array_keys($spansByTraceId), array_keys($transactionsByTraceId));
         foreach ($transactionsByTraceId as $traceId => $idToTransaction) {
             TestCase::assertIsArray($idToTransaction);

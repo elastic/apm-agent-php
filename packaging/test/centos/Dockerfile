@@ -2,8 +2,6 @@ FROM centos:centos7
 ARG PHP_VERSION=7.2
 ENV PHP_VERSION ${PHP_VERSION}
 
-## sh: git: command not found
-# the zip extension and unzip command are both missing, skipping.
 RUN yum update -y \
     && yum install -y \
         git \
@@ -11,7 +9,8 @@ RUN yum update -y \
         perl-Digest-SHA \
         rsyslog \
         unzip \
-        wget
+        wget \
+        which
 
 ## Package versioning for the PHP does not use .
 RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
@@ -32,6 +31,9 @@ RUN echo "php -v: $(php -v)"
 RUN echo "php -m: $(php -m)"
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
 
 # To support tar and rpm packages
 ENV TYPE=rpm

@@ -3,7 +3,7 @@ Setting configuration options to non-default value (in this case using ini file)
 --SKIPIF--
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
 elastic_apm.enabled=0
 elastic_apm.log_file=non-default_log_file_value.txt

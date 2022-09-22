@@ -40,7 +40,7 @@ final class LoggableToJsonEncodable
 {
     use StaticClassTrait;
 
-    private const MAX_DEPTH = 7;
+    private const MAX_DEPTH = 10;
 
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK = 10000;
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK
@@ -101,23 +101,7 @@ final class LoggableToJsonEncodable
      */
     private static function convertArray(array $array, int $depth): array
     {
-        return self::convertArrayImpl($array, self::isListArray($array), $depth);
-    }
-
-    /**
-     * @param array<mixed, mixed> $array
-     *
-     * @return bool
-     */
-    private static function isListArray(array $array): bool
-    {
-        $expectedKey = 0;
-        foreach ($array as $key => $_) {
-            if ($key !== $expectedKey++) {
-                return false;
-            }
-        }
-        return true;
+        return self::convertArrayImpl($array, ArrayUtil::isList($array), $depth);
     }
 
     /**

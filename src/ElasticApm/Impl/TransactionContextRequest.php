@@ -31,7 +31,7 @@ use Elastic\Apm\TransactionContextRequestUrlInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Transaction>
+ * @extends ContextDataWrapper<Transaction>
  */
 final class TransactionContextRequest extends ContextDataWrapper implements TransactionContextRequestInterface
 {

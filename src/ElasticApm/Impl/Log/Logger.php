@@ -60,7 +60,7 @@ final class Logger
     ): self {
         return new self(
             LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend),
-            $backend->maxEnabledLevel()
+            $backend->getMaxEnabledLevel()
         );
     }
 

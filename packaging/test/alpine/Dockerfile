@@ -13,18 +13,15 @@ RUN apk update \
     unzip \
     wget
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 RUN docker-php-ext-install \
     pdo_mysql \
     mysqli \
     pdo_sqlite
 
-RUN echo "php -v: $(php -v)"
-RUN echo "php -m: $(php -m)"
-
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
 
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
