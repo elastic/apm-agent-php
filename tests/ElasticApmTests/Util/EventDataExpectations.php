@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+
 class EventDataExpectations extends DataExpectationsBase
 {
     /** @var float */
@@ -35,7 +37,6 @@ class EventDataExpectations extends DataExpectationsBase
     {
         $this->timestampBefore = PhpUnitExtensionBase::$timestampBeforeTest;
         $this->timestampAfter
-            = PhpUnitExtensionBase::$timestampAfterTest
-              ?? ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
+            = PhpUnitExtensionBase::$timestampAfterTest ?? AmbientContextForTests::clock()->getSystemClockCurrentTime();
     }
 }

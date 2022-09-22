@@ -105,7 +105,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             ]
         );
 
-        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
+        $this->clock = $providedDependencies->clock ?? new Clock($this->loggerFactory);
 
         $this->eventSink = $providedDependencies->eventSink ??
                            (ElasticApmExtensionUtil::isLoaded()
@@ -381,11 +381,6 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function getClock(): ClockInterface
     {
         return $this->clock;
-    }
-
-    public function setClock(ClockInterface $clock): void
-    {
-        $this->clock = $clock;
     }
 
     public function isNoop(): bool

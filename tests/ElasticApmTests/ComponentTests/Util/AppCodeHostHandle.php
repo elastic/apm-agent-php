@@ -26,7 +26,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Closure;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
 
 abstract class AppCodeHostHandle implements LoggableInterface
 {
@@ -64,7 +63,7 @@ abstract class AppCodeHostHandle implements LoggableInterface
 
     protected function beforeAppCodeInvocation(AppCodeRequestParams $appCodeRequestParams): AppCodeInvocation
     {
-        $timestampBefore = ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
+        $timestampBefore = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         return new AppCodeInvocation($appCodeRequestParams, $timestampBefore);
     }
 

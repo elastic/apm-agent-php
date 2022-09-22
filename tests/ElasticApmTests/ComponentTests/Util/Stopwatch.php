@@ -23,27 +23,31 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
 
 final class Stopwatch
 {
+    /** @var Clock */
+    private $clock;
+
     /** @var float */
     private $timeStarted;
 
     public function __construct()
     {
-        $this->timeStarted = ClockVerifyingMonotonicityForTests::singletonInstance()->getMonotonicClockCurrentTime();
+        $this->clock = AmbientContextForTests::clock();
+        $this->timeStarted = $this->clock->getMonotonicClockCurrentTime();
     }
 
     public function elapsedInMicroseconds(): float
     {
-        $now = ClockVerifyingMonotonicityForTests::singletonInstance()->getMonotonicClockCurrentTime();
+        $now = $this->clock->getMonotonicClockCurrentTime();
         return TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timeStarted, $now);
     }
 
     public function restart(): void
     {
-        $this->timeStarted = ClockVerifyingMonotonicityForTests::singletonInstance()->getMonotonicClockCurrentTime();
+        $this->timeStarted = $this->clock->getMonotonicClockCurrentTime();
     }
 }
