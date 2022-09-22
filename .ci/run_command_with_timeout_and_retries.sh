@@ -130,7 +130,7 @@ function main () {
             sleep "${current_wait_time_before_retry}"
         fi
 
-        echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout}) ..."
+        echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout} seconds) ..."
         set +e
         if [ "${current_timeout}" -eq "0" ]; then
             "${command_to_run[@]}"
@@ -144,13 +144,16 @@ function main () {
             break
         fi
 
-        # timeout returns 124 when the time limit is reached
-        if [ "${exit_code}" -eq "124" ]; then
-            echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout}) timed out"
-            continue
+        if [ "${current_timeout}" -ne "0" ]; then
+            # timeout returns 124 when the time limit is reached
+            # also by default timeout sends SIGTERM to monitored process which results in exit code 143
+            if [ "${exit_code}" -eq "124" ] || [ "${exit_code}" -eq "143" ]; then
+                echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout} seconds) timed out"
+                continue
+            fi
         fi
 
-        echo "\`${command_to_run[*]}' (try ${try_count} out of max ${max_tries}, current timeout: ${current_timeout}) exited with an error code ${exit_code}"
+        echo "\`${command_to_run[*]}' (try ${try_count} out of max ${max_tries}, current timeout: ${current_timeout} seconds) exited with an error code ${exit_code}"
         if [ "${retry_on_error}" = "yes" ]; then
             continue
         fi
