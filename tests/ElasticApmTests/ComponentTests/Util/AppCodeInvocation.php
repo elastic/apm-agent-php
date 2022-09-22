@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
-
 final class AppCodeInvocation
 {
     /** @var AppCodeHostParams[] */
@@ -51,6 +49,6 @@ final class AppCodeInvocation
 
     public function after(): void
     {
-        $this->timestampAfter = ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
+        $this->timestampAfter = AmbientContextForTests::clock()->getSystemClockCurrentTime();
     }
 }

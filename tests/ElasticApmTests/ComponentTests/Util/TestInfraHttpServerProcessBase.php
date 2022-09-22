@@ -217,12 +217,12 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
         if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
             $testConfigForRequest = TestConfigUtil::read(
-                AmbientContextForTests::dbgProcessName(),
                 new RequestHeadersRawSnapshotSource(
                     function (string $headerName) use ($request): ?string {
                         return self::getRequestHeader($request, $headerName);
                     }
-                )
+                ),
+                AmbientContextForTests::loggerFactory()
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
             $verifySpawnedProcessInternalIdResponse

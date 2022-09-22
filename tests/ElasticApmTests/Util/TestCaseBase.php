@@ -296,7 +296,7 @@ class TestCaseBase extends TestCase
     public static function buildTracerForTests(?EventSinkInterface $eventSink = null): TracerBuilderForTests
     {
         return TracerBuilderForTests::startNew()
-                                    ->withClock(ClockVerifyingMonotonicityForTests::singletonInstance())
+                                    ->withClock(AmbientContextForTests::clock())
                                     ->withLogSink(NoopLogSink::singletonInstance())
                                     ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
     }
@@ -469,9 +469,9 @@ class TestCaseBase extends TestCase
             ),
             LoggableToString::convert(
                 [
-                    'before as duration' => TimeFormatUtilForTests::formatDurationInMicroseconds($before),
-                    'after as duration'  => TimeFormatUtilForTests::formatDurationInMicroseconds($after),
-                    'after - before'     => TimeFormatUtilForTests::formatDurationInMicroseconds($after - $before),
+                    'before as duration' => TimeUtil::formatDurationInMicroseconds($before),
+                    'after as duration'  => TimeUtil::formatDurationInMicroseconds($after),
+                    'after - before'     => TimeUtil::formatDurationInMicroseconds($after - $before),
                     'before as number'   => number_format($before),
                     'after as number'    => number_format($after),
                 ]

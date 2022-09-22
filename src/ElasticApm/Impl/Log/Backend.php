@@ -48,9 +48,14 @@ final class Backend
                              : NoopLogSink::singletonInstance());
     }
 
-    public function maxEnabledLevel(): int
+    public function getMaxEnabledLevel(): int
     {
         return $this->maxEnabledLevel;
+    }
+
+    public function setMaxEnabledLevel(int $maxEnabledLevel): void
+    {
+        $this->maxEnabledLevel = $maxEnabledLevel;
     }
 
     /**

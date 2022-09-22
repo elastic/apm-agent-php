@@ -51,8 +51,7 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
 
     public function executeBeforeTest(string $test): void
     {
-        self::$timestampBeforeTest
-            = ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
+        self::$timestampBeforeTest = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         self::$timestampAfterTest = null;
         TransactionDataExpectations::setDefaults();
     }

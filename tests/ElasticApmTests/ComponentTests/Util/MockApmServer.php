@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -113,8 +112,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         }
 
         $newRequest = new IntakeApiRequest();
-        $newRequest->timeReceivedAtApmServer
-            = ClockVerifyingMonotonicityForTests::singletonInstance()->getSystemClockCurrentTime();
+        $newRequest->timeReceivedAtApmServer = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
         $this->receivedIntakeApiRequests[] = $newRequest;

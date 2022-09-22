@@ -26,12 +26,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use ElasticApmTests\Util\ClockVerifyingMonotonicityForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -78,21 +76,11 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
                     );
                 }
 
-                self::installClockVerifyingMonotonicityForTests();
-
                 self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME);
 
                 $thisObj->runImpl(/* ref */ $topLevelCodeId);
             }
         );
-    }
-
-    public static function installClockVerifyingMonotonicityForTests(): void
-    {
-        $tracer = ComponentTestCaseBase::getTracerFromAppCode();
-        $currentClock = $tracer->getClock();
-        TestCase::assertInstanceOf(Clock::class, $currentClock);
-        $tracer->setClock(ClockVerifyingMonotonicityForTests::singletonInstance());
     }
 
     protected function registerWithResourcesCleaner(): void
