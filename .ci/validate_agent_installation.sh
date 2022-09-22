@@ -46,7 +46,7 @@ function runComponentTests () {
     fi
     local composerCommand="composer run-script -- ${composerRunScriptArgs}"
 
-    local initialTimeoutInMinutes=15
+    local initialTimeoutInMinutes=30
     local initialTimeoutInSeconds=$((initialTimeoutInMinutes*60))
     local run_command_with_timeout_and_retries_args=(--retry-on-error=no)
     run_command_with_timeout_and_retries_args=(--timeout="${initialTimeoutInSeconds}" "${run_command_with_timeout_and_retries_args[@]}")

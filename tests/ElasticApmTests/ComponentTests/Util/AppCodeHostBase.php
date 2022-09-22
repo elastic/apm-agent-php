@@ -42,14 +42,6 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
     public function __construct()
     {
-        if (!ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                'Environment hosting component tests application code should have '
-                . ElasticApmExtensionUtil::EXTENSION_NAME . ' extension loaded.'
-                . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
-            );
-        }
-
         parent::__construct();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -75,6 +67,14 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         self::runSkeleton(
             function (SpawnedProcessBase $thisObj) use (&$topLevelCodeId): void {
                 TestCase::assertInstanceOf(self::class, $thisObj);
+
+                if (!ElasticApmExtensionUtil::isLoaded()) {
+                    throw new RuntimeException(
+                        'Environment hosting component tests application code should have '
+                        . ElasticApmExtensionUtil::EXTENSION_NAME . ' extension loaded.'
+                        . ' php_ini_loaded_file(): ' . php_ini_loaded_file() . '.'
+                    );
+                }
 
                 self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME);
 

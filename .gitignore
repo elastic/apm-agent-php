@@ -42,3 +42,6 @@ build/
 
 # For local development
 /z_local*
+
+# Temporary files
+/_TEMP/

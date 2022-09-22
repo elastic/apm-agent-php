@@ -6,6 +6,8 @@ BUILD_FOLDER=/app/build
 mkdir -p ${BUILD_FOLDER}
 
 ## This make runs PHPT
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+export ELASTIC_APM_ENABLED=false
 make test
 
 ## Run cmocka tests

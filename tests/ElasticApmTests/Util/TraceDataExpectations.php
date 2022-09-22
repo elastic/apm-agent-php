@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\UrlParts;
 
-final class TraceDataExpectations
+final class TraceDataExpectations extends DataExpectationsBase
 {
     /** @var TransactionDataExpectations */
     public $transaction;

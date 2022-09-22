@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Map;
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
@@ -113,7 +112,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         }
 
         $newRequest = new IntakeApiRequest();
-        $newRequest->timeReceivedAtApmServer = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $newRequest->timeReceivedAtApmServer = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
         $this->receivedIntakeApiRequests[] = $newRequest;

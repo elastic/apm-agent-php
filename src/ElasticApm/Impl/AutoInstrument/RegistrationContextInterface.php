@@ -26,11 +26,9 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 interface RegistrationContextInterface
 {
     /**
-     * @param string   $className
-     * @param string   $methodName
-     * @param callable $preHook
-     *
-     * @phpstan-param callable(object|null, mixed[]): ?callable $preHook
+     * @param string                                $className
+     * @param string                                $methodName
+     * @param callable(?object, mixed[]): ?callable $preHook
      */
     public function interceptCallsToMethod(
         string $className,
@@ -39,10 +37,8 @@ interface RegistrationContextInterface
     ): void;
 
     /**
-     * @param string   $functionName
-     * @param callable $preHook
-     *
-     * @phpstan-param callable(mixed[]): ?callable $preHook
+     * @param string                       $functionName
+     * @param callable(mixed[]): ?callable $preHook
      */
     public function interceptCallsToFunction(
         string $functionName,

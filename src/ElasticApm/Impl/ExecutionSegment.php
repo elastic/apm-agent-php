@@ -55,10 +55,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     protected $breakdownMetricsSelfTimeTracker = null;
 
     /** @var float */
-    private $durationOnBegin;
+    private $diffStartTimeWithSystemClockOnBeginInMicroseconds;
 
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
+
+    /** @var float */
+    private $systemClockBeginTime;
 
     /** @var Logger */
     private $logger;
@@ -77,17 +80,44 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         string $name,
         string $type,
         ?float $sampleRate,
-        ?float $timestamp = null
+        ?float $timestampArg = null
     ) {
-        $monotonicClockNow = $tracer->getClock()->getMonotonicClockCurrentTime();
-        $systemClockNow = $tracer->getClock()->getSystemClockCurrentTime();
+        $clock = $tracer->getClock();
+        $monotonicClockNow = $clock->getMonotonicClockCurrentTime();
+        $systemClockNow = $clock->getSystemClockCurrentTime();
+
         $this->data = $data;
-        $this->data->timestamp = $timestamp ?? $systemClockNow;
-        $this->durationOnBegin
-            = TimeUtil::calcDuration($this->data->timestamp, $systemClockNow);
+        $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+
+        $this->systemClockBeginTime = $systemClockNow;
+        if ($timestampArg === null) {
+            $this->data->timestamp = $systemClockNow;
+        } elseif ($timestampArg <= $systemClockNow) {
+            $this->data->timestamp = $timestampArg;
+        } else {
+            $this->data->timestamp = $systemClockNow;
+
+            $localLogger = $tracer->loggerFactory()
+                                  ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
+            ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Using systemClockNow for start time instead of timestampArg argument'
+                . ' because timestampArg argument is later (further into the future) than systemClockNow',
+                [
+                    'systemClockNow' => $systemClockNow,
+                    'timestampArg'   => $timestampArg,
+                    'timestampArg - systemClockNow (seconds)'
+                                     => TimeUtil::microsecondsToSeconds($timestampArg - $systemClockNow),
+                    'id'             => $this->data->id,
+                    'name'           => $name,
+                    'type'           => $type,
+                ]
+            );
+        }
+        $this->diffStartTimeWithSystemClockOnBeginInMicroseconds
+            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->data->timestamp, $systemClockNow);
         $this->monotonicBeginTime = $monotonicClockNow;
         $this->data->traceId = $traceId;
-        $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
         $this->setName($name);
         $this->setType($type);
         $this->data->sampleRate = $sampleRate;
@@ -112,6 +142,16 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->logger = $tracer->loggerFactory()
                                ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                                ->addContext('this', $this);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Exiting...',
+            [
+                'systemClockNow' => $systemClockNow,
+                'timestampArg'   => $timestampArg,
+                'systemClockNow - timestampArg (seconds)'
+                                 => TimeUtil::microsecondsToSeconds($systemClockNow - $timestampArg),
+            ]
+        );
     }
 
     /**
@@ -348,7 +388,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $this->end();
     }
 
-    protected function endExecutionSegment(?float $duration = null): bool
+    protected function endExecutionSegment(?float $durationArg = null): bool
     {
         if ($this->isDiscarded) {
             $this->isEnded = true;
@@ -359,27 +399,71 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return false;
         }
 
-        $monotonicClockNow = $this->containingTransaction()->tracer()->getClock()->getMonotonicClockCurrentTime();
-        if ($duration === null) {
-            $monotonicEndTime = $monotonicClockNow;
-            $calculatedDuration = $this->durationOnBegin
-                                  + TimeUtil::calcDuration($this->monotonicBeginTime, $monotonicEndTime);
-            if ($calculatedDuration < 0) {
-                $calculatedDuration = 0;
+        $clock = $this->containingTransaction()->tracer()->getClock();
+        $monotonicClockNow = $clock->getMonotonicClockCurrentTime();
+        if ($durationArg === null) {
+            $systemClockNow = $clock->getSystemClockCurrentTime();
+            $monotonicDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+                $this->monotonicBeginTime,
+                $monotonicClockNow
+            );
+            $systemClockDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+                $this->systemClockBeginTime,
+                $systemClockNow
+            );
+            if ($monotonicDurationInMicroseconds < $systemClockDurationInMicroseconds) {
+                $durationAfterBeginInMicroseconds = $systemClockDurationInMicroseconds;
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Using systemClockDurationInMicroseconds as durationAfterBegin'
+                    . ' instead of monotonicDurationInMicroseconds '
+                    . ' because systemClockDurationInMicroseconds is larger than monotonicDurationInMicroseconds',
+                    [
+                        'systemClockDurationInMicroseconds' => $systemClockDurationInMicroseconds,
+                        'monotonicDurationInMicroseconds'   => $monotonicDurationInMicroseconds,
+                        'systemClockDurationInMicroseconds - monotonicDurationInMicroseconds (seconds)'
+                                                            => TimeUtil::microsecondsToSeconds(
+                                                                $systemClockDurationInMicroseconds
+                                                                - $monotonicDurationInMicroseconds
+                                                            ),
+                        'systemClockNow'                    => $systemClockNow,
+                        'monotonicClockNow'                 => $monotonicClockNow,
+                    ]
+                );
+            } else {
+                $durationAfterBeginInMicroseconds = $monotonicDurationInMicroseconds;
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Using monotonicDurationInMicroseconds as durationAfterBegin',
+                    [
+                        'monotonicDurationInMicroseconds'   => $monotonicDurationInMicroseconds,
+                        'systemClockDurationInMicroseconds' => $systemClockDurationInMicroseconds,
+                        'monotonicDurationInMicroseconds - systemClockDurationInMicroseconds (seconds)'
+                                                            => TimeUtil::microsecondsToSeconds(
+                                                                $monotonicDurationInMicroseconds
+                                                                - $systemClockDurationInMicroseconds
+                                                            ),
+                        'monotonicClockNow'                 => $monotonicClockNow,
+                        'systemClockNow'                    => $systemClockNow,
+                    ]
+                );
             }
-            $this->data->duration = $calculatedDuration;
+            $this->data->duration = TimeUtil::microsecondsToMilliseconds(
+                $this->diffStartTimeWithSystemClockOnBeginInMicroseconds + $durationAfterBeginInMicroseconds
+            );
         } else {
-            $this->data->duration = $duration;
+            $this->data->duration = $durationArg;
         }
 
         if ($this->breakdownMetricsSelfTimeTracker !== null && !$this->containingTransaction()->hasEnded()) {
             $this->updateBreakdownMetricsOnEnd($monotonicClockNow);
         }
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(ClassNameUtil::fqToShort(get_class($this)) . ' ended', []);
-
         $this->isEnded = true;
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(ClassNameUtil::fqToShort(get_class($this)) . ' ended', ['durationArg' => $durationArg]);
+
         return true;
     }
 
@@ -396,7 +480,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         ?string $spanSubtype
     ): void {
         /**
-         * @var BreakdownMetricsSelfTimeTracker
+         * @var BreakdownMetricsSelfTimeTracker $breakdownMetricsSelfTimeTracker
          *
          * doUpdateBreakdownMetricsOnEnd is called only if breakdownMetricsSelfTimeTracker is not null
          */

@@ -25,8 +25,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\ElasticApm;
-use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
 class CreateErrorTest extends TracerUnitTestCaseBase

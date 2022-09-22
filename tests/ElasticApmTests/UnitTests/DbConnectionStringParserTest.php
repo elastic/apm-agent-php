@@ -25,7 +25,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Impl\AutoInstrument\DbConnectionStringParser;
+use Elastic\Apm\Impl\AutoInstrument\Util\DbConnectionStringParser;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use ElasticApmTests\Util\TestCaseBase;
@@ -55,7 +55,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // SQLite
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_SQLITE;
+        $dbType = Constants::SPAN_SUBTYPE_SQLITE;
 
         // https://www.php.net/manual/en/ref.pdo-sqlite.connection.php
         // To access a database on disk, the absolute path has to be appended to the DSN prefix.
@@ -84,7 +84,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         // //
         // // MySQL
         // //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MYSQL;
+        $dbType = Constants::SPAN_SUBTYPE_MYSQL;
 
         // https://www.php.net/manual/en/ref.pdo-mysql.connection.php
         yield [
@@ -144,7 +144,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // PostgreSQL
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_POSTGRESQL;
+        $dbType = Constants::SPAN_SUBTYPE_POSTGRESQL;
 
         // https://www.php.net/manual/en/ref.pdo-pgsql.connection.php
         yield [
@@ -156,7 +156,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         // //
         // // Oracle
         // //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ORACLE;
+        $dbType = Constants::SPAN_SUBTYPE_ORACLE;
 
         // https://www.php.net/manual/en/ref.pdo-oci.connection.php
         // Connect to a database defined in tnsnames.ora
@@ -188,7 +188,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // Microsoft SQL Server
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_MSSQL;
+        $dbType = Constants::SPAN_SUBTYPE_MSSQL;
 
         // https://www.php.net/manual/en/ref.pdo-sqlsrv.connection.php
         yield [
@@ -226,7 +226,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         //  IBM DB2
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_IBM_DB2;
+        $dbType = Constants::SPAN_SUBTYPE_IBM_DB2;
 
         // https://www.php.net/manual/en/ref.pdo-ibm.connection.php
         // ... connecting to an DB2 database cataloged as DB2_9 in db2cli.ini:
@@ -246,7 +246,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // ODBC
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_ODBC;
+        $dbType = Constants::SPAN_SUBTYPE_ODBC;
 
         // https://www.php.net/manual/en/ref.pdo-odbc.connection.php
         // ... connecting to an ODBC database cataloged as testdb in the ODBC driver manager
@@ -266,7 +266,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // CUBRID
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_CUBRID;
+        $dbType = Constants::SPAN_SUBTYPE_CUBRID;
 
         // https://www.php.net/manual/en/ref.pdo-cubrid.connection.php
         yield [
@@ -278,7 +278,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // Firebird
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_FIREBIRD;
+        $dbType = Constants::SPAN_SUBTYPE_FIREBIRD;
 
         // https://www.php.net/manual/en/ref.pdo-firebird.connection.php
         // ... connecting to Firebird databases
@@ -312,7 +312,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         //
         // Informix
         //
-        $dbType = Constants::SPAN_TYPE_DB_SUBTYPE_INFORMIX;
+        $dbType = Constants::SPAN_SUBTYPE_INFORMIX;
 
         // https://www.php.net/manual/en/ref.pdo-informix.connection.php
         // ... connecting to an Informix database cataloged as Infdrv33 in odbc.ini
@@ -361,9 +361,9 @@ class DbConnectionStringParserTest extends TestCaseBase
      */
     public function test(string $dsn, array $expected): void
     {
-        /** var ?string */
+        /** @var ?string $actualDbType */
         $actualDbType = null;
-        /** var ?string */
+        /** @var ?string $actualDbName */
         $actualDbName = null;
         $parser = new DbConnectionStringParser(self::noopLoggerFactory());
         $parser->parse($dsn, /* ref */ $actualDbType, /* ref */ $actualDbName);
