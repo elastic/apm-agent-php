@@ -33,13 +33,13 @@ final class Logger
     /** @var LoggerData */
     private $data;
 
-    /** @var int */
-    private $maxEnabledLevel;
+    /** @var callable(): int */
+    private $maxEnabledLevelCall;
 
-    private function __construct(LoggerData $data, int $maxEnabledLevel)
+    private function __construct(LoggerData $data, callable $maxEnabledLevelCall)
     {
         $this->data = $data;
-        $this->maxEnabledLevel = $maxEnabledLevel;
+        $this->maxEnabledLevelCall = $maxEnabledLevelCall;
     }
 
     /**
@@ -60,13 +60,15 @@ final class Logger
     ): self {
         return new self(
             LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend),
-            $backend->getMaxEnabledLevel()
+            function () use ($backend): int {
+                return $backend->getMaxEnabledLevel();
+            }
         );
     }
 
     public function inherit(): self
     {
-        return new self(LoggerData::inherit($this->data), $this->maxEnabledLevel);
+        return new self(LoggerData::inherit($this->data), $this->maxEnabledLevelCall);
     }
 
     /**
@@ -126,7 +128,7 @@ final class Logger
 
     public function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
-        return ($this->maxEnabledLevel >= $statementLevel)
+        return (($this->maxEnabledLevelCall)() >= $statementLevel)
             ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)
             : null;
     }
@@ -138,9 +140,9 @@ final class Logger
      */
     public function possiblySecuritySensitive($value)
     {
-        if ($this->maxEnabledLevel >= Level::TRACE) {
+        if (($this->maxEnabledLevelCall)() >= Level::TRACE) {
             return $value;
         }
-        return 'HIDDEN POSSIBLY SECURITY SENSITIVE DATA';
+        return 'REDUCTED (POSSIBLY SECURITY SENSITIVE) DATA';
     }
 }

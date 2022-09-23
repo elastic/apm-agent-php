@@ -54,4 +54,9 @@ final class LoggerFactory
     ): Logger {
         return Logger::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $this->backend);
     }
+
+    public function getBackend(): Backend
+    {
+        return $this->backend;
+    }
 }
