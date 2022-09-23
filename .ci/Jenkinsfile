@@ -2,8 +2,8 @@
 
 @Library('apm@current') _
 
-final LOG_LEVEL_NOT_SET = 'Not set'
-final LOG_LEVELS = [LOG_LEVEL_NOT_SET, 'Trace', 'Debug', 'Info', 'Warning', 'Error', 'Critical', 'Off']
+LOG_LEVEL_NOT_SET = 'Not set'
+LOG_LEVELS = [LOG_LEVEL_NOT_SET, 'Trace', 'Debug', 'Info', 'Warning', 'Error', 'Critical', 'Off']
 
 pipeline {
   agent { label 'ubuntu-18.04 && immutable' }
@@ -119,7 +119,9 @@ pipeline {
               stage('Static analysis and unit tests') {
                 steps {
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
+                  echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
+                  echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
                   echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     withEnv(addEnvVarsFromParams([])) {
@@ -538,10 +540,10 @@ def convertComponentTestsGroupShortNameToLong(String shortName) {
 }
 
 def addEnvVarsFromParams(def withEnvList) {
-    if (!params.AGENT_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
+    if (params.AGENT_LOG_LEVEL != null && !params.AGENT_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_LOG_LEVEL=' + params.AGENT_LOG_LEVEL)
     }
-    if (!params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
+    if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
 }
