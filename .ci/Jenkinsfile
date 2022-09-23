@@ -120,8 +120,7 @@ pipeline {
                 steps {
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
-                  withEnvList = addEnvVarsFromParams([])
-                  echo "withEnvList: ${withEnvList}"
+                  echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
