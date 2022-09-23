@@ -546,6 +546,7 @@ def addEnvVarsFromParams(def withEnvList) {
     if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
+    return withEnvList
 }
 
 def runTestingCommand(def args = [:]) {
