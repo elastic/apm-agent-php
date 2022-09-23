@@ -113,7 +113,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 
     public function executeAfterSuccessfulTest(string $test, /* test duration in seconds */ float $time): void
     {
-        ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Test finished successfully',
             [
@@ -124,7 +124,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         );
     }
 
-    private function testFinishedUnsuccessfully(string $issue, string $test, string $message, float $time): void
+    private function testFailed(string $issue, string $test, string $message, float $time): void
     {
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -140,31 +140,31 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 
     public function executeAfterTestFailure(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with failure', $test, $message, $time);
+        $this->testFailed('with failure', $test, $message, $time);
     }
 
     public function executeAfterTestError(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with error', $test, $message, $time);
+        $this->testFailed('with error', $test, $message, $time);
     }
 
     public function executeAfterTestWarning(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with warning', $test, $message, $time);
+        $this->testFailed('with warning', $test, $message, $time);
     }
 
     public function executeAfterSkippedTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as skipped', $test, $message, $time);
+        $this->testFailed('as skipped', $test, $message, $time);
     }
 
     public function executeAfterIncompleteTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as incomplete', $test, $message, $time);
+        $this->testFailed('as incomplete', $test, $message, $time);
     }
 
     public function executeAfterRiskyTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as risky', $test, $message, $time);
+        $this->testFailed('as risky', $test, $message, $time);
     }
 }

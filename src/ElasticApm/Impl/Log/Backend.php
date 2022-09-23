@@ -53,6 +53,11 @@ final class Backend
         return $this->maxEnabledLevel;
     }
 
+    public function clone(): self
+    {
+        return new self($this->maxEnabledLevel, $this->logSink);
+    }
+
     public function setMaxEnabledLevel(int $maxEnabledLevel): void
     {
         $this->maxEnabledLevel = $maxEnabledLevel;
