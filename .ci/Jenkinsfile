@@ -25,6 +25,8 @@ pipeline {
   }
   parameters {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
+    string(name: 'AGENT_LOG_LEVEL', defaultValue: '', description: "Agent's log level (possible values: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF)")
+    string(name: 'TESTS_LOG_LEVEL', defaultValue: '', description: "Tests' log level (possible values: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF)")
   }
   stages {
     stage('Initializing'){
@@ -114,8 +116,10 @@ pipeline {
               stage('Static analysis and unit tests') {
                 steps {
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+                    withEnv(addEnvVarsFromParams([])) {
+                      dir("${BASE_DIR}"){
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+                      }
                     }
                   }
                 }
@@ -525,16 +529,25 @@ def convertComponentTestsGroupShortNameToLong(String shortName) {
   }
 }
 
+def addEnvVarsFromParams(def withEnvList) {
+    if (!params.AGENT_LOG_LEVEL.empty) {
+      withEnvList.add('ELASTIC_APM_LOG_LEVEL=' + params.AGENT_LOG_LEVEL)
+    }
+    if (!params.TESTS_LOG_LEVEL.empty) {
+      withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
+    }
+}
+
 def runTestingCommand(def args = [:]) {
   try {
     args['context'] = buildWorkspaceContext(args)
-    withEnv(
+    withEnv(addEnvVarsFromParams(
       [
         "PHP_VERSION=${args.phpVersion}"
         , "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"
         , "ELASTIC_APM_PHP_TESTS_GROUP=${args.componentTestsGroup}"
       ]
-    ) {
+    )) {
       packageWorkspace(args) {
         sh(script: args.testingCommand, label: buildLabel(args))
       }
