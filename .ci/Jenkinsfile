@@ -2,6 +2,9 @@
 
 @Library('apm@current') _
 
+final LOG_LEVEL_NOT_SET = 'Not set'
+final LOG_LEVELS = [LOG_LEVEL_NOT_SET, 'Trace', 'Debug', 'Info', 'Warning', 'Error', 'Critical', 'Off']
+
 pipeline {
   agent { label 'ubuntu-18.04 && immutable' }
   environment {
@@ -25,8 +28,8 @@ pipeline {
   }
   parameters {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
-    string(name: 'AGENT_LOG_LEVEL', defaultValue: '', description: "Agent's log level (possible values: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF)")
-    string(name: 'TESTS_LOG_LEVEL', defaultValue: '', description: "Tests' log level (possible values: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL, OFF)")
+    choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
+    choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
   }
   stages {
     stage('Initializing'){
@@ -115,8 +118,14 @@ pipeline {
               }
               stage('Static analysis and unit tests') {
                 steps {
+                  echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
+                  echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
+                  withEnvList = addEnvVarsFromParams([])
+                  echo "withEnvList: ${withEnvList}"
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     withEnv(addEnvVarsFromParams([])) {
+                      echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
+                      echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       dir("${BASE_DIR}"){
                         sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                       }
@@ -530,10 +539,10 @@ def convertComponentTestsGroupShortNameToLong(String shortName) {
 }
 
 def addEnvVarsFromParams(def withEnvList) {
-    if (!params.AGENT_LOG_LEVEL.empty) {
+    if (!params.AGENT_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_LOG_LEVEL=' + params.AGENT_LOG_LEVEL)
     }
-    if (!params.TESTS_LOG_LEVEL.empty) {
+    if (!params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
 }
