@@ -115,6 +115,10 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         $newRequest->timeReceivedAtApmServer = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         $newRequest->headers = $request->getHeaders();
         $newRequest->body = $request->getBody()->getContents();
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Received request for Intake API', ['newRequest' => $newRequest]);
+
         $this->receivedIntakeApiRequests[] = $newRequest;
 
         foreach ($this->pendingDataRequests as $pendingDataRequest) {
