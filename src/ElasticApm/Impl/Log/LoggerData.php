@@ -101,15 +101,15 @@ final class LoggerData
         );
     }
 
-    public static function inherit(self $inheritedData): self
+    public function inherit(): self
     {
         return new self(
-            $inheritedData->category,
-            $inheritedData->namespace,
-            $inheritedData->fqClassName,
-            $inheritedData->srcCodeFile,
-            $inheritedData->backend,
-            $inheritedData
+            $this->category,
+            $this->namespace,
+            $this->fqClassName,
+            $this->srcCodeFile,
+            $this->backend,
+            $this
         );
     }
 }
