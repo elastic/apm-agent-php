@@ -34,7 +34,7 @@ function printInfoAboutEnvironment () {
     php -v
     echo 'Installed PHP extensions:'
     php -m
-    echo 'Set environment variables:'
+    echo 'Set Elastic related environment variables:'
     env | grep ELASTIC || true
 }
 
