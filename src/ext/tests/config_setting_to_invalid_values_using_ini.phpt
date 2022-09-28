@@ -10,6 +10,7 @@ elastic_apm.assert_level=|:/:\:|
 elastic_apm.secret_token=\|<>|/
 elastic_apm.server_url=<\/\/>
 elastic_apm.service_name=/\><\/
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);
