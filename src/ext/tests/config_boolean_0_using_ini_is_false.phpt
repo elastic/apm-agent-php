@@ -6,6 +6,7 @@ Boolean configuration option value 0 (in this case using ini file) should be int
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
 elastic_apm.enabled=0
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);
