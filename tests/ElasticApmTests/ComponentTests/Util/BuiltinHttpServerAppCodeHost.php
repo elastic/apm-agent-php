@@ -62,7 +62,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected static function isStatusCheck(): bool
     {
-        return $_SERVER['REQUEST_URI'] === HttpServerHandle::STATUS_CHECK_URI;
+        return $_SERVER['REQUEST_URI'] === HttpServerHandle::STATUS_CHECK_URI_PATH;
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
@@ -94,9 +94,12 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     {
         $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
         TestCase::assertNotNull($dataPerRequest);
-        $response = self::verifySpawnedProcessInternalId($dataPerRequest->spawnedProcessInternalId);
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
+        if (($response = self::verifySpawnedProcessInternalId($dataPerRequest->spawnedProcessInternalId)) !== null) {
             self::sendResponse($response);
+            return;
+        }
+        if (self::isStatusCheck()) {
+            self::sendResponse(self::buildResponseWithPid());
             return;
         }
 

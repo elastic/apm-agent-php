@@ -23,8 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\LogTests;
 
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogConsts;
 use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
+use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\Util\JsonUtil;
@@ -227,5 +231,42 @@ class LoggingVariousTypesTest extends TestCaseBase
     {
         self::logValueAndVerify(NoopTransaction::singletonInstance(), [LogConsts::TYPE_KEY => 'NoopTransaction']);
         self::logValueAndVerify(NoopSpan::singletonInstance(), [LogConsts::TYPE_KEY => 'NoopSpan']);
+    }
+
+    public function testLogBackend(): void
+    {
+        self::logValueAndVerify(
+            new LogBackend(LogLevel::WARNING, NoopLogSink::singletonInstance()),
+            [
+                'maxEnabledLevel' => 'WARNING',
+                'logSink'         => NoopLogSink::class,
+            ]
+        );
+    }
+
+    public function testLogger(): void
+    {
+        $loggerFactory = new LoggerFactory(new LogBackend(LogLevel::DEBUG, NoopLogSink::singletonInstance()));
+        $category = 'test category';
+        $namespace = 'test namespace';
+        $fqClassName = __CLASS__;
+        $srcCodeFile = 'test source code file';
+        self::logValueAndVerify(
+            $loggerFactory->loggerForClass($category, $namespace, $fqClassName, $srcCodeFile),
+            [
+                'data' => [
+                    'backend' => [
+                        'maxEnabledLevel' => 'DEBUG',
+                        'logSink'         => NoopLogSink::class,
+                    ],
+                    'category' => $category,
+                    'context' => [],
+                    'fqClassName' => $fqClassName,
+                    'inheritedData' => null,
+                    'namespace' => $namespace,
+                    'srcCodeFile' => $srcCodeFile,
+                ]
+            ]
+        );
     }
 }

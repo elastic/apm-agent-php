@@ -31,10 +31,9 @@ final class TestInfraUtil
 {
     use StaticClassTrait;
 
-    public static function generateIdBasedOnCurrentTestCaseId(): string
+    public static function generateSpawnedProcessInternalId(): string
     {
-        return ComponentTestsPhpUnitExtension::$currentTestCaseId
-               . '_' . IdGenerator::generateId(/* idLengthInBytes */ 16);
+        return IdGenerator::generateId(/* idLengthInBytes */ 16);
     }
 
     public static function buildTestInfraDataPerProcess(
@@ -63,8 +62,10 @@ final class TestInfraUtil
 
     /**
      * @param array<string, string>   $baseEnvVars
+     * @param string                  $targetSpawnedProcessInternalId
      * @param ?int                    $targetServerPort
      * @param ?ResourcesCleanerHandle $resourcesCleaner
+     * @param string                  $dbgProcessName
      *
      * @return array<string, string>
      */

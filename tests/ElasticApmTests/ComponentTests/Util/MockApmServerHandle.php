@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -41,6 +42,7 @@ final class MockApmServerHandle extends HttpServerHandle
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
         parent::__construct(
+            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgServerDesc */,
             $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
             $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
             $httpSpawnedProcessHandle->getPort()
@@ -62,16 +64,13 @@ final class MockApmServerHandle extends HttpServerHandle
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Starting...');
 
-        $response = HttpClientUtilForTests::sendRequest(
-            HttpConsts::METHOD_GET,
-            (new UrlParts())
-                ->path(MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS)
-                ->port($this->getPort()),
-            TestInfraDataPerRequest::withSpawnedProcessInternalId($this->getSpawnedProcessInternalId()),
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_GET,
+            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS,
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
         );
 
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+        if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException('Received unexpected status code');
         }
 

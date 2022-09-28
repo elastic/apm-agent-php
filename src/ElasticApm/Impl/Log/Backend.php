@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Log;
 
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 
 /**
@@ -31,7 +32,7 @@ use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
  *
  * @internal
  */
-final class Backend
+final class Backend implements LoggableInterface
 {
     /** @var int */
     private $maxEnabledLevel;
@@ -121,6 +122,16 @@ final class Backend
             $srcCodeFunc,
             $includeStacktrace,
             $numberOfStackFramesToSkip + 1
+        );
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs(
+            [
+                'maxEnabledLevel' => Level::intToName($this->maxEnabledLevel),
+                'logSink'         => DbgUtil::getType($this->logSink),
+            ]
         );
     }
 }

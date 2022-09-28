@@ -68,7 +68,7 @@ final class JsonUtil
             throw new JsonException(
                 'json_decode() failed.'
                 . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
-                . ' encodedData: ' . $encodedData . '.'
+                . ' encodedData: `' . $encodedData . '\''
             );
         }
         return $decodedData;

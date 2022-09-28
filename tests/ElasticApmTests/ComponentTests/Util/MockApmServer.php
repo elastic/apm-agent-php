@@ -29,9 +29,9 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use React\EventLoop\LoopInterface;
 use React\Http\Message\Response;
 use React\Promise\Promise;
 
@@ -46,9 +46,6 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     /** @var int */
     public static $pendingDataRequestNextId = 1;
-
-    /** @var LoopInterface */
-    private $reactLoop;
 
     /** @var IntakeApiRequest[] */
     private $receivedIntakeApiRequests = [];
@@ -74,16 +71,6 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     }
 
     /** @inheritDoc */
-    protected function beforeLoopRun(LoopInterface $loop): void
-    {
-        $this->reactLoop = $loop;
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     *
-     * @return ResponseInterface|Promise
-     */
     protected function processRequest(ServerRequestInterface $request)
     {
         if ($request->getUri()->getPath() === self::INTAKE_API_URI) {
@@ -94,9 +81,10 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             return $this->processMockApiRequest($request);
         }
 
-        return $this->buildErrorResponse(/* status */ 400, 'Unknown API path: `' . $request->getRequestTarget() . '\'');
+        return null;
     }
 
+    /** @inheritDoc */
     protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return $request->getUri()->getPath() !== self::INTAKE_API_URI;
@@ -104,6 +92,8 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
     {
+        TestCase::assertNotNull($this->reactLoop);
+
         if ($request->getBody()->getSize() === 0) {
             return $this->buildIntakeApiErrorResponse(
                 400 /* status */,
@@ -169,6 +159,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return new Promise(
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = self::$pendingDataRequestNextId++;
+                TestCase::assertNotNull($this->reactLoop);
                 $timer = $this->reactLoop->addTimer(
                     self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
@@ -198,7 +189,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         && $loggerProxy->log('Sending response ...', ['fromIndex' => $fromIndex, 'newDataCount' => count($newData)]);
 
         return new Response(
-            HttpConsts::STATUS_OK,
+            HttpConstantsForTests::STATUS_OK,
             // headers:
             ['Content-Type' => 'application/json'],
             // body:
@@ -245,5 +236,17 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
                 /* prettyPrint: */ true
             )
         );
+    }
+
+    /** @inheritDoc */
+    protected function exit(): void
+    {
+        TestCase::assertNotNull($this->reactLoop);
+
+        foreach ($this->pendingDataRequests as $pendingDataRequest) {
+            $this->reactLoop->cancelTimer($pendingDataRequest->timer);
+        }
+
+        parent::exit();
     }
 }

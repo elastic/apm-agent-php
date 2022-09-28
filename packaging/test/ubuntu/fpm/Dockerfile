@@ -3,7 +3,18 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install apt-utils \
-    && apt-get -qq -y --no-install-recommends install apt-transport-https dpkg-sig gnupg gnupg2 git procps zlib1g-dev libzip-dev wget unzip rsyslog
+    && apt-get -qq -y --no-install-recommends install apt-transport-https \
+        dpkg-sig \
+        git \
+        gnupg \
+        gnupg2 \
+        libzip-dev \
+        logrotate \
+        procps \
+        rsyslog \
+        unzip \
+        wget \
+        zlib1g-dev
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -24,6 +35,7 @@ RUN apt-get -qq -y --no-install-recommends install software-properties-common \
         php${PHP_VERSION}-mbstring \
         php${PHP_VERSION}-mysql \
         php${PHP_VERSION}-mysqli \
+        php${PHP_VERSION}-posix \
         php${PHP_VERSION}-sqlite \
         php${PHP_VERSION}-xml \
     && rm -rf /var/lib/apt/lists/*

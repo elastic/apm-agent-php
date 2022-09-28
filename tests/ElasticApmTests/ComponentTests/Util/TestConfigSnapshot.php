@@ -78,6 +78,9 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var ?string */
     public $mysqlDb;
 
+    /** @var ?string */
+    public $runBeforeEachTest;
+
     /**
      * Snapshot constructor.
      *
