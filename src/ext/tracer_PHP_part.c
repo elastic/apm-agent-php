@@ -205,7 +205,7 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
 
     finally:
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u."
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u."
                                                          , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
     ELASTIC_APM_UNUSED( resultCode );
     return;
