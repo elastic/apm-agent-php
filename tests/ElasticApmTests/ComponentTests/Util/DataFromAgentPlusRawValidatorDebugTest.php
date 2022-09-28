@@ -42,7 +42,10 @@ final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
         $inputFileFullPath = FileUtilForTests::listToPath(
             [$repoRootFullPath, 'z_local', 'DataFromAgentPlusRawValidatorDebugTest_input.txt']
         );
-        self::assertFileExists($inputFileFullPath);
+        if (!file_exists($inputFileFullPath)) {
+            self::dummyAssert();
+            return;
+        }
 
         $inputFileContents = file_get_contents($inputFileFullPath);
         self::assertNotFalse($inputFileContents);
