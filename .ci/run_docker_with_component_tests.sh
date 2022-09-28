@@ -90,7 +90,7 @@ function main () {
         dockerRunCmdVariablePart=("${dockerRunCmdVariablePart[@]}" "--network=elastic-apm-php-external-services-for-component-tests-net")
     fi
     # shellcheck disable=SC2154 # dockerRunCmdVariablePart is assigned by buildDockerEnvVarsCommandLinePart
-    docker run --rm -v "${repoRootDir}:/src" -w /src "${dockerRunCmdVariablePart[@]}" "$@"
+    docker run --rm -v "${repoRootDir}:/app" -w /app "${dockerRunCmdVariablePart[@]}" "$@"
 }
 
 main "$@"

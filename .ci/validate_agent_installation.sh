@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -xe
 
-outputDir=/app/build/
-mkdir -p "${outputDir}"
-
 function startSyslog () {
     if which syslogd; then
         syslogd
@@ -22,9 +19,10 @@ function copySyslogFileAndPrintTheLastOne () {
     for syslogFile in "${possibleSyslogFiles[@]}"
     do
         if [[ -f "${syslogFile}" ]]; then
-            cp "${syslogFile}"* ${outputDir}
-            echo "syslog files (${syslogFile}*) copied to ${outputDir}"
-            break
+            local syslogCopyDir=/app/build/syslog
+            mkdir -p "${syslogCopyDir}"
+            cp "${syslogFile}"* ${syslogCopyDir}
+            echo "syslog files (${syslogFile}*) copied to ${syslogCopyDir}"
         fi
     done
 }
@@ -59,11 +57,9 @@ function runComponentTests () {
     local composerCommandExitCode=$?
     set -e
 
-    if [ ${composerCommandExitCode} -ne 0 ]; then
-        echo "${composerCommand} exited with an error code ${composerCommandExitCode}"
-        copySyslogFileAndPrintTheLastOne
-        exit ${composerCommandExitCode}
-    fi
+    echo "${composerCommand} exited with an error code ${composerCommandExitCode}"
+    copySyslogFileAndPrintTheLastOne
+    exit ${composerCommandExitCode}
 }
 
 
