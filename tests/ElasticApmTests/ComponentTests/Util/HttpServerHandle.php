@@ -25,14 +25,22 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
+use GuzzleHttp\Exception\GuzzleException;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
 
 class HttpServerHandle implements LoggableInterface
 {
     use LoggableTrait;
 
     public const DEFAULT_HOST = '127.0.0.1';
-    public const STATUS_CHECK_URI = '/elastic_apm_php_tests_status_check';
+    public const STATUS_CHECK_URI_PATH = '/elastic_apm_php_tests_status_check';
     public const PID_KEY = 'pid';
+
+    /** @var string */
+    private $dbgServerDesc;
 
     /** @var int */
     private $spawnedProcessOsId;
@@ -43,8 +51,13 @@ class HttpServerHandle implements LoggableInterface
     /** @var int */
     private $port;
 
-    public function __construct(int $spawnedProcessOsId, string $spawnedProcessInternalId, int $port)
-    {
+    public function __construct(
+        string $dbgServerDesc,
+        int $spawnedProcessOsId,
+        string $spawnedProcessInternalId,
+        int $port
+    ) {
+        $this->dbgServerDesc = $dbgServerDesc;
         $this->spawnedProcessOsId = $spawnedProcessOsId;
         $this->spawnedProcessInternalId = $spawnedProcessInternalId;
         $this->port = $port;
@@ -63,5 +76,70 @@ class HttpServerHandle implements LoggableInterface
     public function getPort(): int
     {
         return $this->port;
+    }
+
+    /**
+     * @param string                $httpMethod
+     * @param string                $path
+     * @param array<string, string> $headers
+     *
+     * @return ResponseInterface
+     *
+     * @throws GuzzleException
+     */
+    public function sendRequest(string $httpMethod, string $path, array $headers = []): ResponseInterface
+    {
+        return HttpClientUtilForTests::sendRequest(
+            $httpMethod,
+            (new UrlParts())->path($path)->port($this->getPort()),
+            TestInfraDataPerRequest::withSpawnedProcessInternalId($this->spawnedProcessInternalId),
+            $headers
+        );
+    }
+
+    public function signalAndWaitForItToExit(): void
+    {
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_POST,
+            TestInfraHttpServerProcessBase::EXIT_URI_PATH
+        );
+        TestCase::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
+
+        $hasExited = ProcessUtilForTests::waitForProcessToExit(
+            $this->dbgServerDesc,
+            $this->spawnedProcessOsId,
+            10 * 1000 * 1000 /* <- maxWaitTimeInMicroseconds - 10 seconds */
+        );
+        TestCase::assertTrue($hasExited);
+    }
+
+    public function serialize(): string
+    {
+        return JsonUtil::encode(get_object_vars($this));
+    }
+
+    public static function deserialize(string $serialized): HttpServerHandle
+    {
+        $decodeJson = JsonUtil::decode($serialized, /* asAssocArray: */ true);
+        TestCase::assertIsArray($decodeJson);
+
+        $getDecodedIntValue = function (string $propName) use ($decodeJson): int {
+            TestCase::assertArrayHasKey($propName, $decodeJson);
+            TestCase::assertIsInt($decodeJson[$propName]);
+            return $decodeJson[$propName];
+        };
+
+        $getDecodedStringValue = function (string $propName) use ($decodeJson): string {
+            TestCase::assertArrayHasKey($propName, $decodeJson);
+            TestCase::assertIsString($decodeJson[$propName]);
+            return $decodeJson[$propName];
+        };
+
+        return new self(
+            $getDecodedStringValue('dbgServerDesc'),
+            $getDecodedIntValue('spawnedProcessOsId'),
+            $getDecodedStringValue('spawnedProcessInternalId'),
+            $getDecodedIntValue('port')
+        );
     }
 }

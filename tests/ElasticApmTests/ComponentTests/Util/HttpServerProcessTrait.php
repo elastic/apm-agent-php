@@ -31,19 +31,19 @@ trait HttpServerProcessTrait
 {
     protected static function verifySpawnedProcessInternalId(
         string $receivedSpawnedProcessInternalId
-    ): ResponseInterface {
+    ): ?ResponseInterface {
         $expectedSpawnedProcessInternalId
             = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessInternalId;
         if ($expectedSpawnedProcessInternalId !== $receivedSpawnedProcessInternalId) {
             return self::buildErrorResponse(
-                400,
+                HttpConstantsForTests::STATUS_BAD_REQUEST,
                 'Received server ID does not match the expected one.'
                 . ' Expected: ' . $expectedSpawnedProcessInternalId
                 . ', received: ' . $receivedSpawnedProcessInternalId
             );
         }
 
-        return Response::json([HttpServerHandle::PID_KEY => getmypid()]);
+        return null;
     }
 
     protected static function buildErrorResponse(int $status, string $message): ResponseInterface
@@ -57,5 +57,15 @@ trait HttpServerProcessTrait
             // body:
             JsonUtil::encode(['message' => $message], /* prettyPrint: */ true)
         );
+    }
+
+    protected static function buildDefaultResponse(): ResponseInterface
+    {
+        return new Response();
+    }
+
+    protected static function buildResponseWithPid(): ResponseInterface
+    {
+        return Response::json([HttpServerHandle::PID_KEY => getmypid()]);
     }
 }

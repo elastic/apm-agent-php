@@ -47,8 +47,16 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
+    public const EXIT_URI_PATH = '/exit';
+
     /** @var Logger */
     private $logger;
+
+    /** @var ?LoopInterface */
+    protected $reactLoop = null;
+
+    /** @var ?SocketServer */
+    protected $serverSocket = null;
 
     public function __construct()
     {
@@ -96,7 +104,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /**
      * @param ServerRequestInterface $request
      *
-     * @return ResponseInterface|Promise
+     * @return null|ResponseInterface|Promise
      */
     abstract protected function processRequest(ServerRequestInterface $request);
 
@@ -122,11 +130,11 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 
     private function runHttpServer(): void
     {
-        $loop = Loop::get();
+        $this->reactLoop = Loop::get();
         $thisServerPort = AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort;
         TestCase::assertNotNull($thisServerPort);
         $uri = HttpServerHandle::DEFAULT_HOST . ':' . $thisServerPort;
-        $serverSocket = new SocketServer($uri, /* context */ [], $loop);
+        $this->serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
         $httpServer = new HttpServer(
             /**
              * @param ServerRequestInterface $request
@@ -137,28 +145,29 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 return $this->processRequestWrapper($request);
             }
         );
-        $httpServer->listen($serverSocket);
+        $httpServer->listen($this->serverSocket);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Waiting for incoming requests...',
-            ['serverSocketAddress' => $serverSocket->getAddress()]
+            ['serverSocketAddress' => $this->serverSocket->getAddress()]
         );
 
-        $this->beforeLoopRun($loop);
+        $this->beforeLoopRun();
 
-        $loop->run();
+        TestCase::assertNotNull($this->reactLoop);
+        $this->reactLoop->run();
     }
 
-    /**
-     * @param LoopInterface $loop
-     *
-     * @return void
-     */
-    protected function beforeLoopRun(LoopInterface $loop): void
+    protected function beforeLoopRun(): void
     {
     }
 
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return bool
+     */
     protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return true;
@@ -225,17 +234,38 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 AmbientContextForTests::loggerFactory()
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
-            $verifySpawnedProcessInternalIdResponse
-                = self::verifySpawnedProcessInternalId($testConfigForRequest->dataPerRequest->spawnedProcessInternalId);
-            if (
-                $verifySpawnedProcessInternalIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
-                || $request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI
-            ) {
+            $verifySpawnedProcessInternalIdResponse = self::verifySpawnedProcessInternalId(
+                $testConfigForRequest->dataPerRequest->spawnedProcessInternalId
+            );
+            if ($verifySpawnedProcessInternalIdResponse !== null) {
                 return $verifySpawnedProcessInternalIdResponse;
             }
         }
 
-        return $this->processRequest($request);
+        if ($request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI_PATH) {
+            return self::buildResponseWithPid();
+        } elseif ($request->getUri()->getPath() === self::EXIT_URI_PATH) {
+            $this->exit();
+            return self::buildDefaultResponse();
+        }
+
+        if (($response = $this->processRequest($request)) !== null) {
+            return $response;
+        }
+
+        return self::buildErrorResponse(400, 'Unknown URI path: `' . $request->getRequestTarget() . '\'');
+    }
+
+    /**
+     * @return void
+     */
+    protected function exit(): void
+    {
+        TestCase::assertNotNull($this->serverSocket);
+        $this->serverSocket->close();
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting...');
     }
 
     protected static function getRequestHeader(ServerRequestInterface $request, string $headerName): ?string

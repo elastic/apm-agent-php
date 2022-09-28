@@ -23,6 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\UrlParts;
+use ElasticApmTests\Util\FileUtilForTests;
+use PHPUnit\Framework\TestCase;
+
 final class TestInfraHttpServerStarter extends HttpServerStarter
 {
     /** @var string */
@@ -32,7 +38,7 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     private $resourcesCleaner;
 
     /**
-     * @param string                  $dbgProcessName
+     * @param string                  $dbgServerDesc
      * @param string                  $runScriptName
      * @param int[]                   $portsInUse
      * @param ?ResourcesCleanerHandle $resourcesCleaner
@@ -40,25 +46,25 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
      * @return HttpServerHandle
      */
     public static function startTestInfraHttpServer(
-        string $dbgProcessName,
+        string $dbgServerDesc,
         string $runScriptName,
         array $portsInUse,
         ?ResourcesCleanerHandle $resourcesCleaner
     ): HttpServerHandle {
-        return (new self($dbgProcessName, $runScriptName, $resourcesCleaner))->startHttpServer($portsInUse);
+        return (new self($dbgServerDesc, $runScriptName, $resourcesCleaner))->startHttpServer($portsInUse);
     }
 
     /**
-     * @param string                  $dbgProcessName
+     * @param string                  $dbgServerDesc
      * @param string                  $runScriptName
      * @param ?ResourcesCleanerHandle $resourcesCleaner
      */
     private function __construct(
-        string $dbgProcessName,
+        string $dbgServerDesc,
         string $runScriptName,
         ?ResourcesCleanerHandle $resourcesCleaner
     ) {
-        parent::__construct($dbgProcessName);
+        parent::__construct($dbgServerDesc);
 
         $this->runScriptName = $runScriptName;
         $this->resourcesCleaner = $resourcesCleaner;
@@ -67,7 +73,7 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     /** @inheritDoc */
     protected function buildCommandLine(int $port): string
     {
-        return 'php ' . '"' . __DIR__ . DIRECTORY_SEPARATOR . $this->runScriptName . '"';
+        return 'php ' . '"' . FileUtilForTests::listToPath([__DIR__, $this->runScriptName]) . '"';
     }
 
     /** @inheritDoc */
@@ -78,7 +84,7 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
             $spawnedProcessInternalId,
             $port,
             $this->resourcesCleaner,
-            $this->dbgProcessName
+            $this->dbgServerDesc
         );
     }
 }

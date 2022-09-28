@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 
 final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
@@ -38,7 +39,10 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     private $logger;
 
     /**
+     * @param TestCaseHandle                   $testCaseHandle
      * @param Closure(AppCodeHostParams): void $setParamsFunc
+     * @param ResourcesCleanerHandle           $resourcesCleaner
+     * @param string                           $dbgInstanceName
      */
     public function __construct(
         TestCaseHandle $testCaseHandle,
@@ -48,7 +52,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     ) {
         $dbgProcessName = ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '(' . $dbgInstanceName . ')';
         $appCodeHostParams = new AppCodeHostParams($dbgProcessName);
-        $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateIdBasedOnCurrentTestCaseId();
+        $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateSpawnedProcessInternalId();
         $setParamsFunc($appCodeHostParams);
 
         $agentConfigSourceBuilder = new AgentConfigSourceBuilder($resourcesCleaner->getClient(), $appCodeHostParams);
@@ -77,7 +81,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         && $loggerProxy->log('Starting...');
 
         $cmdLine = TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
-                   . ' "' . __DIR__ . DIRECTORY_SEPARATOR . $requestParams->scriptToRunAppCodeHost . '"';
+                   . ' "' . FileUtilForTests::listToPath([__DIR__, $requestParams->scriptToRunAppCodeHost]) . '"';
         foreach ($requestParams->scriptToRunAppCodeHostArgs as $scriptToRunAppCodeHostArg) {
             $cmdLine .= ' ' . $scriptToRunAppCodeHostArg;
         }

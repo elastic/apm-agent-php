@@ -79,14 +79,15 @@ final class AllComponentTestsOptionsMetadata
                     return $deserializedObj;
                 }
             ),
-            'delete_temp_php_ini' => new BoolOptionMetadata(true),
+            'delete_temp_php_ini'      => new BoolOptionMetadata(true),
             'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
-            'log_level' => new LogLevelOptionMetadata(LogLevel::INFO),
-            'mysql_host' => new NullableStringOptionMetadata(),
-            'mysql_port' => new NullableIntOptionMetadata(1, 65535),
-            'mysql_user' => new NullableStringOptionMetadata(),
-            'mysql_password' => new NullableStringOptionMetadata(),
-            'mysql_db' => new NullableStringOptionMetadata(),
+            'log_level'                => new LogLevelOptionMetadata(LogLevel::INFO),
+            'mysql_host'               => new NullableStringOptionMetadata(),
+            'mysql_port'               => new NullableIntOptionMetadata(1, 65535),
+            'mysql_user'               => new NullableStringOptionMetadata(),
+            'mysql_password'           => new NullableStringOptionMetadata(),
+            'mysql_db'                 => new NullableStringOptionMetadata(),
+            'run_before_each_test'     => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;
