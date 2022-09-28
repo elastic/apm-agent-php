@@ -30,6 +30,6 @@ ENV TYPE=deb
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
-WORKDIR /src
+WORKDIR /app
 
 ENTRYPOINT ["/bin/entrypoint.sh"]
