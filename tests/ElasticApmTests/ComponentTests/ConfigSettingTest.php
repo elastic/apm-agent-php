@@ -73,7 +73,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
          * @return array<string, ?bool>
          */
         $boolRawToParsedValues = function (?bool $valueToExclude = null): array {
-            /** @var array<string, ?bool> */
+            /** @var array<string, ?bool> $result */
             $result = [
                 'false'         => false,
                 'true'          => true,
@@ -115,9 +115,13 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             " /a/*, \t(?-i)/b1/ /b2 \t \n, (?-i) **c*\t * \t " => "/a/*, (?-i)/b1/ /b2, (?-i) *c*\t *",
         ];
 
+        $asyncBackendCommValues = $boolRawToParsedValues(
+            self::isMainAppCodeHostHttp() ? null : true /* <- valueToExclude */
+        );
+
         return [
             OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
-            OptionNames::ASYNC_BACKEND_COMM       => $boolRawToParsedValues(),
+            OptionNames::ASYNC_BACKEND_COMM       => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,

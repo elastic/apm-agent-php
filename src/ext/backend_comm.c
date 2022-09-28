@@ -27,6 +27,7 @@
 #include "elastic_apm_alloc.h"
 #include "Tracer.h"
 #include "ConfigManager.h"
+#include "util_for_PHP.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -720,6 +721,24 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
 static Mutex* g_backgroundBackendCommMutex = NULL;
 static BackgroundBackendComm* g_backgroundBackendComm = NULL;
 
+static bool deriveAsyncBackendComm( const ConfigSnapshot* config, String* dbgReason )
+{
+    if ( config->asyncBackendComm.isSet )
+    {
+        *dbgReason = config->asyncBackendComm.value ? "explicitly set to true" : "explicitly set to false";
+        return config->asyncBackendComm.value;
+    }
+
+    if ( isPhpRunningAsCliScript() )
+    {
+        *dbgReason = "implicitly set to false because PHP is running as CLI script";
+        return false;
+    }
+
+    *dbgReason = "implicitly set to true";
+    return true;
+}
+
 ResultCode backgroundBackendCommOnModuleInit( const ConfigSnapshot* config )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendCommMutex: %p; g_backgroundBackendComm: %p"
@@ -739,9 +758,10 @@ ResultCode backgroundBackendCommOnModuleInit( const ConfigSnapshot* config )
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    if ( ! config->asyncBackendComm )
+    String dbgAsyncBackendCommReason = NULL;
+    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
     {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is set to false - no need to start background backend comm" );
+        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - no need to start background backend comm", dbgAsyncBackendCommReason );
         resultCode = resultSuccess;
         goto finally;
     }
@@ -813,9 +833,10 @@ ResultCode backgroundBackendCommOnRequestInit( const ConfigSnapshot* config )
     ResultCode resultCode;
     bool shouldUnlockMutex = false;
 
-    if ( ! config->asyncBackendComm )
+    String dbgAsyncBackendCommReason = NULL;
+    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
     {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is set to false - no need to start background backend comm" );
+        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - no need to start background backend comm", dbgAsyncBackendCommReason );
         resultCode = resultSuccess;
         goto finally;
     }
@@ -864,7 +885,11 @@ ResultCode signalBackgroundBackendCommThreadToExit( BackgroundBackendComm* backg
 
     finally:
     unlockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ );
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
+            "shouldExitBy: %s, backgroundBackendComm->lastServerTimeoutMilliseconds: %f"
+            , streamUtcTimeSpecAsLocal( shouldExitBy, &txtOutStream ), backgroundBackendComm->lastServerTimeoutMilliseconds );
     return resultCode;
 
     failure:
@@ -1027,9 +1052,10 @@ ResultCode sendEventsToApmServer(
             , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
-    if ( ! config->asyncBackendComm )
+    String dbgAsyncBackendCommReason = NULL;
+    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
     {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is set to false - sending events synchronously" );
+        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - sending events synchronously", dbgAsyncBackendCommReason );
         return sendEventsToApmServerWithDataConvertedForSync( disableSend
                                                               , serverTimeoutMilliseconds
                                                               , config

@@ -35,11 +35,13 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_CONFIG
 
+
 enum ParsedOptionValueType
 {
     parsedOptionValueType_undefined = 0,
 
     parsedOptionValueType_bool,
+    parsedOptionValueType_optionalBool,
     parsedOptionValueType_string,
     parsedOptionValueType_int,
     parsedOptionValueType_duration,
@@ -58,6 +60,7 @@ struct ParsedOptionValue
     union
     {
         bool boolValue;
+        OptionalBool optionalBoolValue;
         String stringValue;
         int intValue;
         Duration durationValue;
@@ -189,6 +192,11 @@ String interpretBoolIniRawValue( String rawValue )
     return rawValue;
 }
 
+String interpretOptionalBoolIniRawValue( String rawValue )
+{
+    return interpretBoolIniRawValue( rawValue );
+}
+
 String interpretEmptyIniRawValueAsOff( String rawValue )
 {
     // When PHP engine parses php.ini it automatically converts "true", "on" and "yes" to "1" (meaning true)
@@ -235,10 +243,10 @@ static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOption
     RETURN_STRING( parsedValue.u.stringValue );
 }
 
-static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+static ResultCode parseBoolValueImpl( const OptionMetadata* optMeta, ParsedOptionValueType expectedType, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
-    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, expectedType );
     ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
     ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
@@ -265,6 +273,11 @@ static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue
     return resultFailure;
 }
 
+static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+{
+    return parseBoolValueImpl( optMeta, parsedOptionValueType_bool, rawValue, /* out */ parsedValue );
+}
+
 static String streamParsedBool( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
@@ -284,6 +297,39 @@ static void parsedBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_BOOL( parsedValue.u.boolValue );
+}
+
+static ResultCode parseOptionalBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+{
+    ParsedOptionValue tempParsedValue;
+    ResultCode resultCode = parseBoolValueImpl( optMeta, parsedOptionValueType_optionalBool, rawValue, /* out */ &tempParsedValue );
+    if ( resultCode == resultSuccess )
+    {
+        parsedValue->u.optionalBoolValue = makeSetOptionalBool( tempParsedValue.u.boolValue );
+        parsedValue->type = parsedOptionValueType_optionalBool;
+    }
+    return resultCode;
+}
+
+static String streamParsedOptionalBool( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_optionalBool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+
+    return streamString( optionalBoolToString( parsedValue.u.optionalBoolValue ), txtOutStream );
+}
+
+static void parsedOptionalBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_optionalBool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
+
+    RETURN_STRING( optionalBoolToString( parsedValue.u.optionalBoolValue ) );
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
@@ -477,6 +523,33 @@ static OptionMetadata buildBoolOptionMetadata(
     };
 }
 
+static OptionMetadata buildOptionalBoolOptionMetadata(
+        String name
+        , StringView iniName
+        , bool isSecret
+        , bool isDynamic
+        , OptionalBool defaultValue
+        , SetConfigSnapshotFieldFunc setFieldFunc
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
+{
+    return (OptionMetadata)
+    {
+        .name = name,
+        .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
+        .isLoggingRelated = false,
+        .defaultValue = { .type = parsedOptionValueType_optionalBool, .u.optionalBoolValue = defaultValue },
+        .interpretIniRawValue = &interpretOptionalBoolIniRawValue,
+        .parseRawValue = &parseOptionalBoolValue,
+        .streamParsedValue = &streamParsedOptionalBool,
+        .setField = setFieldFunc,
+        .getField = getFieldFunc,
+        .parsedValueToZval = &parsedOptionalBoolValueToZval
+    };
+}
+
 static OptionMetadata buildDurationOptionMetadata(
         String name
         , StringView iniName
@@ -607,7 +680,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, asyncBackendComm )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
@@ -758,10 +831,10 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     #endif
 
     ELASTIC_APM_INIT_METADATA(
-            buildBoolOptionMetadata,
+            buildOptionalBoolOptionMetadata,
             asyncBackendComm,
             ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM,
-            /* defaultValue: */ true );
+            /* defaultValue: */ makeNotSetOptionalBool() );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

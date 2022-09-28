@@ -335,7 +335,10 @@ static String osSignalIdToName( int signalId )
 
 #define ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ... ) \
     do { \
-        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[PID: %d] [" levelName "] " fmt, getCurrentProcessId(), ##__VA_ARGS__ ); \
+        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
+            " [PID: %d] [TID: %d] [" levelName "] " fmt \
+            , getCurrentProcessId(), getCurrentThreadId() \
+            , ##__VA_ARGS__ ); \
     } while ( 0 )
 
 #define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
@@ -409,6 +412,29 @@ void handleOsSignalLinux( int signalId )
 }
 #endif // #ifndef PHP_WIN32
 
+#define ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ... ) \
+    do { \
+        fprintf( stderr, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
+            " [PID: %d] [TID: %d] [" levelName "] " fmt "\n" \
+            , getCurrentProcessId(), getCurrentThreadId(), ##__VA_ARGS__ ); \
+        fflush( stderr ); \
+    } while ( 0 )
+
+#ifdef PHP_WIN32
+#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
+        do { \
+            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
+        } while ( 0 )
+#else // #ifdef PHP_WIN32
+#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
+        do { \
+            ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ##__VA_ARGS__ ); \
+            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
+        } while ( 0 )
+#endif // #ifndef PHP_WIN32
+
+#define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
+
 void registerOsSignalHandler()
 {
 #ifndef PHP_WIN32
@@ -425,15 +451,14 @@ void registerOsSignalHandler()
     {
         isOldSignalHandlerSet = true;
         oldSignalHandler = signal_retVal;
+        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Successfully registered signal handler" );
     }
 #endif
 }
 
 void atExitLogging()
 {
-#ifndef PHP_WIN32
-    ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Callback registered with atexit() has been called" );
-#endif
+    ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Callback registered with atexit() has been called" );
 }
 
 void registerAtExitLogging()
@@ -443,11 +468,11 @@ void registerAtExitLogging()
     // atexit returns 0 if successful, or a nonzero value if an error occurs
     if ( atexit_retVal != 0 )
     {
-        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
+        ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
     }
     else
     {
-        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Registered callback with atexit()" );
+        ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Registered callback with atexit()" );
     }
 #endif
 }

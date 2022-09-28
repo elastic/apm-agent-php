@@ -50,7 +50,7 @@ ResultCode elasticApmGetConfigOption( String optionName, zval* return_value )
             , &getOptValueByNameRes );
     if ( resultCode == resultSuccess ) *return_value = getOptValueByNameRes.parsedValueAsZval;
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG( "Option's: name: `%s', value: %s", optionName, getOptValueByNameRes.streamedParsedValue );
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG( "Option's: name: `%s', value: %s", optionName, getOptValueByNameRes.streamedParsedValue );
     return resultCode;
 }
 

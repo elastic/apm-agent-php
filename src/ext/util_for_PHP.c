@@ -267,3 +267,8 @@ ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCoun
 {
     return callPhpFunction( phpFunctionName, argsCount, args, consumeZvalRetVal, retVal );
 }
+
+bool isPhpRunningAsCliScript()
+{
+    return strcmp( sapi_module.name, "cli" ) == 0;
+}
