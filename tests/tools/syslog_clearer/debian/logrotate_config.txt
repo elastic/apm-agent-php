@@ -1,0 +1,13 @@
+# use the adm group by default, since this is the owning group
+# of /var/log/syslog.
+su root adm
+
+/var/log/syslog
+{
+	rotate 0
+	missingok
+	notifempty
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+	endscript
+}
