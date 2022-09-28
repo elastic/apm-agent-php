@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use ElasticApmTests\Util\FileUtilForTests;
+
 final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
 {
     private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToBuiltinHttpServerAppCodeHost.php';
@@ -71,7 +73,7 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     {
         return TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
                . " -S localhost:$port"
-               . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"';
+               . ' "' . FileUtilForTests::listToPath([__DIR__, self::APP_CODE_HOST_ROUTER_SCRIPT]) . '"';
     }
 
     /** @inheritDoc */

@@ -34,10 +34,11 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
-use ElasticApmTests\ComponentTests\Util\HttpConsts;
+use ElasticApmTests\ComponentTests\Util\HttpConstantsForTests;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\DummyExceptionForTests;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
 use Exception;
 
@@ -201,7 +202,7 @@ final class ErrorTest extends ComponentTestCaseBase
             return;
         }
 
-        $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUndefinedVariable.php';
+        $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUndefinedVariable.php']);
         self::assertNotNull($err->exception);
         // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
         // was converted from notice to warning
@@ -274,7 +275,7 @@ final class ErrorTest extends ComponentTestCaseBase
         $err = $this->verifyError($dataFromAgent);
         // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
-        $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestPhpErrorUncaughtException.php';
+        $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
         self::assertNotNull($err->exception);
         $defaultCode = (new Exception(""))->getCode();
         self::assertSame($defaultCode, $err->exception->code);
@@ -319,7 +320,8 @@ final class ErrorTest extends ComponentTestCaseBase
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestCaughtExceptionResponded500Wrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
                 if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    $appCodeRequestParams->expectedHttpResponseStatusCode = HttpConsts::STATUS_INTERNAL_SERVER_ERROR;
+                    $appCodeRequestParams->expectedHttpResponseStatusCode
+                        = HttpConstantsForTests::STATUS_INTERNAL_SERVER_ERROR;
                 }
             }
         );
@@ -335,7 +337,9 @@ final class ErrorTest extends ComponentTestCaseBase
         $err = $this->verifyError($dataFromAgent);
         // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
-        $appCodeFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'appCodeForTestCaughtExceptionResponded500.php';
+        $appCodeFile = FileUtilForTests::listToPath(
+            [dirname(__FILE__), 'appCodeForTestCaughtExceptionResponded500.php']
+        );
         self::assertNotNull($err->exception);
         self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE, $err->exception->code);
 
