@@ -117,9 +117,9 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         && $loggerProxy->log(
             'Test finished successfully',
             [
-                'test' => $test,
-                'duration' => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId
+                'test'              => $test,
+                'duration'          => self::formatTime($time),
+                'currentTestCaseId' => self::$currentTestCaseId,
             ]
         );
     }
