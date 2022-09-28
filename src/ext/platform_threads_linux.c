@@ -17,6 +17,9 @@
  * under the License.
  */
 
+#ifndef _GNU_SOURCE
+#   define _GNU_SOURCE 1
+#endif // ifndef _GNU_SOURCE
 #include "platform_threads.h"
 //#ifndef PHP_WIN32
 //#   include <features.h>
@@ -84,7 +87,7 @@ ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRet
     const char* dbgTimeoutAsLocal = ( timeoutAbsUtc == NULL ? "NULL" : streamUtcTimeSpecAsLocal( timeoutAbsUtc, &txtOutStream ) );
     const char* dbgPThreadsFuncDesc = ( timeoutAbsUtc == NULL ? "pthread_join" : "pthread_timedjoin_np" );
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Join and delete thread%s"
             "; timeoutAbsUtc: %s; thread dbg desc: `%s'; call dbg desc: `%s'"
             , dbgFuncDescSuffix
@@ -117,7 +120,7 @@ ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRet
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( Thread, *threadOutPtr );
 
     finally:
-    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_RESULT_CODE_MSG(
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
             "Join and delete thread%s"
             "; hasTimedOut: %s"
             "; timeoutAbsUtc: %s; call dbg desc: `%s'"

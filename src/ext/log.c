@@ -272,9 +272,13 @@ StringView insertPrefixAtEachNewLine(
         if ( isEmptyStringView( eolSeq ) ) break;
 
         streamStringView( makeStringViewFromBeginEnd( oldMessageLeft.begin, stringViewEnd( eolSeq ) ), &txtOutStream );
-        streamStringView( sinkSpecificPrefix, &txtOutStream );
+        if ( sinkSpecificPrefix.length != 0 )
+        {
+            streamStringView( sinkSpecificPrefix, &txtOutStream );
+            appendSeparator( &txtOutStream );
+        }
         streamStringView( commonPrefix, &txtOutStream );
-        streamIndent( /* nestingDepth */ 1, &txtOutStream );
+        appendSeparator( &txtOutStream );
         oldMessageLeft = makeStringViewFromBeginEnd( stringViewEnd( eolSeq ), oldMessageEnd );
     }
 
