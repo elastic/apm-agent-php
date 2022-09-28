@@ -32,7 +32,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
-use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
@@ -45,7 +44,6 @@ use PHPUnit\Runner\AfterTestErrorHook;
 use PHPUnit\Runner\AfterTestFailureHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
-use PHPUnit\Util\Test;
 
 /**
  * Referenced in PHPUnit's configuration file - phpunit_component_tests.xml
@@ -64,9 +62,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 
     /** @var Logger */
     private $logger;
-
-    /** @var string */
-    private static $currentTestCaseId;
 
     public function __construct()
     {
@@ -91,18 +86,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         parent::executeBeforeTest($test);
 
-        self::$currentTestCaseId = IdGenerator::generateId(/* idLengthInBytes */ 16);
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Test starting...',
-            [
-                'test'                  => $test,
-                'currentTestCaseId'     => self::$currentTestCaseId,
-                'Environment variables' => getenv(),
-            ]
-        );
-
         if (($runBeforeEachTest = AmbientContextForTests::testConfig()->runBeforeEachTest) !== null) {
             $exitCode = ProcessUtilForTests::startProcessAndWaitUntilExit(
                 $runBeforeEachTest,
@@ -112,6 +95,9 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             );
             TestCase::assertSame(0, $exitCode);
         }
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => getenv()]);
 
         TestConfigUtil::assertAgentDisabled();
     }
@@ -126,14 +112,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     public function executeAfterSuccessfulTest(string $test, /* test duration in seconds */ float $time): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Test finished successfully',
-            [
-                'test'              => $test,
-                'duration'          => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId,
-            ]
-        );
+        && $loggerProxy->log('Test finished successfully', ['test' => $test, 'duration' => self::formatTime($time)]);
     }
 
     private function testFailed(string $issue, string $test, string $message, float $time): void
@@ -145,7 +124,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
                 'test'              => $test,
                 'message'           => $message,
                 'duration'          => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId,
             ]
         );
     }

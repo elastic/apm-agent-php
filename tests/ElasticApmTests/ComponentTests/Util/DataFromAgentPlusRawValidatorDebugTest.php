@@ -32,7 +32,7 @@ use ElasticApmTests\Util\TestCaseBase;
 
 final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
 {
-    public function test(): void
+    public function testToDebugDataFromAgentPlusRawValidator(): void
     {
         FlakyAssertions::setEnabled(true);
 
