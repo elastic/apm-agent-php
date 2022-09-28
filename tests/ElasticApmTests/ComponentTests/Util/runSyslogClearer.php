@@ -21,29 +21,8 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+require __DIR__ . '/../../../bootstrap.php';
 
-use Elastic\Apm\Impl\Util\UrlParts;
+use ElasticApmTests\ComponentTests\Util\SyslogClearer;
 
-final class HttpAppCodeRequestParams extends AppCodeRequestParams
-{
-    /** @var string */
-    public $httpRequestMethod = 'GET';
-
-    /** @var UrlParts */
-    public $urlParts;
-
-    /** @var ?int */
-    public $expectedHttpResponseStatusCode = HttpConstantsForTests::STATUS_OK;
-
-    public function __construct(HttpServerHandle $httpServerHandle, AppCodeTarget $appCodeTarget)
-    {
-        parent::__construct($appCodeTarget);
-
-        $this->urlParts = new UrlParts();
-        $this->urlParts->scheme('http')
-                       ->host(HttpServerHandle::DEFAULT_HOST)
-                       ->port($httpServerHandle->getPort())
-                       ->path('/');
-    }
-}
+SyslogClearer::run();

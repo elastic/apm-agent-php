@@ -170,6 +170,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
         return false;
     }
 
+    /**
+     * @return bool
+     */
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
     {
         return true;
@@ -186,14 +189,14 @@ abstract class SpawnedProcessBase implements LoggableInterface
         $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
         TestCase::assertNotNull($resCleanerId);
         $response = HttpClientUtilForTests::sendRequest(
-            HttpConsts::METHOD_POST,
+            HttpConstantsForTests::METHOD_POST,
             (new UrlParts())
                 ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
                 ->port(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort),
             TestInfraDataPerRequest::withSpawnedProcessInternalId($resCleanerId),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+        if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException(
                 'Failed to register with '
                 . ClassNameUtil::fqToShort(ResourcesCleaner::class)

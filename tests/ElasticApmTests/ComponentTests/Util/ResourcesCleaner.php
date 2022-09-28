@@ -30,14 +30,12 @@ use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use React\EventLoop\LoopInterface;
-use React\Http\Message\Response;
+use React\EventLoop\TimerInterface;
 
 final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const REGISTER_FILE_TO_DELETE_URI_PATH = '/register_file_to_delete';
-    public const CLEAN_AND_EXIT_URI_PATH = '/clean_resources_and_exit';
 
     public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
     public const PATH_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PATH';
@@ -47,6 +45,9 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 
     /** @var Set<int> */
     private $processesToTerminateIds;
+
+    /** @var ?TimerInterface */
+    private $parentProcessTrackingTimer = null;
 
     /** @var Logger */
     private $logger;
@@ -77,29 +78,33 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     }
 
     /** @inheritDoc */
-    protected function beforeLoopRun(LoopInterface $loop): void
+    protected function beforeLoopRun(): void
     {
-        $loop->addPeriodicTimer(
+        TestCase::assertNotNull($this->reactLoop);
+        $this->parentProcessTrackingTimer = $this->reactLoop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
                 $rootProcessId = AmbientContextForTests::testConfig()->dataPerProcess->rootProcessId;
                 if (!ProcessUtilForTests::doesProcessExist($rootProcessId)) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log('Detected that parent process does not exist');
-                    $this->cleanAndExit();
+                    $this->exit();
                 }
             }
         );
     }
 
-    private function cleanAndExit(): void
+    /** @inheritDoc */
+    protected function exit(): void
     {
         $this->cleanSpawnedProcesses();
         $this->cleanFiles();
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Exiting...');
-        exit(0);
+        TestCase::assertNotNull($this->reactLoop);
+        TestCase::assertNotNull($this->parentProcessTrackingTimer);
+        $this->reactLoop->cancelTimer($this->parentProcessTrackingTimer);
+
+        parent::exit();
     }
 
     private function cleanSpawnedProcesses(): void
@@ -155,19 +160,17 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         }
     }
 
-    protected function processRequest(ServerRequestInterface $request): ResponseInterface
+    /** @inheritDoc */
+    protected function processRequest(ServerRequestInterface $request): ?ResponseInterface
     {
-        if ($request->getUri()->getPath() === self::REGISTER_PROCESS_TO_TERMINATE_URI_PATH) {
-            return $this->registerProcessToTerminate($request);
-        } elseif ($request->getUri()->getPath() === self::REGISTER_FILE_TO_DELETE_URI_PATH) {
-            return $this->registerFileToDelete($request);
-        } elseif ($request->getUri()->getPath() === self::CLEAN_AND_EXIT_URI_PATH) {
-            $this->cleanAndExit();
-            // this return is not actually reachable
-            return new Response();
+        switch ($request->getUri()->getPath()) {
+            case self::REGISTER_PROCESS_TO_TERMINATE_URI_PATH:
+                return $this->registerProcessToTerminate($request);
+            case self::REGISTER_FILE_TO_DELETE_URI_PATH:
+                return $this->registerFileToDelete($request);
+            default:
+                return null;
         }
-
-        TestCase::fail('Unknown URI path: `' . $request->getRequestTarget() . '\'');
     }
 
     protected function registerProcessToTerminate(ServerRequestInterface $request): ResponseInterface
@@ -180,7 +183,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
             ['pid' => $pid, 'processesToTerminateIds count' => $this->processesToTerminateIds->count()]
         );
 
-        return new Response(HttpConsts::STATUS_OK);
+        return self::buildDefaultResponse();
     }
 
     protected function registerFileToDelete(ServerRequestInterface $request): ResponseInterface
@@ -193,7 +196,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
             ['path' => $path, 'filesToDeletePaths count' => $this->filesToDeletePaths->count()]
         );
 
-        return new Response(HttpConsts::STATUS_OK);
+        return self::buildDefaultResponse();
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool

@@ -23,23 +23,17 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
-use ElasticApmTests\Util\LogCategoryForTests;
-use GuzzleHttp\Exception\GuzzleException;
-use PHPUnit\Framework\TestCase;
 
 final class ResourcesCleanerHandle extends HttpServerHandle
 {
-    private const MAX_WAIT_TO_EXIT_MICROSECONDS = 10 * 1000 * 1000; // 10 seconds
-
     /** @var ResourcesClient */
     private $resourcesClient;
 
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
         parent::__construct(
+            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgServerDesc */,
             $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
             $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
             $httpSpawnedProcessHandle->getPort()
@@ -51,48 +45,5 @@ final class ResourcesCleanerHandle extends HttpServerHandle
     public function getClient(): ResourcesClient
     {
         return $this->resourcesClient;
-    }
-
-    public function signalAndWaitForItToExit(): void
-    {
-        $this->signalToExit();
-
-        $hasExited = ProcessUtilForTests::waitForProcessToExit(
-            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessDesc */,
-            $this->getSpawnedProcessOsId(),
-            self::MAX_WAIT_TO_EXIT_MICROSECONDS
-        );
-        TestCase::assertTrue($hasExited, LoggableToString::convert(['$this' => $this]));
-    }
-
-    private function signalToExit(): void
-    {
-        $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
-
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Signaling ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit...'
-        );
-
-        try {
-            HttpClientUtilForTests::sendRequest(
-                HttpConsts::METHOD_POST,
-                (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->getPort()),
-                TestInfraDataPerRequest::withSpawnedProcessInternalId($this->getSpawnedProcessInternalId())
-            );
-        } catch (GuzzleException $ex) {
-            // clean-and-exit request is expected to throw
-            // because ResourcesCleaner process exits before responding
-        }
-
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Signaled ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit'
-        );
     }
 }

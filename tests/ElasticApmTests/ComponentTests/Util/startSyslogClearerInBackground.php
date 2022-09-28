@@ -21,14 +21,8 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+require __DIR__ . '/../../../bootstrap.php';
 
-final class HttpConsts
-{
-    public const STATUS_OK = 200;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_INTERNAL_SERVER_ERROR = 500;
+use ElasticApmTests\ComponentTests\Util\SyslogClearerClient;
 
-    public const METHOD_GET = 'GET';
-    public const METHOD_POST = 'POST';
-}
+SyslogClearerClient::startInBackground();

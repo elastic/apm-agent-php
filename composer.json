@@ -17,6 +17,7 @@
         "ext-mysqli": "*",
         "ext-pdo": "*",
         "ext-pdo_sqlite": "*",
+        "ext-posix": "*",
         "guzzlehttp/guzzle": "^6.5.5||^7.4.4",
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",

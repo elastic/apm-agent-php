@@ -36,6 +36,7 @@ use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
+use PHPUnit\Framework\TestCase;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -44,6 +45,7 @@ use PHPUnit\Runner\AfterTestErrorHook;
 use PHPUnit\Runner\AfterTestFailureHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
+use PHPUnit\Util\Test;
 
 /**
  * Referenced in PHPUnit's configuration file - phpunit_component_tests.xml
@@ -60,11 +62,11 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 {
     private const DBG_PROCESS_NAME = 'Component tests';
 
-    /** @var string */
-    public static $currentTestCaseId;
-
     /** @var Logger */
     private $logger;
+
+    /** @var string */
+    private static $currentTestCaseId;
 
     public function __construct()
     {
@@ -101,6 +103,16 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             ]
         );
 
+        if (($runBeforeEachTest = AmbientContextForTests::testConfig()->runBeforeEachTest) !== null) {
+            $exitCode = ProcessUtilForTests::startProcessAndWaitUntilExit(
+                $runBeforeEachTest,
+                getenv() /* <- envVars */,
+                true /* <- shouldCaptureStdOutErr */,
+                0 /* <- expectedExitCode */
+            );
+            TestCase::assertSame(0, $exitCode);
+        }
+
         TestConfigUtil::assertAgentDisabled();
     }
 
@@ -130,10 +142,10 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         && $loggerProxy->log(
             "Test finished $issue",
             [
-                'test' => $test,
-                'message' => $message,
-                'duration' => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId
+                'test'              => $test,
+                'message'           => $message,
+                'duration'          => self::formatTime($time),
+                'currentTestCaseId' => self::$currentTestCaseId,
             ]
         );
     }

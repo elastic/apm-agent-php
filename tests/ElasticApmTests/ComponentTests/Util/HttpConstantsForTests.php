@@ -23,27 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\UrlParts;
-
-final class HttpAppCodeRequestParams extends AppCodeRequestParams
+final class HttpConstantsForTests
 {
-    /** @var string */
-    public $httpRequestMethod = 'GET';
+    public const STATUS_OK = 200;
+    public const STATUS_BAD_REQUEST = 400;
+    public const STATUS_INTERNAL_SERVER_ERROR = 500;
 
-    /** @var UrlParts */
-    public $urlParts;
-
-    /** @var ?int */
-    public $expectedHttpResponseStatusCode = HttpConstantsForTests::STATUS_OK;
-
-    public function __construct(HttpServerHandle $httpServerHandle, AppCodeTarget $appCodeTarget)
-    {
-        parent::__construct($appCodeTarget);
-
-        $this->urlParts = new UrlParts();
-        $this->urlParts->scheme('http')
-                       ->host(HttpServerHandle::DEFAULT_HOST)
-                       ->port($httpServerHandle->getPort())
-                       ->path('/');
-    }
+    public const METHOD_GET = 'GET';
+    public const METHOD_POST = 'POST';
 }

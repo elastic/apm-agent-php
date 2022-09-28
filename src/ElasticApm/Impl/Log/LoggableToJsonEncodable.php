@@ -248,7 +248,7 @@ final class LoggableToJsonEncodable
         }
 
         if (TextUtil::isPrefixOf('Elastic\\Apm\\', get_class($object)) && self::isDtoObject($object)) {
-            return self::convertDtoObject($object);
+            return self::convertDtoObject($object, $depth);
         }
 
         if (method_exists($object, '__debugInfo')) {
@@ -301,11 +301,12 @@ final class LoggableToJsonEncodable
 
     /**
      * @param object $object
+     * @param int    $depth
      *
-     * @return array<string, mixed>|string
+     * @return string|array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
-    private static function convertDtoObject(object $object)
+    private static function convertDtoObject(object $object, int $depth)
     {
         $class = get_class($object);
         try {
@@ -324,7 +325,7 @@ final class LoggableToJsonEncodable
 
                 $propName = $reflectionProperty->name;
                 $propValue = $reflectionProperty->getValue($object);
-                $nameToValue[$propName] = $propValue;
+                $nameToValue[$propName] = self::convert($propValue, $depth);
             }
             $currentClass = $currentClass->getParentClass();
             if ($currentClass === false) {

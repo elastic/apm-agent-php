@@ -28,8 +28,10 @@ namespace Elastic\Apm\Impl\Log;
  *
  * @internal
  */
-final class Logger
+final class Logger implements LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var LoggerData */
     private $data;
 
