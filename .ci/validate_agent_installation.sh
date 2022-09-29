@@ -37,12 +37,21 @@ function printInfoAboutEnvironment () {
 }
 
 function runComponentTests () {
-    local composerRunScriptArgs=${COMPONENT_TEST_SCRIPT}
+    local composerCommand=(composer run-script --)
 
-    if [ "${COMPONENT_TEST_SCRIPT}" != "run_component_tests" ] && [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ]; then
-        composerRunScriptArgs="${composerRunScriptArgs} --group ${ELASTIC_APM_PHP_TESTS_GROUP}"
+    if [ -z "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND}" ] ; then
+        composerCommand=("${composerCommand[@]}" run_component_tests)
+    else
+        composerCommand=("${composerCommand[@]}" run_component_tests_configured)
     fi
-    local composerCommand="composer run-script -- ${composerRunScriptArgs}"
+
+    if [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ]; then
+        composerCommand=("${composerCommand[@]}" --group "${ELASTIC_APM_PHP_TESTS_GROUP}")
+    fi
+
+    if [ -n "${ELASTIC_APM_PHP_TESTS_FILTER}" ]; then
+        composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
+    fi
 
     local initialTimeoutInMinutes=30
     local initialTimeoutInSeconds=$((initialTimeoutInMinutes*60))
@@ -53,20 +62,21 @@ function runComponentTests () {
 
     set +e
     # shellcheck disable=SC2086 # composerCommand is not wrapped in quotes on purpose because it might contained multiple space separated strings
-    .ci/run_command_with_timeout_and_retries.sh "${run_command_with_timeout_and_retries_args[@]}" -- ${composerCommand}
+    .ci/run_command_with_timeout_and_retries.sh "${run_command_with_timeout_and_retries_args[@]}" -- "${composerCommand[@]}"
     local composerCommandExitCode=$?
     set -e
 
-    echo "${composerCommand} exited with an error code ${composerCommandExitCode}"
+    echo "${composerCommand[*]} exited with an error code ${composerCommandExitCode}"
     copySyslogFileAndPrintTheLastOne
     exit ${composerCommandExitCode}
 }
 
-
 function main () {
-    startSyslog
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+    source "${this_script_dir}/shared.sh"
 
-    export COMPONENT_TEST_SCRIPT="${COMPONENT_TEST_SCRIPT:-run_component_tests}"
+    startSyslog
 
     # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
     export ELASTIC_APM_ENABLED=false
