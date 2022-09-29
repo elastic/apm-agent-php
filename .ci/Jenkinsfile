@@ -539,12 +539,7 @@ def addEnvVarsFromParams(def withEnvList) {
 def runTestingCommand(def args = [:]) {
   try {
     args['context'] = buildWorkspaceContext(args)
-    withEnv(addEnvVarsFromParams(
-      [
-        "PHP_VERSION=${args.phpVersion}"
-        , "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"
-      ]
-    )) {
+    withEnv(addEnvVarsFromParams(["PHP_VERSION=${args.phpVersion}", "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"])) {
       packageWorkspace(args) {
         sh(script: args.testingCommand, label: buildLabel(args))
       }
@@ -590,7 +585,7 @@ def phpUpgradeTesting(def args = [:]) {
 }
 
 def agentUpgradeTesting(def args = [:]) {
-  withEnv(["PHP_VERSION=${args.phpVersion}"]) {
+  withEnv(addEnvVarsFromParams(["PHP_VERSION=${args.phpVersion}", "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"])) {
     initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
       packageGeneration(versions: [args.phpVersion], local: true)
       if (args.shouldUseSignedBinaries) {
