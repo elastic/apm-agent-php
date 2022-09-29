@@ -502,13 +502,11 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
     withNode(labels: 'ubuntu-18.04 && immutable', sleepMax: 60, forceWorkspace: true, forceWorker: true) {
       def testingArgs =  [:]
       testingArgs['shouldUseSignedBinaries'] = args.shouldUseSignedBinaries
+      testingArgs['testMatrixRow'] = args.testMatrixRow
       def parsedTestMatrixRow = args.testMatrixRow.split(',')
       testingArgs['phpVersion'] = parsedTestMatrixRow[0]
       testingArgs['linuxPackageType'] = parsedTestMatrixRow[1]
       def testingType = parsedTestMatrixRow[2]
-      testingArgs['testingType'] = testingType
-      testingArgs['componentTestsAppHostKind'] = parsedTestMatrixRow[3]
-      testingArgs['componentTestsGroup'] = convertComponentTestsGroupShortNameToLong(parsedTestMatrixRow[4])
       if (testingType.equals('lifecycle')) {
         lifecycleTesting(testingArgs)
       }
@@ -528,17 +526,6 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
   }
 }
 
-def convertComponentTestsGroupShortNameToLong(String shortName) {
-  switch (shortName) {
-    case "no_ext_svc":
-      return "does_not_require_external_services"
-    case "with_ext_svc":
-      return "requires_external_services"
-    default:
-      error("Unknown short tests group name: `${shortName}'")
-  }
-}
-
 def addEnvVarsFromParams(def withEnvList) {
     if (params.AGENT_LOG_LEVEL != null && !params.AGENT_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_LOG_LEVEL=' + params.AGENT_LOG_LEVEL)
@@ -555,8 +542,7 @@ def runTestingCommand(def args = [:]) {
     withEnv(addEnvVarsFromParams(
       [
         "PHP_VERSION=${args.phpVersion}"
-        , "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"
-        , "ELASTIC_APM_PHP_TESTS_GROUP=${args.componentTestsGroup}"
+        , "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"
       ]
     )) {
       packageWorkspace(args) {
@@ -569,17 +555,11 @@ def runTestingCommand(def args = [:]) {
 }
 
 def buildWorkspaceContext(def args = [:]) {
-  return "${args.testingType}-${args.linuxPackageType}-PHP-${args.phpVersion}-${args.componentTestsAppHostKind}"
-  + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
+  return args.testMatrixRow + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
 }
 
 def buildLabel(def args = [:]) {
-  return "${args.testingType} testing for"
-  + " Linux: ${args.linuxPackageType}"
-  + ", PHP: ${args.phpVersion}"
-  + ", componentTestsAppHostKind: ${args.componentTestsAppHostKind}"
-  + ", componentTestsGroup: ${args.componentTestsGroup}"
-  + ", shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
+  return "Testing for ${args.testMatrixRow}, shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
 }
 
 def lifecycleTesting(def args = [:]) {
@@ -610,7 +590,7 @@ def phpUpgradeTesting(def args = [:]) {
 }
 
 def agentUpgradeTesting(def args = [:]) {
-  withEnv(["PHP_VERSION=${args.phpVersion}", "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"]) {
+  withEnv(["PHP_VERSION=${args.phpVersion}"]) {
     initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
       packageGeneration(versions: [args.phpVersion], local: true)
       if (args.shouldUseSignedBinaries) {
