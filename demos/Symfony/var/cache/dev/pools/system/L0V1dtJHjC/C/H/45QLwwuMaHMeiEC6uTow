@@ -1,3 +1,0 @@
-<?php //IteratorAggregate%2523getIterator
-
-return [PHP_INT_MAX, []];
