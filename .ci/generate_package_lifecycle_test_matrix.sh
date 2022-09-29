@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-# Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
-# - generate_package_lifecycle_test_matrix.sh
-# - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
-supportedPhpVersions=(7.2 7.3 7.4 8.0 8.1)
 
 function echoWithSuffixVariantsFromComponentTestsGroup () {
     local rowSoFar="$1"
-    for componentTestsGroup in no_ext_svc with_ext_svc
+    for componentTestsGroup in "${ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES[@]}"
     do
         echo "${rowSoFar},${componentTestsGroup}"
     done
@@ -16,9 +12,9 @@ function echoWithSuffixVariantsFromComponentTestsGroup () {
 
 function echoWithSuffixVariantsFromComponentTestsAppHostKind () {
     local rowSoFar="$1"
-    for componentTestsAppHostKind in http cli
+    for componentTestsAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES[@]}"
     do
-        echoWithSuffixVariantsFromComponentTestsGroup "${rowSoFar},${componentTestsAppHostKind}"
+        echoWithSuffixVariantsFromComponentTestsGroup "${rowSoFar},${componentTestsAppHostKindShortName}"
     done
 }
 
@@ -27,9 +23,9 @@ function generateLifecycleRows () {
     # Lifecycle tests
     #
     local testingType=lifecycle
-    for phpVersion in "${supportedPhpVersions[@]}"
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}"
     do
-        for linuxPackageType in apk deb rpm tar
+        for linuxPackageType in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES[@]}"
         do
             echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
         done
@@ -41,13 +37,13 @@ function generateLifecycleOnProdServerRows () {
     # Lifecycle tests for <app_server> (only for deb linuxDistro and http componentTestsAppHostKind)
     #
     local linuxPackageType=deb
-    local componentTestsAppHostKind=http
-    for phpVersion in "${supportedPhpVersions[@]}"
+    local componentTestsAppHostKindShortName=http
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}"
     do
         for prodAppServer in apache fpm
         do
             local testingType=lifecycle-${prodAppServer}
-            echoWithSuffixVariantsFromComponentTestsGroup "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKind}"
+            echoWithSuffixVariantsFromComponentTestsGroup "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKindShortName}"
         done
     done
 }
@@ -77,6 +73,10 @@ function generateAgentUpgradeRows () {
 }
 
 function main () {
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+    source "${this_script_dir}/shared.sh"
+
     generateLifecycleRows
     generateLifecycleOnProdServerRows
     generatePHPUpgradeRows
