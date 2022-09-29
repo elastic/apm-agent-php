@@ -15,7 +15,7 @@ function shouldPassEnvVarToDocker () {
         return
     fi
 
-    local envVarNamesToPassToDocker=(COMPONENT_TEST_SCRIPT GITHUB_RELEASES_URL PACKAGE TYPE VERSION)
+    local envVarNamesToPassToDocker=(GITHUB_RELEASES_URL PACKAGE TYPE VERSION)
 
     for envVarNameToPassToDocker in "${envVarNamesToPassToDocker[@]}"
     do
@@ -75,6 +75,16 @@ function cleanup () {
 }
 
 function main () {
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+
+    if [ -z "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}" ] ; then
+        echo "ELASTIC_APM_PHP_TESTS_MATRIX_ROW environment variable should be set before calling ${BASH_SOURCE[0]}"
+        exit 1
+    fi
+
+    source "${this_script_dir}/unpack_package_lifecycle_test_matrix_row.sh" "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}"
+
     trap cleanup EXIT
 
     shouldStartExternalServices=$(doesTestsGroupNeedExternalServices)
