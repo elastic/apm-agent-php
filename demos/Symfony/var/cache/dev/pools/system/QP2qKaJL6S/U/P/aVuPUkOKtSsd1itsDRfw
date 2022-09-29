@@ -1,3 +1,0 @@
-<?php //ArrayAccess
-
-return [PHP_INT_MAX, []];

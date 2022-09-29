@@ -40,3 +40,8 @@ RUN curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | b
 RUN apt install symfony-cli
 
 WORKDIR /var/www/symfony
+
+RUN composer create-project --prefer-dist symfony/symfony-demo .
+ADD . /var/www/symfony/
+
+RUN chmod -R 777 var/log/
