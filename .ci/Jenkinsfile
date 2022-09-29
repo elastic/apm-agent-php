@@ -499,7 +499,7 @@ def generatePackageLifecycleTestMatrix(def args = [:]) {
 
 def generatePackageLifecycleTestMatrixRow(def args = [:]){
   return {
-    withNode(labels: 'ubuntu-18.04 && immutable', sleepMax: 60, forceWorkspace: true, forceWorker: true) {
+    withNode(labels: 'ubuntu-18.04 && immutable', sleepMax: 60, forceWorspace: true, forceWorker: true) {
       def testingArgs =  [:]
       testingArgs['shouldUseSignedBinaries'] = args.shouldUseSignedBinaries
       testingArgs['testMatrixRow'] = args.testMatrixRow
