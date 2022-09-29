@@ -1,3 +1,0 @@
-<?php //App%255CKernel%2523configureContainer
-
-return [PHP_INT_MAX, []];

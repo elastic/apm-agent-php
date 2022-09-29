@@ -65,8 +65,6 @@ services:
             test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'" ]
             retries: 10
             interval: 20s
-        volumes:
-            - esdata:/usr/share/elasticsearch/data
 
     kibana:
         image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-7.17.4}
@@ -88,28 +86,32 @@ services:
             elasticsearch:
                 condition: service_healthy
 
+    db:
+        image: mysql:8.0.23
+        command: --default-authentication-plugin=mysql_native_password
+        environment:
+            MYSQL_ROOT_PASSWORD: hello
+            MYSQL_DATABASE: app_db
+            MYSQL_USER: app_user
+            MYSQL_PASSWORD: helloworld
+        ports:
+            - 3306:3306
     php:
         build:
             context: .docker/php
-        container_name: php-app
+            args:
+                TIMEZONE: ${TIMEZONE}
+        container_name: php-ob
         environment:
             - ELASTIC_APM_SERVICE_NAME=${ELASTIC_APM_SERVICE_NAME:-Symfony-demo}
             - ELASTIC_APM_SERVER_URL=${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             - ELASTIC_APM_LOG_LEVEL
-        volumes:
-            - ./:/var/www/symfony/
+
     nginx:
         build:
             context: .docker/nginx
-        volumes:
-            - ./:/var/www/symfony/
         container_name: nginx-app
         ports:
             - 8000:80
         env_file:
             - .docker/.env.nginx.local
-
-volumes:
-    db_app:
-    esdata:
-        driver: local
