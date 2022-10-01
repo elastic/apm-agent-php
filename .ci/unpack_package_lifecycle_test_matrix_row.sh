@@ -17,13 +17,14 @@ function isValueInArray () {
 }
 
 function assertValueIsInArray () {
+    local isValueInArrayRetVal
     isValueInArrayRetVal=$(isValueInArray "$@")
     if [ "${isValueInArrayRetVal}" != "true" ] ; then
         exit 1
     fi
 }
 
-function convertComponentTestsAppHostKindShortNameToLongName () {
+function convertAppHostKindShortToLongName () {
     local shortName="$1"
     case "${shortName}" in
         'cli')
@@ -41,7 +42,7 @@ function convertComponentTestsAppHostKindShortNameToLongName () {
     esac
 }
 
-function convertComponentTestsGroupShortNameToLongName () {
+function convertTestsGroupShortToLongName () {
     local shortName="$1"
     case "${shortName}" in
         'no_ext_svc')
@@ -59,16 +60,12 @@ function convertComponentTestsGroupShortNameToLongName () {
     esac
 }
 
-function main () {
-    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-    this_script_dir="$( realpath "${this_script_dir}" )"
-    source "${this_script_dir}/shared.sh"
-
+function unpackRowToEnvVars () {
     #
     # Expected format (see generate_package_lifecycle_test_matrix.sh)
     #
-    #   phpVersion,linuxPackageType,testingType,componentTestsAppHostKindShortName,componentTestsGroup
-    #   [0]        [1]              [2]         [3]                                [4]
+    #       phpVersion,linuxPackageType,testingType,appHostKindShortName,testsGroupShortName[,optionalTail]
+    #       [0]        [1]              [2]         [3]                  [4]                  [5], [6] ...
     #
     local matrixRowAsString="$1"
     if [ -z "${matrixRowAsString}" ] ; then
@@ -76,26 +73,57 @@ function main () {
         exit 1
     fi
 
-    local matrixRowAsArray
-    IFS=',' read -ra matrixRowAsArray <<< "${matrixRowAsString}"
+    local matrixRowParts
+    IFS=',' read -ra matrixRowParts <<< "${matrixRowAsString}"
 
-    local phpVersion=${matrixRowAsArray[0]}
+    local phpVersion=${matrixRowParts[0]}
     assertValueIsInArray "${phpVersion}" "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}"
 
-    local linuxPackageType=${matrixRowAsArray[1]}
+    local linuxPackageType=${matrixRowParts[1]}
     assertValueIsInArray "${linuxPackageType}" "${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES[@]}"
 
-    local testingType=${matrixRowAsArray[2]}
+    local testingType=${matrixRowParts[2]}
     local testingTypes=(lifecycle lifecycle-apache lifecycle-fpm php-upgrade agent-upgrade)
     assertValueIsInArray "${testingType}" "${testingTypes[@]}"
 
-    local componentTestsAppHostKindShortName=${matrixRowAsArray[3]}
-    export ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND
-    ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=$(convertComponentTestsAppHostKindShortNameToLongName "${componentTestsAppHostKindShortName}")
+    if [ "${#matrixRowParts[@]}" -eq "3" ] ; then
+        return
+    fi
 
-    local componentTestsGroupShortName=${matrixRowAsArray[4]}
+    local appHostKindShortName=${matrixRowParts[3]}
+    export ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND
+    ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=$(convertAppHostKindShortToLongName "${appHostKindShortName}")
+
+    local testsGroupShortName=${matrixRowParts[4]}
     export ELASTIC_APM_PHP_TESTS_GROUP
-    ELASTIC_APM_PHP_TESTS_GROUP=$(convertComponentTestsGroupShortNameToLongName "${componentTestsGroupShortName}")
+    ELASTIC_APM_PHP_TESTS_GROUP=$(convertTestsGroupShortToLongName "${testsGroupShortName}")
+
+    for optionalPart in "${matrixRowParts[@]:5}" ; do
+        IFS='=' read -ra keyValue <<< "${optionalPart}"
+        unpackRowOptionalPartsToEnvVars "${keyValue[0]}" "${keyValue[1]}"
+    done
+}
+
+function unpackRowOptionalPartsToEnvVars () {
+    local key="$1"
+    local value="$2"
+    case "${key}" in
+        'agent_syslog_level')
+                export ELASTIC_APM_LOG_LEVEL_SYSLOG="${value}"
+                ;;
+        *)
+                echo "Unknown optional part key: \`${key}' (value: \`${value}')"
+                exit 1
+                ;;
+    esac
+}
+
+function main () {
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+    source "${this_script_dir}/shared.sh"
+
+    unpackRowToEnvVars "$@"
 }
 
 main "$@"
