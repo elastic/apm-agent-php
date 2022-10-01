@@ -28,18 +28,16 @@ namespace Elastic\Apm\Impl\Log;
  *
  * @internal
  */
-final class Logger
+final class Logger implements LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var LoggerData */
     private $data;
 
-    /** @var int */
-    private $maxEnabledLevel;
-
-    private function __construct(LoggerData $data, int $maxEnabledLevel)
+    private function __construct(LoggerData $data)
     {
         $this->data = $data;
-        $this->maxEnabledLevel = $maxEnabledLevel;
     }
 
     /**
@@ -58,15 +56,12 @@ final class Logger
         string $srcCodeFile,
         Backend $backend
     ): self {
-        return new self(
-            LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend),
-            $backend->getMaxEnabledLevel()
-        );
+        return new self(LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend));
     }
 
     public function inherit(): self
     {
-        return new self(LoggerData::inherit($this->data), $this->maxEnabledLevel);
+        return new self($this->data->inherit());
     }
 
     /**
@@ -126,7 +121,7 @@ final class Logger
 
     public function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
-        return ($this->maxEnabledLevel >= $statementLevel)
+        return ($this->data->backend->getMaxEnabledLevel() >= $statementLevel)
             ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)
             : null;
     }
@@ -138,9 +133,9 @@ final class Logger
      */
     public function possiblySecuritySensitive($value)
     {
-        if ($this->maxEnabledLevel >= Level::TRACE) {
+        if ($this->data->backend->getMaxEnabledLevel() >= Level::TRACE) {
             return $value;
         }
-        return 'HIDDEN POSSIBLY SECURITY SENSITIVE DATA';
+        return 'REDUCTED (POSSIBLY SECURITY SENSITIVE) DATA';
     }
 }

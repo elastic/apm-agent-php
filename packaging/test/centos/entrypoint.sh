@@ -120,6 +120,9 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
     fi
     ## Validate agent is enabled
     validate_if_agent_is_enabled
+
+    ## Run some tests
+    validate_agent_installation
 elif case $TYPE in agent-upgrade*) ;; *) false;; esac; then
     ## Upgrade the agent version with the rpm package and configure the agent accordingly
     rpm -Uvh build/packages/*.rpm

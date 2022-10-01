@@ -1,3 +1,0 @@
-<?php //App%255CKernel%2523getConfigDir
-
-return [PHP_INT_MAX, []];

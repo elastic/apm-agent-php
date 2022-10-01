@@ -27,9 +27,11 @@ use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\Parser as ConfigParser;
 use Elastic\Apm\Impl\Config\Snapshot as AgentConfigSnapshot;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -141,7 +143,10 @@ class AppCodeHostParams implements LoggableInterface
         foreach ($this->getEffectiveAgentOptions() as $optName => $optVal) {
             $configRawSnapshotSource->set($optName, strval($optVal));
         }
-        $loggerFactory = AmbientContextForTests::loggerFactory();
+        // Set log level above ERROR to hide potential errors when parsing the provided test configuration snapshot
+        $logBackend = AmbientContextForTests::loggerFactory()->getBackend()->clone();
+        $logBackend->setMaxEnabledLevel(LogLevel::CRITICAL);
+        $loggerFactory = new LoggerFactory($logBackend);
         $parser = new ConfigParser($loggerFactory);
         $allOptsMeta = AllOptionsMetadata::get();
         $rawSnapshot = $configRawSnapshotSource->currentSnapshot($allOptsMeta);

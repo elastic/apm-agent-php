@@ -8,6 +8,8 @@ if (!extension_loaded('elastic_apm')) {
 ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

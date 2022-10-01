@@ -5,6 +5,8 @@ Boolean configuration option value 'oN' (in this case using environment variable
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=oN
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

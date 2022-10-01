@@ -14,6 +14,7 @@ elastic_apm.log_level_win_sys_debug=CRITICAL
 elastic_apm.secret_token=non-default_secret_token_123
 elastic_apm.server_url=https://non-default_server_url:4321/some/path
 elastic_apm.service_name=Non-default Service Name
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

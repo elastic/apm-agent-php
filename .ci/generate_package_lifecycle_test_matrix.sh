@@ -1,25 +1,50 @@
 #!/usr/bin/env bash
 set -e
 
-# Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
-# - generate_package_lifecycle_test_matrix.sh
-# - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
-supportedPhpVersions=(7.2 7.3 7.4 8.0 8.1)
+function earliestSupportedPhpVersion () {
+    echo "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[0]}"
+}
 
-function echoWithSuffixVariantsFromComponentTestsGroup () {
+function latestSupportedPhpVersion () {
+    echo "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[-1]}"
+}
+
+function appendAgentSyslogLogLevel () {
     local rowSoFar="$1"
-    for componentTestsGroup in no_ext_svc with_ext_svc
+    local logLevel="$2"
+    echo "${rowSoFar},agent_syslog_level=${logLevel}"
+}
+
+function appendTestsGroupVariants () {
+    local rowSoFar="$1"
+    local nextFunction="${2:-echo}"
+    local -a nextFunctionArgs=( "${@:3}" )
+    for testsGroup in "${ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES[@]}"
     do
-        echo "${rowSoFar},${componentTestsGroup}"
+        ${nextFunction} "${rowSoFar},${testsGroup}" "${nextFunctionArgs[@]}"
     done
 }
 
-function echoWithSuffixVariantsFromComponentTestsAppHostKind () {
+function appendAppHostKindVariants () {
     local rowSoFar="$1"
-    for componentTestsAppHostKind in http cli
-    do
-        echoWithSuffixVariantsFromComponentTestsGroup "${rowSoFar},${componentTestsAppHostKind}"
+    local nextFunction="${2:-echo}"
+    local -a nextFunctionArgs=( "${@:3}" )
+    for appendAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES[@]}" ; do
+        ${nextFunction} "${rowSoFar},${appendAppHostKindShortName}" "${nextFunctionArgs[@]}"
     done
+}
+
+function generateLifecycleWithIncreasedLogLevelRows () {
+    local testingType=lifecycle
+    local phpVersion
+
+    phpVersion=$(earliestSupportedPhpVersion)
+    local linuxPackageType=apk
+    appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants appendAgentSyslogLogLevel DEBUG
+
+    phpVersion=$(latestSupportedPhpVersion)
+    local linuxPackageType=deb
+    appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants appendAgentSyslogLogLevel TRACE
 }
 
 function generateLifecycleRows () {
@@ -27,39 +52,38 @@ function generateLifecycleRows () {
     # Lifecycle tests
     #
     local testingType=lifecycle
-    for phpVersion in "${supportedPhpVersions[@]}"
-    do
-        for linuxPackageType in apk deb rpm tar
-        do
-            echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
+        for linuxPackageType in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES[@]}" ; do
+            appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants
         done
     done
 }
 
 function generateLifecycleOnProdServerRows () {
     #
-    # Lifecycle tests for <app_server> (only for deb linuxDistro and http componentTestsAppHostKind)
+    # Lifecycle tests for <app_server> (only for deb linuxDistro and http appHostKind)
     #
     local linuxPackageType=deb
-    local componentTestsAppHostKind=http
-    for phpVersion in "${supportedPhpVersions[@]}"
-    do
-        for prodAppServer in apache fpm
-        do
+    local appHostKindShortName=http
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
+        for prodAppServer in apache fpm ; do
             local testingType=lifecycle-${prodAppServer}
-            echoWithSuffixVariantsFromComponentTestsGroup "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKind}"
+            appendTestsGroupVariants "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName}"
         done
     done
 }
 
-function generatePHPUpgradeRows () {
+function generatePhpUpgradeRows () {
     #
     # PHP upgrade tests (only for rpm Linux distro)
     #
-    local phpVersion=7.2
+    local phpVersion
+    phpVersion="$(earliestSupportedPhpVersion)"
     local linuxPackageType=rpm
     local testingType=php-upgrade
-    echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
+    local appHostKindShortName=all
+    local testsGroup=smoke
+    echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
 }
 
 function generateAgentUpgradeRows () {
@@ -67,20 +91,27 @@ function generateAgentUpgradeRows () {
     # Agent upgrade tests
     #
     local testingType=agent-upgrade
-    for phpVersion in 7.4 8.1
-    do
-        for linuxPackageType in deb rpm
-        do
-            echoWithSuffixVariantsFromComponentTestsAppHostKind "${phpVersion},${linuxPackageType},${testingType}"
+    local appHostKindShortName=all
+    local testsGroup=smoke
+    for phpVersion in 7.4 "$(latestSupportedPhpVersion)" ; do
+        for linuxPackageType in deb rpm ; do
+            echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
         done
     done
 }
 
 function main () {
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+    source "${this_script_dir}/shared.sh"
+
+    generateAgentUpgradeRows
+
     generateLifecycleRows
     generateLifecycleOnProdServerRows
-    generatePHPUpgradeRows
-    generateAgentUpgradeRows
+    generateLifecycleWithIncreasedLogLevelRows
+
+    generatePhpUpgradeRows
 }
 
 main

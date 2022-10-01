@@ -40,6 +40,7 @@ use ElasticApmTests\Util\TransactionDataExpectations;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
@@ -53,7 +54,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public function dataProviderForTestVariousCombinations(): iterable
     {
         /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+        foreach (self::adaptToSmoke(SharedCode::testArgsVariants(self::TESTING_DEPTH)) as $testArgs) {
             yield [$testArgs];
         }
     }

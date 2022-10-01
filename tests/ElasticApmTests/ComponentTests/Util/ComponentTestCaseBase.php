@@ -113,6 +113,12 @@ class ComponentTestCaseBase extends TestCaseBase
         return $appCodeArgs[$appArgNameKey];
     }
 
+    public static function isSmoke(): bool
+    {
+        ComponentTestsPhpUnitExtension::initSingletons();
+        return AmbientContextForTests::testConfig()->isSmoke();
+    }
+
     public static function isMainAppCodeHostHttp(): bool
     {
         ComponentTestsPhpUnitExtension::initSingletons();
@@ -198,8 +204,6 @@ class ComponentTestCaseBase extends TestCaseBase
         }
 
         /**
-         * @param string $name
-         *
          * @return iterable<string>
          */
         $genEnabledVariants = function (): iterable {
@@ -214,5 +218,23 @@ class ComponentTestCaseBase extends TestCaseBase
             $instr = new $instrClassName($tracer);
             self::assertTrue($instr->isEnabled(), $disableInstrumentationsOptVal);
         }
+    }
+
+    /**
+     * @template T
+     *
+     * @param iterable<T> $variants
+     *
+     * @return iterable<T>
+     */
+    public function adaptToSmoke(iterable $variants): iterable
+    {
+        if (!self::isSmoke()) {
+            return $variants;
+        }
+        foreach ($variants as $key => $value) {
+            return [$key => $value];
+        }
+        return [];
     }
 }

@@ -32,10 +32,10 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NoopTracer;
-use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
+use PHPUnit\Framework\TestCase;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -59,9 +59,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     AfterRiskyTestHook
 {
     private const DBG_PROCESS_NAME = 'Component tests';
-
-    /** @var string */
-    public static $currentTestCaseId;
 
     /** @var Logger */
     private $logger;
@@ -89,17 +86,18 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         parent::executeBeforeTest($test);
 
-        self::$currentTestCaseId = IdGenerator::generateId(/* idLengthInBytes */ 16);
+        if (($runBeforeEachTest = AmbientContextForTests::testConfig()->runBeforeEachTest) !== null) {
+            $exitCode = ProcessUtilForTests::startProcessAndWaitUntilExit(
+                $runBeforeEachTest,
+                getenv() /* <- envVars */,
+                true /* <- shouldCaptureStdOutErr */,
+                0 /* <- expectedExitCode */
+            );
+            TestCase::assertSame(0, $exitCode);
+        }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Test starting...',
-            [
-                'test'                  => $test,
-                'currentTestCaseId'     => self::$currentTestCaseId,
-                'Environment variables' => getenv(),
-            ]
-        );
+        && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => getenv()]);
 
         TestConfigUtil::assertAgentDisabled();
     }
@@ -113,58 +111,50 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
 
     public function executeAfterSuccessfulTest(string $test, /* test duration in seconds */ float $time): void
     {
-        ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Test finished successfully',
-            [
-                'test' => $test,
-                'duration' => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId
-            ]
-        );
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Test finished successfully', ['test' => $test, 'duration' => self::formatTime($time)]);
     }
 
-    private function testFinishedUnsuccessfully(string $issue, string $test, string $message, float $time): void
+    private function testFailed(string $issue, string $test, string $message, float $time): void
     {
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             "Test finished $issue",
             [
-                'test' => $test,
-                'message' => $message,
-                'duration' => self::formatTime($time),
-                'currentTestCaseId' => self::$currentTestCaseId
+                'test'              => $test,
+                'message'           => $message,
+                'duration'          => self::formatTime($time),
             ]
         );
     }
 
     public function executeAfterTestFailure(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with failure', $test, $message, $time);
+        $this->testFailed('with failure', $test, $message, $time);
     }
 
     public function executeAfterTestError(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with error', $test, $message, $time);
+        $this->testFailed('with error', $test, $message, $time);
     }
 
     public function executeAfterTestWarning(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('with warning', $test, $message, $time);
+        $this->testFailed('with warning', $test, $message, $time);
     }
 
     public function executeAfterSkippedTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as skipped', $test, $message, $time);
+        $this->testFailed('as skipped', $test, $message, $time);
     }
 
     public function executeAfterIncompleteTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as incomplete', $test, $message, $time);
+        $this->testFailed('as incomplete', $test, $message, $time);
     }
 
     public function executeAfterRiskyTest(string $test, string $message, float $time): void
     {
-        $this->testFinishedUnsuccessfully('as risky', $test, $message, $time);
+        $this->testFailed('as risky', $test, $message, $time);
     }
 }

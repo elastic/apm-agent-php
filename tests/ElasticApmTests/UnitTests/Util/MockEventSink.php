@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSetData;
 use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\TransactionData;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\ErrorDataValidator;
@@ -221,8 +222,7 @@ final class MockEventSink implements EventSinkInterface
                 TestCase::assertEquals($data, $deserializedData);
             }
         );
-        TestCase::assertArrayNotHasKey($newError->id, $this->dataFromAgent->idToError);
-        $this->dataFromAgent->idToError[$newError->id] = $newError;
+        ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->dataFromAgent->idToError);
     }
 
     private function consumeMetricSetData(MetricSetData $metricSetData): void

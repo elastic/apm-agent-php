@@ -4,6 +4,8 @@ Which configuration options are dynamic
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

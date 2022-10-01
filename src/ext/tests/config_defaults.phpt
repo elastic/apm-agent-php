@@ -13,6 +13,8 @@ ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=
 ELASTIC_APM_SECRET_TOKEN=
 ELASTIC_APM_SERVER_URL=
 ELASTIC_APM_SERVICE_NAME=
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

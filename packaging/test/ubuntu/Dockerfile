@@ -9,6 +9,7 @@ RUN apt-get -qq update \
         git \
         libsqlite3-dev \
         libzip-dev \
+        logrotate \
         procps \
         rsyslog \
         unzip \
@@ -17,9 +18,10 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install \
-    pdo_mysql \
-    mysqli \
-    pdo_sqlite
+        pdo_mysql \
+        mysqli \
+        pdo_sqlite \
+        posix
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -30,6 +32,6 @@ ENV TYPE=deb
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
-WORKDIR /src
+WORKDIR /app
 
 ENTRYPOINT ["/bin/entrypoint.sh"]

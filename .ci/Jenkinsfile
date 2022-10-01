@@ -2,6 +2,9 @@
 
 @Library('apm@current') _
 
+LOG_LEVEL_NOT_SET = 'Not set'
+LOG_LEVELS = [LOG_LEVEL_NOT_SET, 'Trace', 'Debug', 'Info', 'Warning', 'Error', 'Critical', 'Off']
+
 pipeline {
   agent { label 'ubuntu-18.04 && immutable' }
   environment {
@@ -10,8 +13,6 @@ pipeline {
     SLACK_CHANNEL = '#apm-agent-php'
     NOTIFY_TO = 'build-apm+apm-agent-php@elastic.co'
     ONLY_DOCS = "false"
-    GITHUB_CHECK_ITS_NAME = 'Integration Tests'
-    ITS_PIPELINE = 'apm-integration-tests-selector-mbp/main'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20', daysToKeepStr: '30'))
@@ -27,6 +28,8 @@ pipeline {
   }
   parameters {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
+    choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
+    choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
   }
   stages {
     stage('Initializing'){
@@ -115,9 +118,18 @@ pipeline {
               }
               stage('Static analysis and unit tests') {
                 steps {
+                  echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
+                  echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
+                  echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
+                  echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
+                  echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
                   withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+                    withEnv(addEnvVarsFromParams([])) {
+                      echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
+                      echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
+                      dir("${BASE_DIR}"){
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+                      }
                     }
                   }
                 }
@@ -138,22 +150,6 @@ pipeline {
                 }
               }
             }
-          }
-        }
-        stage('Integration Tests') {
-          agent none
-          when {
-            beforeAgent true
-            changeRequest()
-          }
-          steps {
-            githubNotify(context: "${env.GITHUB_CHECK_ITS_NAME}", description: "Waiting for asynchronous job to begin ...", status: 'PENDING', targetUrl: "${env.JENKINS_URL}search/?q=${env.ITS_PIPELINE.replaceAll('/','+')}")
-            build(job: env.ITS_PIPELINE, propagate: false, wait: false,
-                  parameters: [ string(name: 'INTEGRATION_TEST', value: 'PHP'),
-                                string(name: 'BUILD_OPTS', value: "--php-agent-version ${env.GIT_BASE_COMMIT}"),
-                                string(name: 'GITHUB_CHECK_NAME', value: env.GITHUB_CHECK_ITS_NAME),
-                                string(name: 'GITHUB_CHECK_REPO', value: env.REPO),
-                                string(name: 'GITHUB_CHECK_SHA1', value: env.GIT_BASE_COMMIT) ])
           }
         }
         stage('Build packages') {
@@ -520,13 +516,11 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
     withNode(labels: 'ubuntu-18.04 && immutable') {
       def testingArgs =  [:]
       testingArgs['shouldUseSignedBinaries'] = args.shouldUseSignedBinaries
+      testingArgs['testMatrixRow'] = args.testMatrixRow
       def parsedTestMatrixRow = args.testMatrixRow.split(',')
       testingArgs['phpVersion'] = parsedTestMatrixRow[0]
       testingArgs['linuxPackageType'] = parsedTestMatrixRow[1]
       def testingType = parsedTestMatrixRow[2]
-      testingArgs['testingType'] = testingType
-      testingArgs['componentTestsAppHostKind'] = parsedTestMatrixRow[3]
-      testingArgs['componentTestsGroup'] = convertComponentTestsGroupShortNameToLong(parsedTestMatrixRow[4])
       if (testingType.equals('lifecycle')) {
         lifecycleTesting(testingArgs)
       }
@@ -546,27 +540,20 @@ def generatePackageLifecycleTestMatrixRow(def args = [:]){
   }
 }
 
-def convertComponentTestsGroupShortNameToLong(String shortName) {
-  switch (shortName) {
-    case "no_ext_svc":
-      return "does_not_require_external_services"
-    case "with_ext_svc":
-      return "requires_external_services"
-    default:
-      error("Unknown short tests group name: `${shortName}'")
-  }
+def addEnvVarsFromParams(def withEnvList) {
+    if (params.AGENT_LOG_LEVEL != null && !params.AGENT_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
+      withEnvList.add('ELASTIC_APM_LOG_LEVEL=' + params.AGENT_LOG_LEVEL)
+    }
+    if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
+      withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
+    }
+    return withEnvList
 }
 
 def runTestingCommand(def args = [:]) {
   try {
     args['context'] = buildWorkspaceContext(args)
-    withEnv(
-      [
-        "PHP_VERSION=${args.phpVersion}"
-        , "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"
-        , "ELASTIC_APM_PHP_TESTS_GROUP=${args.componentTestsGroup}"
-      ]
-    ) {
+    withEnv(addEnvVarsFromParams(["PHP_VERSION=${args.phpVersion}", "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"])) {
       packageWorkspace(args) {
         sh(script: args.testingCommand, label: buildLabel(args))
       }
@@ -577,17 +564,11 @@ def runTestingCommand(def args = [:]) {
 }
 
 def buildWorkspaceContext(def args = [:]) {
-  return "${args.testingType}-${args.linuxPackageType}-PHP-${args.phpVersion}-${args.componentTestsAppHostKind}"
-  + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
+  return args.testMatrixRow + (args.shouldUseSignedBinaries ? "-signed-binaries" : "")
 }
 
 def buildLabel(def args = [:]) {
-  return "${args.testingType} testing for"
-  + " Linux: ${args.linuxPackageType}"
-  + ", PHP: ${args.phpVersion}"
-  + ", componentTestsAppHostKind: ${args.componentTestsAppHostKind}"
-  + ", componentTestsGroup: ${args.componentTestsGroup}"
-  + ", shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
+  return "Testing for ${args.testMatrixRow}, shouldUseSignedBinaries: ${args.shouldUseSignedBinaries}"
 }
 
 def lifecycleTesting(def args = [:]) {
@@ -618,7 +599,7 @@ def phpUpgradeTesting(def args = [:]) {
 }
 
 def agentUpgradeTesting(def args = [:]) {
-  withEnv(["PHP_VERSION=${args.phpVersion}", "COMPONENT_TEST_SCRIPT=run_component_tests_${args.componentTestsAppHostKind}"]) {
+  withEnv(addEnvVarsFromParams(["PHP_VERSION=${args.phpVersion}", "ELASTIC_APM_PHP_TESTS_MATRIX_ROW=${args.testMatrixRow}"])) {
     initWorkspace(context: buildWorkspaceContext(args + [prefix: 'Agent-upgrade-testing'])) {
       packageGeneration(versions: [args.phpVersion], local: true)
       if (args.shouldUseSignedBinaries) {

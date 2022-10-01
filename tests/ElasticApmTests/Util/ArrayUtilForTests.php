@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use PHPUnit\Framework\TestCase;
 
@@ -59,5 +60,20 @@ final class ArrayUtilForTests
     public static function getLastValue(array $array)
     {
         return $array[count($array) - 1];
+    }
+
+    /**
+     * @param string|int           $key
+     * @param mixed                $value
+     * @param array<string, mixed> $result
+     */
+    public static function addUnique($key, $value, array &$result): void
+    {
+        TestCase::assertArrayNotHasKey(
+            $key,
+            $result,
+            LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result])
+        );
+        $result[$key] = $value;
     }
 }

@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util;
 use Closure;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use RuntimeException;
 
 /**
@@ -74,5 +75,22 @@ final class FileUtilForTests
         }
 
         fclose($fileHandle);
+    }
+
+    /**
+     * @param string[] $list
+     *
+     * @return string
+     */
+    public static function listToPath(array $list): string
+    {
+        $result = '';
+        foreach ($list as $pathElement) {
+            if (!TextUtil::isEmptyString($result)) {
+                $result .= DIRECTORY_SEPARATOR;
+            }
+            $result .= $pathElement;
+        }
+        return $result;
     }
 }

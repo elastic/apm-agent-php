@@ -26,27 +26,28 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\TestsRootDir;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\FlakyAssertions;
 use ElasticApmTests\Util\TestCaseBase;
 
 final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
 {
-    public function test(): void
+    public function testToDebugDataFromAgentPlusRawValidator(): void
     {
         FlakyAssertions::setEnabled(true);
 
-        $fullPathToInputFile
-            = TestsRootDir::$fullPath
-              . DIRECTORY_SEPARATOR . '..'
-              . DIRECTORY_SEPARATOR . 'z_local'
-              . DIRECTORY_SEPARATOR . 'DataFromAgentPlusRawValidatorDebugTest_input.txt';
-
-        if (!file_exists($fullPathToInputFile)) {
+        $repoRootFullPath = FileUtilForTests::normalizePath(
+            FileUtilForTests::listToPath([TestsRootDir::$fullPath, '..'])
+        );
+        $inputFileFullPath = FileUtilForTests::listToPath(
+            [$repoRootFullPath, 'z_local', 'DataFromAgentPlusRawValidatorDebugTest_input.txt']
+        );
+        if (!file_exists($inputFileFullPath)) {
             self::dummyAssert();
             return;
         }
 
-        $inputFileContents = file_get_contents($fullPathToInputFile);
+        $inputFileContents = file_get_contents($inputFileFullPath);
         self::assertNotFalse($inputFileContents);
         if (TextUtil::isEmptyString($inputFileContents)) {
             self::dummyAssert();

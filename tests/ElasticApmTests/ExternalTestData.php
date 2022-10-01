@@ -32,16 +32,23 @@ final class ExternalTestData
 {
     use StaticClassTrait;
 
-    private static function fullPathForFileInSubDir(string $relativePathToSubDir, string $relativePathToFile): string
+    /**
+     * @param string[] $relativePathToSubDir
+     * @param string   $relativePathToFile
+     *
+     * @return string
+     */
+    private static function fullPathForFileInSubDir(array $relativePathToSubDir, string $relativePathToFile): string
     {
-        return FileUtilForTests::normalizePath(
-            TestsRootDir::$fullPath . '/' . $relativePathToSubDir . '/' . $relativePathToFile
-        );
+        $fullPathAsList = [TestsRootDir::$fullPath];
+        $fullPathAsList = array_merge($fullPathAsList, $relativePathToSubDir);
+        $fullPathAsList[] = $relativePathToFile;
+        return FileUtilForTests::normalizePath(FileUtilForTests::listToPath($fullPathAsList));
     }
 
     public static function fullPathForFileInApmServerIntakeApiSchemaDir(string $relativePathToFile): string
     {
-        return self::fullPathForFileInSubDir('APM_Server_intake_API_schema', $relativePathToFile);
+        return self::fullPathForFileInSubDir(['APM_Server_intake_API_schema'], $relativePathToFile);
     }
 
     /**
@@ -51,7 +58,7 @@ final class ExternalTestData
      */
     public static function readJsonSpecsFile(string $relativePathToFile)
     {
-        $filePath = self::fullPathForFileInSubDir('APM_Agents_shared/json-specs', $relativePathToFile);
+        $filePath = self::fullPathForFileInSubDir(['APM_Agents_shared', 'json-specs'], $relativePathToFile);
 
         $fileContent = '';
         FileUtilForTests::readLines(

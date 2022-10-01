@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use RuntimeException;

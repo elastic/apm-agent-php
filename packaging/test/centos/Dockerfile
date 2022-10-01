@@ -4,13 +4,15 @@ ENV PHP_VERSION ${PHP_VERSION}
 
 RUN yum update -y \
     && yum install -y \
-        git \
-        gnupg2 \
-        perl-Digest-SHA \
-        rsyslog \
-        unzip \
-        wget \
-        which
+            git \
+            gnupg2 \
+            logrotate \
+            lsof \
+            perl-Digest-SHA \
+            rsyslog \
+            unzip \
+            wget \
+            which
 
 ## Package versioning for the PHP does not use .
 RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
@@ -19,12 +21,13 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && yum update -y \
     && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
     && yum install -y \
-        php \
-        php-mbstring \
-        php-mysql \
-        php-mysqli \
-        php-sqlite \
-        php-xml \
+            php \
+            php-mbstring \
+            php-mysql \
+            php-mysqli \
+            php-posix \
+            php-sqlite \
+            php-xml \
     && yum clean all
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
@@ -37,6 +40,6 @@ ENV TYPE=rpm
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
-WORKDIR /src
+WORKDIR /app
 
 ENTRYPOINT ["/bin/entrypoint.sh"]

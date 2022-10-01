@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -147,8 +148,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
     private function addError(string $encodedJson): void
     {
         $newError = $this->validateAndDeserializeErrorData($encodedJson);
-        TestCase::assertArrayNotHasKey($newError->id, $this->result->idToError);
-        $this->result->idToError[$newError->id] = $newError;
+        ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->result->idToError);
     }
 
     private function addMetricSet(string $encodedJson): void
