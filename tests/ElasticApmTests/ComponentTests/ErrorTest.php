@@ -43,6 +43,7 @@ use ElasticApmTests\Util\RangeUtilForTests;
 use Exception;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class ErrorTest extends ComponentTestCaseBase

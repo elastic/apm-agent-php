@@ -29,6 +29,7 @@ use ElasticApmTests\ComponentTests\Util\CliScriptAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class LaravelArtisanCommandTest extends ComponentTestCaseBase
@@ -36,11 +37,19 @@ final class LaravelArtisanCommandTest extends ComponentTestCaseBase
     /**
      * @return iterable<array{string[]}>
      */
+    private static function dataProviderForFirstArgInTransactionNameImpl(): iterable
+    {
+        yield [['migrate']];
+        yield [[]];
+        yield [['vapor:handle', 'payload']];
+    }
+
+    /**
+     * @return iterable<array{string[]}>
+     */
     public function dataProviderForFirstArgInTransactionName(): iterable
     {
-        yield [[]];
-        yield [['migrate']];
-        yield [['vapor:handle', 'payload']];
+        return self::adaptToSmoke(self::dataProviderForFirstArgInTransactionNameImpl());
     }
 
     /**

@@ -40,6 +40,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class ConfigSettingTest extends ComponentTestCaseBase
@@ -165,11 +166,36 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     {
         $optNameToRawToParsedValue = self::buildOptionNameToRawToValue();
 
-        foreach (AgentConfigSourceKind::all() as $agentConfigSourceKind) {
-            foreach ($optNameToRawToParsedValue as $optName => $optRawToValue) {
-                foreach ($optRawToValue as $optRawVal => $optExpectedVal) {
-                    if ($agentConfigSourceKind === AgentConfigSourceKind::iniFile()) {
-                        $optRawToValue = str_replace("\n", "\t", $optRawToValue);
+        if (self::isSmoke()) {
+            $optNameToRawToParsedValueForSmoke = [];
+            foreach ($optNameToRawToParsedValue as $optName => $optRawToExpectedParsedValues) {
+                $optNameToRawToParsedValueForSmoke[$optName] = self::adaptToSmoke($optRawToExpectedParsedValues);
+            }
+            $optNameToRawToParsedValue = $optNameToRawToParsedValueForSmoke;
+        }
+
+        $agentConfigSourceKindIndex = 0;
+        /**
+         * @return AgentConfigSourceKind[]
+         */
+        $agentConfigSourceKindVariants = function () use (&$agentConfigSourceKindIndex): array {
+            if (!self::isSmoke()) {
+                return AgentConfigSourceKind::all();
+            }
+
+            $result = [AgentConfigSourceKind::all()[$agentConfigSourceKindIndex]];
+            ++$agentConfigSourceKindIndex;
+            if ($agentConfigSourceKindIndex === count(AgentConfigSourceKind::all())) {
+                $agentConfigSourceKindIndex = 0;
+            }
+            return $result;
+        };
+
+        foreach ($optNameToRawToParsedValue as $optName => $optRawToExpectedParsedValues) {
+            foreach ($optRawToExpectedParsedValues as $optRawVal => $optExpectedVal) {
+                foreach ($agentConfigSourceKindVariants() as $agentConfigSourceKind) {
+                    if ($agentConfigSourceKind === AgentConfigSourceKind::iniFile() && is_string($optRawVal)) {
+                        $optRawVal = str_replace("\n", "\t", $optRawVal);
                     }
                     $optExpectedVal = $optExpectedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
                     yield [$agentConfigSourceKind, $optName, strval($optRawVal), $optExpectedVal];
