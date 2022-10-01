@@ -369,25 +369,55 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         }
     }
 
+    /**
+     * @param array<string, mixed> $whereEnvVars
+     */
+    private function assertAllTestsAreSmoke(array $whereEnvVars): void
+    {
+        $allVariants = self::select(
+            $whereEnvVars,
+            $this->matrixRowToExpectedEnvVars
+        );
+        self::assertNotCount(
+            0,
+            $allVariants,
+            LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
+        );
+        $smokeVariants = self::select(
+            array_merge(
+                $whereEnvVars,
+                [
+                    self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
+                    self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
+
+                ]
+            ),
+            $this->matrixRowToExpectedEnvVars
+        );
+        self::assertSame(
+            count($allVariants),
+            count($smokeVariants),
+            LoggableToString::convert(
+                [
+                    'whereEnvVars'  => $whereEnvVars,
+                    'allVariants'   => $allVariants,
+                    'smokeVariants' => $smokeVariants,
+                    'this'          => $this,
+                ]
+            )
+        );
+    }
+
     private function assertSufficientCoverageAgentUpgrade(): void
     {
         foreach ([self::PHP_VERSION_7_4, self::latestSupportedPhpVersion()] as $phpVersion) {
             foreach ([self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM] as $linuxPackageType) {
-                $whereEnvVars = [
-                    self::PHP_VERSION_KEY                 => $phpVersion,
-                    self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
-                    self::TESTING_TYPE_KEY                => self::AGENT_UPGRADE_TESTING_TYPE,
-                    self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
-                    self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
-                ];
-                $selectedMatrixRowToExpectedEnvVars = self::select(
-                    $whereEnvVars,
-                    $this->matrixRowToExpectedEnvVars
-                );
-                self::assertNotCount(
-                    0,
-                    $selectedMatrixRowToExpectedEnvVars,
-                    LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
+                $this->assertAllTestsAreSmoke(
+                    [
+                        self::PHP_VERSION_KEY                 => $phpVersion,
+                        self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
+                        self::TESTING_TYPE_KEY                => self::AGENT_UPGRADE_TESTING_TYPE,
+                    ]
                 );
             }
         }
@@ -395,21 +425,12 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private function assertSufficientCoveragePhpUpgrade(): void
     {
-        $whereEnvVars = [
-            self::PHP_VERSION_KEY                 => self::earliestSupportedPhpVersion(),
-            self::LINUX_PACKAGE_TYPE_KEY          => self::LINUX_PACKAGE_TYPE_RPM,
-            self::TESTING_TYPE_KEY                => self::PHP_UPGRADE_TESTING_TYPE,
-            self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
-            self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
-        ];
-        $selectedMatrixRowToExpectedEnvVars = self::select(
-            $whereEnvVars,
-            $this->matrixRowToExpectedEnvVars
-        );
-        self::assertNotCount(
-            0,
-            $selectedMatrixRowToExpectedEnvVars,
-            LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
+        $this->assertAllTestsAreSmoke(
+            [
+                self::PHP_VERSION_KEY                 => self::earliestSupportedPhpVersion(),
+                self::LINUX_PACKAGE_TYPE_KEY          => self::LINUX_PACKAGE_TYPE_RPM,
+                self::TESTING_TYPE_KEY                => self::PHP_UPGRADE_TESTING_TYPE,
+            ]
         );
     }
 
