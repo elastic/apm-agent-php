@@ -47,6 +47,7 @@ use ElasticApmTests\Util\SpanSequenceValidator;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @group smoke
  * @group requires_external_services
  * @group requires_mysql_external_service
  */
@@ -294,7 +295,8 @@ final class MySQLiTest extends ComponentTestCaseBase
             )
             ->wrapResultIntoArray()
             ->build();
-        return $result;
+
+        return self::adaptToSmoke($result);
     }
 
     /**

@@ -36,6 +36,7 @@ use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\FileUtilForTests;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements LoggableInterface
@@ -55,8 +56,15 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private const LINUX_PACKAGE_TYPE_RPM = 'rpm';
     private const LINUX_PACKAGE_TYPES = ['apk', self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM, 'tar'];
 
-    private const APP_CODE_HOST_KINDS = ['CLI_script', 'Builtin_HTTP_server'];
-    private const TESTS_GROUPS = ['does_not_require_external_services', 'requires_external_services'];
+    private const APP_CODE_HOST_KIND_ALL = 'all';
+    private const APP_CODE_HOST_KINDS = [self::APP_CODE_HOST_KIND_ALL, 'Builtin_HTTP_server', 'CLI_script'];
+
+    private const TESTS_GROUP_SMOKE = 'smoke';
+    private const TESTS_GROUPS = [
+        'does_not_require_external_services',
+        'requires_external_services',
+        self::TESTS_GROUP_SMOKE,
+    ];
 
     private const AGENT_UPGRADE_TESTING_TYPE = 'agent-upgrade';
     private const LIFECYCLE_TESTING_TYPE = 'lifecycle';
@@ -109,6 +117,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private static function convertAppHostKindShortToLongName(string $shortName): string
     {
         switch ($shortName) {
+            case 'all':
+                return 'all';
             case 'cli':
                 return 'CLI_script';
             case 'http':
@@ -123,6 +133,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         switch ($shortName) {
             case 'no_ext_svc':
                 return 'does_not_require_external_services';
+            case 'smoke':
+                return 'smoke';
             case 'with_ext_svc':
                 return 'requires_external_services';
             default:
@@ -361,23 +373,22 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     {
         foreach ([self::PHP_VERSION_7_4, self::latestSupportedPhpVersion()] as $phpVersion) {
             foreach ([self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM] as $linuxPackageType) {
-                foreach (self::APP_CODE_HOST_KINDS as $appHostKind) {
-                    $whereEnvVars = [
-                        self::PHP_VERSION_KEY                 => $phpVersion,
-                        self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
-                        self::TESTING_TYPE_KEY                => self::AGENT_UPGRADE_TESTING_TYPE,
-                        self::APP_CODE_HOST_KIND_ENV_VAR_NAME => $appHostKind,
-                    ];
-                    $selectedMatrixRowToExpectedEnvVars = self::select(
-                        $whereEnvVars,
-                        $this->matrixRowToExpectedEnvVars
-                    );
-                    self::assertNotCount(
-                        0,
-                        $selectedMatrixRowToExpectedEnvVars,
-                        LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
-                    );
-                }
+                $whereEnvVars = [
+                    self::PHP_VERSION_KEY                 => $phpVersion,
+                    self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
+                    self::TESTING_TYPE_KEY                => self::AGENT_UPGRADE_TESTING_TYPE,
+                    self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
+                    self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
+                ];
+                $selectedMatrixRowToExpectedEnvVars = self::select(
+                    $whereEnvVars,
+                    $this->matrixRowToExpectedEnvVars
+                );
+                self::assertNotCount(
+                    0,
+                    $selectedMatrixRowToExpectedEnvVars,
+                    LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
+                );
             }
         }
     }
@@ -388,6 +399,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
             self::PHP_VERSION_KEY                 => self::earliestSupportedPhpVersion(),
             self::LINUX_PACKAGE_TYPE_KEY          => self::LINUX_PACKAGE_TYPE_RPM,
             self::TESTING_TYPE_KEY                => self::PHP_UPGRADE_TESTING_TYPE,
+            self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
+            self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
         ];
         $selectedMatrixRowToExpectedEnvVars = self::select(
             $whereEnvVars,

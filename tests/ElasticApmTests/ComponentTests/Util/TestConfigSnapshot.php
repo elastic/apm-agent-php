@@ -60,6 +60,9 @@ final class TestConfigSnapshot implements LoggableInterface
     /** @var ?WildcardListMatcher */
     public $envVarsToPassThrough;
 
+    /** @var ?string */
+    public $group;
+
     /** @var int */
     public $logLevel;
 
@@ -113,5 +116,10 @@ final class TestConfigSnapshot implements LoggableInterface
         }
 
         return $this->appCodeHostKind;
+    }
+
+    public function isSmoke(): bool
+    {
+        return $this->group === 'smoke';
     }
 }

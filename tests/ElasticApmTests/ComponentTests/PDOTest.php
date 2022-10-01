@@ -43,6 +43,7 @@ use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class PDOTest extends ComponentTestCaseBase
@@ -96,15 +97,19 @@ final class PDOTest extends ComponentTestCaseBase
     {
         // https://www.php.net/manual/en/ref.pdo-sqlite.connection.php
 
-        // To create a database in memory, :memory: has to be appended to the DSN prefix
-        yield [self::MEMORY_DB_NAME, 'sqlite::memory:'];
+        return self::adaptToSmoke(
+            [
+                // To create a database in memory, :memory: has to be appended to the DSN prefix
+                yield [self::MEMORY_DB_NAME, 'sqlite::memory:'],
 
-        // To create a database in memory, :memory: has to be appended to the DSN prefix
-        yield ['/opt/databases/my_db.sqlite', 'sqlite:/opt/databases/my_db.sqlite'];
+                // To create a database in memory, :memory: has to be appended to the DSN prefix
+                yield ['/opt/databases/my_db.sqlite', 'sqlite:/opt/databases/my_db.sqlite'],
 
-        // If the DSN consists of the DSN prefix only, a temporary database is used,
-        // which is deleted when the connection is closed
-        yield [self::TEMP_DB_NAME, 'sqlite:'];
+                // If the DSN consists of the DSN prefix only, a temporary database is used,
+                // which is deleted when the connection is closed
+                yield [self::TEMP_DB_NAME, 'sqlite:'],
+            ]
+        );
     }
 
     /**
@@ -163,7 +168,8 @@ final class PDOTest extends ComponentTestCaseBase
             )
             ->wrapResultIntoArray()
             ->build();
-        return $result;
+
+        return self::adaptToSmoke($result);
     }
 
     /**

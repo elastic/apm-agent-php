@@ -81,6 +81,7 @@ final class AllComponentTestsOptionsMetadata
             ),
             'delete_temp_php_ini'      => new BoolOptionMetadata(true),
             'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
+            'group'                    => new NullableStringOptionMetadata(),
             'log_level'                => new LogLevelOptionMetadata(LogLevel::INFO),
             'mysql_host'               => new NullableStringOptionMetadata(),
             'mysql_port'               => new NullableIntOptionMetadata(1, 65535),
