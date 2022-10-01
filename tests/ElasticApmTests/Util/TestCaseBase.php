@@ -279,6 +279,32 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @param array<mixed, mixed> $subsetMap
+     * @param array<mixed, mixed> $containingMap
+     */
+    public static function assertMapIsSubsetOf(array $subsetMap, array $containingMap, string $message = ''): void
+    {
+        $ctx = $message === ''
+            ? LoggableToString::convert(['subsetMap' => $subsetMap, 'containingMap' => $containingMap])
+            : $message;
+        self::assertGreaterThanOrEqual(count($subsetMap), count($containingMap), $ctx);
+        foreach ($subsetMap as $subsetMapKey => $subsetMapVal) {
+            self::assertArrayHasKey($subsetMapKey, $containingMap, $ctx);
+            self::assertEquals($subsetMapVal, $containingMap[$subsetMapKey], $ctx);
+        }
+    }
+
+    /**
+     * @param array<mixed, mixed> $expected
+     * @param array<mixed, mixed> $actual
+     */
+    public static function assertEqualMaps(array $expected, array $actual, string $message = ''): void
+    {
+        self::assertMapIsSubsetOf($expected, $actual);
+        self::assertMapIsSubsetOf($actual, $expected);
+    }
+
+    /**
      * @param array<string|int, mixed> $idToXyzMap
      *
      * @return string[]

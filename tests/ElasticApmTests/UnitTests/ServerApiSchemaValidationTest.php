@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
 use ElasticApmTests\Util\TestCaseBase;
@@ -140,8 +141,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
 
         /** @var array<mixed, mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
-        $this->assertArrayNotHasKey($unknownPropertyName, $parentJsonNode);
-        $parentJsonNode[$unknownPropertyName] = $unknownPropertyValue;
+        ArrayUtilForTests::addUnique($unknownPropertyName, $unknownPropertyValue, /* ref */ $parentJsonNode);
 
         $this->assertThrows(
             ServerApiSchemaValidationException::class,
