@@ -34,6 +34,7 @@ use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 use ElasticApmTests\Util\TransactionDataExpectations;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class SamplingComponentTest extends ComponentTestCaseBase
@@ -45,7 +46,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
      */
     public function rateConfigTestDataProvider(): iterable
     {
-        foreach (SamplingTestSharedCode::rates() as $rate) {
+        foreach (self::adaptToSmoke(SamplingTestSharedCode::rates()) as $rate) {
             yield [$rate];
         }
     }

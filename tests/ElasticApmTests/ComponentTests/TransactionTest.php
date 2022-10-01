@@ -29,6 +29,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class TransactionTest extends ComponentTestCaseBase

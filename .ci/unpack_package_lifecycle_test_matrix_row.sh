@@ -27,6 +27,10 @@ function assertValueIsInArray () {
 function convertAppHostKindShortToLongName () {
     local shortName="$1"
     case "${shortName}" in
+        'all')
+                echo "all"
+                return
+                ;;
         'cli')
                 echo "CLI_script"
                 return
@@ -51,6 +55,10 @@ function convertTestsGroupShortToLongName () {
                 ;;
         'with_ext_svc')
                 echo "requires_external_services"
+                return
+                ;;
+        'smoke')
+                echo "smoke"
                 return
                 ;;
         *)

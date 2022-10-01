@@ -33,6 +33,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
 
 /**
+ * @group smoke
  * @group does_not_require_external_services
  */
 final class UserAgentTest extends ComponentTestCaseBase
@@ -42,7 +43,7 @@ final class UserAgentTest extends ComponentTestCaseBase
     /**
      * @return iterable<array{?string, ?string, string}>
      */
-    public function dataProvider(): iterable
+    private static function dataProviderForTestCustomConfigImpl(): iterable
     {
         // https://github.com/elastic/apm/blob/main/specs/agents/transport.md#user-agent
         // Header value should start with agent github repository as prefix and version:
@@ -94,6 +95,14 @@ final class UserAgentTest extends ComponentTestCaseBase
         ];
     }
 
+    /**
+     * @return iterable<array{?string, ?string, string}>
+     */
+    public function dataProviderForTestCustomConfig(): iterable
+    {
+        return self::adaptToSmoke(self::dataProviderForTestCustomConfigImpl());
+    }
+
     private function impl(
         ?string $configuredServiceName,
         ?string $configuredServiceVersion,
@@ -130,7 +139,7 @@ final class UserAgentTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider dataProvider
+     * @dataProvider dataProviderForTestCustomConfig
      *
      * @param ?string $configuredServiceName
      * @param ?string $configuredServiceVersion

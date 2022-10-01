@@ -19,9 +19,9 @@ function appendTestsGroupVariants () {
     local rowSoFar="$1"
     local nextFunction="${2:-echo}"
     local -a nextFunctionArgs=( "${@:3}" )
-    for componentTestsGroup in "${ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES[@]}"
+    for testsGroup in "${ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES[@]}"
     do
-        ${nextFunction} "${rowSoFar},${componentTestsGroup}" "${nextFunctionArgs[@]}"
+        ${nextFunction} "${rowSoFar},${testsGroup}" "${nextFunctionArgs[@]}"
     done
 }
 
@@ -29,8 +29,8 @@ function appendAppHostKindVariants () {
     local rowSoFar="$1"
     local nextFunction="${2:-echo}"
     local -a nextFunctionArgs=( "${@:3}" )
-    for componentTestsAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES[@]}" ; do
-        ${nextFunction} "${rowSoFar},${componentTestsAppHostKindShortName}" "${nextFunctionArgs[@]}"
+    for appendAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES[@]}" ; do
+        ${nextFunction} "${rowSoFar},${appendAppHostKindShortName}" "${nextFunctionArgs[@]}"
     done
 }
 
@@ -61,14 +61,14 @@ function generateLifecycleRows () {
 
 function generateLifecycleOnProdServerRows () {
     #
-    # Lifecycle tests for <app_server> (only for deb linuxDistro and http componentTestsAppHostKind)
+    # Lifecycle tests for <app_server> (only for deb linuxDistro and http appHostKind)
     #
     local linuxPackageType=deb
-    local componentTestsAppHostKindShortName=http
+    local appHostKindShortName=http
     for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
         for prodAppServer in apache fpm ; do
             local testingType=lifecycle-${prodAppServer}
-            appendTestsGroupVariants "${phpVersion},${linuxPackageType},${testingType},${componentTestsAppHostKindShortName}"
+            appendTestsGroupVariants "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName}"
         done
     done
 }
@@ -81,7 +81,9 @@ function generatePhpUpgradeRows () {
     phpVersion="$(earliestSupportedPhpVersion)"
     local linuxPackageType=rpm
     local testingType=php-upgrade
-    echo "${phpVersion},${linuxPackageType},${testingType}"
+    local appHostKindShortName=all
+    local testsGroup=smoke
+    echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
 }
 
 function generateAgentUpgradeRows () {
@@ -89,9 +91,11 @@ function generateAgentUpgradeRows () {
     # Agent upgrade tests
     #
     local testingType=agent-upgrade
+    local appHostKindShortName=all
+    local testsGroup=smoke
     for phpVersion in 7.4 "$(latestSupportedPhpVersion)" ; do
         for linuxPackageType in deb rpm ; do
-            appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants
+            echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
         done
     done
 }
