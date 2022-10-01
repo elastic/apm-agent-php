@@ -35,6 +35,7 @@ use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockClock;
 use ElasticApmTests\UnitTests\Util\MockSpanData;
 use ElasticApmTests\UnitTests\Util\MockTracer;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\InvalidEventDataException;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TraceDataActual;
@@ -144,8 +145,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     {
         $result = [];
         foreach ($events as $event) {
-            self::assertArrayNotHasKey($event->id, $result);
-            $result[$event->id] = $event;
+            ArrayUtilForTests::addUnique($event->id, $event, /* ref */ $result);
         }
         return $result;
     }
