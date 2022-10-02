@@ -34,6 +34,20 @@ function appendAppHostKindVariants () {
     done
 }
 
+function generateLifecycleOnProdServerRows () {
+    #
+    # Lifecycle tests for <app_server> (only for deb linuxDistro and http appHostKind)
+    #
+    local linuxPackageType=deb
+    local appHostKindShortName=http
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
+        for prodAppServer in apache fpm ; do
+            local testingType=lifecycle-${prodAppServer}
+            appendTestsGroupVariants "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName}"
+        done
+    done
+}
+
 function generateLifecycleWithIncreasedLogLevelRows () {
     local testingType=lifecycle
     local phpVersion
@@ -47,30 +61,29 @@ function generateLifecycleWithIncreasedLogLevelRows () {
     appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants appendAgentSyslogLogLevel TRACE
 }
 
+function generateLifecycleTarPackageRows () {
+    local linuxPackageType=tar
+    local appHostKindShortName=all
+    local testsGroup=smoke
+    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
+        echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
+    done
+}
+
 function generateLifecycleRows () {
     #
     # Lifecycle tests
     #
     local testingType=lifecycle
     for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
-        for linuxPackageType in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES[@]}" ; do
+        for linuxPackageType in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_NATIVE_PACKAGE_TYPES[@]}" ; do
             appendAppHostKindVariants "${phpVersion},${linuxPackageType},${testingType}" appendTestsGroupVariants
         done
     done
-}
 
-function generateLifecycleOnProdServerRows () {
-    #
-    # Lifecycle tests for <app_server> (only for deb linuxDistro and http appHostKind)
-    #
-    local linuxPackageType=deb
-    local appHostKindShortName=http
-    for phpVersion in "${ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS[@]}" ; do
-        for prodAppServer in apache fpm ; do
-            local testingType=lifecycle-${prodAppServer}
-            appendTestsGroupVariants "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName}"
-        done
-    done
+    generateLifecycleOnProdServerRows
+    generateLifecycleWithIncreasedLogLevelRows
+    generateLifecycleTarPackageRows
 }
 
 function generatePhpUpgradeRows () {
@@ -108,8 +121,6 @@ function main () {
     generateAgentUpgradeRows
 
     generateLifecycleRows
-    generateLifecycleOnProdServerRows
-    generateLifecycleWithIncreasedLogLevelRows
 
     generatePhpUpgradeRows
 }
