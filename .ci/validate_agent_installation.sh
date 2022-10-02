@@ -2,7 +2,7 @@
 set -xe
 
 function ensureSyslogIsRunning () {
-    if ps -ef | grep -q -v 'grep' | grep -q 'syslogd' ; then
+    if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
         echo 'Syslog is already started.'
         return
     fi
