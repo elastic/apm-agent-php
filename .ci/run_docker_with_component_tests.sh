@@ -61,6 +61,10 @@ function doesTestsGroupNeedExternalServices () {
                 echo "true"
                 return
                 ;;
+        'smoke')
+                echo "true"
+                return
+                ;;
         *)
                 echo "Unknown tests group name: \`${ELASTIC_APM_PHP_TESTS_GROUP}\'"
                 exit 1
