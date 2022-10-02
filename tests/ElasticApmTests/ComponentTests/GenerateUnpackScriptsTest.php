@@ -58,15 +58,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private const APP_CODE_HOST_KIND_ALL = 'all';
     private const APP_CODE_HOST_LEAF_KINDS = ['Builtin_HTTP_server', 'CLI_script'];
-    private const APP_CODE_HOST_KINDS = [self::APP_CODE_HOST_KIND_ALL, 'Builtin_HTTP_server', 'CLI_script'];
 
     private const TESTS_GROUP_SMOKE = 'smoke';
     private const TESTS_LEAF_GROUPS = ['does_not_require_external_services', 'requires_external_services'];
-    private const TESTS_GROUPS = [
-        'does_not_require_external_services',
-        'requires_external_services',
-        self::TESTS_GROUP_SMOKE,
-    ];
 
     private const AGENT_UPGRADE_TESTING_TYPE = 'agent-upgrade';
     private const LIFECYCLE_TESTING_TYPE = 'lifecycle';
