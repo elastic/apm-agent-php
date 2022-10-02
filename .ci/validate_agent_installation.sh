@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -xe
 
-function startSyslog () {
+function ensureSyslogIsRunning () {
+    if ps -ef | grep -q -v 'grep' | grep -q 'syslogd' ; then
+        echo 'Syslog is already started.'
+        return
+    fi
+
     if which syslogd; then
         syslogd
     else
@@ -76,7 +81,7 @@ function main () {
     this_script_dir="$( realpath "${this_script_dir}" )"
     source "${this_script_dir}/shared.sh"
 
-    startSyslog
+    ensureSyslogIsRunning
 
     # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
     export ELASTIC_APM_ENABLED=false
