@@ -57,9 +57,11 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private const LINUX_PACKAGE_TYPES = ['apk', self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM, 'tar'];
 
     private const APP_CODE_HOST_KIND_ALL = 'all';
+    private const APP_CODE_HOST_LEAF_KINDS = ['Builtin_HTTP_server', 'CLI_script'];
     private const APP_CODE_HOST_KINDS = [self::APP_CODE_HOST_KIND_ALL, 'Builtin_HTTP_server', 'CLI_script'];
 
     private const TESTS_GROUP_SMOKE = 'smoke';
+    private const TESTS_LEAF_GROUPS = ['does_not_require_external_services', 'requires_external_services'];
     private const TESTS_GROUPS = [
         'does_not_require_external_services',
         'requires_external_services',
@@ -315,8 +317,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private function assertSufficientCoverageLifecycleWithIncreasedLogLevel(): void
     {
         $assertForPhpVersionAndLogLevel = function (string $phpVersion, int $logLevel): void {
-            foreach (self::APP_CODE_HOST_KINDS as $appHostKind) {
-                foreach (self::TESTS_GROUPS as $testsGroup) {
+            foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
+                foreach (self::TESTS_LEAF_GROUPS as $testsGroup) {
                     $whereEnvVars = [
                         self::PHP_VERSION_KEY                 => $phpVersion,
                         self::TESTING_TYPE_KEY                => self::LIFECYCLE_TESTING_TYPE,
@@ -345,15 +347,21 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     {
         foreach (self::SUPPORTED_PHP_VERSIONS as $phpVersion) {
             foreach (self::LINUX_PACKAGE_TYPES as $linuxPackageType) {
-                foreach (self::APP_CODE_HOST_KINDS as $appHostKind) {
-                    foreach (self::TESTS_GROUPS as $testsGroup) {
-                        $whereEnvVars = [
-                            self::PHP_VERSION_KEY                 => $phpVersion,
-                            self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
-                            self::TESTING_TYPE_KEY                => self::LIFECYCLE_TESTING_TYPE,
-                            self::APP_CODE_HOST_KIND_ENV_VAR_NAME => $appHostKind,
-                            self::TESTS_GROUP_ENV_VAR_NAME        => $testsGroup,
-                        ];
+                $whereEnvVarsLifecycle = [
+                    self::PHP_VERSION_KEY                 => $phpVersion,
+                    self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
+                    self::TESTING_TYPE_KEY                => self::LIFECYCLE_TESTING_TYPE,
+                ];
+                $this->assertAllTestsAreLeaf($whereEnvVarsLifecycle);
+                foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
+                    foreach (self::TESTS_LEAF_GROUPS as $testsGroup) {
+                        $whereEnvVars = array_merge(
+                            $whereEnvVarsLifecycle,
+                            [
+                                self::APP_CODE_HOST_KIND_ENV_VAR_NAME => $appHostKind,
+                                self::TESTS_GROUP_ENV_VAR_NAME        => $testsGroup,
+                            ]
+                        );
                         $selectedMatrixRowToExpectedEnvVars = self::select(
                             $whereEnvVars,
                             $this->matrixRowToExpectedEnvVars
@@ -374,38 +382,49 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function assertAllTestsAreSmoke(array $whereEnvVars): void
     {
-        $allVariants = self::select(
-            $whereEnvVars,
-            $this->matrixRowToExpectedEnvVars
-        );
+        $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
         self::assertNotCount(
             0,
-            $allVariants,
+            $variants,
             LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
         );
-        $smokeVariants = self::select(
-            array_merge(
-                $whereEnvVars,
+        foreach ($variants as $variant) {
+            $ctx = LoggableToString::convert(
                 [
-                    self::APP_CODE_HOST_KIND_ENV_VAR_NAME => self::APP_CODE_HOST_KIND_ALL,
-                    self::TESTS_GROUP_ENV_VAR_NAME        => self::TESTS_GROUP_SMOKE,
+                    'variant'      => $variant,
+                    'variants'     => $variants,
+                    'whereEnvVars' => $whereEnvVars,
+                    'this'         => $this,
+                ]
+            );
+            self::assertSame(self::APP_CODE_HOST_KIND_ALL, $variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME], $ctx);
+            self::assertSame(self::TESTS_GROUP_SMOKE, $variant[self::TESTS_GROUP_ENV_VAR_NAME], $ctx);
+        }
+    }
 
-                ]
-            ),
-            $this->matrixRowToExpectedEnvVars
+    /**
+     * @param array<string, mixed> $whereEnvVars
+     */
+    private function assertAllTestsAreLeaf(array $whereEnvVars): void
+    {
+        $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
+        self::assertNotCount(
+            0,
+            $variants,
+            LoggableToString::convert(['whereEnvVars' => $whereEnvVars, 'this' => $this])
         );
-        self::assertSame(
-            count($allVariants),
-            count($smokeVariants),
-            LoggableToString::convert(
+        foreach ($variants as $variant) {
+            $ctx = LoggableToString::convert(
                 [
-                    'whereEnvVars'  => $whereEnvVars,
-                    'allVariants'   => $allVariants,
-                    'smokeVariants' => $smokeVariants,
-                    'this'          => $this,
+                    'variant'      => $variant,
+                    'variants'     => $variants,
+                    'whereEnvVars' => $whereEnvVars,
+                    'this'         => $this,
                 ]
-            )
-        );
+            );
+            self::assertContains($variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME], self::APP_CODE_HOST_LEAF_KINDS, $ctx);
+            self::assertContains($variant[self::TESTS_GROUP_ENV_VAR_NAME], self::TESTS_LEAF_GROUPS, $ctx);
+        }
     }
 
     private function assertSufficientCoverageAgentUpgrade(): void

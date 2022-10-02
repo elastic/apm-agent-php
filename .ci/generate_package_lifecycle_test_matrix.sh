@@ -19,7 +19,7 @@ function appendTestsGroupVariants () {
     local rowSoFar="$1"
     local nextFunction="${2:-echo}"
     local -a nextFunctionArgs=( "${@:3}" )
-    for testsGroup in "${ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES[@]}"
+    for testsGroup in "${ELASTIC_APM_PHP_TESTS_LEAF_GROUPS_SHORT_NAMES[@]}"
     do
         ${nextFunction} "${rowSoFar},${testsGroup}" "${nextFunctionArgs[@]}"
     done
@@ -29,7 +29,7 @@ function appendAppHostKindVariants () {
     local rowSoFar="$1"
     local nextFunction="${2:-echo}"
     local -a nextFunctionArgs=( "${@:3}" )
-    for appendAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES[@]}" ; do
+    for appendAppHostKindShortName in "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_LEAF_KINDS_SHORT_NAMES[@]}" ; do
         ${nextFunction} "${rowSoFar},${appendAppHostKindShortName}" "${nextFunctionArgs[@]}"
     done
 }
