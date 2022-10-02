@@ -54,6 +54,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private const LINUX_PACKAGE_TYPE_DEB = 'deb';
     private const LINUX_PACKAGE_TYPE_RPM = 'rpm';
+    private const LINUX_PACKAGE_TYPE_TAR = 'tar';
+    private const LINUX_NATIVE_PACKAGE_TYPES = ['apk', self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM];
     private const LINUX_PACKAGE_TYPES = ['apk', self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM, 'tar'];
 
     private const APP_CODE_HOST_KIND_ALL = 'all';
@@ -337,10 +339,23 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         $assertForPhpVersionAndLogLevel(self::latestSupportedPhpVersion(), LogLevel::TRACE);
     }
 
+    private function assertSufficientCoverageLifecycleTarPackage(): void
+    {
+        foreach (self::SUPPORTED_PHP_VERSIONS as $phpVersion) {
+            $this->assertAllTestsAreSmoke(
+                [
+                    self::PHP_VERSION_KEY        => $phpVersion,
+                    self::LINUX_PACKAGE_TYPE_KEY => self::LINUX_PACKAGE_TYPE_TAR,
+                    self::TESTING_TYPE_KEY       => self::LIFECYCLE_TESTING_TYPE,
+                ]
+            );
+        }
+    }
+
     private function assertSufficientCoverageLifecycle(): void
     {
         foreach (self::SUPPORTED_PHP_VERSIONS as $phpVersion) {
-            foreach (self::LINUX_PACKAGE_TYPES as $linuxPackageType) {
+            foreach (self::LINUX_NATIVE_PACKAGE_TYPES as $linuxPackageType) {
                 $whereEnvVarsLifecycle = [
                     self::PHP_VERSION_KEY                 => $phpVersion,
                     self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
@@ -369,6 +384,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
                 }
             }
         }
+
+        self::assertSufficientCoverageLifecycleWithIncreasedLogLevel();
+        self::assertSufficientCoverageLifecycleTarPackage();
     }
 
     /**
@@ -451,7 +469,6 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     {
         self::assertSufficientCoverageAgentUpgrade();
         self::assertSufficientCoverageLifecycle();
-        self::assertSufficientCoverageLifecycleWithIncreasedLogLevel();
         self::assertSufficientCoveragePhpUpgrade();
     }
 
