@@ -37,7 +37,7 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
  *
  * @internal
  */
-class MetricSetData implements SerializableDataInterface, LoggableInterface
+class MetricSet implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 

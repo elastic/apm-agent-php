@@ -26,7 +26,7 @@ namespace Elastic\Apm\Impl\BreakdownMetrics;
 use Closure;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Transaction;
 
 /**
@@ -67,11 +67,11 @@ class PerTransaction implements LoggableInterface
     }
 
     /**
-     * @param Closure(MetricSetData): void $consumeMetricSet
+     * @param Closure(MetricSet): void $consumeMetricSet
      */
     public function forEachMetricSet(Closure $consumeMetricSet): void
     {
-        $metricSet = new MetricSetData();
+        $metricSet = new MetricSet();
         $metricSet->timestamp = $this->transaction->getTimestamp();
         $metricSet->transactionName = $this->transaction->getName();
         $metricSet->transactionType = $this->transaction->getType();
@@ -99,7 +99,7 @@ class PerTransaction implements LoggableInterface
         $consumeMetricSet($metricSet);
     }
 
-    private static function setSelfTimeSamples(LeafData $leafData, MetricSetData $dstMetricSet): void
+    private static function setSelfTimeSamples(LeafData $leafData, MetricSet $dstMetricSet): void
     {
         $dstMetricSet->setSample(self::SPAN_SELF_TIME_COUNT_SAMPLE_KEY, $leafData->count);
         $dstMetricSet->setSample(self::SPAN_SELF_TIME_SUM_US_SAMPLE_KEY, $leafData->sumMicroseconds);

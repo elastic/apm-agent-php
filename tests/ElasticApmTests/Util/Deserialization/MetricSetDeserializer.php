@@ -23,22 +23,22 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetricSetValidator;
 
-final class MetricSetDataDeserializer
+final class MetricSetDeserializer
 {
     use AssertValidTrait;
 
     /**
      * @param mixed $value
      *
-     * @return MetricSetData
+     * @return MetricSet
      */
-    public static function deserialize($value): MetricSetData
+    public static function deserialize($value): MetricSet
     {
-        $result = new MetricSetData();
+        $result = new MetricSet();
         DeserializationUtil::deserializeKeyValuePairs(
             DeserializationUtil::assertDecodedJsonMap($value),
             function ($key, $value) use ($result): bool {
@@ -67,7 +67,7 @@ final class MetricSetDataDeserializer
     /**
      * @param mixed $value
      */
-    private static function deserializeTransactionObject($value, MetricSetData $result): void
+    private static function deserializeTransactionObject($value, MetricSet $result): void
     {
         DeserializationUtil::deserializeKeyValuePairs(
             DeserializationUtil::assertDecodedJsonMap($value),
@@ -89,7 +89,7 @@ final class MetricSetDataDeserializer
     /**
      * @param mixed $value
      */
-    private static function deserializeSpanObject($value, MetricSetData $result): void
+    private static function deserializeSpanObject($value, MetricSet $result): void
     {
         DeserializationUtil::deserializeKeyValuePairs(
             DeserializationUtil::assertDecodedJsonMap($value),
