@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\ApmDataKind;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
@@ -48,7 +48,7 @@ class DataFromAgent implements LoggableInterface
     /** @var array<string, ErrorDto> */
     public $idToError = [];
 
-    /** @var MetricSetData[] */
+    /** @var MetricSet[] */
     public $metricSets = [];
 
     /**

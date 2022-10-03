@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTrans
 use Elastic\Apm\Impl\Error;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\ArrayUtilForTests;
@@ -77,7 +77,7 @@ final class MockEventSink implements EventSinkInterface
 
         if ($breakdownMetricsPerTransaction !== null) {
             $breakdownMetricsPerTransaction->forEachMetricSet(
-                function (MetricSetData $metricSetData) {
+                function (MetricSet $metricSetData) {
                     $this->consumeMetricSet($metricSetData);
                 }
             );
@@ -148,7 +148,7 @@ final class MockEventSink implements EventSinkInterface
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToError);
     }
 
-    private function consumeMetricSet(MetricSetData $original): void
+    private function consumeMetricSet(MetricSet $original): void
     {
         MetricSetValidator::assertValid($original);
 
