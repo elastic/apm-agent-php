@@ -13,7 +13,7 @@ interface TransactionContextUserInterface
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/user.json#L6
      *
-     * @param int|string|null $id
+     * @param null|int|string $id
      *
      * @return void
      */
@@ -26,11 +26,11 @@ interface TransactionContextUserInterface
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/user.json#L11
      *
-     * @param string|null $email
+     * @param ?string $email
      *
      * @return void
      */
-    public function setEmail($email): void;
+    public function setEmail(?string $email): void;
 
     /**
      * The username of the logged in user
@@ -39,9 +39,9 @@ interface TransactionContextUserInterface
      *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/user.json#L16
      *
-     * @param string|null $username
+     * @param ?string $username
      *
      * @return void
      */
-    public function setUsername($username): void;
+    public function setUsername(?string $username): void;
 }

@@ -468,11 +468,11 @@ void registerAtExitLogging()
     // atexit returns 0 if successful, or a nonzero value if an error occurs
     if ( atexit_retVal != 0 )
     {
-        ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
+        ELASTIC_APM_LOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
     }
     else
     {
-        ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Registered callback with atexit()" );
+        ELASTIC_APM_LOG_DEBUG( "Registered callback with atexit()" );
     }
 #endif
 }

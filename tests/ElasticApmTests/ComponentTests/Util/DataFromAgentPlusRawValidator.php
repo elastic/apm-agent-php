@@ -27,12 +27,14 @@ use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\Util\DataFromAgentValidator;
-use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
 use PHPUnit\Framework\TestCase;
 
-final class DataFromAgentPlusRawValidator extends DataValidator
+final class DataFromAgentPlusRawValidator
 {
+    use AssertValidTrait;
+
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
     private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
 

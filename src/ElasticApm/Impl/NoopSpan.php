@@ -39,13 +39,13 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
     /** @inheritDoc */
     public function getTransactionId(): string
     {
-        return NoopTransaction::ID;
+        return NoopExecutionSegment::ID;
     }
 
     /** @inheritDoc */
     public function getParentId(): string
     {
-        return NoopTransaction::ID;
+        return NoopExecutionSegment::ID;
     }
 
     /** @inheritDoc */

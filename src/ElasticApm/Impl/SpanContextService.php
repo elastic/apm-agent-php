@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextServiceInterface;
 use Elastic\Apm\SpanContextServiceTargetInterface;
 
@@ -31,29 +32,40 @@ use Elastic\Apm\SpanContextServiceTargetInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Span>
+ * @extends ContextPartWrapper<Span>
  */
-final class SpanContextService extends ContextDataWrapper implements SpanContextServiceInterface
+final class SpanContextService extends ContextPartWrapper implements SpanContextServiceInterface
 {
-    /** @var SpanContextServiceData */
-    private $data;
-
     /** @var ?SpanContextServiceTarget */
-    private $target = null;
+    public $target = null;
 
-    public function __construct(Span $owner, SpanContextServiceData $data)
+    public function __construct(Span $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     public function target(): SpanContextServiceTargetInterface
     {
         if ($this->target === null) {
-            $this->data->target = new SpanContextServiceTargetData();
-            $this->target = new SpanContextServiceTarget($this->owner, $this->data->target);
+            $this->target = new SpanContextServiceTarget($this->owner);
         }
 
         return $this->target;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return SerializationUtil::prepareForSerialization(/* ref */ $this->target);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('target', $this->target, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

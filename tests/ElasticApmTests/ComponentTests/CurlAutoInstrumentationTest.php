@@ -129,8 +129,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
          * transactions (2): client side + server side
          * spans (1): curl client side
          */
-        $dataFromAgent
-            = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(2)->spans(1));
+        $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(2)->spans(1));
     }
 
     public function testLocalClientExternalServer(): void

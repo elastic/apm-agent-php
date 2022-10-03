@@ -29,8 +29,6 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
-use ReflectionClass;
-use ReflectionException;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.

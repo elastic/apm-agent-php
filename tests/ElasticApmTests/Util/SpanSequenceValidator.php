@@ -24,24 +24,23 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use PHPUnit\Framework\TestCase;
 
-final class SpanSequenceValidator extends ExecutionSegmentDataValidator
+final class SpanSequenceValidator
 {
     use StaticClassTrait;
 
     /**
-     * @param SpanData[] $spans
+     * @param SpanDto[] $spans
      *
-     * @return SpanData[]
+     * @return SpanDto[]
      */
     private static function sortByStartTime(array $spans): array
     {
         usort(
             $spans,
-            function (SpanData $span_1, SpanData $span_2): int {
+            function (SpanDto $span_1, SpanDto $span_2): int {
                 return TimeUtilForTests::compareTimestamps($span_1->timestamp, $span_2->timestamp);
             }
         );
@@ -49,21 +48,21 @@ final class SpanSequenceValidator extends ExecutionSegmentDataValidator
     }
 
     /**
-     * @param SpanDataExpectations[] $expected
+     * @param SpanExpectations[] $expected
      *
      * @return void
      */
     public static function updateExpectationsEndTime(array $expected): void
     {
-        $timestampAfter = (new EventDataExpectations())->timestampAfter;
+        $timestampAfter = (new EventExpectations())->timestampAfter;
         foreach ($expected as $spanExpectation) {
             $spanExpectation->timestampAfter = $timestampAfter;
         }
     }
 
     /**
-     * @param SpanDataExpectations[] $expected
-     * @param SpanData[] $actual
+     * @param SpanExpectations[] $expected
+     * @param SpanDto[]          $actual
      *
      * @return void
      */
@@ -74,7 +73,7 @@ final class SpanSequenceValidator extends ExecutionSegmentDataValidator
 
         $actualSortedByStartTime = self::sortByStartTime($actual);
         for ($i = 0; $i < count($actual); ++$i) {
-            SpanDataValidator::validate($actualSortedByStartTime[$i], $expected[$i]);
+            $actualSortedByStartTime[$i]->assertMatches($expected[$i]);
         }
     }
 }

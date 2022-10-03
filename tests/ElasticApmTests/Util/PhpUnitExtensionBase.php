@@ -53,6 +53,6 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
     {
         self::$timestampBeforeTest = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         self::$timestampAfterTest = null;
-        TransactionDataExpectations::setDefaults();
+        TransactionExpectations::setDefaults();
     }
 }

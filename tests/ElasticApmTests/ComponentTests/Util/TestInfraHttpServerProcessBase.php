@@ -225,7 +225,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
         if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
-            $testConfigForRequest = TestConfigUtil::read(
+            $testConfigForRequest = ConfigUtilForTests::read(
                 new RequestHeadersRawSnapshotSource(
                     function (string $headerName) use ($request): ?string {
                         return self::getRequestHeader($request, $headerName);

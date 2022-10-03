@@ -93,30 +93,30 @@ final class ServerApiSchemaValidator
 
     public static function validateMetadata(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::METADATA_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::METADATA_SCHEMA_INDEX));
     }
 
-    public static function validateTransactionData(string $serializedData): void
+    public static function validateTransaction(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::TRANSACTION_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::TRANSACTION_SCHEMA_INDEX));
     }
 
-    public static function validateSpanData(string $serializedData): void
+    public static function validateSpan(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::SPAN_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::SPAN_SCHEMA_INDEX));
     }
 
-    public static function validateErrorData(string $serializedData): void
+    public static function validateError(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
     }
 
-    public static function validateMetricSetData(string $serializedData): void
+    public static function validateMetricSet(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::METRIC_SET_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::METRIC_SET_SCHEMA_INDEX));
     }
 
-    private static function validateEventData(string $serializedData, Closure $pathToSchemaSupplier): void
+    private static function validateEvent(string $serializedData, Closure $pathToSchemaSupplier): void
     {
         foreach ([true, false] as $isEarliestVariant) {
             $allowAdditionalPropertiesVariants = [true];
@@ -124,7 +124,7 @@ final class ServerApiSchemaValidator
                 $allowAdditionalPropertiesVariants[] = false;
             }
             foreach ($allowAdditionalPropertiesVariants as $allowAdditionalProperties) {
-                (new self())->validateEventDataAgainstSchemaVariant(
+                (new self())->validateEventAgainstSchemaVariant(
                     $serializedData,
                     $pathToSchemaSupplier($isEarliestVariant),
                     $allowAdditionalProperties
@@ -133,13 +133,13 @@ final class ServerApiSchemaValidator
         }
     }
 
-    private function validateEventDataAgainstSchemaVariant(
+    private function validateEventAgainstSchemaVariant(
         string $serializedData,
         string $relativePathToSchema,
         bool $allowAdditionalProperties
     ): void {
         try {
-            $this->validateEventDataAgainstSchemaVariantImpl(
+            $this->validateEventAgainstSchemaVariantImpl(
                 $serializedData,
                 $relativePathToSchema,
                 $allowAdditionalProperties
@@ -153,7 +153,7 @@ final class ServerApiSchemaValidator
         }
     }
 
-    private function validateEventDataAgainstSchemaVariantImpl(
+    private function validateEventAgainstSchemaVariantImpl(
         string $serializedData,
         string $relativePathToSchema,
         bool $allowAdditionalProperties

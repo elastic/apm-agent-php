@@ -25,7 +25,6 @@ namespace Elastic\Apm\Impl\BreakdownMetrics;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**

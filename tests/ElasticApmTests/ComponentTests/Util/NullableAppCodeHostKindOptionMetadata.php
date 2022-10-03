@@ -25,7 +25,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
 use Elastic\Apm\Impl\Config\NullableOptionMetadata;
-use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.

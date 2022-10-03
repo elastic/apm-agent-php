@@ -45,7 +45,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     use LoggableTrait;
 
     /**
-     * @var int|string|null
+     * @var null|int|string
      *
      * The error code set when the error happened, e.g. database error code
      *
@@ -56,7 +56,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $code = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The original error message
      *
@@ -65,7 +65,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $message = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * Describes the exception type's module namespace
      *
@@ -76,14 +76,14 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $module = null;
 
     /**
-     * @var StacktraceFrame[]|null
+     * @var null|StacktraceFrame[]
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
     public $stacktrace = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The length of a value is limited to 1024.
      *

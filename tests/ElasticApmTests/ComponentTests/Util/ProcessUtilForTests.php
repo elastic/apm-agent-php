@@ -37,7 +37,7 @@ final class ProcessUtilForTests
 
     public static function doesProcessExist(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "tasklist /FI \"PID eq $pid\" 2>NUL | find \"$pid\" >NUL"
             : "ps -p $pid";
 
@@ -59,7 +59,7 @@ final class ProcessUtilForTests
 
     public static function terminateProcess(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "taskkill /F /PID $pid >NUL"
             : "kill $pid > /dev/null";
 
@@ -74,7 +74,7 @@ final class ProcessUtilForTests
     public static function startBackgroundProcess(string $cmd, array $envVars): void
     {
         self::startProcessImpl(
-            TestOsUtil::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
+            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
             $envVars,
             [] /* <- descriptorSpec: */
         );

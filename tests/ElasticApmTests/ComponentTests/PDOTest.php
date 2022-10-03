@@ -37,8 +37,8 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
-use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
-use ElasticApmTests\Util\SpanDataExpectations;
+use ElasticApmTests\Util\DbSpanExpectationsBuilder;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
 
@@ -273,9 +273,9 @@ final class PDOTest extends ComponentTestCaseBase
             $appCodeArgs[DbAutoInstrumentationUtilForTests::DB_NAME_KEY] = $dbName;
         }
 
-        $sharedExpectations = DbSpanDataExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
-        $expectationsBuilder = new DbSpanDataExpectationsBuilder($sharedExpectations);
-        /** @var SpanDataExpectations[] $expectedSpans */
+        $sharedExpectations = DbSpanExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
+        $expectationsBuilder = new DbSpanExpectationsBuilder($sharedExpectations);
+        /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
             if ($wrapInTx) {

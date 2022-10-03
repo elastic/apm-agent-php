@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 
 class SamplingUnitTest extends TracerUnitTestCaseBase
 {
@@ -51,7 +51,7 @@ class SamplingUnitTest extends TracerUnitTestCaseBase
     {
         // Arrange
 
-        TransactionDataExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultIsSampled = null;
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder) use ($transactionSampleRate): void {
                 if ($transactionSampleRate !== null) {

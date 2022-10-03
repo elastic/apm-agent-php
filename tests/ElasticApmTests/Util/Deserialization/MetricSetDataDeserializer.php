@@ -24,11 +24,13 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\MetricSetData;
-use ElasticApmTests\Util\DataValidator;
-use ElasticApmTests\Util\MetricSetDataValidator;
+use ElasticApmTests\Util\AssertValidTrait;
+use ElasticApmTests\Util\MetricSetValidator;
 
 final class MetricSetDataDeserializer
 {
+    use AssertValidTrait;
+
     /**
      * @param mixed $value
      *
@@ -42,7 +44,7 @@ final class MetricSetDataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'timestamp':
-                        $result->timestamp = DataValidator::validateTimestamp($value);
+                        $result->timestamp = self::assertValidTimestamp($value);
                         return true;
                     case 'transaction':
                         self::deserializeTransactionObject($value, $result);
@@ -51,14 +53,14 @@ final class MetricSetDataDeserializer
                         self::deserializeSpanObject($value, $result);
                         return true;
                     case 'samples':
-                        $result->samples = MetricSetDataValidator::validateSamples($value);
+                        $result->samples = MetricSetValidator::assertValidSamples($value);
                         return true;
                     default:
                         return false;
                 }
             }
         );
-        MetricSetDataValidator::validate($result);
+        MetricSetValidator::assertValid($result);
         return $result;
     }
 
@@ -72,10 +74,10 @@ final class MetricSetDataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'name':
-                        $result->transactionName = DataValidator::validateKeywordString($value);
+                        $result->transactionName = self::assertValidKeywordString($value);
                         return true;
                     case 'type':
-                        $result->transactionType = DataValidator::validateKeywordString($value);
+                        $result->transactionType = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;
@@ -94,10 +96,10 @@ final class MetricSetDataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'subtype':
-                        $result->spanSubtype = DataValidator::validateKeywordString($value);
+                        $result->spanSubtype = self::assertValidKeywordString($value);
                         return true;
                     case 'type':
-                        $result->spanType = DataValidator::validateKeywordString($value);
+                        $result->spanType = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;

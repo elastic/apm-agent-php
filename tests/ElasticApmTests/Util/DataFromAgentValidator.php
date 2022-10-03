@@ -23,12 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
 use PHPUnit\Framework\TestCase;
 
-class DataFromAgentValidator extends DataValidator
+class DataFromAgentValidator
 {
+    use AssertValidTrait;
+
     /** @var DataFromAgentExpectations */
     protected $expectations;
 
@@ -49,27 +49,30 @@ class DataFromAgentValidator extends DataValidator
     private function validateImpl(): void
     {
         foreach ($this->actual->idToError as $error) {
-            ErrorDataValidator::validate($error, $this->expectations->error);
+            $error->assertMatches($this->expectations->error);
         }
 
         foreach ($this->actual->metadatas as $metadata) {
             TestCase::assertNotNull($metadata->service->agent);
             $agentEphemeralId = $metadata->service->agent->ephemeralId;
             TestCase::assertNotNull($agentEphemeralId);
-            DataValidator::validateNullableKeywordString($agentEphemeralId);
+            self::assertValidNullableKeywordString($agentEphemeralId);
             TestCase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
-            MetadataValidator::validate($metadata, $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]);
+            MetadataValidator::assertValid(
+                $metadata,
+                $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]
+            );
         }
 
         foreach ($this->actual->metricSets as $metricSet) {
-            MetricSetDataValidator::validate($metricSet, $this->expectations->metricSet);
+            MetricSetValidator::assertValid($metricSet, $this->expectations->metricSet);
         }
 
         $this->validateTraces();
     }
 
     /**
-     * @template T of \Elastic\Apm\Impl\ExecutionSegmentData
+     * @template T of \ElasticApmTests\Util\ExecutionSegmentDto
      *
      * @param array<string, T> $idToExecSegments
      *
@@ -94,11 +97,11 @@ class DataFromAgentValidator extends DataValidator
         TestCaseBase::assertListArrayIsSubsetOf(array_keys($spansByTraceId), array_keys($transactionsByTraceId));
         foreach ($transactionsByTraceId as $traceId => $idToTransaction) {
             TestCase::assertIsArray($idToTransaction);
-            /** @var array<string, TransactionData> $idToTransaction */
+            /** @var array<string, TransactionDto> $idToTransaction */
             $idToSpan = array_key_exists($traceId, $spansByTraceId) ? $spansByTraceId[$traceId] : [];
             TestCase::assertIsArray($idToSpan);
-            /** @var array<string, SpanData> $idToSpan */
-            TraceDataValidator::validate(new TraceDataActual($idToTransaction, $idToSpan), $this->expectations->trace);
+            /** @var array<string, SpanDto> $idToSpan */
+            TraceValidator::validate(new TraceActual($idToTransaction, $idToSpan), $this->expectations->trace);
         }
     }
 }

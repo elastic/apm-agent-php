@@ -29,6 +29,8 @@ interface JsonDeserializableInterface
 {
     /**
      * @param array<string, mixed> $decodedJson
+     *
+     * @noinspection PhpUnused
      */
     public function deserializeFromDecodedJson(array $decodedJson): void;
 }

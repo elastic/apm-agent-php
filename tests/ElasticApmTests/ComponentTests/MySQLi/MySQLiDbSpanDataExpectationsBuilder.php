@@ -23,20 +23,20 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\MySQLi;
 
-use ElasticApmTests\Util\DbSpanDataExpectationsBuilder;
-use ElasticApmTests\Util\SpanDataExpectations;
+use ElasticApmTests\Util\DbSpanExpectationsBuilder;
+use ElasticApmTests\Util\SpanExpectations;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanDataExpectationsBuilder
+final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanExpectationsBuilder
 {
     /** @var bool */
     private $isOOPApi;
 
-    public function __construct(bool $isOOPApi, SpanDataExpectations $shared)
+    public function __construct(bool $isOOPApi, SpanExpectations $shared)
     {
         parent::__construct($shared);
         $this->isOOPApi = $isOOPApi;
@@ -52,9 +52,9 @@ final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanDataExpectationsBu
      * @param string $methodName
      * @param ?string $funcName
      *
-     * @return SpanDataExpectations
+     * @return SpanExpectations
      */
-    public function fromNames(string $className, string $methodName, ?string $funcName = null): SpanDataExpectations
+    public function fromNames(string $className, string $methodName, ?string $funcName = null): SpanExpectations
     {
         return $this->isOOPApi
             ? $this->fromClassMethodNames($className, $methodName)

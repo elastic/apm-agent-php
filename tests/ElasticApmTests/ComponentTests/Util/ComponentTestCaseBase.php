@@ -27,10 +27,10 @@ use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -152,7 +152,7 @@ class ComponentTestCaseBase extends TestCaseBase
         return $dataFromAgent;
     }
 
-    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionData
+    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionDto
     {
         $this->assertEmpty($dataFromAgent->idToSpan);
 
