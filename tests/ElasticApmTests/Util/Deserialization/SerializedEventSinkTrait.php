@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\MetadataValidator;
@@ -134,19 +134,19 @@ trait SerializedEventSinkTrait
         );
     }
 
-    protected function validateAndDeserializeMetricSet(string $serializedMetricSetData): MetricSetData
+    protected function validateAndDeserializeMetricSet(string $serializedMetricSet): MetricSet
     {
         return self::validateAndDeserialize(
-            $serializedMetricSetData,
+            $serializedMetricSet,
             function (string $serializedSpanData): void {
                 if ($this->shouldValidateAgainstSchema) {
                     ServerApiSchemaValidator::validateMetricSet($serializedSpanData);
                 }
             },
-            function ($deserializedRawData): MetricSetData {
-                return MetricSetDataDeserializer::deserialize($deserializedRawData);
+            function ($deserializedRawData): MetricSet {
+                return MetricSetDeserializer::deserialize($deserializedRawData);
             },
-            function (MetricSetData $data): void {
+            function (MetricSet $data): void {
                 MetricSetValidator::assertValid($data);
             }
         );

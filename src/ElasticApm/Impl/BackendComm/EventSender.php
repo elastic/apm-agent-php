@@ -33,7 +33,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Transaction;
 
 /**
@@ -124,7 +124,7 @@ final class EventSender implements EventSinkInterface
 
         if ($breakdownMetricsPerTransaction !== null) {
             $breakdownMetricsPerTransaction->forEachMetricSet(
-                function (MetricSetData $metricSet) use (&$serializedEvents) {
+                function (MetricSet $metricSet) use (&$serializedEvents) {
                     $serializedEvents .= "\n";
                     $serializedEvents .= '{"metricset":';
                     $serializedEvents .= SerializationUtil::serializeAsJson($metricSet);

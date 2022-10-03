@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\MetricSetData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use PHPUnit\Framework\TestCase;
 
@@ -34,10 +34,10 @@ final class MetricSetValidator
     /** @var MetricSetExpectations */
     protected $expectations;
 
-    /** @var MetricSetData */
+    /** @var MetricSet */
     protected $actual;
 
-    private function __construct(MetricSetExpectations $expectations, MetricSetData $actual)
+    private function __construct(MetricSetExpectations $expectations, MetricSet $actual)
     {
         $this->expectations = $expectations;
         $this->actual = $actual;
@@ -64,7 +64,7 @@ final class MetricSetValidator
         self::assertValidSamples($this->actual->samples);
     }
 
-    public static function assertValid(MetricSetData $actual, ?MetricSetExpectations $expectations = null): void
+    public static function assertValid(MetricSet $actual, ?MetricSetExpectations $expectations = null): void
     {
         (new self($expectations ?? new MetricSetExpectations(), $actual))->assertValidImpl();
     }
