@@ -119,7 +119,8 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     {
         $currentJsonElement = &$deserializedJson;
         foreach ($pathToElement as $currentPathPart) {
-            $this->assertArrayHasKey($currentPathPart, $currentJsonElement);
+            self::assertIsArray($currentJsonElement);
+            self::assertArrayHasKey($currentPathPart, $currentJsonElement);
             $currentJsonElement = &$currentJsonElement[$currentPathPart];
         }
         return $currentJsonElement;
