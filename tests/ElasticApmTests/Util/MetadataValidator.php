@@ -33,15 +33,17 @@ use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SystemData;
 use PHPUnit\Framework\TestCase;
 
-final class MetadataValidator extends DataValidator
+final class MetadataValidator
 {
+    use AssertValidTrait;
+
     /** @var MetadataExpectations */
     protected $expectations;
 
     /** @var Metadata */
     protected $actual;
 
-    public static function validate(Metadata $actual, ?MetadataExpectations $expectations = null): void
+    public static function assertValid(Metadata $actual, ?MetadataExpectations $expectations = null): void
     {
         (new self($expectations ?? new MetadataExpectations(), $actual))->validateImpl();
     }
@@ -94,10 +96,10 @@ final class MetadataValidator extends DataValidator
 
     public static function validateServiceDataEx(ServiceData $serviceData): void
     {
-        self::validateKeywordString($serviceData->name);
-        self::validateNullableKeywordString($serviceData->nodeConfiguredName);
-        self::validateNullableKeywordString($serviceData->version);
-        self::validateNullableKeywordString($serviceData->environment);
+        self::assertValidKeywordString($serviceData->name);
+        self::assertValidNullableKeywordString($serviceData->nodeConfiguredName);
+        self::assertValidNullableKeywordString($serviceData->version);
+        self::assertValidNullableKeywordString($serviceData->environment);
 
         if ($serviceData->agent !== null) {
             self::validateServiceAgentDataEx($serviceData->agent);
@@ -136,14 +138,14 @@ final class MetadataValidator extends DataValidator
         self::validateNullableNameVersionData($serviceAgentData);
         TestCase::assertSame(MetadataDiscoverer::AGENT_NAME, $serviceAgentData->name);
         TestCase::assertSame(ElasticApm::VERSION, $serviceAgentData->version);
-        self::validateNullableKeywordString($serviceAgentData->ephemeralId);
+        self::assertValidNullableKeywordString($serviceAgentData->ephemeralId);
     }
 
     public static function validateSystemDataEx(SystemData $systemData): void
     {
-        self::validateNullableKeywordString($systemData->hostname);
-        self::validateNullableKeywordString($systemData->configuredHostname);
-        self::validateNullableKeywordString($systemData->detectedHostname);
+        self::assertValidNullableKeywordString($systemData->hostname);
+        self::assertValidNullableKeywordString($systemData->configuredHostname);
+        self::assertValidNullableKeywordString($systemData->detectedHostname);
         if ($systemData->configuredHostname === null) {
             TestCase::assertSame($systemData->detectedHostname, $systemData->hostname);
         } else {
@@ -190,7 +192,7 @@ final class MetadataValidator extends DataValidator
         if ($nameVersionData === null) {
             return;
         }
-        self::validateNullableKeywordString($nameVersionData->name);
-        self::validateNullableKeywordString($nameVersionData->version);
+        self::assertValidNullableKeywordString($nameVersionData->name);
+        self::assertValidNullableKeywordString($nameVersionData->version);
     }
 }

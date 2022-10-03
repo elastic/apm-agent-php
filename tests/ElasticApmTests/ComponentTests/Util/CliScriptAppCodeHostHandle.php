@@ -52,7 +52,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
     ) {
         $dbgProcessName = ClassNameUtil::fqToShort(CliScriptAppCodeHost::class) . '(' . $dbgInstanceName . ')';
         $appCodeHostParams = new AppCodeHostParams($dbgProcessName);
-        $appCodeHostParams->spawnedProcessInternalId = TestInfraUtil::generateSpawnedProcessInternalId();
+        $appCodeHostParams->spawnedProcessInternalId = InfraUtilForTests::generateSpawnedProcessInternalId();
         $setParamsFunc($appCodeHostParams);
 
         $agentConfigSourceBuilder = new AgentConfigSourceBuilder($resourcesCleaner->getClient(), $appCodeHostParams);
@@ -80,13 +80,13 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Starting...');
 
-        $cmdLine = TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
+        $cmdLine = InfraUtilForTests::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
                    . ' "' . FileUtilForTests::listToPath([__DIR__, $requestParams->scriptToRunAppCodeHost]) . '"';
         foreach ($requestParams->scriptToRunAppCodeHostArgs as $scriptToRunAppCodeHostArg) {
             $cmdLine .= ' ' . $scriptToRunAppCodeHostArg;
         }
 
-        $envVars = TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
+        $envVars = InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(getenv()),
             $this->appCodeHostParams->spawnedProcessInternalId,
             null /* <- targetServerPort */,
@@ -94,7 +94,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
             $this->appCodeHostParams->dbgProcessName
         );
         $dataPerRequestOptName = AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME;
-        $dataPerRequestEnvVarName = TestConfigUtil::envVarNameForTestOption($dataPerRequestOptName);
+        $dataPerRequestEnvVarName = ConfigUtilForTests::envVarNameForTestOption($dataPerRequestOptName);
         $envVars[$dataPerRequestEnvVarName] = $requestParams->dataPerRequest->serializeToString();
 
         $appCodeInvocation = $this->beforeAppCodeInvocation($requestParams);

@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\UtilTests;
 
-use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use PHPUnit\Framework\TestCase;
 

@@ -24,13 +24,14 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\StacktraceFrame;
-use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\AssertValidTrait;
 use PHPUnit\Framework\TestCase;
 
 final class StacktraceDeserializer
 {
+    use AssertValidTrait;
+
     /**
-     *
      * @param mixed $value
      *
      * @return StacktraceFrame[]
@@ -53,7 +54,7 @@ final class StacktraceDeserializer
             ++$nextExpectedIndex;
         }
 
-        DataValidator::validateStacktrace($frames);
+        self::assertValidStacktrace($frames);
         return $frames;
     }
 
@@ -76,15 +77,15 @@ final class StacktraceDeserializer
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':
-                    $filename = DataValidator::validateStacktraceFrameFilename($value);
+                    $filename = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'function':
-                    $function = DataValidator::validateStacktraceFrameFilename($value);
+                    $function = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'lineno':
-                    $lineNumber = DataValidator::validateStacktraceFrameLineNumber($value);
+                    $lineNumber = self::assertValidStacktraceFrameLineNumber($value);
                     break;
 
                 default:

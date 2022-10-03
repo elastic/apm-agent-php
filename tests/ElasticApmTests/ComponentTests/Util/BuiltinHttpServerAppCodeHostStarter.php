@@ -71,7 +71,7 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     /** @inheritDoc */
     protected function buildCommandLine(int $port): string
     {
-        return TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
+        return InfraUtilForTests::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
                . " -S localhost:$port"
                . ' "' . FileUtilForTests::listToPath([__DIR__, self::APP_CODE_HOST_ROUTER_SCRIPT]) . '"';
     }
@@ -79,7 +79,7 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     /** @inheritDoc */
     protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
     {
-        return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
+        return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(getenv()),
             $spawnedProcessInternalId,
             $port,

@@ -42,9 +42,9 @@ final class MockTracer
         $this->clock = $clock;
     }
 
-    public function beginTransaction(?string $name = null): MockTransactionData
+    public function beginTransaction(?string $name = null): MockTransaction
     {
-        return new MockTransactionData($name, $this, /* parent */ null);
+        return new MockTransaction($name, $this, /* parent */ null);
     }
 
     public function getCurrentTime(): float

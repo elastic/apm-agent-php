@@ -63,6 +63,7 @@ function elasticApmAssertSame(string $expr, $actual, $expected)
     elasticApmOnAssertFailure("the same", $expr, $actual, $expected);
 }
 
+/** @noinspection PhpUnused */
 function elasticApmAssertEqual(string $expr, $actual, $expected)
 {
     if ($expected == $actual) {
@@ -72,6 +73,7 @@ function elasticApmAssertEqual(string $expr, $actual, $expected)
     elasticApmOnAssertFailure("equal", $expr, $actual, $expected);
 }
 
+/** @noinspection PhpUnused */
 function elasticApmIsOsWindows(): bool
 {
     return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';

@@ -27,20 +27,20 @@ namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Closure;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\ExecutionSegmentData;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockClock;
-use ElasticApmTests\UnitTests\Util\MockSpanData;
+use ElasticApmTests\UnitTests\Util\MockSpan;
 use ElasticApmTests\UnitTests\Util\MockTracer;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\ExecutionSegmentDto;
 use ElasticApmTests\Util\InvalidEventDataException;
+use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TestCaseBase;
-use ElasticApmTests\Util\TraceDataActual;
-use ElasticApmTests\Util\TraceDataExpectations;
-use ElasticApmTests\Util\TraceDataValidator;
+use ElasticApmTests\Util\TraceActual;
+use ElasticApmTests\Util\TraceExpectations;
+use ElasticApmTests\Util\TraceValidator;
+use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Exception as PhpUnitException;
 use Throwable;
 
@@ -65,8 +65,8 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
+     * @param array<string, TransactionDto> $idToTransaction
+     * @param array<string, SpanDto>        $idToSpan
      * @param bool                           $forceEnableFlakyAssertions
      */
     public function assertValidOneTraceTransactionsAndSpans(
@@ -74,21 +74,21 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         array $idToSpan,
         bool $forceEnableFlakyAssertions = false
     ): void {
-        $expected = new TraceDataExpectations();
+        $expected = new TraceExpectations();
         $expected->transaction->timestampBefore = $this->startTimestamp;
         $expected->transaction->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
         $expected->span->timestampBefore = $this->startTimestamp;
         $expected->span->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
-        TraceDataValidator::validate(
-            new TraceDataActual($idToTransaction, $idToSpan),
+        TraceValidator::validate(
+            new TraceActual($idToTransaction, $idToSpan),
             $expected,
             $forceEnableFlakyAssertions
         );
     }
 
     /**
-     * @param TransactionData[]            $transactions
-     * @param SpanData[]                   $spans
+     * @param TransactionDto[]            $transactions
+     * @param SpanDto[]                   $spans
      * @param callable                     $corruptFunc
      *
      * @phpstan-param callable(): callable $corruptFunc
@@ -101,7 +101,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         $idToTransaction = self::idToEvent($transactions);
         $idToSpan = self::idToEvent($spans);
         self::assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan);
-        /** @var callable(): void */
+        /** @var callable(): void $revertCorruptFunc */
         $revertCorruptFunc = $corruptFunc();
         /** @noinspection PhpUnhandledExceptionInspection */
         self::assertInvalidTransactionsAndSpans($idToTransaction, $idToSpan);
@@ -110,8 +110,8 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
+     * @param array<string, TransactionDto> $idToTransaction
+     * @param array<string, SpanDto>        $idToSpan
      */
     private function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
@@ -132,11 +132,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param ExecutionSegmentData[] $events
+     * @param ExecutionSegmentDto[] $events
      *
-     * @return array<string, ExecutionSegmentData>
+     * @return array<string, ExecutionSegmentDto>
      *
-     * @template        T of ExecutionSegmentData
+     * @template        T of ExecutionSegmentDto
      * @phpstan-param   T[]          $events
      * @phpstan-return  array<string, T>
      *
@@ -151,12 +151,12 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param ExecutionSegmentData $execSeg
+     * @param ExecutionSegmentDto $execSeg
      * @param ?string              $newParentId
      *
      * @return Closure(): Closure(): void
      */
-    private static function makeCorruptParentIdFunc(ExecutionSegmentData $execSeg, ?string $newParentId): Closure
+    private static function makeCorruptParentIdFunc(ExecutionSegmentDto $execSeg, ?string $newParentId): Closure
     {
         return function () use ($execSeg, $newParentId): Closure {
             $oldParentId = self::getParentId($execSeg);
@@ -168,11 +168,11 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     }
 
     /**
-     * @param ExecutionSegmentData $execSeg
+     * @param ExecutionSegmentDto $execSeg
      *
      * @return Closure(): Closure(): void
      */
-    private static function makeCorruptRandomParentIdFunc(ExecutionSegmentData $execSeg): Closure
+    private static function makeCorruptRandomParentIdFunc(ExecutionSegmentDto $execSeg): Closure
     {
         return self::makeCorruptParentIdFunc(
             $execSeg,
@@ -180,7 +180,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
         );
     }
 
-    private static function makeCorruptRandomTransactionIdFunc(MockSpanData $span): Closure
+    private static function makeCorruptRandomTransactionIdFunc(MockSpan $span): Closure
     {
         return function () use ($span): Closure {
             $oldTransactionId = $span->transactionId;

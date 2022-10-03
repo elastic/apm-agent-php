@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class SamplingTestSharedCode
 {

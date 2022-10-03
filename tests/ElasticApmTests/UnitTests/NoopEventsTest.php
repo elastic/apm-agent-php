@@ -173,6 +173,6 @@ class NoopEventsTest extends TracerUnitTestCaseBase
         $span->setName('test_span_name');
         $span->setSubtype('test_span_subtype');
         $span->setAction('test_span_action');
-        $this->assertSame(NoopTransaction::ID, $span->getParentId());
+        $this->assertSame(NoopExecutionSegment::ID, $span->getParentId());
     }
 }

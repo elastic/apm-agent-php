@@ -90,7 +90,7 @@ abstract class HttpServerStarter
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
             $currentTryPort = self::findFreePortToListen($portsInUse, $lastTriedPort);
             $lastTriedPort = $currentTryPort;
-            $currentTrySpawnedProcessInternalId = TestInfraUtil::generateSpawnedProcessInternalId();
+            $currentTrySpawnedProcessInternalId = InfraUtilForTests::generateSpawnedProcessInternalId();
             $cmdLine = $this->buildCommandLine($currentTryPort);
             $envVars = $this->buildEnvVars($currentTrySpawnedProcessInternalId, $currentTryPort);
 

@@ -23,9 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\MetadataDiscoverer;
-
-final class MetadataExpectations extends EventDataExpectations
+final class MetadataExpectations extends EventExpectations
 {
     /** @var Optional<?string> */
     public $agentEphemeralId;
@@ -51,6 +49,7 @@ final class MetadataExpectations extends EventDataExpectations
     public function __construct()
     {
         parent::__construct();
+
         $this->agentEphemeralId = new Optional();
         $this->configuredHostname = new Optional();
         $this->detectedHostname = new Optional();

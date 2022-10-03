@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -38,6 +37,7 @@ use ElasticApmTests\ComponentTests\Util\HttpConstantsForTests;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\DummyExceptionForTests;
+use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
 use Exception;
@@ -54,7 +54,7 @@ final class ErrorTest extends ComponentTestCaseBase
 
     private const INCLUDE_IN_ERROR_REPORTING = 'INCLUDE_IN_ERROR_REPORTING';
 
-    private function verifyError(DataFromAgent $dataFromAgent): ErrorData
+    private function verifyError(DataFromAgent $dataFromAgent): ErrorDto
     {
         $tx = $this->verifyOneEmptyTransaction($dataFromAgent);
         $err = $dataFromAgent->singleError();
@@ -87,11 +87,11 @@ final class ErrorTest extends ComponentTestCaseBase
 
     /**
      * @param array<string, mixed>[] $expectedStacktraceTop
-     * @param ErrorData              $err
+     * @param ErrorDto               $err
      *
      * @return void
      */
-    private static function verifyAppCodeStacktraceTop(array $expectedStacktraceTop, ErrorData $err): void
+    private static function verifyAppCodeStacktraceTop(array $expectedStacktraceTop, ErrorDto $err): void
     {
         self::assertNotNull($err->exception);
         $actualStacktrace = $err->exception->stacktrace;
@@ -99,7 +99,7 @@ final class ErrorTest extends ComponentTestCaseBase
         self::assertNotEmpty($actualStacktrace);
         self::assertGreaterThanOrEqual(count($expectedStacktraceTop), count($actualStacktrace));
 
-        /** @var StacktraceFrame */
+        /** @var StacktraceFrame $bottomFrame */
         $bottomFrame = ArrayUtilForTests::getLastValue($actualStacktrace);
         self::assertSame('ElasticApmTests\\ComponentTests\\Util\\AppCodeHostBase::run()', $bottomFrame->function);
 
@@ -126,7 +126,7 @@ final class ErrorTest extends ComponentTestCaseBase
         return new DummyExceptionForTests('Exception for substitute error', /* code: */ 123);
     }
 
-    private static function verifySubstituteError(ErrorData $err): void
+    private static function verifySubstituteError(ErrorDto $err): void
     {
         self::assertNotNull($err->exception);
         self::assertSame('ElasticApmTests\\Util', $err->exception->module);

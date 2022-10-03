@@ -133,27 +133,27 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
 
     private function addTransaction(string $encodedJson): void
     {
-        $newTransaction = $this->validateAndDeserializeTransactionData($encodedJson);
+        $newTransaction = $this->validateAndDeserializeTransaction($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newTransaction->id));
         $this->result->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
     private function addSpan(string $encodedJson): void
     {
-        $newSpan = $this->validateAndDeserializeSpanData($encodedJson);
+        $newSpan = $this->validateAndDeserializeSpan($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newSpan->id));
         $this->result->idToSpan[$newSpan->id] = $newSpan;
     }
 
     private function addError(string $encodedJson): void
     {
-        $newError = $this->validateAndDeserializeErrorData($encodedJson);
+        $newError = $this->validateAndDeserializeError($encodedJson);
         ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->result->idToError);
     }
 
     private function addMetricSet(string $encodedJson): void
     {
-        $newMetricSet = $this->validateAndDeserializeMetricSetData($encodedJson);
+        $newMetricSet = $this->validateAndDeserializeMetricSet($encodedJson);
         $this->result->metricSets[] = $newMetricSet;
     }
 

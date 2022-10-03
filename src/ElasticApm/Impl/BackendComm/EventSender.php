@@ -34,7 +34,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSetData;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\Transaction;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -90,15 +90,16 @@ final class EventSender implements EventSinkInterface
     /** @inheritDoc */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
+        array $spans,
+        array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
+        ?Transaction $transaction
     ): void {
         if ($this->userAgentHttpHeader === null) {
-            /** @var string $serviceName service name cannot be null */
-            $serviceName = $metadata->service->name;
-            $this->userAgentHttpHeader = self::buildUserAgentHttpHeader($serviceName, $metadata->service->version);
+            $this->userAgentHttpHeader = self::buildUserAgentHttpHeader(
+                $metadata->service->name,
+                $metadata->service->version
+            );
         }
 
         $serializedMetadata = '{"metadata":';
@@ -107,14 +108,14 @@ final class EventSender implements EventSinkInterface
 
         $serializedEvents = $serializedMetadata;
 
-        foreach ($spansData as $span) {
+        foreach ($spans as $span) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"span":';
             $serializedEvents .= SerializationUtil::serializeAsJson($span);
             $serializedEvents .= '}';
         }
 
-        foreach ($errorsData as $error) {
+        foreach ($errors as $error) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"error":';
             $serializedEvents .= SerializationUtil::serializeAsJson($error);
@@ -132,10 +133,10 @@ final class EventSender implements EventSinkInterface
             );
         }
 
-        if ($transactionData !== null) {
+        if ($transaction !== null) {
             $serializedEvents .= "\n";
             $serializedEvents .= '{"transaction":';
-            $serializedEvents .= SerializationUtil::serializeAsJson($transactionData);
+            $serializedEvents .= SerializationUtil::serializeAsJson($transaction);
             $serializedEvents .= "}";
         }
 

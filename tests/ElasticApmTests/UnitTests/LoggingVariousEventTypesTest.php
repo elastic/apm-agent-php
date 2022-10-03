@@ -35,16 +35,13 @@ class LoggingVariousEventTypesTest extends TracerUnitTestCaseBase
         /** @var array<string, mixed> */
         $loggedTx = LoggingVariousTypesTest::logValueAndDecodeToJson($tx);
 
-        /** @var array<string, mixed> */
-        $loggedTxData = $loggedTx['data'];
-
         self::assertMapArrayIsSubsetOf(
             [
                 'name'      => 'test_TX_name',
                 'type'      => 'test_TX_type',
                 'timestamp' => 12345654321,
             ],
-            $loggedTxData
+            $loggedTx
         );
     }
 }

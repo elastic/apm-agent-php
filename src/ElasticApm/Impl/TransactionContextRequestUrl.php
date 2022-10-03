@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\TransactionContextRequestUrlInterface;
 
 /**
@@ -30,17 +31,34 @@ use Elastic\Apm\TransactionContextRequestUrlInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Transaction>
+ * @extends ContextPartWrapper<Transaction>
  */
-final class TransactionContextRequestUrl extends ContextDataWrapper implements TransactionContextRequestUrlInterface
+final class TransactionContextRequestUrl extends ContextPartWrapper implements TransactionContextRequestUrlInterface
 {
-    /** @var TransactionContextRequestUrlData */
-    private $data;
+    /** @var ?string */
+    public $domain = null;
 
-    public function __construct(Transaction $owner, TransactionContextRequestUrlData $data)
+    /** @var ?string */
+    public $full = null;
+
+    /** @var ?string */
+    public $original = null;
+
+    /** @var ?string */
+    public $path = null;
+
+    /** @var ?int */
+    public $port = null;
+
+    /** @var ?string */
+    public $protocol = null;
+
+    /** @var ?string */
+    public $query = null;
+
+    public function __construct(Transaction $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     /** @inheritDoc */
@@ -50,7 +68,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->full = Tracer::limitNullableKeywordString($full);
+        $this->full = Tracer::limitNullableKeywordString($full);
     }
 
     /** @inheritDoc */
@@ -60,7 +78,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->domain = Tracer::limitNullableKeywordString($domain);
+        $this->domain = Tracer::limitNullableKeywordString($domain);
     }
 
     /** @inheritDoc */
@@ -70,7 +88,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->original = Tracer::limitNullableKeywordString($original);
+        $this->original = Tracer::limitNullableKeywordString($original);
     }
 
     /** @inheritDoc */
@@ -80,7 +98,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->path = Tracer::limitNullableKeywordString($path);
+        $this->path = Tracer::limitNullableKeywordString($path);
     }
 
     /** @inheritDoc */
@@ -90,7 +108,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->port = $port;
+        $this->port = $port;
     }
 
     /** @inheritDoc */
@@ -100,7 +118,7 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->protocol = Tracer::limitNullableKeywordString($protocol);
+        $this->protocol = Tracer::limitNullableKeywordString($protocol);
     }
 
     /** @inheritDoc */
@@ -110,6 +128,34 @@ final class TransactionContextRequestUrl extends ContextDataWrapper implements T
             return;
         }
 
-        $this->data->query = Tracer::limitNullableKeywordString($query);
+        $this->query = Tracer::limitNullableKeywordString($query);
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return ($this->domain !== null)
+               || ($this->full !== null)
+               || ($this->original !== null)
+               || ($this->path !== null)
+               || ($this->port !== null)
+               || ($this->protocol !== null)
+               || ($this->query !== null);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('hostname', $this->domain, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('full', $this->full, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('raw', $this->original, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('pathname', $this->path, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('port', $this->port, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('protocol', $this->protocol, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('search', $this->query, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

@@ -96,8 +96,8 @@ final class DurationOptionTestValuesGenerator implements OptionTestValuesGenerat
             ['97.5', $noUnits(97.5)],
             ['1ms', 1],
             [" \n 97 \t ms ", 97],
-            ['1s', 1 * 1000],
-            ['1m', 1 * 60 * 1000],
+            ['1s', 1000],
+            ['1m', 60 * 1000],
             ['0.0', 0],
             ['0.0ms', 0],
             ['0.0s', 0],
@@ -185,7 +185,7 @@ final class DurationOptionTestValuesGenerator implements OptionTestValuesGenerat
                 foreach (DurationUnits::$suffixAndIdPairs as $durationUnitsSuffixAndIdPair) {
                     $unitsId = $durationUnitsSuffixAndIdPair[1];
                     $valueInUnits = self::convertFromMilliseconds($invalidValueInMilliseconds, $unitsId);
-                    yield strval($valueInUnits) . $durationUnitsSuffixAndIdPair[0];
+                    yield $valueInUnits . $durationUnitsSuffixAndIdPair[0];
                     if ($this->optionParser->defaultUnits() === $unitsId) {
                         yield strval($valueInUnits);
                     }
