@@ -25,8 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
-use Elastic\Apm\Impl\ExecutionSegmentContextData;
-use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
@@ -34,8 +32,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
@@ -64,12 +60,12 @@ class TestCaseBase extends TestCase
     /** @var ?Logger */
     private $logger = null;
 
-    public static function assertTransactionEquals(TransactionData $expected, TransactionData $actual): void
+    public static function assertTransactionEquals(TransactionDto $expected, TransactionDto $actual): void
     {
         self::assertEquals($expected, $actual);
     }
 
-    public static function assertSpanEquals(SpanData $expected, SpanData $actual): void
+    public static function assertSpanEquals(SpanDto $expected, SpanDto $actual): void
     {
         self::assertEquals($expected, $actual);
     }
@@ -170,23 +166,23 @@ class TestCaseBase extends TestCase
         }
     }
 
-    public static function getExecutionSegmentContext(ExecutionSegmentData $execSegData): ?ExecutionSegmentContextData
+    public static function getExecutionSegmentContext(ExecutionSegmentDto $execSegData): ?ExecutionSegmentContextDto
     {
-        if ($execSegData instanceof SpanData) {
+        if ($execSegData instanceof SpanDto) {
             return $execSegData->context;
         }
 
-        self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        self::assertInstanceOf(TransactionDto::class, $execSegData, DbgUtil::getType($execSegData));
         return $execSegData->context;
     }
 
     /**
-     * @param ExecutionSegmentData $execSegData
+     * @param ExecutionSegmentDto $execSegData
      * @param string               $key
      *
      * @return bool
      */
-    public static function hasLabel(ExecutionSegmentData $execSegData, string $key): bool
+    public static function hasLabel(ExecutionSegmentDto $execSegData, string $key): bool
     {
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null) {
@@ -197,11 +193,11 @@ class TestCaseBase extends TestCase
 
     /**
      * @param int                  $expectedCount
-     * @param ExecutionSegmentData $execSegData
+     * @param ExecutionSegmentDto $execSegData
      *
      * @return void
      */
-    public static function assertLabelsCount(int $expectedCount, ExecutionSegmentData $execSegData): void
+    public static function assertLabelsCount(int $expectedCount, ExecutionSegmentDto $execSegData): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null) {
@@ -212,11 +208,11 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param ExecutionSegmentData $execSegData
+     * @param ExecutionSegmentDto $execSegData
      *
      * @return array<string, string|bool|int|float|null>
      */
-    public static function getLabels(ExecutionSegmentData $execSegData): array
+    public static function getLabels(ExecutionSegmentDto $execSegData): array
     {
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null) {
@@ -226,12 +222,12 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param ExecutionSegmentData $execSegData
+     * @param ExecutionSegmentDto $execSegData
      * @param string               $key
      *
      * @return string|bool|int|float|null
      */
-    public static function getLabel(ExecutionSegmentData $execSegData, string $key)
+    public static function getLabel(ExecutionSegmentDto $execSegData, string $key)
     {
         $context = self::getExecutionSegmentContext($execSegData);
         self::assertNotNull($context);
@@ -239,7 +235,7 @@ class TestCaseBase extends TestCase
         return $context->labels[$key];
     }
 
-    public static function assertHasLabel(ExecutionSegmentData $execSegData, string $key, string $message = ''): void
+    public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key, string $message = ''): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
         self::assertNotNull($context, LoggableToString::convert(['execSegData' => $execSegData]) . '. ' . $message);
@@ -250,7 +246,7 @@ class TestCaseBase extends TestCase
         );
     }
 
-    public static function assertNotHasLabel(ExecutionSegmentData $execSegData, string $key): void
+    public static function assertNotHasLabel(ExecutionSegmentDto $execSegData, string $key): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null) {
@@ -300,8 +296,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualMaps(array $expected, array $actual, string $message = ''): void
     {
-        self::assertMapIsSubsetOf($expected, $actual);
-        self::assertMapIsSubsetOf($actual, $expected);
+        self::assertMapIsSubsetOf($expected, $actual, $message);
+        self::assertMapIsSubsetOf($actual, $expected, $message);
     }
 
     /**
@@ -337,24 +333,24 @@ class TestCaseBase extends TestCase
         return self::$noopLoggerFactory;
     }
 
-    public static function getParentId(ExecutionSegmentData $execSegData): ?string
+    public static function getParentId(ExecutionSegmentDto $execSegData): ?string
     {
-        if ($execSegData instanceof SpanData) {
+        if ($execSegData instanceof SpanDto) {
             return $execSegData->parentId;
         }
 
-        self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+        self::assertInstanceOf(TransactionDto::class, $execSegData, DbgUtil::getType($execSegData));
         return $execSegData->parentId;
     }
 
     /** @noinspection PhpIfWithCommonPartsInspection */
-    public static function setParentId(ExecutionSegmentData $execSegData, ?string $newParentId): void
+    public static function setParentId(ExecutionSegmentDto $execSegData, ?string $newParentId): void
     {
-        if ($execSegData instanceof SpanData) {
+        if ($execSegData instanceof SpanDto) {
             self::assertNotNull($newParentId);
             $execSegData->parentId = $newParentId;
         } else {
-            self::assertInstanceOf(TransactionData::class, $execSegData, DbgUtil::getType($execSegData));
+            self::assertInstanceOf(TransactionDto::class, $execSegData, DbgUtil::getType($execSegData));
             $execSegData->parentId = $newParentId;
         }
 
@@ -514,23 +510,23 @@ class TestCaseBase extends TestCase
         TestCaseBase::assertLessThanOrEqualTimestamp($timestamp, $futureTimestamp);
     }
 
-    public static function calcEndTime(ExecutionSegmentData $timedData): float
+    public static function calcEndTime(ExecutionSegmentDto $timedData): float
     {
         return $timedData->timestamp + TimeUtil::millisecondsToMicroseconds($timedData->duration);
     }
 
     /**
-     * @param TransactionData         $transaction
-     * @param array<string, SpanData> $idToSpan
+     * @param TransactionDto         $transaction
+     * @param array<string, SpanDto> $idToSpan
      * @param bool                    $forceEnableFlakyAssertions
      */
     protected static function assertValidTransactionAndSpans(
-        TransactionData $transaction,
+        TransactionDto $transaction,
         array $idToSpan,
         bool $forceEnableFlakyAssertions = false
     ): void {
-        TraceDataValidator::validate(
-            new TraceDataActual([$transaction->id => $transaction], $idToSpan),
+        TraceValidator::validate(
+            new TraceActual([$transaction->id => $transaction], $idToSpan),
             null /* <- expected */,
             $forceEnableFlakyAssertions
         );

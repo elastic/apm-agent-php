@@ -115,7 +115,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
                 // Return false for entries to be removed
 
                 // Keep environment variables related to testing infrastructure
-                if (TextUtil::isPrefixOfIgnoreCase(TestConfigUtil::ENV_VAR_NAME_PREFIX, $envVarName)) {
+                if (TextUtil::isPrefixOfIgnoreCase(ConfigUtilForTests::ENV_VAR_NAME_PREFIX, $envVarName)) {
                     return true;
                 }
 
@@ -155,7 +155,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
         $result = $envVars;
         $agentOptionsToEnvVars = $this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::envVars());
         foreach ($agentOptionsToEnvVars as $optName => $optVal) {
-            $result[TestConfigUtil::envVarNameForAgentOption($optName)] = strval($optVal);
+            $result[ConfigUtilForTests::envVarNameForAgentOption($optName)] = strval($optVal);
         }
         return $result;
     }

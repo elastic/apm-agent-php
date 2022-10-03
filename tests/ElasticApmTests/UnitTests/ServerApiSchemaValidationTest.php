@@ -41,7 +41,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $tx->context()->setLabel('test_label_key', 'test_label_value');
         $tx->end();
-        return SerializationUtil::serializeAsJson($mockEventSink->singleTransaction());
+        return SerializationUtil::serializeAsJson($tx);
     }
 
     private function createSerializedSpan(): string
@@ -53,7 +53,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $span->context()->setLabel('test_label_key', 'test_label_value');
         $span->end();
         $tx->end();
-        return SerializationUtil::serializeAsJson($mockEventSink->singleSpan());
+        return SerializationUtil::serializeAsJson($span);
     }
 
     /**
@@ -81,7 +81,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
             $testImpl,
             self::createSerializedTransaction(),
             function (string $serializedTransaction): void {
-                ServerApiSchemaValidator::validateTransactionData($serializedTransaction);
+                ServerApiSchemaValidator::validateTransaction($serializedTransaction);
             }
         );
     }
@@ -95,7 +95,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
             $testImpl,
             self::createSerializedSpan(),
             function (string $serializedSpan): void {
-                ServerApiSchemaValidator::validateSpanData($serializedSpan);
+                ServerApiSchemaValidator::validateSpan($serializedSpan);
             }
         );
     }

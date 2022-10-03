@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextDbInterface;
 
 /**
@@ -30,17 +31,22 @@ use Elastic\Apm\SpanContextDbInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Span>
+ * @extends ContextPartWrapper<Span>
  */
-final class SpanContextDb extends ContextDataWrapper implements SpanContextDbInterface
+final class SpanContextDb extends ContextPartWrapper implements SpanContextDbInterface
 {
-    /** @var SpanContextDbData */
-    private $data;
+    /**
+     * @var ?string
+     *
+     * A database statement (e.g. query) for the given database type
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L55
+     */
+    public $statement = null;
 
-    public function __construct(Span $owner, SpanContextDbData $data)
+    public function __construct(Span $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     /** @inheritDoc */
@@ -50,6 +56,22 @@ final class SpanContextDb extends ContextDataWrapper implements SpanContextDbInt
             return;
         }
 
-        $this->data->statement = $statement;
+        $this->statement = $statement;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return ($this->statement !== null);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('statement', $this->statement, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

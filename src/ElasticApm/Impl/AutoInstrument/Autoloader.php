@@ -45,7 +45,7 @@ final class Autoloader
         self::$elasticApmSrcDir = SrcRootDir::$fullPath . DIRECTORY_SEPARATOR . 'ElasticApm';
         self::$autoloadFqClassNamePrefixLength = strlen(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX);
 
-        spl_autoload_register([__CLASS__, 'autoloadCodeForClass'], /* throw: */ true);
+        spl_autoload_register([__CLASS__, 'autoloadCodeForClass']);
     }
 
     private static function shouldAutoloadCodeForClass(string $fqClassName): bool

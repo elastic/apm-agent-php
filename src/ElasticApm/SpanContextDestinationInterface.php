@@ -31,6 +31,8 @@ namespace Elastic\Apm;
 interface SpanContextDestinationInterface
 {
     /**
+     * Deprecated
+     *
      * Sets destination service context
      *
      * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L106

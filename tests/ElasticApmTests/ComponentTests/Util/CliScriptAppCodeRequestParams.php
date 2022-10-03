@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\UrlParts;
-
 final class CliScriptAppCodeRequestParams extends AppCodeRequestParams
 {
     private const DEFAULT_SCRIPT_TO_RUN_APP_CODE_HOST = 'runCliScriptAppCodeHost.php';

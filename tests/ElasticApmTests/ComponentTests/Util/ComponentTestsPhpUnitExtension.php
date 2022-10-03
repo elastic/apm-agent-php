@@ -99,7 +99,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => getenv()]);
 
-        TestConfigUtil::assertAgentDisabled();
+        ConfigUtilForTests::assertAgentDisabled();
     }
 
     public static function formatTime(float $durationInSeconds): string

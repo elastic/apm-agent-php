@@ -357,7 +357,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             }
         }
 
-        $newError = ErrorData::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
+        $newError = Error::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
 
         if ($isGoingToBeSentWithTransaction) {
             /**
@@ -445,23 +445,23 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /**
-     * @param SpanData[]                      $spansData
-     * @param ErrorData[]                     $errorsData
+     * @param Span[]                          $spans
+     * @param Error[]                         $errors
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
-     * @param ?TransactionData                $transactionData
+     * @param ?Transaction                    $transaction
      */
     public function sendEventsToApmServer(
-        array $spansData,
-        array $errorsData,
+        array $spans,
+        array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
+        ?Transaction $transaction
     ): void {
         $this->eventSink->consume(
             $this->currentMetadata,
-            $spansData,
-            $errorsData,
+            $spans,
+            $errors,
             $breakdownMetricsPerTransaction,
-            $transactionData
+            $transaction
         );
     }
 

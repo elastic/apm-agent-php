@@ -30,7 +30,7 @@ interface SpanContextHttpInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L73
      *
-     * @param string|null $url
+     * @param ?string $url
      *
      * @return void
      */
@@ -41,7 +41,7 @@ interface SpanContextHttpInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L77
      *
-     * @param int|null $statusCode
+     * @param ?int $statusCode
      *
      * @return void
      */
@@ -54,7 +54,7 @@ interface SpanContextHttpInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L81
      *
-     * @param string|null $method
+     * @param ?string $method
      *
      * @return void
      */

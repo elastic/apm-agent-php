@@ -23,11 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
-use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
-use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
-use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
 use RuntimeException;
 

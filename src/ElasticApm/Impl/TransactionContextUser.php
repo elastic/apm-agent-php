@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\TransactionContextUserInterface;
 
 /**
@@ -11,68 +12,70 @@ use Elastic\Apm\TransactionContextUserInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Transaction>
+ * @extends ContextPartWrapper<Transaction>
  */
-final class TransactionContextUser extends ContextDataWrapper implements TransactionContextUserInterface
+final class TransactionContextUser extends ContextPartWrapper implements TransactionContextUserInterface
 {
-    /**
-     * @var TransactionContextUserData
-     */
-    private $data;
+    /** @var null|int|string */
+    public $id;
 
-    public function __construct(Transaction $owner, TransactionContextUserData $data)
+    /** @var ?string */
+    public $email;
+
+    /** @var ?string */
+    public $username;
+
+    public function __construct(Transaction $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    /** @inheritDoc */
     public function setId($id): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        if (is_string($id)) {
-            $this->data->id = Tracer::limitKeywordString($id);
-        } elseif (is_int($id)) {
-            $this->data->id = $id;
-        } elseif ($id === null) {
-            $this->data->id = $id;
-        }
+        $this->id = is_string($id) ? Tracer::limitKeywordString($id) : $id;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function setEmail($email): void
+    /** @inheritDoc */
+    public function setEmail(?string $email): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        if (is_string($email)) {
-            $this->data->email = Tracer::limitKeywordString($email);
-        } elseif ($email === null) {
-            $this->data->email = $email;
-        }
+        $this->email = Tracer::limitNullableKeywordString($email);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function setUsername($username): void
+    /** @inheritDoc */
+    public function setUsername(?string $username): void
     {
         if ($this->beforeMutating()) {
             return;
         }
 
-        if (is_string($username)) {
-            $this->data->username = Tracer::limitKeywordString($username);
-        } elseif ($username === null) {
-            $this->data->username = $username;
-        }
+        $this->username = Tracer::limitNullableKeywordString($username);
+    }
+
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return ($this->id !== null) || ($this->email !== null) || ($this->username !== null);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('id', $this->id, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('email', $this->email, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('username', $this->username, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

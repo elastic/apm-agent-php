@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -44,9 +45,42 @@ use Throwable;
  *
  * @internal
  */
-abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableInterface
+abstract class ExecutionSegment implements ExecutionSegmentInterface, SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
+
+    /** @var string */
+    public $name;
+
+    /** @var string */
+    public $type;
+
+    /** @var string */
+    public $id;
+
+    /** @var string */
+    public $traceId;
+
+    /** @var float UTC based and in microseconds since Unix epoch */
+    public $timestamp;
+
+    /** @var float In milliseconds with 3 decimal points */
+    public $duration;
+
+    /** @var ?string */
+    public $outcome = null;
+
+    /**
+     * @var ?float
+     *
+     * Sample rate applied to the monitored service at the time where this transaction/span was recorded.
+     * Allowed values are [0..1].
+     * A sample rate < 1 indicates that not all spans are recorded.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/transactions/transaction.json#L26
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/spans/span.json#L45
+     */
+    public $sampleRate = null;
 
     /** @var bool */
     protected $isDiscarded = false;
@@ -69,11 +103,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @var bool */
     private $isEnded = false;
 
-    /** @var ExecutionSegmentData */
-    private $data;
-
     protected function __construct(
-        ExecutionSegmentData $data,
         Tracer $tracer,
         ?ExecutionSegment $parentExecutionSegment,
         string $traceId,
@@ -86,16 +116,15 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         $monotonicClockNow = $clock->getMonotonicClockCurrentTime();
         $systemClockNow = $clock->getSystemClockCurrentTime();
 
-        $this->data = $data;
-        $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $this->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
 
         $this->systemClockBeginTime = $systemClockNow;
         if ($timestampArg === null) {
-            $this->data->timestamp = $systemClockNow;
+            $this->timestamp = $systemClockNow;
         } elseif ($timestampArg <= $systemClockNow) {
-            $this->data->timestamp = $timestampArg;
+            $this->timestamp = $timestampArg;
         } else {
-            $this->data->timestamp = $systemClockNow;
+            $this->timestamp = $systemClockNow;
 
             $localLogger = $tracer->loggerFactory()
                                   ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
@@ -108,19 +137,19 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
                     'timestampArg'   => $timestampArg,
                     'timestampArg - systemClockNow (seconds)'
                                      => TimeUtil::microsecondsToSeconds($timestampArg - $systemClockNow),
-                    'id'             => $this->data->id,
+                    'id'             => $this->id,
                     'name'           => $name,
                     'type'           => $type,
                 ]
             );
         }
         $this->diffStartTimeWithSystemClockOnBeginInMicroseconds
-            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->data->timestamp, $systemClockNow);
+            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timestamp, $systemClockNow);
         $this->monotonicBeginTime = $monotonicClockNow;
-        $this->data->traceId = $traceId;
+        $this->traceId = $traceId;
         $this->setName($name);
         $this->setType($type);
-        $this->data->sampleRate = $sampleRate;
+        $this->sampleRate = $sampleRate;
 
         if ($this->containingTransaction()->getConfig()->breakdownMetrics()) {
             $this->breakdownMetricsSelfTimeTracker = new BreakdownMetricsSelfTimeTracker($monotonicClockNow);
@@ -179,12 +208,12 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
 
     public function getName(): string
     {
-        return $this->data->name;
+        return $this->name;
     }
 
     public function getType(): string
     {
-        return $this->data->type;
+        return $this->type;
     }
 
     /**
@@ -293,19 +322,19 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @inheritDoc */
     public function getId(): string
     {
-        return $this->data->id;
+        return $this->id;
     }
 
     /** @inheritDoc */
     public function getTimestamp(): float
     {
-        return $this->data->timestamp;
+        return $this->timestamp;
     }
 
     /** @inheritDoc */
     public function getTraceId(): string
     {
-        return $this->data->traceId;
+        return $this->traceId;
     }
 
     /** @inheritDoc */
@@ -315,7 +344,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->name = Tracer::limitKeywordString($name);
+        $this->name = Tracer::limitKeywordString($name);
     }
 
     /** @inheritDoc */
@@ -325,7 +354,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->type = TextUtil::isEmptyString($type)
+        $this->type = TextUtil::isEmptyString($type)
             ? Constants::EXECUTION_SEGMENT_TYPE_DEFAULT
             : Tracer::limitKeywordString($type);
     }
@@ -368,13 +397,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->outcome = $outcome;
+        $this->outcome = $outcome;
     }
 
     /** @inheritDoc */
     public function getOutcome(): ?string
     {
-        return $this->data->outcome;
+        return $this->outcome;
     }
 
     /** @inheritDoc */
@@ -448,11 +477,11 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
                     ]
                 );
             }
-            $this->data->duration = TimeUtil::microsecondsToMilliseconds(
+            $this->duration = TimeUtil::microsecondsToMilliseconds(
                 $this->diffStartTimeWithSystemClockOnBeginInMicroseconds + $durationAfterBeginInMicroseconds
             );
         } else {
-            $this->data->duration = $durationArg;
+            $this->duration = $durationArg;
         }
 
         if ($this->breakdownMetricsSelfTimeTracker !== null && !$this->containingTransaction()->hasEnded()) {
@@ -512,5 +541,26 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     public function hasEnded(): bool
     {
         return $this->isEnded;
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValue('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
+        SerializationUtil::addNameValue('id', $this->id, /* ref */ $result);
+        SerializationUtil::addNameValue('trace_id', $this->traceId, /* ref */ $result);
+        SerializationUtil::addNameValue(
+            'timestamp',
+            SerializationUtil::adaptTimestamp($this->timestamp),
+            /* ref */ $result
+        );
+        SerializationUtil::addNameValue('duration', $this->duration, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('outcome', $this->outcome, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('sample_rate', $this->sampleRate, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

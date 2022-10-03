@@ -116,6 +116,7 @@ final class UrlUtil
 
     public static function isHttp(string $url): bool
     {
+        /** @noinspection HttpUrlsUsage */
         return TextUtil::isPrefixOf('http://', $url, /* isCaseSensitive */ false)
                || TextUtil::isPrefixOf('https://', $url, /* isCaseSensitive */ false);
     }

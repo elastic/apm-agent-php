@@ -104,7 +104,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
             $thisObj = new static(); // @phpstan-ignore-line
 
             if (!$thisObj->shouldAgentBeEnabled()) {
-                TestConfigUtil::assertAgentDisabled();
+                ConfigUtilForTests::assertAgentDisabled();
             }
 
             $thisObj->processConfig();
@@ -148,7 +148,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     {
         $optValue = AmbientContextForTests::testConfig()->getOptionValueByName($optName);
         if ($optValue === null) {
-            $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
+            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optName);
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Required configuration option is not set',

@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use PHPUnit\Framework\TestCase;
 
 final class DataProviderForTestBuilder

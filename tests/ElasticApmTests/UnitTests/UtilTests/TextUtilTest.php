@@ -134,11 +134,11 @@ class TextUtilTest extends TestCase
             return chr(TextUtil::flipLetterCase(ord($src[0])));
         };
 
-        self::assertSame($flipOneLetterString('A'), 'a');
-        self::assertNotEquals($flipOneLetterString('A'), 'A');
-        self::assertSame($flipOneLetterString('x'), 'X');
-        self::assertNotEquals($flipOneLetterString('x'), 'x');
-        self::assertSame($flipOneLetterString('0'), '0');
-        self::assertSame($flipOneLetterString('#'), '#');
+        self::assertSame('a', $flipOneLetterString('A'));
+        self::assertNotEquals('A', $flipOneLetterString('A'));
+        self::assertSame('X', $flipOneLetterString('x'));
+        self::assertNotEquals('x', $flipOneLetterString('x'));
+        self::assertSame('0', $flipOneLetterString('0'));
+        self::assertSame('#', $flipOneLetterString('#'));
     }
 }

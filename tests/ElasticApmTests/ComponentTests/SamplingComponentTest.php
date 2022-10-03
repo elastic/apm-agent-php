@@ -24,14 +24,13 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 
 /**
  * @group smoke
@@ -70,7 +69,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     {
         // Arrange
 
-        TransactionDataExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultIsSampled = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($transactionSampleRateOptVal): void {

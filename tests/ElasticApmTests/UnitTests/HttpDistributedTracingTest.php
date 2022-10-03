@@ -387,6 +387,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         return $result;
     }
 
+    /** @noinspection PhpUnusedPrivateMethodInspection */
     private static function generateOtherVendorKeyValuePairs(int $firstIndex, int $latIndex): string
     {
         TestCase::assertGreaterThanOrEqual($firstIndex, $latIndex);

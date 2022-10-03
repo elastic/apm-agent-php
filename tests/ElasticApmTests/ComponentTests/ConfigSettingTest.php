@@ -35,7 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -256,8 +256,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         string $optRawVal,
         $optExpectedVal
     ): void {
-        TransactionDataExpectations::$defaultIsSampled = null;
-        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        TransactionExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultDroppedSpansCount = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {

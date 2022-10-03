@@ -56,6 +56,7 @@ final class NoopDistributedTracingData
     public static function serializedToString(): string
     {
         if (self::$dataSerializedToString === null) {
+            /** @noinspection PhpDeprecationInspection */
             self::$dataSerializedToString = self::get()->serializeToString();
         }
 
