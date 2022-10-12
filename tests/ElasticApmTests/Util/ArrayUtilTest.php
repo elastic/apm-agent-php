@@ -48,4 +48,30 @@ final class ArrayUtilTest extends TestCaseBase
         // Non-consecutive keys
         self::assertFalse(ArrayUtil::isList([0 => 'a', 2 => 'b']));
     }
+
+    /**
+     * @return iterable<array{mixed[], mixed[]}>
+     */
+    public function dataProviderForTestIterateListInReverse(): iterable
+    {
+        yield [[], []];
+        yield [[1], [1]];
+        yield [[1, 'b'], ['b', 1]];
+    }
+
+    /**
+     * @dataProvider dataProviderForTestIterateListInReverse
+     *
+     * @param mixed[] $inputArray
+     * @param mixed[] $expectedOutputArray
+     *
+     * @return void
+     */
+    public static function testIterateListInReverse(array $inputArray, array $expectedOutputArray): void
+    {
+        $pair = IterableUtilForTests::zip($expectedOutputArray, ArrayUtilForTests::iterateListInReverse($inputArray));
+        foreach ($pair as [$expectedVal, $actualVal]) {
+            self::assertSame($expectedVal, $actualVal);
+        }
+    }
 }

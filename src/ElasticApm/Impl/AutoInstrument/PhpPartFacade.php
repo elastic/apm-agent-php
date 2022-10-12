@@ -243,7 +243,7 @@ final class PhpPartFacade
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {
                     BootstrapStageLogger::logDebug(
-                        'Received shutdown call from extension but transactionForExtensionRequest is null'
+                        'Received call from extension but transactionForExtensionRequest is null'
                         . ' - just returning...',
                         __LINE__,
                         __FUNCTION__
@@ -344,5 +344,14 @@ final class PhpPartFacade
         assert($tracer instanceof Tracer);
 
         return $tracer;
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     */
+    public static function emptyMethod(): void
+    {
     }
 }

@@ -24,10 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
@@ -39,7 +40,6 @@ use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\DummyExceptionForTests;
 use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\FileUtilForTests;
-use ElasticApmTests\Util\RangeUtilForTests;
 use Exception;
 
 /**
@@ -99,11 +99,11 @@ final class ErrorTest extends ComponentTestCaseBase
         self::assertNotEmpty($actualStacktrace);
         self::assertGreaterThanOrEqual(count($expectedStacktraceTop), count($actualStacktrace));
 
-        /** @var StacktraceFrame $bottomFrame */
+        /** @var StackTraceFrame $bottomFrame */
         $bottomFrame = ArrayUtilForTests::getLastValue($actualStacktrace);
         self::assertSame('ElasticApmTests\\ComponentTests\\Util\\AppCodeHostBase::run()', $bottomFrame->function);
 
-        foreach (RangeUtilForTests::generate(0, count($expectedStacktraceTop)) as $frameIndex) {
+        foreach (RangeUtil::generate(0, count($expectedStacktraceTop)) as $frameIndex) {
             $expectedFrame = $expectedStacktraceTop[$frameIndex];
             $actualFrame = $actualStacktrace[$frameIndex];
 

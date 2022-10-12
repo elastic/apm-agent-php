@@ -27,6 +27,9 @@ use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 
 final class TransactionContextDto extends ExecutionSegmentContextDto
 {
+    /** @var ?array<string, null|string|bool|int|float> */
+    public $custom = null;
+
     /** @var ?TransactionContextRequestDto */
     public $request = null;
 
@@ -49,6 +52,9 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
                 }
 
                 switch ($key) {
+                    case 'custom':
+                        $result->custom = self::assertValidCustom($value);
+                        return true;
                     case 'request':
                         $result->request = TransactionContextRequestDto::deserialize($value);
                         return true;
@@ -64,12 +70,24 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
         $result->assertValid();
         return $result;
     }
+    /**
+     * @param mixed $custom
+     *
+     * @return array<string, string|bool|int|float|null>
+     */
+    private static function assertValidCustom($custom): array
+    {
+        return self::assertValidKeyValueMap($custom, /* shouldBeKeywordString */ false);
+    }
 
     /** @inheritDoc */
     public function assertValid(): void
     {
         parent::assertValid();
 
+        if ($this->custom !== null) {
+            self::assertValidCustom($this->custom);
+        }
         if ($this->request !== null) {
             $this->request->assertValid();
         }

@@ -100,6 +100,9 @@ final class SamplingComponentTest extends ComponentTestCaseBase
         } elseif ($transactionSampleRate === 0.0) {
             $maxSpansCount = $minSpansCount;
         }
+        if ($transactionSampleRate === 1.0) {
+            TransactionExpectations::$defaultIsSampled = true;
+        }
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans($minSpansCount, $maxSpansCount)
         );

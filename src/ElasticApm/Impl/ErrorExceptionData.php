@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
@@ -40,7 +41,7 @@ use Throwable;
  *
  * @internal
  */
-class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
+class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -76,7 +77,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $module = null;
 
     /**
-     * @var null|StacktraceFrame[]
+     * @var null|StackTraceFrame[]
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
@@ -117,7 +118,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
             $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
             $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
-            $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
+            $result->stacktrace = StackTraceUtil::convertFromPhp($throwable->getTrace());
         }
 
         if ($customErrorData !== null) {
@@ -141,10 +142,20 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
         }
 
         if ($result->stacktrace === null) {
-            $result->stacktrace = StacktraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
+            $result->stacktrace = StackTraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
         }
 
         return $result;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return $this->code !== null
+               || $this->message !== null
+               || $this->module !== null
+               || $this->stacktrace !== null
+               || $this->type !== null;
     }
 
     /** @inheritDoc */

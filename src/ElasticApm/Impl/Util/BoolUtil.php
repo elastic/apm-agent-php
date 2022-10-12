@@ -36,4 +36,9 @@ final class BoolUtil
     {
         return $ifCond ? $thenCond : true;
     }
+
+    public static function toString(bool $val): string
+    {
+        return $val ? 'true' : 'false';
+    }
 }

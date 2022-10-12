@@ -119,10 +119,22 @@ final class Logger implements LoggableInterface
         return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
     }
 
+    public function ifTraceLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::TRACE, $srcCodeFunc);
+    }
+
     public function ifLevelEnabled(int $statementLevel, int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
-        return ($this->data->backend->getMaxEnabledLevel() >= $statementLevel)
+        return ($this->data->backend->isEnabledForLevel($statementLevel))
             ? new EnabledLoggerProxy($statementLevel, $srcCodeLine, $srcCodeFunc, $this->data)
+            : null;
+    }
+
+    public function ifLevelEnabledNoLine(int $statementLevel, string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return ($this->data->backend->isEnabledForLevel($statementLevel))
+            ? new EnabledLoggerProxyNoLine($statementLevel, $srcCodeFunc, $this->data)
             : null;
     }
 
@@ -133,7 +145,7 @@ final class Logger implements LoggableInterface
      */
     public function possiblySecuritySensitive($value)
     {
-        if ($this->data->backend->getMaxEnabledLevel() >= Level::TRACE) {
+        if ($this->data->backend->isEnabledForLevel(Level::TRACE)) {
             return $value;
         }
         return 'REDUCTED (POSSIBLY SECURITY SENSITIVE) DATA';

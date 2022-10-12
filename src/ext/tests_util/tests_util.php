@@ -81,6 +81,10 @@ function elasticApmIsOsWindows(): bool
 
 function sharedChecks(): void
 {
+    if (! extension_loaded('elastic_apm')) {
+        die('Extension elastic_apm must be installed');
+    }
+
     elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_STDERR')", getenv('ELASTIC_APM_LOG_LEVEL_STDERR'), 'CRITICAL');
     /** @noinspection PhpUndefinedFunctionInspection, PhpUndefinedConstantInspection */
     elasticApmAssertSame(

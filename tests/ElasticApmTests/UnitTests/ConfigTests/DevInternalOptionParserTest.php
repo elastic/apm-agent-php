@@ -58,7 +58,7 @@ class DevInternalOptionParserTest extends TestCaseBase
             $snapshotProperties[] = $subOptName;
         }
 
-        self::assertEqualLists(self::devInternalSubOptionNames(), $snapshotProperties);
+        self::assertEqualAsSets(self::devInternalSubOptionNames(), $snapshotProperties);
     }
 
     public function testParsing(): void

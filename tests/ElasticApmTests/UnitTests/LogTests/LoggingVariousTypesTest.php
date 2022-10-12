@@ -122,16 +122,21 @@ class LoggingVariousTypesTest extends TestCaseBase
     /**
      * @param string|null $className
      * @param bool        $isPropExcluded
+     * @param string|null $lateInitPropVal
      *
      * @return array<string, mixed>
      */
-    private static function expectedSimpleObject(?string $className = null, bool $isPropExcluded = true): array
-    {
+    private static function expectedSimpleObject(
+        ?string $className = null,
+        bool $isPropExcluded = true,
+        ?string $lateInitPropVal = null
+    ): array {
         return ($className === null ? [] : [LogConsts::TYPE_KEY => $className])
                + [
                    'intProp'            => 123,
                    'stringProp'         => 'Abc',
                    'nullableStringProp' => null,
+                   'lateInitProp'       => $lateInitPropVal,
                ]
                + ($isPropExcluded ? [] : ['excludedProp' => 'excludedProp value']);
     }
@@ -267,6 +272,18 @@ class LoggingVariousTypesTest extends TestCaseBase
                     'srcCodeFile' => $srcCodeFile,
                 ]
             ]
+        );
+    }
+
+    public function testLateInit(): void
+    {
+        $obj = new ObjectForLoggableTraitTests();
+        self::logValueAndVerify($obj, self::expectedSimpleObject());
+        $lateInitPropVal = 'inited';
+        $obj->lateInitProp = $lateInitPropVal;
+        self::logValueAndVerify(
+            $obj,
+            self::expectedSimpleObject(/* className */ null, /* isPropExcluded */ true, $lateInitPropVal)
         );
     }
 }

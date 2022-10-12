@@ -32,6 +32,7 @@
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
 #define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
 #define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
+#define ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "emptyMethod"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
@@ -275,6 +276,33 @@ ResultCode setLastThrownToTracerPhpPart( zval* lastThrown )
 
     ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
+
+    failure:
+    goto finally;
+}
+
+void tracerPhpPartInterceptedCallEmptyMethod()
+{
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+    zval phpPartDummyArgs[ 1 ];
+    ZVAL_UNDEF( &( phpPartDummyArgs[ 0 ] ) );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO(
+            callPhpFunctionRetVoid(
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC )
+                    , 0 /* <- argsCount */
+                    , phpPartDummyArgs ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
+
+    resultCode = resultSuccess;
+
+    finally:
+
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
 
     failure:
     goto finally;

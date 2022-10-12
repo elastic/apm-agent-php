@@ -33,7 +33,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
         $inputList = ['a', 'b', 'c'];
         $expected =
             IterableUtilForTests::toList(CombinatorialUtilForTests::cartesianProduct([$inputList]));
-        TestCaseBase::assertEqualLists([['a'], ['b'], ['c']], $expected);
+        TestCaseBase::assertEqualAsSets([['a'], ['b'], ['c']], $expected);
         foreach (IterableUtilForTests::ALL_BOOL_VALUES as $onlyFirstValueCombinable) {
             $actual = IterableUtilForTests::toList(
                 $onlyFirstValueCombinable
@@ -44,7 +44,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
                     ->addDimensionAllValuesCombinable($inputList)
                     ->build()
             );
-            TestCaseBase::assertEqualLists($expected, $actual);
+            TestCaseBase::assertEqualAsSets($expected, $actual);
         }
     }
 
@@ -88,7 +88,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
                 CombinatorialUtilForTests::cartesianProduct([$inputList1, $inputList2])
             );
         }
-        TestCaseBase::assertEqualLists(
+        TestCaseBase::assertEqualAsSets(
             $expected,
             $actual,
             LoggableToString::convert(
@@ -170,7 +170,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
             $expected = $cartesianProduct;
         }
 
-        TestCaseBase::assertEqualLists(
+        TestCaseBase::assertEqualAsSets(
             $expected,
             $actual,
             LoggableToString::convert(
@@ -213,7 +213,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
                 CombinatorialUtilForTests::cartesianProduct([$inputList1, $inputList2])
             );
         }
-        TestCaseBase::assertEqualLists(
+        TestCaseBase::assertEqualAsSets(
             $expected,
             $actual,
             LoggableToString::convert(
@@ -266,7 +266,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
                 ['dimA' => 1.23, 'dimB' => 3, 'dimC' => 'b'],
                 ['dimA' => 4.56, 'dimB' => 3, 'dimC' => 'b'],
             ];
-        TestCaseBase::assertEqualLists(
+        TestCaseBase::assertEqualAsSets(
             $expected,
             $actual,
             LoggableToString::convert(['$expected' => $expected, 'actual' => $actual])
@@ -312,7 +312,7 @@ class DataProviderForTestBuilderTest extends TestCaseBase
                 [1.23, 3, 'b'],
                 [4.56, 3, 'b'],
             ];
-        TestCaseBase::assertEqualLists(
+        TestCaseBase::assertEqualAsSets(
             $expected,
             $actual,
             LoggableToString::convert(['$expected' => $expected, 'actual' => $actual])

@@ -21,51 +21,13 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
-
-use Elastic\Apm\Impl\Util\StaticClassTrait;
+namespace Elastic\Apm\Impl\Util;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class RangeUtilForTests
+final class ClassicFormatStackTraceFrame extends StackTraceFrameBase
 {
-    use StaticClassTrait;
-
-    /**
-     * @param int $begin
-     * @param int $end
-     * @param int $step
-     *
-     * @return iterable<int>
-     */
-    public static function generate(int $begin, int $end, int $step = 1): iterable
-    {
-        for ($i = $begin; $i < $end; $i += $step) {
-            yield $i;
-        }
-    }
-
-    /**
-     * @param int $count
-     *
-     * @return iterable<int>
-     */
-    public static function generateUpTo(int $count): iterable
-    {
-        return self::generate(0, $count);
-    }
-
-    /**
-     * @param int $first
-     * @param int $last
-     *
-     * @return iterable<int>
-     */
-    public static function generateFromToIncluding(int $first, int $last): iterable
-    {
-        return self::generate($first, $last + 1);
-    }
 }

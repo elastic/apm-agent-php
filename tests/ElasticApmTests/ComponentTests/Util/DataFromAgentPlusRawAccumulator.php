@@ -97,17 +97,18 @@ final class DataFromAgentPlusRawAccumulator implements LoggableInterface
     {
         foreach (ApmDataKind::all() as $apmDataKind) {
             $actualCount = $this->result->getApmDataCountForKind($apmDataKind);
+            $ctx = [
+                '$apmDataKind'                      => $apmDataKind,
+                '$expectedEventCounts'              => $expectedEventCounts,
+                '$actualCount'                      => $actualCount
+            ];
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Checking if has reached expected event count...', $ctx);
             $hasReachedEventCounts = $expectedEventCounts->hasReachedCountForKind($apmDataKind, $actualCount);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Checked if has reached expected event count',
-                [
-                    '$apmDataKind' => $apmDataKind,
-                    '$hasReachedEventCounts' => $hasReachedEventCounts,
-                    '$expectedEventCounts' => $expectedEventCounts,
-                    '$actualCount' => $actualCount,
-                    '$this' => $this,
-                ]
+                array_merge(['$hasReachedEventCounts' => $hasReachedEventCounts], $ctx)
             );
             if (!$hasReachedEventCounts) {
                 return false;

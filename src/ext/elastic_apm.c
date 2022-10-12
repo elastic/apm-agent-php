@@ -23,6 +23,7 @@
 #include "php_elastic_apm.h"
 // external libraries
 #include <php_ini.h>
+#include <php.h>
 #include <zend_types.h>
 #include "lifecycle.h"
 #include "supportability_zend.h"
@@ -125,7 +126,10 @@ PHP_INI_BEGIN()
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL )
     #endif
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_NON_KEYWORD_STRING_MAX_LENGTH )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_MIN_DURATION )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT )
@@ -299,7 +303,7 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
 /* }}} */
 
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_intercept_calls_to_internal_function_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 1 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ functionName, IS_STRING, /* allow_null: */ 0 )
+    ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, /* name */ functionName, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 /* {{{ elastic_apm_intercept_calls_to_internal_function( string $className, string $functionName ): int // <- interceptRegistrationId
  */

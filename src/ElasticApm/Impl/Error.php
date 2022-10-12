@@ -163,7 +163,14 @@ class Error implements SerializableDataInterface, LoggableInterface
 
         $result->exception = $errorExceptionData;
 
+        $result->prepareForSerialization();
         return $result;
+    }
+
+    private function prepareForSerialization(): void
+    {
+        SerializationUtil::prepareForSerialization(/* ref */ $this->context);
+        SerializationUtil::prepareForSerialization(/* ref */ $this->exception);
     }
 
     /** @inheritDoc */
@@ -171,41 +178,17 @@ class Error implements SerializableDataInterface, LoggableInterface
     {
         $result = [];
 
-        SerializationUtil::addNameValue(
-            'timestamp',
-            SerializationUtil::adaptTimestamp($this->timestamp),
-            /* ref */ $result
-        );
-        SerializationUtil::addNameValue('id', $this->id, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('trace_id', $this->traceId, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('transaction_id', $this->transactionId, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
+        $timestamp = SerializationUtil::adaptTimestamp($this->timestamp);
+        SerializationUtil::addNameValue('timestamp', $timestamp, /* ref */ $result);
 
-        if ($this->transaction !== null) {
-            SerializationUtil::addNameValueIfNotEmpty(
-                'transaction',
-                $this->transaction->jsonSerialize(),
-                /* ref */ $result
-            );
-        }
-
-        if ($this->context !== null) {
-            SerializationUtil::addNameValueIfNotEmpty(
-                'context',
-                $this->context->jsonSerialize(),
-                /* ref */ $result
-            );
-        }
-
+        SerializationUtil::addNameValueIfNotNull('context', $this->context, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('culprit', $this->culprit, /* ref */ $result);
-
-        if ($this->exception !== null) {
-            SerializationUtil::addNameValueIfNotEmpty(
-                'exception',
-                $this->exception->jsonSerialize(),
-                /* ref */ $result
-            );
-        }
+        SerializationUtil::addNameValueIfNotNull('exception', $this->exception, /* ref */ $result);
+        SerializationUtil::addNameValue('id', $this->id, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('trace_id', $this->traceId, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('transaction', $this->transaction, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('transaction_id', $this->transactionId, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

@@ -21,15 +21,13 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests\Util;
+namespace Elastic\Apm\Impl;
 
-use RuntimeException;
-use Throwable;
-
-class NotFoundException extends RuntimeException
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+interface SpanToSendInterface extends SerializableDataInterface
 {
-    public function __construct(string $message, int $code = 0, Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
 }

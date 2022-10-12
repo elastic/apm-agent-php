@@ -23,10 +23,14 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Span;
-use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\SpanToSendInterface;
+use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
+use PHPUnit\Framework\TestCase;
 
 class SpanDto extends ExecutionSegmentDto
 {
@@ -42,8 +46,8 @@ class SpanDto extends ExecutionSegmentDto
     /** @var ?string */
     public $subtype = null;
 
-    /** @var null|StacktraceFrame[] */
-    public $stacktrace = null;
+    /** @var null|StackTraceFrame[] */
+    public $stackTrace = null;
 
     /** @var ?SpanContextDto */
     public $context = null;
@@ -74,7 +78,7 @@ class SpanDto extends ExecutionSegmentDto
                         $result->parentId = self::assertValidId($value);
                         return true;
                     case 'stacktrace':
-                        $result->stacktrace = StacktraceDeserializer::deserialize($value);
+                        $result->stackTrace = StacktraceDeserializer::deserialize($value);
                         return true;
                     case 'subtype':
                         $result->subtype = self::assertValidKeywordString($value);
@@ -105,13 +109,81 @@ class SpanDto extends ExecutionSegmentDto
         self::assertValidId($this->transactionId);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
-        if ($this->stacktrace !== null) {
-            self::assertValidStacktrace($this->stacktrace);
+        if ($this->stackTrace === null) {
+            TestCase::assertNull($expectations->stackTrace);
+            TestCase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+        } else {
+            self::assertValidStacktrace($this->stackTrace);
+            if ($expectations->stackTrace !== null) {
+                TestCase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
+                self::assertStackTraceMatches(
+                    $expectations->stackTrace,
+                    $expectations->allowExpectedStackTraceToBePrefix,
+                    $this->stackTrace,
+                    [ClassNameUtil::fqToShort(get_class($this)) => $this]
+                );
+            }
         }
         SpanContextDto::assertNullableMatches($expectations->context, $this->context);
     }
 
-    public function assertEquals(Span $original): void
+    /**
+     * @param StackTraceFrame[]    $expectedStackTrace
+     * @param bool                 $allowExpectedStackTraceToBePrefix
+     * @param StackTraceFrame[]    $actualStackTrace
+     * @param array<string, mixed> $ctxOuter
+     *
+     * @return void
+     */
+    public static function assertStackTraceMatches(
+        array $expectedStackTrace,
+        bool $allowExpectedStackTraceToBePrefix,
+        array $actualStackTrace,
+        array $ctxOuter = []
+    ): void {
+        $ctxTop = array_merge(
+            [
+                'expectedStackTrace'                => $expectedStackTrace,
+                'actualStackTrace'                  => $actualStackTrace,
+                'allowExpectedStackTraceToBePrefix' => $allowExpectedStackTraceToBePrefix,
+            ],
+            $ctxOuter
+        );
+        $ctxTopStr = LoggableToString::convert($ctxTop);
+        if ($allowExpectedStackTraceToBePrefix) {
+            TestCase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+        } else {
+            TestCase::assertSame(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+        }
+        $expectedStackTraceCount = count($expectedStackTrace);
+        $actualStackTraceCount = count($actualStackTrace);
+        foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
+            $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
+            $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
+            $ctxPerFrame = array_merge(
+                [
+                    'expectedApmFrame'                  => $expectedApmFrame,
+                    'actualApmFrame'                    => $actualApmFrame,
+                    '$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1,
+                    '$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1,
+                ],
+                $ctxTop
+            );
+            $ctxPerFrameStr = LoggableToString::convert($ctxPerFrame);
+            TestCase::assertSame(count($expectedApmFrame), count($actualApmFrame), $ctxPerFrameStr);
+            foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
+                $ctxPerProp = LoggableToString::convert(
+                    array_merge(
+                        ['expectedPropName' => $expectedPropName, 'expectedPropVal' => $expectedPropVal],
+                        $ctxPerFrame
+                    )
+                );
+                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame, $ctxPerProp);
+            }
+        }
+    }
+
+    public function assertEquals(SpanToSendInterface $original): void
     {
         self::assertEqualOriginalAndDto($original, $this);
     }

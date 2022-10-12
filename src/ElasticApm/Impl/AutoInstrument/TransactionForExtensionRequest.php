@@ -27,9 +27,11 @@ use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
+use Elastic\Apm\Impl\InferredSpansManager;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -72,13 +74,20 @@ final class TransactionForExtensionRequest
     /** @var ?Throwable  */
     private $lastThrown = null;
 
+    /** @var ?InferredSpansManager  */
+    private $inferredSpansManager = null;
+
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
         $this->tracer = $tracer;
         $this->logger = $tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
+                               ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)
+                               ->addContext('this', $this);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
+        if ($this->transactionForRequest instanceof Transaction && $this->transactionForRequest->isSampled()) {
+            $this->inferredSpansManager = new InferredSpansManager($tracer);
+        }
     }
 
     private function beginTransaction(float $requestInitStartTime): ?TransactionInterface
@@ -336,6 +345,13 @@ final class TransactionForExtensionRequest
 
     public function onShutdown(): void
     {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered');
+
+        if ($this->inferredSpansManager !== null) {
+            $this->inferredSpansManager->shutdown();
+        }
+
         $tx = $this->transactionForRequest;
         if ($tx === null || $tx->isNoop() || $tx->hasEnded()) {
             return;

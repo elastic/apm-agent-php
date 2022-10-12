@@ -134,6 +134,18 @@ final class Snapshot implements LoggableInterface
     /** @var ?int */
     private $logLevelSyslog;
 
+    /** @var int */
+    private $nonKeywordStringMaxLength;
+
+    /** @var bool */
+    private $profilingInferredSpansEnabled;
+
+    /** @var float */
+    private $profilingInferredSpansMinDuration;
+
+    /** @var float */
+    private $profilingInferredSpansSamplingInterval;
+
     /** @var WildcardListMatcher */
     private $sanitizeFieldNames;
 
@@ -241,6 +253,11 @@ final class Snapshot implements LoggableInterface
         return $this->disableSend;
     }
 
+    public function effectiveLogLevel(): int
+    {
+        return $this->effectiveLogLevel;
+    }
+
     public function enabled(): bool
     {
         return $this->enabled;
@@ -256,9 +273,24 @@ final class Snapshot implements LoggableInterface
         return $this->hostname;
     }
 
-    public function effectiveLogLevel(): int
+    public function nonKeywordStringMaxLength(): int
     {
-        return $this->effectiveLogLevel;
+        return $this->nonKeywordStringMaxLength;
+    }
+
+    public function profilingInferredSpansEnabled(): bool
+    {
+        return $this->profilingInferredSpansEnabled;
+    }
+
+    public function profilingInferredSpansMinDurationInMilliseconds(): float
+    {
+        return $this->profilingInferredSpansMinDuration;
+    }
+
+    public function profilingInferredSpansSamplingInterval(): float
+    {
+        return $this->profilingInferredSpansSamplingInterval;
     }
 
     public function sanitizeFieldNames(): WildcardListMatcher

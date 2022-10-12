@@ -133,6 +133,7 @@ final class TraceValidator
             $span->assertMatches($this->expectations->span);
             TestCase::assertSame($transaction->id, $span->transactionId);
             TestCase::assertSame($transaction->traceId, $span->traceId);
+            TestCase::assertSame($transaction->sampleRate, $span->sampleRate);
 
             if ($span->parentId === $transaction->id) {
                 ExecutionSegmentDto::assertTimeNested($span, $transaction);
