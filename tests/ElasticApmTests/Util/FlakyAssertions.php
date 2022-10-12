@@ -33,7 +33,7 @@ final class FlakyAssertions
     use StaticClassTrait;
 
     private const ENABLED_ENV_VAR_NAME = 'ELASTIC_APM_PHP_TESTS_FLAKY_ASSERTIONS_ENABLED';
-    private const ENABLED_DEFAULT_VALUE = false;
+    private const ENABLED_DEFAULT_VALUE = true;
 
     /** @var ?bool */
     private static $areEnabled = null;
