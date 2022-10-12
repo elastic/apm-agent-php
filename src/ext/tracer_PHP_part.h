@@ -33,3 +33,5 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
 ResultCode onPhpErrorToTracerPhpPart( int type, const char* fileName, uint32_t lineNumber, const char* message );
 
 ResultCode setLastThrownToTracerPhpPart( zval* thrown );
+
+void tracerPhpPartInterceptedCallEmptyMethod();

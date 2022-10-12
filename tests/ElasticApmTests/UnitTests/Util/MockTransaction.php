@@ -43,7 +43,6 @@ final class MockTransaction extends TransactionDto
             $this->traceId = $parent->traceId;
             $this->parentId = $parent->id;
         }
-        $this->sampleRate = 1.0;
     }
 
     protected function getTransaction(): MockTransaction

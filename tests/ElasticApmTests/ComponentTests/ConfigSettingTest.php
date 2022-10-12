@@ -133,6 +133,14 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
+            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
+                                                  => $intRawToParsedValues,
+            OptionNames::PROFILING_INFERRED_SPANS_ENABLED
+                                                  => $boolRawToParsedValues(),
+            OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
+                                                  => $durationRawToParsedValues,
+            OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL
+                                                  => $durationRawToParsedValues,
             OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
             OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
             OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,

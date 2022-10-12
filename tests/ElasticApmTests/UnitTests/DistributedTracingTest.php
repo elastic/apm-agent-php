@@ -244,7 +244,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         $expectedTxIds = [$senderTransaction->getId(), $receiverTransaction->getId()];
         $actualTxIds = self::getIdsFromIdToMap($this->mockEventSink->idToTransaction());
         self::assertCount(2, $actualTxIds);
-        self::assertEqualLists($expectedTxIds, $actualTxIds);
+        self::assertEqualAsSets($expectedTxIds, $actualTxIds);
         $idToSpan = $this->mockEventSink->idToSpan();
         self::assertCount($isSentFromSpan ? 1 : 0, $idToSpan);
         $expectedParentId = $isSentFromSpan ? $senderSpan->getId() : $senderTransaction->getId();
@@ -487,11 +487,11 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         self::assertEmpty($this->mockEventSink->idToSpan());
 
         $expectedSenderTxIds = [$senderTxA->getId(), $senderTxB->getId()];
-        self::assertEqualLists($expectedSenderTxIds, self::getIdsFromIdToMap($senderEventSink->idToTransaction()));
+        self::assertEqualAsSets($expectedSenderTxIds, self::getIdsFromIdToMap($senderEventSink->idToTransaction()));
         $expectedSenderSpanIds = [$senderSpanA->getId(), $senderSpanB->getId()];
-        self::assertEqualLists($expectedSenderSpanIds, self::getIdsFromIdToMap($senderEventSink->idToSpan()));
+        self::assertEqualAsSets($expectedSenderSpanIds, self::getIdsFromIdToMap($senderEventSink->idToSpan()));
         $expectedReceiverTxIds = [$receiverTxA->getId(), $receiverTxB->getId()];
-        self::assertEqualLists(
+        self::assertEqualAsSets(
             $expectedReceiverTxIds,
             self::getIdsFromIdToMap($receiverEventSink->idToTransaction())
         );

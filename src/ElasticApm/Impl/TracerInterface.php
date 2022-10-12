@@ -78,6 +78,9 @@ interface TracerInterface
      */
     public function getCurrentTransaction(): TransactionInterface;
 
+    /**
+     * @return ExecutionSegmentInterface
+     */
     public function getCurrentExecutionSegment(): ExecutionSegmentInterface;
 
     /**

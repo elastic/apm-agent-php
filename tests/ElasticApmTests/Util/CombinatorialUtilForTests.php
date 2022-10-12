@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use InvalidArgumentException;
 
@@ -63,7 +64,7 @@ final class CombinatorialUtilForTests
             return;
         }
 
-        foreach (RangeUtilForTests::generateUpTo(count($totalSet)) as $firstIndex) {
+        foreach (RangeUtil::generateUpTo(count($totalSet)) as $firstIndex) {
             $newTotalSet = $totalSet;
             // remove the first element from $newTotalSet
             array_splice(/* ref */ $newTotalSet, $firstIndex, 1);

@@ -204,4 +204,27 @@ final class ArrayUtil
         }
         return true;
     }
+
+    /**
+     * @param array<string, mixed> $srcArray
+     * @param string               $key
+     * @param array<string, mixed> $dstArray
+     */
+    public static function copyByArrayKeyIfExists(array $srcArray, string $key, array &$dstArray): void
+    {
+        if (array_key_exists($key, $srcArray)) {
+            $dstArray[$key] = $srcArray[$key];
+        }
+    }
+
+    /**
+     * @param string               $key
+     * @param array<string, mixed> $array
+     */
+    public static function removeKeyIfExists(string $key, array &$array): void
+    {
+        if (array_key_exists($key, $array)) {
+            unset($array[$key]);
+        }
+    }
 }

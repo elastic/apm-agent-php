@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
 
@@ -35,7 +36,7 @@ use Elastic\Apm\SpanInterface;
  *
  * @internal
  */
-final class Span extends ExecutionSegment implements SpanInterface
+final class Span extends ExecutionSegment implements SpanInterface, SpanToSendInterface
 {
     /** @var string */
     public $parentId;
@@ -49,8 +50,8 @@ final class Span extends ExecutionSegment implements SpanInterface
     /** @var ?string */
     public $subtype = null;
 
-    /** @var null|StacktraceFrame[] */
-    public $stacktrace = null;
+    /** @var null|StackTraceFrame[] */
+    public $stackTrace = null;
 
     /** @var ?SpanContext */
     public $context = null;
@@ -132,7 +133,7 @@ final class Span extends ExecutionSegment implements SpanInterface
         return $this->parentExecutionSegment;
     }
 
-    private function shouldBeSentToApmServer(): bool
+    public function shouldBeSentToApmServer(): bool
     {
         return $this->containingTransaction->isSampled() && (!$this->isDropped);
     }
@@ -251,7 +252,7 @@ final class Span extends ExecutionSegment implements SpanInterface
 
         // This method is part of public API so it should be kept in the stack trace
         // if $numberOfStackFramesToSkip is 0
-        $this->stacktrace = StacktraceUtil::captureCurrent(
+        $this->stackTrace = StackTraceUtil::captureCurrent(
             $numberOfStackFramesToSkip,
             true /* <- hideElasticApmImpl */
         );
@@ -259,7 +260,7 @@ final class Span extends ExecutionSegment implements SpanInterface
         $this->prepareForSerialization();
 
         if ($this->shouldBeSentToApmServer()) {
-            $this->containingTransaction->queueSpanToSend($this);
+            $this->containingTransaction->tracer()->sendSpanToApmServer($this);
         }
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
@@ -306,7 +307,7 @@ final class Span extends ExecutionSegment implements SpanInterface
         SerializationUtil::addNameValue('transaction_id', $this->transactionId, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('action', $this->action, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('subtype', $this->subtype, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stacktrace, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stackTrace, /* ref */ $result);
 
         SerializationUtil::addNameValueIfNotNull('context', $this->context, /* ref */ $result);
 

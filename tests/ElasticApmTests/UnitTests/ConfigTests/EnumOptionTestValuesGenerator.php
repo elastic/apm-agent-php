@@ -24,9 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\ConfigTests;
 
 use Elastic\Apm\Impl\Config\EnumOptionParser;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\RandomUtilForTests;
-use ElasticApmTests\Util\RangeUtilForTests;
 
 /**
  * @template   T
@@ -77,7 +77,7 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
         }
 
         $letterIndexes = [];
-        foreach (RangeUtilForTests::generateUpTo(strlen($srcStr)) as $charIndex) {
+        foreach (RangeUtil::generateUpTo(strlen($srcStr)) as $charIndex) {
             if (TextUtil::isLetter(ord($srcStr[$charIndex]))) {
                 $letterIndexes[] = $charIndex;
             }
@@ -106,7 +106,7 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
     private function genCaseVariations(string $enumEntryName): iterable
     {
         $maxNumberOfLettersToFlip = $this->optionParser->isCaseSensitive() ? 0 : 2;
-        foreach (RangeUtilForTests::generateFromToIncluding(0, $maxNumberOfLettersToFlip) as $numberOfLettersToFlip) {
+        foreach (RangeUtil::generateFromToIncluding(0, $maxNumberOfLettersToFlip) as $numberOfLettersToFlip) {
             yield self::flipRandomLetters($enumEntryName, $numberOfLettersToFlip);
         }
     }
@@ -138,7 +138,7 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
             return;
         }
 
-        foreach (RangeUtilForTests::generateFromToIncluding(1, strlen($enumEntryName) - 1) as $lengthToCutOff) {
+        foreach (RangeUtil::generateFromToIncluding(1, strlen($enumEntryName) - 1) as $lengthToCutOff) {
             $prefix = substr($enumEntryName, 0, -$lengthToCutOff);
             if ($this->isUnambiguousPrefix($prefix)) {
                 yield $prefix;
@@ -211,7 +211,7 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
         }
 
         foreach ($this->optionParser->nameValuePairs() as $enumEntryNameAndValue) {
-            $lengthsToCutOffVars = RangeUtilForTests::generateFromToIncluding(0, strlen($enumEntryNameAndValue[0]) - 1);
+            $lengthsToCutOffVars = RangeUtil::generateFromToIncluding(0, strlen($enumEntryNameAndValue[0]) - 1);
             foreach ($lengthsToCutOffVars as $lengthToCutOff) {
                 $prefixBeforeCaseVariations = substr($enumEntryNameAndValue[0], 0, -$lengthToCutOff);
                 foreach ($this->genCaseVariations($prefixBeforeCaseVariations) as $prefix) {

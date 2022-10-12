@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\StackTraceFrame;
+
 final class SpanExpectations extends ExecutionSegmentExpectations
 {
     /** @var Optional<?string> */
@@ -33,6 +35,12 @@ final class SpanExpectations extends ExecutionSegmentExpectations
 
     /** @var Optional<?string> */
     public $subtype = null;
+
+    /** @var null|StackTraceFrame[] */
+    public $stackTrace = null;
+
+    /** @var ?bool */
+    public $allowExpectedStackTraceToBePrefix = null;
 
     public function __construct()
     {

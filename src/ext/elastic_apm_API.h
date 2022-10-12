@@ -42,3 +42,5 @@ ResultCode elasticApmSendToServer(
         , double serverTimeoutMilliseconds
         , StringView userAgentHttpHeader
         , StringView serializedEvents );
+
+ResultCode replaceSleepWithResumingAfterSignalImpl();

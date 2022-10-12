@@ -25,7 +25,7 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\Util\SpanDto;
@@ -38,7 +38,7 @@ use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME
 use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER;
 use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE;
 
-final class StacktraceTestSharedCode
+final class StackTraceTestSharedCode
 {
     public const SPAN_CREATING_API_LABEL_KEY = 'stacktrace / span creating API';
 
@@ -138,8 +138,8 @@ final class StacktraceTestSharedCode
             return $fullClassName . '::' . $funcName . '()';
         };
 
-        $buildStacktraceFrame = function (string $function, string $fileName, int $lineNumber): StacktraceFrame {
-            $result = new StacktraceFrame($fileName, $lineNumber);
+        $buildStacktraceFrame = function (string $function, string $fileName, int $lineNumber): StackTraceFrame {
+            $result = new StackTraceFrame($fileName, $lineNumber);
             $result->function = $function;
             return $result;
         };
@@ -150,7 +150,7 @@ final class StacktraceTestSharedCode
         /** @var string $spanCreatingApi */
         $spanCreatingApi = TestCaseBase::getLabel($span, self::SPAN_CREATING_API_LABEL_KEY);
 
-        /** @var StacktraceFrame[] $expectedStacktrace */
+        /** @var StackTraceFrame[] $expectedStacktrace */
         $expectedStacktrace = [];
         $expectedStacktrace[] = $buildStacktraceFrame(
             self::getStringFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'function')),
@@ -195,7 +195,7 @@ final class StacktraceTestSharedCode
             self::getIntFromExpectedData($expectedData, self::lineNumberKey('myInstanceMethod'))
         );
 
-        $actualStacktrace = $span->stacktrace;
+        $actualStacktrace = $span->stackTrace;
         TestCase::assertNotNull($actualStacktrace);
         for ($i = 0; $i < count($expectedStacktrace); ++$i) {
             $infoMsg = LoggableToString::convert(
@@ -217,6 +217,7 @@ final class StacktraceTestSharedCode
         $checkedSpansCount = 0;
         foreach ($idToSpan as $span) {
             $labels = $span->context === null ? [] : $span->context->labels;
+            TestCase::assertNotNull($labels);
             if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {
                 self::assertPartImplOneSpan($expectedData, $span);
                 ++$checkedSpansCount;

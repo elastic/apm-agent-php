@@ -26,7 +26,6 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
-use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;

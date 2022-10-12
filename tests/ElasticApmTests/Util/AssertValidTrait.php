@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -57,7 +57,7 @@ trait AssertValidTrait
      *
      * @return ?string
      */
-    public static function assertValidString($stringValue, bool $isNullable, int $maxLength): ?string
+    public static function assertValidString($stringValue, bool $isNullable, ?int $maxLength = null): ?string
     {
         if ($stringValue === null) {
             TestCase::assertTrue($isNullable);
@@ -67,7 +67,9 @@ trait AssertValidTrait
         TestCase::assertIsString($stringValue);
         /** @var string $stringValue */
 
-        TestCase::assertTrue(strlen($stringValue) <= $maxLength);
+        if ($maxLength !== null) {
+            TestCase::assertLessThanOrEqual($maxLength, strlen($stringValue));
+        }
         return $stringValue;
     }
 
@@ -131,11 +133,7 @@ trait AssertValidTrait
      */
     public static function assertValidNullableNonKeywordString($nonKeywordString): ?string
     {
-        return self::assertValidString(
-            $nonKeywordString,
-            /* isNullable: */ true,
-            Constants::NON_KEYWORD_STRING_MAX_LENGTH
-        );
+        return self::assertValidString($nonKeywordString, /* isNullable: */ true);
     }
 
     /**
@@ -211,7 +209,7 @@ trait AssertValidTrait
         return $function;
     }
 
-    public static function assertValidStacktraceFrame(StacktraceFrame $stacktraceFrame): void
+    public static function assertValidStacktraceFrame(StackTraceFrame $stacktraceFrame): void
     {
         self::assertValidStacktraceFrameFilename($stacktraceFrame->filename);
         self::assertValidStacktraceFrameLineNumber($stacktraceFrame->lineno);
@@ -219,7 +217,7 @@ trait AssertValidTrait
     }
 
     /**
-     * @param StacktraceFrame[] $stacktrace
+     * @param StackTraceFrame[] $stacktrace
      */
     public static function assertValidStacktrace(array $stacktrace): void
     {
@@ -275,26 +273,27 @@ trait AssertValidTrait
             TestCase::assertIsObject($original);
             $originalPropNameToVal = get_object_vars($original);
             foreach (get_object_vars($dto) as $dtoPropName => $dtoPropVal) {
-                TestCase::assertArrayHasKey(
-                    $dtoPropName,
-                    $originalPropNameToVal,
-                    LoggableToString::convert(
-                        [
-                            'dtoPropName'           => $dtoPropName,
-                            'originalPropNameToVal' => $originalPropNameToVal,
-                            'original'              => $original,
-                            'original type'         => DbgUtil::getType($original),
-                            'dto'                   => $dto,
-                            'dto type'              => DbgUtil::getType($dto),
-                            'dbgPath'               => $dbgPath,
-                        ]
-                    )
+                $ctx = LoggableToString::convert(
+                    [
+                        'dtoPropName'           => $dtoPropName,
+                        'originalPropNameToVal' => $originalPropNameToVal,
+                        'original'              => $original,
+                        'original type'         => DbgUtil::getType($original),
+                        'dto'                   => $dto,
+                        'dto type'              => DbgUtil::getType($dto),
+                        'dbgPath'               => $dbgPath,
+                    ]
                 );
-                self::assertEqualOriginalAndDto(
-                    $originalPropNameToVal[$dtoPropName],
-                    $dtoPropVal,
-                    ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '->' . $dtoPropName /* dbgPath */
-                );
+                if ($dtoPropVal !== null) {
+                    TestCase::assertArrayHasKey($dtoPropName, $originalPropNameToVal, $ctx);
+                }
+                if (array_key_exists($dtoPropName, $originalPropNameToVal)) {
+                    self::assertEqualOriginalAndDto(
+                        $originalPropNameToVal[$dtoPropName],
+                        $dtoPropVal,
+                        ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '->' . $dtoPropName /* dbgPath */
+                    );
+                }
             }
             return;
         }

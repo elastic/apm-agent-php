@@ -703,7 +703,10 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, nonKeywordStringMaxLength )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, profilingInferredSpansEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansMinDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansSamplingInterval )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, sanitizeFieldNames )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
@@ -929,10 +932,28 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     #endif
 
     ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            nonKeywordStringMaxLength,
+            ELASTIC_APM_CFG_OPT_NAME_NON_KEYWORD_STRING_MAX_LENGTH,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             profilingInferredSpansEnabled,
             ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED,
             /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            profilingInferredSpansMinDuration,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_MIN_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            profilingInferredSpansSamplingInterval,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,

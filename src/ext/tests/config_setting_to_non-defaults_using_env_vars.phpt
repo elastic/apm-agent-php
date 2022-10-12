@@ -1,7 +1,5 @@
 --TEST--
 Setting configuration options to non-default value (in this case using environment variables)
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=0

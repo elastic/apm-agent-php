@@ -59,11 +59,13 @@ class MockClock implements ClockInterface
         $this->fastForwardMicroseconds(TimeUtil::millisecondsToMicroseconds($durationInMilliseconds));
     }
 
+    /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
         return $this->systemClockCurrentTime;
     }
 
+    /** @inheritDoc */
     public function getMonotonicClockCurrentTime(): float
     {
         return $this->monotonicClockCurrentTime;

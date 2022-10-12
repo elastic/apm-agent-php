@@ -36,6 +36,8 @@ trait MockExecutionSegmentTrait
         $prefix = ClassNameUtil::fqToShort(get_called_class());
         $this->name = $name ?? ($prefix . ' name');
         $this->type = $prefix . '_type';
+
+        $this->sampleRate = 1.0;
     }
 
     public function beginChildSpan(?string $name = null): MockSpan

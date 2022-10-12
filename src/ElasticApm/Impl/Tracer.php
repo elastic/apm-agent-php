@@ -29,6 +29,8 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
@@ -38,6 +40,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionBuilderInterface;
@@ -84,6 +87,9 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var HttpDistributedTracing */
     private $httpDistributedTracing;
 
+    /** @var ObserverSet<Transaction> */
+    public $onNewCurrentTransactionHasBegun;
+
     public function __construct(TracerDependencies $providedDependencies, ConfigSnapshot $config)
     {
         $this->providedDependencies = $providedDependencies;
@@ -115,6 +121,8 @@ final class Tracer implements TracerInterface, LoggableInterface
         $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config, $this->loggerFactory);
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
+
+        $this->onNewCurrentTransactionHasBegun = new ObserverSet();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Constructed Tracer successfully');
@@ -231,6 +239,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             }
 
             $this->currentTransaction = $newTransaction;
+            $this->onNewCurrentTransactionHasBegun->callCallbacks($this->currentTransaction);
         }
 
         return $newTransaction;
@@ -343,38 +352,30 @@ final class Tracer implements TracerInterface, LoggableInterface
             return null;
         }
 
-        $isGoingToBeSentWithTransaction = $transaction !== null && !($transaction->hasEnded());
-
-        if ($isGoingToBeSentWithTransaction) {
-            /**
-             * PHPStan cannot deduce that $transaction is not null
-             * if $isGoingToBeSentWithTransaction is true
-             *
-             * @var Transaction $transaction
-             */
-            if (!$transaction->reserveSpaceInErrorToSendQueue()) {
-                return null;
-            }
+        if ($transaction !== null && ($transaction->numberOfErrorsSent >= $this->config->transactionMaxSpans())) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Starting to drop errors because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
+                [
+                    '$transaction->numberOfErrorsSent'             => $transaction->numberOfErrorsSent,
+                    OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
+                ]
+            );
+            return null;
         }
 
         $newError = Error::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
+        $this->sendErrorToApmServer($newError);
 
-        if ($isGoingToBeSentWithTransaction) {
-            /**
-             * PHPStan cannot deduce that $transaction is not null
-             * if $isGoingToBeSentWithTransaction is true
-             *
-             * @var Transaction $transaction
-             */
-            $transaction->queueErrorDataToSend($newError);
-        } else {
-            $this->sendEventsToApmServer(
-                [] /* <- spansData */,
-                [$newError],
-                null /* <- breakdownMetricsPerTransaction */,
-                null /* <- transactionData */
+        if ($transaction !== null) {
+            ++$transaction->numberOfErrorsSent;
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Error event has been sent',
+                ['$transaction->numberOfErrorsSent' => $transaction->numberOfErrorsSent]
             );
         }
+
         return $newError->id;
     }
 
@@ -386,6 +387,11 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function isNoop(): bool
     {
         return false;
+    }
+
+    public function limitString(string $val, bool $enforceKeywordString): string
+    {
+        return $enforceKeywordString ? self::limitKeywordString($val) : $this->limitNonKeywordString($val);
     }
 
     public static function limitKeywordString(string $keywordString): string
@@ -404,7 +410,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public function limitNonKeywordString(string $nonKeywordString): string
     {
-        return TextUtil::ensureMaxLength($nonKeywordString, Constants::NON_KEYWORD_STRING_MAX_LENGTH);
+        return TextUtil::ensureMaxLength($nonKeywordString, $this->config->nonKeywordStringMaxLength());
     }
 
     public function limitNullableNonKeywordString(?string $nonKeywordString): ?string
@@ -445,21 +451,63 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /**
-     * @param Span[]                          $spans
+     * @param SpanToSendInterface[]           $spans
      * @param Error[]                         $errors
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
      * @param ?Transaction                    $transaction
      */
-    public function sendEventsToApmServer(
+    private function sendEventsToApmServer(
         array $spans,
         array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
         ?Transaction $transaction
     ): void {
+        if ($this->config->devInternal()->dropEventAfterEnd()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Dropping span because '
+                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
+                . ' is set'
+            );
+            return;
+        }
+
         $this->eventSink->consume(
             $this->currentMetadata,
             $spans,
             $errors,
+            $breakdownMetricsPerTransaction,
+            $transaction
+        );
+    }
+
+    public function sendSpanToApmServer(SpanToSendInterface $span): void
+    {
+        self::sendEventsToApmServer(
+            [$span] /* <- spans */,
+            [] /* <- errors */,
+            null /* <- breakdownMetricsPerTransaction */,
+            null /* <- transaction */
+        );
+    }
+
+    public function sendErrorToApmServer(Error $error): void
+    {
+        self::sendEventsToApmServer(
+            [] /* <- spans */,
+            [$error],
+            null /* <- breakdownMetricsPerTransaction */,
+            null /* <- transaction */
+        );
+    }
+
+    public function sendTransactionToApmServer(
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        Transaction $transaction
+    ): void {
+        self::sendEventsToApmServer(
+            [] /* <- spans */,
+            [] /* <- errors */,
             $breakdownMetricsPerTransaction,
             $transaction
         );

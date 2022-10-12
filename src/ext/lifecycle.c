@@ -490,6 +490,10 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
+    if ( config->profilingInferredSpansEnabled ) {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
+    }
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );

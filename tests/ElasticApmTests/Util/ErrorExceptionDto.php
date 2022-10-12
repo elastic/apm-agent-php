@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\StacktraceFrame;
+use Elastic\Apm\Impl\StackTraceFrame;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
 
@@ -40,7 +40,7 @@ class ErrorExceptionDto
     /** @var ?string */
     public $module = null;
 
-    /** @var null|StacktraceFrame[] */
+    /** @var null|StackTraceFrame[] */
     public $stacktrace = null;
 
     /** @var ?string */

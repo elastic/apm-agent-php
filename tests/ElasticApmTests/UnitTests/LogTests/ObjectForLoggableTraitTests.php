@@ -51,6 +51,9 @@ class ObjectForLoggableTraitTests implements LoggableInterface
     /** @var string */
     private $excludedProp = 'excludedProp value'; // @phpstan-ignore-line
 
+    /** @var string */
+    public $lateInitProp;
+
     public static function logWithoutClassName(): void
     {
         self::$logWithClassNameValue = null;

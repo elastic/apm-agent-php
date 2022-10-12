@@ -51,7 +51,7 @@ final class Autoloader
     private static function shouldAutoloadCodeForClass(string $fqClassName): bool
     {
         // does the class use the namespace prefix?
-        return strncmp(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX, $fqClassName, self::$autoloadFqClassNamePrefixLength) === 0;
+        return strncmp(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX, $fqClassName, self::$autoloadFqClassNamePrefixLength) == 0;
     }
 
     public static function autoloadCodeForClass(string $fqClassName): void
@@ -79,12 +79,16 @@ final class Autoloader
 
         if (file_exists($classSrcFileAbsolute)) {
             BootstrapStageLogger::logTrace(
-                "About to execute require `$classSrcFileAbsolute' ...",
+                "Before require `$classSrcFileAbsolute' ...",
                 __LINE__,
                 __FUNCTION__
             );
-            /** @noinspection PhpIncludeInspection */
             require $classSrcFileAbsolute;
+            BootstrapStageLogger::logTrace(
+                "After require `$classSrcFileAbsolute' ...",
+                __LINE__,
+                __FUNCTION__
+            );
         } else {
             BootstrapStageLogger::logTrace(
                 "File with the code for class doesn't exist."

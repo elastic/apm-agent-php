@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Span;
+use Elastic\Apm\Impl\SpanToSendInterface;
 use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
@@ -124,9 +125,11 @@ final class MockEventSink implements EventSinkInterface
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToTransaction);
     }
 
-    private function consumeSpan(Span $original): void
+    private function consumeSpan(SpanToSendInterface $original): void
     {
-        TestCase::assertTrue($original->hasEnded());
+        if ($original instanceof Span) {
+            TestCase::assertTrue($original->hasEnded());
+        }
         $serialized = SerializationUtil::serializeAsJson($original);
 
         $deserialized = $this->validateAndDeserializeSpan($serialized);
@@ -196,12 +199,21 @@ final class MockEventSink implements EventSinkInterface
     /**
      * @param string $name
      *
-     * @return SpanDto
-     * @throws NotFoundException
+     * @return SpanDto[]
      */
-    public function spanByName(string $name): SpanDto
+    public function findSpansByName(string $name): array
     {
-        return $this->dataFromAgent->spanByName($name);
+        return $this->dataFromAgent->findSpansByName($name);
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return SpanDto
+     */
+    public function singleSpanByName(string $name): SpanDto
+    {
+        return $this->dataFromAgent->singleSpanByName($name);
     }
 
     /**

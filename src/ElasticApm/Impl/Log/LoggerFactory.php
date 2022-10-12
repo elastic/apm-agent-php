@@ -59,4 +59,9 @@ final class LoggerFactory
     {
         return $this->backend;
     }
+
+    public function isEnabledForLevel(int $level): bool
+    {
+        return $this->backend->isEnabledForLevel($level);
+    }
 }

@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  *
  * @internal
  */
-final class StacktraceFrame implements SerializableDataInterface, LoggableInterface
+final class StackTraceFrame implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
@@ -74,9 +74,9 @@ final class StacktraceFrame implements SerializableDataInterface, LoggableInterf
     {
         $result = [];
 
-        SerializationUtil::addNameValueIfNotNull('filename', $this->filename, /* ref */ $result);
+        SerializationUtil::addNameValue('filename', $this->filename, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('function', $this->function, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('lineno', $this->lineno, /* ref */ $result);
+        SerializationUtil::addNameValue('lineno', $this->lineno, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

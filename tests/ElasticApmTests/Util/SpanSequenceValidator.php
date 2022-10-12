@@ -73,7 +73,14 @@ final class SpanSequenceValidator
 
         $actualSortedByStartTime = self::sortByStartTime($actual);
         for ($i = 0; $i < count($actual); ++$i) {
-            $actualSortedByStartTime[$i]->assertMatches($expected[$i]);
+            $currentActualSpan = $actualSortedByStartTime[$i];
+            if ($i != 0) {
+                $prevActualSpan = $actualSortedByStartTime[$i - 1];
+                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpan->timestamp, $currentActualSpan->timestamp);
+                $prevActualSpanEnd = TestCaseBase::calcEndTime($prevActualSpan);
+                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpanEnd, $currentActualSpan->timestamp);
+            }
+            $currentActualSpan->assertMatches($expected[$i]);
         }
     }
 }

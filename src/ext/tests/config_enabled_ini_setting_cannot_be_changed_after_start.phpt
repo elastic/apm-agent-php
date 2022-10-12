@@ -1,11 +1,5 @@
 --TEST--
 Check that elastic_apm.enabled cannot be set with ini_set()
---SKIPIF--
-<?php
-if (!extension_loaded('elastic_apm')) {
-	echo 'skip';
-}
-?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--

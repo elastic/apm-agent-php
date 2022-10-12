@@ -30,13 +30,13 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
-use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
+use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
 
 /**
  * @group smoke
  * @group does_not_require_external_services
  */
-class StacktraceComponentTest extends ComponentTestCaseBase
+class StackTraceComponentTest extends ComponentTestCaseBase
 {
     /**
      * @return array<string, mixed>
@@ -45,10 +45,10 @@ class StacktraceComponentTest extends ComponentTestCaseBase
     {
         /** @var array<string, mixed> */
         $expectedData = [];
-        $createSpanApis = StacktraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
+        $createSpanApis = StackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
 
         foreach ($createSpanApis as $createSpan) {
-            (new StacktraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
+            (new StackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
         }
 
         return ['expectedData' => $expectedData, 'createSpanApis' => $createSpanApis];
@@ -77,7 +77,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans($expectedMinSpansCount, PHP_INT_MAX)
         );
-        StacktraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
+        StackTraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
     }
 
     public function testTopLevelTransactionBeginCurrentSpanApi(): void
@@ -91,7 +91,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
         $span = $dataFromAgent->singleSpan();
         self::assertSame('top_level_code_span_name', $span->name);
         self::assertSame('top_level_code_span_type', $span->type);
-        $actualStacktrace = $span->stacktrace;
+        $actualStacktrace = $span->stackTrace;
         self::assertNotNull($actualStacktrace);
         self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
         /** @var string */
@@ -103,7 +103,7 @@ class StacktraceComponentTest extends ComponentTestCaseBase
             $actualStacktrace[0]->lineno
         );
         self::assertSame(
-            StacktraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
+            StackTraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
             $actualStacktrace[0]->function
         );
     }

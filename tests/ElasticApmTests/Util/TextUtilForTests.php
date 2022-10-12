@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 final class TextUtilForTests
@@ -39,7 +40,7 @@ final class TextUtilForTests
      */
     public static function iterateOverChars(string $input): iterable
     {
-        foreach (RangeUtilForTests::generateUpTo(strlen($input)) as $i) {
+        foreach (RangeUtil::generateUpTo(strlen($input)) as $i) {
             yield ord($input[$i]);
         }
     }
@@ -56,9 +57,13 @@ final class TextUtilForTests
         return 0;
     }
 
-    public static function prefixEachLine(string $text, string $prefix): string
+    /**
+     * @param string                       $text
+     *
+     * @return iterable<string>
+     */
+    public static function iterateLines(string $text): iterable
     {
-        $result = $prefix;
         $prevPos = 0;
         $currentPos = $prevPos;
         $textLen = strlen($text);
@@ -68,14 +73,20 @@ final class TextUtilForTests
                 ++$currentPos;
                 continue;
             }
-            $result .= substr($text, $prevPos, $currentPos + $endOfLineSeqLength - $prevPos);
-            $result .= $prefix;
+            yield substr($text, $prevPos, $currentPos + $endOfLineSeqLength - $prevPos);
             $prevPos = $currentPos + $endOfLineSeqLength;
             $currentPos = $prevPos;
         }
 
-        $result .= substr($text, $prevPos, $currentPos - $prevPos);
+        yield substr($text, $prevPos, $currentPos - $prevPos);
+    }
 
+    public static function prefixEachLine(string $text, string $prefix): string
+    {
+        $result = '';
+        foreach (self::iterateLines($text) as $line) {
+            $result .= $prefix . $line;
+        }
         return $result;
     }
 
