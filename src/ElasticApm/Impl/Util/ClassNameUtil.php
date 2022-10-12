@@ -32,6 +32,11 @@ final class ClassNameUtil
 {
     use StaticClassTrait;
 
+    /**
+     * @param class-string $fqClassName
+     *
+     * @return string
+     */
     public static function fqToShort(string $fqClassName): string
     {
         $namespace = '';
@@ -40,25 +45,32 @@ final class ClassNameUtil
         return $shortName;
     }
 
-    public static function splitFqClassName(string $fqName, string &$namespace, string &$shortName): void
+    /**
+     * @param class-string $fqClassName
+     * @param string       $namespace
+     * @param string       $shortName
+     *
+     * @return void
+     */
+    public static function splitFqClassName(string $fqClassName, string &$namespace, string &$shortName): void
     {
-        // Check if $fqName begin with a back slash(es)
-        $firstBackSlashPos = strpos($fqName, '\\');
+        // Check if $fqClassName begin with a back slash(es)
+        $firstBackSlashPos = strpos($fqClassName, '\\');
         if ($firstBackSlashPos === false) {
             $namespace = '';
-            $shortName = $fqName;
+            $shortName = $fqClassName;
             return;
         }
         $firstCanonPos = $firstBackSlashPos === 0 ? 1 : 0;
 
-        $lastBackSlashPos = strrpos($fqName, '\\', $firstCanonPos);
+        $lastBackSlashPos = strrpos($fqClassName, '\\', $firstCanonPos);
         if ($lastBackSlashPos === false) {
             $namespace = '';
-            $shortName = substr($fqName, $firstCanonPos);
+            $shortName = substr($fqClassName, $firstCanonPos);
             return;
         }
 
-        $namespace = substr($fqName, $firstCanonPos, $lastBackSlashPos - $firstCanonPos);
-        $shortName = substr($fqName, $lastBackSlashPos + 1);
+        $namespace = substr($fqClassName, $firstCanonPos, $lastBackSlashPos - $firstCanonPos);
+        $shortName = substr($fqClassName, $lastBackSlashPos + 1);
     }
 }

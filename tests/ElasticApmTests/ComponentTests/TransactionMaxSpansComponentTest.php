@@ -36,9 +36,13 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 {
     public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_0;
@@ -50,7 +54,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public function dataProviderForTestVariousCombinations(): iterable
     {
         /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+        foreach (self::adaptToSmoke(SharedCode::testArgsVariants(self::TESTING_DEPTH)) as $testArgs) {
             yield [$testArgs];
         }
     }
@@ -75,8 +79,8 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
      */
     public function testVariousCombinations(Args $testArgs): void
     {
-        TransactionDataExpectations::$defaultDroppedSpansCount = null;
-        TransactionDataExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultDroppedSpansCount = null;
+        TransactionExpectations::$defaultIsSampled = null;
 
         if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
             self::dummyAssert();

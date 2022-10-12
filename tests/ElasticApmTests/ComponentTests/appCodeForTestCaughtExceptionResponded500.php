@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use ElasticApmTests\ComponentTests\Util\HttpConstantsForTests;
 use ElasticApmTests\Util\DummyExceptionForTests;
 use Exception;
 use PHPUnit\Framework\TestCase;
@@ -35,7 +36,7 @@ function appCodeForTestCaughtExceptionResponded500Impl2(): void
     throw new Exception('Message for the first caught exception');
 }
 
-const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER = 51;
+const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER = 52;
 const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE = 12345;
 
 function appCodeForTestCaughtExceptionResponded500Impl(): void
@@ -51,7 +52,7 @@ function appCodeForTestCaughtExceptionResponded500Impl(): void
     throw new DummyExceptionForTests($message, $code);
 }
 
-const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER = 60;
+const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER = 61;
 
 function appCodeForTestCaughtExceptionResponded500(): void
 {
@@ -59,6 +60,6 @@ function appCodeForTestCaughtExceptionResponded500(): void
     try {
         appCodeForTestCaughtExceptionResponded500Impl();
     } catch (Throwable $throwable) {
-        http_response_code(500);
+        http_response_code(HttpConstantsForTests::STATUS_INTERNAL_SERVER_ERROR);
     }
 }

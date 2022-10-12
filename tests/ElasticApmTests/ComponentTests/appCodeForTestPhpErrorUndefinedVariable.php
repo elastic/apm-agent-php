@@ -31,7 +31,7 @@ const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER = 
 function appCodeForTestPhpErrorUndefinedVariableImpl(): void
 {
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER, __LINE__ + 2);
-    /** @noinspection PhpUndefinedVariableInspection */
+    /** @noinspection PhpUndefinedVariableInspection, PhpUnusedLocalVariableInspection */
     $undefinedVariable = $undefinedVariable + 1; // @phpstan-ignore-line
 }
 

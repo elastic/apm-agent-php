@@ -1,3 +1,0 @@
-<?php //Symfony%255CComponent%255CHttpKernel%255CKernel%2523handle
-
-return [PHP_INT_MAX, []];

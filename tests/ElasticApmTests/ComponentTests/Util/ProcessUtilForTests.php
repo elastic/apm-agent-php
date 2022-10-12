@@ -23,11 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\TestCaseBase;
+use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class ProcessUtilForTests
@@ -36,7 +37,7 @@ final class ProcessUtilForTests
 
     public static function doesProcessExist(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "tasklist /FI \"PID eq $pid\" 2>NUL | find \"$pid\" >NUL"
             : "ps -p $pid";
 
@@ -44,9 +45,21 @@ final class ProcessUtilForTests
         return $cmdExitCode === 0;
     }
 
+    public static function waitForProcessToExit(string $dbgProcessDesc, int $pid, int $maxWaitTimeInMicroseconds): bool
+    {
+        return (new PollingCheck(
+            $dbgProcessDesc . ' process (PID: ' . $pid . ') exited' /* <- dbgDesc */,
+            $maxWaitTimeInMicroseconds
+        ))->run(
+            function () use ($pid) {
+                return !self::doesProcessExist($pid);
+            }
+        );
+    }
+
     public static function terminateProcess(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "taskkill /F /PID $pid >NUL"
             : "kill $pid > /dev/null";
 
@@ -60,23 +73,81 @@ final class ProcessUtilForTests
      */
     public static function startBackgroundProcess(string $cmd, array $envVars): void
     {
-        self::startProcessImpl(TestOsUtil::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &", $envVars);
+        self::startProcessImpl(
+            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
+            $envVars,
+            [] /* <- descriptorSpec: */
+        );
     }
 
     /**
      * @param string                $cmd
      * @param array<string, string> $envVars
+     * @param bool                  $shouldCaptureStdOutErr
+     *
+     * @return int
      */
-    public static function startProcessAndWaitUntilExit(string $cmd, array $envVars): void
-    {
-        self::startProcessImpl(TestOsUtil::isWindows() ? "$cmd > NUL" : "$cmd > /dev/null", $envVars);
+    public static function startProcessAndWaitUntilExit(
+        string $cmd,
+        array $envVars,
+        bool $shouldCaptureStdOutErr = false,
+        ?int $expectedExitCode = null
+    ): int {
+        $descriptorSpec = [];
+        $tempOutputFilePath = '';
+        if ($shouldCaptureStdOutErr) {
+            $tempOutputFilePath = tempnam(sys_get_temp_dir(), '');
+            $tempOutputFilePath .= '_' . str_replace('\\', '_', __CLASS__) . '_stdout+stderr.txt';
+            if (file_exists($tempOutputFilePath)) {
+                TestCase::assertTrue(unlink($tempOutputFilePath));
+            }
+            $descriptorSpec[1] = ['file', $tempOutputFilePath, "w"]; // 1 - stdout
+            $descriptorSpec[2] = ['file', $tempOutputFilePath, "w"]; // 2 - stderr
+        }
+
+        $hasReturnedExitCode = false;
+        $exitCode = -1;
+        try {
+            $exitCode = self::startProcessImpl($cmd, $envVars, $descriptorSpec);
+            $hasReturnedExitCode = true;
+        } finally {
+            $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+                LogCategoryForTests::TEST_UTIL,
+                __NAMESPACE__,
+                __CLASS__,
+                __FILE__
+            );
+            $logLevel = $hasReturnedExitCode ? LogLevel::DEBUG : LogLevel::ERROR;
+            $logCtx = [];
+            if ($hasReturnedExitCode) {
+                $logCtx['exit code'] = $exitCode;
+            }
+            if ($shouldCaptureStdOutErr) {
+                $logCtx['file for stdout + stderr'] = $tempOutputFilePath;
+                if (file_exists($tempOutputFilePath)) {
+                    $logCtx['stdout + stderr'] = file_get_contents($tempOutputFilePath);
+                }
+            }
+
+            ($loggerProxy = $logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__))
+            && $loggerProxy->log($cmd . ' exited', $logCtx);
+
+            if ($expectedExitCode !== null && $hasReturnedExitCode) {
+                TestCase::assertSame($expectedExitCode, $exitCode, LoggableToString::convert($logCtx));
+            }
+        }
+
+        return $exitCode;
     }
 
     /**
-     * @param string                $adaptedCmd
-     * @param array<string, string> $envVars
+     * @param string                               $adaptedCmd
+     * @param array<string, string>                $envVars
+     * @param array<array{string, string, string}> $descriptorSpec
+     *
+     * @return int
      */
-    private static function startProcessImpl(string $adaptedCmd, array $envVars): void
+    private static function startProcessImpl(string $adaptedCmd, array $envVars, array $descriptorSpec): int
     {
         $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -91,7 +162,7 @@ final class ProcessUtilForTests
         $pipes = [];
         $openedProc = proc_open(
             $adaptedCmd,
-            [] /* descriptors */,
+            $descriptorSpec,
             $pipes /* ref */,
             null /* cwd */,
             $envVars
@@ -121,10 +192,12 @@ final class ProcessUtilForTests
             'Process started',
             [
                 'newProcessInfo' => $newProcessInfo,
-                'exitCode' => $exitCode,
-                'adaptedCmd' => $adaptedCmd,
-                'envVars' => $envVars,
+                'exitCode'       => $exitCode,
+                'adaptedCmd'     => $adaptedCmd,
+                'envVars'        => $envVars,
             ]
         );
+
+        return $exitCode;
     }
 }

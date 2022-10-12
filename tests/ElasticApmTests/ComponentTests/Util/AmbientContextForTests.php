@@ -23,11 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogSinkForTests;
-use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -39,15 +40,24 @@ final class AmbientContextForTests
     /** @var string */
     private $dbgProcessName;
 
+    /** @var LogBackend */
+    private $logBackend;
+
     /** @var LoggerFactory */
     private $loggerFactory;
 
-    /** @var TestConfigSnapshot */
+    /** @var ConfigSnapshotForTests */
     private $testConfig;
+
+    /** @var Clock */
+    private $clock;
 
     private function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
+        $this->logBackend = new LogBackend(LogLevel::ERROR, new LogSinkForTests($dbgProcessName));
+        $this->loggerFactory = new LoggerFactory($this->logBackend);
+        $this->clock = new Clock($this->loggerFactory);
         $this->readAndApplyConfig(/* additionalConfigSource */ null);
     }
 
@@ -62,7 +72,7 @@ final class AmbientContextForTests
 
         if (self::testConfig()->appCodePhpIni !== null && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
-            $envVarName = TestConfigUtil::envVarNameForTestOption($optionName);
+            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optionName);
             throw new RuntimeException(
                 "Option $optionName (environment variable $envVarName)"
                 . ' is set but it points to a file that does not exist: '
@@ -84,13 +94,8 @@ final class AmbientContextForTests
 
     private function readAndApplyConfig(?RawSnapshotSourceInterface $additionalConfigSource): void
     {
-        $this->testConfig = TestConfigUtil::read($this->dbgProcessName, $additionalConfigSource);
-        $this->loggerFactory = self::buildLoggerFactory($this->dbgProcessName, $this->testConfig->logLevel);
-    }
-
-    public static function buildLoggerFactory(string $dbgProcessName, int $logLevel): LoggerFactory
-    {
-        return new LoggerFactory(new LogBackend($logLevel, new LogSinkForTests($dbgProcessName)));
+        $this->testConfig = ConfigUtilForTests::read($additionalConfigSource, $this->loggerFactory);
+        $this->logBackend->setMaxEnabledLevel($this->testConfig->logLevel);
     }
 
     public static function dbgProcessName(): string
@@ -98,7 +103,7 @@ final class AmbientContextForTests
         return self::getSingletonInstance()->dbgProcessName;
     }
 
-    public static function testConfig(): TestConfigSnapshot
+    public static function testConfig(): ConfigSnapshotForTests
     {
         return self::getSingletonInstance()->testConfig;
     }
@@ -106,5 +111,10 @@ final class AmbientContextForTests
     public static function loggerFactory(): LoggerFactory
     {
         return self::getSingletonInstance()->loggerFactory;
+    }
+
+    public static function clock(): Clock
+    {
+        return self::getSingletonInstance()->clock;
     }
 }

@@ -35,7 +35,7 @@ class StacktraceUnitTest extends TracerUnitTestCaseBase
 
         $tx = ElasticApm::beginCurrentTransaction(__FUNCTION__, 'test_TX_type');
 
-        /** @var array<string, mixed> */
+        /** @var array<string, mixed> $expectedData */
         $expectedData = [];
 
         $createSpanApis = StacktraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);

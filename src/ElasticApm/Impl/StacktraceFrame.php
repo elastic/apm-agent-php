@@ -46,7 +46,7 @@ final class StacktraceFrame implements SerializableDataInterface, LoggableInterf
     public $filename;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The function involved in the stack frame
      *

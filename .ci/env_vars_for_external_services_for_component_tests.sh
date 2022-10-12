@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -xe
+
+export ELASTIC_APM_PHP_TESTS_MYSQL_HOST=elastic-apm-php-component-tests-mysql
+export ELASTIC_APM_PHP_TESTS_MYSQL_PORT=3306
+export ELASTIC_APM_PHP_TESTS_MYSQL_USER=root
+export ELASTIC_APM_PHP_TESTS_MYSQL_PASSWORD=elastic-apm-php-component-tests-mysql-password
+export ELASTIC_APM_PHP_TESTS_MYSQL_DB=ELASTIC_APM_PHP_COMPONENT_TESTS_DB
+
+export ELASTIC_APM_PHP_TESTS_EXTERNAL_SERVICES_ENV_VARS_ARE_SET=true

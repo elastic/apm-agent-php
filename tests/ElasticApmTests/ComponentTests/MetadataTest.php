@@ -28,27 +28,34 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawExpectations;
 use ElasticApmTests\Util\MetadataValidator;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class MetadataTest extends ComponentTestCaseBase
 {
     /**
      * @return iterable<array{string}>
      */
-    public function configOptionValueTestDataProvider(): iterable
+    public function dataProviderForConfigOptionValueTest(): iterable
     {
-        yield ['custom value 1.2,3 @CI#!?'];
-        yield [
-            '['
-            . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
-            . ','
-            . ';'
-            . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
-            . ']'
-            . '_tail',
-        ];
+        return self::adaptToSmoke(
+            [
+                ['custom value 1.2,3 @CI#!?'],
+                [
+                    '['
+                    . str_repeat('A', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+                    . ','
+                    . ';'
+                    . str_repeat('B', (Constants::KEYWORD_STRING_MAX_LENGTH - 4) / 2)
+                    . ']'
+                    . '_tail',
+                ]
+            ]
+        );
     }
 
     private function environmentConfigTestImpl(?string $configured, ?string $expected): void
@@ -65,7 +72,7 @@ final class MetadataTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider configOptionValueTestDataProvider
+     * @dataProvider dataProviderForConfigOptionValueTest
      *
      * @param string $configured
      */
@@ -174,7 +181,7 @@ final class MetadataTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider configOptionValueTestDataProvider
+     * @dataProvider dataProviderForConfigOptionValueTest
      *
      * @param string $configured
      */

@@ -24,8 +24,10 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\ExecutionSegmentContextInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 
 /**
@@ -33,22 +35,21 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  *
  * @internal
  *
- * @template        T of ExecutionSegment
+ * @template T of ExecutionSegment
  *
- * @extends         ContextDataWrapper<T>
+ * @extends ContextPartWrapper<T>
  */
-abstract class ExecutionSegmentContext extends ContextDataWrapper implements ExecutionSegmentContextInterface
+abstract class ExecutionSegmentContext extends ContextPartWrapper implements ExecutionSegmentContextInterface
 {
-    /** @var ExecutionSegmentContextData */
-    private $data;
+    /** @var array<string, string|bool|int|float|null> */
+    public $labels = [];
 
     /** @var Logger */
     private $logger;
 
-    protected function __construct(ExecutionSegment $owner, ExecutionSegmentContextData $data)
+    protected function __construct(ExecutionSegment $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
         $this->logger = $this->tracer()->loggerFactory()
                              ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                              ->addContext('this', $this);
@@ -70,7 +71,7 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
             return;
         }
 
-        $this->data->labels[Tracer::limitKeywordString($key)] = is_string($value)
+        $this->labels[Tracer::limitKeywordString($key)] = is_string($value)
             ? Tracer::limitKeywordString($value)
             : $value;
     }
@@ -83,5 +84,24 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
     public static function doesValueHaveSupportedLabelType($value): bool
     {
         return $value === null || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return !ArrayUtil::isEmpty($this->labels);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        // APM Server Intake API expects 'tags' key for labels
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
+        SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

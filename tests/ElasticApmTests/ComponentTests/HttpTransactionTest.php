@@ -35,18 +35,24 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class HttpTransactionTest extends ComponentTestCaseBase
 {
     /**
-     * @return array<array<?string>>
+     * @return iterable<array<string>>
      */
-    public function dataProviderForHttpMethod(): array
+    public function dataProviderForHttpMethod(): iterable
     {
-        return [
-            ['GET'],
-            ['POST'],
-            ['DELETE'],
-        ];
+        return self::adaptToSmoke(
+            [
+                ['GET'],
+                ['POST'],
+                ['DELETE'],
+            ]
+        );
     }
 
     /**
@@ -61,7 +67,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         }
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainHttpAppCodeHost();
-        /** @var ?UrlParts */
+        /** @var ?UrlParts $expectedUrlParts */
         $expectedUrlParts = null;
         $appCodeHost->sendHttpRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
@@ -96,11 +102,11 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public function dataProviderForUrlParts(): iterable
     {
-        foreach (['/', '/non_empty_path'] as $path) {
+        foreach (self::adaptToSmoke(['/', '/non_empty_path']) as $path) {
             $queries = [
                 null, 'k1=v1', 'k1=v1&k2=v2', 'key_without_value', 'key_without_value=', '=value_without_key',
             ];
-            foreach ($queries as $query) {
+            foreach (self::adaptToSmoke($queries) as $query) {
                 yield [$path, $query];
             }
         }
@@ -147,18 +153,20 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return array<array<null|int|string>>
+     * @return iterable<array{?int, string, string}>
      */
-    public function dataProviderForHttpStatus(): array
+    public function dataProviderForHttpStatus(): iterable
     {
-        return [
-            [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-            [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-            [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
-            [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
-            [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-            [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-        ];
+        return self::adaptToSmoke(
+            [
+                [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+                [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+                [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
+                [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
+                [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
+                [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
+            ]
+        );
     }
 
     /**
@@ -239,7 +247,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     /**
      * @return iterable<array{string, UrlParts, string}>
      */
-    public function dataProviderForTestUrlGroupsConfig(): iterable
+    private static function dataProviderForTestUrlGroupsConfigImpl(): iterable
     {
         yield [
             '/foo/*/bar',
@@ -307,6 +315,14 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     }
 
     /**
+     * @return iterable<array{string, UrlParts, string}>
+     */
+    public function dataProviderForTestUrlGroupsConfig(): iterable
+    {
+        return self::adaptToSmoke(self::dataProviderForTestUrlGroupsConfigImpl());
+    }
+
+    /**
      * @dataProvider dataProviderForTestUrlGroupsConfig
      *
      * @param string   $urlGroupsConfigVal
@@ -331,9 +347,8 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($urlParts, $expectedTxName): void {
                 $appCodeRequestParams->expectedTransactionName->setValue($expectedTxName);
-                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
-                }
+                self::assertInstanceOf(HttpAppCodeRequestParams::class, $appCodeRequestParams);
+                $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
             }
         );
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
@@ -348,7 +363,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     /**
      * @return iterable<array{string, UrlParts, bool}>
      */
-    public function dataProviderForTestTransactionIgnoreUrlsConfig(): iterable
+    private static function dataProviderForTestTransactionIgnoreUrlsConfigImpl(): iterable
     {
         yield [
             '/foo/*/bar',
@@ -384,6 +399,14 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             (new UrlParts())->path('/foo/12345/bar')->query('query_key=query_val'),
             false /* <- expectedShouldBeIgnored */,
         ];
+    }
+
+    /**
+     * @return iterable<array{string, UrlParts, bool}>
+     */
+    public function dataProviderForTestTransactionIgnoreUrlsConfig(): iterable
+    {
+        return self::adaptToSmoke(self::dataProviderForTestTransactionIgnoreUrlsConfigImpl());
     }
 
     /**

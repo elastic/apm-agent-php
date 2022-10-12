@@ -12,7 +12,13 @@ RUN apk update \
     curl-dev \
     git \
     procps \
+    sqlite-dev \
     unzip
+
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mysqli \
+    pdo_sqlite
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -24,7 +30,10 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/build/junit.xml
 ENV CMOCKA_MESSAGE_OUTPUT=XML
 ENV CMOCKA_XML_FILE=/app/build/alpine-${PHP_VERSION}-%g-unit-tests-junit.xml
-        
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
+
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
     && make clean \

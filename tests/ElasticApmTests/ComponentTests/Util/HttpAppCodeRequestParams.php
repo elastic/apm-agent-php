@@ -34,7 +34,7 @@ final class HttpAppCodeRequestParams extends AppCodeRequestParams
     public $urlParts;
 
     /** @var ?int */
-    public $expectedHttpResponseStatusCode = HttpConsts::STATUS_OK;
+    public $expectedHttpResponseStatusCode = HttpConstantsForTests::STATUS_OK;
 
     public function __construct(HttpServerHandle $httpServerHandle, AppCodeTarget $appCodeTarget)
     {

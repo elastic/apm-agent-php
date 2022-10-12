@@ -23,17 +23,17 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-class DataFromAgentExpectations
+class DataFromAgentExpectations extends ExpectationsBase
 {
-    /** @var ErrorDataExpectations */
+    /** @var ErrorExpectations */
     public $error;
 
     /** @var array<string, MetadataExpectations> */
     public $agentEphemeralIdToMetadata;
 
-    /** @var MetricSetDataExpectations */
+    /** @var MetricSetExpectations */
     public $metricSet;
 
-    /** @var TraceDataExpectations */
+    /** @var TraceExpectations */
     public $trace;
 }

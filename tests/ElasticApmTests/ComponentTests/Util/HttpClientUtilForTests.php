@@ -142,11 +142,12 @@ final class HttpClientUtilForTests
 
     public static function createCurlHandleToSendRequestToAppCode(
         UrlParts $urlParts,
-        TestInfraDataPerRequest $dataPerRequest
+        TestInfraDataPerRequest $dataPerRequest,
+        ResourcesClient $resourcesClient
     ): CurlHandleWrappedForTests {
         $curlInitRetVal = curl_init(UrlUtil::buildFullUrl($urlParts));
         TestCase::assertNotSame(false, $curlInitRetVal);
-        $curlHandle = new CurlHandleWrappedForTests($curlInitRetVal);
+        $curlHandle = new CurlHandleWrappedForTests($resourcesClient, $curlInitRetVal);
         $dataPerRequestHeaderName = RequestHeadersRawSnapshotSource::optionNameToHeaderName(
             AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME
         );

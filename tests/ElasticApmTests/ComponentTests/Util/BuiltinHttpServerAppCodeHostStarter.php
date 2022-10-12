@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use ElasticApmTests\Util\FileUtilForTests;
+
 final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
 {
     private const APP_CODE_HOST_ROUTER_SCRIPT = 'routeToBuiltinHttpServerAppCodeHost.php';
@@ -69,17 +71,17 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     /** @inheritDoc */
     protected function buildCommandLine(int $port): string
     {
-        return TestInfraUtil::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
+        return InfraUtilForTests::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
                . " -S localhost:$port"
-               . ' "' . __DIR__ . DIRECTORY_SEPARATOR . self::APP_CODE_HOST_ROUTER_SCRIPT . '"';
+               . ' "' . FileUtilForTests::listToPath([__DIR__, self::APP_CODE_HOST_ROUTER_SCRIPT]) . '"';
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(string $spawnedProcessId, int $port): array
+    protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
     {
-        return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
-            $this->agentConfigSourceBuilder->getEnvVars(),
-            $spawnedProcessId,
+        return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
+            $this->agentConfigSourceBuilder->getEnvVars(getenv()),
+            $spawnedProcessInternalId,
             $port,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName

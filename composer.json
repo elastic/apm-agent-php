@@ -14,12 +14,15 @@
     },
     "require-dev": {
         "ext-curl": "*",
+        "ext-mysqli": "*",
         "ext-pdo": "*",
+        "ext-pdo_sqlite": "*",
+        "ext-posix": "*",
         "guzzlehttp/guzzle": "^6.5.5||^7.4.4",
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",
         "php-ds/php-ds": "^1.4.1",
-        "phpstan/phpstan": "1.7.15",
+        "phpstan/phpstan": "1.8.6",
         "phpstan/phpstan-phpunit": "^1.1.1",
         "phpunit/phpunit": "^8.5||^9.5",
         "react/http": "^1.6",
@@ -61,13 +64,13 @@
             "phpstan analyse --error-format=junit -c ./phpstan.neon ./examples/ --level max --memory-limit=200M --error-format=junit | tee build/examples-phpstan-junit.xml"
         ],
         "phpstan": [
-            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=200M",
-            "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=200M",
-            "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=200M"
+            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=1G",
+            "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=1G",
+            "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=1G"
         ],
         "static_check": [
-            "composer run-script php_codesniffer_check",
-            "composer run-script phpstan"
+            "composer run-script -- php_codesniffer_check",
+            "composer run-script -- phpstan"
         ],
         "run_unit_tests": [
             "phpunit"
@@ -76,36 +79,35 @@
             "phpunit --filter"
         ],
         "static_check_and_run_unit_tests": [
-            "composer run-script static_check",
-            "composer run-script run_unit_tests"
+            "composer run-script -- static_check",
+            "composer run-script -- run_unit_tests"
         ],
         "run_component_tests_configured": [
             "phpunit -c phpunit_component_tests.xml"
         ],
-        "run_component_tests_configured_filter": [
-            "phpunit -c phpunit_component_tests.xml --filter"
+        "run_component_tests_cli_filter": [
+            "composer run-script -- run_component_tests_cli --filter"
+        ],
+        "run_component_tests_http_filter": [
+            "composer run-script -- run_component_tests_http --filter"
         ],
         "run_component_tests": [
-            "composer run-script run_component_tests_http",
-            "composer run-script run_component_tests_cli"
-        ],
-        "run_component_tests_http": [
-            "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server",
-            "composer run-script run_component_tests_configured"
+            "composer run-script -- run_component_tests_http",
+            "composer run-script -- run_component_tests_cli"
         ],
         "run_component_tests_cli": [
-            "@putenv ELASTIC_APM_ENABLED=false",
-            "@putenv ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script",
-            "composer run-script run_component_tests_configured"
+            "ELASTIC_APM_ENABLED=false ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=CLI_script composer run-script -- run_component_tests_configured"
+        ],
+        "run_component_tests_http": [
+            "ELASTIC_APM_ENABLED=false ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND=Builtin_HTTP_server composer run-script -- run_component_tests_configured"
         ],
         "run_tests": [
-            "composer run-script run_unit_tests",
-            "composer run-script run_component_tests"
+            "composer run-script -- run_unit_tests",
+            "composer run-script -- run_component_tests"
         ],
         "static_check_and_run_tests": [
-            "composer run-script static_check",
-            "composer run-script run_tests"
+            "composer run-script -- static_check",
+            "composer run-script -- run_tests"
         ]
     }
 }

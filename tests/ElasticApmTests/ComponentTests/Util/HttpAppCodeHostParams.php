@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableTrait;
-
 final class HttpAppCodeHostParams extends AppCodeHostParams
 {
 }

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Psr\Http\Message\ResponseInterface;
 use React\EventLoop\TimerInterface;
 
 final class MockApmServerPendingDataRequest
@@ -30,20 +31,16 @@ final class MockApmServerPendingDataRequest
     /** @var int */
     public $fromIndex;
 
-    /**
-     * @var callable
-     * @phpstan-var callable(\Psr\Http\Message\ResponseInterface): void
-     */
+    /** @var callable(ResponseInterface): void */
     public $resolveCallback;
 
     /** @var TimerInterface */
     public $timer;
 
     /**
-     * @param int      $fromIndex
-     * @param callable $resolveCallback
-     *
-     * @phpstan-param callable(\Psr\Http\Message\ResponseInterface): void $resolveCallback
+     * @param int                               $fromIndex
+     * @param callable(ResponseInterface): void $resolveCallback
+     * @param TimerInterface                    $timer
      */
     public function __construct(int $fromIndex, callable $resolveCallback, TimerInterface $timer)
     {

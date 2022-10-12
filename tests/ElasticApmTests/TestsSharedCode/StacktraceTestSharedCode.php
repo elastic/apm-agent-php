@@ -25,10 +25,10 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\StacktraceFrame;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
@@ -126,9 +126,9 @@ final class StacktraceTestSharedCode
 
     /**
      * @param array<string, mixed> $expectedData
-     * @param SpanData             $span
+     * @param SpanDto              $span
      */
-    private static function assertPartImplOneSpan(array $expectedData, SpanData $span): void
+    private static function assertPartImplOneSpan(array $expectedData, SpanDto $span): void
     {
         $buildFuncName = function (string $funcName): string {
             return $funcName . '()';
@@ -147,10 +147,10 @@ final class StacktraceTestSharedCode
         $funcNameForClosureWithThisCaptured = self::buildMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
         $funcNameForClosureWithoutThisCaptured = $buildStaticMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
 
-        /** @var string */
+        /** @var string $spanCreatingApi */
         $spanCreatingApi = TestCaseBase::getLabel($span, self::SPAN_CREATING_API_LABEL_KEY);
 
-        /** @var StacktraceFrame[] */
+        /** @var StacktraceFrame[] $expectedStacktrace */
         $expectedStacktrace = [];
         $expectedStacktrace[] = $buildStacktraceFrame(
             self::getStringFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'function')),
@@ -210,12 +210,11 @@ final class StacktraceTestSharedCode
     /**
      * @param int                     $expectedSpansToCheckCount
      * @param array<string, mixed>    $expectedData
-     * @param array<string, SpanData> $idToSpan
+     * @param array<string, SpanDto> $idToSpan
      */
     public static function assertPartImpl(int $expectedSpansToCheckCount, array $expectedData, array $idToSpan): void
     {
         $checkedSpansCount = 0;
-        /** @var SpanData $span */
         foreach ($idToSpan as $span) {
             $labels = $span->context === null ? [] : $span->context->labels;
             if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {

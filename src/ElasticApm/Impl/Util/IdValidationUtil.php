@@ -44,12 +44,6 @@ final class IdValidationUtil
             return false;
         }
 
-        foreach (str_split($numberAsString) as $idChar) {
-            if (!ctype_xdigit($idChar)) {
-                return false;
-            }
-        }
-
-        return true;
+        return trim($numberAsString, '0..9A..Fa..f') === '';
     }
 }

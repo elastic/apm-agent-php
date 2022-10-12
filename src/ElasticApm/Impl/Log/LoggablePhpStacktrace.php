@@ -52,6 +52,7 @@ final class LoggablePhpStacktrace
         // #2  a() called at [/tmp/include.php:17]
 
         $result = [];
+        /** @noinspection PhpRedundantOptionalArgumentInspection */
         $stackFrames = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT);
         $index = 0;
         foreach ($stackFrames as $stackFrame) {

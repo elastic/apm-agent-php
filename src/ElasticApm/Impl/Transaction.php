@@ -24,8 +24,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Closure;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
@@ -47,11 +47,26 @@ use Throwable;
  */
 final class Transaction extends ExecutionSegment implements TransactionInterface
 {
+    /** @var ?string */
+    public $parentId = null;
+
+    /** @var int */
+    public $startedSpansCount = 0;
+
+    /** @var int */
+    public $droppedSpansCount = 0;
+
+    /** @var ?string */
+    public $result = null;
+
+    /** @var bool */
+    public $isSampled;
+
+    /** @var ?TransactionContext */
+    public $context = null;
+
     /** @var Tracer */
     protected $tracer;
-
-    /** @var TransactionData */
-    private $data;
 
     /** @var ConfigSnapshot */
     private $config;
@@ -62,22 +77,21 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var Logger */
     private $logger;
 
-    /** @var SpanData[] */
-    private $spansDataToSend = [];
+    /** @var Span[] */
+    private $spansToSend = [];
 
-    /** @var ErrorData[] */
+    /** @var Error[] */
     private $errorsDataToSend = [];
-
-    /** @var TransactionContext|null */
-    private $context = null;
 
     /** @var ?BreakdownMetricsPerTransaction */
     private $breakdownMetricsPerTransaction = null;
 
+    /** @var ?string */
+    private $outgoingTraceState;
+
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
-        $this->data = new TransactionData();
         $this->config = $builder->tracer->getConfig();
         if ($this->config->breakdownMetrics()) {
             $this->breakdownMetricsPerTransaction = new BreakdownMetricsPerTransaction($this);
@@ -86,27 +100,24 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         $distributedTracingData = self::extractDistributedTracingData($builder);
         if ($distributedTracingData === null) {
             $traceId = IdGenerator::generateId(Constants::TRACE_ID_SIZE_IN_BYTES);
-        } else {
-            $traceId = $distributedTracingData->traceId;
-            $this->data->parentId = $distributedTracingData->parentId;
-        }
-
-        if ($distributedTracingData === null) {
-            $effectiveTransactionSampleRate = $this->tracer->getConfig()->effectiveTransactionSampleRate();
-            $isSampled = self::makeSamplingDecision($effectiveTransactionSampleRate);
+            $sampleRate = $this->tracer->getConfig()->transactionSampleRate();
+            $isSampled = self::makeSamplingDecision($sampleRate);
             /**
              * @link https://github.com/elastic/apm/blob/main/specs/agents/tracing-sampling.md#non-sampled-transactions
              * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0
              */
-            $sampleRateToMarkTransaction = $isSampled ? $effectiveTransactionSampleRate : 0.0;
+            $sampleRateToMarkTransaction = $isSampled ? $sampleRate : 0.0;
+            $this->outgoingTraceState
+                = $this->tracer->httpDistributedTracing()->buildOutgoingTraceStateForRootTransaction($sampleRate);
         } else {
+            $traceId = $distributedTracingData->traceId;
+            $this->parentId = $distributedTracingData->parentId;
             $isSampled = $distributedTracingData->isSampled;
-            // TODO: Sergey Kleyman: Implement: $sampleRateToMarkTransaction in Transaction::__construct
-            $sampleRateToMarkTransaction = $distributedTracingData->stateSampleRate ?? 1.0;
+            $sampleRateToMarkTransaction = $distributedTracingData->sampleRate;
+            $this->outgoingTraceState = $distributedTracingData->outgoingTraceState;
         }
 
         parent::__construct(
-            $this->data,
             $builder->tracer,
             null /* <- parentExecutionSegment */,
             $traceId,
@@ -120,40 +131,73 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
                                      ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                                      ->addContext('this', $this);
 
-        $this->data->isSampled = $isSampled;
+        $this->isSampled = $isSampled;
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
     }
 
-    public static function extractDistributedTracingData(TransactionBuilder $builder): ?DistributedTracingData
+    private static function extractDistributedTracingData(TransactionBuilder $builder): ?DistributedTracingDataInternal
     {
-        $traceParentHeaderValue = null;
-        if ($builder->serializedDistTracingData === null) {
-            if ($builder->headersExtractor !== null) {
-                $traceParentHeaderValues
-                    = ($builder->headersExtractor)(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME);
-                if (is_string($traceParentHeaderValues)) {
-                    $traceParentHeaderValue = $traceParentHeaderValues;
-                } elseif (is_array($traceParentHeaderValues) && count($traceParentHeaderValues) === 1) {
-                    $traceParentHeaderValue = $traceParentHeaderValues[0];
-                } else {
-                    return null;
-                }
-            }
-        } else {
-            $traceParentHeaderValue = $builder->serializedDistTracingData;
+        /** @var string[] $traceParentHeaderValues */
+        $traceParentHeaderValues = [];
+        /** @var string[] $traceStateHeaderValues */
+        $traceStateHeaderValues = [];
+        self::extractDistributedTracingHeaders(
+            $builder,
+            $traceParentHeaderValues /* <- ref */,
+            $traceStateHeaderValues /* <- ref */
+        );
+        return $builder->tracer->httpDistributedTracing()->parseHeaders(
+            $traceParentHeaderValues,
+            $traceStateHeaderValues
+        );
+    }
+
+
+    /**
+     * @param TransactionBuilder $builder
+     * @param string[]           $traceParentHeaderValues
+     * @param string[]           $traceStateHeaderValues
+     */
+    private static function extractDistributedTracingHeaders(
+        TransactionBuilder $builder,
+        array &$traceParentHeaderValues,
+        array &$traceStateHeaderValues
+    ): void {
+        if ($builder->serializedDistTracingData !== null) {
+            $traceParentHeaderValues[] = $builder->serializedDistTracingData;
+            return;
         }
 
-        return $traceParentHeaderValue === null
-            ? null
-            : $builder->tracer->httpDistributedTracing()->parseTraceParentHeader($traceParentHeaderValue);
+        $headersExtractor = $builder->headersExtractor;
+        if ($headersExtractor === null) {
+            return;
+        }
+
+        /**
+         * @param null|string|string[] $headersExtractorRetVal
+         *
+         * @return string[]
+         */
+        $adaptHeadersExtractorRetVal = function ($headersExtractorRetVal): array {
+            return $headersExtractorRetVal === null
+                ? []
+                : (is_string($headersExtractorRetVal) ? [$headersExtractorRetVal] : $headersExtractorRetVal);
+        };
+
+        $traceParentHeaderValues = $adaptHeadersExtractorRetVal(
+            $headersExtractor(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME)
+        );
+        $traceStateHeaderValues = $adaptHeadersExtractorRetVal(
+            $headersExtractor(HttpDistributedTracing::TRACE_STATE_HEADER_NAME)
+        );
     }
 
     /** @inheritDoc */
     public function getParentId(): ?string
     {
-        return $this->data->parentId;
+        return $this->parentId;
     }
 
     private static function makeSamplingDecision(float $sampleRate): bool
@@ -176,7 +220,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function isSampled(): bool
     {
-        return $this->data->isSampled;
+        return $this->isSampled;
     }
 
     /** @inheritDoc */
@@ -199,19 +243,18 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
 
         if ($this->context === null) {
-            $this->data->context = new TransactionContextData();
-            $this->context = new TransactionContext($this, $this->data->context);
+            $this->context = new TransactionContext($this);
         }
 
         return $this->context;
     }
 
-    public function cloneContextData(): ?TransactionContextData
+    public function cloneContextData(): ?TransactionContext
     {
-        if ($this->data->context === null) {
+        if ($this->context === null) {
             return null;
         }
-        return clone $this->data->context;
+        return clone $this->context;
     }
 
     /** @inheritDoc */
@@ -221,13 +264,13 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        $this->data->result = $this->tracer->limitNullableKeywordString($result);
+        $this->result = $this->tracer->limitNullableKeywordString($result);
     }
 
     /** @inheritDoc */
     public function getResult(): ?string
     {
-        return $this->data->result;
+        return $this->result;
     }
 
     /** @inheritDoc */
@@ -260,22 +303,22 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $isDropped = false;
         // Started and dropped spans should be counted only for sampled transactions
-        if ($this->data->isSampled) {
-            if ($this->data->startedSpansCount >= $this->config->transactionMaxSpans()) {
+        if ($this->isSampled) {
+            if ($this->startedSpansCount >= $this->config->transactionMaxSpans()) {
                 $isDropped = true;
-                ++$this->data->droppedSpansCount;
-                if ($this->data->droppedSpansCount === 1) {
+                ++$this->droppedSpansCount;
+                if ($this->droppedSpansCount === 1) {
                     ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                     && $loggerProxy->log(
                         'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
                         [
-                            'count($this->spansDataToSend)'                => count($this->spansDataToSend),
+                            'count($this->spansDataToSend)'                => count($this->spansToSend),
                             OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
                         ]
                     );
                 }
             } else {
-                ++$this->data->startedSpansCount;
+                ++$this->startedSpansCount;
             }
         }
 
@@ -289,7 +332,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $action,
             $timestamp,
             $isDropped,
-            $this->data->sampleRate // @phpstan-ignore-line
+            $this->sampleRate
         );
     }
 
@@ -378,16 +421,16 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     public function ensureParentId(): string
     {
-        if ($this->data->parentId === null) {
-            $this->data->parentId = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        if ($this->parentId === null) {
+            $this->parentId = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Setting parent ID for already existing transaction',
-                ['parentId' => $this->data->parentId]
+                ['parentId' => $this->parentId]
             );
         }
 
-        return $this->data->parentId;
+        return $this->parentId;
     }
 
     /** @inheritDoc */
@@ -401,26 +444,26 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     }
 
     /** @inheritDoc */
-    public function getDistributedTracingData(): ?DistributedTracingData
+    public function getDistributedTracingDataInternal(): ?DistributedTracingDataInternal
     {
         if ($this->currentSpan === null) {
             return $this->doGetDistributedTracingData(/* span */ null);
         }
 
-        /** @noinspection PhpDeprecationInspection */
-        return $this->currentSpan->getDistributedTracingData();
+        return $this->currentSpan->getDistributedTracingDataInternal();
     }
 
-    public function doGetDistributedTracingData(?Span $span): ?DistributedTracingData
+    public function doGetDistributedTracingData(?Span $span): ?DistributedTracingDataInternal
     {
         if (!$this->tracer->isRecording()) {
             return null;
         }
 
-        $result = new DistributedTracingData();
-        $result->traceId = $this->data->traceId;
-        $result->parentId = $span === null ? $this->data->id : $span->getId();
-        $result->isSampled = $this->data->isSampled;
+        $result = new DistributedTracingDataInternal();
+        $result->traceId = $this->traceId;
+        $result->parentId = $span === null ? $this->id : $span->getId();
+        $result->isSampled = $this->isSampled;
+        $result->outgoingTraceState = $this->outgoingTraceState;
         return $result;
     }
 
@@ -429,7 +472,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->config;
     }
 
-    public function queueSpanDataToSend(SpanData $spanData): void
+    public function queueSpanToSend(Span $span): void
     {
         if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -443,7 +486,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         if ($this->hasEnded()) {
             $this->tracer->sendEventsToApmServer(
-                [$spanData],
+                [$span],
                 [] /* <- errorsData */,
                 null /* <- breakdownMetricsPerTransaction */,
                 null /* <- transactionData */
@@ -451,7 +494,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        $this->spansDataToSend[] = $spanData;
+        $this->spansToSend[] = $span;
     }
 
     public function reserveSpaceInErrorToSendQueue(): bool
@@ -471,7 +514,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return false;
     }
 
-    public function queueErrorDataToSend(ErrorData $errorData): void
+    public function queueErrorDataToSend(Error $errorData): void
     {
         $this->errorsDataToSend[] = $errorData;
     }
@@ -497,7 +540,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        $this->data->prepareForSerialization();
+        $this->prepareForSerialization();
 
         if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -508,10 +551,10 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             );
         } else {
             $this->tracer->sendEventsToApmServer(
-                $this->spansDataToSend,
+                $this->spansToSend,
                 $this->errorsDataToSend,
                 $this->breakdownMetricsPerTransaction,
-                $this->data
+                $this
             );
         }
 
@@ -552,6 +595,37 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         );
     }
 
+    private function prepareForSerialization(): void
+    {
+        SerializationUtil::prepareForSerialization(/* ref */ $this->context);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
+
+        SerializationUtil::addNameValueIfNotNull('parent_id', $this->parentId, /* ref */ $result);
+
+        $spanCountSubObject = ['started' => $this->startedSpansCount];
+        if ($this->droppedSpansCount != 0) {
+            $spanCountSubObject['dropped'] = $this->droppedSpansCount;
+        }
+        SerializationUtil::addNameValue('span_count', $spanCountSubObject, /* ref */ $result);
+
+        SerializationUtil::addNameValueIfNotNull('result', $this->result, /* ref */ $result);
+
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/transactions/transaction.json#L72
+        // 'sampled' is optional and defaults to true.
+        if (!$this->isSampled) {
+            SerializationUtil::addNameValue('sampled', $this->isSampled, /* ref */ $result);
+        }
+
+        SerializationUtil::addNameValueIfNotNull('context', $this->context, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
+    }
+
     /** @inheritDoc */
     protected static function propertiesExcludedFromLog(): array
     {
@@ -570,7 +644,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             /* customPropValues */
             [
                 'currentSpanId'         => $currentSpanId,
-                'spansDataToSendCount'  => count($this->spansDataToSend),
+                'spansDataToSendCount'  => count($this->spansToSend),
                 'errorsDataToSendCount' => count($this->errorsDataToSend),
             ]
         );

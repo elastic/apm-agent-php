@@ -27,9 +27,10 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\TransactionContextRequestData;
+use Elastic\Apm\Impl\TransactionContextRequest;
 use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 
 class PublicApiTest extends TracerUnitTestCaseBase
 {
@@ -435,7 +436,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
         if ($shouldSetMethod) {
             self::assertSame($method, $txData->context->request->method);
         } else {
-            self::assertSame(TransactionContextRequestData::UNKNOWN_METHOD, $txData->context->request->method);
+            self::assertSame(TransactionContextRequest::UNKNOWN_METHOD, $txData->context->request->method);
         }
 
         if ($shouldSetUrlDomain) {
@@ -537,5 +538,42 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
         $reportedSpan = $this->mockEventSink->singleSpan();
         $this->assertSame($expected, $reportedSpan->outcome);
+    }
+
+    /**
+     * @return iterable<array{null|int|string, ?string, ?string}>
+     */
+    public function dataProviderForTestTransactionSetUserContext(): iterable
+    {
+        /** @var iterable<array{null|int|string, ?string, ?string}> $result */
+        $result = (new DataProviderForTestBuilder())
+            ->addDimensionOnlyFirstValueCombinable([123, 'test_user_id', null, '', 0])
+            ->addDimensionOnlyFirstValueCombinable(['test_user_email', null, ''])
+            ->addDimensionOnlyFirstValueCombinable(['test_user_username', null, ''])
+            ->build();
+        return $result;
+    }
+
+    /**
+     * @dataProvider dataProviderForTestTransactionSetUserContext
+     *
+     * @param null|int|string $id
+     * @param ?string         $email
+     * @param ?string         $username
+     */
+    public function testTransactionSetUserContext($id, ?string $email, ?string $username): void
+    {
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->context()->user()->setId($id);
+        $tx->context()->user()->setEmail($email);
+        $tx->context()->user()->setUsername($username);
+        $tx->end();
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertNotNull($reportedTx->context);
+        $this->assertNotNull($reportedTx->context->user);
+        $this->assertSame($id, $reportedTx->context->user->id);
+        $this->assertSame($email, $reportedTx->context->user->email);
+        $this->assertSame($username, $reportedTx->context->user->username);
     }
 }

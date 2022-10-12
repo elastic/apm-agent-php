@@ -56,6 +56,28 @@
 //
 //      7) Document the new configuration option at docs/configuration.asciidoc
 
+struct OptionalBool
+{
+    bool isSet;
+    bool value;
+};
+typedef struct OptionalBool OptionalBool;
+
+static inline String optionalBoolToString( OptionalBool optionalBoolValue )
+{
+    return optionalBoolValue.isSet ? "not set" : boolToString( optionalBoolValue.value );
+}
+
+static inline OptionalBool makeNotSetOptionalBool()
+{
+    return (OptionalBool){ .isSet = false };
+}
+
+static inline OptionalBool makeSetOptionalBool( bool value )
+{
+    return (OptionalBool){ .isSet = true, .value = value };
+}
+
 enum OptionId
 {
     optionId_abortOnMemoryLeak,
@@ -119,7 +141,7 @@ struct ConfigSnapshot
     AssertLevel assertLevel;
         #endif
     String apiKey;
-    bool asyncBackendComm;
+    OptionalBool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
     String devInternal;
@@ -161,7 +183,7 @@ typedef struct ConfigSnapshot ConfigSnapshot;
 struct ConfigManager;
 typedef struct ConfigManager ConfigManager;
 
-ResultCode newConfigManager( ConfigManager** pCfgManager );
+ResultCode newConfigManager( ConfigManager** pCfgManager, bool isLoggingRelatedOnly );
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager );
 ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* didConfigChange );
 void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager );

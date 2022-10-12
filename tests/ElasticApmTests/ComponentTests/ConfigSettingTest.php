@@ -25,9 +25,7 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
@@ -37,10 +35,14 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class ConfigSettingTest extends ComponentTestCaseBase
 {
     private const APP_CODE_ARGS_KEY_OPTION_NAME = 'APP_CODE_ARGS_KEY_OPTION_NAME';
@@ -72,7 +74,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
          * @return array<string, ?bool>
          */
         $boolRawToParsedValues = function (?bool $valueToExclude = null): array {
-            /** @var array<string, ?bool> */
+            /** @var array<string, ?bool> $result */
             $result = [
                 'false'         => false,
                 'true'          => true,
@@ -114,9 +116,13 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             " /a/*, \t(?-i)/b1/ /b2 \t \n, (?-i) **c*\t * \t " => "/a/*, (?-i)/b1/ /b2, (?-i) *c*\t *",
         ];
 
+        $asyncBackendCommValues = $boolRawToParsedValues(
+            self::isMainAppCodeHostHttp() ? null : true /* <- valueToExclude */
+        );
+
         return [
             OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
-            OptionNames::ASYNC_BACKEND_COMM       => $boolRawToParsedValues(),
+            OptionNames::ASYNC_BACKEND_COMM       => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,
@@ -160,11 +166,36 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     {
         $optNameToRawToParsedValue = self::buildOptionNameToRawToValue();
 
-        foreach (AgentConfigSourceKind::all() as $agentConfigSourceKind) {
-            foreach ($optNameToRawToParsedValue as $optName => $optRawToValue) {
-                foreach ($optRawToValue as $optRawVal => $optExpectedVal) {
-                    if ($agentConfigSourceKind === AgentConfigSourceKind::iniFile()) {
-                        $optRawToValue = str_replace("\n", "\t", $optRawToValue);
+        if (self::isSmoke()) {
+            $optNameToRawToParsedValueForSmoke = [];
+            foreach ($optNameToRawToParsedValue as $optName => $optRawToExpectedParsedValues) {
+                $optNameToRawToParsedValueForSmoke[$optName] = self::adaptToSmoke($optRawToExpectedParsedValues);
+            }
+            $optNameToRawToParsedValue = $optNameToRawToParsedValueForSmoke;
+        }
+
+        $agentConfigSourceKindIndex = 0;
+        /**
+         * @return AgentConfigSourceKind[]
+         */
+        $agentConfigSourceKindVariants = function () use (&$agentConfigSourceKindIndex): array {
+            if (!self::isSmoke()) {
+                return AgentConfigSourceKind::all();
+            }
+
+            $result = [AgentConfigSourceKind::all()[$agentConfigSourceKindIndex]];
+            ++$agentConfigSourceKindIndex;
+            if ($agentConfigSourceKindIndex === count(AgentConfigSourceKind::all())) {
+                $agentConfigSourceKindIndex = 0;
+            }
+            return $result;
+        };
+
+        foreach ($optNameToRawToParsedValue as $optName => $optRawToExpectedParsedValues) {
+            foreach ($optRawToExpectedParsedValues as $optRawVal => $optExpectedVal) {
+                foreach ($agentConfigSourceKindVariants() as $agentConfigSourceKind) {
+                    if ($agentConfigSourceKind === AgentConfigSourceKind::iniFile() && is_string($optRawVal)) {
+                        $optRawVal = str_replace("\n", "\t", $optRawVal);
                     }
                     $optExpectedVal = $optExpectedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
                     yield [$agentConfigSourceKind, $optName, strval($optRawVal), $optExpectedVal];
@@ -183,12 +214,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
-        $tracer = GlobalTracerHolder::getValue();
-        if (!($tracer instanceof Tracer)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage('$tracer is not an instance of Tracer class', ['$tracer' => $tracer])
-            );
-        }
+        $tracer = self::getTracerFromAppCode();
 
         $optActualVal = $tracer->getConfig()->parsedValueFor($optName);
 
@@ -230,8 +256,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         string $optRawVal,
         $optExpectedVal
     ): void {
-        TransactionDataExpectations::$defaultIsSampled = null;
-        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        TransactionExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultDroppedSpansCount = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {

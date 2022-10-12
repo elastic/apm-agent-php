@@ -24,45 +24,26 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
-use ElasticApmTests\Util\LogCategoryForTests;
-use GuzzleHttp\Exception\GuzzleException;
 
 final class ResourcesCleanerHandle extends HttpServerHandle
 {
+    /** @var ResourcesClient */
+    private $resourcesClient;
+
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
-        parent::__construct($httpSpawnedProcessHandle->getSpawnedProcessId(), $httpSpawnedProcessHandle->getPort());
+        parent::__construct(
+            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgServerDesc */,
+            $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
+            $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
+            $httpSpawnedProcessHandle->getPort()
+        );
+
+        $this->resourcesClient = new ResourcesClient($this->getSpawnedProcessInternalId(), $this->getPort());
     }
 
-    public function signalToExit(): void
+    public function getClient(): ResourcesClient
     {
-        $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
-
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Signaling ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit...'
-        );
-
-        try {
-            HttpClientUtilForTests::sendRequest(
-                HttpConsts::METHOD_POST,
-                (new UrlParts())->path(ResourcesCleaner::CLEAN_AND_EXIT_URI_PATH)->port($this->getPort()),
-                TestInfraDataPerRequest::withSpawnedProcessId($this->getSpawnedProcessId())
-            );
-        } catch (GuzzleException $ex) {
-            // clean-and-exit request is expected to throw
-            // because ResourcesCleaner process exits before responding
-        }
-
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Signaled ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . ' to clean and exit'
-        );
+        return $this->resourcesClient;
     }
 }

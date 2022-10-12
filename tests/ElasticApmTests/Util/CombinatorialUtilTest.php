@@ -34,7 +34,7 @@ class CombinatorialUtilTest extends TestCaseBase
          * @return array<array<mixed>>
          */
         $permutationsAsArray = function (array $totalSet, int $subSetSize): array {
-            return IterableUtilForTests::toArray(CombinatorialUtilForTests::permutations($totalSet, $subSetSize));
+            return IterableUtilForTests::toList(CombinatorialUtilForTests::permutations($totalSet, $subSetSize));
         };
 
         self::assertEqualsCanonicalizing([[]], $permutationsAsArray([], 0));
@@ -67,6 +67,7 @@ class CombinatorialUtilTest extends TestCaseBase
             $permutationsAsArray(['a', 'b', 'c'], 3)
         );
     }
+
     public function testCartesianProduct(): void
     {
         /**
@@ -75,7 +76,7 @@ class CombinatorialUtilTest extends TestCaseBase
          * @return array<array<string, mixed>>
          */
         $cartesianProductAsArray = function (array $iterables): array {
-            return IterableUtilForTests::toArray(CombinatorialUtilForTests::cartesianProduct($iterables));
+            return IterableUtilForTests::toList(CombinatorialUtilForTests::cartesianProduct($iterables));
         };
 
         self::assertEqualsCanonicalizing([[]], $cartesianProductAsArray([]));
@@ -99,6 +100,18 @@ class CombinatorialUtilTest extends TestCaseBase
                 ['digit' => 3, 'letter' => 'b'],
             ],
             $cartesianProductAsArray(['digit' => [1, 2, 3], 'letter' => ['a', 'b']])
+        );
+
+        self::assertEqualsCanonicalizing(
+            [
+                [1, 'a'],
+                [1, 'b'],
+                [2, 'a'],
+                [2, 'b'],
+                [3, 'a'],
+                [3, 'b'],
+            ],
+            $cartesianProductAsArray([[1, 2, 3], ['a', 'b']])
         );
     }
 }

@@ -80,7 +80,7 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
     public $language = null;
 
     /**
-     * @var string|null
+     * @var string
      *
      * Immutable name of the service emitting this event.
      * Valid characters are: 'a'-'z', 'A'-'Z', '0'-'9', '_' and '-'.
@@ -89,7 +89,7 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L50
      */
-    public $name = null;
+    public $name;
 
     /**
      * @var string|null

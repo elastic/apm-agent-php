@@ -35,11 +35,13 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_CONFIG
 
+
 enum ParsedOptionValueType
 {
     parsedOptionValueType_undefined = 0,
 
     parsedOptionValueType_bool,
+    parsedOptionValueType_optionalBool,
     parsedOptionValueType_string,
     parsedOptionValueType_int,
     parsedOptionValueType_duration,
@@ -58,6 +60,7 @@ struct ParsedOptionValue
     union
     {
         bool boolValue;
+        OptionalBool optionalBoolValue;
         String stringValue;
         int intValue;
         Duration durationValue;
@@ -103,6 +106,7 @@ struct OptionMetadata
     StringView iniName;
     bool isSecret;
     bool isDynamic;
+    bool isLoggingRelated;
     ParsedOptionValue defaultValue;
     InterpretIniRawValueFunc interpretIniRawValue;
     ParseRawValueFunc parseRawValue;
@@ -165,6 +169,7 @@ typedef struct ConfigManagerCurrentState ConfigManagerCurrentState;
 
 struct ConfigManager
 {
+    bool isLoggingRelatedOnly;
     ConfigMetadata meta;
     ConfigManagerCurrentState current;
 };
@@ -185,6 +190,11 @@ String interpretBoolIniRawValue( String rawValue )
     if ( rawValue != NULL && isEmtpyString( rawValue ) ) return "false";
 
     return rawValue;
+}
+
+String interpretOptionalBoolIniRawValue( String rawValue )
+{
+    return interpretBoolIniRawValue( rawValue );
 }
 
 String interpretEmptyIniRawValueAsOff( String rawValue )
@@ -233,10 +243,10 @@ static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOption
     RETURN_STRING( parsedValue.u.stringValue );
 }
 
-static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+static ResultCode parseBoolValueImpl( const OptionMetadata* optMeta, ParsedOptionValueType expectedType, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
-    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_bool );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, expectedType );
     ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
     ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
@@ -263,6 +273,11 @@ static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue
     return resultFailure;
 }
 
+static ResultCode parseBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+{
+    return parseBoolValueImpl( optMeta, parsedOptionValueType_bool, rawValue, /* out */ parsedValue );
+}
+
 static String streamParsedBool( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
@@ -282,6 +297,39 @@ static void parsedBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_BOOL( parsedValue.u.boolValue );
+}
+
+static ResultCode parseOptionalBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+{
+    ParsedOptionValue tempParsedValue;
+    ResultCode resultCode = parseBoolValueImpl( optMeta, parsedOptionValueType_optionalBool, rawValue, /* out */ &tempParsedValue );
+    if ( resultCode == resultSuccess )
+    {
+        parsedValue->u.optionalBoolValue = makeSetOptionalBool( tempParsedValue.u.boolValue );
+        parsedValue->type = parsedOptionValueType_optionalBool;
+    }
+    return resultCode;
+}
+
+static String streamParsedOptionalBool( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_optionalBool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+
+    return streamString( optionalBoolToString( parsedValue.u.optionalBoolValue ), txtOutStream );
+}
+
+static void parsedOptionalBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_optionalBool );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
+
+    RETURN_STRING( optionalBoolToString( parsedValue.u.optionalBoolValue ) );
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
@@ -410,6 +458,7 @@ static OptionMetadata buildStringOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseStringValue,
@@ -418,6 +467,33 @@ static OptionMetadata buildStringOptionMetadata(
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedStringValueToZval
     };
+}
+
+static OptionMetadata buildLoggingRelatedStringOptionMetadata(
+        String name
+        , StringView iniName
+        , bool isSecret
+        , bool isDynamic
+        , String defaultValue
+        , SetConfigSnapshotFieldFunc setFieldFunc
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
+{
+    return (OptionMetadata)
+            {
+                    .name = name,
+                    .iniName = iniName,
+                    .isSecret = isSecret,
+                    .isDynamic = isDynamic,
+                    .isLoggingRelated = true,
+                    .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
+                    .interpretIniRawValue = &interpretStringIniRawValue,
+                    .parseRawValue = &parseStringValue,
+                    .streamParsedValue = &streamParsedString,
+                    .setField = setFieldFunc,
+                    .getField = getFieldFunc,
+                    .parsedValueToZval = &parsedStringValueToZval
+            };
 }
 
 static OptionMetadata buildBoolOptionMetadata(
@@ -436,6 +512,7 @@ static OptionMetadata buildBoolOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_bool, .u.boolValue = defaultValue },
         .interpretIniRawValue = &interpretBoolIniRawValue,
         .parseRawValue = &parseBoolValue,
@@ -443,6 +520,33 @@ static OptionMetadata buildBoolOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedBoolValueToZval
+    };
+}
+
+static OptionMetadata buildOptionalBoolOptionMetadata(
+        String name
+        , StringView iniName
+        , bool isSecret
+        , bool isDynamic
+        , OptionalBool defaultValue
+        , SetConfigSnapshotFieldFunc setFieldFunc
+        , GetConfigSnapshotFieldFunc getFieldFunc
+)
+{
+    return (OptionMetadata)
+    {
+        .name = name,
+        .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
+        .isLoggingRelated = false,
+        .defaultValue = { .type = parsedOptionValueType_optionalBool, .u.optionalBoolValue = defaultValue },
+        .interpretIniRawValue = &interpretOptionalBoolIniRawValue,
+        .parseRawValue = &parseOptionalBoolValue,
+        .streamParsedValue = &streamParsedOptionalBool,
+        .setField = setFieldFunc,
+        .getField = getFieldFunc,
+        .parsedValueToZval = &parsedOptionalBoolValueToZval
     };
 }
 
@@ -463,6 +567,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = false,
         .defaultValue = { .type = parsedOptionValueType_duration, .u.durationValue = defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseDurationValue,
@@ -479,6 +584,7 @@ static OptionMetadata buildEnumOptionMetadata(
         , StringView iniName
         , bool isSecret
         , bool isDynamic
+        , bool isLoggingRelated
         , int defaultValue
         , InterpretIniRawValueFunc interpretIniRawValue
         , SetConfigSnapshotFieldFunc setFieldFunc
@@ -493,6 +599,7 @@ static OptionMetadata buildEnumOptionMetadata(
         .iniName = iniName,
         .isSecret = isSecret,
         .isDynamic = isDynamic,
+        .isLoggingRelated = isLoggingRelated,
         .defaultValue = { .type = parsedOptionValueType_int, .u.intValue = defaultValue },
         .interpretIniRawValue = interpretIniRawValue,
         .parseRawValue = &parseEnumValue,
@@ -573,7 +680,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, asyncBackendComm )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
@@ -644,7 +751,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 #define ELASTIC_APM_INIT_DYNAMIC_METADATA( buildFunc, fieldName, optName, defaultValue ) \
     ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ false, /* isDynamic */ true, defaultValue )
 
-#define ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
+#define ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, isLoggingRelated, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
     initOptionMetadataForId \
     ( \
         optsMeta \
@@ -656,6 +763,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
             , ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optName ) ) \
             , /* isSecret */ false \
             , isDynamic \
+            , isLoggingRelated \
             , defaultValue \
             , interpretIniRawValue \
             , ELASTIC_APM_SET_FIELD_FUNC_NAME( fieldName ) \
@@ -671,10 +779,10 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
     )
 
 #define ELASTIC_APM_ENUM_INIT_METADATA( fieldName, optName, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg ) \
-    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, /* isDynamic */ false, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg )
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, /* isDynamic */ false, /* isLoggingRelated */ false, defaultValue, interpretIniRawValue, enumNamesArray, isUniquePrefixEnoughArg )
 
 #define ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, isDynamic ) \
-    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
+    ELASTIC_APM_ENUM_INIT_METADATA_EX( fieldName, optName, isDynamic, /* isLoggingRelated */ true, logLevel_not_set, &interpretEmptyIniRawValueAsOff, logLevelNames, /* isUniquePrefixEnough: */ true )
 
 #define ELASTIC_APM_INIT_LOG_LEVEL_METADATA( fieldName, optName ) \
     ELASTIC_APM_INIT_LOG_LEVEL_METADATA_EX( fieldName, optName, /* isDynamic: */ false )
@@ -723,10 +831,10 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     #endif
 
     ELASTIC_APM_INIT_METADATA(
-            buildBoolOptionMetadata,
+            buildOptionalBoolOptionMetadata,
             asyncBackendComm,
             ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM,
-            /* defaultValue: */ true );
+            /* defaultValue: */ makeNotSetOptionalBool() );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
@@ -785,7 +893,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* isUniquePrefixEnough: */ true );
 
     ELASTIC_APM_INIT_METADATA(
-            buildStringOptionMetadata,
+            buildLoggingRelatedStringOptionMetadata,
             logFile,
             ELASTIC_APM_CFG_OPT_NAME_LOG_FILE,
             /* defaultValue: */ NULL );
@@ -914,13 +1022,15 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
 
 static
 void parseCombinedRawConfigSnapshot(
-        const OptionMetadata* optsMeta,
+        ConfigManager* cfgManager,
         const CombinedRawConfigSnapshot* combinedRawCfgSnapshot,
         ConfigSnapshot* cfgSnapshot )
 {
-    ELASTIC_APM_ASSERT_VALID_PTR( optsMeta );
+    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
     ELASTIC_APM_ASSERT_VALID_PTR( combinedRawCfgSnapshot );
     ELASTIC_APM_ASSERT_VALID_PTR( cfgSnapshot );
+
+    const OptionMetadata* const optsMeta = cfgManager->meta.optionsMeta;
 
     ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
     {
@@ -932,6 +1042,11 @@ void parseCombinedRawConfigSnapshot(
         const String sourceDescription = combinedRawCfgSnapshot->sourceDescriptions[ optId ];
         ParsedOptionValue parsedOptValue;
         ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
+
+        if ( cfgManager->isLoggingRelatedOnly && !optMeta->isLoggingRelated )
+        {
+            continue;
+        }
 
         if ( interpretedRawValue == NULL )
         {
@@ -1263,14 +1378,6 @@ bool areEqualCombinedRawConfigSnapshots( const CombinedRawConfigSnapshot* snapsh
     return true;
 }
 
-static
-void logConfigChange( const ConfigManager* cfgManager, const ConfigRawData* newRawData )
-{
-    ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
-    ELASTIC_APM_ASSERT_VALID_PTR( newRawData );
-
-}
-
 const ConfigSnapshot* getConfigManagerCurrentSnapshot( const ConfigManager* cfgManager )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManager );
@@ -1297,8 +1404,7 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
         goto finally;
     }
 
-    parseCombinedRawConfigSnapshot( cfgManager->meta.optionsMeta, &newRawData->combined, &newCfgSnapshot );
-    logConfigChange( cfgManager, newRawData );
+    parseCombinedRawConfigSnapshot( cfgManager, &newRawData->combined, &newCfgSnapshot );
     deleteConfigRawDataAndSetToNull( /* in,out */ &cfgManager->current.rawData );
     cfgManager->current.rawData = newRawData;
     cfgManager->current.snapshot = newCfgSnapshot;
@@ -1477,7 +1583,7 @@ void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager )
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
 }
 
-ResultCode newConfigManager( ConfigManager** pNewCfgManager )
+ResultCode newConfigManager( ConfigManager** pNewCfgManager, bool isLoggingRelatedOnly )
 {
     ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pNewCfgManager );
 
@@ -1487,6 +1593,7 @@ ResultCode newConfigManager( ConfigManager** pNewCfgManager )
     ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
     ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
+    cfgManager->isLoggingRelatedOnly = isLoggingRelatedOnly;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );
     initConfigManagerCurrentState( &cfgManager->meta, /* out */ &cfgManager->current );
 

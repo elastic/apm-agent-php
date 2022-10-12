@@ -41,4 +41,5 @@ final class LogCategory
     public const DISTRIBUTED_TRACING = 'Distributed-Tracing';
     public const INTERCEPTION = 'Interception';
     public const PUBLIC_API = 'Public-API';
+    public const INFRASTRUCTURE = 'Infrastructure';
 }
