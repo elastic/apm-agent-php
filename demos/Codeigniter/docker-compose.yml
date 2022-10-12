@@ -91,13 +91,13 @@ services:
   mysql:
     image: mysql:5.7
     container_name: leru_mysql
-    restart: unless-stopped
-    tty: true
-    volumes:
-      - ./docker/mysql/data:/var/lib/mysql/
-      - ./docker/mysql/based.sql:/docker-entrypoint-initdb.d/based.sql
+    restart: always
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "--host=localhost", "--user=root", "--password=l3ru123!", "ping" ]
+      timeout: 5s
+      retries: 60
     ports:
-      - "3306:3306"
+      - 8102:3306
     environment:
       MYSQL_DATABASE: mysite
       MYSQL_ROOT_PASSWORD: l3ru123!
@@ -113,10 +113,9 @@ services:
       ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
       ELASTIC_APM_LOG_LEVEL:
     container_name: leru_php_fpm
-    volumes:
-      - .:/var/www
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   nginx_url:
     image: nginx:latest
