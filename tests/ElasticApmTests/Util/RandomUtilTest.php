@@ -26,7 +26,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Util\DbgUtil;
 
 class RandomUtilTest extends TestCaseBase
 {

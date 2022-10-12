@@ -26,14 +26,13 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\Util\DataFromAgentExpectations;
-use ElasticApmTests\Util\DataValidator;
-use ElasticApmTests\Util\ErrorDataExpectations;
+use ElasticApmTests\Util\ErrorExpectations;
 use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MetadataValidator;
-use ElasticApmTests\Util\MetricSetDataExpectations;
+use ElasticApmTests\Util\MetricSetExpectations;
 use ElasticApmTests\Util\TestCaseBase;
-use ElasticApmTests\Util\TraceDataExpectations;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TraceExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 
 final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 {
@@ -52,7 +51,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 
     private function fillExpectations(): void
     {
-        $transactionExpectations = new TransactionDataExpectations();
+        $transactionExpectations = new TransactionExpectations();
         $transactionExpectations->isSampled = $this->deriveIsSampledExpectation();
         $transactionExpectations->timestampBefore = $this->appCodeInvocation->timestampBefore;
         $transactionExpectations->timestampAfter = $this->timeReceivedLastIntakeApiRequest;
@@ -68,7 +67,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 
     private function deriveIsSampledExpectation(): ?bool
     {
-        /** @var ?bool */
+        /** @var ?bool $sampleRate */
         $sampleRate = null;
         foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $currentSampleRate = self::deriveIsSampledExpectationForAppCodeHost($appCodeHostParams);
@@ -86,36 +85,36 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     private static function deriveIsSampledExpectationForAppCodeHost(AppCodeHostParams $appCodeHostParams): ?bool
     {
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
-        $sampleRate = $agentConfig->effectiveTransactionSampleRateAsString();
-        return $sampleRate === '0' ? false : ($sampleRate === '1' ? true : null);
+        $sampleRate = $agentConfig->transactionSampleRate();
+        return $sampleRate === 0.0 ? false : ($sampleRate === 1.0 ? true : null);
     }
 
-    private function fillErrorExpectations(TransactionDataExpectations $transactionExpectations): void
+    private function fillErrorExpectations(TransactionExpectations $transactionExpectations): void
     {
-        $this->error = new ErrorDataExpectations();
+        $this->error = new ErrorExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->error)
+            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->error)
         );
     }
 
-    private function fillMetadataExpectations(TransactionDataExpectations $transactionExpectations): void
+    private function fillMetadataExpectations(TransactionExpectations $transactionExpectations): void
     {
         $this->agentEphemeralIdToMetadata = [];
         foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $metadataExpectations
                 = self::buildMetadataExpectationsForHost($transactionExpectations, $appCodeHostParams);
-            $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessId);
-            $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessId] = $metadataExpectations;
+            $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessInternalId);
+            $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessInternalId] = $metadataExpectations;
         }
     }
 
     private static function buildMetadataExpectationsForHost(
-        TransactionDataExpectations $transactionExpectations,
+        TransactionExpectations $transactionExpectations,
         AppCodeHostParams $appCodeHostParams
     ): MetadataExpectations {
         $metadata = new MetadataExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata)
+            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata)
         );
 
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
@@ -136,19 +135,19 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         return $metadata;
     }
 
-    private function fillMetricSetExpectations(TransactionDataExpectations $transactionExpectations): void
+    private function fillMetricSetExpectations(TransactionExpectations $transactionExpectations): void
     {
-        $this->metricSet = new MetricSetDataExpectations();
+        $this->metricSet = new MetricSetExpectations();
         TestCaseBase::assertGreaterThanZero(
-            DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->metricSet)
+            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->metricSet)
         );
     }
 
-    private function fillTraceExpectations(TransactionDataExpectations $transactionExpectations): void
+    private function fillTraceExpectations(TransactionExpectations $transactionExpectations): void
     {
-        $this->trace = new TraceDataExpectations();
+        $this->trace = new TraceExpectations();
         $this->trace->transaction = $transactionExpectations;
-        DataValidator::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->trace->span);
+        self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->trace->span);
         $this->trace->span->timestampAfter = $this->appCodeInvocation->timestampAfter;
 
         $appCodeRequestParams = $this->appCodeInvocation->appCodeRequestParams;

@@ -60,3 +60,5 @@ ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, uint32_t argsCoun
 ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCount, zval args[], zval* retVal );
 
 void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );
+
+bool isPhpRunningAsCliScript();

@@ -24,8 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 
@@ -39,7 +40,12 @@ final class MockApmServerHandle extends HttpServerHandle
 
     public function __construct(HttpServerHandle $httpSpawnedProcessHandle)
     {
-        parent::__construct($httpSpawnedProcessHandle->getSpawnedProcessId(), $httpSpawnedProcessHandle->getPort());
+        parent::__construct(
+            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgServerDesc */,
+            $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
+            $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
+            $httpSpawnedProcessHandle->getPort()
+        );
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -57,21 +63,18 @@ final class MockApmServerHandle extends HttpServerHandle
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Starting...');
 
-        $response = HttpClientUtilForTests::sendRequest(
-            HttpConsts::METHOD_GET,
-            (new UrlParts())
-                ->path(MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS)
-                ->port($this->getPort()),
-            TestInfraDataPerRequest::withSpawnedProcessId($this->getSpawnedProcessId()),
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_GET,
+            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS,
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
         );
 
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+        if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException('Received unexpected status code');
         }
 
-        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
         /** @var array<string, mixed> $decodedBody */
+        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
 
         $requestsJson = $decodedBody[MockApmServer::INTAKE_API_REQUESTS_JSON_KEY];
         /** @var array<array<string, mixed>> $requestsJson */
@@ -82,7 +85,7 @@ final class MockApmServerHandle extends HttpServerHandle
             $newIntakeApiRequests[] = $newIntakeApiRequest;
         }
 
-        if (empty($newIntakeApiRequests)) {
+        if (ArrayUtil::isEmpty($newIntakeApiRequests)) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Fetched NO new intake API requests received from agent');
         } else {

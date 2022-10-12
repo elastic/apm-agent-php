@@ -88,3 +88,13 @@ export GIT_HOME="/<fullPathTYourRepos>"
 # Build the PHP documentation
 $GIT_HOME/docs/build_docs --doc $GIT_HOME/apm-agent-php/docs/index.asciidoc --chunk 1 --open
 ```
+
+# CI
+## How to run Jenkins build+test CI pipeline with custom log level
+By default build+test CI pipeline runs with the default log level (for both agent and tests infrastructure).
+Jenkins build parameters can be used to run build+test CI pipeline with a custom log level.
+- Go to classic (i.e., not Blue Ocean) Jenkins' UI
+- Make sure it's a UI page for PR/branch and not for a particular build (i.e., `https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/PR-###/` and not `https://apm-ci.elastic.co/job/apm-agent-php/job/apm-agent-php-mbp/job/PR-###/#/`)
+- Go to `Build with Parameters`
+- Select log level for agent and/or tests' infrastructure
+- Click `Build`

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
@@ -30,17 +31,19 @@ use Elastic\Apm\SpanContextServiceTargetInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Span>
+ * @extends ContextPartWrapper<Span>
  */
-final class SpanContextServiceTarget extends ContextDataWrapper implements SpanContextServiceTargetInterface
+final class SpanContextServiceTarget extends ContextPartWrapper implements SpanContextServiceTargetInterface
 {
-    /** @var SpanContextServiceTargetData */
-    private $data;
+    /** @var ?string */
+    public $name;
 
-    public function __construct(Span $owner, SpanContextServiceTargetData $data)
+    /** @var ?string */
+    public $type;
+
+    public function __construct(Span $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     /** @inheritDoc */
@@ -50,7 +53,7 @@ final class SpanContextServiceTarget extends ContextDataWrapper implements SpanC
             return;
         }
 
-        $this->data->name = Tracer::limitNullableKeywordString($name);
+        $this->name = Tracer::limitNullableKeywordString($name);
     }
 
     /** @inheritDoc */
@@ -60,6 +63,23 @@ final class SpanContextServiceTarget extends ContextDataWrapper implements SpanC
             return;
         }
 
-        $this->data->type = Tracer::limitNullableKeywordString($type);
+        $this->type = Tracer::limitNullableKeywordString($type);
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return ($this->name !== null) || ($this->type !== null);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('type', $this->type, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

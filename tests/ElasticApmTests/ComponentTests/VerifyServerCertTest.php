@@ -31,12 +31,16 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class VerifyServerCertTest extends ComponentTestCaseBase
 {
     /**
      * @return iterable<array{?bool}>
      */
-    public function configTestDataProvider(): iterable
+    public function dataProviderForTestConfig(): iterable
     {
         yield [null];
 
@@ -57,7 +61,7 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider configTestDataProvider
+     * @dataProvider dataProviderForTestConfig
      *
      * @param ?bool $verifyServerCertConfigVal
      */

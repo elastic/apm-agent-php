@@ -25,7 +25,6 @@ namespace Elastic\Apm\Impl\BreakdownMetrics;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
@@ -87,8 +86,10 @@ class SelfTimeTracker implements LoggableInterface
 
     private function stopTimer(float $monotonicClockNow): void
     {
-        $this->accumulatedSelfTimeInMicroseconds
-            += TimeUtil::calcDurationInMicroseconds($this->currentSelfTimeSegmentBeginTime, $monotonicClockNow);
+        $this->accumulatedSelfTimeInMicroseconds += TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+            $this->currentSelfTimeSegmentBeginTime,
+            $monotonicClockNow
+        );
     }
 
     public function accumulatedSelfTimeInMicroseconds(): float

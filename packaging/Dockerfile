@@ -14,5 +14,5 @@ RUN (cd /usr/local/bundle/gems/fpm-${FPM_VERSION}/ ; patch -p 1 < /tmp/fpm_apm.p
     && rm -f /tmp/fpm_apk.patch
 
 COPY create-package.sh /bin
-WORKDIR /src
+WORKDIR /app
 ENTRYPOINT ["/bin/create-package.sh"]

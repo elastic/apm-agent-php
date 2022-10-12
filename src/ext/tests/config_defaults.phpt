@@ -3,7 +3,7 @@ Verify configuration option's defaults
 --SKIPIF--
 <?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=
 ELASTIC_APM_LOG_FILE=
 ELASTIC_APM_LOG_LEVEL=
@@ -13,6 +13,8 @@ ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=
 ELASTIC_APM_SECRET_TOKEN=
 ELASTIC_APM_SERVER_URL=
 ELASTIC_APM_SERVICE_NAME=
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

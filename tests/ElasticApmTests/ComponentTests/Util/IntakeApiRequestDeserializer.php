@@ -27,6 +27,8 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -73,7 +75,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $isFirstLine = true;
         $encounteredEmptyLine = false;
         foreach (self::iterateLines($this->intakeApiRequest->body) as $bodyLine) {
-            if (empty($bodyLine)) {
+            if (TextUtil::isEmptyString($bodyLine)) {
                 $encounteredEmptyLine = true;
                 continue;
             }
@@ -131,28 +133,27 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
 
     private function addTransaction(string $encodedJson): void
     {
-        $newTransaction = $this->validateAndDeserializeTransactionData($encodedJson);
+        $newTransaction = $this->validateAndDeserializeTransaction($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newTransaction->id));
         $this->result->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
     private function addSpan(string $encodedJson): void
     {
-        $newSpan = $this->validateAndDeserializeSpanData($encodedJson);
+        $newSpan = $this->validateAndDeserializeSpan($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newSpan->id));
         $this->result->idToSpan[$newSpan->id] = $newSpan;
     }
 
     private function addError(string $encodedJson): void
     {
-        $newError = $this->validateAndDeserializeErrorData($encodedJson);
-        TestCase::assertArrayNotHasKey($newError->id, $this->result->idToError);
-        $this->result->idToError[$newError->id] = $newError;
+        $newError = $this->validateAndDeserializeError($encodedJson);
+        ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->result->idToError);
     }
 
     private function addMetricSet(string $encodedJson): void
     {
-        $newMetricSet = $this->validateAndDeserializeMetricSetData($encodedJson);
+        $newMetricSet = $this->validateAndDeserializeMetricSet($encodedJson);
         $this->result->metricSets[] = $newMetricSet;
     }
 

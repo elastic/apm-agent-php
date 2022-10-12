@@ -2,18 +2,23 @@ ARG PHP_VERSION=7.2
 FROM php:${PHP_VERSION}-fpm
 
 RUN apt-get -qq update \
- && apt-get -qq install -y \
-    autoconf \
-    build-essential \
-    curl \
-    libcmocka-dev \
-    libcurl4-openssl-dev \
-    procps \
-    rsyslog \
-    unzip \
-    wget \
-    --no-install-recommends \
+    && apt-get -qq -y --no-install-recommends install \
+        autoconf \
+        build-essential \
+        curl \
+        libcmocka-dev \
+        libcurl4-openssl-dev \
+        libsqlite3-dev \
+        procps \
+        rsyslog \
+        unzip \
+        wget \
  && rm -rf /var/lib/apt/lists/*
+
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mysqli \
+    pdo_sqlite
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -32,6 +37,9 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/build/junit.xml
 ENV CMOCKA_MESSAGE_OUTPUT=XML
 ENV CMOCKA_XML_FILE=/app/build/${PHP_VERSION}-%g-unit-tests-junit.xml
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
 
 CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \

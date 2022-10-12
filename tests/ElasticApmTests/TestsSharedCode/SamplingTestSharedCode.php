@@ -24,11 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class SamplingTestSharedCode
 {
@@ -46,12 +46,11 @@ final class SamplingTestSharedCode
     {
         $tx = ElasticApm::getCurrentTransaction();
         $expectedIsSampled = $transactionSampleRate === 1.0 ? true : ($transactionSampleRate === 0.0 ? false : null);
-        if ($expectedIsSampled !== null && $tx->isSampled() !== $expectedIsSampled) {
-            $tx->discard();
-            throw new RuntimeException(
-                "transactionSampleRate: $transactionSampleRate" .
-                " expectedIsSampled: $expectedIsSampled" .
-                " tx->isSampled: " . ($tx->isSampled() ? 'true' : 'false')
+        if ($expectedIsSampled !== null) {
+            TestCase::assertSame(
+                $expectedIsSampled,
+                $tx->isSampled(),
+                LoggableToString::convert(['transactionSampleRate' => $transactionSampleRate])
             );
         }
 
@@ -75,10 +74,10 @@ final class SamplingTestSharedCode
         DataFromAgent $eventsFromAgent
     ): void {
         $tx = $eventsFromAgent->singleTransaction();
-        $effectiveTransactionSampleRate = $inputTransactionSampleRate ?? 1.0;
-        if ($effectiveTransactionSampleRate === 1.0) {
+        $transactionSampleRate = $inputTransactionSampleRate ?? 1.0;
+        if ($transactionSampleRate === 1.0) {
             TestCase::assertTrue($tx->isSampled);
-        } elseif ($effectiveTransactionSampleRate === 0.0) {
+        } elseif ($transactionSampleRate === 0.0) {
             TestCase::assertFalse($tx->isSampled);
         }
 
@@ -90,9 +89,9 @@ final class SamplingTestSharedCode
             TestCaseBase::assertLabelsCount(1, $tx);
             TestCase::assertSame(123, TestCaseBase::getLabel($tx, 'TX_label_key'));
 
-            TestCaseBase::assertSame($effectiveTransactionSampleRate, $tx->sampleRate);
+            TestCaseBase::assertSame($transactionSampleRate, $tx->sampleRate);
             foreach ($eventsFromAgent->idToSpan as $span) {
-                TestCaseBase::assertSame($effectiveTransactionSampleRate, $span->sampleRate);
+                TestCaseBase::assertSame($transactionSampleRate, $span->sampleRate);
             }
         } else {
             /**

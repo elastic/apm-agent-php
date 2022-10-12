@@ -1,3 +1,0 @@
-<?php //Traversable
-
-return [PHP_INT_MAX, []];

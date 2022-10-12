@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextHttpInterface;
 
 /**
@@ -30,17 +31,22 @@ use Elastic\Apm\SpanContextHttpInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Span>
+ * @extends ContextPartWrapper<Span>
  */
-final class SpanContextHttp extends ContextDataWrapper implements SpanContextHttpInterface
+final class SpanContextHttp extends ContextPartWrapper implements SpanContextHttpInterface
 {
-    /** @var SpanContextHttpData */
-    private $data;
+    /** @var ?string */
+    public $url = null;
 
-    public function __construct(Span $owner, SpanContextHttpData $data)
+    /** @var ?int */
+    public $statusCode = null;
+
+    /** @var ?string */
+    public $method = null;
+
+    public function __construct(Span $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     /** @inheritDoc */
@@ -50,7 +56,7 @@ final class SpanContextHttp extends ContextDataWrapper implements SpanContextHtt
             return;
         }
 
-        $this->data->url = $url;
+        $this->url = $url;
     }
 
     /** @inheritDoc */
@@ -60,7 +66,7 @@ final class SpanContextHttp extends ContextDataWrapper implements SpanContextHtt
             return;
         }
 
-        $this->data->statusCode = $statusCode;
+        $this->statusCode = $statusCode;
     }
 
     /** @inheritDoc */
@@ -70,6 +76,24 @@ final class SpanContextHttp extends ContextDataWrapper implements SpanContextHtt
             return;
         }
 
-        $this->data->method = Tracer::limitNullableKeywordString($method);
+        $this->method = Tracer::limitNullableKeywordString($method);
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return ($this->url !== null) || ($this->statusCode !== null) || ($this->method !== null);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('url', $this->url, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('status_code', $this->statusCode, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('method', $this->method, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

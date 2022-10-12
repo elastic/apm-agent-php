@@ -32,6 +32,10 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
 use ElasticApmTests\TestsSharedCode\StacktraceTestSharedCode;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 class StacktraceComponentTest extends ComponentTestCaseBase
 {
     /**

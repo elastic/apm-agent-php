@@ -23,28 +23,32 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\TransactionContextRequestInterface;
 use Elastic\Apm\TransactionContextRequestUrlInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
+ * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json
+ *
  * @internal
  *
- * @extends         ContextDataWrapper<Transaction>
+ * @extends ContextPartWrapper<Transaction>
  */
-final class TransactionContextRequest extends ContextDataWrapper implements TransactionContextRequestInterface
+final class TransactionContextRequest extends ContextPartWrapper implements TransactionContextRequestInterface
 {
-    /** @var TransactionContextRequestData */
-    private $data;
+    public const UNKNOWN_METHOD = 'UNKNOWN HTTP METHOD';
 
-    /** @var TransactionContextRequestUrl|null */
-    private $url = null;
+    /** @var ?string */
+    public $method = null;
 
-    public function __construct(Transaction $owner, TransactionContextRequestData $data)
+    /** @var ?TransactionContextRequestUrl */
+    public $url = null;
+
+    public function __construct(Transaction $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     /** @inheritDoc */
@@ -54,17 +58,49 @@ final class TransactionContextRequest extends ContextDataWrapper implements Tran
             return;
         }
 
-        $this->data->method = Tracer::limitNullableKeywordString($method);
+        $this->method = Tracer::limitNullableKeywordString($method);
     }
 
     /** @inheritDoc */
     public function url(): TransactionContextRequestUrlInterface
     {
         if ($this->url === null) {
-            $this->data->url = new TransactionContextRequestUrlData();
-            $this->url = new TransactionContextRequestUrl($this->owner, $this->data->url);
+            $this->url = new TransactionContextRequestUrl($this->owner);
         }
 
         return $this->url;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        if (($this->method === null) && !SerializationUtil::prepareForSerialization(/* ref */ $this->url)) {
+            return false;
+        }
+
+        /**
+         * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/request.json#L101
+         * "required": ["url", "method"]
+         */
+        if ($this->method === null) {
+            $this->method = self::UNKNOWN_METHOD;
+        }
+
+        if ($this->url === null) {
+            $this->url = new TransactionContextRequestUrl($this->owner);
+        }
+
+        return true;
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('method', $this->method, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('url', $this->url, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

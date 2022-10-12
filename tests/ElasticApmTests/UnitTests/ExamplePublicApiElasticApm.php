@@ -24,13 +24,13 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
 /**
  * @see \ElasticApmTests\PublicApiTest::testExamplePublicApiElasticApm - test that depends on this class
  */
-final class ExamplePublicApiElasticApm
+final class ExamplePublicApiElasticApm extends TracerUnitTestCaseBase
 {
     /** @var string */
     public const TRANSACTION_NAME = 'Checkout transaction';

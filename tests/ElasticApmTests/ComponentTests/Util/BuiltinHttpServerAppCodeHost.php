@@ -25,12 +25,17 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
+use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 {
     use HttpServerProcessTrait;
+
+    /** @var Logger */
+    private $logger;
 
     public function __construct()
     {
@@ -41,6 +46,13 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
         parent::__construct();
 
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Received request',
@@ -50,7 +62,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected static function isStatusCheck(): bool
     {
-        return $_SERVER['REQUEST_URI'] === HttpServerHandle::STATUS_CHECK_URI;
+        return $_SERVER['REQUEST_URI'] === HttpServerHandle::STATUS_CHECK_URI_PATH;
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
@@ -82,9 +94,12 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     {
         $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
         TestCase::assertNotNull($dataPerRequest);
-        $response = self::verifySpawnedProcessId($dataPerRequest->spawnedProcessId);
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK || self::isStatusCheck()) {
+        if (($response = self::verifySpawnedProcessInternalId($dataPerRequest->spawnedProcessInternalId)) !== null) {
             self::sendResponse($response);
+            return;
+        }
+        if (self::isStatusCheck()) {
+            self::sendResponse(self::buildResponseWithPid());
             return;
         }
 

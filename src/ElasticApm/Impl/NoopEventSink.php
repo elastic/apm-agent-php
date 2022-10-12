@@ -38,10 +38,10 @@ final class NoopEventSink implements EventSinkInterface
     /** @inheritDoc */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
+        array $spans,
+        array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
+        ?Transaction $transaction
     ): void {
     }
 }

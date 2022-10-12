@@ -39,7 +39,7 @@ class RangeUtilTest extends TestCase
          * @return array<int>
          */
         $generateAsArray = function (int $begin, int $end, int $step = 1): array {
-            return IterableUtilForTests::toArray(RangeUtilForTests::generate($begin, $end, $step));
+            return IterableUtilForTests::toList(RangeUtilForTests::generate($begin, $end, $step));
         };
 
         self::assertEquals([], $generateAsArray(0, 0));
@@ -88,7 +88,7 @@ class RangeUtilTest extends TestCase
          * @return array<int>
          */
         $generateUpToAsArray = function (int $count): array {
-            return IterableUtilForTests::toArray(RangeUtilForTests::generateUpTo($count));
+            return IterableUtilForTests::toList(RangeUtilForTests::generateUpTo($count));
         };
 
         self::assertEquals([], $generateUpToAsArray(0));
@@ -104,7 +104,7 @@ class RangeUtilTest extends TestCase
          * @return array<int>
          */
         $generateFromToIncludingAsArray = function (int $begin, int $end): array {
-            return IterableUtilForTests::toArray(RangeUtilForTests::generateFromToIncluding($begin, $end));
+            return IterableUtilForTests::toList(RangeUtilForTests::generateFromToIncluding($begin, $end));
         };
 
         self::assertEquals([0], $generateFromToIncludingAsArray(0, 0));

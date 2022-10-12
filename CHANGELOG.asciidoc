@@ -21,11 +21,17 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.6.1]]
+=== v1.6.1 - 2022/09/12
+* Fixed: Current implementation for Improved Granularity for SQL Databases doesn't account for SQL USE statement: {pull}759[#759]
+
 [[release-notes-v1.6]]
-=== v1.6 - 2022/08/01
+=== v1.6 - 2022/08/22
 * Added inferred spans to automatically detect slow functions (as an experimental feature disabled by default): {pull}731[#731]
 * Improved granularity for SQL databases: {pull}732[#732]
 * Implemented default type for transactions and spans: {pull}733[#733]
+* Implemented support for Dependencies table: {pull}748[#748]
+* Improved transaction name for Laravel's `artisan` command - now includes the first argument: {pull}714[#714]
 
 [[release-notes-v1.5.2]]
 === v1.5.2 - 2022/06/20

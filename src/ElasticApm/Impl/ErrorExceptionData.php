@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
 /**
@@ -44,7 +45,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     use LoggableTrait;
 
     /**
-     * @var int|string|null
+     * @var null|int|string
      *
      * The error code set when the error happened, e.g. database error code
      *
@@ -55,7 +56,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $code = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The original error message
      *
@@ -64,7 +65,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $message = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * Describes the exception type's module namespace
      *
@@ -75,14 +76,14 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $module = null;
 
     /**
-     * @var StacktraceFrame[]|null
+     * @var null|StacktraceFrame[]
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
     public $stacktrace = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The length of a value is limited to 1024.
      *
@@ -113,8 +114,8 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
             $namespace = '';
             $shortName = '';
             ClassNameUtil::splitFqClassName(get_class($throwable), /* ref */ $namespace, /* ref */ $shortName);
-            $result->module = empty($namespace) ? null : $namespace;
-            $result->type = empty($shortName) ? null : $shortName;
+            $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
+            $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
             $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
         }

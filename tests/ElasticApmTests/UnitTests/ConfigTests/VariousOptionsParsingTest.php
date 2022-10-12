@@ -42,7 +42,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
 use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
-use ElasticApmTests\ComponentTests\Util\TestConfigSnapshot;
+use ElasticApmTests\ComponentTests\Util\ConfigSnapshotForTests;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
 use ElasticApmTests\Util\RangeUtilForTests;
@@ -140,9 +140,9 @@ class VariousOptionsParsingTest extends TestCaseBase
     private function snapshotClassToOptionsMeta(): array
     {
         return [
-            Snapshot::class           => AllOptionsMetadata::get(),
-            TestConfigSnapshot::class => AllComponentTestsOptionsMetadata::get(),
-            null                      => self::additionalOptionMetas(),
+            Snapshot::class               => AllOptionsMetadata::get(),
+            ConfigSnapshotForTests::class => AllComponentTestsOptionsMetadata::get(),
+            null                          => self::additionalOptionMetas(),
         ];
     }
 

@@ -42,11 +42,11 @@ final class TestCaseHandle implements LoggableInterface
 
     public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
 
-    /** @var Logger */
-    private $logger;
+    public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
+    public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
 
-    /** @var int[] */
-    private $portsInUse = [];
+    /** @var ?AppCodeInvocation */
+    public $appCodeInvocation = null;
 
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
@@ -60,8 +60,11 @@ final class TestCaseHandle implements LoggableInterface
     /** @var ?HttpAppCodeHostHandle */
     protected $additionalHttpAppCodeHost = null;
 
-    /** @var ?AppCodeInvocation */
-    public $appCodeInvocation = null;
+    /** @var Logger */
+    private $logger;
+
+    /** @var int[] */
+    private $portsInUse = [];
 
     public function __construct()
     {
@@ -157,9 +160,9 @@ final class TestCaseHandle implements LoggableInterface
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
                 [
-                    'expected event counts' => $expectedEventCounts,
-                    'actual event counts' => $dataFromAgentAccumulator->dbgCounts(),
-                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator
+                    'expected event counts'     => $expectedEventCounts,
+                    'actual event counts'       => $dataFromAgentAccumulator->dbgCounts(),
+                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator,
                 ]
             )
         );
@@ -169,6 +172,21 @@ final class TestCaseHandle implements LoggableInterface
             $expectations = new DataFromAgentPlusRawExpectations(
                 $this->appCodeInvocation,
                 ArrayUtilForTests::getLastValue($dataFromAgent->intakeApiRequests)->timeReceivedAtApmServer
+            );
+
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Before DataFromAgentPlusRawValidator::validate: data that can be used for '
+                . ClassNameUtil::fqToShort(DataFromAgentPlusRawValidatorDebugTest::class),
+                [
+                    self::SERIALIZED_EXPECTATIONS_KEY    => serialize($expectations),
+                    self::SERIALIZED_DATA_FROM_AGENT_KEY => serialize($dataFromAgent),
+                ]
+            );
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Before DataFromAgentPlusRawValidator::validate',
+                ['expectations' => $expectations, 'dataFromAgent' => $dataFromAgent]
             );
             DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
             return $dataFromAgent;
@@ -199,14 +217,7 @@ final class TestCaseHandle implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Tearing down...');
 
-        if ($this->mainAppCodeHost !== null) {
-            $this->mainAppCodeHost->tearDown();
-        }
-        if ($this->additionalHttpAppCodeHost !== null) {
-            $this->additionalHttpAppCodeHost->tearDown();
-        }
-
-        $this->resourcesCleaner->signalToExit();
+        $this->resourcesCleaner->signalAndWaitForItToExit();
     }
 
     private function addPortInUse(int $port): void
@@ -288,5 +299,10 @@ final class TestCaseHandle implements LoggableInterface
         $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
         $dataFromAgentAccumulator->addIntakeApiRequests($newIntakeApiRequests);
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
+    }
+
+    public function getResourcesClient(): ResourcesClient
+    {
+        return $this->resourcesCleaner->getClient();
     }
 }

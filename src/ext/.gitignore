@@ -35,4 +35,9 @@ tests/*.log
 tests/*.sh
 
 # JetBrains CLion
+.idea/
+CMakeLists.txt
 .tmp*
+
+# PHP source
+_PHP_src/

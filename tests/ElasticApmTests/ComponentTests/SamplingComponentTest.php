@@ -24,23 +24,28 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class SamplingComponentTest extends ComponentTestCaseBase
 {
+    private const TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY = 'transactionSampleRateOptValue';
+
     /**
      * @return iterable<array{?float}>
      */
     public function rateConfigTestDataProvider(): iterable
     {
-        foreach (SamplingTestSharedCode::rates() as $rate) {
+        foreach (self::adaptToSmoke(SamplingTestSharedCode::rates()) as $rate) {
             yield [$rate];
         }
     }
@@ -50,7 +55,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
      */
     public static function appCodeForTwoNestedSpansTest(array $args): void
     {
-        $transactionSampleRate = ArrayUtil::getValueIfKeyExistsElse('transactionSampleRate', $args, null);
+        $transactionSampleRate = self::getMandatoryAppCodeArg($args, self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY);
         /** @var ?float $transactionSampleRate */
         SamplingTestSharedCode::appCodeForTwoNestedSpansTest($transactionSampleRate ?? 1.0);
     }
@@ -58,20 +63,20 @@ final class SamplingComponentTest extends ComponentTestCaseBase
     /**
      * @dataProvider rateConfigTestDataProvider
      *
-     * @param ?float $transactionSampleRate
+     * @param ?float $transactionSampleRateOptVal
      */
-    public function testTwoNestedSpans(?float $transactionSampleRate): void
+    public function testTwoNestedSpans(?float $transactionSampleRateOptVal): void
     {
         // Arrange
 
-        TransactionDataExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultIsSampled = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
-            function (AppCodeHostParams $appCodeParams) use ($transactionSampleRate): void {
-                if ($transactionSampleRate !== null) {
+            function (AppCodeHostParams $appCodeParams) use ($transactionSampleRateOptVal): void {
+                if ($transactionSampleRateOptVal !== null) {
                     $appCodeParams->setAgentOption(
                         OptionNames::TRANSACTION_SAMPLE_RATE,
-                        strval($transactionSampleRate)
+                        strval($transactionSampleRateOptVal)
                     );
                 }
             }
@@ -81,16 +86,18 @@ final class SamplingComponentTest extends ComponentTestCaseBase
 
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTwoNestedSpansTest']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($transactionSampleRate): void {
-                $appCodeRequestParams->setAppCodeArgs(['transactionSampleRate' => $transactionSampleRate]);
+            function (AppCodeRequestParams $appCodeRequestParams) use ($transactionSampleRateOptVal): void {
+                $appCodeRequestParams->setAppCodeArgs(
+                    [self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY => $transactionSampleRateOptVal]
+                );
             }
         );
-        $effectiveTransactionSampleRate = $transactionSampleRate ?? 1.0;
+        $transactionSampleRate = $transactionSampleRateOptVal ?? 1.0;
         $minSpansCount = 0;
         $maxSpansCount = 2;
-        if ($effectiveTransactionSampleRate === 1.0) {
+        if ($transactionSampleRate === 1.0) {
             $minSpansCount = $maxSpansCount;
-        } elseif ($effectiveTransactionSampleRate === 0.0) {
+        } elseif ($transactionSampleRate === 0.0) {
             $maxSpansCount = $minSpansCount;
         }
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
@@ -99,6 +106,6 @@ final class SamplingComponentTest extends ComponentTestCaseBase
 
         // Assert
 
-        SamplingTestSharedCode::assertResultsForTwoNestedSpansTest($transactionSampleRate, $dataFromAgent);
+        SamplingTestSharedCode::assertResultsForTwoNestedSpansTest($transactionSampleRateOptVal, $dataFromAgent);
     }
 }

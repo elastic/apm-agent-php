@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
@@ -36,7 +37,7 @@ use Throwable;
  *
  * @internal
  */
-final class NoopTracer implements TracerInterface
+final class NoopTracer implements TracerInterface, LoggableInterface
 {
     use NoopObjectTrait;
 

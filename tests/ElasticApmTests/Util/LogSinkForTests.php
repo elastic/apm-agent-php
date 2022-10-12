@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util;
 use DateTime;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
-use ElasticApmTests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -68,7 +68,7 @@ final class LogSinkForTests extends SinkBase
 
     private function consumeFormatted(int $statementLevel, string $statementText): void
     {
-        if (TestOsUtil::isWindows()) {
+        if (OsUtilForTests::isWindows()) {
             if (OutputDebugString::isEnabled()) {
                 OutputDebugString::write($statementText . PHP_EOL);
             }
@@ -81,7 +81,7 @@ final class LogSinkForTests extends SinkBase
         }
     }
 
-    private static function levelToString(int $level): string
+    public static function levelToString(int $level): string
     {
         switch ($level) {
             case Level::OFF:

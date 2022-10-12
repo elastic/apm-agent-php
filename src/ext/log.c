@@ -272,9 +272,13 @@ StringView insertPrefixAtEachNewLine(
         if ( isEmptyStringView( eolSeq ) ) break;
 
         streamStringView( makeStringViewFromBeginEnd( oldMessageLeft.begin, stringViewEnd( eolSeq ) ), &txtOutStream );
-        streamStringView( sinkSpecificPrefix, &txtOutStream );
+        if ( sinkSpecificPrefix.length != 0 )
+        {
+            streamStringView( sinkSpecificPrefix, &txtOutStream );
+            appendSeparator( &txtOutStream );
+        }
         streamStringView( commonPrefix, &txtOutStream );
-        streamIndent( /* nestingDepth */ 1, &txtOutStream );
+        appendSeparator( &txtOutStream );
         oldMessageLeft = makeStringViewFromBeginEnd( stringViewEnd( eolSeq ), oldMessageEnd );
     }
 
@@ -335,7 +339,7 @@ void writeToStderr( Logger* logger, LogLevel statementLevel, StringView commonPr
 {
     String fullText = concatPrefixAndMsg(
             logger
-            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" )
+            , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART )
             , /* sinkSpecificEndOfLine: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
             , commonPrefix
             , /* prefixNewLines: */ true
@@ -780,7 +784,10 @@ LogLevel defaultLogLevelPerSinkType[numberOfLogSinkTypes] =
         };
 
 static void logConfigChange(
-        const LoggerConfig* oldConfig, LogLevel oldMaxEnabledLevel, const LoggerConfig* newConfig, LogLevel newMaxEnabledLevel
+    const LoggerConfig* oldConfig,
+    LogLevel oldMaxEnabledLevel,
+    const LoggerConfig* newConfig,
+    LogLevel newMaxEnabledLevel
 )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];

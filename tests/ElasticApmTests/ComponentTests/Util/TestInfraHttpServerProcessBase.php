@@ -26,7 +26,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use ElasticApmTests\Util\LogCategoryForTests;
 use ErrorException;
 use Exception;
 use PHPUnit\Framework\TestCase;
@@ -44,9 +47,27 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
+    public const EXIT_URI_PATH = '/exit';
+
+    /** @var Logger */
+    private $logger;
+
+    /** @var ?LoopInterface */
+    protected $reactLoop = null;
+
+    /** @var ?SocketServer */
+    protected $serverSocket = null;
+
     public function __construct()
     {
         parent::__construct();
+
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->addContext('this', $this);
 
         set_error_handler(
             function (
@@ -83,17 +104,16 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /**
      * @param ServerRequestInterface $request
      *
-     * @return ResponseInterface|Promise
+     * @return null|ResponseInterface|Promise
      */
     abstract protected function processRequest(ServerRequestInterface $request);
 
     public static function run(): void
     {
         self::runSkeleton(
-            function (SpawnedProcessBase $thisObjArg): void {
-                /** var StatefulHttpServerProcessBase */
-                $thisObj = $thisObjArg;
-                $thisObj->runImpl(); // @phpstan-ignore-line
+            function (SpawnedProcessBase $thisObj): void {
+                /** @var self $thisObj */
+                $thisObj->runImpl();
             }
         );
     }
@@ -103,18 +123,18 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         try {
             $this->runHttpServer();
         } catch (Exception $ex) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($ex, 'Failed to start HTTP server - exiting...');
         }
     }
 
     private function runHttpServer(): void
     {
-        $loop = Loop::get();
+        $this->reactLoop = Loop::get();
         $thisServerPort = AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort;
         TestCase::assertNotNull($thisServerPort);
         $uri = HttpServerHandle::DEFAULT_HOST . ':' . $thisServerPort;
-        $serverSocket = new SocketServer($uri, /* context */ [], $loop);
+        $this->serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
         $httpServer = new HttpServer(
             /**
              * @param ServerRequestInterface $request
@@ -125,29 +145,30 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 return $this->processRequestWrapper($request);
             }
         );
-        $httpServer->listen($serverSocket);
+        $httpServer->listen($this->serverSocket);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Waiting for incoming requests...',
-            ['serverSocketAddress' => $serverSocket->getAddress()]
+            ['serverSocketAddress' => $this->serverSocket->getAddress()]
         );
 
-        $this->beforeLoopRun($loop);
+        $this->beforeLoopRun();
 
-        $loop->run();
+        TestCase::assertNotNull($this->reactLoop);
+        $this->reactLoop->run();
     }
 
-    /**
-     * @param LoopInterface $loop
-     *
-     * @return void
-     */
-    protected function beforeLoopRun(LoopInterface $loop): void
+    protected function beforeLoopRun(): void
     {
     }
 
-    protected function shouldRequestHaveSpawnedProcessId(ServerRequestInterface $request): bool
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return bool
+     */
+    protected function shouldRequestHaveSpawnedProcessInternalId(ServerRequestInterface $request): bool
     {
         return true;
     }
@@ -172,7 +193,11 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
                     'Sending response ...',
-                    ['statusCode' => $response->getStatusCode(), 'reasonPhrase' => $response->getReasonPhrase()]
+                    [
+                        'statusCode'   => $response->getStatusCode(),
+                        'reasonPhrase' => $response->getReasonPhrase(),
+                        'body'         => $response->getBody(),
+                    ]
                 );
             } else {
                 TestCase::assertInstanceOf(Promise::class, $response);
@@ -199,33 +224,54 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
-        if ($this->shouldRequestHaveSpawnedProcessId($request)) {
-            $testConfigForRequest = TestConfigUtil::read(
-                AmbientContextForTests::dbgProcessName(),
+        if ($this->shouldRequestHaveSpawnedProcessInternalId($request)) {
+            $testConfigForRequest = ConfigUtilForTests::read(
                 new RequestHeadersRawSnapshotSource(
                     function (string $headerName) use ($request): ?string {
                         return self::getRequestHeader($request, $headerName);
                     }
-                )
+                ),
+                AmbientContextForTests::loggerFactory()
             );
             TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
-            $verifySpawnedProcessIdResponse
-                = self::verifySpawnedProcessId($testConfigForRequest->dataPerRequest->spawnedProcessId);
-            if (
-                $verifySpawnedProcessIdResponse->getStatusCode() !== HttpConsts::STATUS_OK
-                || $request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI
-            ) {
-                return $verifySpawnedProcessIdResponse;
+            $verifySpawnedProcessInternalIdResponse = self::verifySpawnedProcessInternalId(
+                $testConfigForRequest->dataPerRequest->spawnedProcessInternalId
+            );
+            if ($verifySpawnedProcessInternalIdResponse !== null) {
+                return $verifySpawnedProcessInternalIdResponse;
             }
         }
 
-        return $this->processRequest($request);
+        if ($request->getUri()->getPath() === HttpServerHandle::STATUS_CHECK_URI_PATH) {
+            return self::buildResponseWithPid();
+        } elseif ($request->getUri()->getPath() === self::EXIT_URI_PATH) {
+            $this->exit();
+            return self::buildDefaultResponse();
+        }
+
+        if (($response = $this->processRequest($request)) !== null) {
+            return $response;
+        }
+
+        return self::buildErrorResponse(400, 'Unknown URI path: `' . $request->getRequestTarget() . '\'');
+    }
+
+    /**
+     * @return void
+     */
+    protected function exit(): void
+    {
+        TestCase::assertNotNull($this->serverSocket);
+        $this->serverSocket->close();
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting...');
     }
 
     protected static function getRequestHeader(ServerRequestInterface $request, string $headerName): ?string
     {
         $headerValues = $request->getHeader($headerName);
-        if (empty($headerValues)) {
+        if (ArrayUtil::isEmpty($headerValues)) {
             return null;
         }
         if (count($headerValues) !== 1) {

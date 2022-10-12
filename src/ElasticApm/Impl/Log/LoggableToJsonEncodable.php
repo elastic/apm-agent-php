@@ -40,6 +40,8 @@ final class LoggableToJsonEncodable
 {
     use StaticClassTrait;
 
+    private const MAX_DEPTH = 10;
+
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK = 10000;
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK
         = 2 * self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK;
@@ -65,7 +67,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_array($value)) {
-            if ($depth >= 7) {
+            if ($depth >= self::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -80,7 +82,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_object($value)) {
-            if ($depth >= 7) {
+            if ($depth >= self::MAX_DEPTH) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -99,23 +101,7 @@ final class LoggableToJsonEncodable
      */
     private static function convertArray(array $array, int $depth): array
     {
-        return self::convertArrayImpl($array, self::isListArray($array), $depth);
-    }
-
-    /**
-     * @param array<mixed, mixed> $array
-     *
-     * @return bool
-     */
-    private static function isListArray(array $array): bool
-    {
-        $expectedKey = 0;
-        foreach ($array as $key => $_) {
-            if ($key !== $expectedKey++) {
-                return false;
-            }
-        }
-        return true;
+        return self::convertArrayImpl($array, ArrayUtil::isList($array), $depth);
     }
 
     /**
@@ -262,7 +248,7 @@ final class LoggableToJsonEncodable
         }
 
         if (TextUtil::isPrefixOf('Elastic\\Apm\\', get_class($object)) && self::isDtoObject($object)) {
-            return self::convertDtoObject($object);
+            return self::convertDtoObject($object, $depth);
         }
 
         if (method_exists($object, '__debugInfo')) {
@@ -315,11 +301,12 @@ final class LoggableToJsonEncodable
 
     /**
      * @param object $object
+     * @param int    $depth
      *
-     * @return array<string, mixed>|string
+     * @return string|array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
-    private static function convertDtoObject(object $object)
+    private static function convertDtoObject(object $object, int $depth)
     {
         $class = get_class($object);
         try {
@@ -338,7 +325,7 @@ final class LoggableToJsonEncodable
 
                 $propName = $reflectionProperty->name;
                 $propValue = $reflectionProperty->getValue($object);
-                $nameToValue[$propName] = $propValue;
+                $nameToValue[$propName] = self::convert($propValue, $depth);
             }
             $currentClass = $currentClass->getParentClass();
             if ($currentClass === false) {

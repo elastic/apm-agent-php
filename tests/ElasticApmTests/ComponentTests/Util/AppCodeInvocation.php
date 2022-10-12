@@ -23,8 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Clock;
-
 final class AppCodeInvocation
 {
     /** @var AppCodeHostParams[] */
@@ -51,6 +49,6 @@ final class AppCodeInvocation
 
     public function after(): void
     {
-        $this->timestampAfter = Clock::singletonInstance()->getSystemClockCurrentTime();
+        $this->timestampAfter = AmbientContextForTests::clock()->getSystemClockCurrentTime();
     }
 }

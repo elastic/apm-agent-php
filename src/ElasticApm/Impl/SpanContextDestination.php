@@ -23,9 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextDestinationInterface;
-use Elastic\Apm\SpanContextDestinationServiceInterface;
-use Elastic\Apm\SpanContextHttpInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -36,17 +35,22 @@ use Elastic\Apm\SpanContextHttpInterface;
  *
  * @internal
  *
- * @extends         ContextDataWrapper<Span>
+ * @extends ContextPartWrapper<Span>
  */
-final class SpanContextDestination extends ContextDataWrapper implements SpanContextDestinationInterface
+final class SpanContextDestination extends ContextPartWrapper implements SpanContextDestinationInterface
 {
-    /** @var SpanContextDestinationData */
-    private $data;
+    /**
+     * @var ?SpanContextDestinationServiceData
+     *
+     * Destination service context
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L57
+     */
+    public $service = null;
 
-    public function __construct(Span $owner, SpanContextDestinationData $data)
+    public function __construct(Span $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
     }
 
     public function setService(string $name, string $resource, string $type): void
@@ -55,20 +59,28 @@ final class SpanContextDestination extends ContextDataWrapper implements SpanCon
             return;
         }
 
-        if ($this->data->service === null) {
-            $this->data->service = new SpanContextDestinationServiceData();
+        if ($this->service === null) {
+            $this->service = new SpanContextDestinationServiceData();
         }
 
-        $this->data->service->name = Tracer::limitKeywordString($name);
-        $this->data->service->resource = Tracer::limitKeywordString($resource);
-        $this->data->service->type = Tracer::limitKeywordString($type);
+        $this->service->name = Tracer::limitKeywordString($name);
+        $this->service->resource = Tracer::limitKeywordString($resource);
+        $this->service->type = Tracer::limitKeywordString($type);
     }
 
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['service']);
+        return SerializationUtil::prepareForSerialization(/* ref */ $this->service);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

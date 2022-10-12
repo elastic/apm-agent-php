@@ -27,12 +27,14 @@ use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\Util\DataFromAgentValidator;
-use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
 use PHPUnit\Framework\TestCase;
 
-final class DataFromAgentPlusRawValidator extends DataValidator
+final class DataFromAgentPlusRawValidator
 {
+    use AssertValidTrait;
+
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
     private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
 
@@ -64,18 +66,22 @@ final class DataFromAgentPlusRawValidator extends DataValidator
 
     private function validateIntakeApiRequest(IntakeApiRequest $intakeApiRequest): void
     {
-        $appCodeHostParams = $this->findAppCodeHostsParamsBySpawnedProcessId($intakeApiRequest->agentEphemeralId);
+        $appCodeHostParams
+            = $this->findAppCodeHostsParamsBySpawnedProcessInternalId($intakeApiRequest->agentEphemeralId);
         $this->validateIntakeApiHttpRequestHeaders($intakeApiRequest->headers, $appCodeHostParams);
     }
 
-    private function findAppCodeHostsParamsBySpawnedProcessId(string $spawnedProcessId): AppCodeHostParams
-    {
+    private function findAppCodeHostsParamsBySpawnedProcessInternalId(
+        string $spawnedProcessInternalId
+    ): AppCodeHostParams {
         foreach ($this->expectations->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
-            if ($appCodeHostParams->spawnedProcessId === $spawnedProcessId) {
+            if ($appCodeHostParams->spawnedProcessInternalId === $spawnedProcessInternalId) {
                 return $appCodeHostParams;
             }
         }
-        TestCase::fail('AppCodeHostParams with spawnedProcessId `' . $spawnedProcessId . '\' not found');
+        TestCase::fail(
+            'AppCodeHostParams with spawnedProcessInternalId `' . $spawnedProcessInternalId . '\' not found'
+        );
     }
 
     /**

@@ -93,17 +93,18 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
+static pid_t g_pidOnModuleInit = -1;
 static pid_t g_pidOnRequestInit = -1;
 
-bool doesCurrentPidMatchPidOnRequestInit()
+bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
 {
     pid_t currentPid = getCurrentProcessId();
-    if ( g_pidOnRequestInit != currentPid )
+    if ( pidOnInit != currentPid )
     {
-        ELASTIC_APM_LOG_DEBUG( "Process ID on request init doesn't match the current process ID"
-                               " (maybe the current process is a child process forked after the request started?)"
-                               "; g_pidOnRequestInit: %d, currentPid: %d"
-                               , (int)g_pidOnRequestInit, (int)currentPid );
+        ELASTIC_APM_LOG_DEBUG( "Process ID on %s init doesn't match the current process ID"
+                               " (maybe the current process is a child process forked after the init step?)"
+                               "; pidOnInit: %d, currentPid: %d"
+                               , dbgDesc, (int)pidOnInit, (int)currentPid );
         return false;
     }
     return true;
@@ -111,17 +112,17 @@ bool doesCurrentPidMatchPidOnRequestInit()
 
 void elasticApmModuleInit( int type, int moduleNumber )
 {
-    ELASTIC_APM_UNUSED( type );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
+
+    registerOsSignalHandler();
+
+    g_pidOnModuleInit = getCurrentProcessId();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
 
-    registerOsSignalHandler();
-
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     if ( ! tracer->isInited )
     {
@@ -131,6 +132,7 @@ void elasticApmModuleInit( int type, int moduleNumber )
 
     registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
 
     logSupportabilityInfo( logLevel_debug );
@@ -179,9 +181,9 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
 
     ResultCode resultCode;
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
 
-    if ( ! doesCurrentPidMatchPidOnRequestInit() )
+    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnModuleInit, "module" ) )
     {
         resultCode = resultSuccess;
         ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
@@ -540,13 +542,13 @@ void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const
 
 void elasticApmRequestShutdown()
 {
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
-
-    if ( ! doesCurrentPidMatchPidOnRequestInit() )
+    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnRequestInit, "request" ) )
     {
         resultCode = resultSuccess;
         goto finally;

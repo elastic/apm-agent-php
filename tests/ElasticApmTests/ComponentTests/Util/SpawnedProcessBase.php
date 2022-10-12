@@ -48,7 +48,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     public const DBG_PROCESS_NAME_ENV_VAR_NAME = 'DBG_PROCESS_NAME';
 
     /** @var Logger */
-    protected $logger;
+    private $logger;
 
     protected function __construct()
     {
@@ -73,13 +73,12 @@ abstract class SpawnedProcessBase implements LoggableInterface
             __FILE__
         );
     }
-
     protected function processConfig(): void
     {
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
             TestCase::assertNotNull(
-                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId,
+                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId,
                 LoggableToString::convert(AmbientContextForTests::testConfig())
             );
             TestCase::assertNotNull(
@@ -105,7 +104,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
             $thisObj = new static(); // @phpstan-ignore-line
 
             if (!$thisObj->shouldAgentBeEnabled()) {
-                TestConfigUtil::assertAgentDisabled();
+                ConfigUtilForTests::assertAgentDisabled();
             }
 
             $thisObj->processConfig();
@@ -149,7 +148,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     {
         $optValue = AmbientContextForTests::testConfig()->getOptionValueByName($optName);
         if ($optValue === null) {
-            $envVarName = TestConfigUtil::envVarNameForTestOption($optName);
+            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optName);
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Required configuration option is not set',
@@ -171,6 +170,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
         return false;
     }
 
+    /**
+     * @return bool
+     */
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
     {
         return true;
@@ -184,18 +186,17 @@ abstract class SpawnedProcessBase implements LoggableInterface
         );
 
         TestCase::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort);
-        TestCase::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId);
+        $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
+        TestCase::assertNotNull($resCleanerId);
         $response = HttpClientUtilForTests::sendRequest(
-            HttpConsts::METHOD_POST,
+            HttpConstantsForTests::METHOD_POST,
             (new UrlParts())
                 ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
                 ->port(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort),
-            TestInfraDataPerRequest::withSpawnedProcessId(
-                AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessId
-            ),
+            TestInfraDataPerRequest::withSpawnedProcessInternalId($resCleanerId),
             [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
         );
-        if ($response->getStatusCode() !== HttpConsts::STATUS_OK) {
+        if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException(
                 'Failed to register with '
                 . ClassNameUtil::fqToShort(ResourcesCleaner::class)
