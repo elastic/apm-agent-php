@@ -136,8 +136,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $this->isSampled = $isSampled;
 
-        $this->onAboutToEnd = new ObserverSet();
         $this->onCurrentSpanChanged = new ObserverSet();
+        $this->onAboutToEnd = new ObserverSet();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');

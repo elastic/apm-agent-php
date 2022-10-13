@@ -275,6 +275,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
             ErrorExceptionData::build(
                 $this->containingTransaction()->tracer(),
                 $customErrorData,
+                null /* <- phpErrorData */,
                 $throwable
             )
         );

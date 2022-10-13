@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -46,7 +47,7 @@ use Exception;
  * @group smoke
  * @group does_not_require_external_services
  */
-final class ErrorTest extends ComponentTestCaseBase
+final class ErrorComponentTest extends ComponentTestCaseBase
 {
     private const STACK_TRACE_FILE_NAME = 'STACK_TRACE_FILE_NAME';
     private const STACK_TRACE_FUNCTION = 'STACK_TRACE_FUNCTION';
@@ -196,23 +197,32 @@ final class ErrorTest extends ComponentTestCaseBase
         );
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors(1));
 
-        $err = $this->verifyError($dataFromAgent);
-        // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
+        $actualError = $this->verifyError($dataFromAgent);
+        // self::printMessage(__METHOD__, '$actualError: ' . LoggableToString::convert($actualError));
         if (!$includeInErrorReporting) {
-            self::verifySubstituteError($err);
+            self::verifySubstituteError($actualError);
             return;
         }
 
+        $expectedCode = self::undefinedVariablePhpErrorCode();
+        $expectedType = PhpErrorUtil::getTypeName($expectedCode);
+
+        $dbgCtx = [
+            'expectedCode'  => $expectedCode,
+            'expectedType'  => $expectedType,
+            'actualError'   => $actualError,
+            'dataFromAgent' => $dataFromAgent,
+        ];
+        $dbgCtxStr = LoggableToString::convert($dbgCtx);
+
         $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUndefinedVariable.php']);
-        self::assertNotNull($err->exception);
+        self::assertNotNull($actualError->exception);
         // From PHP 7.4.x to PHP 8.0.x attempting to read an undefined variable
         // was converted from notice to warning
         // https://www.php.net/manual/en/migration80.incompatible.php
-        $expectedCode = self::undefinedVariablePhpErrorCode();
-        $expectedType = PhpErrorUtil::getTypeName($expectedCode);
-        self::assertNotNull($expectedType, '$expectedCode: ' . $expectedCode);
-        self::assertSame($expectedType, $err->exception->type);
-        self::assertSame($expectedCode, $err->exception->code);
+        self::assertNotNull($expectedType, $dbgCtxStr);
+        self::assertSame($expectedType, $actualError->exception->type);
+        self::assertSame($expectedCode, $actualError->exception->code);
         $expectedMessage
             = 'Undefined variable'
               // "Undefined variable ..." message:
@@ -224,10 +234,10 @@ final class ErrorTest extends ComponentTestCaseBase
               )
               . 'undefinedVariable'
               . ' in ' . $appCodeFile . ':' . APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER;
-        self::assertSame($expectedMessage, $err->exception->message);
-        self::assertNull($err->exception->module);
+        self::assertSame($expectedMessage, $actualError->exception->message, $dbgCtxStr);
+        self::assertNull($actualError->exception->module, $dbgCtxStr);
         $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUndefinedVariableImpl()';
-        self::assertSame($culpritFunction, $err->culprit);
+        self::assertSame($culpritFunction, $actualError->culprit, $dbgCtxStr);
 
         $expectedStacktraceTop = [
             [
@@ -246,7 +256,7 @@ final class ErrorTest extends ComponentTestCaseBase
                     __CLASS__ . '::appCodeForTestPhpErrorUndefinedVariableWrapper()',
             ],
         ];
-        self::verifyAppCodeStacktraceTop($expectedStacktraceTop, $err);
+        self::verifyAppCodeStacktraceTop($expectedStacktraceTop, $actualError);
     }
 
     public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(): void

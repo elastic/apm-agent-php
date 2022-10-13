@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\InferredSpansManager;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -88,6 +89,29 @@ final class TransactionForExtensionRequest
         if ($this->transactionForRequest instanceof Transaction && $this->transactionForRequest->isSampled()) {
             $this->inferredSpansManager = new InferredSpansManager($tracer);
         }
+
+        $this->tracer->onNewCurrentTransactionHasBegun->add(
+            function (Transaction $transaction): void {
+                PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
+                $transaction->onAboutToEnd->add(
+                    function (Transaction $ignored): void {
+                        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
+                    }
+                );
+                $transaction->onCurrentSpanChanged->add(
+                    function (?Span $span): void {
+                        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
+                        if ($span !== null) {
+                            $span->onAboutToEnd->add(
+                                function (Span $ignored): void {
+                                    PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
+                                }
+                            );
+                        }
+                    }
+                );
+            }
+        );
     }
 
     private function beginTransaction(float $requestInitStartTime): ?TransactionInterface
@@ -308,17 +332,17 @@ final class TransactionForExtensionRequest
         && $loggerProxy->log('Called gc_status()', ['gc_status() return value' => $gcStatusRetVal]);
     }
 
-    public function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    public function onPhpError(PhpErrorData $phpErrorData): void
     {
         $relatedThrowable = null;
         if (
             $this->lastThrown !== null
-            && TextUtil::isPrefixOf('Uncaught Exception: ', $message, /* isCaseSensitive: */ false)
+            && TextUtil::isPrefixOf('Uncaught Exception: ', $phpErrorData->message, /* isCaseSensitive: */ false)
         ) {
             $relatedThrowable = $this->lastThrown;
             $this->lastThrown = null;
         }
-        $this->tracer->onPhpError($type, $filename, $lineNumber, $message, $relatedThrowable);
+        $this->tracer->onPhpError($phpErrorData, $relatedThrowable);
     }
 
     /**
@@ -347,6 +371,8 @@ final class TransactionForExtensionRequest
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
+
+        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
 
         if ($this->inferredSpansManager !== null) {
             $this->inferredSpansManager->shutdown();

@@ -257,7 +257,7 @@ void testStreamXyzOverflow( StreamXyzFunc streamXyz )
 
     finally:
     ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( resultCode );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( bufferSize, buffer );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( bufferSize, buffer );
     return;
 
     failure:

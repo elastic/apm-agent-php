@@ -1126,7 +1126,7 @@ static ResultCode constructEnvVarNameForOption( String optName, String* envVarNa
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
     goto finally;
 }
 
@@ -1135,7 +1135,7 @@ static void destructEnvVarNames( /* in,out */ String envVarNames[] )
     ELASTIC_APM_ASSERT_VALID_PTR( envVarNames );
 
     ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
-        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( envVarNames[ optId ] ) + 1, envVarNames[ optId ] );
+        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( envVarNames[ optId ] );
 }
 
 static ResultCode constructEnvVarNames( OptionMetadata* optsMeta, /* out */ String envVarNames[] )
@@ -1205,7 +1205,7 @@ ResultCode getRawOptionValueFromEnvVars(
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( rawValue );
     goto finally;
 }
 
@@ -1263,7 +1263,7 @@ ResultCode getRawOptionValueFromIni(
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( rawValue );
     goto finally;
 }
 
@@ -1303,7 +1303,7 @@ void deleteConfigRawDataAndSetToNull( /* in,out */ ConfigRawData** pRawData )
         ELASTIC_APM_FOR_EACH_INDEX( rawSourceIndex, numberOfRawConfigSources )
         {
             const char** pOriginalRawValue = &( rawData->fromSources[ rawSourceIndex ].original[ optId ] );
-            ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL(strlen( *pOriginalRawValue ) + 1, *pOriginalRawValue );
+            ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( *pOriginalRawValue );
         }
 
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigRawData, *pRawData );

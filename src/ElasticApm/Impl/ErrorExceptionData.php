@@ -24,7 +24,9 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -94,8 +96,9 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
 
     public static function build(
         Tracer $tracer,
-        ?CustomErrorData $customErrorData = null,
-        ?Throwable $throwable = null
+        ?CustomErrorData $customErrorData,
+        ?PhpErrorData $phpErrorData,
+        ?Throwable $throwable
     ): ErrorExceptionData {
         $result = new ErrorExceptionData();
 
@@ -142,7 +145,16 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
         }
 
         if ($result->stacktrace === null) {
-            $result->stacktrace = StackTraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
+            if ($phpErrorData === null) {
+                $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
+                $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+            } else {
+                $result->stacktrace = StackTraceUtil::convertFromPhp(
+                    $phpErrorData->stackTrace,
+                    0 /* <- numberOfStackFramesToSkip */,
+                    true /* <- hideElasticApmImpl */
+                );
+            }
         }
 
         return $result;

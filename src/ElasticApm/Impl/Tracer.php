@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
@@ -268,55 +269,51 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
-    public function onPhpError(
-        int $type,
-        string $fileName,
-        int $lineNumber,
-        string $message,
-        ?Throwable $relatedThrowable
-    ): void {
+    public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable): void
+    {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Entered',
             [
-                'type' => $type,
-                'fileName' => $fileName,
-                'lineNumber' => $lineNumber,
-                'message' => $message,
-                'relatedThrowable' => $relatedThrowable
+                'phpErrorData'     => $phpErrorData,
+                'relatedThrowable' => $relatedThrowable,
             ]
         );
 
-        if ((error_reporting() & $type) === 0) {
+        if ((error_reporting() & $phpErrorData->type) === 0) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Not creating error event because error_reporting() does not include its type',
-                ['type' => $type, 'error_reporting()' => error_reporting()]
+                ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
             );
             return;
         }
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Creating error event because error_reporting() includes its type...',
-            ['type' => $type, 'error_reporting()' => error_reporting()]
+            ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
         );
 
         $customErrorData = new CustomErrorData();
-        $customErrorData->code = $type;
-        $customErrorData->message = TextUtil::contains($message, $fileName)
-            ? $message
-            : ($message . ' in ' . $fileName . ':' . $lineNumber);
-        $customErrorData->type = PhpErrorUtil::getTypeName($type);
+        $customErrorData->code = $phpErrorData->type;
+        $customErrorData->message = TextUtil::contains($phpErrorData->message, $phpErrorData->fileName)
+            ? $phpErrorData->message
+            : ($phpErrorData->message . ' in ' . $phpErrorData->fileName . ':' . $phpErrorData->lineNumber);
+        $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
 
-        $this->createError($customErrorData, $relatedThrowable);
+        $this->createError($customErrorData, $phpErrorData, $relatedThrowable);
     }
 
-    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable): ?string
-    {
+    private function createError(
+        ?CustomErrorData $customErrorData,
+        ?PhpErrorData $phpErrorData,
+        ?Throwable $throwable
+    ): ?string {
         return $this->dispatchCreateError(
             ErrorExceptionData::build(
                 $this,
                 $customErrorData,
+                $phpErrorData,
                 $throwable
             )
         );
@@ -325,13 +322,13 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->createError(/* customErrorData: */ null, $throwable);
+        return $this->createError(/* customErrorData: */ null, /* phpErrorData: */ null, $throwable);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->createError($customErrorData, /* throwable: */ null);
+        return $this->createError($customErrorData, /* phpErrorData: */ null, /* throwable: */ null);
     }
 
     private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
