@@ -1,3 +1,4 @@
+SHELL = /bin/bash
 IMAGE:=php-packaging
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
@@ -20,7 +21,7 @@ clean: ## Clean the generated packages
 
 .PHONY: prepare
 prepare: ## Build docker image for the packaging
-	docker build -t $(IMAGE) .
+	docker build -t $(IMAGE) . || exit 1
 
 .PHONY: build-docker-images
 build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache prepare-deb-fpm ## Build all the docker images
@@ -54,7 +55,7 @@ tar: create-tar  ## Create the tar.gz
 
 .PHONY: version
 version:  ## Show the fpm version
-	docker run --rm $(IMAGE) --version
+	docker run --rm $(IMAGE) --version || exit 1
 
 .PHONY: package
 package: apk deb rpm tar  ## Create all the installers
@@ -91,37 +92,37 @@ tar-info:  ## Show the tar package metadata
 .PHONY: prepare-apk
 prepare-apk:  ## Build the docker image for the apk smoke tests
 	cd $(PWD)/packaging/test/alpine ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: prepare-deb-apache
 prepare-deb-apache:  ## Build the docker image for the deb smoke tests for apache
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --file apache/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . ;\
+	docker build --file apache/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . || exit 1;\
 	cd -
 
 .PHONY: prepare-deb-fpm
 prepare-deb-fpm:  ## Build the docker image for the deb smoke tests for fpm
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --file fpm/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . ;\
+	docker build --file fpm/Dockerfile --build-arg PHP_VERSION=$(PHP_VERSION) --tag $@ . || exit 1 ;\
 	cd -
 
 .PHONY: prepare-deb
 prepare-deb:  ## Build the docker image for the deb smoke tests
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: prepare-tar
 prepare-tar:  ## Build the docker image for the tar smoke tests
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: prepare-rpm
 prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	cd $(PWD)/packaging/test/centos ;\
-	docker build --build-arg PHP_VERSION=${PHP_VERSION} -t $@ . ;\
+	docker build --build-arg PHP_VERSION=${PHP_VERSION} -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: apk-install
