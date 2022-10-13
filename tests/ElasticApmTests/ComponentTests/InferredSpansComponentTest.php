@@ -38,6 +38,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\InferredSpanExpectationsBuilder;
+use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -75,17 +76,12 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         $result = (new DataProviderForTestBuilder())
             // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             // ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
+            // TODO: Sergey Kleyman: Remove addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
+            ->addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_TRANSACTION_SAMPLED_KEY)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::CAPTURE_SLEEPS_KEY)
             ->wrapResultIntoArray()
             ->build();
-        ///////////////////////////////////////////////////////////////////////////
-        // TODO: Sergey Kleyman: BEGIN: REMOVE
-        ///////////////////////////////////////
-        $result[self::IS_INFERRED_SPANS_ENABLED_KEY] = false;
-        ///////////////////////////////////////
-        // END
-        ////////////////////////////////////////////////////////////////////////////
 
         return self::adaptToSmoke($result);
     }
