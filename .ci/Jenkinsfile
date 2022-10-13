@@ -30,6 +30,7 @@ pipeline {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
     choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
     choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
+    booleanParam(name: 'INCLUDE_TESTING', defaultValue: true, description: 'Should the testing stages be included?')
   }
   stages {
     stage('Initializing'){
@@ -106,6 +107,7 @@ pipeline {
             stages {
               stage('Build PHP extension') {
                 steps {
+                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
                   initWorkspace(context: "Build-${PHP_VERSION}") {
                     // When running in the CI with multiple parallel stages
                     // the access could be considered as a DDOS attack.
@@ -117,6 +119,10 @@ pipeline {
                 }
               }
               stage('Static analysis and unit tests') {
+                when {
+                  beforeAgent true
+                  expression { return params.INCLUDE_TESTING }
+                }
                 steps {
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
                   echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
@@ -179,6 +185,7 @@ pipeline {
             beforeAgent true
             allOf {
               expression { return env.ONLY_DOCS == "false" }
+              expression { return params.INCLUDE_TESTING }
               not { expression { isInternalCI() } }
             }
           }
@@ -240,6 +247,10 @@ pipeline {
         }
         stage('Test signed packages') {
           options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return params.INCLUDE_TESTING }
+          }
           steps {
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
           }
