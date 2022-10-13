@@ -185,6 +185,7 @@ pipeline {
             beforeAgent true
             allOf {
               expression { return env.ONLY_DOCS == "false" }
+              expression { return params.INCLUDE_TESTING }
               not { expression { isInternalCI() } }
             }
           }
