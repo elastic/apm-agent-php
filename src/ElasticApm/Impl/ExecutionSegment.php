@@ -27,11 +27,14 @@ use Closure;
 use Elastic\Apm\CustomErrorData;
 use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -44,9 +47,42 @@ use Throwable;
  *
  * @internal
  */
-abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableInterface
+abstract class ExecutionSegment implements ExecutionSegmentInterface, SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
+
+    /** @var string */
+    public $name;
+
+    /** @var string */
+    public $type;
+
+    /** @var string */
+    public $id;
+
+    /** @var string */
+    public $traceId;
+
+    /** @var float UTC based and in microseconds since Unix epoch */
+    public $timestamp;
+
+    /** @var float In milliseconds with 3 decimal points */
+    public $duration;
+
+    /** @var ?string */
+    public $outcome = null;
+
+    /**
+     * @var ?float
+     *
+     * Sample rate applied to the monitored service at the time where this transaction/span was recorded.
+     * Allowed values are [0..1].
+     * A sample rate < 1 indicates that not all spans are recorded.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/transactions/transaction.json#L26
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/spans/span.json#L45
+     */
+    public $sampleRate = null;
 
     /** @var bool */
     protected $isDiscarded = false;
@@ -57,11 +93,11 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @var float */
     private $diffStartTimeWithSystemClockOnBeginInMicroseconds;
 
-    /** @var float Monotonic time since some unspecified starting point, in microseconds */
-    private $monotonicBeginTime;
-
     /** @var float */
     private $systemClockBeginTime;
+
+    /** @var float Monotonic time since some unspecified starting point, in microseconds */
+    private $monotonicBeginTime;
 
     /** @var Logger */
     private $logger;
@@ -69,11 +105,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @var bool */
     private $isEnded = false;
 
-    /** @var ExecutionSegmentData */
-    private $data;
-
     protected function __construct(
-        ExecutionSegmentData $data,
         Tracer $tracer,
         ?ExecutionSegment $parentExecutionSegment,
         string $traceId,
@@ -82,23 +114,20 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         ?float $sampleRate,
         ?float $timestampArg = null
     ) {
-        $clock = $tracer->getClock();
-        $monotonicClockNow = $clock->getMonotonicClockCurrentTime();
-        $systemClockNow = $clock->getSystemClockCurrentTime();
+        $monotonicClockNow = $tracer->getClock()->getMonotonicClockCurrentTime();
+        $systemClockNow = $tracer->getClock()->getSystemClockCurrentTime();
 
-        $this->data = $data;
-        $this->data->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
+        $this->id = IdGenerator::generateId(Constants::EXECUTION_SEGMENT_ID_SIZE_IN_BYTES);
 
         $this->systemClockBeginTime = $systemClockNow;
         if ($timestampArg === null) {
-            $this->data->timestamp = $systemClockNow;
+            $this->timestamp = $systemClockNow;
         } elseif ($timestampArg <= $systemClockNow) {
-            $this->data->timestamp = $timestampArg;
+            $this->timestamp = $timestampArg;
         } else {
-            $this->data->timestamp = $systemClockNow;
+            $this->timestamp = $systemClockNow;
 
-            $localLogger = $tracer->loggerFactory()
-                                  ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
+            $localLogger = self::createLogger($tracer->loggerFactory());
             ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Using systemClockNow for start time instead of timestampArg argument'
@@ -108,19 +137,19 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
                     'timestampArg'   => $timestampArg,
                     'timestampArg - systemClockNow (seconds)'
                                      => TimeUtil::microsecondsToSeconds($timestampArg - $systemClockNow),
-                    'id'             => $this->data->id,
+                    'id'             => $this->id,
                     'name'           => $name,
                     'type'           => $type,
                 ]
             );
         }
         $this->diffStartTimeWithSystemClockOnBeginInMicroseconds
-            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->data->timestamp, $systemClockNow);
+            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timestamp, $systemClockNow);
         $this->monotonicBeginTime = $monotonicClockNow;
-        $this->data->traceId = $traceId;
+        $this->traceId = $traceId;
         $this->setName($name);
         $this->setType($type);
-        $this->data->sampleRate = $sampleRate;
+        $this->sampleRate = $sampleRate;
 
         if ($this->containingTransaction()->getConfig()->breakdownMetrics()) {
             $this->breakdownMetricsSelfTimeTracker = new BreakdownMetricsSelfTimeTracker($monotonicClockNow);
@@ -139,9 +168,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             }
         }
 
-        $this->logger = $tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
-                               ->addContext('this', $this);
+        $this->logger = self::createLogger($tracer->loggerFactory())->addContext('this', $this);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Exiting...',
@@ -154,12 +181,9 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         );
     }
 
-    /**
-     * @return array<string>
-     */
-    protected static function propertiesExcludedFromLog(): array
+    protected static function createLogger(LoggerFactory $loggerFactory): Logger
     {
-        return ['tracer'];
+        return $loggerFactory->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__);
     }
 
     public function isSampled(): bool
@@ -179,12 +203,12 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
 
     public function getName(): string
     {
-        return $this->data->name;
+        return $this->name;
     }
 
     public function getType(): string
     {
-        return $this->data->type;
+        return $this->type;
     }
 
     /**
@@ -251,6 +275,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             ErrorExceptionData::build(
                 $this->containingTransaction()->tracer(),
                 $customErrorData,
+                null /* <- phpErrorData */,
                 $throwable
             )
         );
@@ -279,7 +304,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         }
 
         ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->includeStacktrace()->log('A mutating method has been called on already ended event');
+        && $loggerProxy->includeStackTrace()->log('A mutating method has been called on already ended event');
 
         return true;
     }
@@ -293,19 +318,19 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     /** @inheritDoc */
     public function getId(): string
     {
-        return $this->data->id;
+        return $this->id;
     }
 
     /** @inheritDoc */
     public function getTimestamp(): float
     {
-        return $this->data->timestamp;
+        return $this->timestamp;
     }
 
     /** @inheritDoc */
     public function getTraceId(): string
     {
-        return $this->data->traceId;
+        return $this->traceId;
     }
 
     /** @inheritDoc */
@@ -315,7 +340,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->name = Tracer::limitKeywordString($name);
+        $this->name = Tracer::limitKeywordString($name);
     }
 
     /** @inheritDoc */
@@ -325,7 +350,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->type = TextUtil::isEmptyString($type)
+        $this->type = TextUtil::isEmptyString($type)
             ? Constants::EXECUTION_SEGMENT_TYPE_DEFAULT
             : Tracer::limitKeywordString($type);
     }
@@ -368,13 +393,13 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
             return;
         }
 
-        $this->data->outcome = $outcome;
+        $this->outcome = $outcome;
     }
 
     /** @inheritDoc */
     public function getOutcome(): ?string
     {
-        return $this->data->outcome;
+        return $this->outcome;
     }
 
     /** @inheritDoc */
@@ -386,6 +411,57 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
 
         $this->isDiscarded = true;
         $this->end();
+    }
+
+    public static function calcDurationInMicroseconds(
+        float $systemClockBeginTime,
+        float $monotonicBeginTime,
+        float $systemClockEndTime,
+        float $monotonicEndTime,
+        LoggerFactory $loggerFactory
+    ): float {
+        $monotonicDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+            $monotonicBeginTime,
+            $monotonicEndTime
+        );
+        $systemClockDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+            $systemClockBeginTime,
+            $systemClockEndTime
+        );
+        /** @var ?Logger $logger */
+        $logger = null;
+        $logLevel = LogLevel::TRACE;
+        if ($loggerFactory->isEnabledForLevel($logLevel)) {
+            $logger = self::createLogger($loggerFactory);
+            $monotonicMinusSystemDurationInSeconds = TimeUtil::microsecondsToSeconds(
+                $systemClockDurationInMicroseconds - $monotonicDurationInMicroseconds
+            );
+            $logger->addAllContext(
+                [
+                    'systemClockDurationInMicroseconds'     => $systemClockDurationInMicroseconds,
+                    'monotonicDurationInMicroseconds'       => $monotonicDurationInMicroseconds,
+                    'monotonicMinusSystemDurationInSeconds' => $monotonicMinusSystemDurationInSeconds,
+                    'systemClockBeginTime'                  => $systemClockBeginTime,
+                    'monotonicBeginTime'                    => $monotonicBeginTime,
+                    'systemClockEndTime'                    => $systemClockEndTime,
+                    'monotonicEndTime'                      => $monotonicEndTime,
+                ]
+            );
+        }
+        if ($monotonicDurationInMicroseconds >= $systemClockDurationInMicroseconds) {
+            $durationInMicroseconds = $monotonicDurationInMicroseconds;
+            $logger && ($loggerProxy = $logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__))
+            && $loggerProxy->log('Using monotonic clock duration');
+        } else {
+            $durationInMicroseconds = $systemClockDurationInMicroseconds;
+            $logger && ($loggerProxy = $logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Using system clock duration instead of monotonic clock duration'
+                . ' because system clock duration is larger'
+            );
+        }
+
+        return $durationInMicroseconds;
     }
 
     protected function endExecutionSegment(?float $durationArg = null): bool
@@ -400,63 +476,26 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
         }
 
         $clock = $this->containingTransaction()->tracer()->getClock();
-        $monotonicClockNow = $clock->getMonotonicClockCurrentTime();
+        $monotonicEndTime = $clock->getMonotonicClockCurrentTime();
+        $systemClockEndTime = $clock->getSystemClockCurrentTime();
+
         if ($durationArg === null) {
-            $systemClockNow = $clock->getSystemClockCurrentTime();
-            $monotonicDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
-                $this->monotonicBeginTime,
-                $monotonicClockNow
-            );
-            $systemClockDurationInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero(
+            $durationAfterBeginInMicroseconds = self::calcDurationInMicroseconds(
                 $this->systemClockBeginTime,
-                $systemClockNow
+                $this->monotonicBeginTime,
+                $systemClockEndTime,
+                $monotonicEndTime,
+                $this->containingTransaction()->tracer()->loggerFactory()
             );
-            if ($monotonicDurationInMicroseconds < $systemClockDurationInMicroseconds) {
-                $durationAfterBeginInMicroseconds = $systemClockDurationInMicroseconds;
-                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log(
-                    'Using systemClockDurationInMicroseconds as durationAfterBegin'
-                    . ' instead of monotonicDurationInMicroseconds '
-                    . ' because systemClockDurationInMicroseconds is larger than monotonicDurationInMicroseconds',
-                    [
-                        'systemClockDurationInMicroseconds' => $systemClockDurationInMicroseconds,
-                        'monotonicDurationInMicroseconds'   => $monotonicDurationInMicroseconds,
-                        'systemClockDurationInMicroseconds - monotonicDurationInMicroseconds (seconds)'
-                                                            => TimeUtil::microsecondsToSeconds(
-                                                                $systemClockDurationInMicroseconds
-                                                                - $monotonicDurationInMicroseconds
-                                                            ),
-                        'systemClockNow'                    => $systemClockNow,
-                        'monotonicClockNow'                 => $monotonicClockNow,
-                    ]
-                );
-            } else {
-                $durationAfterBeginInMicroseconds = $monotonicDurationInMicroseconds;
-                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log(
-                    'Using monotonicDurationInMicroseconds as durationAfterBegin',
-                    [
-                        'monotonicDurationInMicroseconds'   => $monotonicDurationInMicroseconds,
-                        'systemClockDurationInMicroseconds' => $systemClockDurationInMicroseconds,
-                        'monotonicDurationInMicroseconds - systemClockDurationInMicroseconds (seconds)'
-                                                            => TimeUtil::microsecondsToSeconds(
-                                                                $monotonicDurationInMicroseconds
-                                                                - $systemClockDurationInMicroseconds
-                                                            ),
-                        'monotonicClockNow'                 => $monotonicClockNow,
-                        'systemClockNow'                    => $systemClockNow,
-                    ]
-                );
-            }
-            $this->data->duration = TimeUtil::microsecondsToMilliseconds(
+            $this->duration = TimeUtil::microsecondsToMilliseconds(
                 $this->diffStartTimeWithSystemClockOnBeginInMicroseconds + $durationAfterBeginInMicroseconds
             );
         } else {
-            $this->data->duration = $durationArg;
+            $this->duration = $durationArg;
         }
 
         if ($this->breakdownMetricsSelfTimeTracker !== null && !$this->containingTransaction()->hasEnded()) {
-            $this->updateBreakdownMetricsOnEnd($monotonicClockNow);
+            $this->updateBreakdownMetricsOnEnd($monotonicEndTime);
         }
 
         $this->isEnded = true;
@@ -512,5 +551,31 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, LoggableIn
     public function hasEnded(): bool
     {
         return $this->isEnded;
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValue('name', $this->name, /* ref */ $result);
+        SerializationUtil::addNameValue('type', $this->type, /* ref */ $result);
+        SerializationUtil::addNameValue('id', $this->id, /* ref */ $result);
+        SerializationUtil::addNameValue('trace_id', $this->traceId, /* ref */ $result);
+        $timestamp = SerializationUtil::adaptTimestamp($this->timestamp);
+        SerializationUtil::addNameValue('timestamp', $timestamp, /* ref */ $result);
+        SerializationUtil::addNameValue('duration', $this->duration, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('outcome', $this->outcome, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('sample_rate', $this->sampleRate, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return ['tracer'];
     }
 }

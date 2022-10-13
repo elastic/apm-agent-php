@@ -23,23 +23,14 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use ElasticApmTests\UnitTests\Util\MockClock;
-use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
-use ElasticApmTests\Util\TracerBuilderForTests;
+use ElasticApmTests\UnitTests\Util\MockClockTracerUnitTestCaseBase;
 
-class TimeRelatedApiUsingMockClockTest extends TracerUnitTestCaseBase
+class TimeRelatedApiUsingMockClockTest extends MockClockTracerUnitTestCaseBase
 {
-    /** @var MockClock */
-    protected $mockClock;
-
-    public function setUp(): void
+    /** @inheritDoc */
+    protected function mockClockInitialTimestamp(): float
     {
-        $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
-        $this->setUpTestEnv(
-            function (TracerBuilderForTests $builder): void {
-                $builder->withClock($this->mockClock);
-            }
-        );
+        return 1000 * 1000 * 1000;
     }
 
     public function testTransactionBeginEnd(): void

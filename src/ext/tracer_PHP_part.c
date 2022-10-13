@@ -32,6 +32,7 @@
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
 #define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
 #define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
+#define ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "emptyMethod"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
@@ -214,67 +215,28 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
     goto finally;
 }
 
-ResultCode onPhpErrorToTracerPhpPart( int type, const char* fileName, uint32_t lineNumber, const char* message )
+void tracerPhpPartInterceptedCallEmptyMethod()
 {
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+
     ResultCode resultCode;
-
-    zval typeAsZval;
-    ZVAL_UNDEF( &typeAsZval );
-    zval fileNameAsZval;
-    ZVAL_UNDEF( &fileNameAsZval );
-    zval lineNumberAsZval;
-    ZVAL_UNDEF( &lineNumberAsZval );
-    zval messageAsZval;
-    ZVAL_UNDEF( &messageAsZval );
-
-    ZVAL_LONG( &typeAsZval, type );
-    ZVAL_STRING( &fileNameAsZval, fileName );
-    ZVAL_LONG( &lineNumberAsZval, lineNumber );
-    ZVAL_STRING( &messageAsZval, message );
-
-    zval phpPartArgs[] = { typeAsZval, fileNameAsZval, lineNumberAsZval, messageAsZval };
+    zval phpPartDummyArgs[ 1 ];
+    ZVAL_UNDEF( &( phpPartDummyArgs[ 0 ] ) );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC )
-                    , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
-                    , phpPartArgs ) );
-
-    resultCode = resultSuccess;
-
-    finally:
-    zval_ptr_dtor( &messageAsZval );
-    zval_dtor( &lineNumberAsZval );
-    zval_ptr_dtor( &fileNameAsZval );
-    zval_dtor( &typeAsZval );
-
-    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
-ResultCode setLastThrownToTracerPhpPart( zval* lastThrown )
-{
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
-
-    ResultCode resultCode;
-
-    zval phpPartArgs[] = { *lastThrown };
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO(
-            callPhpFunctionRetVoid(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC )
-                    , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
-                    , phpPartArgs ) );
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC )
+                    , 0 /* <- argsCount */
+                    , phpPartDummyArgs ) );
+    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
 
     resultCode = resultSuccess;
 
     finally:
 
     ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
-    return resultCode;
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
 
     failure:
     goto finally;

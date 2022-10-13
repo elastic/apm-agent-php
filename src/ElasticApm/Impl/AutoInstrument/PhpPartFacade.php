@@ -155,6 +155,8 @@ final class PhpPartFacade
             return false;
         }
 
+        self::ensureHaveLatestDataDeferredByExtension();
+
         return $interceptionManager->interceptedCallPreHook(
             $interceptRegistrationId,
             $thisObj,
@@ -174,6 +176,8 @@ final class PhpPartFacade
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
+
+        self::ensureHaveLatestDataDeferredByExtension();
 
         $interceptionManager->interceptedCallPostHook(
             1 /* <- $numberOfStackFramesToSkip */,
@@ -243,7 +247,7 @@ final class PhpPartFacade
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {
                     BootstrapStageLogger::logDebug(
-                        'Received shutdown call from extension but transactionForExtensionRequest is null'
+                        'Received call from extension but transactionForExtensionRequest is null'
                         . ' - just returning...',
                         __LINE__,
                         __FUNCTION__
@@ -256,50 +260,62 @@ final class PhpPartFacade
         );
     }
 
-    /**
-     * Called by elastic_apm extension
-     *
-     * @noinspection PhpUnused
-     *
-     * @param int    $type
-     * @param string $filename
-     * @param int    $lineNumber
-     * @param string $message
-     *
-     * @return void
-     */
-    public static function onPhpError(int $type, string $filename, int $lineNumber, string $message): void
+    public static function ensureHaveLatestDataDeferredByExtension(): void
     {
+        // last thrown should be fetched before last PHP error
+        self::ensureHaveLastThrown();
+        self::ensureHaveLastPhpError();
+    }
+
+    private static function ensureHaveLastThrown(): void
+    {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @var mixed $lastThrown
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        $lastThrown = \elastic_apm_get_last_thrown();
+        if ($lastThrown === null) {
+            return;
+        }
+
         self::callFromExtensionToTransaction(
             __FUNCTION__,
-            function (
-                TransactionForExtensionRequest $transactionForExtensionRequest
-            ) use (
-                $type,
-                $filename,
-                $lineNumber,
-                $message
-            ): void {
-                $transactionForExtensionRequest->onPhpError($type, $filename, $lineNumber, $message);
+            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($lastThrown): void {
+                $transactionForExtensionRequest->setLastThrown($lastThrown);
             }
         );
     }
 
-    /**
-     * Called by elastic_apm extension
-     *
-     * @noinspection PhpUnused
-     *
-     * @param mixed $thrown
-     *
-     * @return void
-     */
-    public static function setLastThrown($thrown): void
+    private static function ensureHaveLastPhpError(): void
     {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @var ?array<string, mixed> $lastPhpErrorData
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        $lastPhpErrorData = \elastic_apm_get_last_php_error();
+        if ($lastPhpErrorData === null) {
+            return;
+        }
+
+        $phpErrorData = new PhpErrorData();
+        $phpErrorData->type = $lastPhpErrorData['type']; // @phpstan-ignore-line
+        $phpErrorData->fileName = $lastPhpErrorData['fileName']; // @phpstan-ignore-line
+        $phpErrorData->lineNumber = $lastPhpErrorData['lineNumber']; // @phpstan-ignore-line
+        $phpErrorData->message = $lastPhpErrorData['message']; // @phpstan-ignore-line
+        $phpErrorData->stackTrace = $lastPhpErrorData['stackTrace']; // @phpstan-ignore-line
+
         self::callFromExtensionToTransaction(
             __FUNCTION__,
-            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($thrown): void {
-                $transactionForExtensionRequest->setLastThrown($thrown);
+            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($phpErrorData): void {
+                $transactionForExtensionRequest->onPhpError($phpErrorData);
             }
         );
     }
@@ -344,5 +360,14 @@ final class PhpPartFacade
         assert($tracer instanceof Tracer);
 
         return $tracer;
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     */
+    public static function emptyMethod(): void
+    {
     }
 }

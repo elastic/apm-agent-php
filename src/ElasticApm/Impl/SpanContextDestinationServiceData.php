@@ -24,8 +24,6 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -36,36 +34,15 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  *
  * @internal
  */
-final class SpanContextDestinationServiceData implements OptionalSerializableDataInterface, LoggableInterface
+final class SpanContextDestinationServiceData implements OptionalSerializableDataInterface
 {
-    use LoggableTrait;
-
-    /**
-     * @var string
-     *
-     * "Identifier for the destination service (e.g. 'http://elastic.co', 'elasticsearch', 'rabbitmq')
-     *
-     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L113
-     */
+    /** @var string */
     public $name;
 
-    /**
-     * @var string
-     *
-     * Identifier for the destination service resource being operated on
-     * e.g. 'http://elastic.co:80', 'elasticsearch', 'rabbitmq/queue_name'
-     *
-     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L118
-     */
+    /** @var string */
     public $resource;
 
-    /**
-     * @var string
-     *
-     * Type of the destination service (e.g. 'db', 'elasticsearch'). Should typically be the same as span.type.
-     *
-     * @link https://github.com/elastic/apm-server/blob/v7.11.0/docs/spec/v2/span.json#L123
-     */
+    /** @var string */
     public $type;
 
     /** @inheritDoc */

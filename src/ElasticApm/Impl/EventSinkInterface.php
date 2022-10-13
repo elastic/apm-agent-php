@@ -34,16 +34,16 @@ interface EventSinkInterface
 {
     /**
      * @param Metadata                        $metadata
-     * @param SpanData[]                      $spansData
-     * @param ErrorData[]                     $errorsData
+     * @param SpanToSendInterface[]           $spans
+     * @param Error[]                         $errors
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
-     * @param TransactionData|null            $transactionData
+     * @param ?Transaction                    $transaction
      */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
+        array $spans,
+        array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
+        ?Transaction $transaction
     ): void;
 }

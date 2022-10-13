@@ -226,3 +226,35 @@ int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b )
 
 #undef ELASTIC_APM_NUMCMP
 }
+
+static const long microsecondsInSecond = 1000 * 1000;
+static const long nanosecondsInMicrosecond = 1000;
+
+TimeVal calcEndTimeVal( TimeVal beginTime, long seconds, long nanoSeconds )
+{
+    TimeVal endTime = { .tv_sec = beginTime.tv_sec + seconds, .tv_usec = beginTime.tv_usec + ( nanoSeconds / nanosecondsInMicrosecond ) };
+
+    if ( endTime.tv_usec >= microsecondsInSecond )
+    {
+        endTime.tv_sec += endTime.tv_usec / microsecondsInSecond;
+        endTime.tv_usec = endTime.tv_usec % microsecondsInSecond;
+    }
+
+    return endTime;
+}
+
+TimeVal calcTimeValDiff( TimeVal beginTime, TimeVal endTime )
+{
+    TimeVal diff;
+
+    diff.tv_sec = endTime.tv_sec - beginTime.tv_sec;
+    diff.tv_usec = endTime.tv_usec - beginTime.tv_usec;
+
+    if ( diff.tv_usec < 0 && diff.tv_sec > 0 )
+    {
+        --diff.tv_sec;
+        diff.tv_usec = ( microsecondsInSecond + endTime.tv_usec ) - beginTime.tv_usec;
+    }
+
+    return diff;
+}

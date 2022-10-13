@@ -10,9 +10,11 @@
     "require": {
         "php": "^7.2||8.0.*||8.1.*",
         "ext-json": "*",
+        "ext-pcntl": "*",
         "psr/log": "^1.0"
     },
     "require-dev": {
+        "ext-ctype": "*",
         "ext-curl": "*",
         "ext-mysqli": "*",
         "ext-pdo": "*",
@@ -22,7 +24,7 @@
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",
         "php-ds/php-ds": "^1.4.1",
-        "phpstan/phpstan": "1.7.15",
+        "phpstan/phpstan": "1.8.6",
         "phpstan/phpstan-phpunit": "^1.1.1",
         "phpunit/phpunit": "^8.5||^9.5",
         "react/http": "^1.6",
@@ -59,14 +61,14 @@
             "phpcbf ./examples/"
         ],
         "phpstan-junit-report-for-ci": [
-            "phpstan analyse --error-format=junit -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=200M | tee build/elasticapm-phpstan-junit.xml",
-            "phpstan analyse --error-format=junit -c ./phpstan.neon ./tests/ --level max --memory-limit=200M --error-format=junit | tee build/tests-phpstan-junit.xml",
-            "phpstan analyse --error-format=junit -c ./phpstan.neon ./examples/ --level max --memory-limit=200M --error-format=junit | tee build/examples-phpstan-junit.xml"
+            "phpstan analyse --error-format=junit -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=1G | tee build/elasticapm-phpstan-junit.xml",
+            "phpstan analyse --error-format=junit -c ./phpstan.neon ./tests/ --level max --memory-limit=1G --error-format=junit | tee build/tests-phpstan-junit.xml",
+            "phpstan analyse --error-format=junit -c ./phpstan.neon ./examples/ --level max --memory-limit=1G --error-format=junit | tee build/examples-phpstan-junit.xml"
         ],
         "phpstan": [
-            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=200M",
-            "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=200M",
-            "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=200M"
+            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=1G --xdebug",
+            "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=1G --xdebug",
+            "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=1G --xdebug"
         ],
         "static_check": [
             "composer run-script -- php_codesniffer_check",

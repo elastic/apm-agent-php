@@ -45,13 +45,13 @@ final class Autoloader
         self::$elasticApmSrcDir = SrcRootDir::$fullPath . DIRECTORY_SEPARATOR . 'ElasticApm';
         self::$autoloadFqClassNamePrefixLength = strlen(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX);
 
-        spl_autoload_register([__CLASS__, 'autoloadCodeForClass'], /* throw: */ true);
+        spl_autoload_register([__CLASS__, 'autoloadCodeForClass']);
     }
 
     private static function shouldAutoloadCodeForClass(string $fqClassName): bool
     {
         // does the class use the namespace prefix?
-        return strncmp(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX, $fqClassName, self::$autoloadFqClassNamePrefixLength) === 0;
+        return strncmp(self::AUTOLOAD_FQ_CLASS_NAME_PREFIX, $fqClassName, self::$autoloadFqClassNamePrefixLength) == 0;
     }
 
     public static function autoloadCodeForClass(string $fqClassName): void
@@ -79,12 +79,16 @@ final class Autoloader
 
         if (file_exists($classSrcFileAbsolute)) {
             BootstrapStageLogger::logTrace(
-                "About to execute require `$classSrcFileAbsolute' ...",
+                "Before require `$classSrcFileAbsolute' ...",
                 __LINE__,
                 __FUNCTION__
             );
-            /** @noinspection PhpIncludeInspection */
             require $classSrcFileAbsolute;
+            BootstrapStageLogger::logTrace(
+                "After require `$classSrcFileAbsolute' ...",
+                __LINE__,
+                __FUNCTION__
+            );
         } else {
             BootstrapStageLogger::logTrace(
                 "File with the code for class doesn't exist."

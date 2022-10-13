@@ -18,8 +18,9 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install \
-        pdo_mysql \
         mysqli \
+        pcntl \
+        pdo_mysql \
         pdo_sqlite \
         posix
 

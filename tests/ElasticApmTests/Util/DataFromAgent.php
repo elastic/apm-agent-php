@@ -23,17 +23,13 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\ErrorData;
-use Elastic\Apm\Impl\ExecutionSegmentData;
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\ApmDataKind;
-use ElasticApmTests\UnitTests\Util\NotFoundException;
 use PHPUnit\Framework\TestCase;
 
 class DataFromAgent implements LoggableInterface
@@ -43,16 +39,16 @@ class DataFromAgent implements LoggableInterface
     /** @var Metadata[] */
     public $metadatas = [];
 
-    /** @var array<string, TransactionData> */
+    /** @var array<string, TransactionDto> */
     public $idToTransaction = [];
 
-    /** @var array<string, SpanData> */
+    /** @var array<string, SpanDto> */
     public $idToSpan = [];
 
-    /** @var array<string, ErrorData> */
+    /** @var array<string, ErrorDto> */
     public $idToError = [];
 
-    /** @var MetricSetData[] */
+    /** @var MetricSet[] */
     public $metricSets = [];
 
     /**
@@ -69,22 +65,22 @@ class DataFromAgent implements LoggableInterface
     }
 
     /**
-     * @return TransactionData
+     * @return TransactionDto
      */
-    public function singleTransaction(): TransactionData
+    public function singleTransaction(): TransactionDto
     {
         return self::singleEvent($this->idToTransaction);
     }
 
     /**
-     * @return SpanData
+     * @return SpanDto
      */
-    public function singleSpan(): SpanData
+    public function singleSpan(): SpanDto
     {
         return self::singleEvent($this->idToSpan);
     }
 
-    public function singleError(): ErrorData
+    public function singleError(): ErrorDto
     {
         return self::singleEvent($this->idToError);
     }
@@ -92,25 +88,41 @@ class DataFromAgent implements LoggableInterface
     /**
      * @param string $name
      *
-     * @return SpanData
-     * @throws NotFoundException
+     * @return SpanDto[]
      */
-    public function spanByName(string $name): SpanData
+    public function findSpansByName(string $name): array
     {
+        $result = [];
         foreach ($this->idToSpan as $span) {
             if ($span->name === $name) {
-                return $span;
+                $result[] = $span;
             }
         }
-        throw new NotFoundException("Span with the name `$name' not found");
+        return $result;
     }
 
     /**
-     * @param TransactionData $transaction
+     * @param string $name
      *
-     * @return array<string, SpanData>
+     * @return SpanDto
      */
-    public function spansForTransaction(TransactionData $transaction): array
+    public function singleSpanByName(string $name): SpanDto
+    {
+        $spans = $this->findSpansByName($name);
+        TestCase::assertCount(
+            1,
+            $spans,
+            LoggableToString::convert(['name' => $name, 'spans' => $spans, 'this' => $this])
+        );
+        return $spans[0];
+    }
+
+    /**
+     * @param TransactionDto $transaction
+     *
+     * @return array<string, SpanDto>
+     */
+    public function spansForTransaction(TransactionDto $transaction): array
     {
         $idToSpanForTransaction = [];
 
@@ -124,11 +136,11 @@ class DataFromAgent implements LoggableInterface
     }
 
     /**
-     * @param TransactionData $transaction
+     * @param TransactionDto $transaction
      *
-     * @return array<string, ErrorData>
+     * @return array<string, ErrorDto>
      */
-    public function errorsForTransaction(TransactionData $transaction): array
+    public function errorsForTransaction(TransactionDto $transaction): array
     {
         $idToErrorForTransaction = [];
 
@@ -144,7 +156,7 @@ class DataFromAgent implements LoggableInterface
     /**
      * @param string $parentId
      *
-     * @return iterable<SpanData>
+     * @return iterable<SpanDto>
      */
     public function findChildSpans(string $parentId): iterable
     {
@@ -158,7 +170,7 @@ class DataFromAgent implements LoggableInterface
     /**
      * @param string $parentId
      *
-     * @return iterable<ErrorData>
+     * @return iterable<ErrorDto>
      */
     public function findChildErrors(string $parentId): iterable
     {
@@ -170,17 +182,17 @@ class DataFromAgent implements LoggableInterface
     }
 
     /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
-     * @param string                         $id
+     * @param array<string, TransactionDto> $idToTransaction
+     * @param array<string, SpanDto>        $idToSpan
+     * @param string                        $id
      *
-     * @return ?ExecutionSegmentData
+     * @return ?ExecutionSegmentDto
      */
     public static function executionSegmentByIdOrNullEx(
         array $idToTransaction,
         array $idToSpan,
         string $id
-    ): ?ExecutionSegmentData {
+    ): ?ExecutionSegmentDto {
         if (($span = ArrayUtil::getValueIfKeyExistsElse($id, $idToSpan, null)) !== null) {
             return $span;
         }
@@ -188,28 +200,28 @@ class DataFromAgent implements LoggableInterface
     }
 
     /**
-     * @param array<string, TransactionData> $idToTransaction
-     * @param array<string, SpanData>        $idToSpan
+     * @param array<string, TransactionDto> $idToTransaction
+     * @param array<string, SpanDto>        $idToSpan
      * @param string                         $id
      *
-     * @return ExecutionSegmentData
+     * @return ExecutionSegmentDto
      */
     public static function executionSegmentByIdEx(
         array $idToTransaction,
         array $idToSpan,
         string $id
-    ): ExecutionSegmentData {
+    ): ExecutionSegmentDto {
         $result = self::executionSegmentByIdOrNullEx($idToTransaction, $idToSpan, $id);
         TestCaseBase::assertNotNull($result);
         return $result;
     }
 
-    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentData
+    public function executionSegmentByIdOrNull(string $id): ?ExecutionSegmentDto
     {
         return self::executionSegmentByIdOrNullEx($this->idToTransaction, $this->idToSpan, $id);
     }
 
-    public function executionSegmentById(string $id): ExecutionSegmentData
+    public function executionSegmentById(string $id): ExecutionSegmentDto
     {
         return self::executionSegmentByIdEx($this->idToTransaction, $this->idToSpan, $id);
     }

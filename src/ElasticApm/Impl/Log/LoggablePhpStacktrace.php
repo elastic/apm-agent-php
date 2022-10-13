@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Log;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -33,12 +34,6 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 final class LoggablePhpStacktrace
 {
     public const STACK_TRACE_KEY = 'stacktrace';
-    public const CLASS_KEY = 'class';
-    public const FUNCTION_KEY = 'function';
-    public const FILE_KEY = 'file';
-    public const LINE_KEY = 'line';
-    public const THIS_OBJECT_KEY = 'this';
-    public const ARGS_KEY = 'args';
 
     /**
      * @param int $numberOfStackFramesToSkip
@@ -52,6 +47,7 @@ final class LoggablePhpStacktrace
         // #2  a() called at [/tmp/include.php:17]
 
         $result = [];
+        /** @noinspection PhpRedundantOptionalArgumentInspection */
         $stackFrames = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT);
         $index = 0;
         foreach ($stackFrames as $stackFrame) {
@@ -71,32 +67,36 @@ final class LoggablePhpStacktrace
     private static function buildStackFrame(array $stackFrame): array
     {
         $result = [];
-        if (is_string($className = ArrayUtil::getValueIfKeyExistsElse('class', $stackFrame, null))) {
-            $result[self::CLASS_KEY] = $className;
+        $className = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::CLASS_KEY, $stackFrame, null);
+        if (is_string($className)) {
+            $result[StackTraceUtil::CLASS_KEY] = $className;
         }
 
-        if (is_string($funcName = ArrayUtil::getValueIfKeyExistsElse('function', $stackFrame, null))) {
-            $result[self::FUNCTION_KEY] = $funcName;
+        $funcName = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::FUNCTION_KEY, $stackFrame, null);
+        if (is_string($funcName)) {
+            $result[StackTraceUtil::FUNCTION_KEY] = $funcName;
         }
 
-        if (is_string($srcFile = ArrayUtil::getValueIfKeyExistsElse('file', $stackFrame, null))) {
-            $result[self::FILE_KEY] = self::adaptSourceCodeFilePath($srcFile);
+        if (is_string($srcFile = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::FILE_KEY, $stackFrame, null))) {
+            $result[StackTraceUtil::FILE_KEY] = self::adaptSourceCodeFilePath($srcFile);
         }
 
-        if (is_int($srcLine = ArrayUtil::getValueIfKeyExistsElse('line', $stackFrame, null))) {
-            $result[self::LINE_KEY] = $srcLine;
+        if (is_int($srcLine = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::LINE_KEY, $stackFrame, null))) {
+            $result[StackTraceUtil::LINE_KEY] = $srcLine;
         }
 
-        if (is_object($callThisObj = ArrayUtil::getValueIfKeyExistsElse('object', $stackFrame, null))) {
-            $result[self::THIS_OBJECT_KEY] = $callThisObj;
+        $callThisObj = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::THIS_OBJECT_KEY, $stackFrame, null);
+        if (is_object($callThisObj)) {
+            $result[StackTraceUtil::THIS_OBJECT_KEY] = $callThisObj;
         }
 
-        if (is_iterable($callArgs = ArrayUtil::getValueIfKeyExistsElse('args', $stackFrame, null))) {
+        $callArgs = ArrayUtil::getValueIfKeyExistsElse(StackTraceUtil::ARGS_KEY, $stackFrame, null);
+        if (is_iterable($callArgs)) {
             $args = [];
             foreach ($callArgs as $callArg) {
                 $args[] = $callArg;
             }
-            $result[self::ARGS_KEY] = $args;
+            $result[StackTraceUtil::ARGS_KEY] = $args;
         }
 
         return $result;

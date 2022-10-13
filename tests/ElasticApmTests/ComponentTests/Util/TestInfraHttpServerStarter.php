@@ -23,11 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Util\JsonUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\FileUtilForTests;
-use PHPUnit\Framework\TestCase;
 
 final class TestInfraHttpServerStarter extends HttpServerStarter
 {
@@ -79,7 +75,7 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     /** @inheritDoc */
     protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
     {
-        return TestInfraUtil::addTestInfraDataPerProcessToEnvVars(
+        return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
             getenv(),
             $spawnedProcessInternalId,
             $port,

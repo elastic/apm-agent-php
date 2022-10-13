@@ -27,7 +27,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 

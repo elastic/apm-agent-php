@@ -42,7 +42,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
-use ElasticApmTests\Util\SpanDataExpectations;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PHPUnit\Framework\TestCase;
 
@@ -185,7 +185,7 @@ final class MySQLiTest extends ComponentTestCaseBase
      * @param MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder
      * @param string[]                            $queries
      * @param string                              $kind
-     * @param SpanDataExpectations[]             &$expectedSpans
+     * @param SpanExpectations[]             &$expectedSpans
      */
     private static function addExpectationsForQueriesUsingKind(
         MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder,
@@ -247,7 +247,7 @@ final class MySQLiTest extends ComponentTestCaseBase
     /**
      * @param MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder
      * @param string                              $queryKind
-     * @param SpanDataExpectations[]             &$expectedSpans
+     * @param SpanExpectations[]             &$expectedSpans
      */
     private static function addExpectationsForResetDbState(
         MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder,
@@ -455,7 +455,7 @@ final class MySQLiTest extends ComponentTestCaseBase
         $sharedExpectations
             = MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $connectDbName);
         $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder($isOOPApi, $sharedExpectations);
-        /** @var SpanDataExpectations[] $expectedSpans */
+        /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
             $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', '__construct', 'mysqli_connect');

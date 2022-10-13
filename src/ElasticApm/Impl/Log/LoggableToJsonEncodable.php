@@ -247,7 +247,10 @@ final class LoggableToJsonEncodable
             return self::convertThrowable($object, $depth);
         }
 
-        if (TextUtil::isPrefixOf('Elastic\\Apm\\', get_class($object)) && self::isDtoObject($object)) {
+        $fqClassName = get_class($object);
+        $isFromElasticNamespace = TextUtil::isPrefixOf('Elastic\\Apm\\', $fqClassName)
+                                  || TextUtil::isPrefixOf('ElasticApmTests\\', $fqClassName);
+        if ($isFromElasticNamespace && self::isDtoObject($object)) {
             return self::convertDtoObject($object, $depth);
         }
 

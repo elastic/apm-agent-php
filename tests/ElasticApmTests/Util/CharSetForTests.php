@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Ds\Set;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use IteratorAggregate;
 use PHPUnit\Framework\TestCase;
 use Traversable;
@@ -91,7 +92,7 @@ final class CharSetForTests implements IteratorAggregate
         $firstCodePoint = ord($first);
         $lastCodePoint = ord($last);
         TestCase::assertGreaterThanOrEqual($firstCodePoint, $lastCodePoint);
-        foreach (RangeUtilForTests::generateFromToIncluding($firstCodePoint, $lastCodePoint) as $codepoint) {
+        foreach (RangeUtil::generateFromToIncluding($firstCodePoint, $lastCodePoint) as $codepoint) {
             $this->addChar(chr($codepoint));
         }
     }

@@ -76,4 +76,43 @@ final class ArrayUtilForTests
         );
         $result[$key] = $value;
     }
+
+    /**
+     * @template        T
+     * @phpstan-param   iterable<T> $haystack
+     * @phpstan-param   callable $predicate
+     * @phpstan-param   T $default
+     * @phpstan-return  T|null
+     *
+     * @param iterable $haystack
+     * @param callable $predicate
+     * @param null     $default
+     *
+     * @return mixed
+     */
+    public static function findByPredicate(iterable $haystack, callable $predicate, $default = null)
+    {
+        foreach ($haystack as $value) {
+            if ($predicate($value)) {
+                return $value;
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * @template T
+     *
+     * @param array<T> $array
+     *
+     * @return iterable<T>
+     */
+    public static function iterateListInReverse(array $array): iterable
+    {
+        $arrayCount = count($array);
+        for ($i = $arrayCount - 1; $i >= 0; --$i) {
+            yield $array[$i];
+        }
+    }
 }

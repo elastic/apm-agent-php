@@ -30,12 +30,13 @@ use Elastic\Apm\Impl\ServiceAgentData;
 use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SystemData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use ElasticApmTests\Util\DataValidator;
+use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
 
 final class MetadataDeserializer
 {
     use StaticClassTrait;
+    use AssertValidTrait;
 
     /**
      * @param mixed $value
@@ -65,7 +66,7 @@ final class MetadataDeserializer
                 }
             }
         );
-        MetadataValidator::validate($result);
+        MetadataValidator::assertValid($result);
         return $result;
     }
 
@@ -109,7 +110,7 @@ final class MetadataDeserializer
                         $result->agent = self::deserializeServiceAgentData($value);
                         return true;
                     case 'environment':
-                        $result->environment = DataValidator::validateKeywordString($value);
+                        $result->environment = self::assertValidKeywordString($value);
                         return true;
                     case 'framework':
                         $result->framework = self::deserializeNameVersionData($value);
@@ -118,7 +119,7 @@ final class MetadataDeserializer
                         $result->language = self::deserializeNameVersionData($value);
                         return true;
                     case 'name':
-                        $result->name = DataValidator::validateKeywordString($value);
+                        $result->name = self::assertValidKeywordString($value);
                         return true;
                     case 'node':
                         self::deserializeServiceNodeSubObject($value, $result);
@@ -127,7 +128,7 @@ final class MetadataDeserializer
                         $result->runtime = self::deserializeNameVersionData($value);
                         return true;
                     case 'version':
-                        $result->version = DataValidator::validateKeywordString($value);
+                        $result->version = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;
@@ -155,7 +156,7 @@ final class MetadataDeserializer
 
                 switch ($key) {
                     case 'ephemeral_id':
-                        $result->ephemeralId = DataValidator::validateKeywordString($value);
+                        $result->ephemeralId = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;
@@ -176,7 +177,7 @@ final class MetadataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'configured_name':
-                        $result->nodeConfiguredName = DataValidator::validateKeywordString($value);
+                        $result->nodeConfiguredName = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;
@@ -198,13 +199,13 @@ final class MetadataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'hostname':
-                        $result->hostname = DataValidator::validateKeywordString($value);
+                        $result->hostname = self::assertValidKeywordString($value);
                         return true;
                     case 'detected_hostname':
-                        $result->detectedHostname = DataValidator::validateKeywordString($value);
+                        $result->detectedHostname = self::assertValidKeywordString($value);
                         return true;
                     case 'configured_hostname':
-                        $result->configuredHostname = DataValidator::validateKeywordString($value);
+                        $result->configuredHostname = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;
@@ -244,10 +245,10 @@ final class MetadataDeserializer
     {
         switch ($key) {
             case 'name':
-                $result->name = DataValidator::validateKeywordString($value);
+                $result->name = self::assertValidKeywordString($value);
                 return true;
             case 'version':
-                $result->version = DataValidator::validateKeywordString($value);
+                $result->version = self::assertValidKeywordString($value);
                 return true;
             default:
                 return false;

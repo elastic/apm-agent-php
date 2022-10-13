@@ -111,7 +111,10 @@ enum OptionId
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     optionId_memoryTrackingLevel,
     #endif
+    optionId_nonKeywordStringMaxLength,
     optionId_profilingInferredSpansEnabled,
+    optionId_profilingInferredSpansMinDuration,
+    optionId_profilingInferredSpansSamplingInterval,
     optionId_sanitizeFieldNames,
     optionId_secretToken,
     optionId_serverTimeout,
@@ -164,7 +167,10 @@ struct ConfigSnapshot
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTrackingLevel memoryTrackingLevel;
         #endif
+    String nonKeywordStringMaxLength;
     bool profilingInferredSpansEnabled;
+    String profilingInferredSpansMinDuration;
+    String profilingInferredSpansSamplingInterval;
     String sanitizeFieldNames;
     String secretToken;
     String serverUrl;
@@ -292,7 +298,10 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
+#define ELASTIC_APM_CFG_OPT_NAME_NON_KEYWORD_STRING_MAX_LENGTH "non_keyword_string_max_length"
 #define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED "profiling_inferred_spans_enabled"
+#define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_MIN_DURATION "profiling_inferred_spans_min_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL "profiling_inferred_spans_sampling_interval"
 #define ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES "sanitize_field_names"
 #define ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"

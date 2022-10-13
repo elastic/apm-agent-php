@@ -35,7 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
-use ElasticApmTests\Util\TransactionDataExpectations;
+use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -133,6 +133,15 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
+            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
+                                                  => $intRawToParsedValues,
+            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            OptionNames::PROFILING_INFERRED_SPANS_ENABLED
+                                                  => $boolRawToParsedValues(/* valueToExclude: */ true),
+            OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
+                                                  => $durationRawToParsedValues,
+            OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL
+                                                  => $durationRawToParsedValues,
             OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
             OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
             OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,
@@ -256,8 +265,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         string $optRawVal,
         $optExpectedVal
     ): void {
-        TransactionDataExpectations::$defaultIsSampled = null;
-        TransactionDataExpectations::$defaultDroppedSpansCount = null;
+        TransactionExpectations::$defaultIsSampled = null;
+        TransactionExpectations::$defaultDroppedSpansCount = null;
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {

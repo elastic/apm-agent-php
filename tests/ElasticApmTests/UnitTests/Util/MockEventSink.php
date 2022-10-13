@@ -23,23 +23,22 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
-use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
-use Elastic\Apm\Impl\ErrorData;
+use Elastic\Apm\Impl\Error;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\MetricSetData;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\MetricSet;
+use Elastic\Apm\Impl\Span;
+use Elastic\Apm\Impl\SpanToSendInterface;
+use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
-use ElasticApmTests\Util\ErrorDataValidator;
 use ElasticApmTests\Util\MetadataValidator;
-use ElasticApmTests\Util\MetricSetDataValidator;
-use ElasticApmTests\Util\SpanDataValidator;
-use ElasticApmTests\Util\TransactionDataValidator;
+use ElasticApmTests\Util\MetricSetValidator;
+use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\TestCase;
 
 final class MockEventSink implements EventSinkInterface
@@ -59,208 +58,114 @@ final class MockEventSink implements EventSinkInterface
         $this->dataFromAgent = new DataFromAgent();
     }
 
-    /**
-     * @param object                        $data
-     * @param Closure(object): void         $assertValid
-     * @param Closure(object): string       $serialize
-     * @param Closure(string): object       $validateAndDeserialize
-     * @param Closure(object, object): void $assertEquals
-     *
-     * @return object
-     *
-     * @template        T of object
-     *
-     * @phpstan-param   T                   $data
-     * @phpstan-param   Closure(T): void    $assertValid
-     * @phpstan-param   Closure(T): string  $serialize
-     * @phpstan-param   Closure(string): T  $validateAndDeserialize
-     * @phpstan-param   Closure(T, T): void $assertEquals
-     *
-     * @phpstan-return  T
-     */
-    private function passThroughSerialization(
-        object $data,
-        Closure $assertValid,
-        Closure $serialize,
-        Closure $validateAndDeserialize,
-        Closure $assertEquals
-    ): object {
-        $assertValid($data);
-        $serializedData = $serialize($data);
-        $deserializedData = $validateAndDeserialize($serializedData);
-        $assertValid($deserializedData);
-        $assertEquals($data, $deserializedData);
-        return $deserializedData;
-    }
-
     /** @inheritDoc */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
+        array $spans,
+        array $errors,
         ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?TransactionData $transactionData
+        ?Transaction $transaction
     ): void {
         $this->consumeMetadata($metadata);
 
-        foreach ($spansData as $span) {
-            $this->consumeSpanData($span);
+        foreach ($spans as $span) {
+            $this->consumeSpan($span);
         }
 
-        foreach ($errorsData as $error) {
-            $this->consumeErrorData($error);
+        foreach ($errors as $error) {
+            $this->consumeError($error);
         }
 
         if ($breakdownMetricsPerTransaction !== null) {
             $breakdownMetricsPerTransaction->forEachMetricSet(
-                function (MetricSetData $metricSetData) {
-                    $this->consumeMetricSetData($metricSetData);
+                function (MetricSet $metricSetData) {
+                    $this->consumeMetricSet($metricSetData);
                 }
             );
         }
 
-        if ($transactionData !== null) {
-            $this->consumeTransactionData($transactionData);
+        if ($transaction !== null) {
+            $this->consumeTransaction($transaction);
         }
     }
 
-    private function consumeMetadata(Metadata $metadata): void
+    private static function assertValidMetadata(Metadata $metadata): void
     {
-        $this->dataFromAgent->metadatas[] = self::passThroughSerialization(
-            $metadata,
-            /* assertValid: */
-            function (Metadata $data): void {
-                MetadataValidator::validate($data);
-                self::additionalMetadataValidation($data);
-            },
-            /* serialize: */
-            function (Metadata $data): string {
-                return SerializationUtil::serializeAsJson($data);
-            },
-            /* validateAndDeserialize: */
-            function (string $serializedMetadata): Metadata {
-                return $this->validateAndDeserializeMetadata($serializedMetadata);
-            },
-            /* assertEquals: */
-            function ($data, $deserializedData): void {
-                TestCase::assertEquals($data, $deserializedData);
-            }
-        );
-    }
+        MetadataValidator::assertValid($metadata);
 
-    private function consumeTransactionData(TransactionData $transaction): void
-    {
-        /** @var TransactionData $newTransaction */
-        $newTransaction = self::passThroughSerialization(
-            $transaction,
-            /* assertValid: */
-            function (TransactionData $data): void {
-                TransactionDataValidator::validate($data);
-            },
-            /* serialize: */
-            function (TransactionData $data): string {
-                return SerializationUtil::serializeAsJson($data);
-            },
-            /* validateAndDeserialize: */
-            function (string $serializedTransactionData): TransactionData {
-                return $this->validateAndDeserializeTransactionData($serializedTransactionData);
-            },
-            /* assertEquals: */
-            function ($data, $deserializedData): void {
-                TestCase::assertEquals($data, $deserializedData);
-            }
-        );
-        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($newTransaction->id));
-        $this->dataFromAgent->idToTransaction[$newTransaction->id] = $newTransaction;
-    }
-
-    private function consumeSpanData(SpanData $spanData): void
-    {
-        /** @var SpanData $newSpan */
-        $newSpan = self::passThroughSerialization(
-            $spanData,
-            /* assertValid: */
-            function (SpanData $data): void {
-                SpanDataValidator::validate($data);
-            },
-            /* serialize: */
-            function (SpanData $data): string {
-                return SerializationUtil::serializeAsJson($data);
-            },
-            /* validateAndDeserialize: */
-            function (string $serializedSpanData): SpanData {
-                return $this->validateAndDeserializeSpanData($serializedSpanData);
-            },
-            /* assertEquals: */
-            function ($data, $deserializedData): void {
-                TestCase::assertEquals($data, $deserializedData);
-            }
-        );
-        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($newSpan->id));
-        $this->dataFromAgent->idToSpan[$newSpan->id] = $newSpan;
-    }
-
-    private function consumeErrorData(ErrorData $errorData): void
-    {
-        /** @var ErrorData $newError */
-        $newError = self::passThroughSerialization(
-            $errorData,
-            /* assertValid: */
-            function (ErrorData $data): void {
-                ErrorDataValidator::validate($data);
-            },
-            /* serialize: */
-            function (ErrorData $data): string {
-                return SerializationUtil::serializeAsJson($data);
-            },
-            /* validateAndDeserialize: */
-            function (string $serializedErrorData): ErrorData {
-                return $this->validateAndDeserializeErrorData($serializedErrorData);
-            },
-            /* assertEquals: */
-            function ($data, $deserializedData): void {
-                TestCase::assertEquals($data, $deserializedData);
-            }
-        );
-        ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->dataFromAgent->idToError);
-    }
-
-    private function consumeMetricSetData(MetricSetData $metricSetData): void
-    {
-        /** @var MetricSetData $newMetricSetData */
-        $newMetricSetData = self::passThroughSerialization(
-            $metricSetData,
-            /* assertValid: */
-            function (MetricSetData $data): void {
-                MetricSetDataValidator::validate($data);
-            },
-            /* serialize: */
-            function (MetricSetData $data): string {
-                return SerializationUtil::serializeAsJson($data);
-            },
-            /* validateAndDeserialize: */
-            function (string $serializedErrorData): MetricSetData {
-                return $this->validateAndDeserializeMetricSetData($serializedErrorData);
-            },
-            /* assertEquals: */
-            function ($data, $deserializedData): void {
-                TestCase::assertEquals($data, $deserializedData);
-            }
-        );
-
-        $this->dataFromAgent->metricSets[] = $newMetricSetData;
-    }
-
-    public static function additionalMetadataValidation(Metadata $metadata): void
-    {
         TestCase::assertNotNull($metadata->process);
         TestCase::assertSame(getmypid(), $metadata->process->pid);
         TestCase::assertNotNull($metadata->service->language);
         TestCase::assertSame(PHP_VERSION, $metadata->service->language->version);
     }
 
+    private function consumeMetadata(Metadata $original): void
+    {
+        self::assertValidMetadata($original);
+
+        $serialized = SerializationUtil::serializeAsJson($original);
+
+        $deserialized = $this->validateAndDeserializeMetadata($serialized);
+
+        self::assertValidMetadata($deserialized);
+        TestCase::assertEquals($original, $deserialized);
+    }
+
+    private function consumeTransaction(Transaction $original): void
+    {
+        TestCase::assertTrue($original->hasEnded());
+
+        $serialized = SerializationUtil::serializeAsJson($original);
+
+        $deserialized = $this->validateAndDeserializeTransaction($serialized);
+        $deserialized->assertValid();
+        $deserialized->assertEquals($original);
+
+        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
+        ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToTransaction);
+    }
+
+    private function consumeSpan(SpanToSendInterface $original): void
+    {
+        if ($original instanceof Span) {
+            TestCase::assertTrue($original->hasEnded());
+        }
+        $serialized = SerializationUtil::serializeAsJson($original);
+
+        $deserialized = $this->validateAndDeserializeSpan($serialized);
+        $deserialized->assertValid();
+        $deserialized->assertEquals($original);
+
+        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
+        ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToSpan);
+    }
+
+    private function consumeError(Error $original): void
+    {
+        $serialized = SerializationUtil::serializeAsJson($original);
+
+        $deserialized = $this->validateAndDeserializeError($serialized);
+        $deserialized->assertValid();
+        $deserialized->assertEquals($original);
+
+        ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToError);
+    }
+
+    private function consumeMetricSet(MetricSet $original): void
+    {
+        MetricSetValidator::assertValid($original);
+
+        $serialized = SerializationUtil::serializeAsJson($original);
+
+        $deserialized = $this->validateAndDeserializeMetricSet($serialized);
+        MetricSetValidator::assertValid($deserialized);
+        TestCase::assertEquals($original, $deserialized);
+
+        $this->dataFromAgent->metricSets[] = $deserialized;
+    }
+
     /**
-     * @return array<string, TransactionData>
+     * @return array<string, TransactionDto>
      */
     public function idToTransaction(): array
     {
@@ -268,15 +173,15 @@ final class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return TransactionData
+     * @return TransactionDto
      */
-    public function singleTransaction(): TransactionData
+    public function singleTransaction(): TransactionDto
     {
         return $this->dataFromAgent->singleTransaction();
     }
 
     /**
-     * @return array<string, SpanData>
+     * @return array<string, SpanDto>
      */
     public function idToSpan(): array
     {
@@ -284,9 +189,9 @@ final class MockEventSink implements EventSinkInterface
     }
 
     /**
-     * @return SpanData
+     * @return SpanDto
      */
-    public function singleSpan(): SpanData
+    public function singleSpan(): SpanDto
     {
         return $this->dataFromAgent->singleSpan();
     }
@@ -294,20 +199,29 @@ final class MockEventSink implements EventSinkInterface
     /**
      * @param string $name
      *
-     * @return SpanData
-     * @throws NotFoundException
+     * @return SpanDto[]
      */
-    public function spanByName(string $name): SpanData
+    public function findSpansByName(string $name): array
     {
-        return $this->dataFromAgent->spanByName($name);
+        return $this->dataFromAgent->findSpansByName($name);
     }
 
     /**
-     * @param TransactionData $transaction
+     * @param string $name
      *
-     * @return array<string, SpanData>
+     * @return SpanDto
      */
-    public function spansForTransaction(TransactionData $transaction): array
+    public function singleSpanByName(string $name): SpanDto
+    {
+        return $this->dataFromAgent->singleSpanByName($name);
+    }
+
+    /**
+     * @param TransactionDto $transaction
+     *
+     * @return array<string, SpanDto>
+     */
+    public function spansForTransaction(TransactionDto $transaction): array
     {
         return $this->dataFromAgent->spansForTransaction($transaction);
     }

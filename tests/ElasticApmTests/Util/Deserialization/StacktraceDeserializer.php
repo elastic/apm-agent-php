@@ -23,22 +23,23 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\StacktraceFrame;
-use ElasticApmTests\Util\DataValidator;
+use Elastic\Apm\Impl\StackTraceFrame;
+use ElasticApmTests\Util\AssertValidTrait;
 use PHPUnit\Framework\TestCase;
 
 final class StacktraceDeserializer
 {
+    use AssertValidTrait;
+
     /**
-     *
      * @param mixed $value
      *
-     * @return StacktraceFrame[]
+     * @return StackTraceFrame[]
      */
     public static function deserialize($value): array
     {
         $deserializedRawData = DeserializationUtil::assertDecodedJsonMap($value);
-        /** @var StacktraceFrame[] */
+        /** @var StackTraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
@@ -53,16 +54,16 @@ final class StacktraceDeserializer
             ++$nextExpectedIndex;
         }
 
-        DataValidator::validateStacktrace($frames);
+        self::assertValidStacktrace($frames);
         return $frames;
     }
 
     /**
      * @param mixed $deserializedRawData
      *
-     * @return StacktraceFrame
+     * @return StackTraceFrame
      */
-    private static function deserializeFrame($deserializedRawData): StacktraceFrame
+    private static function deserializeFrame($deserializedRawData): StackTraceFrame
     {
         /** @var ?string */
         $filename = null;
@@ -76,15 +77,15 @@ final class StacktraceDeserializer
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':
-                    $filename = DataValidator::validateStacktraceFrameFilename($value);
+                    $filename = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'function':
-                    $function = DataValidator::validateStacktraceFrameFilename($value);
+                    $function = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'lineno':
-                    $lineNumber = DataValidator::validateStacktraceFrameLineNumber($value);
+                    $lineNumber = self::assertValidStacktraceFrameLineNumber($value);
                     break;
 
                 default:
@@ -94,7 +95,7 @@ final class StacktraceDeserializer
         TestCase::assertNotNull($filename);
         TestCase::assertNotSame(-1, $lineNumber);
 
-        $result = new StacktraceFrame($filename, $lineNumber);
+        $result = new StackTraceFrame($filename, $lineNumber);
         $result->function = $function;
 
         return $result;

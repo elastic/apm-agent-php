@@ -35,9 +35,11 @@ final class ProcessUtilForTests
 {
     use StaticClassTrait;
 
+    private const PROC_OPEN_DESCRIPTOR_FILE_TYPE = 'file';
+
     public static function doesProcessExist(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "tasklist /FI \"PID eq $pid\" 2>NUL | find \"$pid\" >NUL"
             : "ps -p $pid";
 
@@ -59,7 +61,7 @@ final class ProcessUtilForTests
 
     public static function terminateProcess(int $pid): bool
     {
-        $cmd = TestOsUtil::isWindows()
+        $cmd = OsUtilForTests::isWindows()
             ? "taskkill /F /PID $pid >NUL"
             : "kill $pid > /dev/null";
 
@@ -74,7 +76,7 @@ final class ProcessUtilForTests
     public static function startBackgroundProcess(string $cmd, array $envVars): void
     {
         self::startProcessImpl(
-            TestOsUtil::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
+            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
             $envVars,
             [] /* <- descriptorSpec: */
         );
@@ -101,8 +103,8 @@ final class ProcessUtilForTests
             if (file_exists($tempOutputFilePath)) {
                 TestCase::assertTrue(unlink($tempOutputFilePath));
             }
-            $descriptorSpec[1] = ['file', $tempOutputFilePath, "w"]; // 1 - stdout
-            $descriptorSpec[2] = ['file', $tempOutputFilePath, "w"]; // 2 - stderr
+            $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
+            $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }
 
         $hasReturnedExitCode = false;

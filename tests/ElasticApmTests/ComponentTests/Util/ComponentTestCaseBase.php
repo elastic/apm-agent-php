@@ -26,11 +26,12 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\TransactionData;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -113,6 +114,19 @@ class ComponentTestCaseBase extends TestCaseBase
         return $appCodeArgs[$appArgNameKey];
     }
 
+    /**
+     * @param array<string, mixed> $argsMap
+     *
+     * @return bool
+     */
+    protected static function getBoolFromArgsMap(string $argKey, array $argsMap): bool
+    {
+        self::assertArrayHasKey($argKey, $argsMap);
+        $val = $argsMap[$argKey];
+        self::assertIsBool($val, LoggableToString::convert(['argsMap' => $argsMap]));
+        return $val;
+    }
+
     public static function isSmoke(): bool
     {
         ComponentTestsPhpUnitExtension::initSingletons();
@@ -152,7 +166,7 @@ class ComponentTestCaseBase extends TestCaseBase
         return $dataFromAgent;
     }
 
-    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionData
+    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionDto
     {
         $this->assertEmpty($dataFromAgent->idToSpan);
 
@@ -175,7 +189,7 @@ class ComponentTestCaseBase extends TestCaseBase
         $instr = new $instrClassName(self::buildTracerForTests()->build());
         $actualNames = $instr->otherNames();
         $actualNames[] = $instr->name();
-        self::assertEqualLists($expectedNames, $actualNames);
+        self::assertEqualAsSets($expectedNames, $actualNames);
         self::assertTrue($instr->isEnabled());
 
         /**

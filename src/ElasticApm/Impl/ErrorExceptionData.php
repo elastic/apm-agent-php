@@ -24,10 +24,13 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
@@ -40,12 +43,12 @@ use Throwable;
  *
  * @internal
  */
-class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
+class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
     /**
-     * @var int|string|null
+     * @var null|int|string
      *
      * The error code set when the error happened, e.g. database error code
      *
@@ -56,7 +59,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $code = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The original error message
      *
@@ -65,7 +68,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $message = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * Describes the exception type's module namespace
      *
@@ -76,14 +79,14 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $module = null;
 
     /**
-     * @var StacktraceFrame[]|null
+     * @var null|StackTraceFrame[]
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
     public $stacktrace = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The length of a value is limited to 1024.
      *
@@ -93,8 +96,9 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
 
     public static function build(
         Tracer $tracer,
-        ?CustomErrorData $customErrorData = null,
-        ?Throwable $throwable = null
+        ?CustomErrorData $customErrorData,
+        ?PhpErrorData $phpErrorData,
+        ?Throwable $throwable
     ): ErrorExceptionData {
         $result = new ErrorExceptionData();
 
@@ -117,7 +121,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
             $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
             $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
-            $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
+            $result->stacktrace = StackTraceUtil::convertFromPhp($throwable->getTrace());
         }
 
         if ($customErrorData !== null) {
@@ -141,10 +145,29 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
         }
 
         if ($result->stacktrace === null) {
-            $result->stacktrace = StacktraceUtil::captureCurrent(9, /* hideElasticApmImpl: */ true);
+            if ($phpErrorData === null) {
+                $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
+                $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+            } else {
+                $result->stacktrace = StackTraceUtil::convertFromPhp(
+                    $phpErrorData->stackTrace,
+                    0 /* <- numberOfStackFramesToSkip */,
+                    true /* <- hideElasticApmImpl */
+                );
+            }
         }
 
         return $result;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): bool
+    {
+        return $this->code !== null
+               || $this->message !== null
+               || $this->module !== null
+               || $this->stacktrace !== null
+               || $this->type !== null;
     }
 
     /** @inheritDoc */

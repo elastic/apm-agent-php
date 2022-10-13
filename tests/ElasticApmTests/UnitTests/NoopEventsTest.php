@@ -26,7 +26,6 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
-use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
@@ -173,6 +172,6 @@ class NoopEventsTest extends TracerUnitTestCaseBase
         $span->setName('test_span_name');
         $span->setSubtype('test_span_subtype');
         $span->setAction('test_span_action');
-        $this->assertSame(NoopTransaction::ID, $span->getParentId());
+        $this->assertSame(NoopExecutionSegment::ID, $span->getParentId());
     }
 }

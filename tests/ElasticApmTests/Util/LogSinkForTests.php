@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util;
 use DateTime;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
-use ElasticApmTests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -38,6 +38,9 @@ final class LogSinkForTests extends SinkBase
     /** @var string */
     private $dbgProcessName;
 
+    /** @var bool */
+    private $isStderrDefined;
+
     public function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
@@ -45,6 +48,7 @@ final class LogSinkForTests extends SinkBase
         if (!defined('STDERR')) {
             define('STDERR', fopen('php://stderr', 'w'));
         }
+        $this->isStderrDefined = defined('STDERR');
     }
 
     protected function consumePreformatted(
@@ -68,7 +72,7 @@ final class LogSinkForTests extends SinkBase
 
     private function consumeFormatted(int $statementLevel, string $statementText): void
     {
-        if (TestOsUtil::isWindows()) {
+        if (OsUtilForTests::isWindows()) {
             if (OutputDebugString::isEnabled()) {
                 OutputDebugString::write($statementText . PHP_EOL);
             }
@@ -76,7 +80,7 @@ final class LogSinkForTests extends SinkBase
             syslog(self::levelToSyslog($statementLevel), $statementText);
         }
 
-        if (defined('STDERR')) {
+        if ($this->isStderrDefined) {
             fwrite(STDERR, $statementText . PHP_EOL);
         }
     }
