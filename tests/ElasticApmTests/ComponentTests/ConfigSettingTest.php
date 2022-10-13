@@ -135,8 +135,9 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
                                                   => $intRawToParsedValues,
+            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
-                                                  => $boolRawToParsedValues(),
+                                                  => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
                                                   => $durationRawToParsedValues,
             OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL

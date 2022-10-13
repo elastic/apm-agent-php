@@ -73,11 +73,19 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
     {
         /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
-            ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
+            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            // ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_TRANSACTION_SAMPLED_KEY)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::CAPTURE_SLEEPS_KEY)
             ->wrapResultIntoArray()
             ->build();
+        ///////////////////////////////////////////////////////////////////////////
+        // TODO: Sergey Kleyman: BEGIN: REMOVE
+        ///////////////////////////////////////
+        $result[self::IS_INFERRED_SPANS_ENABLED_KEY] = false;
+        ///////////////////////////////////////
+        // END
+        ////////////////////////////////////////////////////////////////////////////
 
         return self::adaptToSmoke($result);
     }
