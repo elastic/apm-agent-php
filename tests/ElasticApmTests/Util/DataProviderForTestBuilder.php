@@ -184,8 +184,7 @@ final class DataProviderForTestBuilder
      */
     public function addBoolDimension(bool $onlyFirstValueCombinable): self
     {
-        $this->addDimension($onlyFirstValueCombinable, IterableUtilForTests::ALL_BOOL_VALUES);
-        return $this;
+        return $this->addDimension($onlyFirstValueCombinable, IterableUtilForTests::ALL_BOOL_VALUES);
     }
 
     /** @noinspection PhpUnused */
@@ -230,6 +229,17 @@ final class DataProviderForTestBuilder
     public function addBoolKeyedDimensionAllValuesCombinable(string $dimensionKey): self
     {
         return $this->addBoolKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false);
+    }
+
+    /**
+     * @param string $dimensionKey
+     * @param mixed $value
+     *
+     * @return $this
+     */
+    public function addSingleValueKeyedDimension(string $dimensionKey, $value): self
+    {
+        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true, [$value]);
     }
 
     /**
