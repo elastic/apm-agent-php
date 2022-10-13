@@ -257,7 +257,7 @@ final class StackTraceUtil
      *
      * @return ClassicFormatStackTraceFrame[]
      */
-    private static function excludeElasticApmInClassicFormat(array $inFrames): array
+    public static function excludeElasticApmInClassicFormat(array $inFrames): array
     {
         $result = [];
         foreach ($inFrames as $inFrame) {

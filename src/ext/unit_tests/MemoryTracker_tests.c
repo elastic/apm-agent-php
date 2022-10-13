@@ -54,7 +54,7 @@ void when_enabled_size_arg_to_free_should_be_evaluated_only_once( void** testFix
     resultCode = resultSuccess;
 
     finally:
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( evaluateAllocationSize( 123, &isCalled ), dummyStr );
+    ELASTIC_APM_EFREE_STRING_SIZE_AND_SET_TO_NULL( evaluateAllocationSize( 123, &isCalled ), dummyStr );
     ELASTIC_APM_CMOCKA_ASSERT( isCalled );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMemoryTracker()->allocatedPersistent, allocatedPersistentBefore );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMemoryTracker()->allocatedRequestScoped, allocatedRequestScopedBefore );
@@ -90,7 +90,7 @@ void when_disabled_size_arg_to_free_should_not_be_evaluated( void** testFixtureS
     resultCode = resultSuccess;
 
     finally:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( evaluateAllocationSize( 123, &isCalled ), dummyStr );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( evaluateAllocationSize( 123, &isCalled ), dummyStr );
     ELASTIC_APM_CMOCKA_ASSERT( ! isCalled );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMemoryTracker()->allocatedPersistent, allocatedPersistentBefore + 123 );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMemoryTracker()->allocatedRequestScoped, 0 );

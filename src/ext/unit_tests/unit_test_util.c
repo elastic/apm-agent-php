@@ -111,8 +111,8 @@ ResultCode assert_StringView_equal_impl( StringView a, StringView b, String file
     resultCode = resultSuccess;
 
     finally:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( a.length + 1, a_as_C_string );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( b.length + 1, b_as_C_string );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( a.length + 1, a_as_C_string );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( b.length + 1, b_as_C_string );
 
     ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( resultCode );
     return resultCode;

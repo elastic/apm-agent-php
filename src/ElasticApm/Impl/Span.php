@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
@@ -68,6 +69,9 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
     /** @var bool */
     private $isDropped;
 
+    /** @var ObserverSet<Span> */
+    public $onAboutToEnd;
+
     public function __construct(
         Tracer $tracer,
         Transaction $containingTransaction,
@@ -105,6 +109,8 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
                              ->addContext('this', $this);
 
         $this->isDropped = $isDropped;
+
+        $this->onAboutToEnd = new ObserverSet();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Span created');
@@ -256,6 +262,8 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
             $numberOfStackFramesToSkip,
             true /* <- hideElasticApmImpl */
         );
+
+        $this->onAboutToEnd->callCallbacks($this);
 
         $this->prepareForSerialization();
 

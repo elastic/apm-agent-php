@@ -866,8 +866,8 @@ void destructLogger( Logger* logger )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( logger );
 
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
 
     if ( g_logMutex != NULL )
     {

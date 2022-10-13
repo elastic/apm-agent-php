@@ -437,6 +437,26 @@ PHP_FUNCTION( elastic_apm_force_init_server_global_var )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_last_thrown_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_get_last_thrown(): mixed
+ */
+PHP_FUNCTION( elastic_apm_get_last_thrown )
+{
+    elasticApmGetLastThrown( return_value );
+}
+/* }}} */
+
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_last_php_error_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_get_last_error(): array
+ */
+PHP_FUNCTION( elastic_apm_get_last_php_error )
+{
+    elasticApmGetLastPhpError( return_value );
+}
+/* }}} */
+
 /* {{{ arginfo
  */
 ZEND_BEGIN_ARG_INFO(elastic_apm_no_paramters_arginfo, 0)
@@ -455,6 +475,8 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
     PHP_FE( elastic_apm_force_init_server_global_var, elastic_apm_force_init_server_global_var_arginfo )
+    PHP_FE( elastic_apm_get_last_thrown, elastic_apm_get_last_thrown_arginfo )
+    PHP_FE( elastic_apm_get_last_php_error, elastic_apm_get_last_php_error_arginfo )
     PHP_FE_END
 };
 /* }}} */
