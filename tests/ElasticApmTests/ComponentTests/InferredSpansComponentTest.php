@@ -82,6 +82,13 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::CAPTURE_SLEEPS_KEY)
             ->wrapResultIntoArray()
             ->build();
+        ///////////////////////////////////////////////////////////////////////////
+        // TODO: Sergey Kleyman: BEGIN: REMOVE
+        ///////////////////////////////////////
+        $result[self::IS_INFERRED_SPANS_ENABLED_KEY] = false;
+        ///////////////////////////////////////
+        // END
+        ////////////////////////////////////////////////////////////////////////////
 
         return self::adaptToSmoke($result);
     }
