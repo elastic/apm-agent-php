@@ -26,7 +26,7 @@ namespace ElasticApmTests\ComponentTests;
 use ElasticApmTests\ComponentTests\Util\HttpConstantsForTests;
 use ElasticApmTests\Util\DummyExceptionForTests;
 use Exception;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Throwable;
 
 const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_MESSAGE = 'Message for caught exception responded 500';
@@ -48,7 +48,7 @@ function appCodeForTestCaughtExceptionResponded500Impl(): void
 
     $message = APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_MESSAGE;
     $code = APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE;
-    TestCase::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER, __LINE__ + 1);
+    Assert::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER, __LINE__ + 1);
     throw new DummyExceptionForTests($message, $code);
 }
 
@@ -56,7 +56,7 @@ const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER 
 
 function appCodeForTestCaughtExceptionResponded500(): void
 {
-    TestCase::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 2);
+    Assert::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 2);
     try {
         appCodeForTestCaughtExceptionResponded500Impl();
     } catch (Throwable $throwable) {

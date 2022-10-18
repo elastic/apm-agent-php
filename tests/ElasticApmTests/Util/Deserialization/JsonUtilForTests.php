@@ -27,8 +27,8 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Constraint\IsType;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -58,9 +58,9 @@ final class JsonUtilForTests
             ['$dbgPathToValue' => $dbgPathToValue, '$value type' => DbgUtil::getType($value), '$value' => $value]
         );
 
-        TestCase::assertThat(
+        Assert::assertThat(
             $value,
-            TestCase::logicalOr(
+            Assert::logicalOr(
                 new IsType(IsType::TYPE_ARRAY),
                 new IsType(IsType::TYPE_BOOL),
                 new IsType(IsType::TYPE_FLOAT),
@@ -77,7 +77,7 @@ final class JsonUtilForTests
                 self::assertJsonDeserializable($arrVal, $dbgPathToValue . '[' . $arrKey . ']');
             }
         } elseif (is_object($value)) {
-            TestCase::assertInstanceOf(JsonDeserializableInterface::class, $value, $dbgInfoAboutValue);
+            Assert::assertInstanceOf(JsonDeserializableInterface::class, $value, $dbgInfoAboutValue);
         }
     }
 }

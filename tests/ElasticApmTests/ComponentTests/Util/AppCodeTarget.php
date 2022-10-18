@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class AppCodeTarget implements JsonDeserializableInterface, LoggableInterface
 {
@@ -45,10 +45,10 @@ final class AppCodeTarget implements JsonDeserializableInterface, LoggableInterf
 
     public static function asRouted(callable $appCodeClassMethod): AppCodeTarget
     {
-        TestCase::assertIsCallable($appCodeClassMethod);
-        TestCase::assertIsArray($appCodeClassMethod);
+        Assert::assertIsCallable($appCodeClassMethod);
+        Assert::assertIsArray($appCodeClassMethod);
         /** @noinspection PhpParamsInspection */
-        TestCase::assertCount(2, $appCodeClassMethod);
+        Assert::assertCount(2, $appCodeClassMethod);
 
         $thisObj = new AppCodeTarget();
         $thisObj->appCodeClass = $appCodeClassMethod[0];

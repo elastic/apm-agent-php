@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 abstract class ExecutionSegmentContextDto
 {
@@ -42,10 +42,10 @@ abstract class ExecutionSegmentContextDto
     protected static function assertValidKeyValueMap($map, bool $shouldBeKeywordString): array
     {
         $maxLength = $shouldBeKeywordString ? Constants::KEYWORD_STRING_MAX_LENGTH : null;
-        TestCase::assertIsArray($map);
+        Assert::assertIsArray($map);
         foreach ($map as $key => $value) {
             self::assertValidString($key, /* isNullable: */ false, $maxLength);
-            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
+            Assert::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::assertValidString($value, /* isNullable: */ false, $maxLength);
             }

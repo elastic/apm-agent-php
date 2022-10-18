@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StackTraceUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @extends ExpectationsBuilderBase<SpanExpectations>
@@ -56,7 +56,7 @@ class SpanExpectationsBuilder extends ExpectationsBuilderBase
     ): SpanExpectations {
         $result = $this->startNew();
         $name = StackTraceUtil::convertClassAndMethodToFunctionName($className, $isStatic, $methodName);
-        TestCase::assertNotNull($name);
+        Assert::assertNotNull($name);
         $result->name->setValue($name);
         return $result;
     }

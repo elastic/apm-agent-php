@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class AppCode implements LoggableInterface
 {
@@ -72,9 +72,9 @@ final class AppCode implements LoggableInterface
 
     public static function run(Args $testArgs, TransactionInterface $tx): void
     {
-        TestCase::assertGreaterThanOrEqual(0, $testArgs->numberOfSpansToCreate);
-        TestCase::assertGreaterThan(0, $testArgs->maxFanOut);
-        TestCase::assertGreaterThan(0, $testArgs->maxDepth);
+        Assert::assertGreaterThanOrEqual(0, $testArgs->numberOfSpansToCreate);
+        Assert::assertGreaterThan(0, $testArgs->maxFanOut);
+        Assert::assertGreaterThan(0, $testArgs->maxDepth);
         (new self($testArgs, $tx))->runLoop();
     }
 
@@ -83,11 +83,11 @@ final class AppCode implements LoggableInterface
         $depthOnEntry = $this->actualSpansDepth();
         $isTraversingDown = true;
         while (true) {
-            TestCase::assertLessThanOrEqual($this->testArgs->numberOfSpansToCreate, $this->numberOfSpansCreated);
-            TestCase::assertLessThanOrEqual($this->testArgs->maxDepth, $this->actualSpansDepth());
-            TestCase::assertGreaterThanOrEqual($depthOnEntry, $this->actualSpansDepth());
+            Assert::assertLessThanOrEqual($this->testArgs->numberOfSpansToCreate, $this->numberOfSpansCreated);
+            Assert::assertLessThanOrEqual($this->testArgs->maxDepth, $this->actualSpansDepth());
+            Assert::assertGreaterThanOrEqual($depthOnEntry, $this->actualSpansDepth());
             if ($this->actualSpansDepth() > 0) {
-                TestCase::assertLessThanOrEqual($this->testArgs->maxFanOut, $this->topSpanInfo()->childCount);
+                Assert::assertLessThanOrEqual($this->testArgs->maxFanOut, $this->topSpanInfo()->childCount);
             }
 
             if ($isTraversingDown) {
@@ -122,13 +122,13 @@ final class AppCode implements LoggableInterface
     {
         // actualSpansDepth is spanInfoStack->count() - 1 because the bottom entry in spanInfoStack
         // represents the transaction itself
-        TestCase::assertGreaterThanOrEqual(1, $this->spanInfoStack->count());
+        Assert::assertGreaterThanOrEqual(1, $this->spanInfoStack->count());
         return $this->spanInfoStack->count() - 1;
     }
 
     private function topSpanInfo(): SpanInfo
     {
-        TestCase::assertFalse($this->spanInfoStack->isEmpty());
+        Assert::assertFalse($this->spanInfoStack->isEmpty());
         return $this->spanInfoStack->peek();
     }
 
@@ -178,7 +178,7 @@ final class AppCode implements LoggableInterface
         }
 
         if ($this->testArgs->shouldUseOnlyCurrentCreateSpanApis) {
-            TestCase::assertTrue($isTxCurrentSpanTopSpanInfo);
+            Assert::assertTrue($isTxCurrentSpanTopSpanInfo);
         } else {
             $createSpanApis += [self::BEGIN_CHILD_SPAN_API_ID];
             $this->addRecursionApi(self::CAPTURE_CHILD_SPAN_API_ID, /* ref */ $createSpanApis);
@@ -205,7 +205,7 @@ final class AppCode implements LoggableInterface
                 break;
 
             default:
-                TestCase::fail('This point should never be reached. ' . LoggableToString::convert(['this' => $this]));
+                Assert::fail('This point should never be reached. ' . LoggableToString::convert(['this' => $this]));
         }
     }
 }

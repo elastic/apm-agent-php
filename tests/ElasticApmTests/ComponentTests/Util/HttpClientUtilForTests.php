@@ -34,7 +34,7 @@ use ElasticApmTests\Util\SourceClassLogContext;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 
 final class HttpClientUtilForTests
@@ -146,7 +146,7 @@ final class HttpClientUtilForTests
         ResourcesClient $resourcesClient
     ): CurlHandleWrappedForTests {
         $curlInitRetVal = curl_init(UrlUtil::buildFullUrl($urlParts));
-        TestCase::assertNotSame(false, $curlInitRetVal);
+        Assert::assertNotSame(false, $curlInitRetVal);
         $curlHandle = new CurlHandleWrappedForTests($resourcesClient, $curlInitRetVal);
         $dataPerRequestHeaderName = RequestHeadersRawSnapshotSource::optionNameToHeaderName(
             AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME

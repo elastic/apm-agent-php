@@ -30,7 +30,7 @@ use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\ApmDataKind;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class DataFromAgent implements LoggableInterface
 {
@@ -60,7 +60,7 @@ class DataFromAgent implements LoggableInterface
      */
     private static function singleEvent(array $events)
     {
-        TestCase::assertCount(1, $events);
+        Assert::assertCount(1, $events);
         return ArrayUtilForTests::getFirstValue($events);
     }
 
@@ -109,7 +109,7 @@ class DataFromAgent implements LoggableInterface
     public function singleSpanByName(string $name): SpanDto
     {
         $spans = $this->findSpansByName($name);
-        TestCase::assertCount(
+        Assert::assertCount(
             1,
             $spans,
             LoggableToString::convert(['name' => $name, 'spans' => $spans, 'this' => $this])
@@ -240,7 +240,7 @@ class DataFromAgent implements LoggableInterface
             case ApmDataKind::transaction():
                 return count($this->idToTransaction);
             default:
-                TestCase::fail('Unknown $apmDataKind: ' . $apmDataKind->asString());
+                Assert::fail('Unknown $apmDataKind: ' . $apmDataKind->asString());
         }
     }
 }

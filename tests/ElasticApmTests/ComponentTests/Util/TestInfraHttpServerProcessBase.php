@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ErrorException;
 use Exception;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Loop;
@@ -92,13 +92,13 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
         parent::processConfig();
 
-        TestCase::assertNotNull(
+        Assert::assertNotNull(
             AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );
 
         // At this point request is not parsed and applied to config yet
-        TestCase::assertNull(AmbientContextForTests::testConfig()->dataPerRequest);
+        Assert::assertNull(AmbientContextForTests::testConfig()->dataPerRequest);
     }
 
     /**
@@ -132,7 +132,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     {
         $this->reactLoop = Loop::get();
         $thisServerPort = AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort;
-        TestCase::assertNotNull($thisServerPort);
+        Assert::assertNotNull($thisServerPort);
         $uri = HttpServerHandle::DEFAULT_HOST . ':' . $thisServerPort;
         $this->serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
         $httpServer = new HttpServer(
@@ -155,7 +155,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 
         $this->beforeLoopRun();
 
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
         $this->reactLoop->run();
     }
 
@@ -200,7 +200,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                     ]
                 );
             } else {
-                TestCase::assertInstanceOf(Promise::class, $response);
+                Assert::assertInstanceOf(Promise::class, $response);
 
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Promise returned - response will be returned later...');
@@ -233,7 +233,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 ),
                 AmbientContextForTests::loggerFactory()
             );
-            TestCase::assertNotNull($testConfigForRequest->dataPerRequest);
+            Assert::assertNotNull($testConfigForRequest->dataPerRequest);
             $verifySpawnedProcessInternalIdResponse = self::verifySpawnedProcessInternalId(
                 $testConfigForRequest->dataPerRequest->spawnedProcessInternalId
             );
@@ -261,7 +261,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     protected function exit(): void
     {
-        TestCase::assertNotNull($this->serverSocket);
+        Assert::assertNotNull($this->serverSocket);
         $this->serverSocket->close();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

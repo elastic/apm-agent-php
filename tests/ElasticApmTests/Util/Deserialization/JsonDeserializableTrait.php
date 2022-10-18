@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util\Deserialization;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 trait JsonDeserializableTrait
 {
@@ -55,8 +55,8 @@ trait JsonDeserializableTrait
     public function deserializeFromDecodedJson(array $decodedJson): void
     {
         foreach ($decodedJson as $jsonKey => $jsonVal) {
-            TestCase::assertIsString($jsonKey);
-            TestCase::assertTrue(property_exists($this, $jsonKey));
+            Assert::assertIsString($jsonKey);
+            Assert::assertTrue(property_exists($this, $jsonKey));
             $this->$jsonKey = $this->deserializePropertyValue($jsonKey, $jsonVal);
         }
     }

@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class DataFromAgentValidator
 {
@@ -53,11 +53,11 @@ class DataFromAgentValidator
         }
 
         foreach ($this->actual->metadatas as $metadata) {
-            TestCase::assertNotNull($metadata->service->agent);
+            Assert::assertNotNull($metadata->service->agent);
             $agentEphemeralId = $metadata->service->agent->ephemeralId;
-            TestCase::assertNotNull($agentEphemeralId);
+            Assert::assertNotNull($agentEphemeralId);
             self::assertValidNullableKeywordString($agentEphemeralId);
-            TestCase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
+            Assert::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
             MetadataValidator::assertValid(
                 $metadata,
                 $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]
@@ -96,10 +96,10 @@ class DataFromAgentValidator
         $spansByTraceId = self::groupByTraceId($this->actual->idToSpan);
         TestCaseBase::assertListArrayIsSubsetOf(array_keys($spansByTraceId), array_keys($transactionsByTraceId));
         foreach ($transactionsByTraceId as $traceId => $idToTransaction) {
-            TestCase::assertIsArray($idToTransaction);
+            Assert::assertIsArray($idToTransaction);
             /** @var array<string, TransactionDto> $idToTransaction */
             $idToSpan = array_key_exists($traceId, $spansByTraceId) ? $spansByTraceId[$traceId] : [];
-            TestCase::assertIsArray($idToSpan);
+            Assert::assertIsArray($idToSpan);
             /** @var array<string, SpanDto> $idToSpan */
             TraceValidator::validate(new TraceActual($idToTransaction, $idToSpan), $this->expectations->trace);
         }

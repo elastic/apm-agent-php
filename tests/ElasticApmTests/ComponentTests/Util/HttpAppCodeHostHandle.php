@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class HttpAppCodeHostHandle extends AppCodeHostHandle
 {
@@ -100,7 +100,7 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
         $this->afterAppCodeInvocation($appCodeInvocation);
 
         if ($requestParams->expectedHttpResponseStatusCode !== null) {
-            TestCase::assertSame(
+            Assert::assertSame(
                 $requestParams->expectedHttpResponseStatusCode,
                 $response->getStatusCode(),
                 LoggableToString::convert(

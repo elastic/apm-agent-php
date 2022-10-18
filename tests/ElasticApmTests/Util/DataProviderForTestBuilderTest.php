@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class DataProviderForTestBuilderTest extends TestCaseBase
 {
@@ -147,11 +147,11 @@ class DataProviderForTestBuilderTest extends TestCaseBase
         // Unpack $disableInstrumentationsVariants pair in each row
         $cartesianProduct = [];
         foreach ($cartesianProductPacked as $cartesianProductPackedRow) {
-            TestCase::assertIsArray($cartesianProductPackedRow);
-            TestCase::assertCount(2, $cartesianProductPackedRow);
+            Assert::assertIsArray($cartesianProductPackedRow);
+            Assert::assertCount(2, $cartesianProductPackedRow);
             $pair = $cartesianProductPackedRow[0];
-            TestCase::assertIsArray($pair);
-            TestCase::assertCount(2, $pair);
+            Assert::assertIsArray($pair);
+            Assert::assertCount(2, $pair);
             $cartesianProductRow = [];
             $cartesianProductRow[] = $pair[0];
             $cartesianProductRow[] = $pair[1];

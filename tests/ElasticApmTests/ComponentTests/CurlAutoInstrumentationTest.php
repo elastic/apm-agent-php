@@ -33,7 +33,7 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpClientUtilForTests;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 use ElasticApmTests\ComponentTests\Util\TestInfraDataPerRequest;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @group does_not_require_external_services
@@ -47,7 +47,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function assertCurlExtensionIsLoaded(): void
     {
-        TestCase::assertTrue(extension_loaded('curl'));
+        Assert::assertTrue(extension_loaded('curl'));
     }
 
     /**

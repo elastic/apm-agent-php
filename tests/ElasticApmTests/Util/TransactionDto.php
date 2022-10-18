@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class TransactionDto extends ExecutionSegmentDto
 {
@@ -124,20 +124,20 @@ class TransactionDto extends ExecutionSegmentDto
         }
 
         if ($expectations->isSampled !== null) {
-            TestCase::assertSame($expectations->isSampled, $this->isSampled);
+            Assert::assertSame($expectations->isSampled, $this->isSampled);
         }
 
         self::assertValidCount($this->startedSpansCount);
         self::assertValidCount($this->droppedSpansCount);
 
         if (!$this->isSampled) {
-            TestCase::assertSame(0, $this->startedSpansCount);
-            TestCase::assertSame(0, $this->droppedSpansCount);
-            TestCase::assertNull($this->context);
+            Assert::assertSame(0, $this->startedSpansCount);
+            Assert::assertSame(0, $this->droppedSpansCount);
+            Assert::assertNull($this->context);
         }
 
         if ($expectations->droppedSpansCount !== null) {
-            TestCase::assertSame($expectations->droppedSpansCount, $this->droppedSpansCount);
+            Assert::assertSame($expectations->droppedSpansCount, $this->droppedSpansCount);
         }
 
         if ($this->context !== null) {
@@ -152,9 +152,9 @@ class TransactionDto extends ExecutionSegmentDto
      */
     public static function assertValidCount($count): int
     {
-        TestCase::assertIsInt($count);
+        Assert::assertIsInt($count);
         /** @var int $count */
-        TestCase::assertGreaterThanOrEqual(0, $count);
+        Assert::assertGreaterThanOrEqual(0, $count);
         return $count;
     }
 

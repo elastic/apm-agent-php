@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\Http\Message\Response;
@@ -92,7 +92,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
     {
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
 
         if ($request->getBody()->getSize() === 0) {
             return $this->buildIntakeApiErrorResponse(
@@ -159,7 +159,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return new Promise(
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = self::$pendingDataRequestNextId++;
-                TestCase::assertNotNull($this->reactLoop);
+                Assert::assertNotNull($this->reactLoop);
                 $timer = $this->reactLoop->addTimer(
                     self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
@@ -241,7 +241,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     /** @inheritDoc */
     protected function exit(): void
     {
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
 
         foreach ($this->pendingDataRequests as $pendingDataRequest) {
             $this->reactLoop->cancelTimer($pendingDataRequest->timer);

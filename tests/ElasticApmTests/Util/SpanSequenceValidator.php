@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SpanSequenceValidator
 {
@@ -69,7 +69,7 @@ final class SpanSequenceValidator
     public static function assertSequenceAsExpected(array $expected, array $actual): void
     {
         $dbgCtx = LoggableToString::convert(['$expected' => $expected, '$actual' => $actual,]);
-        TestCase::assertSame(count($expected), count($actual), $dbgCtx);
+        Assert::assertSame(count($expected), count($actual), $dbgCtx);
 
         $actualSortedByStartTime = self::sortByStartTime($actual);
         for ($i = 0; $i < count($actual); ++$i) {

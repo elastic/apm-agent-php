@@ -30,7 +30,7 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class SpanDto extends ExecutionSegmentDto
 {
@@ -110,12 +110,12 @@ class SpanDto extends ExecutionSegmentDto
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
         if ($this->stackTrace === null) {
-            TestCase::assertNull($expectations->stackTrace);
-            TestCase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+            Assert::assertNull($expectations->stackTrace);
+            Assert::assertNull($expectations->allowExpectedStackTraceToBePrefix);
         } else {
             self::assertValidStacktrace($this->stackTrace);
             if ($expectations->stackTrace !== null) {
-                TestCase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
+                Assert::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
                 self::assertStackTraceMatches(
                     $expectations->stackTrace,
                     $expectations->allowExpectedStackTraceToBePrefix,
@@ -151,9 +151,9 @@ class SpanDto extends ExecutionSegmentDto
         );
         $ctxTopStr = LoggableToString::convert($ctxTop);
         if ($allowExpectedStackTraceToBePrefix) {
-            TestCase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+            Assert::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
         } else {
-            TestCase::assertSame(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+            Assert::assertSame(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
         }
         $expectedStackTraceCount = count($expectedStackTrace);
         $actualStackTraceCount = count($actualStackTrace);
@@ -170,7 +170,7 @@ class SpanDto extends ExecutionSegmentDto
                 $ctxTop
             );
             $ctxPerFrameStr = LoggableToString::convert($ctxPerFrame);
-            TestCase::assertSame(count($expectedApmFrame), count($actualApmFrame), $ctxPerFrameStr);
+            Assert::assertSame(count($expectedApmFrame), count($actualApmFrame), $ctxPerFrameStr);
             foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
                 $ctxPerProp = LoggableToString::convert(
                     array_merge(

@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class ErrorTransactionDto
 {
@@ -78,7 +78,7 @@ class ErrorTransactionDto
     public function assertMatches(ErrorTransactionExpectations $expectations): void
     {
         if ($expectations->isSampled !== null) {
-            TestCase::assertSame($expectations->isSampled, $this->isSampled);
+            Assert::assertSame($expectations->isSampled, $this->isSampled);
         }
 
         self::assertValidKeywordString($this->name);
@@ -90,7 +90,7 @@ class ErrorTransactionDto
         ?self $actual
     ): void {
         if ($actual === null) {
-            TestCase::assertTrue($expectations === null || $expectations->isEmpty());
+            Assert::assertTrue($expectations === null || $expectations->isEmpty());
             return;
         }
 

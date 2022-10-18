@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SpanContextDto extends ExecutionSegmentContextDto
 {
@@ -99,7 +99,7 @@ final class SpanContextDto extends ExecutionSegmentContextDto
         ?self $actual
     ): void {
         if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
+            Assert::assertTrue($expectations->isEmpty());
             return;
         }
 

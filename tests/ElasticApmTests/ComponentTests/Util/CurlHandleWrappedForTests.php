@@ -26,7 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\AutoInstrument\CurlHandleWrappedTrait;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class CurlHandleWrappedForTests implements LoggableInterface
 {
@@ -65,14 +65,14 @@ final class CurlHandleWrappedForTests implements LoggableInterface
         $hasVerboseOutputWritten = false;
         try {
             $verboseOutputFile = fopen($this->tempFileForVerboseOutput, 'w'); // open file for write
-            TestCase::assertIsResource($verboseOutputFile, $assertMsg);
+            Assert::assertIsResource($verboseOutputFile, $assertMsg);
             $this->setOpt(CURLOPT_STDERR, $verboseOutputFile);
             $retVal = curl_exec($this->curlHandle); // @phpstan-ignore-line
         } finally {
             if ($verboseOutputFile !== null) {
-                TestCase::assertIsResource($verboseOutputFile, $assertMsg);
-                TestCase::assertTrue(fflush($verboseOutputFile), $assertMsg);
-                TestCase::assertTrue(fclose($verboseOutputFile), $assertMsg);
+                Assert::assertIsResource($verboseOutputFile, $assertMsg);
+                Assert::assertTrue(fflush($verboseOutputFile), $assertMsg);
+                Assert::assertTrue(fclose($verboseOutputFile), $assertMsg);
                 $verboseOutputFile = null;
                 $hasVerboseOutputWritten = true;
             }
@@ -80,11 +80,11 @@ final class CurlHandleWrappedForTests implements LoggableInterface
 
         if ($hasVerboseOutputWritten) {
             $verboseOutput = file_get_contents($this->tempFileForVerboseOutput);
-            TestCase::assertIsString($verboseOutput, $assertMsg);
+            Assert::assertIsString($verboseOutput, $assertMsg);
             $this->lastVerboseOutput = $verboseOutput;
         }
 
-        TestCase::assertNotNull($retVal, $assertMsg);
+        Assert::assertNotNull($retVal, $assertMsg);
         return $retVal;
     }
 

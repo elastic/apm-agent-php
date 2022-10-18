@@ -27,7 +27,7 @@ use Ds\Set;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\TimerInterface;
@@ -71,7 +71,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         parent::processConfig();
 
-        TestCase::assertTrue(
+        Assert::assertTrue(
             isset(AmbientContextForTests::testConfig()->dataPerProcess->rootProcessId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );
@@ -80,7 +80,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     /** @inheritDoc */
     protected function beforeLoopRun(): void
     {
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
         $this->parentProcessTrackingTimer = $this->reactLoop->addPeriodicTimer(
             1 /* interval in seconds */,
             function () {
@@ -100,8 +100,8 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         $this->cleanSpawnedProcesses();
         $this->cleanFiles();
 
-        TestCase::assertNotNull($this->reactLoop);
-        TestCase::assertNotNull($this->parentProcessTrackingTimer);
+        Assert::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->parentProcessTrackingTimer);
         $this->reactLoop->cancelTimer($this->parentProcessTrackingTimer);
 
         parent::exit();

@@ -36,7 +36,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\Util\TransactionExpectations;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 /**
@@ -219,7 +219,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
         $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        TestCase::assertIsString($optName);
+        Assert::assertIsString($optName);
         /** @var string $optName */
         $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 

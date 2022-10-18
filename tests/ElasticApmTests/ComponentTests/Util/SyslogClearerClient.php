@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SyslogClearerClient
 {
@@ -36,7 +36,7 @@ final class SyslogClearerClient
 
     public static function assertRunningAsRoot(): void
     {
-        TestCase::assertSame(
+        Assert::assertSame(
             0,
             posix_geteuid(),
             LoggableToString::convert(
@@ -77,7 +77,7 @@ final class SyslogClearerClient
             HttpConstantsForTests::METHOD_POST,
             SyslogClearer::CLEAR_SYSLOG_URI_PATH
         );
-        TestCase::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
+        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
 
         ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting...');
@@ -98,7 +98,7 @@ final class SyslogClearerClient
     private static function clientInit(string $dbgEntryMethod): Logger
     {
         global $argv;
-        TestCase::assertGreaterThanOrEqual(1, count($argv), LoggableToString::convert(['argv' => $argv]));
+        Assert::assertGreaterThanOrEqual(1, count($argv), LoggableToString::convert(['argv' => $argv]));
         AmbientContextForTests::init(ClassNameUtil::fqToShort(self::class) . '::' . $dbgEntryMethod);
 
         $localLogger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -117,7 +117,7 @@ final class SyslogClearerClient
     private static function deserializeHttpServerHandleFromArgs(Logger $logger): HttpServerHandle
     {
         global $argv;
-        TestCase::assertGreaterThanOrEqual(2, count($argv), LoggableToString::convert(['argv' => $argv]));
+        Assert::assertGreaterThanOrEqual(2, count($argv), LoggableToString::convert(['argv' => $argv]));
 
         $httpServerHandle = HttpServerHandle::deserialize($argv[1]);
 

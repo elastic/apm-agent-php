@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use mysqli;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -77,7 +77,7 @@ final class ApiFacade implements LoggableInterface
         );
 
         if (!self::canDbNameBeNull()) {
-            TestCase::assertNotNull($dbName);
+            Assert::assertNotNull($dbName);
         }
 
         $wrappedObj = $this->isOOPApi

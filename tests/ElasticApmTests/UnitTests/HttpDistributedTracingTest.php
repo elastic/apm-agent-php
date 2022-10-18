@@ -33,7 +33,7 @@ use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\CharSetForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 {
@@ -66,7 +66,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 
     private static function generateVendorKeyEx(int $length, CharSetForTests $firstCharSet): string
     {
-        TestCase::assertGreaterThanOrEqual(0, $length);
+        Assert::assertGreaterThanOrEqual(0, $length);
         if ($length === 0) {
             return '';
         }
@@ -390,7 +390,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     /** @noinspection PhpUnusedPrivateMethodInspection */
     private static function generateOtherVendorKeyValuePairs(int $firstIndex, int $latIndex): string
     {
-        TestCase::assertGreaterThanOrEqual($firstIndex, $latIndex);
+        Assert::assertGreaterThanOrEqual($firstIndex, $latIndex);
         $result = '';
         foreach (RangeUtil::generateFromToIncluding($firstIndex, $latIndex) as $i) {
             if ($i !== $firstIndex) {

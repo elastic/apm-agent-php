@@ -31,7 +31,7 @@ use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SharedCode
 {
@@ -233,7 +233,7 @@ final class SharedCode
     public static function assertResults(Args $testArgs, DataFromAgent $dataFromAgent): void
     {
         $tx = $dataFromAgent->singleTransaction();
-        TestCase::assertSame($testArgs->isSampled, $tx->isSampled);
+        Assert::assertSame($testArgs->isSampled, $tx->isSampled);
 
         $transactionMaxSpans = $testArgs->configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS;
         if ($transactionMaxSpans < 0) {
@@ -242,17 +242,17 @@ final class SharedCode
 
         $msg = LoggableToString::convert(['testArgs' => $testArgs, 'dataFromAgent' => $dataFromAgent]);
         if (!$tx->isSampled) {
-            TestCase::assertSame(0, $tx->startedSpansCount, $msg);
-            TestCase::assertSame(0, $tx->droppedSpansCount, $msg);
-            TestCase::assertEmpty($dataFromAgent->idToSpan, $msg);
+            Assert::assertSame(0, $tx->startedSpansCount, $msg);
+            Assert::assertSame(0, $tx->droppedSpansCount, $msg);
+            Assert::assertEmpty($dataFromAgent->idToSpan, $msg);
             return;
         }
 
         $expectedStartedSpansCount = min($testArgs->numberOfSpansToCreate, $transactionMaxSpans);
-        TestCase::assertSame($expectedStartedSpansCount, $tx->startedSpansCount, $msg);
+        Assert::assertSame($expectedStartedSpansCount, $tx->startedSpansCount, $msg);
         $expectedDroppedSpansCount = $testArgs->numberOfSpansToCreate - $expectedStartedSpansCount;
-        TestCase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
-        TestCase::assertCount($expectedStartedSpansCount, $dataFromAgent->idToSpan, $msg);
+        Assert::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
+        Assert::assertCount($expectedStartedSpansCount, $dataFromAgent->idToSpan, $msg);
 
         foreach ($dataFromAgent->idToSpan as $span) {
             $msg2 = $msg . ' spanId: ' . $span->id . '.';
@@ -260,9 +260,9 @@ final class SharedCode
             $createdChildCount = TestCaseBase::getLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
             $sentChildCount = IterableUtilForTests::count($dataFromAgent->findChildSpans($span->id));
             if ($tx->droppedSpansCount === 0) {
-                TestCase::assertSame($createdChildCount, $sentChildCount, $msg2);
+                Assert::assertSame($createdChildCount, $sentChildCount, $msg2);
             } else {
-                TestCase::assertLessThanOrEqual($createdChildCount, $sentChildCount, $msg2);
+                Assert::assertLessThanOrEqual($createdChildCount, $sentChildCount, $msg2);
             }
         }
     }

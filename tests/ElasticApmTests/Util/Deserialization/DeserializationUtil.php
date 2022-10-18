@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Throwable;
 
 final class DeserializationUtil
@@ -68,7 +68,7 @@ final class DeserializationUtil
      */
     public static function assertDecodedJsonMap($value): array
     {
-        TestCase::assertIsArray($value);
+        Assert::assertIsArray($value);
         return $value;
     }
 

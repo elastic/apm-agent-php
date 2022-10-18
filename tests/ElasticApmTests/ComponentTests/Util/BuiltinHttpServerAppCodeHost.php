@@ -27,7 +27,7 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 
 final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
@@ -73,7 +73,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function processConfig(): void
     {
-        TestCase::assertNotNull(
+        Assert::assertNotNull(
             AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );
@@ -93,7 +93,7 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
     protected function runImpl(?string &$topLevelCodeId): void
     {
         $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
-        TestCase::assertNotNull($dataPerRequest);
+        Assert::assertNotNull($dataPerRequest);
         if (($response = self::verifySpawnedProcessInternalId($dataPerRequest->spawnedProcessInternalId)) !== null) {
             self::sendResponse($response);
             return;

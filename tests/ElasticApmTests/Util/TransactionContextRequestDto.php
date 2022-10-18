@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class TransactionContextRequestDto
 {
@@ -66,10 +66,10 @@ final class TransactionContextRequestDto
 
     public function assertValid(): void
     {
-        TestCase::assertNotNull($this->method);
+        Assert::assertNotNull($this->method);
         self::assertValidKeywordString($this->method);
 
-        TestCase::assertNotNull($this->url);
+        Assert::assertNotNull($this->url);
         $this->url->assertValid();
     }
 }

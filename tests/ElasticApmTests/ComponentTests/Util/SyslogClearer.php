@@ -26,7 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use ElasticApmTests\TestsRootDir;
 use ElasticApmTests\Util\FileUtilForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -38,7 +38,7 @@ final class SyslogClearer extends TestInfraHttpServerProcessBase
     {
         parent::processConfig();
 
-        TestCase::assertTrue(
+        Assert::assertTrue(
             isset(AmbientContextForTests::testConfig()->dataPerProcess->rootProcessId), // @phpstan-ignore-line
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );

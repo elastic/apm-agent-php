@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SamplingTestSharedCode
 {
@@ -47,7 +47,7 @@ final class SamplingTestSharedCode
         $tx = ElasticApm::getCurrentTransaction();
         $expectedIsSampled = $transactionSampleRate === 1.0 ? true : ($transactionSampleRate === 0.0 ? false : null);
         if ($expectedIsSampled !== null) {
-            TestCase::assertSame(
+            Assert::assertSame(
                 $expectedIsSampled,
                 $tx->isSampled(),
                 LoggableToString::convert(['transactionSampleRate' => $transactionSampleRate])
@@ -76,18 +76,18 @@ final class SamplingTestSharedCode
         $tx = $eventsFromAgent->singleTransaction();
         $transactionSampleRate = $inputTransactionSampleRate ?? 1.0;
         if ($transactionSampleRate === 1.0) {
-            TestCase::assertTrue($tx->isSampled);
+            Assert::assertTrue($tx->isSampled);
         } elseif ($transactionSampleRate === 0.0) {
-            TestCase::assertFalse($tx->isSampled);
+            Assert::assertFalse($tx->isSampled);
         }
 
         if ($tx->isSampled) {
-            TestCase::assertCount(2, $eventsFromAgent->idToSpan);
+            Assert::assertCount(2, $eventsFromAgent->idToSpan);
             // Started and dropped spans should be counted only for sampled transactions
-            TestCase::assertSame(2, $tx->startedSpansCount);
+            Assert::assertSame(2, $tx->startedSpansCount);
 
             TestCaseBase::assertLabelsCount(1, $tx);
-            TestCase::assertSame(123, TestCaseBase::getLabel($tx, 'TX_label_key'));
+            Assert::assertSame(123, TestCaseBase::getLabel($tx, 'TX_label_key'));
 
             TestCaseBase::assertSame($transactionSampleRate, $tx->sampleRate);
             foreach ($eventsFromAgent->idToSpan as $span) {
@@ -101,14 +101,14 @@ final class SamplingTestSharedCode
              * No spans should be captured.
              */
 
-            TestCase::assertEmpty($eventsFromAgent->idToSpan);
+            Assert::assertEmpty($eventsFromAgent->idToSpan);
             // Started and dropped spans should be counted only for sampled transactions
-            TestCase::assertSame(0, $tx->startedSpansCount);
+            Assert::assertSame(0, $tx->startedSpansCount);
 
-            TestCase::assertNull($tx->context);
+            Assert::assertNull($tx->context);
 
             TestCaseBase::assertSame(0.0, $tx->sampleRate);
         }
-        TestCase::assertSame(0, $tx->droppedSpansCount);
+        Assert::assertSame(0, $tx->droppedSpansCount);
     }
 }

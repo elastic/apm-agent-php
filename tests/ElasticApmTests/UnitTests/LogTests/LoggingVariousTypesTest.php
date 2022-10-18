@@ -34,7 +34,7 @@ use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\FloatLimits;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class LoggingVariousTypesTest extends TestCaseBase
 {
@@ -60,9 +60,9 @@ class LoggingVariousTypesTest extends TestCaseBase
         }
 
         if (is_array($expectedValue)) {
-            TestCase::assertEquals($expectedValue, $actualValue);
+            Assert::assertEquals($expectedValue, $actualValue);
         } else {
-            TestCase::assertSame($expectedValue, $actualValue);
+            Assert::assertSame($expectedValue, $actualValue);
         }
     }
 

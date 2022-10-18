@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @template T
@@ -45,7 +45,7 @@ final class Optional implements LoggableInterface
      */
     public function getValue()
     {
-        TestCase::assertTrue($this->isValueSet);
+        Assert::assertTrue($this->isValueSet);
         return $this->value;
     }
 

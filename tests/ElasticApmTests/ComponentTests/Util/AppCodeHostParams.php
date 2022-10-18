@@ -36,7 +36,7 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class AppCodeHostParams implements LoggableInterface
 {
@@ -104,7 +104,7 @@ class AppCodeHostParams implements LoggableInterface
     {
         $result = [];
         foreach ($this->agentOptions as $optNameToVal) {
-            TestCase::assertIsArray($optNameToVal);
+            Assert::assertIsArray($optNameToVal);
             $result = array_merge($result, array_keys($optNameToVal));
         }
         return $result;

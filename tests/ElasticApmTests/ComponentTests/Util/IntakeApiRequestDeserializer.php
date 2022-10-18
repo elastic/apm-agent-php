@@ -33,7 +33,7 @@ use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TextUtilForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class IntakeApiRequestDeserializer implements LoggableInterface
 {
@@ -80,14 +80,14 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
                 continue;
             }
             // empty line can only be the last one
-            TestCase::assertFalse($encounteredEmptyLine);
+            Assert::assertFalse($encounteredEmptyLine);
 
             ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Processing a line from intake API request', ['bodyLine' => $bodyLine]);
 
             $lineDecodedJson = JsonUtil::decode($bodyLine, /* asAssocArray */ true);
-            TestCase::assertIsArray($lineDecodedJson);
-            TestCase::assertCount(
+            Assert::assertIsArray($lineDecodedJson);
+            Assert::assertCount(
                 1,
                 $lineDecodedJson,
                 'Each decoded line should have exactly one top level key.' . " bodyLine: `$bodyLine'"
@@ -96,7 +96,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
             $linePayloadDecodedJson = $lineDecodedJson[$linePayloadType];
 
             // metadata is the first line and only the first line
-            TestCase::assertSame($isFirstLine, 'metadata' === $linePayloadType);
+            Assert::assertSame($isFirstLine, 'metadata' === $linePayloadType);
 
             $linePayloadEncodedJson = self::decodedJsonToString($linePayloadDecodedJson);
 
@@ -117,12 +117,12 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
                     $this->addSpan($linePayloadEncodedJson);
                     break;
                 default:
-                    TestCase::fail('Unexpected event kind `' . $linePayloadType . '\'.' . " bodyLine: `$bodyLine'");
+                    Assert::fail('Unexpected event kind `' . $linePayloadType . '\'.' . " bodyLine: `$bodyLine'");
             }
             $isFirstLine = false;
         }
 
-        TestCase::assertCount(1, $this->result->metadatas);
+        Assert::assertCount(1, $this->result->metadatas);
         return $this->result;
     }
 
@@ -134,14 +134,14 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
     private function addTransaction(string $encodedJson): void
     {
         $newTransaction = $this->validateAndDeserializeTransaction($encodedJson);
-        TestCase::assertNull($this->result->executionSegmentByIdOrNull($newTransaction->id));
+        Assert::assertNull($this->result->executionSegmentByIdOrNull($newTransaction->id));
         $this->result->idToTransaction[$newTransaction->id] = $newTransaction;
     }
 
     private function addSpan(string $encodedJson): void
     {
         $newSpan = $this->validateAndDeserializeSpan($encodedJson);
-        TestCase::assertNull($this->result->executionSegmentByIdOrNull($newSpan->id));
+        Assert::assertNull($this->result->executionSegmentByIdOrNull($newSpan->id));
         $this->result->idToSpan[$newSpan->id] = $newSpan;
     }
 

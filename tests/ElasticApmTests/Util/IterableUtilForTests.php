@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Generator;
 use Iterator;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -171,7 +171,7 @@ final class IterableUtilForTests
                     $tuple[] = $iterator->current();
                     $iterator->next();
                 } else {
-                    TestCase::assertTrue(ArrayUtil::isEmpty($tuple));
+                    Assert::assertTrue(ArrayUtil::isEmpty($tuple));
                 }
             }
 
@@ -179,7 +179,7 @@ final class IterableUtilForTests
                 return;
             }
 
-            TestCase::assertSame(count($iterables), count($tuple));
+            Assert::assertSame(count($iterables), count($tuple));
             yield $tuple;
         }
     }

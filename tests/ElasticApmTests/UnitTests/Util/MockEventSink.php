@@ -39,7 +39,7 @@ use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetValidator;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TransactionDto;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class MockEventSink implements EventSinkInterface
 {
@@ -93,10 +93,10 @@ final class MockEventSink implements EventSinkInterface
     {
         MetadataValidator::assertValid($metadata);
 
-        TestCase::assertNotNull($metadata->process);
-        TestCase::assertSame(getmypid(), $metadata->process->pid);
-        TestCase::assertNotNull($metadata->service->language);
-        TestCase::assertSame(PHP_VERSION, $metadata->service->language->version);
+        Assert::assertNotNull($metadata->process);
+        Assert::assertSame(getmypid(), $metadata->process->pid);
+        Assert::assertNotNull($metadata->service->language);
+        Assert::assertSame(PHP_VERSION, $metadata->service->language->version);
     }
 
     private function consumeMetadata(Metadata $original): void
@@ -108,12 +108,12 @@ final class MockEventSink implements EventSinkInterface
         $deserialized = $this->validateAndDeserializeMetadata($serialized);
 
         self::assertValidMetadata($deserialized);
-        TestCase::assertEquals($original, $deserialized);
+        Assert::assertEquals($original, $deserialized);
     }
 
     private function consumeTransaction(Transaction $original): void
     {
-        TestCase::assertTrue($original->hasEnded());
+        Assert::assertTrue($original->hasEnded());
 
         $serialized = SerializationUtil::serializeAsJson($original);
 
@@ -121,14 +121,14 @@ final class MockEventSink implements EventSinkInterface
         $deserialized->assertValid();
         $deserialized->assertEquals($original);
 
-        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
+        Assert::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToTransaction);
     }
 
     private function consumeSpan(SpanToSendInterface $original): void
     {
         if ($original instanceof Span) {
-            TestCase::assertTrue($original->hasEnded());
+            Assert::assertTrue($original->hasEnded());
         }
         $serialized = SerializationUtil::serializeAsJson($original);
 
@@ -136,7 +136,7 @@ final class MockEventSink implements EventSinkInterface
         $deserialized->assertValid();
         $deserialized->assertEquals($original);
 
-        TestCase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
+        Assert::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToSpan);
     }
 
@@ -159,7 +159,7 @@ final class MockEventSink implements EventSinkInterface
 
         $deserialized = $this->validateAndDeserializeMetricSet($serialized);
         MetricSetValidator::assertValid($deserialized);
-        TestCase::assertEquals($original, $deserialized);
+        Assert::assertEquals($original, $deserialized);
 
         $this->dataFromAgent->metricSets[] = $deserialized;
     }

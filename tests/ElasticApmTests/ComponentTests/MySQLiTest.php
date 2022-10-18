@@ -44,7 +44,7 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @group smoke
@@ -152,32 +152,32 @@ final class MySQLiTest extends ComponentTestCaseBase
                     }
                     $multiQuery .= $query;
                 }
-                TestCase::assertTrue($mySQLi->multiQuery($multiQuery));
+                Assert::assertTrue($mySQLi->multiQuery($multiQuery));
                 while (true) {
                     $result = $mySQLi->storeResult();
                     if ($result === false) {
-                        TestCase::assertEmpty($mySQLi->error());
+                        Assert::assertEmpty($mySQLi->error());
                     } else {
                         $result->close();
                     }
                     if (!$mySQLi->moreResults()) {
                         break;
                     }
-                    TestCase::assertTrue($mySQLi->nextResult());
+                    Assert::assertTrue($mySQLi->nextResult());
                 }
                 break;
             case self::QUERY_KIND_REAL_QUERY:
                 foreach ($queries as $query) {
-                    TestCase::assertTrue($mySQLi->realQuery($query));
+                    Assert::assertTrue($mySQLi->realQuery($query));
                 }
                 break;
             case self::QUERY_KIND_QUERY:
                 foreach ($queries as $query) {
-                    TestCase::assertTrue($mySQLi->query($query));
+                    Assert::assertTrue($mySQLi->query($query));
                 }
                 break;
             default:
-                TestCase::fail();
+                Assert::fail();
         }
     }
 
@@ -211,7 +211,7 @@ final class MySQLiTest extends ComponentTestCaseBase
                 }
                 break;
             default:
-                TestCase::fail();
+                Assert::fail();
         }
     }
 
@@ -221,7 +221,7 @@ final class MySQLiTest extends ComponentTestCaseBase
     private static function allDbNames(): array
     {
         $defaultDbName = AmbientContextForTests::testConfig()->mysqlDb;
-        TestCase::assertNotNull($defaultDbName);
+        Assert::assertNotNull($defaultDbName);
         return [$defaultDbName, $defaultDbName . '_ALT'];
     }
 
@@ -415,7 +415,7 @@ final class MySQLiTest extends ComponentTestCaseBase
      */
     public function testAutoInstrumentation(array $testArgs): void
     {
-        TestCase::assertNotCount(0, self::MESSAGES);
+        Assert::assertNotCount(0, self::MESSAGES);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))

@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class ArrayUtilForTests
 {
@@ -48,7 +48,7 @@ final class ArrayUtilForTests
      */
     public static function getSingleValue(array $array)
     {
-        TestCase::assertCount(1, $array);
+        Assert::assertCount(1, $array);
         return self::getFirstValue($array);
     }
 
@@ -69,7 +69,7 @@ final class ArrayUtilForTests
      */
     public static function addUnique($key, $value, array &$result): void
     {
-        TestCase::assertArrayNotHasKey(
+        Assert::assertArrayNotHasKey(
             $key,
             $result,
             LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result])

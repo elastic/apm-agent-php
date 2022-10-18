@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class SpanContextDbDto
 {
@@ -71,7 +71,7 @@ final class SpanContextDbDto
     public static function assertNullableMatches(SpanContextDbExpectations $expectations, ?self $actual): void
     {
         if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
+            Assert::assertTrue($expectations->isEmpty());
             return;
         }
 

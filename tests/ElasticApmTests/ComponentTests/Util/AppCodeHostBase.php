@@ -31,7 +31,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 use Throwable;
 
@@ -66,7 +66,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
     {
         self::runSkeleton(
             function (SpawnedProcessBase $thisObj) use (&$topLevelCodeId): void {
-                TestCase::assertInstanceOf(self::class, $thisObj);
+                Assert::assertInstanceOf(self::class, $thisObj);
 
                 if (!ElasticApmExtensionUtil::isLoaded()) {
                     throw new RuntimeException(
@@ -98,12 +98,12 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
     protected function callAppCode(?string &$topLevelCodeId): void
     {
         $dataPerRequest = AmbientContextForTests::testConfig()->dataPerRequest;
-        TestCase::assertNotNull($dataPerRequest);
+        Assert::assertNotNull($dataPerRequest);
         $logCtx = ['dataPerRequest' => $dataPerRequest];
 
         self::setAgentEphemeralIdToSpawnedProcessInternalId();
 
-        TestCase::assertNotNull($dataPerRequest->appCodeTarget);
+        Assert::assertNotNull($dataPerRequest->appCodeTarget);
         $topLevelCodeId = $dataPerRequest->appCodeTarget->appCodeTopLevelId;
         if ($topLevelCodeId !== null) {
             return;
@@ -114,9 +114,9 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
         $msg = LoggableToString::convert(AmbientContextForTests::testConfig());
         $appCodeTarget = $dataPerRequest->appCodeTarget;
-        TestCase::assertNotNull($appCodeTarget, $msg);
-        TestCase::assertNotNull($appCodeTarget->appCodeClass, $msg);
-        TestCase::assertNotNull($appCodeTarget->appCodeMethod, $msg);
+        Assert::assertNotNull($appCodeTarget, $msg);
+        Assert::assertNotNull($appCodeTarget->appCodeClass, $msg);
+        Assert::assertNotNull($appCodeTarget->appCodeMethod, $msg);
 
         try {
             $methodToCall = [$appCodeTarget->appCodeClass, $appCodeTarget->appCodeMethod];
@@ -148,7 +148,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         );
 
         $agentEphemeralId = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessInternalId;
-        TestCase::assertNotEmpty($agentEphemeralId);
+        Assert::assertNotEmpty($agentEphemeralId);
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Setting agentEphemeralId...', ['agentEphemeralId' => $agentEphemeralId]);

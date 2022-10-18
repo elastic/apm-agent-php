@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegment;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 abstract class ExecutionSegmentDto
 {
@@ -127,9 +127,9 @@ abstract class ExecutionSegmentDto
      */
     public static function assertValidOutcome($outcome): ?string
     {
-        TestCase::assertTrue($outcome === null || is_string($outcome));
+        Assert::assertTrue($outcome === null || is_string($outcome));
         /** @var ?string $outcome */
-        TestCase::assertTrue(ExecutionSegment::isValidOutcome($outcome));
+        Assert::assertTrue(ExecutionSegment::isValidOutcome($outcome));
         return $outcome;
     }
 

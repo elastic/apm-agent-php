@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class DataFromAgentPlusRawAccumulator implements LoggableInterface
 {
@@ -71,10 +71,10 @@ final class DataFromAgentPlusRawAccumulator implements LoggableInterface
     {
         foreach ($intakeApiRequests as $intakeApiRequest) {
             $dataFromAgent = IntakeApiRequestDeserializer::deserialize($intakeApiRequest);
-            TestCase::assertCount(1, $dataFromAgent->metadatas);
+            Assert::assertCount(1, $dataFromAgent->metadatas);
             $metadata = $dataFromAgent->metadatas[0];
-            TestCase::assertNotNull($metadata->service->agent);
-            TestCase::assertNotNull(
+            Assert::assertNotNull($metadata->service->agent);
+            Assert::assertNotNull(
                 $metadata->service->agent->ephemeralId,
                 LoggableToString::convert(
                     [
@@ -86,8 +86,8 @@ final class DataFromAgentPlusRawAccumulator implements LoggableInterface
             $intakeApiRequest->agentEphemeralId = $metadata->service->agent->ephemeralId;
             $this->result->intakeApiRequests[] = $intakeApiRequest;
             foreach (get_object_vars($dataFromAgent) as $propName => $propValue) {
-                TestCase::assertIsArray($propValue);
-                TestCase::assertIsArray($this->result->$propName);
+                Assert::assertIsArray($propValue);
+                Assert::assertIsArray($this->result->$propName);
                 $this->result->$propName = array_merge($this->result->$propName, $propValue);
             }
         }

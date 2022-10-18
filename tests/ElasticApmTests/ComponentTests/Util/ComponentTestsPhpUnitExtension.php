@@ -35,7 +35,7 @@ use Elastic\Apm\Impl\NoopTracer;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Runner\AfterIncompleteTestHook;
 use PHPUnit\Runner\AfterRiskyTestHook;
 use PHPUnit\Runner\AfterSkippedTestHook;
@@ -93,7 +93,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
                 true /* <- shouldCaptureStdOutErr */,
                 0 /* <- expectedExitCode */
             );
-            TestCase::assertSame(0, $exitCode);
+            Assert::assertSame(0, $exitCode);
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

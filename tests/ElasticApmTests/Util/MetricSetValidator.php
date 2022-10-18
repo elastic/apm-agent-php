@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class MetricSetValidator
 {
@@ -55,10 +55,10 @@ final class MetricSetValidator
         TestCaseBase::assertSameNullness($this->actual->transactionName, $this->actual->transactionType);
 
         if ($this->actual->spanSubtype !== null) {
-            TestCase::assertNotNull($this->actual->spanType);
+            Assert::assertNotNull($this->actual->spanType);
         }
         if ($this->actual->spanType !== null) {
-            TestCase::assertNotNull($this->actual->transactionType);
+            Assert::assertNotNull($this->actual->transactionType);
         }
 
         self::assertValidSamples($this->actual->samples);
@@ -76,18 +76,18 @@ final class MetricSetValidator
      */
     public static function assertValidSamples($samples): array
     {
-        TestCase::assertTrue(is_array($samples));
+        Assert::assertTrue(is_array($samples));
         /** @var array<mixed, mixed> $samples */
-        TestCase::assertTrue(!ArrayUtil::isEmpty($samples));
+        Assert::assertTrue(!ArrayUtil::isEmpty($samples));
 
         foreach ($samples as $key => $valueArr) {
             self::assertValidKeywordString($key);
-            TestCase::assertTrue(is_array($valueArr));
+            Assert::assertTrue(is_array($valueArr));
             /** @var array<mixed, mixed> $valueArr */
-            TestCase::assertTrue(count($valueArr) === 1);
-            TestCase::assertTrue(array_key_exists('value', $valueArr));
+            Assert::assertTrue(count($valueArr) === 1);
+            Assert::assertTrue(array_key_exists('value', $valueArr));
             $value = $valueArr['value'];
-            TestCase::assertTrue(is_int($value) || is_float($value));
+            Assert::assertTrue(is_int($value) || is_float($value));
             /** @var float|int $value */
         }
         /** @var array<string, array<string, float|int>> $samples */

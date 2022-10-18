@@ -37,7 +37,7 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\Util\TransactionExpectations;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @group smoke
@@ -65,8 +65,8 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public static function appCodeForTestVariousCombinations(array $args): void
     {
         $testArgsAsDecodedJson = ArrayUtil::getValueIfKeyExistsElse('testArgs', $args, null);
-        TestCase::assertNotNull($testArgsAsDecodedJson);
-        TestCase::assertIsArray($testArgsAsDecodedJson);
+        Assert::assertNotNull($testArgsAsDecodedJson);
+        Assert::assertIsArray($testArgsAsDecodedJson);
         $testArgs = new Args();
         $testArgs->deserializeFromDecodedJson($testArgsAsDecodedJson);
         SharedCode::appCode($testArgs, ElasticApm::getCurrentTransaction());

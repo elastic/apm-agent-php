@@ -31,7 +31,7 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 use Throwable;
 
@@ -158,7 +158,7 @@ abstract class HttpServerStarter
             }
             $candidate = $calcNextInCircularPortRange($candidate);
             if ($candidate === $portToStartSearchFrom) {
-                TestCase::fail(
+                Assert::fail(
                     'Could not find a free port'
                     . LoggableToString::convert(
                         [
@@ -208,9 +208,9 @@ abstract class HttpServerStarter
 
                 /** @var array<string, mixed> $decodedBody */
                 $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
-                TestCase::assertArrayHasKey(HttpServerHandle::PID_KEY, $decodedBody);
+                Assert::assertArrayHasKey(HttpServerHandle::PID_KEY, $decodedBody);
                 $receivedPid = $decodedBody[HttpServerHandle::PID_KEY];
-                TestCase::assertIsInt($receivedPid, LoggableToString::convert(['$decodedBody' => $decodedBody]));
+                Assert::assertIsInt($receivedPid, LoggableToString::convert(['$decodedBody' => $decodedBody]));
                 $pid = $receivedPid;
 
                 ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

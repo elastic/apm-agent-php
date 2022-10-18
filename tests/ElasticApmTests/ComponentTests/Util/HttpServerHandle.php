@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use GuzzleHttp\Exception\GuzzleException;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 
 class HttpServerHandle implements LoggableInterface
@@ -103,14 +103,14 @@ class HttpServerHandle implements LoggableInterface
             HttpConstantsForTests::METHOD_POST,
             TestInfraHttpServerProcessBase::EXIT_URI_PATH
         );
-        TestCase::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
+        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
 
         $hasExited = ProcessUtilForTests::waitForProcessToExit(
             $this->dbgServerDesc,
             $this->spawnedProcessOsId,
             10 * 1000 * 1000 /* <- maxWaitTimeInMicroseconds - 10 seconds */
         );
-        TestCase::assertTrue($hasExited);
+        Assert::assertTrue($hasExited);
     }
 
     public function serialize(): string
@@ -121,17 +121,17 @@ class HttpServerHandle implements LoggableInterface
     public static function deserialize(string $serialized): HttpServerHandle
     {
         $decodeJson = JsonUtil::decode($serialized, /* asAssocArray: */ true);
-        TestCase::assertIsArray($decodeJson);
+        Assert::assertIsArray($decodeJson);
 
         $getDecodedIntValue = function (string $propName) use ($decodeJson): int {
-            TestCase::assertArrayHasKey($propName, $decodeJson);
-            TestCase::assertIsInt($decodeJson[$propName]);
+            Assert::assertArrayHasKey($propName, $decodeJson);
+            Assert::assertIsInt($decodeJson[$propName]);
             return $decodeJson[$propName];
         };
 
         $getDecodedStringValue = function (string $propName) use ($decodeJson): string {
-            TestCase::assertArrayHasKey($propName, $decodeJson);
-            TestCase::assertIsString($decodeJson[$propName]);
+            Assert::assertArrayHasKey($propName, $decodeJson);
+            Assert::assertIsString($decodeJson[$propName]);
             return $decodeJson[$propName];
         };
 

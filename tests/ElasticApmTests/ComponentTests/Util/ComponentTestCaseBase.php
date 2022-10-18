@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TransactionDto;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
@@ -61,7 +61,7 @@ class ComponentTestCaseBase extends TestCaseBase
     public static function getTracerFromAppCode(): Tracer
     {
         $tracer = GlobalTracerHolder::getValue();
-        TestCase::assertInstanceOf(Tracer::class, $tracer);
+        Assert::assertInstanceOf(Tracer::class, $tracer);
         /** @var Tracer $tracer */
         return $tracer;
     }
@@ -69,9 +69,9 @@ class ComponentTestCaseBase extends TestCaseBase
     protected static function buildResourcesClientForAppCode(): ResourcesClient
     {
         $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
-        TestCase::assertNotNull($resCleanerId);
+        Assert::assertNotNull($resCleanerId);
         $resCleanerPort = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort;
-        TestCase::assertNotNull($resCleanerPort);
+        Assert::assertNotNull($resCleanerPort);
         return new ResourcesClient($resCleanerId, $resCleanerPort);
     }
 

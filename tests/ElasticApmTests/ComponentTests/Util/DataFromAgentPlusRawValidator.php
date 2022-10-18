@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\Util\DataFromAgentValidator;
 use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class DataFromAgentPlusRawValidator
 {
@@ -79,7 +79,7 @@ final class DataFromAgentPlusRawValidator
                 return $appCodeHostParams;
             }
         }
-        TestCase::fail(
+        Assert::fail(
             'AppCodeHostParams with spawnedProcessInternalId `' . $spawnedProcessInternalId . '\' not found'
         );
     }
@@ -123,11 +123,11 @@ final class DataFromAgentPlusRawValidator
             : "ApiKey $configuredApiKey";
 
         if ($expectedAuthHeaderValue === null) {
-            TestCase::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $headers);
+            Assert::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $headers);
         } else {
             $actualAuthHeaderValue = $headers[self::AUTH_HTTP_HEADER_NAME];
-            TestCase::assertCount(1, $actualAuthHeaderValue);
-            TestCase::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
+            Assert::assertCount(1, $actualAuthHeaderValue);
+            Assert::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
         }
     }
 
@@ -156,7 +156,7 @@ final class DataFromAgentPlusRawValidator
         array $headers
     ): void {
         $actualHeaderValue = $headers[self::USER_AGENT_HTTP_HEADER_NAME];
-        TestCase::assertCount(1, $actualHeaderValue);
-        TestCase::assertSame($expectedHeaderValue, $actualHeaderValue[0]);
+        Assert::assertCount(1, $actualHeaderValue);
+        Assert::assertSame($expectedHeaderValue, $actualHeaderValue[0]);
     }
 }

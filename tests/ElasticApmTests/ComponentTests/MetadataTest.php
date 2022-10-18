@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\Util\MetadataValidator;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * @group smoke
@@ -62,7 +62,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::ENVIRONMENT, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->environment);
+            Assert::assertSame($expected, $metadata->service->environment);
         }
     }
 
@@ -91,7 +91,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NAME, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->name);
+            Assert::assertSame($expected, $metadata->service->name);
         }
     }
 
@@ -137,7 +137,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_VERSION, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->version);
+            Assert::assertSame($expected, $metadata->service->version);
         }
     }
 
@@ -194,7 +194,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NODE_NAME, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
+            Assert::assertSame($expected, $metadata->service->nodeConfiguredName);
         }
     }
 

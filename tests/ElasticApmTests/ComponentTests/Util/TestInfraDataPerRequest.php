@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class TestInfraDataPerRequest extends TestInfraData
 {
@@ -56,7 +56,7 @@ final class TestInfraDataPerRequest extends TestInfraData
                     return null;
                 }
                 $appCodeTarget = new AppCodeTarget();
-                TestCase::assertIsArray($decodedJson);
+                Assert::assertIsArray($decodedJson);
                 $appCodeTarget->deserializeFromDecodedJson($decodedJson);
                 return $appCodeTarget;
             default:

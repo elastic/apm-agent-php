@@ -36,7 +36,7 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 use Throwable;
 
@@ -77,11 +77,11 @@ abstract class SpawnedProcessBase implements LoggableInterface
     {
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);
         if ($this->shouldRegisterThisProcessWithResourcesCleaner()) {
-            TestCase::assertNotNull(
+            Assert::assertNotNull(
                 AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId,
                 LoggableToString::convert(AmbientContextForTests::testConfig())
             );
-            TestCase::assertNotNull(
+            Assert::assertNotNull(
                 AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort,
                 LoggableToString::convert(AmbientContextForTests::testConfig())
             );
@@ -99,7 +99,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
 
         try {
             $dbgProcessName = getenv(self::DBG_PROCESS_NAME_ENV_VAR_NAME);
-            TestCase::assertIsString($dbgProcessName);
+            Assert::assertIsString($dbgProcessName);
             AmbientContextForTests::init($dbgProcessName);
             $thisObj = new static(); // @phpstan-ignore-line
 
@@ -185,9 +185,9 @@ abstract class SpawnedProcessBase implements LoggableInterface
             'Registering with ' . ClassNameUtil::fqToShort(ResourcesCleaner::class) . '...'
         );
 
-        TestCase::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort);
+        Assert::assertNotNull(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort);
         $resCleanerId = AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerSpawnedProcessInternalId;
-        TestCase::assertNotNull($resCleanerId);
+        Assert::assertNotNull($resCleanerId);
         $response = HttpClientUtilForTests::sendRequest(
             HttpConstantsForTests::METHOD_POST,
             (new UrlParts())

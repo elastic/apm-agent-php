@@ -32,7 +32,7 @@ use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class ServerApiSchemaValidator
 {
@@ -211,7 +211,7 @@ final class ServerApiSchemaValidator
             JsonUtil::encode($schema, /* prettyPrint: */ true),
             /* flags */ LOCK_EX
         );
-        TestCase::assertNotFalse($numberOfBytesWritten, "Failed to write to temp file `$pathToTempFile'");
+        Assert::assertNotFalse($numberOfBytesWritten, "Failed to write to temp file `$pathToTempFile'");
         return $pathToTempFile;
     }
 
@@ -223,7 +223,7 @@ final class ServerApiSchemaValidator
     private static function loadSchemaAndResolveRefs(string $absolutePath): array
     {
         $fileContents = file_get_contents($absolutePath);
-        TestCase::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
+        Assert::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
         $decodedSchema = JsonUtil::decode($fileContents, /* asAssocArray */ true);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
@@ -332,7 +332,7 @@ final class ServerApiSchemaValidator
                 $dstArray = &$decodedSchemaNode[$key];
                 /** @var array<mixed, mixed> $value */
                 foreach ($value as $subKey => $subValue) {
-                    TestCase::assertArrayNotHasKey(
+                    Assert::assertArrayNotHasKey(
                         $key,
                         $dstArray,
                         'Failed to merge because key already exists.'

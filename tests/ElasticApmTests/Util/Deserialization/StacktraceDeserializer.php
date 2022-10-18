@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\StackTraceFrame;
 use ElasticApmTests\Util\AssertValidTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class StacktraceDeserializer
 {
@@ -44,11 +44,11 @@ final class StacktraceDeserializer
         /** @var int */
         $nextExpectedIndex = 0;
 
-        TestCase::assertIsArray($deserializedRawData);
+        Assert::assertIsArray($deserializedRawData);
         /** @var array<mixed, mixed> $deserializedRawData */
 
         foreach ($deserializedRawData as $key => $value) {
-            TestCase::assertSame($nextExpectedIndex, $key);
+            Assert::assertSame($nextExpectedIndex, $key);
             /** @var array<string, mixed> $value */
             $frames[] = self::deserializeFrame($value);
             ++$nextExpectedIndex;
@@ -72,7 +72,7 @@ final class StacktraceDeserializer
         /** @var string|null */
         $function = null;
 
-        TestCase::assertIsArray($deserializedRawData);
+        Assert::assertIsArray($deserializedRawData);
         /** @var array<mixed, mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
@@ -92,8 +92,8 @@ final class StacktraceDeserializer
                     throw DeserializationUtil::buildException("Unknown key: span_count->`$key'");
             }
         }
-        TestCase::assertNotNull($filename);
-        TestCase::assertNotSame(-1, $lineNumber);
+        Assert::assertNotNull($filename);
+        Assert::assertNotSame(-1, $lineNumber);
 
         $result = new StackTraceFrame($filename, $lineNumber);
         $result->function = $function;

@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class DataProviderForTestBuilder
 {
@@ -38,7 +38,7 @@ final class DataProviderForTestBuilder
 
     private function assertValid(): void
     {
-        TestCase::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
+        Assert::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
     }
 
     /**
@@ -52,7 +52,7 @@ final class DataProviderForTestBuilder
         $this->assertValid();
 
         $this->onlyFirstValueCombinable[] = $onlyFirstValueCombinable;
-        TestCase::assertFalse(IterableUtilForTests::isEmpty($generator([])));
+        Assert::assertFalse(IterableUtilForTests::isEmpty($generator([])));
         $this->generators[] = $generator;
 
         $this->assertValid();
@@ -144,7 +144,7 @@ final class DataProviderForTestBuilder
             function (array $resultSoFar) use ($dimensionKey, $iterable): iterable {
                 $expectedKeyForList = 0;
                 foreach ($iterable as $key => $val) {
-                    TestCase::assertSame($expectedKeyForList, $key);
+                    Assert::assertSame($expectedKeyForList, $key);
                     yield array_merge($resultSoFar, [$dimensionKey => $val]);
                     ++$expectedKeyForList;
                 }
@@ -249,7 +249,7 @@ final class DataProviderForTestBuilder
      */
     private static function getIterableFirstValue(iterable $iterable)
     {
-        TestCase::assertTrue(IterableUtilForTests::getFirstValue($iterable, /* out */ $value));
+        Assert::assertTrue(IterableUtilForTests::getFirstValue($iterable, /* out */ $value));
         return $value;
     }
 
@@ -262,7 +262,7 @@ final class DataProviderForTestBuilder
      */
     private function buildImpl(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex): iterable
     {
-        TestCase::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
+        Assert::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
         if ($currentGenIndex === count($this->generators)) {
             yield $this->shouldWrapResultIntoArray ? [$resultSoFar] : $resultSoFar;
             return;
@@ -346,7 +346,7 @@ final class DataProviderForTestBuilder
     public function build(): iterable
     {
         $this->assertValid();
-        TestCase::assertNotCount(0, $this->generators);
+        Assert::assertNotCount(0, $this->generators);
 
         for ($genIndexForAllValues = 0; $genIndexForAllValues < count($this->generators); ++$genIndexForAllValues) {
             if ($genIndexForAllValues !== 0 && !$this->onlyFirstValueCombinable[$genIndexForAllValues]) {

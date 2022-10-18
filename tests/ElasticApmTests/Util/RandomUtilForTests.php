@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use InvalidArgumentException;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -107,11 +107,11 @@ final class RandomUtilForTests
         if ($subSetSize === 1) {
             $randSelectedSubsetIndexes = [$randSelectedSubsetIndexes];
         }
-        TestCase::assertIsArray($randSelectedSubsetIndexes);
+        Assert::assertIsArray($randSelectedSubsetIndexes);
 
         $randSelectedSubsetValues = [];
         foreach ($randSelectedSubsetIndexes as $index) {
-            TestCase::assertIsInt($index);
+            Assert::assertIsInt($index);
             $randSelectedSubsetValues[] = $totalSet[$index];
         }
         return $randSelectedSubsetValues;
@@ -126,7 +126,7 @@ final class RandomUtilForTests
      */
     public static function getRandomValueFromArray(array $arr)
     {
-        TestCase::assertGreaterThan(0, count($arr));
+        Assert::assertGreaterThan(0, count($arr));
         return $arr[RandomUtilForTests::generateIntInRange(0, count($arr) - 1)];
     }
 
@@ -140,7 +140,7 @@ final class RandomUtilForTests
      */
     public static function getRandomKeyValueFromArray(array $arr)
     {
-        TestCase::assertGreaterThan(0, count($arr));
+        Assert::assertGreaterThan(0, count($arr));
         $selectedIndex = RandomUtilForTests::generateIntInRange(0, count($arr) - 1);
         return array_slice($arr, /* offset: */ $selectedIndex, /* length: */ 1, /* preserve_keys: */ true);
     }

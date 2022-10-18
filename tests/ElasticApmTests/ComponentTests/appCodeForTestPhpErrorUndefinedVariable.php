@@ -23,20 +23,20 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER = 35;
 const APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER = 41;
 
 function appCodeForTestPhpErrorUndefinedVariableImpl(): void
 {
-    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER, __LINE__ + 2);
+    Assert::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_ERROR_LINE_NUMBER, __LINE__ + 2);
     /** @noinspection PhpUndefinedVariableInspection, PhpUnusedLocalVariableInspection */
     $undefinedVariable = $undefinedVariable + 1; // @phpstan-ignore-line
 }
 
 function appCodeForTestPhpErrorUndefinedVariable(): void
 {
-    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
+    Assert::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNDEFINED_VARIABLE_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
     appCodeForTestPhpErrorUndefinedVariableImpl();
 }

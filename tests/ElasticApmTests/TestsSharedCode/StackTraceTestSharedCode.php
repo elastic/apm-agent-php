@@ -30,7 +30,7 @@ use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 use function ElasticApmTests\dummyFuncForTestsWithNamespace;
 
@@ -107,7 +107,7 @@ final class StackTraceTestSharedCode
     private static function getStringFromExpectedData(array $expectedData, string $key): string
     {
         $value = $expectedData[$key];
-        TestCase::assertIsString($value, LoggableToString::convert(['$key' => $key]));
+        Assert::assertIsString($value, LoggableToString::convert(['$key' => $key]));
         return $value;
     }
 
@@ -120,7 +120,7 @@ final class StackTraceTestSharedCode
     private static function getIntFromExpectedData(array $expectedData, string $key): int
     {
         $value = $expectedData[$key];
-        TestCase::assertIsInt($value, LoggableToString::convert(['$key' => $key]));
+        Assert::assertIsInt($value, LoggableToString::convert(['$key' => $key]));
         return $value;
     }
 
@@ -196,14 +196,14 @@ final class StackTraceTestSharedCode
         );
 
         $actualStacktrace = $span->stackTrace;
-        TestCase::assertNotNull($actualStacktrace);
+        Assert::assertNotNull($actualStacktrace);
         for ($i = 0; $i < count($expectedStacktrace); ++$i) {
             $infoMsg = LoggableToString::convert(
                 ['expected' => $expectedStacktrace[$i], 'actual' => $actualStacktrace[$i]]
             );
-            TestCase::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);
-            TestCase::assertSame($expectedStacktrace[$i]->filename, $actualStacktrace[$i]->filename, $infoMsg);
-            TestCase::assertSame($expectedStacktrace[$i]->lineno, $actualStacktrace[$i]->lineno, $infoMsg);
+            Assert::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);
+            Assert::assertSame($expectedStacktrace[$i]->filename, $actualStacktrace[$i]->filename, $infoMsg);
+            Assert::assertSame($expectedStacktrace[$i]->lineno, $actualStacktrace[$i]->lineno, $infoMsg);
         }
     }
 
@@ -217,13 +217,13 @@ final class StackTraceTestSharedCode
         $checkedSpansCount = 0;
         foreach ($idToSpan as $span) {
             $labels = $span->context === null ? [] : $span->context->labels;
-            TestCase::assertNotNull($labels);
+            Assert::assertNotNull($labels);
             if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {
                 self::assertPartImplOneSpan($expectedData, $span);
                 ++$checkedSpansCount;
             }
         }
-        TestCase::assertSame($expectedSpansToCheckCount, $checkedSpansCount);
+        Assert::assertSame($expectedSpansToCheckCount, $checkedSpansCount);
     }
 
     public static function buildMethodName(string $fullClassName, string $funcName): string

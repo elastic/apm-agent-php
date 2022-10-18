@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util;
 use Ds\Set;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use IteratorAggregate;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Traversable;
 
 /**
@@ -81,17 +81,17 @@ final class CharSetForTests implements IteratorAggregate
 
     public function addChar(string $char): void
     {
-        TestCase::assertSame(1, strlen($char), $char);
+        Assert::assertSame(1, strlen($char), $char);
         $this->chars->add($char);
     }
 
     public function addCharRange(string $first, string $last): void
     {
-        TestCase::assertSame(1, strlen($first), $first);
-        TestCase::assertSame(1, strlen($last), $last);
+        Assert::assertSame(1, strlen($first), $first);
+        Assert::assertSame(1, strlen($last), $last);
         $firstCodePoint = ord($first);
         $lastCodePoint = ord($last);
-        TestCase::assertGreaterThanOrEqual($firstCodePoint, $lastCodePoint);
+        Assert::assertGreaterThanOrEqual($firstCodePoint, $lastCodePoint);
         foreach (RangeUtil::generateFromToIncluding($firstCodePoint, $lastCodePoint) as $codepoint) {
             $this->addChar(chr($codepoint));
         }
@@ -114,14 +114,14 @@ final class CharSetForTests implements IteratorAggregate
 
     public function getRandom(): string
     {
-        TestCase::assertGreaterThan(0, $this->chars->count());
+        Assert::assertGreaterThan(0, $this->chars->count());
         $randomIndex = mt_rand(0, $this->chars->count() - 1);
         return $this->chars->get($randomIndex);
     }
 
     public function generateString(int $length): string
     {
-        TestCase::assertGreaterThanOrEqual(0, $length);
+        Assert::assertGreaterThanOrEqual(0, $length);
         $result = '';
         while (true) {
             foreach ($this as $char) {

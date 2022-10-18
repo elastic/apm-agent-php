@@ -29,7 +29,7 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogSinkForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 final class AmbientContextForTests
@@ -64,7 +64,7 @@ final class AmbientContextForTests
     public static function init(string $dbgProcessName): void
     {
         if (self::$singletonInstance !== null) {
-            TestCase::assertSame(self::$singletonInstance->dbgProcessName, $dbgProcessName);
+            Assert::assertSame(self::$singletonInstance->dbgProcessName, $dbgProcessName);
             return;
         }
 
@@ -83,7 +83,7 @@ final class AmbientContextForTests
 
     private static function getSingletonInstance(): self
     {
-        TestCase::assertNotNull(self::$singletonInstance);
+        Assert::assertNotNull(self::$singletonInstance);
         return self::$singletonInstance;
     }
 
