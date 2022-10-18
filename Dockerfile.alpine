@@ -21,7 +21,7 @@ RUN docker-php-ext-install \
     pdo_mysql \
     pdo_sqlite
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.3.5 /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /app/src/ext
 
