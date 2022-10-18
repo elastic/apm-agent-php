@@ -45,3 +45,6 @@ build/
 
 # Temporary files
 /_TEMP/
+
+# Generated build dependency sets
+*.dep
