@@ -43,7 +43,6 @@ use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\ExpectationFailedException;
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Throwable;
 
@@ -262,7 +261,7 @@ class TestCaseBase extends TestCase
      */
     public static function assertArrayIsList(array $actual): void
     {
-        Assert::assertTrue(ArrayUtil::isList($actual), LoggableToString::convert(['$actual' => $actual]));
+        self::assertTrue(ArrayUtil::isList($actual), LoggableToString::convert(['$actual' => $actual]));
     }
 
     /**
@@ -447,9 +446,9 @@ class TestCaseBase extends TestCase
      */
     public static function assertSameNullness($expected, $actual, string $message = ''): void
     {
-        Assert::assertThat(
+        self::assertThat(
             $actual,
-            ($expected === null) ? TestCase::isNull() : TestCase::logicalNot(TestCase::isNull()),
+            ($expected === null) ? self::isNull() : self::logicalNot(self::isNull()),
             LoggableToString::convert(
                 [
                     '$expected' => $expected,
@@ -468,16 +467,16 @@ class TestCaseBase extends TestCase
      */
     public static function assertIsNumber($actual, string $message = ''): void
     {
-        Assert::assertThat(
+        self::assertThat(
             $actual,
-            TestCase::logicalOr(new IsType(IsType::TYPE_INT), new IsType(IsType::TYPE_FLOAT)),
+            self::logicalOr(new IsType(IsType::TYPE_INT), new IsType(IsType::TYPE_FLOAT)),
             $message
         );
     }
 
     public static function assertGreaterThanZero(int $actual, string $message = ''): void
     {
-        Assert::assertGreaterThan(0, $actual, $message);
+        self::assertGreaterThan(0, $actual, $message);
     }
 
     /**
@@ -488,11 +487,11 @@ class TestCaseBase extends TestCase
      */
     public static function assertInClosedRange($rangeBegin, $actual, $rangeEnd, string $message = ''): void
     {
-        Assert::assertThat(
+        self::assertThat(
             $actual,
-            TestCase::logicalAnd(
-                TestCase::logicalOr(new IsEqual($rangeBegin), new GreaterThan($rangeBegin)),
-                TestCase::logicalOr(new IsEqual($rangeEnd), new LessThan($rangeEnd))
+            self::logicalAnd(
+                self::logicalOr(new IsEqual($rangeBegin), new GreaterThan($rangeBegin)),
+                self::logicalOr(new IsEqual($rangeEnd), new LessThan($rangeEnd))
             ),
             $message
         );
@@ -500,9 +499,9 @@ class TestCaseBase extends TestCase
 
     public static function assertLessThanOrEqualTimestamp(float $before, float $after): void
     {
-        Assert::assertThat(
+        self::assertThat(
             $before,
-            TestCase::logicalOr(
+            self::logicalOr(
                 new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS),
                 new LessThan($after)
             ),
@@ -523,8 +522,8 @@ class TestCaseBase extends TestCase
         float $timestamp,
         float $futureTimestamp
     ): void {
-        TestCaseBase::assertLessThanOrEqualTimestamp($pastTimestamp, $timestamp);
-        TestCaseBase::assertLessThanOrEqualTimestamp($timestamp, $futureTimestamp);
+        self::assertLessThanOrEqualTimestamp($pastTimestamp, $timestamp);
+        self::assertLessThanOrEqualTimestamp($timestamp, $futureTimestamp);
     }
 
     public static function calcEndTime(ExecutionSegmentDto $timedData): float
