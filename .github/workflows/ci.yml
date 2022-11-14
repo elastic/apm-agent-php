@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.asciidoc'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '**.asciidoc'
+
+# limit the access of the generated GITHUB_TOKEN
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        php-version: [ '7.2', '7.3', '7.4', '8.0', '8.1' ]
+        dockerfile: [ 'Dockerfile', 'Dockerfile.alpine' ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare
+        run: PHP_VERSION=${{ matrix.php-version }} DOCKERFILE=${{ matrix.dockerfile }} make -f .ci/Makefile prepare
+      - name: Build
+        run: PHP_VERSION=${{ matrix.php-version }} DOCKERFILE=${{ matrix.dockerfile }} make -f .ci/Makefile build
+      - name: Check
+        run: PHP_VERSION=${{ matrix.php-version }} DOCKERFILE=${{ matrix.dockerfile }} make -f .ci/Makefile static-check-unit-test
+      - name: Package
+        run: PHP_VERSION=${{ matrix.php-version }} DOCKERFILE=${{ matrix.dockerfile }} make -f .ci/Makefile generate-for-package
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifact-${{ matrix.php-version }}
+          path: src/ext/modules/*.so
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [test]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: src/ext/modules/
+      - name: Prepare
+        run: echo 'TBD'
+      - name: Test
+        run: echo 'TBD'
