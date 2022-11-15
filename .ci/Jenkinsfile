@@ -137,7 +137,10 @@ pipeline {
         stage('Build packages') {
           when {
             beforeAgent true
-            expression { return env.ONLY_DOCS == "false" }
+            allOf {
+              expression { return env.ONLY_DOCS == "false" }
+              expression { isInternalCI() }
+            }
           }
           options { skipDefaultCheckout() }
           steps {
