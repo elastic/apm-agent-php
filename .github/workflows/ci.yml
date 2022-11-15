@@ -53,6 +53,9 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R
         working-directory: src/ext/modules/
+      - name: Move packages to the right location
+        run: find . -name "*.so" -exec cp {} . \;
+        working-directory: src/ext/modules/
       - name: Package
         run: make -C packaging package
       - name: Info
