@@ -70,9 +70,18 @@ jobs:
       matrix:
         php-version: [ '7.2', '7.3', '7.4', '8.0', '8.1' ]
         type: [ 'apk', 'deb', 'rpm' ]
+        kind: [ 'cli', 'http' ]
+        test: [ 'lifecycle' ]
+        group: [ 'no_ext_svc', 'with_ext_svc' ]
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact-package
+          path: build/packages/
       - name: Prepare
-        run: make -C packaging prepare-${{ matrix.type }}
+        run: make -C packaging prepare-${{ matrix.type }} PHP_VERSION=${{ matrix.php-version }}
       - name: Lifecycle
-        run: make -C packaging ${{ matrix.type }}-lifecycle-testing
+        run: make -C packaging ${{ matrix.type }}-${{ matrix.test }}-testing PHP_VERSION=${{ matrix.php-version }}
+        env:
+          ELASTIC_APM_PHP_TESTS_MATRIX_ROW: ${{ matrix.php-version }},${{ matrix.type }},${{ matrix.test }},${{ matrix.kind }},${{ matrix.group }}
