@@ -296,10 +296,23 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $customErrorData = new CustomErrorData();
         $customErrorData->code = $phpErrorData->type;
-        $customErrorData->message = TextUtil::contains($phpErrorData->message, $phpErrorData->fileName)
-            ? $phpErrorData->message
-            : ($phpErrorData->message . ' in ' . $phpErrorData->fileName . ':' . $phpErrorData->lineNumber);
-        $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
+        if (
+            ($phpErrorData->message === null)
+            || ($phpErrorData->fileName === null)
+            || TextUtil::contains($phpErrorData->message, $phpErrorData->fileName)
+        ) {
+            $customErrorData->message = $phpErrorData->message;
+        } else {
+            $messageSuffix = ' in ' . $phpErrorData->fileName;
+            if ($phpErrorData->lineNumber !== null) {
+                $messageSuffix .= ':' . $phpErrorData->lineNumber;
+            }
+            $customErrorData->message = $phpErrorData->message . $messageSuffix;
+        }
+
+        if ($phpErrorData->type !== null) {
+            $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
+        }
 
         $this->createError($customErrorData, $phpErrorData, $relatedThrowable);
     }

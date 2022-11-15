@@ -23,6 +23,7 @@
 #include <php.h>
 #include <zend.h>
 #include "elastic_apm_assert.h"
+#include "basic_macros.h"
 #include "basic_types.h"
 #include "log.h"
 #include "MemoryTracker.h"
@@ -62,3 +63,20 @@ ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCoun
 void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );
 
 bool isPhpRunningAsCliScript();
+
+#define ELASTIC_APM_ZEND_ADD_ASSOC( map, key, valueType, value ) ELASTIC_APM_PP_CONCAT( ELASTIC_APM_PP_CONCAT( add_assoc_, valueType ), _ex)( (map), (key), sizeof( key ) - 1, (value) )
+
+#define ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( map, key, value ) \
+    do { \
+        if ( (value) == NULL ) \
+        { \
+            zval elastic_apm_zend_add_assoc_nullable_string_aux_zval; \
+            ZVAL_NULL( &elastic_apm_zend_add_assoc_nullable_string_aux_zval ); \
+            add_assoc_zval_ex( (map), (key), sizeof( key ) - 1, &elastic_apm_zend_add_assoc_nullable_string_aux_zval ); \
+        } \
+        else \
+        { \
+            add_assoc_string_ex( (map), (key), sizeof( key ) - 1, (value) ); \
+        } \
+    } while( 0 ) \
+    /**/
