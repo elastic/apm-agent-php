@@ -64,9 +64,15 @@ jobs:
 
   test-package:
     runs-on: ubuntu-latest
-    needs: [package]
+    needs: [ package ]
     timeout-minutes: 30
+    strategy:
+      matrix:
+        php-version: [ '7.2', '7.3', '7.4', '8.0', '8.1' ]
+        type: [ 'apk', 'deb', 'rpm' ]
     steps:
       - uses: actions/checkout@v3
-      - name: Test
-        run: echo "run test matrix for the packaging"
+      - name: Prepare
+        run: make -C packaging prepare-${{ matrix.type }}
+      - name: Lifecycle
+        run: make -C packaging ${{ matrix.type }}-lifecycle-testing

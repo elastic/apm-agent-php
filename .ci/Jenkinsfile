@@ -87,7 +87,10 @@ pipeline {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
-            expression { return env.ONLY_DOCS == "false" }
+            allOf {
+              expression { return env.ONLY_DOCS == "false" }
+              expression { isInternalCI() }
+            }
           }
           failFast false
           matrix {
@@ -150,20 +153,6 @@ pipeline {
                 archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/packages/*')
               }
             }
-          }
-        }
-        stage('Test packages') {
-          options { skipDefaultCheckout() }
-          when {
-            beforeAgent true
-            allOf {
-              expression { return env.ONLY_DOCS == "false" }
-              expression { return params.INCLUDE_TESTING }
-              not { expression { isInternalCI() } }
-            }
-          }
-          steps {
-            generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: false)
           }
         }
       }
