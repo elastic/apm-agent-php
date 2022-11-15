@@ -148,7 +148,7 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             if ($phpErrorData === null) {
                 $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
                 $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
-            } else {
+            } elseif ($phpErrorData->stackTrace !== null) {
                 $result->stacktrace = StackTraceUtil::convertFromPhp(
                     $phpErrorData->stackTrace,
                     0 /* <- numberOfStackFramesToSkip */,

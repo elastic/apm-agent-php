@@ -489,11 +489,11 @@ void elasticApmGetLastPhpError( zval* return_value )
     }
 
     array_init(return_value);
-    add_assoc_long_ex( return_value, "type", sizeof("type")-1, g_lastPhpErrorData.type );
-    add_assoc_string_ex( return_value, "fileName", sizeof("fileName")-1, g_lastPhpErrorData.fileName );
-    add_assoc_long_ex( return_value, "lineNumber", sizeof("lineNumber")-1, (zend_long)( g_lastPhpErrorData.lineNumber ) );
-    add_assoc_string_ex( return_value, "message", sizeof("message")-1, g_lastPhpErrorData.message );
-    add_assoc_zval_ex( return_value, "stackTrace", sizeof("stackTrace")-1, &( g_lastPhpErrorData.stackTrace ) );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
+    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
+    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
