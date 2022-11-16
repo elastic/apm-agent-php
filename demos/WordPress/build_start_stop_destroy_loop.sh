@@ -43,7 +43,6 @@ function wait_for_approval_and_run_command() {
 
 function cleanup () {
     wait_for_approval_and_run_command "${docker_cmd_prefix} down -v --remove-orphans"
-    rm -rf
 }
 
 function main() {
