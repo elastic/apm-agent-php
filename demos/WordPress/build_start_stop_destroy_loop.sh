@@ -43,6 +43,11 @@ function wait_for_approval_and_run_command() {
 
 function cleanup () {
     wait_for_approval_and_run_command "${docker_cmd_prefix} down -v --remove-orphans"
+
+    local this_script_dir
+    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+    this_script_dir="$( realpath "${this_script_dir}" )"
+    wait_for_approval_and_run_command "rm -rf \"${this_script_dir}/_TEMP/\""
 }
 
 function main() {
@@ -55,18 +60,15 @@ function main() {
         docker_cmd_prefix="${docker_cmd_prefix} ${DOCKER_COMPOSE_OPTIONS}"
     fi
 
-    if [ -n "${Z_LOCAL_ACTION}" ]; then
-        run_command "${docker_cmd_prefix} ${Z_LOCAL_ACTION}"
-    else
-        trap cleanup EXIT
-        while :
-        do
-            wait_for_approval_and_run_command "${docker_cmd_prefix} build"
-            wait_for_approval_and_run_command "${docker_cmd_prefix} up"
-            wait_for_approval_and_run_command "${docker_cmd_prefix} stop"
-            wait_for_approval_and_run_command "${docker_cmd_prefix} down -v --remove-orphans"
-        done
-    fi
+    trap cleanup EXIT
+
+    while :
+    do
+        wait_for_approval_and_run_command "${docker_cmd_prefix} build"
+        wait_for_approval_and_run_command "${docker_cmd_prefix} up"
+        wait_for_approval_and_run_command "${docker_cmd_prefix} stop"
+        cleanup
+    done
 }
 
 main
