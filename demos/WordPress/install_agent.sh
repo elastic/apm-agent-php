@@ -40,7 +40,6 @@ detect_and_install () {
 
 main () {
     detect_and_install
-
 }
 
 main
