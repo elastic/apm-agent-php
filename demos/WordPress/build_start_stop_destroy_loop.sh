@@ -55,9 +55,14 @@ function main() {
 
     set | grep ELASTIC
 
-    docker_cmd_prefix="docker-compose"
+    local docker_cmd_prefix="docker-compose"
+
     if [ -n "${DOCKER_COMPOSE_OPTIONS}" ]; then
-        docker_cmd_prefix="${docker_cmd_prefix} ${DOCKER_COMPOSE_OPTIONS}"
+        docker_cmd_prefix="docker-compose ${DOCKER_COMPOSE_OPTIONS}"
+    else
+        if [ -n "${DOCKER_COMPOSE_BASE_YML_FILE}" ]; then
+            docker_cmd_prefix="docker-compose -f ${DOCKER_COMPOSE_BASE_YML_FILE}"
+        fi
     fi
 
     trap cleanup EXIT
