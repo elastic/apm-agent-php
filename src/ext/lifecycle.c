@@ -483,19 +483,21 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
 
 void elasticApmGetLastPhpError( zval* return_value )
 {
-    if ( ! g_lastPhpErrorDataSet )
-    {
-        RETURN_NULL();
-    }
+    RETURN_NULL();
 
-    array_init( return_value );
-    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
-    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
-    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
-    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
 // TODO: Sergey Kleyman: Uncomment
-//    Z_TRY_ADDREF( g_lastPhpErrorData.stackTrace );
-//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
+//    if ( ! g_lastPhpErrorDataSet )
+//    {
+//        RETURN_NULL();
+//    }
+//
+//    array_init( return_value );
+//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
+//    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
+//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
+//    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
+////    Z_TRY_ADDREF( g_lastPhpErrorData.stackTrace );
+////    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
