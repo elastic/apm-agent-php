@@ -21,12 +21,7 @@ function main() {
     verify_mandatory_env_var_is_set PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY
     verify_mandatory_env_var_is_set PHP_AGENT_INSTALL_LOCAL_SRC
 
-    local docker_compose_base_yml_file_local="docker-compose.yml"
-    if [ -n "${DOCKER_COMPOSE_BASE_YML_FILE}" ]; then
-        docker_compose_base_yml_file_local="${DOCKER_COMPOSE_BASE_YML_FILE}"
-    fi
-
-    export DOCKER_COMPOSE_OPTIONS="-f docker-compose_local_agent_code.yml -f ${docker_compose_base_yml_file_local}"
+    export BUILD_START_STOP_DESTROY_LOOP_DOCKER_COMPOSE_OPTIONS="-f docker-compose_local_agent_code.yml -f docker-compose.yml"
 
     local this_script_dir
     this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"

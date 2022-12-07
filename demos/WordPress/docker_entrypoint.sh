@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -xe
+set -x
 
 function ensureSyslogIsRunning () {
     if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
@@ -21,4 +21,4 @@ function ensureSyslogIsRunning () {
 
 ensureSyslogIsRunning
 
-php-fpm
+/app/parent_container_docker_entrypoint.sh "$@"

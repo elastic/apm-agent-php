@@ -11,18 +11,18 @@ function echo_vertical_space() {
     # shellcheck disable=SC2034
     for i in {1..10}
     do
-    	echo ""
+        echo ""
     done
 }
 
 function run_command() {
-    command_to_run=$1
+    local command_to_run="$@"
 
     clear
     echo "========================================"
     echo "============"
     echo "==="
-    echo "${command_to_run}"
+    echo "${command_to_run[*]}"
     echo "==="
     echo "============"
     echo "========================================"
@@ -30,49 +30,38 @@ function run_command() {
 }
 
 function wait_for_approval_and_run_command() {
-    command_to_run=$1
+    local command_to_run="$@"
 
     echo_vertical_space
-	echo "Press [CTRL+C] to stop"
-	echo "Press any other key to run '${command_to_run}'"
+    echo "Press [CTRL+C] to stop"
+    echo "Press any other key to run ${command_to_run[*]}"
     echo_vertical_space
     read
 
-    run_command "${command_to_run}"
-}
-
-function cleanup () {
-    wait_for_approval_and_run_command "${docker_cmd_prefix} down -v --remove-orphans"
-
-    local this_script_dir
-    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-    this_script_dir="$( realpath "${this_script_dir}" )"
-    wait_for_approval_and_run_command "rm -rf \"${this_script_dir}/_TEMP/\""
+    run_command "${command_to_run[@]}"
 }
 
 function main() {
-    echo "DOCKER_COMPOSE_OPTIONS: ${DOCKER_COMPOSE_OPTIONS}"
+    echo "BUILD_START_STOP_DESTROY_LOOP_DOCKER_COMPOSE_OPTIONS: ${BUILD_START_STOP_DESTROY_LOOP_DOCKER_COMPOSE_OPTIONS}"
 
     set | grep ELASTIC
 
     local docker_cmd_prefix="docker-compose"
-
-    if [ -n "${DOCKER_COMPOSE_OPTIONS}" ]; then
-        docker_cmd_prefix="docker-compose ${DOCKER_COMPOSE_OPTIONS}"
-    else
-        if [ -n "${DOCKER_COMPOSE_BASE_YML_FILE}" ]; then
-            docker_cmd_prefix="docker-compose -f ${DOCKER_COMPOSE_BASE_YML_FILE}"
-        fi
+    if [ -n "${BUILD_START_STOP_DESTROY_LOOP_DOCKER_COMPOSE_OPTIONS}" ]; then
+        docker_cmd_prefix="${docker_cmd_prefix} ${BUILD_START_STOP_DESTROY_LOOP_DOCKER_COMPOSE_OPTIONS}"
     fi
 
-    trap cleanup EXIT
+    local docker_up_cmd="${docker_cmd_prefix} up"
+    if [ -n "${BUILD_START_STOP_DESTROY_LOOP_DOCKER_SERVICE_TO_START}" ]; then
+        docker_up_cmd="${docker_up_cmd} ${BUILD_START_STOP_DESTROY_LOOP_DOCKER_SERVICE_TO_START}"
+    fi
 
     while :
     do
-        wait_for_approval_and_run_command "${docker_cmd_prefix} build"
-        wait_for_approval_and_run_command "${docker_cmd_prefix} up"
-        wait_for_approval_and_run_command "${docker_cmd_prefix} stop"
-        cleanup
+        wait_for_approval_and_run_command ${docker_cmd_prefix} build
+        wait_for_approval_and_run_command ${docker_up_cmd}
+        wait_for_approval_and_run_command ${docker_cmd_prefix} stop
+        wait_for_approval_and_run_command ${docker_cmd_prefix} down -v --remove-orphans
     done
 }
 
