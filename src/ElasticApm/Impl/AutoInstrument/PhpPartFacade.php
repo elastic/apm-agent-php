@@ -431,7 +431,13 @@ final class PhpPartFacade
             return;
         }
 
-        if (!is_array($lastPhpErrorData)) {
+        if (is_array($lastPhpErrorData)) {
+            BootstrapStageLogger::logDebug(
+                'Type of value returned by elastic_apm_get_last_php_error(): ' . DbgUtil::getType($lastPhpErrorData),
+                __LINE__,
+                __FUNCTION__
+            );
+        } else {
             BootstrapStageLogger::logCritical(
                 'Value returned by elastic_apm_get_last_php_error() is not an array'
                 . ', ' . 'returned value type: ' . DbgUtil::getType($lastPhpErrorData)

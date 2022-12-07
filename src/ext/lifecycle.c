@@ -233,19 +233,19 @@ typedef void (* ZendThrowExceptionHook )(
 
 static bool isOriginalZendThrowExceptionHookSet = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-static bool isLastThrownSet = false;
-static zval lastThrown;
+static bool g_isLastThrownSet = false;
+static zval g_lastThrown;
 
 void resetLastThrown()
 {
-    if ( ! isLastThrownSet )
+    if ( ! g_isLastThrownSet )
     {
         return;
     }
 
-    zval_ptr_dtor( &lastThrown );
-    ZVAL_UNDEF( &lastThrown );
-    isLastThrownSet = false;
+    zval_ptr_dtor( &g_lastThrown );
+    ZVAL_UNDEF( &g_lastThrown );
+    g_isLastThrownSet = false;
 }
 
 void elasticApmZendThrowExceptionHookImpl(
@@ -256,7 +256,7 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isLastThrownSet: %s", boolToString( isLastThrownSet ) );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_isLastThrownSet: %s", boolToString( g_isLastThrownSet ) );
 
     resetLastThrown();
 
@@ -265,21 +265,21 @@ void elasticApmZendThrowExceptionHookImpl(
     zval* thrownAsPzval = &thrownAsZval;
     ZVAL_OBJ( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
 #endif
-    ZVAL_COPY( /* pZvalDst: */ &lastThrown, /* pZvalSrc: */ thrownAsPzval );
+    ZVAL_COPY( /* pZvalDst: */ &g_lastThrown, /* pZvalSrc: */ thrownAsPzval );
 
-    isLastThrownSet = true;
+    g_isLastThrownSet = true;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
 
 void elasticApmGetLastThrown( zval* return_value )
 {
-    if ( ! isLastThrownSet )
+    if ( ! g_isLastThrownSet )
     {
         RETURN_NULL();
     }
 
-    RETURN_ZVAL( &lastThrown, /* copy */ true, /* dtor */ false );
+    RETURN_ZVAL( &g_lastThrown, /* copy */ true, /* dtor */ false );
 }
 
 void elasticApmZendThrowExceptionHook(
@@ -488,12 +488,13 @@ void elasticApmGetLastPhpError( zval* return_value )
         RETURN_NULL();
     }
 
-    array_init(return_value);
+    array_init( return_value );
     ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
     ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
     ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
     ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
-    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
+// TODO: Sergey Kleyman: Uncomment
+//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
