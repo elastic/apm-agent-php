@@ -11,8 +11,9 @@ services:
             args:
                 WORDPRESS_DOCKER_LABEL: "${WORDPRESS_DOCKER_LABEL:-6.1.0-php8.1-fpm}"
                 PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
-                PHP_AGENT_INSTALL_PACKAGE_FROM_URL: "${PHP_AGENT_INSTALL_PACKAGE_FROM_URL:-}"
+                PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
+                USE_VALGRIND: "${USE_VALGRIND:-}"
         environment:
             ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Wordpress-demo-app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
@@ -20,6 +21,7 @@ services:
             ELASTIC_APM_LOG_LEVEL:
             ELASTIC_APM_LOG_LEVEL_SYSLOG:
             ELASTIC_APM_LOG_LEVEL_STDERR:
+            ELASTIC_APM_DISABLE_SEND:
             WORDPRESS_DB_HOST: db:3306
             WORDPRESS_DB_USER: wordpress
             WORDPRESS_DB_PASSWORD: wordpress
@@ -28,11 +30,6 @@ services:
 
     web:
         image: nginx:${NGINX_DOCKER_LABEL:-latest}
-#        build:
-#            context: .
-#            dockerfile: Dockerfile_NGINX
-#            args:
-#                NGINX_DOCKER_LABEL: "${NGINX_DOCKER_LABEL:-latest}"
         depends_on:
             - php-backend
         volumes:
