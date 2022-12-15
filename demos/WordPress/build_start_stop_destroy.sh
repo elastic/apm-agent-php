@@ -7,8 +7,6 @@ set -e
 # Kibana: http://<external IP of test machine>:5601/
 #
 
-app_only_default=no
-
 function print_command_line_help () {
     local defaults="Default values:"
     local new_line_indent="\n\t"
