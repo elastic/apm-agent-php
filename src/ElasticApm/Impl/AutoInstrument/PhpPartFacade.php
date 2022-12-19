@@ -266,8 +266,8 @@ final class PhpPartFacade
     public static function ensureHaveLatestDataDeferredByExtension(): void
     {
         // last thrown should be fetched before last PHP error
-        // self::ensureHaveLastThrown();
-        // self::ensureHaveLastPhpError();
+        self::ensureHaveLastThrown();
+        self::ensureHaveLastPhpError();
     }
 
     private static function ensureHaveLastThrown(): void
