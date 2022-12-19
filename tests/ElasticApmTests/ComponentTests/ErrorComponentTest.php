@@ -221,8 +221,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         // was converted from notice to warning
         // https://www.php.net/manual/en/migration80.incompatible.php
         self::assertNotNull($expectedType, $dbgCtxStr);
-        self::assertSame($expectedType, $actualError->exception->type);
-        self::assertSame($expectedCode, $actualError->exception->code);
+        self::assertSame($expectedType, $actualError->exception->type, $dbgCtxStr);
+        self::assertSame($expectedCode, $actualError->exception->code, $dbgCtxStr);
         $expectedMessage
             = 'Undefined variable'
               // "Undefined variable ..." message:
