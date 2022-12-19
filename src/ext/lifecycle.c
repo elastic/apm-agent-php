@@ -374,6 +374,45 @@ typedef struct PhpErrorData PhpErrorData;
 static bool g_lastPhpErrorDataSet = false;
 static PhpErrorData g_lastPhpErrorData;
 
+void zeroLastPhpErrorData( PhpErrorData* phpErrorData )
+{
+    phpErrorData->type = -1;
+    phpErrorData->fileName = NULL;
+    phpErrorData->lineNumber = 0;
+    phpErrorData->message = NULL;
+    ZVAL_NULL( &( phpErrorData->stackTrace ) );
+}
+
+void shallowCopyLastPhpErrorData( PhpErrorData* src, PhpErrorData* dst )
+{
+    dst->type = src->type;
+    dst->fileName = src->fileName;
+    dst->lineNumber = 0;
+    dst->message = src->message;
+    dst->stackTrace = src->stackTrace;
+}
+
+void freeAndZeroLastPhpErrorData( PhpErrorData* phpErrorData )
+{
+    if ( phpErrorData->fileName != NULL )
+    {
+        ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( /* in,out */ phpErrorData->fileName );
+    }
+
+    if ( phpErrorData->message != NULL )
+    {
+        ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( /* in,out */ phpErrorData->message );
+    }
+
+    if ( ! Z_ISNULL( phpErrorData->stackTrace ) )
+    {
+        zval_ptr_dtor( &( phpErrorData->stackTrace ) );
+        ZVAL_NULL( &( phpErrorData->stackTrace ) );
+    }
+
+    zeroLastPhpErrorData( phpErrorData );
+}
+
 void resetLastPhpErrorData()
 {
     if ( ! g_lastPhpErrorDataSet )
@@ -381,13 +420,7 @@ void resetLastPhpErrorData()
         return;
     }
 
-    g_lastPhpErrorData.type = -1;
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( g_lastPhpErrorData.fileName );
-    g_lastPhpErrorData.lineNumber = 0;
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( g_lastPhpErrorData.message );
-
-    zval_ptr_dtor( &( g_lastPhpErrorData.stackTrace ) );
-    ZVAL_UNDEF( &( g_lastPhpErrorData.stackTrace ) );
+    freeAndZeroLastPhpErrorData( &g_lastPhpErrorData );
 
     g_lastPhpErrorDataSet = false;
 }
@@ -397,30 +430,29 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
 
     ResultCode resultCode;
-    const char* fileNameCopy = NULL;
-    const char* messageCopy = NULL;
+    PhpErrorData tempPhpErrorData;
+    zeroLastPhpErrorData( &tempPhpErrorData );
 
-    resetLastPhpErrorData();
+    if ( fileName != NULL )
+    {
+        ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( fileName, /* out */ tempPhpErrorData.fileName );
+    }
+    if ( message != NULL )
+    {
+        ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( message, /* out */ tempPhpErrorData.message );
+    }
 
-    ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( fileName, fileNameCopy );
-    ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( message, messageCopy );
+    zend_fetch_debug_backtrace( &( tempPhpErrorData.stackTrace ), /* skip_last */ 0, /* options */ 0, /* limit */ 0 );
 
-    g_lastPhpErrorData.type = type;
-    g_lastPhpErrorData.fileName = fileNameCopy;
-    g_lastPhpErrorData.lineNumber = lineNumber;
-    g_lastPhpErrorData.message = messageCopy;
-
-    zend_fetch_debug_backtrace( &( g_lastPhpErrorData.stackTrace ), /* skip_last */ 0, /* options */ 0, /* limit */ 0 );
-
+    shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
+    zeroLastPhpErrorData( &tempPhpErrorData );
     g_lastPhpErrorDataSet = true;
 
     finally:
     return;
 
     failure:
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( messageCopy );
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( fileNameCopy );
-
+    freeAndZeroLastPhpErrorData( &tempPhpErrorData );
     goto finally;
 }
 
@@ -483,21 +515,18 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
 
 void elasticApmGetLastPhpError( zval* return_value )
 {
-    RETURN_NULL();
+    if ( ! g_lastPhpErrorDataSet )
+    {
+        RETURN_NULL();
+    }
 
-// TODO: Sergey Kleyman: Uncomment
-//    if ( ! g_lastPhpErrorDataSet )
-//    {
-//        RETURN_NULL();
-//    }
-//
-//    array_init( return_value );
-//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
-//    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
-//    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
-//    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
-////    Z_TRY_ADDREF( g_lastPhpErrorData.stackTrace );
-////    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
+    array_init( return_value );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "type", long, (zend_long)( g_lastPhpErrorData.type ) );
+    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", g_lastPhpErrorData.fileName );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "lineNumber", long, (zend_long)( g_lastPhpErrorData.lineNumber ) );
+    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", g_lastPhpErrorData.message );
+    Z_TRY_ADDREF( g_lastPhpErrorData.stackTrace );
+    ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
@@ -662,6 +691,9 @@ void elasticApmRequestShutdown()
     // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
+
+    resetLastPhpErrorData();
+    resetLastThrown();
 
     resultCode = resultSuccess;
 
