@@ -387,7 +387,7 @@ void shallowCopyLastPhpErrorData( PhpErrorData* src, PhpErrorData* dst )
 {
     dst->type = src->type;
     dst->fileName = src->fileName;
-    dst->lineNumber = 0;
+    dst->lineNumber = src->lineNumber;
     dst->message = src->message;
     dst->stackTrace = src->stackTrace;
 }
@@ -443,6 +443,9 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     }
 
     zend_fetch_debug_backtrace( &( tempPhpErrorData.stackTrace ), /* skip_last */ 0, /* options */ 0, /* limit */ 0 );
+
+    tempPhpErrorData.type = type;
+    tempPhpErrorData.lineNumber = lineNumber;
 
     shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
     zeroLastPhpErrorData( &tempPhpErrorData );
