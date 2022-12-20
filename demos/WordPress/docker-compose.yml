@@ -1,37 +1,40 @@
 version: '2.1'
 
 services:
-    wordpress:
+    php-backend:
         depends_on:
             db:
                 condition: service_healthy
-            apm-server:
-                condition: service_healthy
         build:
             context: .
+            dockerfile: Dockerfile
             args:
                 WORDPRESS_DOCKER_LABEL: "${WORDPRESS_DOCKER_LABEL:-6.1.0-php8.1-fpm}"
                 PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
-                PHP_AGENT_INSTALL_PACKAGE_FROM_URL: "${PHP_AGENT_INSTALL_PACKAGE_FROM_URL:-}"
+                PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
+                USE_VALGRIND: "${USE_VALGRIND:-}"
         environment:
             ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Wordpress-demo-app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
             ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             ELASTIC_APM_LOG_LEVEL:
+            ELASTIC_APM_LOG_LEVEL_SYSLOG:
+            ELASTIC_APM_LOG_LEVEL_STDERR:
+            ELASTIC_APM_DISABLE_SEND:
             WORDPRESS_DB_HOST: db:3306
             WORDPRESS_DB_USER: wordpress
             WORDPRESS_DB_PASSWORD: wordpress
         volumes:
-            - ./_TEMP/shared_wordpress_var_www_html:/var/www/html
+            - shared_wordpress_var_www_html:/var/www/html
 
-    nginx:
-        image: nginx:latest
+    web:
+        image: nginx:${NGINX_DOCKER_LABEL:-latest}
         depends_on:
-            - wordpress
+            - php-backend
         volumes:
             - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-            - ./_TEMP/shared_wordpress_var_www_html:/var/www/html
+            - shared_wordpress_var_www_html:/var/www/html
         ports:
             - "${WEB_FRONT_HOST:-127.0.0.1}:8080:80"
         healthcheck:
@@ -142,5 +145,11 @@ services:
     wait_for_all_services_to_be_healthy:
         image: busybox
         depends_on:
-            nginx:
+            web:
                 condition: service_healthy
+            apm-server:
+                condition: service_healthy
+
+volumes:
+    shared_wordpress_var_www_html:
+        driver: local

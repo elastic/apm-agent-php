@@ -30,18 +30,18 @@ namespace Elastic\Apm\Impl\AutoInstrument;
  */
 final class PhpErrorData
 {
-    /** @var int */
-    public $type;
+    /** @var ?int */
+    public $type = null;
 
-    /** @var string */
-    public $fileName;
+    /** @var ?string */
+    public $fileName = null;
 
-    /** @var int */
-    public $lineNumber;
+    /** @var ?int */
+    public $lineNumber = null;
 
-    /** @var string */
-    public $message;
+    /** @var ?string */
+    public $message = null;
 
-    /** @var array<string, mixed>[] */
-    public $stackTrace;
+    /** @var null|array<string, mixed>[] */
+    public $stackTrace = null;
 }
