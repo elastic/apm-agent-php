@@ -1,0 +1,11 @@
+{
+    "name": "demo/elasticsearch_client",
+    "description": "Demo for usage of Elasticsearch for PHP client.",
+    "keywords": ["elasticsearch", "client"],
+    "type": "project",
+    "license": "Apache-2.0",
+    "require": {
+        "php": "^8.0",
+        "elasticsearch/elasticsearch": "^8.5"
+    }
+}
