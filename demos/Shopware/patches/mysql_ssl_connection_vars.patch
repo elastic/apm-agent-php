@@ -1,0 +1,90 @@
+Index: src/Command/SystemInstallCommand.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- a/src/Command/SystemInstallCommand.php	(revision 951d9097859e2a5d57529ac2223ea88894ed1e77)
++++ b/src/Command/SystemInstallCommand.php	(date 1603320258440)
+@@ -83,6 +83,22 @@
+             'charset' => 'utf8mb4',
+         ];
+ 
++        if (isset($_ENV['DATABASE_SSL_CA'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CA] = $_ENV['DATABASE_SSL_CA'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_CERT'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CERT] = $_ENV['DATABASE_SSL_CERT'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_KEY'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_KEY] = $_ENV['DATABASE_SSL_KEY'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_DONT_VERIFY_SERVER_CERT'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
++        }
++
+         $connection = DriverManager::getConnection($parameters, new Configuration());
+ 
+         $output->writeln('Prepare installation');
+Index: vendor/shopware/core/HttpKernel.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- a/vendor/shopware/core/HttpKernel.php	(revision 951d9097859e2a5d57529ac2223ea88894ed1e77)
++++ b/vendor/shopware/core/HttpKernel.php	(date 1603320255960)
+@@ -115,6 +115,22 @@
+             'charset' => 'utf8mb4',
+         ];
+ 
++        if (isset($_ENV['DATABASE_SSL_CA'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CA] = $_ENV['DATABASE_SSL_CA'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_CERT'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CERT] = $_ENV['DATABASE_SSL_CERT'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_KEY'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_KEY] = $_ENV['DATABASE_SSL_KEY'];
++        }
++
++        if (isset($_ENV['DATABASE_SSL_DONT_VERIFY_SERVER_CERT'])) {
++            $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
++        }
++
+         self::$connection = DriverManager::getConnection($parameters, new Configuration());
+ 
+         return self::$connection;
+Index: vendor/shopware/core/Kernel.php
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- a/vendor/shopware/core/Kernel.php	(revision 951d9097859e2a5d57529ac2223ea88894ed1e77)
++++ b/vendor/shopware/core/Kernel.php	(date 1603320255950)
+@@ -163,6 +163,22 @@
+                 'charset' => 'utf8mb4',
+             ];
+ 
++            if (isset($_ENV['DATABASE_SSL_CA'])) {
++                $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CA] = $_ENV['DATABASE_SSL_CA'];
++            }
++
++            if (isset($_ENV['DATABASE_SSL_CERT'])) {
++                $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_CERT] = $_ENV['DATABASE_SSL_CERT'];
++            }
++
++            if (isset($_ENV['DATABASE_SSL_KEY'])) {
++                $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_KEY] = $_ENV['DATABASE_SSL_KEY'];
++            }
++
++            if (isset($_ENV['DATABASE_SSL_DONT_VERIFY_SERVER_CERT'])) {
++                $parameters['driverOptions'][\PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
++            }
++
+             self::$connection = DriverManager::getConnection($parameters, new Configuration());
+         }
+ 

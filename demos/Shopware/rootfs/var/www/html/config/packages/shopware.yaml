@@ -1,0 +1,3 @@
+shopware:
+  auto_update:
+    enabled: false

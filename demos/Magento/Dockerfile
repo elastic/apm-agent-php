@@ -1,0 +1,4 @@
+FROM docker.io/bitnami/magento:2
+
+RUN curl -fsSL https://github.com/elastic/apm-agent-php/releases/download/v1.5/apm-agent-php_1.5_all.deb > /tmp/apm-gent-php.deb \
+    && dpkg -i /tmp/apm-gent-php.deb
