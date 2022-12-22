@@ -189,7 +189,7 @@ function main() {
         follow_logs_for_servies=("${follow_logs_for_servies[@]}" "${separate_php_backend_service}")
     fi
 
-    if [ "${app_only}" == "true" ]; then
+    if [ "${app_only}" != "true" ]; then
         follow_logs_for_servies=("${follow_logs_for_servies[@]}" apm-server)
     fi
     run_command ${docker_cmd_prefix} logs --follow "${follow_logs_for_servies[@]}"

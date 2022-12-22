@@ -36,7 +36,7 @@ services:
             - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
             - shared_wordpress_var_www_html:/var/www/html
         ports:
-            - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-8080}:80"
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:80"
         healthcheck:
             test: ["CMD", "curl", "--max-time", "10", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://localhost:80/"]
             retries: 10
