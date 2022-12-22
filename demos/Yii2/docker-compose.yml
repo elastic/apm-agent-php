@@ -64,8 +64,8 @@ services:
       test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'" ]
       retries: 10
       interval: 20s
-    volumes:
-      - esdata:/usr/share/elasticsearch/data
+#    volumes:
+#      - esdata:/usr/share/elasticsearch/data
 
   kibana:
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-7.17.4}
@@ -88,16 +88,28 @@ services:
         condition: service_healthy
 
   mysql:
-    image: 'mysql:latest'
+    image: mysql:${MYSQL_VERSION:-5.7}
     container_name: mysql
-    volumes:
-      - ./docker/dbdata:/var/lib/mysql
+#    volumes:
+#      - ./docker/dbdata:/var/lib/mysql
     ports:
       - '3306:3306'
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: pass
       MYSQL_DATABASE: database
+
+# mysql:
+#   image: 'mysql:latest'
+#   container_name: mysql
+#   volumes:
+#     - ./docker/dbdata:/var/lib/mysql
+#   ports:
+#     - '3306:3306'
+#   restart: always
+#   environment:
+#     MYSQL_ROOT_PASSWORD: pass
+#     MYSQL_DATABASE: database
 
   php:
     build:
@@ -114,8 +126,9 @@ services:
 #      - ~/.composer-docker/cache:/root/.composer/cache:delegated
 #      - ./:/app:delegated
     ports:
-      - '8000:80'
+      - '0.0.0.0:8000:80'
 
-volumes:
-  esdata:
-    driver: local
+#volumes:
+#  esdata:
+#    driver: local
+
