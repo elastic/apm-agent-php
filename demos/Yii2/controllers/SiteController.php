@@ -174,8 +174,10 @@ class SiteController extends Controller
         $oldApp = \Yii::$app;
         $config = require \Yii::getAlias('@app'). '/config/console.php';
         new \yii\console\Application($config);
-        $result = \Yii::$app->runAction('migrate', ['migrationPath' => '@app/migrations/', 'interactive' => true]);
+        $result = \Yii::$app->runAction('migrate', ['migrationPath' => '@app/migrations/', 'interactive' => false]);
 
         \Yii::$app = $oldApp;
+
+        return true;
     }
 }
