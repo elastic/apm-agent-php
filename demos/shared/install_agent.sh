@@ -27,9 +27,9 @@ detect_and_install () {
         return
     fi
 
-    if [ -n "${PHP_AGENT_INSTALL_PACKAGE_FROM_URL}" ]; then
-        echo "Installing agent using package from url (PHP_AGENT_INSTALL_PACKAGE_FROM_URL: ${PHP_AGENT_INSTALL_PACKAGE_FROM_URL}) ..."
-        install_local_package_from_url "${PHP_AGENT_INSTALL_PACKAGE_FROM_URL}"
+    if [ -n "${PHP_AGENT_INSTALL_PACKAGE_URL}" ]; then
+        echo "Installing agent using package URL (PHP_AGENT_INSTALL_PACKAGE_URL: ${PHP_AGENT_INSTALL_PACKAGE_URL}) ..."
+        install_local_package_from_url "${PHP_AGENT_INSTALL_PACKAGE_URL}"
         return
     fi
 

@@ -25,8 +25,11 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 use RuntimeException;
@@ -290,12 +293,135 @@ final class PhpPartFacade
         );
     }
 
+    /**
+     * @param string $expectedType
+     * @param mixed  $actualValue
+     *
+     * @return void
+     */
+    private static function logUnexpectedType(string $expectedType, $actualValue): void
+    {
+        BootstrapStageLogger::logCritical(
+            'Actual type does not match the expected type'
+            . '; ' . 'expected type: ' . $expectedType
+            . ', ' . 'actual type: ' . DbgUtil::getType($actualValue)
+            . ', ' . 'actual value: ' . LoggableToString::convert($actualValue),
+            __LINE__,
+            __FUNCTION__
+        );
+    }
+
+    /**
+     * @param string              $expectedKey
+     * @param array<mixed, mixed> $actualArray
+     *
+     * @return bool
+     */
+    private static function verifyKeyExists(string $expectedKey, array $actualArray): bool
+    {
+        if (array_key_exists($expectedKey, $actualArray)) {
+            return true;
+        }
+
+        BootstrapStageLogger::logCritical(
+            'Expected key does not exist'
+            . '; ' . 'expected key: ' . $expectedKey
+            . ', ' . 'actual array keys: ' . json_encode(array_keys($actualArray)),
+            __LINE__,
+            __FUNCTION__
+        );
+        return false;
+    }
+
+    /**
+     * @param array<mixed, mixed> $dataFromExt
+     * @param string              $key
+     *
+     * @return ?int
+     */
+    private static function getIntFromPhpErrorData(array $dataFromExt, string $key): ?int
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $value = $dataFromExt[$key];
+        if (!is_int($value)) {
+            self::logUnexpectedType('int', $value);
+            return null;
+        }
+        return $value;
+    }
+
+    /**
+     * @param array<mixed, mixed> $dataFromExt
+     * @param string              $key
+     *
+     * @return ?string
+     */
+    private static function getNullableStringFromPhpErrorData(array $dataFromExt, string $key): ?string
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $value = $dataFromExt[$key];
+        if (!($value === null || is_string($value))) {
+            self::logUnexpectedType('string|null', $value);
+            return null;
+        }
+        return $value;
+    }
+
+    /**
+     * @param array<mixed, mixed> $dataFromExt
+     * @param string              $key
+     *
+     * @return null|array<string, mixed>[]
+     */
+    private static function getStackTraceFromPhpErrorData(array $dataFromExt, string $key): ?array
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $stackTrace = $dataFromExt[$key];
+        if (!is_array($stackTrace)) {
+            self::logUnexpectedType('array', $stackTrace);
+            return null;
+        }
+        if (!ArrayUtil::isList($stackTrace)) {
+            BootstrapStageLogger::logCritical(
+                'Stack trace array should be a list but it is not'
+                . '; ' . 'stackTrace keys: ' . json_encode(array_keys($stackTrace))
+                . ', ' . 'stackTrace: ' . LoggableToString::convert($stackTrace),
+                __LINE__,
+                __FUNCTION__
+            );
+            return null;
+        }
+
+        /** @var array<string, mixed>[] $stackTrace */
+        return $stackTrace;
+    }
+
+    /**
+     * @param array<mixed, mixed> $dataFromExt
+     *
+     * @return PhpErrorData
+     */
+    private static function buildPhpErrorData(array $dataFromExt): PhpErrorData
+    {
+        $result = new PhpErrorData();
+        $result->type = self::getIntFromPhpErrorData($dataFromExt, 'type');
+        $result->fileName = self::getNullableStringFromPhpErrorData($dataFromExt, 'fileName');
+        $result->lineNumber = self::getIntFromPhpErrorData($dataFromExt, 'lineNumber');
+        $result->message = self::getNullableStringFromPhpErrorData($dataFromExt, 'message');
+        $result->stackTrace = self::getStackTraceFromPhpErrorData($dataFromExt, 'stackTrace');
+        return $result;
+    }
+
     private static function ensureHaveLastPhpError(): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
-         *
-         * @var ?array<string, mixed> $lastPhpErrorData
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
@@ -305,17 +431,28 @@ final class PhpPartFacade
             return;
         }
 
-        $phpErrorData = new PhpErrorData();
-        $phpErrorData->type = $lastPhpErrorData['type']; // @phpstan-ignore-line
-        $phpErrorData->fileName = $lastPhpErrorData['fileName']; // @phpstan-ignore-line
-        $phpErrorData->lineNumber = $lastPhpErrorData['lineNumber']; // @phpstan-ignore-line
-        $phpErrorData->message = $lastPhpErrorData['message']; // @phpstan-ignore-line
-        $phpErrorData->stackTrace = $lastPhpErrorData['stackTrace']; // @phpstan-ignore-line
+        if (is_array($lastPhpErrorData)) {
+            BootstrapStageLogger::logDebug(
+                'Type of value returned by elastic_apm_get_last_php_error(): ' . DbgUtil::getType($lastPhpErrorData),
+                __LINE__,
+                __FUNCTION__
+            );
+        } else {
+            BootstrapStageLogger::logCritical(
+                'Value returned by elastic_apm_get_last_php_error() is not an array'
+                . ', ' . 'returned value type: ' . DbgUtil::getType($lastPhpErrorData)
+                . ', ' . 'returned value: ' . $lastPhpErrorData,
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+        /** @var array<mixed, mixed> $lastPhpErrorData */
 
         self::callFromExtensionToTransaction(
             __FUNCTION__,
-            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($phpErrorData): void {
-                $transactionForExtensionRequest->onPhpError($phpErrorData);
+            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($lastPhpErrorData): void {
+                $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
             }
         );
     }
