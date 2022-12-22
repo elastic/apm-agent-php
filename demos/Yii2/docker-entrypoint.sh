@@ -3,6 +3,6 @@
 chmod -R 777 assets/
 chmod -R 777 web/
 
-#php yii migrate
+#php yii migrate --interactive=0
 
-#php-fpm
+/app/parent_container_docker_entrypoint.sh "$@"

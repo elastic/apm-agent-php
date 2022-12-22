@@ -52,6 +52,12 @@ class SiteController extends Controller
 
     public function actionIndex()
     {
+        try {
+            $this->migrate();
+        } catch (\Exception $exception) {
+            return $this->render('index');
+        }
+
         return $this->render('index');
     }
 
@@ -161,5 +167,15 @@ class SiteController extends Controller
         Article::findOne($id)->delete();
 
         return $this->redirect(['blog']);
+    }
+
+    public function migrate()
+    {
+        $oldApp = \Yii::$app;
+        $config = require \Yii::getAlias('@app'). '/config/console.php';
+        new \yii\console\Application($config);
+        $result = \Yii::$app->runAction('migrate', ['migrationPath' => '@app/migrations/', 'interactive' => true]);
+
+        \Yii::$app = $oldApp;
     }
 }

@@ -11,9 +11,6 @@ RUN composer install
 RUN curl -fsSL https://github.com/elastic/apm-agent-php/releases/download/v1.5/apm-agent-php_1.5_all.deb > /tmp/apm-gent-php.deb \
     && dpkg -i /tmp/apm-gent-php.deb
 
-RUN mkdir -p /usr/bin
-RUN mv /app/docker-entrypoint.sh /usr/bin/
-RUN chmod a+x /usr/bin/docker-entrypoint.sh
-
-#ENTRYPOINT ["/usr/bin/docker-entrypoint.sh"]
-#EXPOSE 80/tcp
+RUN mv /usr/local/bin/docker-php-entrypoint /app/parent_container_docker_entrypoint.sh
+COPY docker-entrypoint.sh /usr/local/bin/docker-php-entrypoint
+RUN chmod +x /usr/local/bin/docker-php-entrypoint
