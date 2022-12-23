@@ -337,6 +337,7 @@ final class TransactionForExtensionRequest
         $relatedThrowable = null;
         if (
             $this->lastThrown !== null
+            && $phpErrorData->message !== null
             && TextUtil::isPrefixOf('Uncaught Exception: ', $phpErrorData->message, /* isCaseSensitive: */ false)
         ) {
             $relatedThrowable = $this->lastThrown;

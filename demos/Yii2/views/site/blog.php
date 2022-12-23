@@ -4,7 +4,7 @@ use yii\helpers\Html;
 use yii\widgets\DetailView;
 use yii\widgets\LinkPager;
 ?>
-    <h1>Countries</h1>
+    <h1>Blog</h1>
     <ul>
         <?php foreach ($articles as $article): ?>
             <div>
