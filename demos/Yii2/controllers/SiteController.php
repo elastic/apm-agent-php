@@ -52,12 +52,6 @@ class SiteController extends Controller
 
     public function actionIndex()
     {
-        try {
-            $this->migrate();
-        } catch (\Exception $exception) {
-            return $this->render('index');
-        }
-
         return $this->render('index');
     }
 

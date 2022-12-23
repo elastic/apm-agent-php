@@ -1,7 +1,6 @@
 FROM shyim/shopware:6.2.0
 
 RUN mkdir -p /app
-#RUN mkdir -p /usr/local/etc/php/conf.d/
 
 ARG USE_VALGRIND
 ENV USE_VALGRIND=${USE_VALGRIND}
@@ -25,6 +24,3 @@ COPY ./shared/local_agent_code_php.ini /app/local_agent_code_php.ini
 COPY ./shared/install_agent.sh /app/install_agent.sh
 RUN chmod +x /app/install_agent.sh
 RUN /app/install_agent.sh
-#RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"
-#RUN ln -s /app/local_agent_code_php.ini /opt/bitnami/php/etc/conf.d/98-elastic-apm.ini
-#RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"
