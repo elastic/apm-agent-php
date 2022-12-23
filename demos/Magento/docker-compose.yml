@@ -4,20 +4,29 @@ services:
     app:
         build:
             context: ./..
-            dockerfile: ./CakePHP/Dockerfile
+            dockerfile: ./Magento/Dockerfile
             args:
-                WEBDEVOPS_DOCKER_LABEL: "${WEBDEVOPS_DOCKER_LABEL:-8.0}"
                 PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
                 PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
                 USE_VALGRIND: "${USE_VALGRIND:-}"
         depends_on:
             db:
+                condition: service_started
+            elasticsearch:
                 condition: service_healthy
         environment:
-            WEB_DOCUMENT_ROOT: /app/webroot
-            DATABASE_URL: postgres://db_user:db_user_pass@db:5432/cakephp_demo_app_db
-            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-CakePHP_demo_app}
+            MAGENTO_USERNAME: magento_admin_user
+            MAGENTO_PASSWORD: magento_admin_user_password1234
+            MAGENTO_HOST: ${APP_HTTP_EXTERNALLY_VISIBLE_HOST:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}
+            MAGENTO_DATABASE_HOST: db
+            MAGENTO_DATABASE_PORT_NUMBER: 3306
+            MAGENTO_DATABASE_USER: my_db_user
+            MAGENTO_DATABASE_PASSWORD: my_db_user_password
+            MAGENTO_DATABASE_NAME: magento_demo_app_db
+            ELASTICSEARCH_HOST: elasticsearch
+            ELASTICSEARCH_PORT_NUMBER: 9200
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Magento_demo_app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
             ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             ELASTIC_APM_LOG_LEVEL:
@@ -25,25 +34,16 @@ services:
             ELASTIC_APM_LOG_LEVEL_STDERR:
             ELASTIC_APM_DISABLE_SEND:
         ports:
-            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:80"
-        healthcheck:
-            test: ["CMD", "curl", "--max-time", "10", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://localhost:80/"]
-            retries: 10
-            interval: 10s
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:8080"
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTPS:-8443}:8443"
 
     db:
-        image: postgres:13
-        healthcheck:
-            test: ["CMD", "pg_isready", "--quiet"]
-            timeout: 20s
-            retries: 10
+        image: docker.io/bitnami/mariadb:10.4
         environment:
-            - POSTGRES_USER=db_user
-            - POSTGRES_PASSWORD=db_user_pass
-            - PGUSER=db_user
-            - PGPASSWORD=db_user_pass
-            - POSTGRES_DB=cakephp_demo_app_db
-            - PGDATABASE=cakephp_demo_app_db
+            MARIADB_USER: my_db_user
+            MARIADB_PASSWORD: my_db_user_password
+            MARIADB_DATABASE: magento_demo_app_db
+            MARIADB_ROOT_PASSWORD: UNUSED_mariadb_root_password
 
     apm-server:
         image: docker.elastic.co/apm/apm-server:${STACK_VERSION:-7.17.4}
@@ -136,6 +136,6 @@ services:
         image: busybox
         depends_on:
             app:
-                condition: service_healthy
+                condition: service_started
             apm-server:
                 condition: service_healthy

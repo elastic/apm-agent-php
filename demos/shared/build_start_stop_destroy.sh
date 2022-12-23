@@ -89,7 +89,6 @@ function parse_command_line_arguments () {
                     fi
                     command_to_run+=("${arg}")
                     ;;
-
         esac
     done
 
@@ -133,6 +132,7 @@ function run_command() {
 }
 
 function cleanup () {
+    pause_between_steps_if_set
     ${docker_cmd_prefix} down -v --remove-orphans
 }
 
@@ -189,7 +189,7 @@ function main() {
         follow_logs_for_servies=("${follow_logs_for_servies[@]}" "${separate_php_backend_service}")
     fi
 
-    if [ "${app_only}" == "true" ]; then
+    if [ "${app_only}" != "true" ]; then
         follow_logs_for_servies=("${follow_logs_for_servies[@]}" apm-server)
     fi
     run_command ${docker_cmd_prefix} logs --follow "${follow_logs_for_servies[@]}"

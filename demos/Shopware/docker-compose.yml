@@ -4,9 +4,8 @@ services:
     app:
         build:
             context: ./..
-            dockerfile: ./CakePHP/Dockerfile
+            dockerfile: ./Shopware/Dockerfile
             args:
-                WEBDEVOPS_DOCKER_LABEL: "${WEBDEVOPS_DOCKER_LABEL:-8.0}"
                 PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
                 PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
@@ -15,9 +14,14 @@ services:
             db:
                 condition: service_healthy
         environment:
-            WEB_DOCUMENT_ROOT: /app/webroot
-            DATABASE_URL: postgres://db_user:db_user_pass@db:5432/cakephp_demo_app_db
-            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-CakePHP_demo_app}
+            INSTALL_ADMIN_USERNAME: shopware_admin
+            INSTALL_ADMIN_PASSWORD: shopware_admin_password
+            APP_SECRET: 440dec3766de53010c5ccf6231c182acfc90bd25cff82e771245f736fd276518
+            INSTANCE_ID: 10612e3916e153dd3447850e944a03fabe89440970295447a30a75b151bd844e
+            APP_URL: http://${APP_HTTP_EXTERNALLY_VISIBLE_HOST:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}
+            DATABASE_HOST: db
+            DATABASE_URL: mysql://my_db_user:my_db_user_password@db:3306/shopware_demo_app_db
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Shopware_demo_app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
             ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             ELASTIC_APM_LOG_LEVEL:
@@ -26,24 +30,19 @@ services:
             ELASTIC_APM_DISABLE_SEND:
         ports:
             - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:80"
-        healthcheck:
-            test: ["CMD", "curl", "--max-time", "10", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://localhost:80/"]
-            retries: 10
-            interval: 10s
 
     db:
-        image: postgres:13
+        image: mysql:${MYSQL_VERSION:-5.7}
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: UNUSED_mysql_root_password
+            MYSQL_DATABASE: shopware_demo_app_db
+            MYSQL_USER: my_db_user
+            MYSQL_PASSWORD: my_db_user_password
         healthcheck:
-            test: ["CMD", "pg_isready", "--quiet"]
+            test: [ "CMD", "mysqladmin", "--host=localhost" ,"ping" ]
             timeout: 20s
             retries: 10
-        environment:
-            - POSTGRES_USER=db_user
-            - POSTGRES_PASSWORD=db_user_pass
-            - PGUSER=db_user
-            - PGPASSWORD=db_user_pass
-            - POSTGRES_DB=cakephp_demo_app_db
-            - PGDATABASE=cakephp_demo_app_db
 
     apm-server:
         image: docker.elastic.co/apm/apm-server:${STACK_VERSION:-7.17.4}
