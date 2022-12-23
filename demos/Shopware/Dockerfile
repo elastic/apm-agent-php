@@ -1,15 +1,7 @@
-ARG WORDPRESS_DOCKER_LABEL
-FROM wordpress:${WORDPRESS_DOCKER_LABEL}
-RUN echo "WORDPRESS_DOCKER_LABEL: ${WORDPRESS_DOCKER_LABEL}"
-
-RUN apt-get -qq update \
-    && apt-get -qq -y --no-install-recommends install \
-        logrotate \
-        procps \
-        rsyslog \
-    && rm -rf /var/lib/apt/lists/*
+FROM shyim/shopware:6.2.0
 
 RUN mkdir -p /app
+#RUN mkdir -p /usr/local/etc/php/conf.d/
 
 ARG USE_VALGRIND
 ENV USE_VALGRIND=${USE_VALGRIND}
@@ -33,7 +25,6 @@ COPY ./shared/local_agent_code_php.ini /app/local_agent_code_php.ini
 COPY ./shared/install_agent.sh /app/install_agent.sh
 RUN chmod +x /app/install_agent.sh
 RUN /app/install_agent.sh
-
-RUN mv /usr/local/bin/docker-entrypoint.sh /app/parent_container_docker_entrypoint.sh
-COPY ./shared/docker_entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+#RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"
+#RUN ln -s /app/local_agent_code_php.ini /opt/bitnami/php/etc/conf.d/98-elastic-apm.ini
+#RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"

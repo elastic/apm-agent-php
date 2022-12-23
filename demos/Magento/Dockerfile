@@ -1,15 +1,7 @@
-ARG WORDPRESS_DOCKER_LABEL
-FROM wordpress:${WORDPRESS_DOCKER_LABEL}
-RUN echo "WORDPRESS_DOCKER_LABEL: ${WORDPRESS_DOCKER_LABEL}"
-
-RUN apt-get -qq update \
-    && apt-get -qq -y --no-install-recommends install \
-        logrotate \
-        procps \
-        rsyslog \
-    && rm -rf /var/lib/apt/lists/*
+FROM docker.io/bitnami/magento:2
 
 RUN mkdir -p /app
+RUN mkdir -p /usr/local/etc/php/conf.d/
 
 ARG USE_VALGRIND
 ENV USE_VALGRIND=${USE_VALGRIND}
@@ -20,6 +12,8 @@ COPY ./shared/install_valgrind.sh /app/install_valgrind.sh
 RUN chmod +x /app/install_valgrind.sh
 RUN /app/install_valgrind.sh "${USE_VALGRIND}"
 
+ARG PHP_CONF_D_DIR_FULL_PATH
+RUN echo "PHP_CONF_D_DIR_FULL_PATH: ${PHP_CONF_D_DIR_FULL_PATH}"
 ARG PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY
 ENV PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY=${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY}
 RUN echo "PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: ${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY}"
@@ -32,8 +26,4 @@ RUN echo "PHP_AGENT_INSTALL_RELEASE_VERSION: ${PHP_AGENT_INSTALL_RELEASE_VERSION
 COPY ./shared/local_agent_code_php.ini /app/local_agent_code_php.ini
 COPY ./shared/install_agent.sh /app/install_agent.sh
 RUN chmod +x /app/install_agent.sh
-RUN /app/install_agent.sh
-
-RUN mv /usr/local/bin/docker-entrypoint.sh /app/parent_container_docker_entrypoint.sh
-COPY ./shared/docker_entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN PHP_CONF_D_DIR_FULL_PATH=${PHP_CONF_D_DIR_FULL_PATH} /app/install_agent.sh

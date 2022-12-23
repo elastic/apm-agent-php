@@ -1,15 +1,22 @@
-ARG WORDPRESS_DOCKER_LABEL
-FROM wordpress:${WORDPRESS_DOCKER_LABEL}
-RUN echo "WORDPRESS_DOCKER_LABEL: ${WORDPRESS_DOCKER_LABEL}"
+ARG WEBDEVOPS_DOCKER_LABEL
+FROM webdevops/php-nginx:${WEBDEVOPS_DOCKER_LABEL}
+RUN echo "WEBDEVOPS_DOCKER_LABEL: ${WEBDEVOPS_DOCKER_LABEL}"
 
-RUN apt-get -qq update \
-    && apt-get -qq -y --no-install-recommends install \
-        logrotate \
-        procps \
-        rsyslog \
-    && rm -rf /var/lib/apt/lists/*
+COPY ./CakePHP /app
+WORKDIR /app
 
-RUN mkdir -p /app
+RUN curl -s https://getcomposer.org/installer | php
+RUN composer create-project --prefer-dist cakephp/app:4.* cms
+
+RUN mv cms/* ./
+
+RUN composer install
+
+RUN mv article_app/templates/Articles/ templates/Articles/
+RUN rm -r templates/Pages/
+RUN mv article_app/templates/Pages/ templates/Pages/
+RUN mv article_app/src/Controller/ArticlesController.php src/Controller/ArticlesController.php
+RUN mv article_app/src/Model/Table/ArticlesTable.php src/Model/Table/ArticlesTable.php
 
 ARG USE_VALGRIND
 ENV USE_VALGRIND=${USE_VALGRIND}
@@ -33,7 +40,3 @@ COPY ./shared/local_agent_code_php.ini /app/local_agent_code_php.ini
 COPY ./shared/install_agent.sh /app/install_agent.sh
 RUN chmod +x /app/install_agent.sh
 RUN /app/install_agent.sh
-
-RUN mv /usr/local/bin/docker-entrypoint.sh /app/parent_container_docker_entrypoint.sh
-COPY ./shared/docker_entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh

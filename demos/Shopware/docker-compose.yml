@@ -1,12 +1,11 @@
 version: '2.1'
 
 services:
-    app-backend:
+    app:
         build:
             context: ./..
-            dockerfile: ./WordPress/Dockerfile
+            dockerfile: ./Shopware/Dockerfile
             args:
-                WORDPRESS_DOCKER_LABEL: "${WORDPRESS_DOCKER_LABEL:-6.1.0-php8.1-fpm}"
                 PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
                 PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
@@ -15,41 +14,31 @@ services:
             db:
                 condition: service_healthy
         environment:
-            WORDPRESS_DB_HOST: db:3306
-            WORDPRESS_DB_USER: wordpress
-            WORDPRESS_DB_PASSWORD: wordpress
-            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Wordpress_demo_app}
+            INSTALL_ADMIN_USERNAME: shopware_admin
+            INSTALL_ADMIN_PASSWORD: shopware_admin_password
+            APP_SECRET: 440dec3766de53010c5ccf6231c182acfc90bd25cff82e771245f736fd276518
+            INSTANCE_ID: 10612e3916e153dd3447850e944a03fabe89440970295447a30a75b151bd844e
+            APP_URL: http://${APP_HTTP_EXTERNALLY_VISIBLE_HOST:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}
+            DATABASE_HOST: db
+            DATABASE_URL: mysql://my_db_user:my_db_user_password@db:3306/shopware_demo_app_db
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Shopware_demo_app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
             ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             ELASTIC_APM_LOG_LEVEL:
             ELASTIC_APM_LOG_LEVEL_SYSLOG:
             ELASTIC_APM_LOG_LEVEL_STDERR:
             ELASTIC_APM_DISABLE_SEND:
-        volumes:
-            - shared_wordpress_var_www_html:/var/www/html
-
-    app-web:
-        image: nginx:${NGINX_DOCKER_LABEL:-latest}
-        depends_on:
-            - app-backend
-        volumes:
-            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-            - shared_wordpress_var_www_html:/var/www/html
         ports:
             - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:80"
-        healthcheck:
-            test: ["CMD", "curl", "--max-time", "10", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://localhost:80/"]
-            retries: 10
-            interval: 10s
 
     db:
         image: mysql:${MYSQL_VERSION:-5.7}
         restart: always
         environment:
-            MYSQL_ROOT_PASSWORD: password
-            MYSQL_DATABASE: wordpress
-            MYSQL_USER: wordpress
-            MYSQL_PASSWORD: wordpress
+            MYSQL_ROOT_PASSWORD: UNUSED_mysql_root_password
+            MYSQL_DATABASE: shopware_demo_app_db
+            MYSQL_USER: my_db_user
+            MYSQL_PASSWORD: my_db_user_password
         healthcheck:
             test: [ "CMD", "mysqladmin", "--host=localhost" ,"ping" ]
             timeout: 20s
@@ -145,11 +134,7 @@ services:
     wait_for_all_services_to_be_healthy:
         image: busybox
         depends_on:
-            app-web:
+            app:
                 condition: service_healthy
             apm-server:
                 condition: service_healthy
-
-volumes:
-    shared_wordpress_var_www_html:
-        driver: local
