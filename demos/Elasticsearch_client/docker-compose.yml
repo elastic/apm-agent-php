@@ -15,8 +15,7 @@ services:
                 PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
                 USE_VALGRIND: "${USE_VALGRIND:-}"
         environment:
-            DATABASE_URL: postgres://db_user:db_user_pass@db:5432/cakephp_demo_app_db
-            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-CakePHP_demo_app}
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Elasticsearch_client_demo_app}
             ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
             ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
             ELASTIC_APM_LOG_LEVEL:

@@ -89,7 +89,6 @@ function parse_command_line_arguments () {
                     fi
                     command_to_run+=("${arg}")
                     ;;
-
         esac
     done
 
@@ -133,6 +132,7 @@ function run_command() {
 }
 
 function cleanup () {
+    pause_between_steps_if_set
     ${docker_cmd_prefix} down -v --remove-orphans
 }
 

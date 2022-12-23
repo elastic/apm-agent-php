@@ -12,6 +12,8 @@ COPY ./shared/install_valgrind.sh /app/install_valgrind.sh
 RUN chmod +x /app/install_valgrind.sh
 RUN /app/install_valgrind.sh "${USE_VALGRIND}"
 
+ARG PHP_CONF_D_DIR_FULL_PATH
+RUN echo "PHP_CONF_D_DIR_FULL_PATH: ${PHP_CONF_D_DIR_FULL_PATH}"
 ARG PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY
 ENV PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY=${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY}
 RUN echo "PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: ${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY}"
@@ -24,7 +26,4 @@ RUN echo "PHP_AGENT_INSTALL_RELEASE_VERSION: ${PHP_AGENT_INSTALL_RELEASE_VERSION
 COPY ./shared/local_agent_code_php.ini /app/local_agent_code_php.ini
 COPY ./shared/install_agent.sh /app/install_agent.sh
 RUN chmod +x /app/install_agent.sh
-RUN /app/install_agent.sh
-RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"
-RUN ln -s /app/local_agent_code_php.ini /opt/bitnami/php/etc/conf.d/98-elastic-apm.ini
-RUN echo "ls /opt/bitnami/php/etc/conf.d/: $(ls /opt/bitnami/php/etc/conf.d/)"
+RUN PHP_CONF_D_DIR_FULL_PATH=${PHP_CONF_D_DIR_FULL_PATH} /app/install_agent.sh

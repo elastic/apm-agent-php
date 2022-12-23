@@ -15,9 +15,6 @@ services:
                 condition: service_started
             elasticsearch:
                 condition: service_healthy
-        ports:
-            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:8080"
-            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTPS:-8443}:8443"
         environment:
             MAGENTO_USERNAME: magento_admin_user
             MAGENTO_PASSWORD: magento_admin_user_password1234
@@ -36,6 +33,9 @@ services:
             ELASTIC_APM_LOG_LEVEL_SYSLOG:
             ELASTIC_APM_LOG_LEVEL_STDERR:
             ELASTIC_APM_DISABLE_SEND:
+        ports:
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:8080"
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTPS:-8443}:8443"
 
     db:
         image: docker.io/bitnami/mariadb:10.4
@@ -136,6 +136,6 @@ services:
         image: busybox
         depends_on:
             app:
-                condition: service_healthy
+                condition: service_started
             apm-server:
                 condition: service_healthy
