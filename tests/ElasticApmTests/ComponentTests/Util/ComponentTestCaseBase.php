@@ -76,8 +76,8 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param string                $optName
-     * @param null|string|int|float $optVal
+     * @param string                     $optName
+     * @param null|string|int|float|bool $optVal
      *
      * @return DataFromAgent
      */
@@ -162,11 +162,11 @@ class ComponentTestCaseBase extends TestCaseBase
     protected function waitForOneEmptyTransaction(TestCaseHandle $testCaseHandle): DataFromAgentPlusRaw
     {
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1));
-        $this->verifyOneEmptyTransaction($dataFromAgent);
+        $this->verifyOneTransactionNoSpans($dataFromAgent);
         return $dataFromAgent;
     }
 
-    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionDto
+    protected function verifyOneTransactionNoSpans(DataFromAgent $dataFromAgent): TransactionDto
     {
         $this->assertEmpty($dataFromAgent->idToSpan);
 
@@ -250,5 +250,13 @@ class ComponentTestCaseBase extends TestCaseBase
             return [$key => $value];
         }
         return [];
+    }
+
+    /**
+     * @return iterable<array{bool}>
+     */
+    public function boolDataProviderAdaptedToSmoke(): iterable
+    {
+        return self::adaptToSmoke(self::boolDataProvider());
     }
 }

@@ -48,7 +48,7 @@ class AppCodeHostParams implements LoggableInterface
     /** @var AgentConfigSourceKind */
     private $defaultAgentConfigSource;
 
-    /** @var array<string, array<string, string|int|float>> */
+    /** @var array<string, array<string, string|int|float|bool>> */
     private $agentOptions = [];
 
     /** @var string */
@@ -85,7 +85,7 @@ class AppCodeHostParams implements LoggableInterface
 
     /**
      * @param string                 $optName
-     * @param string|int|float       $optVal
+     * @param string|int|float|bool  $optVal
      * @param ?AgentConfigSourceKind $sourceKind
      */
     public function setAgentOption(string $optName, $optVal, ?AgentConfigSourceKind $sourceKind = null): void
@@ -111,7 +111,7 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
-     * @return array<string, string|int|float>
+     * @return array<string, string|int|float|bool>
      */
     public function getAgentOptions(AgentConfigSourceKind $sourceKind): array
     {
@@ -119,7 +119,7 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
-     * @return array<string, string|int|float>
+     * @return array<string, string|int|float|bool>
      */
     public function getEffectiveAgentOptions(): array
     {
