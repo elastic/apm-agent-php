@@ -11,9 +11,12 @@ RUN apk update \
     curl \
     curl-dev \
     git \
+    logrotate \
     procps \
+    rsyslog \
     sqlite-dev \
-    unzip
+    unzip \
+    util-linux
 
 RUN docker-php-ext-install \
     mysqli \
