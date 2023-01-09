@@ -72,16 +72,23 @@ void logSupportabilityInfo( LogLevel logLevel )
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
 
     ResultCode resultCode;
-    enum
-    {
-        supportInfoBufferSize = 100 * 1000 + 1
-    };
+    enum { supportInfoBufferSize = 100 * 1000 + 1 };
     char* supportInfoBuffer = NULL;
 
     ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
     String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
 
-    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Supportability info:\n%s", supportabilityInfo );
+    const char* const textEnd = supportabilityInfo + strlen( supportabilityInfo );
+    StringView textRemainder = makeStringViewFromBeginEnd( supportabilityInfo, textEnd );
+    for ( ;; )
+    {
+        StringView eolSeq = findEndOfLineSequence( textRemainder );
+        if ( isEmptyStringView( eolSeq ) ) break;
+
+        ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "%.*s", (int)( eolSeq.begin - textRemainder.begin), textRemainder.begin );
+        textRemainder = makeStringViewFromBeginEnd( stringViewEnd( eolSeq ), textEnd );
+    }
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "%.*s", (int)( textEnd - textRemainder.begin), textRemainder.begin );
 
     // resultCode = resultSuccess;
 
