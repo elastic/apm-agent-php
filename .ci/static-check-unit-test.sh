@@ -8,7 +8,28 @@ mkdir -p ${BUILD_FOLDER}
 ## This make runs PHPT
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false
-make test
+for phptFile in ./tests/*.phpt; do
+    msg="Running tests in \`${phptFile}' ..."
+    echo "${msg}"
+    this_script_name="$( basename "${BASH_SOURCE[0]}" )"
+    logger -t "${this_script_name}" "${msg}"
+
+    # Disable exit-on-error
+    set +e
+    make test TESTS="--show-all ${phptFile}"
+    exitCode=$?
+
+    if [ ${exitCode} -ne 0 ] ; then
+        echo "Tests in \`${phptFile}' failed"
+        phptFileName="${phptFile%.phpt}"
+        cat "${phptFileName}.log"
+        cat "${phptFileName}.out"
+        exit 1
+    fi
+
+    # Re-enable exit-on-error
+    set -e
+done
 
 ## Run cmocka tests
 cd /app/src/ext/unit_tests
