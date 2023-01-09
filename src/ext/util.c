@@ -30,3 +30,30 @@ StringView trimStringView( StringView src )
 
     return makeStringView( src.begin + beginIndex, endIndex - beginIndex );
 }
+
+StringView findEndOfLineSequence( StringView text )
+{
+    // The order in endOfLineSequences is important because we need to check longer sequences first
+    StringView endOfLineSequences[] =
+            {
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\r\n" )
+                    , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\n" )
+                    , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "\r" )
+            };
+
+    ELASTIC_APM_FOR_EACH_INDEX( textPos, text.length )
+    {
+        ELASTIC_APM_FOR_EACH_INDEX( eolSeqIndex, ELASTIC_APM_STATIC_ARRAY_SIZE( endOfLineSequences ) )
+        {
+            if ( text.length - textPos < endOfLineSequences[ eolSeqIndex ].length ) continue;
+
+            StringView eolSeqCandidate = makeStringView( &( text.begin[ textPos ] ), endOfLineSequences[ eolSeqIndex ].length );
+            if ( areStringViewsEqual( eolSeqCandidate, endOfLineSequences[ eolSeqIndex ] ) )
+            {
+                return eolSeqCandidate;
+            }
+        }
+    }
+
+    return makeEmptyStringView();
+}

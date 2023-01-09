@@ -243,3 +243,5 @@ bool isWhiteSpace( char c )
 }
 
 StringView trimStringView( StringView src );
+
+StringView findEndOfLineSequence( StringView text );
