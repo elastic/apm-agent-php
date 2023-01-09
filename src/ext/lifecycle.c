@@ -593,19 +593,26 @@ void elasticApmRequestInit()
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
-    originalZendErrorCallback = zend_error_cb;
-    isOriginalZendErrorCallbackSet = true;
-    zend_error_cb = elasticApmZendErrorCallback;
-    ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
-                           , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
-                           , elasticApmZendErrorCallback );
+    if ( config->captureErrors )
+    {
+        originalZendErrorCallback = zend_error_cb;
+        isOriginalZendErrorCallbackSet = true;
+        zend_error_cb = elasticApmZendErrorCallback;
+        ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
+                               , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
+                               , elasticApmZendErrorCallback );
 
-    originalZendThrowExceptionHook = zend_throw_exception_hook;
-    isOriginalZendThrowExceptionHookSet = true;
-    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-    ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                           , elasticApmZendThrowExceptionHook );
+        originalZendThrowExceptionHook = zend_throw_exception_hook;
+        isOriginalZendThrowExceptionHookSet = true;
+        zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+        ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                               , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                               , elasticApmZendThrowExceptionHook );
+    }
+    else
+    {
+        ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
+    }
 
     resultCode = resultSuccess;
 

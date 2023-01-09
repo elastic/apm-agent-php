@@ -200,14 +200,14 @@ final class PhpPartFacade
     private static function callFromExtension(string $dbgCallDesc, Closure $implFunc): void
     {
         BootstrapStageLogger::logDebug(
-            'Starting to handle ' . $dbgCallDesc . ' call from extension...',
+            'Starting to handle ' . $dbgCallDesc . ' call...',
             __LINE__,
             __FUNCTION__
         );
 
         if (self::$singletonInstance === null) {
             BootstrapStageLogger::logWarning(
-                'Received ' . $dbgCallDesc . ' call from extension but singleton instance is not created'
+                'Received ' . $dbgCallDesc . ' call but singleton instance is not created'
                 . ' (probably because bootstrap sequence failed)',
                 __LINE__,
                 __FUNCTION__
@@ -221,7 +221,7 @@ final class PhpPartFacade
             BootstrapStageLogger::logCriticalThrowable(
                 $throwable,
                 'Handling ' . $dbgCallDesc
-                . ' call from extension let a throwable escape - skipping the rest of the steps',
+                . ' call let a throwable escape - skipping the rest of the steps',
                 __LINE__,
                 __FUNCTION__
             );
@@ -229,7 +229,7 @@ final class PhpPartFacade
         }
 
         BootstrapStageLogger::logDebug(
-            'Successfully finished handling ' . $dbgCallDesc . ' call from extension...',
+            'Successfully finished handling ' . $dbgCallDesc . ' call...',
             __LINE__,
             __FUNCTION__
         );
@@ -243,14 +243,14 @@ final class PhpPartFacade
      *
      * @phpstan-param Closure(TransactionForExtensionRequest): void $implFunc
      */
-    private static function callFromExtensionToTransaction(string $dbgCallDesc, Closure $implFunc): void
+    private static function callWithTransactionForExtensionRequest(string $dbgCallDesc, Closure $implFunc): void
     {
         self::callFromExtension(
             $dbgCallDesc,
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {
                     BootstrapStageLogger::logDebug(
-                        'Received call from extension but transactionForExtensionRequest is null'
+                        'Received call but transactionForExtensionRequest is null'
                         . ' - just returning...',
                         __LINE__,
                         __FUNCTION__
@@ -265,12 +265,30 @@ final class PhpPartFacade
 
     public static function ensureHaveLatestDataDeferredByExtension(): void
     {
-        // last thrown should be fetched before last PHP error
-        self::ensureHaveLastThrown();
-        self::ensureHaveLastPhpError();
+        self::callWithTransactionForExtensionRequest(
+            __FUNCTION__,
+            function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
+                self::ensureHaveLastErrorData($transactionForExtensionRequest);
+            }
+        );
     }
 
-    private static function ensureHaveLastThrown(): void
+    private static function ensureHaveLastErrorData(
+        TransactionForExtensionRequest $transactionForExtensionRequest
+    ): void {
+        if (!$transactionForExtensionRequest->getConfig()->captureErrors()) {
+            return;
+        }
+
+        /**
+         * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+         * agent will use the last thrown exception
+         */
+        self::ensureHaveLastThrown($transactionForExtensionRequest);
+        self::ensureHaveLastPhpError($transactionForExtensionRequest);
+    }
+
+    private static function ensureHaveLastThrown(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -285,12 +303,7 @@ final class PhpPartFacade
             return;
         }
 
-        self::callFromExtensionToTransaction(
-            __FUNCTION__,
-            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($lastThrown): void {
-                $transactionForExtensionRequest->setLastThrown($lastThrown);
-            }
-        );
+        $transactionForExtensionRequest->setLastThrown($lastThrown);
     }
 
     /**
@@ -418,7 +431,7 @@ final class PhpPartFacade
         return $result;
     }
 
-    private static function ensureHaveLastPhpError(): void
+    private static function ensureHaveLastPhpError(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -449,12 +462,7 @@ final class PhpPartFacade
         }
         /** @var array<mixed, mixed> $lastPhpErrorData */
 
-        self::callFromExtensionToTransaction(
-            __FUNCTION__,
-            function (TransactionForExtensionRequest $transactionForExtensionRequest) use ($lastPhpErrorData): void {
-                $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
-            }
-        );
+        $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
     }
 
     /**
@@ -464,7 +472,7 @@ final class PhpPartFacade
      */
     public static function shutdown(): void
     {
-        self::callFromExtensionToTransaction(
+        self::callWithTransactionForExtensionRequest(
             __FUNCTION__,
             function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
                 $transactionForExtensionRequest->onShutdown();

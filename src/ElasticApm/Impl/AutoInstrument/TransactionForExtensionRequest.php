@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\InferredSpansManager;
@@ -112,6 +113,11 @@ final class TransactionForExtensionRequest
                 );
             }
         );
+    }
+
+    public function getConfig(): ConfigSnapshot
+    {
+        return $this->tracer->getConfig();
     }
 
     private function beginTransaction(float $requestInitStartTime): ?TransactionInterface

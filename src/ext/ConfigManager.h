@@ -91,6 +91,7 @@ enum OptionId
     optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
+    optionId_captureErrors,
     optionId_devInternal,
     optionId_disableInstrumentations,
     optionId_disableSend,
@@ -147,6 +148,7 @@ struct ConfigSnapshot
     OptionalBool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
+    bool captureErrors;
     String devInternal;
     String disableInstrumentations;
     String disableSend;
@@ -278,6 +280,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM "async_backend_comm"
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
+#define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS "capture_errors"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
