@@ -11,6 +11,7 @@ RUN apk update \
     curl \
     curl-dev \
     git \
+    libunwind-dev \
     logrotate \
     procps \
     rsyslog \
@@ -39,6 +40,6 @@ ENV CMOCKA_XML_FILE=/app/build/alpine-${PHP_VERSION}-%g-unit-tests-junit.xml
 ENV ELASTIC_APM_ENABLED=false
 
 CMD phpize \
-    && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
+    && CFLAGS="$CFLAGS -std=gnu99" LDFLAGS="$LDFLAGS -lunwind" ./configure --enable-elastic_apm \
     && make clean \
     && make
