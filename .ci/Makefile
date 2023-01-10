@@ -37,6 +37,7 @@ build: prepare  ## Build the project
 static-check-unit-test: prepare  ## Test the static check and unit tests
 	# docker as the current user
 	docker run --rm -t \
+		-e CHOWN_RESULTS_UID=$(CURRENT_UID) -e CHOWN_RESULTS_GID=$(CURRENT_GID) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/static-check-unit-test.sh

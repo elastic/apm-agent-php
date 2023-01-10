@@ -5,7 +5,7 @@ set -xe
 BUILD_FOLDER=/app/build
 mkdir -p ${BUILD_FOLDER}
 
-function ensureSyslogIsRunning () {
+function ensureSyslogIsRunningImpl () {
     if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
         echo 'Syslog is already started.'
         return
@@ -23,6 +23,11 @@ function ensureSyslogIsRunning () {
             exit 1
         fi
     fi
+}
+
+function ensureSyslogIsRunning () {
+    ensureSyslogIsRunningImpl
+    ps -ef | grep -v 'grep' | grep 'syslogd'
 }
 
 function copySyslogFileAndPrintTheLastOne () {
@@ -49,7 +54,11 @@ function copySyslogFileAndPrintTheLastOne () {
 
 function onExit () {
     copySyslogFileAndPrintTheLastOne
-    chmod -R +r "${BUILD_FOLDER}"
+    if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
+        ls -l "${BUILD_FOLDER}"
+        chown --recursive --changes "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${BUILD_FOLDER}"
+        ls -l "${BUILD_FOLDER}"
+    fi
 }
 
 trap onExit EXIT
