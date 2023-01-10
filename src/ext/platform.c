@@ -346,9 +346,46 @@ static String osSignalIdToName( int signalId )
 
 #define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
 
-#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
 void writeStackTraceToSyslog()
 {
+#if defined( ELASTIC_APM_CAPTURE_C_STACK_TRACE_IMPL_LIBUNWIND )
+#   define ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( expr ) \
+        do { \
+            int temp_libUnwindRetVal = (expr); \
+            if ( temp_libUnwindRetVal < 0 ) \
+            { \
+                ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "%s call failed (return value: %d)", ELASTIC_APM_PP_STRINGIZE( expr ), temp_libUnwindRetVal ); \
+                return; \
+            } \
+        } while ( 0 )
+
+    unw_cursor_t unwindCursor;
+    unw_context_t unwindContext;
+    size_t frameIndex = 0;
+    enum { funcNameBufferSize = 100 };
+    char funcNameBuffer[ funcNameBufferSize ];
+    unw_word_t offsetInsideFunc;
+
+    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_getcontext( &unwindContext ) );
+    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_init_local( &unwindCursor, &unwindContext ) );
+
+    for (;;)
+    {
+        ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_get_proc_name( &unwindCursor, funcNameBuffer, funcNameBufferSize, &offsetInsideFunc ) );
+        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame %d: %s + 0x%X", (int)(frameIndex+1), funcNameBuffer, (unsigned int)offsetInsideFunc );
+        int unwindStepRetVal = 0;
+        ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unwindStepRetVal = unw_step( &unwindCursor ) );
+        if ( unwindStepRetVal == 0 )
+        {
+            break;
+        }
+        ++frameIndex;
+    }
+
+#   undef ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR
+
+#elif defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
     enum { maxStackTraceAddressesCount = 100 };
     void* stackTraceAddresses[ maxStackTraceAddressesCount ];
     int stackTraceAddressesCount = backtrace( stackTraceAddresses, maxStackTraceAddressesCount );
@@ -373,8 +410,9 @@ void writeStackTraceToSyslog()
 
     free( stackTraceAddressesAsSymbols );
     stackTraceAddressesAsSymbols = NULL;
+#endif // #elif defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
 }
-#endif
+#endif // #if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
 
 typedef void (* OsSignalHandler )( int );
 bool isOldSignalHandlerSet = false;
@@ -386,14 +424,14 @@ void handleOsSignalLinux( int signalId )
             "Received signal %d (%s). %s"
             , signalId, osSignalIdToName( signalId )
             ,
-#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
               "Call stack below:"
 #else
               "Call stack is not supported"
 #endif
         );
 
-#if defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
     writeStackTraceToSyslog();
 #endif
 
