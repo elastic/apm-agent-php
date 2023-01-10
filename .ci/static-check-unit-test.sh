@@ -49,6 +49,7 @@ function copySyslogFileAndPrintTheLastOne () {
 
 function onExit () {
     copySyslogFileAndPrintTheLastOne
+    chmod -R +r "${BUILD_FOLDER}"
 }
 
 trap onExit EXIT
