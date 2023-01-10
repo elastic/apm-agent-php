@@ -452,14 +452,15 @@ static void openAndAppendToFile( Logger* logger, String text )
     goto finally;
 }
 
-static bool isToLogToFileInGoodState( Logger* logger )
+static
+bool isLogFileInGoodState( Logger* logger )
 {
     return ( ! isNullOrEmtpyString( logger->config.file ) ) && ( ! logger->fileFailed );
 }
 
 void writeToFile( Logger* logger, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
-    ELASTIC_APM_ASSERT( isToLogToFileInGoodState( logger ), "" );
+    ELASTIC_APM_ASSERT( isLogFileInGoodState( logger ), "" );
 
     String fullText = concatPrefixAndMsg(
             logger
@@ -580,7 +581,7 @@ void vLogWithLoggerImpl(
     }
             #endif
 
-    if ( ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel ) && isToLogToFileInGoodState( logger ) )
+    if ( ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel ) && isLogFileInGoodState( logger ) )
     {
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
@@ -786,22 +787,49 @@ static void logConfigChange(
                               , streamUserString( newConfig->file, &txtOutStream ) );
 }
 
-void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel generalLevel )
+void destructLoggerConfig( LoggerConfig* loggerConfig )
 {
+    ELASTIC_APM_ASSERT_VALID_PTR( loggerConfig );
+
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( loggerConfig->file );
+}
+
+ResultCode reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel generalLevel )
+{
+    ResultCode resultCode;
     LoggerConfig derivedNewConfig = *newConfig;
+    String filePathCopy = NULL;
     deriveLoggerConfig( newConfig, generalLevel, &derivedNewConfig );
 
     if ( areEqualLoggerConfigs( &logger->config, &derivedNewConfig ) )
     {
         ELASTIC_APM_LOG_DEBUG( "Logger configuration did not change" );
-        return;
+        resultCode = resultSuccess;
+        goto finally;
     }
 
-    const LoggerConfig oldConfig = logger->config;
+    if ( newConfig->file != NULL )
+    {
+        ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( newConfig->file, /* out */ filePathCopy );
+    }
+
+    LoggerConfig oldConfig = logger->config;
     const LogLevel oldMaxEnabledLevel = logger->maxEnabledLevel;
     logger->config = derivedNewConfig;
+    logger->config.file = filePathCopy;
+    filePathCopy = NULL;
     logger->maxEnabledLevel = calcMaxEnabledLogLevel( logger->config.levelPerSinkType );
     logConfigChange( &oldConfig, oldMaxEnabledLevel, &logger->config, logger->maxEnabledLevel );
+
+    destructLoggerConfig( &oldConfig );
+    resultCode = resultSuccess;
+
+    finally:
+    return resultCode;
+
+    failure:
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( filePathCopy );
+    goto finally;
 }
 
 ResultCode constructLogger( Logger* logger )
@@ -838,6 +866,7 @@ void destructLogger( Logger* logger )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( logger );
 
+    destructLoggerConfig( &( logger->config ) );
     ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( loggerMessageBufferSize, logger->auxMessageBuffer );
     ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( loggerMessageBufferSize, logger->messageBuffer );
 
