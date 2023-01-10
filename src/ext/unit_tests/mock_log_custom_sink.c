@@ -24,7 +24,7 @@
 void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink )
 {
     LoggerConfig newConfig = { 0 };
-    reconfigureLogger( getGlobalLogger(), &newConfig, /* generalLevel: */ logLevel_off );
+    ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( reconfigureLogger( getGlobalLogger(), &newConfig, /* generalLevel: */ logLevel_off ) );
     getGlobalLogger()->maxEnabledLevel = levelForCustomSink;
 }
 
