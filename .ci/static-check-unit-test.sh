@@ -2,8 +2,9 @@
 set -xe
 
 ## Location for the generated test report files
-BUILD_FOLDER=/app/build
-mkdir -p ${BUILD_FOLDER}
+APP_FOLDER=/app
+BUILD_FOLDER="${APP_FOLDER}/build"
+mkdir -p "${BUILD_FOLDER}"
 
 function ensureSyslogIsRunningImpl () {
     if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
@@ -55,9 +56,7 @@ function copySyslogFileAndPrintTheLastOne () {
 function onExit () {
     copySyslogFileAndPrintTheLastOne
     if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
-        ls -l "${BUILD_FOLDER}"
-        chown --recursive --changes "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${BUILD_FOLDER}"
-        ls -l "${BUILD_FOLDER}"
+        chown --recursive --changes --from=root "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
     fi
 }
 
