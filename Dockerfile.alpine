@@ -11,7 +11,7 @@ RUN apk update \
     curl \
     curl-dev \
     git \
-    libunwind-dev \
+    libunwind-static \
     logrotate \
     procps \
     rsyslog \
