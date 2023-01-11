@@ -56,7 +56,7 @@ function copySyslogFileAndPrintTheLastOne () {
 function onExit () {
     copySyslogFileAndPrintTheLastOne
     if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
-        chown --recursive --changes "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
+        chown --recursive "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
     fi
 }
 
