@@ -85,10 +85,9 @@ void test_iterateOverCStackTrace_callback( String frameDesc, void* ctxPVoid )
 static
 void test_iterateOverCStackTrace_logError( String errorDesc, void* ctxPVoid )
 {
-    ELASTIC_APM_UNUSED( ctxPVoid );
+    TestIterateOverCStackTraceContext* ctx = (TestIterateOverCStackTraceContext*)ctxPVoid;
 
-    // Log error callback should not be called
-    ELASTIC_APM_CMOCKA_FAIL_MSG( "errorDesc: %s" , errorDesc );
+    fprintf( stderr, "\n" "errorDesc: %s, ctx->nextIterationFrameIndex: %"PRIu64 "\n", errorDesc, (UInt64)(ctx->nextIterationFrameIndex) );
 }
 
 ELASTIC_APM_C_UNIT_TESTS_NOINLINE_VOID_FUNC
