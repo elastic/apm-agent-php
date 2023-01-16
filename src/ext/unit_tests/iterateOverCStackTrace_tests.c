@@ -21,9 +21,9 @@
 #include "unit_test_util.h"
 #include "platform.h"
 
-#ifndef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
-#error "ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE must be defined"
-#endif // #ifndef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+#if defined( ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE ) && ! defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
+#error "ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE is defined but ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE is not"
+#endif
 
 #ifndef NDEBUG
 #   define ELASTIC_APM_C_UNIT_TESTS_CAN_PREVENT_INLINE
@@ -76,8 +76,10 @@ void test_iterateOverCStackTrace_callback( String frameDesc, void* ctxPVoid )
     {
         return;
     }
+#ifdef ELASTIC_APM_C_UNIT_TESTS_CAN_PREVENT_INLINE
     String expectedFunc = getExpectedFuncFromTestContext( ctx, currentFrameIndex );
     ELASTIC_APM_CMOCKA_ASSERT_STRING_CONTAINS_IGNORE_CASE( frameDesc, expectedFunc );
+#endif
 }
 
 static
@@ -96,8 +98,20 @@ test_iterateOverCStackTrace_dummy_func_0( TestIterateOverCStackTraceContext* ctx
 
     pushExpectedFuncToTestContext( ctx, __FUNCTION__  );
     ctx->nextIterationFrameIndex = 0;
+
+#ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
     iterateOverCStackTrace( /* numberOfFramesToSkip */ 0, test_iterateOverCStackTrace_callback, test_iterateOverCStackTrace_logError, ctx );
-    ELASTIC_APM_CMOCKA_ASSERT_INT_LESS_THAN( ctx->expectedFuncsSize, ctx->nextIterationFrameIndex );
+
+    ELASTIC_APM_CMOCKA_ASSERT_INT_LESS_THAN
+    (
+#ifdef ELASTIC_APM_C_UNIT_TESTS_CAN_PREVENT_INLINE
+        ctx->expectedFuncsSize
+#else
+        0
+#endif
+        , ctx->nextIterationFrameIndex
+    );
+#endif
 }
 
 ELASTIC_APM_C_UNIT_TESTS_NOINLINE_VOID_FUNC
@@ -123,9 +137,11 @@ void test_iterateOverCStackTrace( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-#ifdef ELASTIC_APM_C_UNIT_TESTS_CAN_PREVENT_INLINE
+#ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
     TestIterateOverCStackTraceContext ctx = { 0 };
     test_iterateOverCStackTrace_dummy_func_2( &ctx );
+#else
+    ELASTIC_APM_CMOCKA_MARK_CURRENT_TEST_AS_SKIPPED();
 #endif
 }
 

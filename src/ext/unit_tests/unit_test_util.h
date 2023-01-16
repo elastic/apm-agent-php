@@ -151,3 +151,5 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
 
 #define ELASTIC_APM_CMOCKA_UNIT_TEST( func ) \
     ELASTIC_APM_CMOCKA_UNIT_TEST_WITH_INITIAL_STATE( func, /* initialState: */ NULL )
+
+#define ELASTIC_APM_CMOCKA_MARK_CURRENT_TEST_AS_SKIPPED() skip()

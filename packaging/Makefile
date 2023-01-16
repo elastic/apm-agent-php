@@ -92,7 +92,7 @@ tar-info:  ## Show the tar package metadata
 .PHONY: prepare-apk
 prepare-apk:  ## Build the docker image for the apk smoke tests
 	cd $(PWD)/packaging/test/alpine ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY} -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: prepare-deb-apache
@@ -122,7 +122,7 @@ prepare-tar:  ## Build the docker image for the tar smoke tests
 .PHONY: prepare-rpm
 prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	cd $(PWD)/packaging/test/centos ;\
-	docker build --build-arg PHP_VERSION=${PHP_VERSION} -t $@ . || exit 1 ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
 	cd -
 
 .PHONY: apk-install
