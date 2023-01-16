@@ -24,8 +24,11 @@ function ensureSyslogIsRunningImpl () {
     fi
 
     if which rsyslogd; then
-        grep /var/log/messages /etc/rsyslog.conf
-        sed -i '/\/var\/log\/messages/s/messages/syslog/' /etc/rsyslog.conf
+        if [[ -f /etc/rsyslog.conf ]]; then
+            if grep -q /var/log/messages /etc/rsyslog.conf ; then
+                sed -i '/\/var\/log\/messages/s/messages/syslog/' /etc/rsyslog.conf
+            fi
+        fi
         rsyslogd
     else
         if which syslogd; then
