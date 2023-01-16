@@ -97,6 +97,16 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
 
+#define ELASTIC_APM_CMOCKA_ASSERT_INT_LESS_THAN( actual, expected ) \
+    do { \
+        if ( (actual) >= (expected) ) \
+            ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
+                "%s >= %s: " \
+                "%"PRId64" >= %"PRId64, \
+                (#actual), (#expected), \
+                (Int64)(actual), (Int64)(expected) ); \
+    } while ( 0 )
+
 #define ELASTIC_APM_CMOCKA_ASSERT_CHAR_EQUAL( actual, expected ) \
     do { \
         char bufferForActual[ escapeNonPrintableCharBufferSize ]; \
@@ -123,7 +133,8 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
 #define ELASTIC_APM_CMOCKA_ASSERT_VALID_PTR( ptr ) assert_ptr_not_equal( (ptr), NULL )
 #define ELASTIC_APM_CMOCKA_ASSERT_NULL_PTR( ptr ) assert_ptr_equal( (ptr), NULL )
 
-#define ELASTIC_APM_CMOCKA_FAIL() ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__, __LINE__, "" )
+#define ELASTIC_APM_CMOCKA_FAIL_MSG( fmt, ... ) ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__, __LINE__, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_CMOCKA_FAIL() ELASTIC_APM_CMOCKA_FAIL_MSG( "" )
 
 #define ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, setupFunc, teardownFunc, initialState ) \
     ( struct CMUnitTest ) \
