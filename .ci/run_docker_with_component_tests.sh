@@ -72,24 +72,21 @@ function doesTestsGroupNeedExternalServices () {
     esac
 }
 
-function cleanup () {
+function onScriptExit () {
     if [ "${shouldStartExternalServices}" == "true" ] ; then
         "${thisScriptDir}/stop_external_services_for_component_tests.sh"
     fi
 }
 
 function main () {
-    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-    this_script_dir="$( realpath "${this_script_dir}" )"
-
     if [ -z "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}" ] ; then
         echo "ELASTIC_APM_PHP_TESTS_MATRIX_ROW environment variable should be set before calling ${BASH_SOURCE[0]}"
         exit 1
     fi
 
-    source "${this_script_dir}/unpack_package_lifecycle_test_matrix_row.sh" "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}"
+    source "${thisScriptDir}/unpack_package_lifecycle_test_matrix_row.sh" "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}"
 
-    trap cleanup EXIT
+    trap onScriptExit EXIT
 
     shouldStartExternalServices=$(doesTestsGroupNeedExternalServices)
     if [ "${shouldStartExternalServices}" == "true" ] ; then
