@@ -6,61 +6,18 @@ APP_FOLDER=/app
 BUILD_FOLDER="${APP_FOLDER}/build"
 mkdir -p "${BUILD_FOLDER}"
 
-function ensureSyslogIsRunningImpl () {
-    if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
-        echo 'Syslog is already started.'
-        return
-    fi
+thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
+thisScriptDir="$( realpath "${thisScriptDir}" )"
+source "${thisScriptDir}/shared.sh"
 
-    if which rsyslogd; then
-        grep /var/log/messages /etc/rsyslog.conf
-        sed -i '/\/var\/log\/messages/s/messages/syslog/' /etc/rsyslog.conf
-        rsyslogd
-    else
-        if which syslogd; then
-            syslogd
-        else
-            echo 'syslog is not installed'
-            exit 1
-        fi
-    fi
-}
-
-function ensureSyslogIsRunning () {
-    ensureSyslogIsRunningImpl
-    ps -ef | grep -v 'grep' | grep 'syslogd'
-}
-
-function copySyslogFileAndPrintTheLastOne () {
-    ls -l /var/log/
-    local possibleSyslogFiles=(/var/log/messages /var/log/syslog)
-    for syslogFile in "${possibleSyslogFiles[@]}"
-    do
-        if [[ -f "${syslogFile}" ]]; then
-            local syslogCopyDir="${BUILD_FOLDER}/syslog"
-            mkdir -p "${syslogCopyDir}"
-            cp "${syslogFile}"* ${syslogCopyDir}
-            echo "syslog files (${syslogFile}*) copied to ${syslogCopyDir}"
-        fi
-    done
-
-    for syslogFile in "${possibleSyslogFiles[@]}"
-    do
-        if [[ -f "${syslogFile}" ]]; then
-            echo "Content of the most recent syslog file (${syslogFile}):"
-            cat "${syslogFile}"
-        fi
-    done
-}
-
-function onExit () {
+function onScriptExit () {
     copySyslogFileAndPrintTheLastOne
     if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
         chown --recursive "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
     fi
 }
 
-trap onExit EXIT
+trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
@@ -90,13 +47,25 @@ for phptFile in ./tests/*.phpt; do
     set -e
 done
 
-## Run cmocka tests
-cd /app/src/ext/unit_tests
-cmake .
-make
+# Disable exit-on-error
 set +e
-./unit_tests
-
+## Run cmocka tests
+function buildAndRunUnitTests () {
+    pushd /app/src/ext/unit_tests
+    for buildType in Debug Release
+    do
+        cmake -DCMAKE_BUILD_TYPE=${buildType} .
+        make
+        ./unit_tests
+        unitTestsExitCode=$?
+        if [ ${unitTestsExitCode} -ne 0 ] ; then
+            popd
+            return ${unitTestsExitCode}
+        fi
+    done
+    popd
+}
+buildAndRunUnitTests
 ## Save errorlevel to be reported later on
 ret=$?
 
@@ -110,7 +79,7 @@ if [ $ret -ne 0 ] ; then
     exit 1
 fi
 
-## Enable the error again
+# Re-enable exit-on-error
 set -e
 
 cd /app

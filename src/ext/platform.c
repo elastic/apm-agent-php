@@ -37,6 +37,12 @@
 #   include <signal.h>
 #   include <errno.h>
 #endif
+
+#if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
+#   define UNW_LOCAL_ONLY
+#   include <libunwind.h>
+#endif // if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
+
 #include "util.h"
 #include "log.h"
 
@@ -313,6 +319,136 @@ String streamCurrentProcessExeName( TextOutputStream* txtOutStream )
     return streamCurrentProcessCommandLineEx( /* maxPartsCount */ 1, txtOutStream );
 }
 
+#ifdef ELASTIC_APM_PLATFORM_HAS_LIBUNWIND
+void iterateOverCStackTraceLibUnwind( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx )
+{
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+#   define ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( expr ) \
+        do { \
+            int temp_libUnwindRetVal = (expr); \
+            if ( temp_libUnwindRetVal < 0 ) \
+            { \
+                textOutputStreamRewind( &txtOutStream ); \
+                logErrorCallback( streamPrintf( &txtOutStream, "%s call failed (return value: %d)", ELASTIC_APM_PP_STRINGIZE( expr ), temp_libUnwindRetVal ), callbackCtx ); \
+                return; \
+            } \
+        } while ( 0 )
+
+    unw_cursor_t unwindCursor;
+    unw_context_t unwindContext;
+    enum { funcNameBufferSize = 100 };
+    char funcNameBuffer[ funcNameBufferSize ];
+    unw_word_t offsetInsideFunc;
+    size_t frameIndex = 0;
+
+    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_getcontext( &unwindContext ) );
+    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_init_local( &unwindCursor, &unwindContext ) );
+
+    for (;; ++frameIndex)
+    {
+        // +1 is for this function frame
+        if ( frameIndex >= numberOfFramesToSkip + 1 )
+        {
+            // https://www.nongnu.org/libunwind/man/unw_get_proc_name(3).html
+            int getProcNameRetVal = unw_get_proc_name( &unwindCursor, funcNameBuffer, funcNameBufferSize, &offsetInsideFunc );
+            textOutputStreamRewind( &txtOutStream );
+            switch ( getProcNameRetVal ) // https://www.nongnu.org/libunwind/man/unw_get_proc_name(3).html
+            {
+                case 0: // On successful completion, unw_get_proc_name() returns 0
+                    callback( streamPrintf( &txtOutStream, "%s + 0x%X", funcNameBuffer, (unsigned int)offsetInsideFunc ), callbackCtx );
+                    break;
+                case UNW_EUNSPEC: // An unspecified error occurred.
+                    logErrorCallback( streamPrintf( &txtOutStream, "unw_get_proc_name call failed with return value UNW_EUNSPEC - stopping iteration over call stack" ), callbackCtx );
+                    return;
+                case UNW_ENOINFO: // Libunwind was unable to determine the name of the procedure.
+                    callback( NULL, callbackCtx );
+                    break;
+                case UNW_ENOMEM: // The procedure name is too long to fit in the buffer provided. A truncated version of the name has been returned.
+                    callback( streamPrintf( &txtOutStream, "%s (truncated) + 0x%X", funcNameBuffer, (unsigned int)offsetInsideFunc ), callbackCtx );
+                    break;
+                default:
+                    logErrorCallback( streamPrintf( &txtOutStream, "unw_get_proc_name call failed with an unexpected return value (%d) - stopping iteration over call stack", getProcNameRetVal ), callbackCtx );
+                    return;
+            }
+        }
+        int unwindStepRetVal = 0;
+        ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unwindStepRetVal = unw_step( &unwindCursor ) );
+        if ( unwindStepRetVal == 0 )
+        {
+            break;
+        }
+    }
+
+#   undef ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR
+}
+#endif // #ifdef ELASTIC_APM_PLATFORM_HAS_LIBUNWIND
+
+#ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+void iterateOverCStackTraceBacktrace( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx )
+{
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    enum { maxStackTraceAddressesCount = 100 };
+    void* stackTraceAddresses[ maxStackTraceAddressesCount ];
+    int stackTraceAddressesCount = backtrace( stackTraceAddresses, maxStackTraceAddressesCount );
+    if ( stackTraceAddressesCount == 0 )
+    {
+        textOutputStreamRewind( &txtOutStream );
+        logErrorCallback( streamPrintf( &txtOutStream, "backtrace returned 0 as stackTraceAddressesCount (i.e., failed to get any address on the stack)" ), callbackCtx );
+        return;
+    }
+
+    char** stackTraceAddressesAsSymbols = backtrace_symbols( stackTraceAddresses, stackTraceAddressesCount );
+    if ( stackTraceAddressesAsSymbols == NULL )
+    {
+        textOutputStreamRewind( &txtOutStream );
+        logErrorCallback( streamPrintf( &txtOutStream, "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Returning raw addresses as hex strings" ), callbackCtx );
+        ELASTIC_APM_FOR_EACH_INDEX( frameIndex, stackTraceAddressesCount )
+        {
+            // +1 is for this function frame
+            if ( frameIndex < numberOfFramesToSkip + 1 )
+            {
+                continue;
+            }
+            textOutputStreamRewind( &txtOutStream );
+            callback( streamPrintf( &txtOutStream, "%p", stackTraceAddresses[ frameIndex ] ), callbackCtx );
+        }
+        return;
+    }
+
+    ELASTIC_APM_FOR_EACH_INDEX( frameIndex, stackTraceAddressesCount )
+    {
+        // +1 is for this function frame
+        if ( frameIndex < numberOfFramesToSkip + 1 )
+        {
+            continue;
+        }
+        textOutputStreamRewind( &txtOutStream );
+        callback( streamPrintf( &txtOutStream, "%s", stackTraceAddressesAsSymbols[ frameIndex ] ), callbackCtx );
+    }
+
+    free( stackTraceAddressesAsSymbols );
+    stackTraceAddressesAsSymbols = NULL;
+}
+#endif // #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+
+#ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+void iterateOverCStackTrace( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx )
+{
+#   if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
+
+    iterateOverCStackTraceLibUnwind( numberOfFramesToSkip + 1, callback, logErrorCallback, callbackCtx );
+
+#   elif defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+
+    iterateOverCStackTraceBacktrace( numberOfFramesToSkip + 1, callback, logErrorCallback, callbackCtx );
+
+#   endif
+}
+#endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+
 #ifndef PHP_WIN32
 static String osSignalIdToName( int signalId )
 {
@@ -346,73 +482,31 @@ static String osSignalIdToName( int signalId )
 
 #define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
 
-#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
-void writeStackTraceToSyslog()
+#ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+void handleOsSignalLinux_writeStackTraceFrameToSyslog( String frameDesc, void* ctx )
 {
-#if defined( ELASTIC_APM_CAPTURE_C_STACK_TRACE_IMPL_LIBUNWIND )
-#   define ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( expr ) \
-        do { \
-            int temp_libUnwindRetVal = (expr); \
-            if ( temp_libUnwindRetVal < 0 ) \
-            { \
-                ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "%s call failed (return value: %d)", ELASTIC_APM_PP_STRINGIZE( expr ), temp_libUnwindRetVal ); \
-                return; \
-            } \
-        } while ( 0 )
-
-    unw_cursor_t unwindCursor;
-    unw_context_t unwindContext;
-    size_t frameIndex = 0;
-    enum { funcNameBufferSize = 100 };
-    char funcNameBuffer[ funcNameBufferSize ];
-    unw_word_t offsetInsideFunc;
-
-    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_getcontext( &unwindContext ) );
-    ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_init_local( &unwindCursor, &unwindContext ) );
-
-    for (;;)
-    {
-        ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unw_get_proc_name( &unwindCursor, funcNameBuffer, funcNameBufferSize, &offsetInsideFunc ) );
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame %d: %s + 0x%X", (int)(frameIndex+1), funcNameBuffer, (unsigned int)offsetInsideFunc );
-        int unwindStepRetVal = 0;
-        ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unwindStepRetVal = unw_step( &unwindCursor ) );
-        if ( unwindStepRetVal == 0 )
-        {
-            break;
-        }
-        ++frameIndex;
-    }
-
-#   undef ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR
-
-#elif defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
-    enum { maxStackTraceAddressesCount = 100 };
-    void* stackTraceAddresses[ maxStackTraceAddressesCount ];
-    int stackTraceAddressesCount = backtrace( stackTraceAddresses, maxStackTraceAddressesCount );
-    if ( stackTraceAddressesCount == 0 )
-    {
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "backtrace returned 0 (i.e., failed to get any address on the stack)\n" );
-        return;
-    }
-
-    ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d address: %p\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddresses[ i ] );
-
-    char** stackTraceAddressesAsSymbols = backtrace_symbols( stackTraceAddresses, stackTraceAddressesCount );
-    if ( stackTraceAddressesAsSymbols == NULL )
-    {
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
-        return;
-    }
-
-    ELASTIC_APM_FOR_EACH_INDEX( i, stackTraceAddressesCount )
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame #%d/%d: %s\n", (int)(i + 1), stackTraceAddressesCount, stackTraceAddressesAsSymbols[ i ] );
-
-    free( stackTraceAddressesAsSymbols );
-    stackTraceAddressesAsSymbols = NULL;
-#endif // #elif defined( ELASTIC_APM_PLATFORM_HAS_BACKTRACE )
+    ELASTIC_APM_UNUSED( ctx );
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame: %s", frameDesc == NULL ? "<N/A>" : frameDesc );
 }
-#endif // #if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
+
+void handleOsSignalLinux_writeStackTraceToSyslog_logError( String errorDesc, void* ctx )
+{
+    ELASTIC_APM_UNUSED( ctx );
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "%s", errorDesc );
+}
+#endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+
+void handleOsSignalLinux_writeStackTraceToSyslog()
+{
+#   ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call stack:" );
+    iterateOverCStackTrace( /* numberOfFramesToSkip */ 0, &handleOsSignalLinux_writeStackTraceFrameToSyslog, &handleOsSignalLinux_writeStackTraceToSyslog_logError, /* callbackCtx */ NULL );
+
+#   else // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER("C call stack capture is not supported by the platform");
+#   endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+}
 
 typedef void (* OsSignalHandler )( int );
 bool isOldSignalHandlerSet = false;
@@ -420,20 +514,8 @@ OsSignalHandler oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER(
-            "Received signal %d (%s). %s"
-            , signalId, osSignalIdToName( signalId )
-            ,
-#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
-              "Call stack below:"
-#else
-              "Call stack is not supported"
-#endif
-        );
-
-#if defined( ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE )
-    writeStackTraceToSyslog();
-#endif
+    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
+    handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
     if ( isOldSignalHandlerSet )
