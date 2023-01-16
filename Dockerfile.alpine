@@ -11,15 +11,23 @@ RUN apk update \
     curl \
     curl-dev \
     git \
+    logrotate \
     procps \
+    rsyslog \
     sqlite-dev \
-    unzip
+    unzip \
+    util-linux
+
+ARG ADD_LIBUNWIND_DEPENDENCY=false
+RUN echo "ADD_LIBUNWIND_DEPENDENCY: ${ADD_LIBUNWIND_DEPENDENCY}"
+ENV ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY}
+RUN if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then apk add libunwind-dev ; fi
+ENV ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE=${ADD_LIBUNWIND_DEPENDENCY}
 
 RUN docker-php-ext-install \
     mysqli \
     pcntl \
-    pdo_mysql \
-    pdo_sqlite
+    pdo_mysql
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -35,7 +43,10 @@ ENV CMOCKA_XML_FILE=/app/build/alpine-${PHP_VERSION}-%g-unit-tests-junit.xml
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 ENV ELASTIC_APM_ENABLED=false
 
-CMD phpize \
-    && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
+CMD export CFLAGS="-std=gnu99 ${CFLAGS}" ; \
+    if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then export LDFLAGS="-lunwind ${LDFLAGS}" ; fi ; \
+    echo "CFLAGS: ${CFLAGS}, ADD_LIBUNWIND_DEPENDENCY: ${ADD_LIBUNWIND_DEPENDENCY}, LDFLAGS: ${LDFLAGS}" ; \
+    phpize \
+    && ./configure --enable-elastic_apm \
     && make clean \
     && make

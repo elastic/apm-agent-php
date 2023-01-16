@@ -68,6 +68,10 @@ IF ( $ENV{CLION_IDE} )
     ADD_COMPILE_DEFINITIONS( ELASTIC_APM_UNDER_IDE )
 ENDIF()
 
+IF ( "$ENV{ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE}" STREQUAL "true" )
+    ADD_COMPILE_DEFINITIONS( ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE )
+ENDIF()
+
 IF ( WIN32 )
     ADD_COMPILE_DEFINITIONS( PHP_WIN32 )
     ADD_COMPILE_DEFINITIONS( _CRT_SECURE_NO_WARNINGS )
@@ -80,7 +84,9 @@ IF ( NOT cmocka_static_lib )
         IF ( DEFINED ENV{cmocka_installed_dir} )
             SET( cmocka_installed_dir $ENV{cmocka_installed_dir} )
         ELSE()
-            MESSAGE( FATAL_ERROR "cmocka_installed_dir environment variable is not defined" )
+            IF ( NOT $ENV{CLION_IDE} )
+                MESSAGE( FATAL_ERROR "cmocka_installed_dir environment variable is not defined" )
+            ENDIF()
         ENDIF()
         SET( cmocka_include_dir ${cmocka_installed_dir}/include )
         SET( cmocka_lib_dir ${cmocka_installed_dir}/lib/x64_Debug )
@@ -117,11 +123,17 @@ ENDIF()
 
 ADD_EXECUTABLE( unit_tests ${source_files} )
 
+SET( link_with_libraries ${cmocka_static_lib} )
 IF ( NOT WIN32 )
     # Link to library required by math.h and pthread.h
-    TARGET_LINK_LIBRARIES( unit_tests m pthread )
+    SET( link_with_libraries ${link_with_libraries} m pthread )
 ENDIF()
 
-TARGET_LINK_LIBRARIES( unit_tests ${cmocka_static_lib} )
+FIND_LIBRARY( unwind_lib unwind )
+IF ( unwind_lib )
+    SET( link_with_libraries ${link_with_libraries} unwind )
+ENDIF()
+
+TARGET_LINK_LIBRARIES( unit_tests ${link_with_libraries} )
 
 ADD_TEST( NAME Unit_tests COMMAND unit_tests )

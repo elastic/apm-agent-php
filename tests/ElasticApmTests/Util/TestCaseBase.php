@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
@@ -387,7 +389,7 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @return iterable<array<bool>>
+     * @return iterable<array{bool}>
      */
     public function boolDataProvider(): iterable
     {
@@ -607,5 +609,20 @@ class TestCaseBase extends TestCase
     {
         self::assertGreaterThanOrEqual($rangeBegin, $val);
         self::assertLessThanOrEqual($rangeInclusiveEnd, $val);
+    }
+
+    /**
+     * @param string $optName
+     * @param mixed  $val
+     *
+     * @return bool
+     */
+    public static function equalsConfigDefaultValue(string $optName, $val): bool
+    {
+        $optMeta = AllOptionsMetadata::get()[$optName];
+        if (!$optMeta instanceof OptionWithDefaultValueMetadata) {
+            return false;
+        }
+        return $val == $optMeta->defaultValue();
     }
 }

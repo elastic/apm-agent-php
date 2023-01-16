@@ -24,20 +24,27 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostHandle;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpConstantsForTests;
+use ElasticApmTests\ComponentTests\Util\TestCaseHandle;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\DummyExceptionForTests;
 use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -57,7 +64,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
     private function verifyError(DataFromAgent $dataFromAgent): ErrorDto
     {
-        $tx = $this->verifyOneEmptyTransaction($dataFromAgent);
+        $tx = $this->verifyOneTransactionNoSpans($dataFromAgent);
         $err = $dataFromAgent->singleError();
 
         self::assertSame($tx->id, $err->transactionId);
@@ -181,24 +188,47 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider boolDataProvider
+     * @return iterable<array{bool, bool}>
+     */
+    public function dataProviderForTestPhpErrorUndefinedVariable(): iterable
+    {
+        /** @var iterable<array{bool, bool}> $result */
+        $result = (new DataProviderForTestBuilder())
+            ->addBoolDimensionAllValuesCombinable() // includeInErrorReporting
+            ->addBoolDimensionAllValuesCombinable() // captureErrorsConfigOptVal
+            ->build();
+
+        return self::adaptToSmoke($result);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestPhpErrorUndefinedVariable
      *
      * @param bool $includeInErrorReporting
+     * @param bool $captureErrorsConfigOptVal
      */
-    public function testPhpErrorUndefinedVariable(bool $includeInErrorReporting): void
+    public function testPhpErrorUndefinedVariable(bool $includeInErrorReporting, bool $captureErrorsConfigOptVal): void
     {
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($includeInErrorReporting): void {
                 $appCodeRequestParams->setAppCodeArgs([self::INCLUDE_IN_ERROR_REPORTING => $includeInErrorReporting]);
             }
         );
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors(1));
+
+        $isErrorExpected = $captureErrorsConfigOptVal || (!$includeInErrorReporting);
+        $expectedErrorCount = $isErrorExpected ? 1 : 0;
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount)
+        );
+        self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
+        if (!$isErrorExpected) {
+            return;
+        }
 
         $actualError = $this->verifyError($dataFromAgent);
-        // self::printMessage(__METHOD__, '$actualError: ' . LoggableToString::convert($actualError));
         if (!$includeInErrorReporting) {
             self::verifySubstituteError($actualError);
             return;
@@ -221,8 +251,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         // was converted from notice to warning
         // https://www.php.net/manual/en/migration80.incompatible.php
         self::assertNotNull($expectedType, $dbgCtxStr);
-        self::assertSame($expectedType, $actualError->exception->type);
-        self::assertSame($expectedCode, $actualError->exception->code);
+        self::assertSame($expectedType, $actualError->exception->type, $dbgCtxStr);
+        self::assertSame($expectedCode, $actualError->exception->code, $dbgCtxStr);
         $expectedMessage
             = 'Undefined variable'
               // "Undefined variable ..." message:
@@ -264,10 +294,15 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         appCodeForTestPhpErrorUncaughtException();
     }
 
-    public function testPhpErrorUncaughtException(): void
+    /**
+     * @dataProvider boolDataProviderAdaptedToSmoke
+     *
+     * @param bool $captureErrorsConfigOptVal
+     */
+    public function testPhpErrorUncaughtException(bool $captureErrorsConfigOptVal): void
     {
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
@@ -281,10 +316,18 @@ final class ErrorComponentTest extends ComponentTestCaseBase
                 }
             }
         );
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors(1));
+
+        $isErrorExpected = $captureErrorsConfigOptVal;
+        $expectedErrorCount = $isErrorExpected ? 1 : 0;
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount)
+        );
+        self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
+        if (!$isErrorExpected) {
+            return;
+        }
 
         $err = $this->verifyError($dataFromAgent);
-        // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
         $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
         self::assertNotNull($err->exception);
@@ -323,10 +366,28 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         appCodeForTestCaughtExceptionResponded500();
     }
 
-    public function testCaughtExceptionResponded500(): void
+    private static function ensureMainAppCodeHost(
+        TestCaseHandle $testCaseHandle,
+        bool $captureErrorsConfigOptVal
+    ): AppCodeHostHandle {
+        return $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($captureErrorsConfigOptVal): void {
+                if (!self::equalsConfigDefaultValue(OptionNames::CAPTURE_ERRORS, $captureErrorsConfigOptVal)) {
+                    $appCodeParams->setAgentOption(OptionNames::CAPTURE_ERRORS, $captureErrorsConfigOptVal);
+                }
+            }
+        );
+    }
+
+    /**
+     * @dataProvider boolDataProviderAdaptedToSmoke
+     *
+     * @param bool $captureErrorsConfigOptVal
+     */
+    public function testCaughtExceptionResponded500(bool $captureErrorsConfigOptVal): void
     {
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestCaughtExceptionResponded500Wrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
@@ -336,17 +397,17 @@ final class ErrorComponentTest extends ComponentTestCaseBase
                 }
             }
         );
-        $isErrorExpected = self::isMainAppCodeHostHttp();
+        $isErrorExpected = self::isMainAppCodeHostHttp() && $captureErrorsConfigOptVal;
+        $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
-            (new ExpectedEventCounts())->transactions(1)->errors($isErrorExpected ? 1 : 0)
+            (new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount)
         );
+        self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
-            self::dummyAssert();
             return;
         }
 
         $err = $this->verifyError($dataFromAgent);
-        // self::printMessage(__METHOD__, '$err: ' . LoggableToString::convert($err));
 
         $appCodeFile = FileUtilForTests::listToPath(
             [dirname(__FILE__), 'appCodeForTestCaughtExceptionResponded500.php']

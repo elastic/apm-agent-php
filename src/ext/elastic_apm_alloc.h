@@ -242,10 +242,10 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
     ELASTIC_APM_PEFREE_ARRAY_AND_SET_TO_NULL( char, stringBufferSizeInclTermZero, ptr )
 
 #define ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( ptr ) \
-    ELASTIC_APM_EFREE_STRING_SIZE_AND_SET_TO_NULL( ( strlen( ptr ) + 1 ), ptr )
+    ELASTIC_APM_EFREE_STRING_SIZE_AND_SET_TO_NULL( ( (ptr) == NULL ) ? 0 : ( strlen( ptr ) + 1 ), ptr )
 
 #define ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( ptr ) \
-    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( ( strlen( ptr ) + 1 ), ptr )
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( ( (ptr) == NULL ) ? 0 : ( strlen( ptr ) + 1 ), ptr )
 
 
 #define ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSize, outPtr, doOnFailure ) \

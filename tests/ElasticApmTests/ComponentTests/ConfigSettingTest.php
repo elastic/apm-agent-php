@@ -124,6 +124,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
             OptionNames::ASYNC_BACKEND_COMM       => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
+            OptionNames::CAPTURE_ERRORS           => $boolRawToParsedValues(),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_INSTRUMENTATIONS => $wildcardListRawToParsedValues,

@@ -175,10 +175,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
                 $isTransactionSampled,
                 $shouldCaptureSleeps
             ): void {
-                $appCodeParams->setAgentOption(
-                    OptionNames::PROFILING_INFERRED_SPANS_ENABLED,
-                    BoolUtil::toString($isInferredSpansEnabled)
-                );
+                $appCodeParams->setAgentOption(OptionNames::PROFILING_INFERRED_SPANS_ENABLED, $isInferredSpansEnabled);
                 $inferredMinDuration = $shouldCaptureSleeps
                     ? self::INFERRED_MIN_DURATION_SECONDS_TO_CAPTURE_SLEEPS
                     : self::INFERRED_MIN_DURATION_SECONDS_TO_OMIT_SLEEPS;

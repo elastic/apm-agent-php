@@ -1,0 +1,7 @@
+version: '2.1'
+
+services:
+    app:
+        volumes:
+            - ${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY}:/Elastic_APM_PHP_agent_local_code/elastic_apm.so
+            - ${PHP_AGENT_INSTALL_LOCAL_SRC}:/Elastic_APM_PHP_agent_local_code/src

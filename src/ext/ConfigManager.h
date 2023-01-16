@@ -91,6 +91,7 @@ enum OptionId
     optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
+    optionId_captureErrors,
     optionId_devInternal,
     optionId_disableInstrumentations,
     optionId_disableSend,
@@ -147,6 +148,7 @@ struct ConfigSnapshot
     OptionalBool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
+    bool captureErrors;
     String devInternal;
     String disableInstrumentations;
     String disableSend;
@@ -267,41 +269,95 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 
 #define ELASTIC_APM_CFG_OPT_HAS_NO_VALUE "no value"
 
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_ABORT_ON_MEMORY_LEAK "abort_on_memory_leak"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #   ifdef PHP_WIN32
 #define ELASTIC_APM_CFG_OPT_NAME_ALLOW_ABORT_DIALOG "allow_abort_dialog"
 #   endif
+
 #define ELASTIC_APM_CFG_OPT_NAME_API_KEY "api_key"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM "async_backend_comm"
+
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
+#define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS "capture_errors"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
+
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
 #define ELASTIC_APM_CFG_OPT_NAME_HOSTNAME "hostname"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_INTERNAL_CHECKS_LEVEL "internal_checks_level"
+
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_FILE "log_file"
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL "log_level"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_FILE "log_level_file"
+
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_STDERR "log_level_stderr"
 #   ifndef PHP_WIN32
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_SYSLOG "log_level_syslog"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #   ifdef PHP_WIN32
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG "log_level_win_sys_debug"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_MEMORY_TRACKING_LEVEL "memory_tracking_level"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_NON_KEYWORD_STRING_MAX_LENGTH "non_keyword_string_max_length"
+
+/**
+ * Experimental configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED "profiling_inferred_spans_enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_MIN_DURATION "profiling_inferred_spans_min_duration"
 #define ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL "profiling_inferred_spans_sampling_interval"
+
 #define ELASTIC_APM_CFG_OPT_NAME_SANITIZE_FIELD_NAMES "sanitize_field_names"
 #define ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN "secret_token"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT "server_timeout"

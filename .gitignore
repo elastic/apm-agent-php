@@ -41,7 +41,7 @@ build/
 .bck
 
 # For local development
-/z_local*
+z_local*
 
 # Temporary files
-/_TEMP/
+_TEMP/

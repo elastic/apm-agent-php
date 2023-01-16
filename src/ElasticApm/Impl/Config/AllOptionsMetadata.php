@@ -53,6 +53,7 @@ final class AllOptionsMetadata
             OptionNames::API_KEY                  => new NullableStringOptionMetadata(),
             OptionNames::ASYNC_BACKEND_COMM       => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::BREAKDOWN_METRICS        => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::CAPTURE_ERRORS           => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::DEV_INTERNAL             => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_INSTRUMENTATIONS => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_SEND             => new BoolOptionMetadata(/* defaultValue: */ false),

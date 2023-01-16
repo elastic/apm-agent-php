@@ -41,7 +41,7 @@ struct TextOutputStream
     bool autoTermZero;
 
     // If shouldEncloseUserString is true then user provided strings are written as `text' (enclosed in quotes)
-    // otherwise user provided strings are are written as text (i.e., no quotes)
+    // otherwise user provided strings are written as text (i.e., no quotes)
     bool shouldEncloseUserString;
 };
 typedef struct TextOutputStream TextOutputStream;
