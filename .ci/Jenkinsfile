@@ -205,7 +205,12 @@ pipeline {
             DOCKER_REGISTRY_SECRET = 'secret/observability-team/ci/docker-registry/prod'
             GCS_ACCOUNT_SECRET = 'secret/observability-team/ci/snapshoty'
           }
-          when { branch 'main' }
+          when {
+            allOf {
+              branch 'main'
+              not { expression { isInternalCI() } }
+            }
+          }
           steps {
             withGithubNotify(context: 'Publish snapshot packages') {
               deleteDir()
