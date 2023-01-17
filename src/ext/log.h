@@ -102,7 +102,7 @@ struct Logger
 typedef struct Logger Logger;
 
 ResultCode constructLogger( Logger* logger );
-void reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel generalLevel );
+ResultCode reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, LogLevel generalLevel );
 void destructLogger( Logger* logger );
 
 void logWithLogger(

@@ -19,17 +19,21 @@
 
 #pragma once
 
-#ifndef PHP_WIN32
-#   include <features.h>
-#   ifdef __GLIBC__
-#       define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#if defined __has_include
+#   if __has_include (<libunwind.h>)
+#       define ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+#       define ELASTIC_APM_PLATFORM_HAS_LIBUNWIND
+#   elif __has_include (<features.h>)
+#       include <features.h>
+#       if defined __GLIBC__ && __has_include (<execinfo.h>)
+#           include <execinfo.h>
+#           define ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+#           define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
+#       endif
 #   endif
 #endif
 
 #include <stdbool.h>
-#ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
-#   include <execinfo.h> // backtrace
-#endif
 #include "basic_types.h"
 #include "basic_macros.h"
 #include "TextOutputStream.h"
@@ -82,3 +86,9 @@ String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
 void registerOsSignalHandler();
 
 void registerAtExitLogging();
+
+#ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+typedef void (* IterateOverCStackTraceCallback )( String frameDesc, void* ctx );
+typedef void (* IterateOverCStackTraceLogErrorCallback )( String errorDesc, void* ctx );
+void iterateOverCStackTrace( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx );
+#endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE

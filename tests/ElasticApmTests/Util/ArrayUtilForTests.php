@@ -100,4 +100,19 @@ final class ArrayUtilForTests
 
         return $default;
     }
+
+    /**
+     * @template T
+     *
+     * @param array<T> $array
+     *
+     * @return iterable<T>
+     */
+    public static function iterateListInReverse(array $array): iterable
+    {
+        $arrayCount = count($array);
+        for ($i = $arrayCount - 1; $i >= 0; --$i) {
+            yield $array[$i];
+        }
+    }
 }

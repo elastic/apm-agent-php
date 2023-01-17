@@ -101,3 +101,6 @@ String streamCurrentLocalTime( TextOutputStream* txtOutStream );
 String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* txtOutStream );
 
 int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b );
+
+TimeVal calcEndTimeVal( TimeVal beginTime, long seconds, long nanoSeconds );
+TimeVal calcTimeValDiff( TimeVal beginTime, TimeVal endTime );

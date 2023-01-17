@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionContextRequestInterface;
 use Elastic\Apm\TransactionContextUserInterface;
@@ -37,6 +38,9 @@ use Elastic\Apm\TransactionContextUserInterface;
  */
 final class TransactionContext extends ExecutionSegmentContext implements TransactionContextInterface
 {
+    /** @var ?array<string, string|bool|int|float|null> */
+    public $custom = null;
+
     /** @var ?TransactionContextRequest */
     public $request = null;
 
@@ -58,6 +62,17 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
         return $this->request;
     }
 
+    /**
+     * @param string                     $key
+     * @param string|bool|int|float|null $value
+     *
+     * @return void
+     */
+    public function setCustom(string $key, $value): void
+    {
+        $this->setInKeyValueMap($key, $value, /* enforceKeywordString */ false, /* ref */ $this->custom, 'custom');
+    }
+
     /** @inheritDoc */
     public function user(): TransactionContextUserInterface
     {
@@ -72,6 +87,7 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
     public function prepareForSerialization(): bool
     {
         return parent::prepareForSerialization()
+               || ($this->custom !== null && !ArrayUtil::isEmpty($this->custom))
                || SerializationUtil::prepareForSerialization(/* ref */ $this->request)
                || SerializationUtil::prepareForSerialization(/* ref */ $this->user);
     }
@@ -81,8 +97,10 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
     {
         $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
 
+        if ($this->custom !== null) {
+            SerializationUtil::addNameValueIfNotEmpty('custom', $this->custom, /* ref */ $result);
+        }
         SerializationUtil::addNameValueIfNotNull('request', $this->request, /* ref */ $result);
-
         SerializationUtil::addNameValueIfNotNull('user', $this->user, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);

@@ -23,7 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Generator;
+use Iterator;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -113,5 +117,70 @@ final class IterableUtilForTests
             $result[] = $val;
         }
         return $result;
+    }
+
+    /**
+     * @param iterable<mixed> $inputIterable
+     *
+     * @return Generator<mixed>
+     */
+    public static function iterableToGenerator(iterable $inputIterable): Generator
+    {
+        foreach ($inputIterable as $val) {
+            yield $val;
+        }
+    }
+
+    /**
+     * @param iterable<mixed> $inputIterable
+     *
+     * @return Iterator<mixed>
+     */
+    public static function iterableToIterator(iterable $inputIterable): Iterator
+    {
+        if ($inputIterable instanceof Iterator) {
+            return $inputIterable;
+        }
+
+        return self::iterableToGenerator($inputIterable);
+    }
+
+    /**
+     * @param iterable<mixed> $iterables
+     *
+     * @return Generator<mixed[]>
+     */
+    public static function zip(iterable ...$iterables): Generator
+    {
+        if (ArrayUtil::isEmpty($iterables)) {
+            return;
+        }
+
+        /** @var Iterator<mixed>[] $iterators */
+        $iterators = [];
+        foreach ($iterables as $inputIterable) {
+            $iterator = self::iterableToIterator($inputIterable);
+            $iterator->rewind();
+            $iterators[] = $iterator;
+        }
+
+        while (true) {
+            $tuple = [];
+            foreach ($iterators as $iterator) {
+                if ($iterator->valid()) {
+                    $tuple[] = $iterator->current();
+                    $iterator->next();
+                } else {
+                    TestCase::assertTrue(ArrayUtil::isEmpty($tuple));
+                }
+            }
+
+            if (ArrayUtil::isEmpty($tuple)) {
+                return;
+            }
+
+            TestCase::assertSame(count($iterables), count($tuple));
+            yield $tuple;
+        }
     }
 }

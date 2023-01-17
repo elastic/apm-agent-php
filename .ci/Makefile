@@ -5,9 +5,11 @@ PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
 LOOPS ?= 50
 SUFFIX :=
+ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT:=
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ## This is only required to tag the docker images used for building/testing this project
     SUFFIX := -alpine
+    ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT:=--build-arg ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY}
 endif
 
 CURRENT_UID := $(shell id -u)
@@ -20,8 +22,9 @@ help: ## Display this help text
 
 .PHONY: prepare
 prepare:  ## Build docker image for building and testing the project
-	@docker build \
+	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
+		${ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
 
@@ -37,7 +40,7 @@ build: prepare  ## Build the project
 static-check-unit-test: prepare  ## Test the static check and unit tests
 	# docker as the current user
 	docker run --rm -t \
-		-u $(CURRENT_UID):$(CURRENT_GID) \
+		-e CHOWN_RESULTS_UID=$(CURRENT_UID) -e CHOWN_RESULTS_GID=$(CURRENT_GID) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/static-check-unit-test.sh

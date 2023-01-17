@@ -2,21 +2,70 @@
 set -xe
 
 ## Location for the generated test report files
-BUILD_FOLDER=/app/build
-mkdir -p ${BUILD_FOLDER}
+APP_FOLDER=/app
+BUILD_FOLDER="${APP_FOLDER}/build"
+mkdir -p "${BUILD_FOLDER}"
+
+thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
+thisScriptDir="$( realpath "${thisScriptDir}" )"
+source "${thisScriptDir}/shared.sh"
+
+function onScriptExit () {
+    copySyslogFileAndPrintTheLastOne
+    if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
+        chown --recursive "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
+    fi
+}
+
+trap onScriptExit EXIT
+
+ensureSyslogIsRunning
 
 ## This make runs PHPT
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false
-make test
+for phptFile in ./tests/*.phpt; do
+    msg="Running tests in \`${phptFile}' ..."
+    echo "${msg}"
+    this_script_name="$( basename "${BASH_SOURCE[0]}" )"
+    logger -t "${this_script_name}" "${msg}"
 
-## Run cmocka tests
-cd /app/src/ext/unit_tests
-cmake .
-make
+    # Disable exit-on-error
+    set +e
+    make test TESTS="--show-all ${phptFile}"
+    exitCode=$?
+
+    if [ ${exitCode} -ne 0 ] ; then
+        echo "Tests in \`${phptFile}' failed"
+        phptFileName="${phptFile%.phpt}"
+        cat "${phptFileName}.log"
+        cat "${phptFileName}.out"
+        exit 1
+    fi
+
+    # Re-enable exit-on-error
+    set -e
+done
+
+# Disable exit-on-error
 set +e
-./unit_tests
-
+## Run cmocka tests
+function buildAndRunUnitTests () {
+    pushd /app/src/ext/unit_tests
+    for buildType in Debug Release
+    do
+        cmake -DCMAKE_BUILD_TYPE=${buildType} .
+        make
+        ./unit_tests
+        unitTestsExitCode=$?
+        if [ ${unitTestsExitCode} -ne 0 ] ; then
+            popd
+            return ${unitTestsExitCode}
+        fi
+    done
+    popd
+}
+buildAndRunUnitTests
 ## Save errorlevel to be reported later on
 ret=$?
 
@@ -30,7 +79,7 @@ if [ $ret -ne 0 ] ; then
     exit 1
 fi
 
-## Enable the error again
+# Re-enable exit-on-error
 set -e
 
 cd /app

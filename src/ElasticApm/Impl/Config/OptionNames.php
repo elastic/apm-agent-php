@@ -37,6 +37,7 @@ final class OptionNames
     public const API_KEY = 'api_key';
     public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
+    public const CAPTURE_ERRORS = 'capture_errors';
     public const DEV_INTERNAL = 'dev_internal';
     public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
     public const DISABLE_SEND = 'disable_send';
@@ -46,6 +47,10 @@ final class OptionNames
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
     public const LOG_LEVEL_STDERR = 'log_level_stderr';
+    public const NON_KEYWORD_STRING_MAX_LENGTH = 'non_keyword_string_max_length';
+    public const PROFILING_INFERRED_SPANS_ENABLED = 'profiling_inferred_spans_enabled';
+    public const PROFILING_INFERRED_SPANS_MIN_DURATION = 'profiling_inferred_spans_min_duration';
+    public const PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL = 'profiling_inferred_spans_sampling_interval';
     public const SANITIZE_FIELD_NAMES = 'sanitize_field_names';
     public const SECRET_TOKEN = 'secret_token';
     public const SERVER_TIMEOUT = 'server_timeout';

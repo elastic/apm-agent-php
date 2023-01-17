@@ -14,9 +14,13 @@ RUN apk update \
         unzip \
         wget
 
+ARG ADD_LIBUNWIND_DEPENDENCY=false
+RUN if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then apk add libunwind; fi
+
 RUN docker-php-ext-install \
-        pdo_mysql \
         mysqli \
+        pcntl \
+        pdo_mysql \
         pdo_sqlite \
         posix
 

@@ -38,6 +38,9 @@ final class LogSinkForTests extends SinkBase
     /** @var string */
     private $dbgProcessName;
 
+    /** @var bool */
+    private $isStderrDefined;
+
     public function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
@@ -45,6 +48,7 @@ final class LogSinkForTests extends SinkBase
         if (!defined('STDERR')) {
             define('STDERR', fopen('php://stderr', 'w'));
         }
+        $this->isStderrDefined = defined('STDERR');
     }
 
     protected function consumePreformatted(
@@ -76,7 +80,7 @@ final class LogSinkForTests extends SinkBase
             syslog(self::levelToSyslog($statementLevel), $statementText);
         }
 
-        if (defined('STDERR')) {
+        if ($this->isStderrDefined) {
             fwrite(STDERR, $statementText . PHP_EOL);
         }
     }

@@ -1,0 +1,127 @@
+version: '2.1'
+
+services:
+    app:
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        build:
+            context: ./..
+            dockerfile: ./Elasticsearch_client/Dockerfile
+            args:
+                PHP_VERSION: "${PHP_VERSION:-8.1.0}"
+                PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY: "${PHP_AGENT_INSTALL_LOCAL_EXTENSION_BINARY:-}"
+                PHP_AGENT_INSTALL_PACKAGE_URL: "${PHP_AGENT_INSTALL_PACKAGE_URL:-}"
+                PHP_AGENT_INSTALL_RELEASE_VERSION: "${PHP_AGENT_INSTALL_RELEASE_VERSION:-}"
+                USE_VALGRIND: "${USE_VALGRIND:-}"
+        environment:
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-Elasticsearch_client_demo_app}
+            ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-demo}
+            ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
+            ELASTIC_APM_LOG_LEVEL:
+            ELASTIC_APM_LOG_LEVEL_SYSLOG:
+            ELASTIC_APM_LOG_LEVEL_STDERR:
+            ELASTIC_APM_DISABLE_SEND:
+        volumes:
+            - ./index.php:/app/index.php:ro
+        ports:
+            - "${ADDRESS_ON_HOST_TO_BIND_APP_HTTP:-127.0.0.1}:${PORT_ON_HOST_TO_BIND_APP_HTTP:-8080}:80"
+        healthcheck:
+            test: ["CMD", "curl", "--max-time", "10", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://localhost:80/"]
+            retries: 10
+            interval: 10s
+
+    apm-server:
+        image: docker.elastic.co/apm/apm-server:${STACK_VERSION:-7.17.4}
+        ports:
+            - "${APM_SERVER_HOST:-127.0.0.1}:${APM_SERVER_PORT:-8200}:8200"
+            - "${APM_SERVER_HOST:-127.0.0.1}:${APM_SERVER_MONITOR_PORT:-6060}:6060"
+        command: >
+            apm-server -e
+              -E apm-server.frontend.enabled=true
+              -E apm-server.frontend.rate_limit=100000
+              -E apm-server.host=0.0.0.0:8200
+              -E apm-server.read_timeout=1m
+              -E apm-server.shutdown_timeout=2m
+              -E apm-server.write_timeout=1m
+              -E apm-server.rum.enabled=true
+              -E setup.kibana.host=kibana:5601
+              -E setup.template.settings.index.number_of_replicas=0
+              -E xpack.monitoring.elasticsearch=true
+              -E output.elasticsearch.enabled=${APM_SERVER_ELASTICSEARCH_OUTPUT_ENABLED:-true}
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - DAC_OVERRIDE
+            - SETGID
+            - SETUID
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '2m'
+                max-file: '5'
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+            kibana:
+                condition: service_healthy
+        healthcheck:
+            test: [ "CMD", "curl", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://apm-server:8200/" ]
+            retries: 10
+            interval: 10s
+
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-7.17.4}
+        environment:
+            - cluster.name=docker-cluster
+            - xpack.security.enabled=false
+            - bootstrap.memory_lock=true
+            - network.host=0.0.0.0
+            - discovery.type=single-node
+            - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "path.data=/usr/share/elasticsearch/data/${STACK_VERSION:-7.17.4}"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        mem_limit: 2g
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '2m'
+                max-file: '5'
+        ports:
+            - "${ELASTICSEARCH_HOST:-127.0.0.1}:${ELASTICSEARCH_PORT:-9200}:9200"
+        healthcheck:
+            test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'" ]
+            retries: 10
+            interval: 20s
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-7.17.4}
+        environment:
+            SERVER_NAME: kibana.example.org
+            ELASTICSEARCH_URL: http://elasticsearch:9200
+        ports:
+            - "${KIBANA_HOST:-127.0.0.1}:${KIBANA_PORT:-5601}:5601"
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '2m'
+                max-file: '5'
+        healthcheck:
+            test: [ "CMD", "curl", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://kibana:5601/" ]
+            retries: 10
+            interval: 10s
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+
+    wait_for_all_services_to_be_healthy:
+        image: busybox
+        depends_on:
+            app:
+                condition: service_healthy
+            apm-server:
+                condition: service_healthy

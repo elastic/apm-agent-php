@@ -26,7 +26,7 @@ namespace ElasticApmTests\UnitTests\ConfigTests;
 use Ds\Set;
 use Elastic\Apm\Impl\Config\NumericOptionParser;
 use Elastic\Apm\Impl\Util\NumericUtil;
-use ElasticApmTests\Util\RangeUtilForTests;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use IteratorIterator;
 
 /**
@@ -184,7 +184,7 @@ abstract class NumericOptionTestValuesGeneratorBase implements OptionTestValuesG
         }
 
         /** @noinspection PhpUnusedLocalVariableInspection */
-        foreach (RangeUtilForTests::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
+        foreach (RangeUtil::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
             $value = static::randomValue($this->effectiveMinValidValue(), $this->effectiveMaxValidValue());
             yield static::createOptionTestValidValue($value);
         }
@@ -222,13 +222,13 @@ abstract class NumericOptionTestValuesGeneratorBase implements OptionTestValuesG
 
         if (static::minValueSupportedByType() < $this->effectiveMinValidValue()) {
             /** @noinspection PhpUnusedLocalVariableInspection */
-            foreach (RangeUtilForTests::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
+            foreach (RangeUtil::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
                 yield strval(static::randomValue(static::minValueSupportedByType(), $this->effectiveMinValidValue()));
             }
         }
         if ($this->effectiveMaxValidValue() < static::maxValueSupportedByType()) {
             /** @noinspection PhpUnusedLocalVariableInspection */
-            foreach (RangeUtilForTests::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
+            foreach (RangeUtil::generateUpTo(self::NUMBER_OF_RANDOM_VALUES_TO_TEST) as $_) {
                 yield strval(static::randomValue($this->effectiveMaxValidValue(), static::maxValueSupportedByType()));
             }
         }

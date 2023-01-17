@@ -25,7 +25,6 @@ namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
-use Elastic\Apm\Impl\Util\UrlUtil;
 use PHPUnit\Framework\TestCase;
 
 class IdValidationUtilTest extends TestCase

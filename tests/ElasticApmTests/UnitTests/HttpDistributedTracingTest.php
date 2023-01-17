@@ -29,10 +29,10 @@ use Elastic\Apm\Impl\DistributedTracingDataInternal;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\CharSetForTests;
-use ElasticApmTests\Util\RangeUtilForTests;
 use PHPUnit\Framework\TestCase;
 
 class HttpDistributedTracingTest extends TracerUnitTestCaseBase
@@ -381,7 +381,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     public static function generateTraceStateHeaderValues(int $amount): array
     {
         $result = [];
-        foreach (RangeUtilForTests::generateUpTo($amount) as $i) {
+        foreach (RangeUtil::generateUpTo($amount) as $i) {
             $result[] = 'v' . $i;
         }
         return $result;
@@ -392,7 +392,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     {
         TestCase::assertGreaterThanOrEqual($firstIndex, $latIndex);
         $result = '';
-        foreach (RangeUtilForTests::generateFromToIncluding($firstIndex, $latIndex) as $i) {
+        foreach (RangeUtil::generateFromToIncluding($firstIndex, $latIndex) as $i) {
             if ($i !== $firstIndex) {
                 $result .= ',';
             }

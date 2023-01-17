@@ -143,10 +143,12 @@ ResultCode syncSendEventsToApmServer( bool disableSend
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Sending events to APM Server..."
+            "; config->serverUrl: %s"
             "; disableSend: %s"
             "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
             "; userAgentHttpHeader: `%s'"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            , config->serverUrl
             , boolToString( disableSend )
             , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , userAgentHttpHeader

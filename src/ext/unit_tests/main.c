@@ -47,6 +47,8 @@ int run_MemoryTracker_tests();
 #endif
 int run_Logger_tests();
 int run_config_tests();
+int run_time_util_tests();
+int run_iterateOverCStackTrace_tests();
 
 int main( int argc, char* argv[] )
 {
@@ -67,6 +69,8 @@ int main( int argc, char* argv[] )
         #endif
     failedTestsCount += run_Logger_tests();
     failedTestsCount += run_config_tests();
+    failedTestsCount += run_time_util_tests();
+    failedTestsCount += run_iterateOverCStackTrace_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
 

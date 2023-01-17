@@ -24,12 +24,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\ApmDataKind;
-use ElasticApmTests\UnitTests\Util\NotFoundException;
 use PHPUnit\Framework\TestCase;
 
 class DataFromAgent implements LoggableInterface
@@ -88,17 +88,33 @@ class DataFromAgent implements LoggableInterface
     /**
      * @param string $name
      *
-     * @return SpanDto
-     * @throws NotFoundException
+     * @return SpanDto[]
      */
-    public function spanByName(string $name): SpanDto
+    public function findSpansByName(string $name): array
     {
+        $result = [];
         foreach ($this->idToSpan as $span) {
             if ($span->name === $name) {
-                return $span;
+                $result[] = $span;
             }
         }
-        throw new NotFoundException("Span with the name `$name' not found");
+        return $result;
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return SpanDto
+     */
+    public function singleSpanByName(string $name): SpanDto
+    {
+        $spans = $this->findSpansByName($name);
+        TestCase::assertCount(
+            1,
+            $spans,
+            LoggableToString::convert(['name' => $name, 'spans' => $spans, 'this' => $this])
+        );
+        return $spans[0];
     }
 
     /**

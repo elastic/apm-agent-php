@@ -27,13 +27,13 @@ use Closure;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
-use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
+use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\RandomUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
@@ -66,7 +66,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public $context = null;
 
     /** @var Tracer */
-    protected $tracer;
+    private $tracer;
 
     /** @var ConfigSnapshot */
     private $config;
@@ -77,17 +77,20 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var Logger */
     private $logger;
 
-    /** @var Span[] */
-    private $spansToSend = [];
-
-    /** @var Error[] */
-    private $errorsDataToSend = [];
+    /** @var int */
+    public $numberOfErrorsSent = 0;
 
     /** @var ?BreakdownMetricsPerTransaction */
     private $breakdownMetricsPerTransaction = null;
 
     /** @var ?string */
     private $outgoingTraceState;
+
+    /** @var ObserverSet<Transaction> */
+    public $onAboutToEnd;
+
+    /** @var ObserverSet<?Span> */
+    public $onCurrentSpanChanged;
 
     public function __construct(TransactionBuilder $builder)
     {
@@ -132,6 +135,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
                                      ->addContext('this', $this);
 
         $this->isSampled = $isSampled;
+
+        $this->onCurrentSpanChanged = new ObserverSet();
+        $this->onAboutToEnd = new ObserverSet();
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Transaction created');
@@ -282,11 +288,30 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     public function setCurrentSpan(?Span $newCurrentSpan): void
     {
         $this->currentSpan = $newCurrentSpan;
+        $this->onCurrentSpanChanged->callCallbacks($this->currentSpan);
     }
 
     public function getCurrentExecutionSegment(): ExecutionSegmentInterface
     {
         return $this->currentSpan ?? $this;
+    }
+
+    public function tryToAllocateStartedSpan(): bool
+    {
+        if ($this->startedSpansCount < $this->config->transactionMaxSpans()) {
+            ++$this->startedSpansCount;
+            return true;
+        }
+
+        ++$this->droppedSpansCount;
+        if ($this->droppedSpansCount === 1) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
+                [OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans()]
+            );
+        }
+        return false;
     }
 
     public function beginSpan(
@@ -304,22 +329,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         $isDropped = false;
         // Started and dropped spans should be counted only for sampled transactions
         if ($this->isSampled) {
-            if ($this->startedSpansCount >= $this->config->transactionMaxSpans()) {
-                $isDropped = true;
-                ++$this->droppedSpansCount;
-                if ($this->droppedSpansCount === 1) {
-                    ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                    && $loggerProxy->log(
-                        'Starting to drop spans because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
-                        [
-                            'count($this->spansDataToSend)'                => count($this->spansToSend),
-                            OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
-                        ]
-                    );
-                }
-            } else {
-                ++$this->startedSpansCount;
-            }
+            $isDropped = !$this->tryToAllocateStartedSpan();
         }
 
         return new Span(
@@ -385,7 +395,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         ?string $action = null,
         ?float $timestamp = null
     ): SpanInterface {
-        $this->currentSpan = $this->beginSpan(
+        $newCurrentSpan = $this->beginSpan(
             $this->currentSpan ?? $this /* <- parentExecutionSegment */,
             $name,
             $type,
@@ -393,7 +403,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             $action,
             $timestamp
         );
-
+        $this->setCurrentSpan($newCurrentSpan);
         return $this->getCurrentSpan();
     }
 
@@ -472,59 +482,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->config;
     }
 
-    public function queueSpanToSend(Span $span): void
-    {
-        if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Dropping span because '
-                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
-                . ' is set'
-            );
-            return;
-        }
-
-        if ($this->hasEnded()) {
-            $this->tracer->sendEventsToApmServer(
-                [$span],
-                [] /* <- errorsData */,
-                null /* <- breakdownMetricsPerTransaction */,
-                null /* <- transactionData */
-            );
-            return;
-        }
-
-        $this->spansToSend[] = $span;
-    }
-
-    public function reserveSpaceInErrorToSendQueue(): bool
-    {
-        if ($this->hasEnded() || count($this->errorsDataToSend) < $this->config->transactionMaxSpans()) {
-            return true;
-        }
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Starting to drop errors because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
-            [
-                'count($this->errorsDataToSend)'               => count($this->errorsDataToSend),
-                OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
-            ]
-        );
-        return false;
-    }
-
-    public function queueErrorDataToSend(Error $errorData): void
-    {
-        $this->errorsDataToSend[] = $errorData;
-    }
-
     /** @inheritDoc */
     public function discard(): void
     {
         while ($this->currentSpan !== null) {
             $spanToDiscard = $this->currentSpan;
-            $this->currentSpan = $this->currentSpan->parentIfSpan();
+            $this->setCurrentSpan($this->currentSpan->parentIfSpan());
             if (!$spanToDiscard->hasEnded()) {
                 $spanToDiscard->discard();
             }
@@ -540,23 +503,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
+        $this->onAboutToEnd->callCallbacks($this);
+
         $this->prepareForSerialization();
 
-        if ($this->tracer->getConfig()->devInternal()->dropEventAfterEnd()) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Dropping transaction because '
-                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
-                . ' is set'
-            );
-        } else {
-            $this->tracer->sendEventsToApmServer(
-                $this->spansToSend,
-                $this->errorsDataToSend,
-                $this->breakdownMetricsPerTransaction,
-                $this
-            );
-        }
+        $this->tracer->sendTransactionToApmServer($this->breakdownMetricsPerTransaction, $this);
 
         if ($this->tracer->getCurrentTransaction() === $this) {
             $this->tracer->resetCurrentTransaction();
@@ -629,10 +580,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @inheritDoc */
     protected static function propertiesExcludedFromLog(): array
     {
-        return array_merge(
-            parent::propertiesExcludedFromLog(),
-            ['config', 'context', 'currentSpan', 'spansDataToSend', 'errorsDataToSend']
-        );
+        return array_merge(parent::propertiesExcludedFromLog(), ['config', 'currentSpan']);
     }
 
     /** @inheritDoc */
@@ -642,11 +590,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         parent::toLogLoggableTraitImpl(
             $stream,
             /* customPropValues */
-            [
-                'currentSpanId'         => $currentSpanId,
-                'spansDataToSendCount'  => count($this->spansToSend),
-                'errorsDataToSendCount' => count($this->errorsDataToSend),
-            ]
+            ['currentSpanId' => $currentSpanId]
         );
     }
 }

@@ -102,6 +102,19 @@ final class SerializationUtil
      *
      * @return void
      */
+    public static function addNameValueAssumeNotNull(string $name, $value, array &$nameToValue): void
+    {
+        /** @var bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value */
+        self::addNameValue($name, $value, /* ref */ $nameToValue);
+    }
+
+    /**
+     * @param string                                                            $name
+     * @param null|bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                              $nameToValue
+     *
+     * @return void
+     */
     public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
     {
         self::assertNotExists($name, $value, $nameToValue);

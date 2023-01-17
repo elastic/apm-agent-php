@@ -57,7 +57,7 @@ final class ExpectedEventCounts implements LoggableInterface
             },
             [] /* <- initial */
         );
-        TestCaseBase::assertEqualLists($allApmDataKindsAsStrings, array_keys($this->perDataKind));
+        TestCaseBase::assertEqualAsSets($allApmDataKindsAsStrings, array_keys($this->perDataKind));
     }
 
     private function setValueForKind(ApmDataKind $apmDataKind, ?int $count): self
@@ -89,17 +89,15 @@ final class ExpectedEventCounts implements LoggableInterface
 
     public function hasReachedCountForKind(ApmDataKind $apmDataKind, int $actualCount): bool
     {
+        $dbgCtx = ['$apmDataKind' => $apmDataKind];
+        $dbgCtxStr = LoggableToString::convert($dbgCtx);
         $expectedCount = ArrayUtil::getValueIfKeyExistsElse($apmDataKind->asString(), $this->perDataKind, null);
         if ($expectedCount === null) {
             return true;
         }
 
         if ($apmDataKind === ApmDataKind::span() && $this->maxSpanCount !== null) {
-            TestCase::assertLessThanOrEqual(
-                $this->maxSpanCount,
-                $actualCount,
-                LoggableToString::convert(['$apmDataKind' => $apmDataKind])
-            );
+            TestCase::assertLessThanOrEqual($this->maxSpanCount, $actualCount, $dbgCtxStr);
             return $expectedCount <= $actualCount;
         }
 
@@ -107,11 +105,7 @@ final class ExpectedEventCounts implements LoggableInterface
             return $expectedCount <= $actualCount;
         }
 
-        TestCase::assertLessThanOrEqual(
-            $expectedCount,
-            $actualCount,
-            LoggableToString::convert(['$apmDataKind' => $apmDataKind])
-        );
+        TestCase::assertLessThanOrEqual($expectedCount, $actualCount, $dbgCtxStr);
         return $expectedCount === $actualCount;
     }
 }

@@ -1,7 +1,5 @@
 --TEST--
 Boolean configuration option value 0 (in this case using ini file) should be interpreted as false
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--

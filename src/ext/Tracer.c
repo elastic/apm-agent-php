@@ -19,6 +19,7 @@
 
 #include "Tracer.h"
 #include "elastic_apm_version.h"
+#include "elastic_apm_alloc.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
@@ -51,8 +52,9 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot()
 }
 
 static
-void ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* config )
+ResultCode ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* config )
 {
+    ResultCode resultCode;
     LoggerConfig loggerConfig = { 0 };
 
     loggerConfig.levelPerSinkType[ logSink_stderr ] = config->logLevelStderr;
@@ -64,9 +66,15 @@ void ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* config )
     loggerConfig.levelPerSinkType[ logSink_winSysDebug ] = config->logLevelWinSysDebug;
     #endif
 
-    loggerConfig.file = config->logFile;
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( reconfigureLogger( logger, &loggerConfig, config->logLevel ) );
 
-    reconfigureLogger( logger, &loggerConfig, config->logLevel );
+    resultCode = resultSuccess;
+
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
 }
 
 #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
@@ -133,7 +141,7 @@ ResultCode ensureLoggerInitialConfigIsLatest( Tracer* tracer )
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConfigManager( &loggingRelatedOnlyConfigManager, /* isLoggingRelatedOnly */ true ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureConfigManagerHasLatestConfig( loggingRelatedOnlyConfigManager, &didConfigChange ) );
-    ensureLoggerHasLatestConfig( &tracer->logger, getConfigManagerCurrentSnapshot( loggingRelatedOnlyConfigManager ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerHasLatestConfig( &tracer->logger, getConfigManagerCurrentSnapshot( loggingRelatedOnlyConfigManager ) ) );
 
     resultCode = resultSuccess;
 
@@ -167,7 +175,7 @@ ResultCode ensureAllComponentsHaveLatestConfig( Tracer* tracer )
 
     config = getTracerCurrentConfigSnapshot( tracer );
     ensureInternalChecksLevelHasLatestConfig( tracer, config );
-    ensureLoggerHasLatestConfig( &tracer->logger, config );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerHasLatestConfig( &tracer->logger, config ) );
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     ensureMemoryTrackerHasLatestConfig( &tracer->memTracker, config );
     #endif

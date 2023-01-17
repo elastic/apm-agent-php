@@ -124,6 +124,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
             OptionNames::ASYNC_BACKEND_COMM       => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
+            OptionNames::CAPTURE_ERRORS           => $boolRawToParsedValues(),
             OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_INSTRUMENTATIONS => $wildcardListRawToParsedValues,
@@ -133,6 +134,15 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
+            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
+                                                  => $intRawToParsedValues,
+            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            OptionNames::PROFILING_INFERRED_SPANS_ENABLED
+                                                  => $boolRawToParsedValues(/* valueToExclude: */ true),
+            OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
+                                                  => $durationRawToParsedValues,
+            OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL
+                                                  => $durationRawToParsedValues,
             OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
             OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
             OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,

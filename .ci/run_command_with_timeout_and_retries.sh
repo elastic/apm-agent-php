@@ -45,7 +45,6 @@ function print_command_line_help () {
     defaults="${defaults}${new_line_indent}retry-on-error: ${retry_on_error_default}"
 
     cli_format="${cli_format} [--help]"
-    defaults="${defaults}${new_line_indent}retry-on-error: ${retry_on_error_default}"
 
     cli_format="${cli_format} -- <command_to_run>"
 

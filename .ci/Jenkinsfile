@@ -30,6 +30,8 @@ pipeline {
     string(name: 'VERSION', defaultValue: '', description: "What's the version to be bumped when doing a release?")
     choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
     choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
+    booleanParam(name: 'INCLUDE_TESTING', defaultValue: true, description: 'Should the testing stages be included?')
+    booleanParam(name: 'ADD_LIBUNWIND_DEPENDENCY', defaultValue: false, description: 'Should Alpine (.apk) build have dependency on libunwind (to be able to log C call stack on crash)?')
   }
   stages {
     stage('Initializing'){
@@ -106,17 +108,23 @@ pipeline {
             stages {
               stage('Build PHP extension') {
                 steps {
+                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
+                  echo "params.ADD_LIBUNWIND_DEPENDENCY: ${params.ADD_LIBUNWIND_DEPENDENCY}"
                   initWorkspace(context: "Build-${PHP_VERSION}") {
                     // When running in the CI with multiple parallel stages
                     // the access could be considered as a DDOS attack.
                     retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
                     }
                     sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
                   }
                 }
               }
               stage('Static analysis and unit tests') {
+                when {
+                  beforeAgent true
+                  expression { return params.INCLUDE_TESTING }
+                }
                 steps {
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
                   echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
@@ -143,7 +151,7 @@ pipeline {
                 steps {
                   withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
                     dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
                       stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
                     }
                   }
@@ -164,10 +172,11 @@ pipeline {
                 // See the comment in generate_package_lifecycle_test_matrix.sh
                 packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1'])
             }
+            stash(allowEmpty: false, name: 'snapshoty', includes: "${BASE_DIR}/.ci/*,${BASE_DIR}/build/packages/*")
           }
           post {
             always {
-              dir("${BASE_DIR}"){
+              dir("${BASE_DIR}") {
                 archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/packages/*')
               }
             }
@@ -179,11 +188,37 @@ pipeline {
             beforeAgent true
             allOf {
               expression { return env.ONLY_DOCS == "false" }
+              expression { return params.INCLUDE_TESTING }
               not { expression { isInternalCI() } }
             }
           }
           steps {
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: false)
+          }
+        }
+        stage('Publish snapshots') {
+          agent { label 'ubuntu-18.04 && immutable' }
+          options { skipDefaultCheckout() }
+          environment {
+            BUCKET_NAME = 'oblt-artifacts'
+            DOCKER_REGISTRY = 'docker.elastic.co'
+            DOCKER_REGISTRY_SECRET = 'secret/observability-team/ci/docker-registry/prod'
+            GCS_ACCOUNT_SECRET = 'secret/observability-team/ci/snapshoty'
+          }
+          when { branch 'main' }
+          steps {
+            withGithubNotify(context: 'Publish snapshot packages') {
+              deleteDir()
+              unstash(name: 'snapshoty')
+              dir(env.BASE_DIR) {
+                snapshoty(
+                  bucket: env.BUCKET_NAME,
+                  gcsAccountSecret: env.GCS_ACCOUNT_SECRET,
+                  dockerRegistry: env.DOCKER_REGISTRY,
+                  dockerSecret: env.DOCKER_REGISTRY_SECRET
+                )
+              }
+            }
           }
         }
       }
@@ -240,6 +275,10 @@ pipeline {
         }
         stage('Test signed packages') {
           options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return params.INCLUDE_TESTING }
+          }
           steps {
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: true)
           }
@@ -533,6 +572,7 @@ def addEnvVarsFromParams(def withEnvList) {
     if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
+    withEnvList.add('ADD_LIBUNWIND_DEPENDENCY=' + params.ADD_LIBUNWIND_DEPENDENCY)
     return withEnvList
 }
 

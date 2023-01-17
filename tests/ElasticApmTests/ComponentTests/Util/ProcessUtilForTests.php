@@ -35,6 +35,8 @@ final class ProcessUtilForTests
 {
     use StaticClassTrait;
 
+    private const PROC_OPEN_DESCRIPTOR_FILE_TYPE = 'file';
+
     public static function doesProcessExist(int $pid): bool
     {
         $cmd = OsUtilForTests::isWindows()
@@ -101,8 +103,8 @@ final class ProcessUtilForTests
             if (file_exists($tempOutputFilePath)) {
                 TestCase::assertTrue(unlink($tempOutputFilePath));
             }
-            $descriptorSpec[1] = ['file', $tempOutputFilePath, "w"]; // 1 - stdout
-            $descriptorSpec[2] = ['file', $tempOutputFilePath, "w"]; // 2 - stderr
+            $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
+            $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }
 
         $hasReturnedExitCode = false;

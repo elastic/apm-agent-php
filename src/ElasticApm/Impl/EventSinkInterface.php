@@ -34,7 +34,7 @@ interface EventSinkInterface
 {
     /**
      * @param Metadata                        $metadata
-     * @param Span[]                          $spans
+     * @param SpanToSendInterface[]           $spans
      * @param Error[]                         $errors
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
      * @param ?Transaction                    $transaction

@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -155,7 +156,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
         $result = $envVars;
         $agentOptionsToEnvVars = $this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::envVars());
         foreach ($agentOptionsToEnvVars as $optName => $optVal) {
-            $result[ConfigUtilForTests::envVarNameForAgentOption($optName)] = strval($optVal);
+            $result[ConfigUtilForTests::envVarNameForAgentOption($optName)] = self::optionValueToString($optVal);
         }
         return $result;
     }
@@ -172,14 +173,24 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     }
 
     /**
-     * @param string|int|float $optVal
+     * @param string|int|float|bool $optVal
+     *
+     * @return string
+     */
+    private static function optionValueToString($optVal): string
+    {
+        return is_bool($optVal) ? BoolUtil::toString($optVal) : strval($optVal);
+    }
+
+    /**
+     * @param string|int|float|bool $optVal
      *
      * @return string
      */
     private static function processOptionValueBeforeWriteToIni($optVal): string
     {
         if (!is_string($optVal)) {
-            return strval($optVal);
+            return self::optionValueToString($optVal);
         }
 
         /**

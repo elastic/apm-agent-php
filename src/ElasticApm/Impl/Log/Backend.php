@@ -49,9 +49,9 @@ final class Backend implements LoggableInterface
                              : NoopLogSink::singletonInstance());
     }
 
-    public function getMaxEnabledLevel(): int
+    public function isEnabledForLevel(int $level): bool
     {
-        return $this->maxEnabledLevel;
+        return $this->maxEnabledLevel >= $level;
     }
 
     public function clone(): self

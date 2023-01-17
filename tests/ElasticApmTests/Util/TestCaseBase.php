@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
@@ -34,6 +36,7 @@ use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
@@ -188,7 +191,7 @@ class TestCaseBase extends TestCase
         if ($context === null) {
             return false;
         }
-        return array_key_exists($key, $context->labels);
+        return $context->labels !== null && array_key_exists($key, $context->labels);
     }
 
     /**
@@ -200,7 +203,7 @@ class TestCaseBase extends TestCase
     public static function assertLabelsCount(int $expectedCount, ExecutionSegmentDto $execSegData): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if ($context === null) {
+        if ($context === null || $context->labels === null) {
             self::assertSame(0, $expectedCount, LoggableToString::convert($execSegData));
             return;
         }
@@ -215,7 +218,7 @@ class TestCaseBase extends TestCase
     public static function getLabels(ExecutionSegmentDto $execSegData): array
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if ($context === null) {
+        if ($context === null || $context->labels === null) {
             return [];
         }
         return $context->labels;
@@ -231,6 +234,7 @@ class TestCaseBase extends TestCase
     {
         $context = self::getExecutionSegmentContext($execSegData);
         self::assertNotNull($context);
+        self::assertNotNull($context->labels);
         self::assertArrayHasKey($key, $context->labels);
         return $context->labels[$key];
     }
@@ -238,18 +242,17 @@ class TestCaseBase extends TestCase
     public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key, string $message = ''): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        self::assertNotNull($context, LoggableToString::convert(['execSegData' => $execSegData]) . '. ' . $message);
-        self::assertArrayHasKey(
-            $key,
-            $context->labels,
-            LoggableToString::convert(['key' => $key, 'execSegData' => $execSegData]) . '. ' . $message
-        );
+        $dbgCtx = ['key' => $key, 'execSegData' => $execSegData, 'message' => $message];
+        $dbgCtxStr = LoggableToString::convert($dbgCtx);
+        self::assertNotNull($context, $dbgCtxStr);
+        self::assertNotNull($context->labels, $dbgCtxStr);
+        self::assertArrayHasKey($key, $context->labels, $dbgCtxStr);
     }
 
     public static function assertNotHasLabel(ExecutionSegmentDto $execSegData, string $key): void
     {
         $context = self::getExecutionSegmentContext($execSegData);
-        if ($context === null) {
+        if ($context === null || $context->labels === null) {
             return;
         }
         self::assertArrayNotHasKey($key, $context->labels);
@@ -264,10 +267,25 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @param mixed[]              $expected
+     * @param mixed[]              $actual
+     * @param array<string, mixed> $dbgCtxOuter
+     */
+    public static function assertEqualLists(array $expected, array $actual, array $dbgCtxOuter = []): void
+    {
+        $dbgCtxTop = array_merge(['expected' => $expected, 'actual' => $actual], $dbgCtxOuter);
+        self::assertSame(count($expected), count($actual), LoggableToString::convert($dbgCtxTop));
+        foreach (RangeUtil::generateUpTo(count($expected)) as $i) {
+            $dbgCtxPerIndex = array_merge(['i' => $i], $dbgCtxTop);
+            self::assertSame($expected[$i], $actual[$i], LoggableToString::convert($dbgCtxPerIndex));
+        }
+    }
+
+    /**
      * @param mixed[] $expected
      * @param mixed[] $actual
      */
-    public static function assertEqualLists(array $expected, array $actual, string $message = ''): void
+    public static function assertEqualAsSets(array $expected, array $actual, string $message = ''): void
     {
         self::assertTrue(sort(/* ref */ $expected));
         self::assertTrue(sort(/* ref */ $actual));
@@ -371,7 +389,7 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @return iterable<array<bool>>
+     * @return iterable<array{bool}>
      */
     public function boolDataProvider(): iterable
     {
@@ -543,5 +561,68 @@ class TestCaseBase extends TestCase
         if ($expected->isValueSet()) {
             self::assertSame($expected->getValue(), $actual);
         }
+    }
+
+    /**
+     * @param string|int           $expectedKey
+     * @param mixed                $expectedVal
+     * @param array<string, mixed> $actualArray
+     */
+    public static function assertSameValueInArray(
+        $expectedKey,
+        $expectedVal,
+        array $actualArray,
+        string $message = ''
+    ): void {
+        $ctx = (!empty($message)) ? $message : LoggableToString::convert(
+            [
+                'expectedKey' => $expectedKey,
+                'expectedVal' => $expectedVal,
+                'actualArray' => $actualArray,
+            ]
+        );
+        self::assertArrayHasKey($expectedKey, $actualArray, $ctx);
+        self::assertSame($expectedVal, $actualArray[$expectedKey], $ctx);
+    }
+
+    /**
+     * @param string               $expectedKey
+     * @param mixed                $expectedVal
+     * @param array<string, mixed> $actualArray
+     */
+    public static function assertEqualValueInArray(string $expectedKey, $expectedVal, array $actualArray): void
+    {
+        self::assertArrayHasKey($expectedKey, $actualArray);
+        self::assertEquals($expectedVal, $actualArray[$expectedKey]);
+    }
+
+    /**
+     * @template T
+     *
+     * @param T $rangeBegin
+     * @param T $val
+     * @param T $rangeInclusiveEnd
+     *
+     * @return void
+     */
+    public static function assertInRangeInclusive($rangeBegin, $val, $rangeInclusiveEnd): void
+    {
+        self::assertGreaterThanOrEqual($rangeBegin, $val);
+        self::assertLessThanOrEqual($rangeInclusiveEnd, $val);
+    }
+
+    /**
+     * @param string $optName
+     * @param mixed  $val
+     *
+     * @return bool
+     */
+    public static function equalsConfigDefaultValue(string $optName, $val): bool
+    {
+        $optMeta = AllOptionsMetadata::get()[$optName];
+        if (!$optMeta instanceof OptionWithDefaultValueMetadata) {
+            return false;
+        }
+        return $val == $optMeta->defaultValue();
     }
 }

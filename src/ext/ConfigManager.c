@@ -683,6 +683,7 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableSend )
@@ -703,7 +704,10 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, nonKeywordStringMaxLength )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, profilingInferredSpansEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansMinDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansSamplingInterval )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, sanitizeFieldNames )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
@@ -849,6 +853,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* defaultValue: */ true );
 
     ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            captureErrors,
+            ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             devInternal,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
@@ -929,10 +939,28 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     #endif
 
     ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            nonKeywordStringMaxLength,
+            ELASTIC_APM_CFG_OPT_NAME_NON_KEYWORD_STRING_MAX_LENGTH,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
             profilingInferredSpansEnabled,
             ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_ENABLED,
             /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            profilingInferredSpansMinDuration,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_MIN_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            profilingInferredSpansSamplingInterval,
+            ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,
@@ -1105,7 +1133,7 @@ static ResultCode constructEnvVarNameForOption( String optName, String* envVarNa
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( envVarNameBufferSize, envVarNameBuffer );
     goto finally;
 }
 
@@ -1114,7 +1142,7 @@ static void destructEnvVarNames( /* in,out */ String envVarNames[] )
     ELASTIC_APM_ASSERT_VALID_PTR( envVarNames );
 
     ELASTIC_APM_FOR_EACH_OPTION_ID( optId )
-        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( envVarNames[ optId ] ) + 1, envVarNames[ optId ] );
+        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( envVarNames[ optId ] );
 }
 
 static ResultCode constructEnvVarNames( OptionMetadata* optsMeta, /* out */ String envVarNames[] )
@@ -1184,7 +1212,7 @@ ResultCode getRawOptionValueFromEnvVars(
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( rawValue );
     goto finally;
 }
 
@@ -1242,7 +1270,7 @@ ResultCode getRawOptionValueFromIni(
     return resultCode;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( rawValue ) + 1, rawValue );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( rawValue );
     goto finally;
 }
 
@@ -1282,7 +1310,7 @@ void deleteConfigRawDataAndSetToNull( /* in,out */ ConfigRawData** pRawData )
         ELASTIC_APM_FOR_EACH_INDEX( rawSourceIndex, numberOfRawConfigSources )
         {
             const char** pOriginalRawValue = &( rawData->fromSources[ rawSourceIndex ].original[ optId ] );
-            ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL(strlen( *pOriginalRawValue ) + 1, *pOriginalRawValue );
+            ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( *pOriginalRawValue );
         }
 
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigRawData, *pRawData );

@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\DataFromAgent;
@@ -75,8 +76,8 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param string                $optName
-     * @param null|string|int|float $optVal
+     * @param string                     $optName
+     * @param null|string|int|float|bool $optVal
      *
      * @return DataFromAgent
      */
@@ -111,6 +112,19 @@ class ComponentTestCaseBase extends TestCaseBase
             );
         }
         return $appCodeArgs[$appArgNameKey];
+    }
+
+    /**
+     * @param array<string, mixed> $argsMap
+     *
+     * @return bool
+     */
+    protected static function getBoolFromArgsMap(string $argKey, array $argsMap): bool
+    {
+        self::assertArrayHasKey($argKey, $argsMap);
+        $val = $argsMap[$argKey];
+        self::assertIsBool($val, LoggableToString::convert(['argsMap' => $argsMap]));
+        return $val;
     }
 
     public static function isSmoke(): bool
@@ -148,11 +162,11 @@ class ComponentTestCaseBase extends TestCaseBase
     protected function waitForOneEmptyTransaction(TestCaseHandle $testCaseHandle): DataFromAgentPlusRaw
     {
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1));
-        $this->verifyOneEmptyTransaction($dataFromAgent);
+        $this->verifyOneTransactionNoSpans($dataFromAgent);
         return $dataFromAgent;
     }
 
-    protected function verifyOneEmptyTransaction(DataFromAgent $dataFromAgent): TransactionDto
+    protected function verifyOneTransactionNoSpans(DataFromAgent $dataFromAgent): TransactionDto
     {
         $this->assertEmpty($dataFromAgent->idToSpan);
 
@@ -175,7 +189,7 @@ class ComponentTestCaseBase extends TestCaseBase
         $instr = new $instrClassName(self::buildTracerForTests()->build());
         $actualNames = $instr->otherNames();
         $actualNames[] = $instr->name();
-        self::assertEqualLists($expectedNames, $actualNames);
+        self::assertEqualAsSets($expectedNames, $actualNames);
         self::assertTrue($instr->isEnabled());
 
         /**
@@ -236,5 +250,13 @@ class ComponentTestCaseBase extends TestCaseBase
             return [$key => $value];
         }
         return [];
+    }
+
+    /**
+     * @return iterable<array{bool}>
+     */
+    public function boolDataProviderAdaptedToSmoke(): iterable
+    {
+        return self::adaptToSmoke(self::boolDataProvider());
     }
 }

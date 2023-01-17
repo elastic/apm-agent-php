@@ -23,6 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\StackTraceUtil;
+use PHPUnit\Framework\TestCase;
+
 /**
  * @extends ExpectationsBuilderBase<SpanExpectations>
  */
@@ -46,10 +49,15 @@ class SpanExpectationsBuilder extends ExpectationsBuilderBase
      *
      * @return SpanExpectations
      */
-    public function fromClassMethodNames(string $className, string $methodName): SpanExpectations
-    {
+    public function fromClassMethodNames(
+        string $className,
+        string $methodName,
+        bool $isStatic = false
+    ): SpanExpectations {
         $result = $this->startNew();
-        $result->name->setValue($className . '->' . $methodName);
+        $name = StackTraceUtil::convertClassAndMethodToFunctionName($className, $isStatic, $methodName);
+        TestCase::assertNotNull($name);
+        $result->name->setValue($name);
         return $result;
     }
 

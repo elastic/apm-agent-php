@@ -34,8 +34,6 @@ final class Constants
 {
     public const KEYWORD_STRING_MAX_LENGTH = 1024;
 
-    public const NON_KEYWORD_STRING_MAX_LENGTH = 10 * 1024;
-
     public const EXECUTION_SEGMENT_ID_SIZE_IN_BYTES = 8;
     public const TRACE_ID_SIZE_IN_BYTES = 16;
     public const ERROR_ID_SIZE_IN_BYTES = 16;

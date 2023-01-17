@@ -16,9 +16,9 @@ RUN apt-get -qq update \
  && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install \
-    pdo_mysql \
     mysqli \
-    pdo_sqlite
+    pcntl \
+    pdo_mysql
 
 COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
 
@@ -37,6 +37,9 @@ ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/build/junit.xml
 ENV CMOCKA_MESSAGE_OUTPUT=XML
 ENV CMOCKA_XML_FILE=/app/build/${PHP_VERSION}-%g-unit-tests-junit.xml
+
+# C call stack capture should be supported on non-Alpine by default
+ENV ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE=true
 
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 ENV ELASTIC_APM_ENABLED=false

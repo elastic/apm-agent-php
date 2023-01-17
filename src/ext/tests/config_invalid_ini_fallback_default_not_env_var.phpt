@@ -1,7 +1,5 @@
 --TEST--
 When value in ini is invalid the fallback is the default and not environment variable
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ASSERT_LEVEL=O_n

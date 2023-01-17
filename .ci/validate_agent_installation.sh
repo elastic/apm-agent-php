@@ -1,37 +1,6 @@
 #!/usr/bin/env bash
 set -xe
 
-function ensureSyslogIsRunning () {
-    if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
-        echo 'Syslog is already started.'
-        return
-    fi
-
-    if which syslogd; then
-        syslogd
-    else
-        if which rsyslogd; then
-            rsyslogd
-        else
-            echo 'syslog is not installed'
-            exit 1
-        fi
-    fi
-}
-
-function copySyslogFileAndPrintTheLastOne () {
-    local possibleSyslogFiles=(/var/log/messages /var/log/syslog)
-    for syslogFile in "${possibleSyslogFiles[@]}"
-    do
-        if [[ -f "${syslogFile}" ]]; then
-            local syslogCopyDir=/app/build/syslog
-            mkdir -p "${syslogCopyDir}"
-            cp "${syslogFile}"* ${syslogCopyDir}
-            echo "syslog files (${syslogFile}*) copied to ${syslogCopyDir}"
-        fi
-    done
-}
-
 function printInfoAboutEnvironment () {
     echo 'PHP version:'
     php -v
@@ -77,9 +46,9 @@ function runComponentTests () {
 }
 
 function main () {
-    this_script_dir="$( dirname "${BASH_SOURCE[0]}" )"
-    this_script_dir="$( realpath "${this_script_dir}" )"
-    source "${this_script_dir}/shared.sh"
+    thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
+    thisScriptDir="$( realpath "${thisScriptDir}" )"
+    source "${thisScriptDir}/shared.sh"
 
     ensureSyslogIsRunning
 

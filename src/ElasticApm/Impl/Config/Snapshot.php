@@ -62,7 +62,7 @@ final class Snapshot implements LoggableInterface
     //              /** @var <my_new_option type> */
     //              private $myNewOption;
     //
-    //         to \Elastic\Apm\Impl\Config\Snapshot class
+    //         to class \Elastic\Apm\Impl\Config\Snapshot
     //
     //
     //      5) Add
@@ -72,7 +72,7 @@ final class Snapshot implements LoggableInterface
     //                 return $this->myNewOption;
     //             }
     //
-    //         to \Elastic\Apm\Impl\Config\Snapshot class
+    //         to class \Elastic\Apm\Impl\Config\Snapshot
     //
     //
     //      6) Add
@@ -80,7 +80,7 @@ final class Snapshot implements LoggableInterface
     //             OptionNames::MY_NEW_OPTION => <my_new_option type>RawToParsedValues,
     //
     //         to return value of buildOptionNameToRawToValue()
-    //             in \ElasticApmTests\ComponentTests\ConfigSettingTest class
+    //             in class \ElasticApmTests\ComponentTests\ConfigSettingTest
     //
     //
     //      7) Optionally add option specific test such as \ElasticApmTests\ComponentTests\ApiKeyTest
@@ -103,6 +103,9 @@ final class Snapshot implements LoggableInterface
 
     /** @var bool */
     private $breakdownMetrics;
+
+    /** @var bool */
+    private $captureErrors;
 
     /** @var ?WildcardListMatcher */
     private $devInternal;
@@ -133,6 +136,18 @@ final class Snapshot implements LoggableInterface
 
     /** @var ?int */
     private $logLevelSyslog;
+
+    /** @var int */
+    private $nonKeywordStringMaxLength;
+
+    /** @var bool */
+    private $profilingInferredSpansEnabled;
+
+    /** @var float */
+    private $profilingInferredSpansMinDuration;
+
+    /** @var float */
+    private $profilingInferredSpansSamplingInterval;
 
     /** @var WildcardListMatcher */
     private $sanitizeFieldNames;
@@ -226,6 +241,11 @@ final class Snapshot implements LoggableInterface
         return $this->breakdownMetrics;
     }
 
+    public function captureErrors(): bool
+    {
+        return $this->captureErrors;
+    }
+
     public function devInternal(): SnapshotDevInternal
     {
         return $this->devInternalParsed;
@@ -239,6 +259,11 @@ final class Snapshot implements LoggableInterface
     public function disableSend(): bool
     {
         return $this->disableSend;
+    }
+
+    public function effectiveLogLevel(): int
+    {
+        return $this->effectiveLogLevel;
     }
 
     public function enabled(): bool
@@ -256,9 +281,24 @@ final class Snapshot implements LoggableInterface
         return $this->hostname;
     }
 
-    public function effectiveLogLevel(): int
+    public function nonKeywordStringMaxLength(): int
     {
-        return $this->effectiveLogLevel;
+        return $this->nonKeywordStringMaxLength;
+    }
+
+    public function profilingInferredSpansEnabled(): bool
+    {
+        return $this->profilingInferredSpansEnabled;
+    }
+
+    public function profilingInferredSpansMinDurationInMilliseconds(): float
+    {
+        return $this->profilingInferredSpansMinDuration;
+    }
+
+    public function profilingInferredSpansSamplingInterval(): float
+    {
+        return $this->profilingInferredSpansSamplingInterval;
     }
 
     public function sanitizeFieldNames(): WildcardListMatcher

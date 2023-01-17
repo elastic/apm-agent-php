@@ -1,7 +1,5 @@
 --TEST--
 Configuration values of type LogLevel: it is enough to provide unambiguous prefix
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_LOG_LEVEL=warn
@@ -14,6 +12,8 @@ elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 <?php
 declare(strict_types=1);
 require __DIR__ . '/../tests_util/tests_util.php';
+
+if ( ! extension_loaded( 'elastic_apm' ) ) die( 'Extension elastic_apm must be installed' );
 
 elasticApmAssertSame("elastic_apm_get_config_option_by_name('log_level')", elastic_apm_get_config_option_by_name('log_level'), ELASTIC_APM_LOG_LEVEL_WARNING);
 

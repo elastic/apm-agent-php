@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
 use PHPUnit\Framework\TestCase;
 
@@ -30,8 +31,28 @@ abstract class ExecutionSegmentContextDto
 {
     use AssertValidTrait;
 
-    /** @var array<string, string|bool|int|float|null> */
-    public $labels = [];
+    /** @var ?array<string, string|bool|int|float|null> */
+    public $labels = null;
+
+    /**
+     * @param mixed $map
+     *
+     * @return array<string, string|bool|int|float|null>
+     */
+    protected static function assertValidKeyValueMap($map, bool $shouldBeKeywordString): array
+    {
+        $maxLength = $shouldBeKeywordString ? Constants::KEYWORD_STRING_MAX_LENGTH : null;
+        TestCase::assertIsArray($map);
+        foreach ($map as $key => $value) {
+            self::assertValidString($key, /* isNullable: */ false, $maxLength);
+            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
+            if (is_string($value)) {
+                self::assertValidString($value, /* isNullable: */ false, $maxLength);
+            }
+        }
+        /** @var array<string, string|bool|int|float|null> $map */
+        return $map;
+    }
 
     /**
      * @param mixed $labels
@@ -40,17 +61,7 @@ abstract class ExecutionSegmentContextDto
      */
     private static function assertValidLabels($labels): array
     {
-        TestCase::assertTrue(is_array($labels));
-        /** @var array<mixed, mixed> $labels */
-        foreach ($labels as $key => $value) {
-            self::assertValidKeywordString($key);
-            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
-            if (is_string($value)) {
-                self::assertValidKeywordString($value);
-            }
-        }
-        /** @var array<string, string|bool|int|float|null> $labels */
-        return $labels;
+        return self::assertValidKeyValueMap($labels, /* shouldBeKeywordString */ true);
     }
 
     /**
@@ -76,6 +87,8 @@ abstract class ExecutionSegmentContextDto
      */
     public function assertValid(): void
     {
-        self::assertValidLabels($this->labels);
+        if ($this->labels !== null) {
+            self::assertValidLabels($this->labels);
+        }
     }
 }

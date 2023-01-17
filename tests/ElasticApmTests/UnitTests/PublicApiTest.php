@@ -28,7 +28,6 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\TransactionContextRequest;
-use ElasticApmTests\UnitTests\Util\NotFoundException;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 
@@ -84,32 +83,27 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
         $this->assertCount(4, $this->mockEventSink->idToSpan());
 
-        $reportedSpan_1 = $this->mockEventSink->spanByName('test_span_1_name');
+        $reportedSpan_1 = $this->mockEventSink->singleSpanByName('test_span_1_name');
         $this->assertSame('test_span_1_type', $reportedSpan_1->type);
         $this->assertNull($reportedSpan_1->subtype);
         $this->assertNull($reportedSpan_1->action);
 
-        $reportedSpan_2 = $this->mockEventSink->spanByName('test_span_2_name');
+        $reportedSpan_2 = $this->mockEventSink->singleSpanByName('test_span_2_name');
         $this->assertSame('test_span_2_type', $reportedSpan_2->type);
         $this->assertSame('test_span_2_subtype', $reportedSpan_2->subtype);
         $this->assertSame('test_span_2_action', $reportedSpan_2->action);
 
-        $reportedSpan_2_1 = $this->mockEventSink->spanByName('test_span_2_1_name');
+        $reportedSpan_2_1 = $this->mockEventSink->singleSpanByName('test_span_2_1_name');
         $this->assertSame('test_span_2_1_type', $reportedSpan_2_1->type);
         $this->assertSame('test_span_2_1_subtype', $reportedSpan_2_1->subtype);
         $this->assertNull($reportedSpan_2_1->action);
 
-        $reportedSpan_2_2 = $this->mockEventSink->spanByName('test_span_2_2_name');
+        $reportedSpan_2_2 = $this->mockEventSink->singleSpanByName('test_span_2_2_name');
         $this->assertSame('test_span_2_2_type', $reportedSpan_2_2->type);
         $this->assertNull($reportedSpan_2_2->subtype);
         $this->assertSame('test_span_2_2_action', $reportedSpan_2_2->action);
 
-        $this->assertThrows(
-            NotFoundException::class,
-            function () {
-                $this->mockEventSink->spanByName('nonexistent_test_span_name');
-            }
-        );
+        $this->assertCount(0, $this->mockEventSink->findSpansByName('nonexistent_test_span_name'));
     }
 
     public function testTransactionSetName(): void

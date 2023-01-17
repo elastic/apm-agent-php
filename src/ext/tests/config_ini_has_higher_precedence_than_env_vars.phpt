@@ -1,7 +1,5 @@
 --TEST--
 Configuration in ini file has higher precedence than environment variables
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_LOG_FILE=log_file_from_env_vars.txt

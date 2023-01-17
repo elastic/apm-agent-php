@@ -40,12 +40,12 @@ use Elastic\Apm\Impl\Config\StringOptionParser;
 use Elastic\Apm\Impl\Config\WildcardListOptionParser;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
-use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
 use ElasticApmTests\ComponentTests\Util\ConfigSnapshotForTests;
+use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
-use ElasticApmTests\Util\RangeUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 use SebastianBergmann\GlobalState\Snapshot;
@@ -244,7 +244,7 @@ class VariousOptionsParsingTest extends TestCaseBase
     {
         $whiteSpaceChars = [' ', "\t"];
         $result = '';
-        foreach (RangeUtilForTests::generateUpTo(3) as $ignored) {
+        foreach (RangeUtil::generateUpTo(3) as $ignored) {
             $result .= RandomUtilForTests::getRandomValueFromArray($whiteSpaceChars);
         }
         return $result;

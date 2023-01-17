@@ -79,8 +79,8 @@ static
 void freeEntry( StringToStringMapEntry* entry )
 {
     ELASTIC_APM_CMOCKA_ASSERT_VALID_PTR( entry );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( entry->key ) + 1, entry->key );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( entry->value ) + 1, entry->value );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( entry->key );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( entry->value );
 }
 
 void deleteStringToStringMapAndSetToNull( StringToStringMap** pMap )
@@ -145,7 +145,7 @@ void setStringToStringMapEntry( StringToStringMap* map, String key, String value
     }
     else
     {
-        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( existingEntry->value ) + 1, existingEntry->value );
+        ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( existingEntry->value );
         existingEntry->value = valueDup;
     }
 
@@ -157,8 +157,8 @@ void setStringToStringMapEntry( StringToStringMap* map, String key, String value
     return;
 
     failure:
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( keyDup ) + 1, keyDup );
-    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( strlen( valueDup ) + 1, valueDup );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( keyDup );
+    ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( valueDup );
     goto finally;
 }
 

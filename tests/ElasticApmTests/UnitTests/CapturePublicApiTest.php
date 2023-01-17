@@ -279,6 +279,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
             // Only transaction's context is copied to an error and thus only transaction's labels
             self::assertNotNull($error->context);
+            self::assertNotNull($error->context->labels);
             self::assertCount(1, $error->context->labels);
             self::assertSame('TX_label_value', $error->context->labels['TX_label_key']);
 
@@ -307,9 +308,9 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
         $tx = $this->mockEventSink->singleTransaction();
         $this->assertSame('test_TX_name', $tx->name);
         $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $tx->type);
-        $span1 = $this->mockEventSink->spanByName('test_span_1_name');
+        $span1 = $this->mockEventSink->singleSpanByName('test_span_1_name');
         $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $span1->type);
-        $span2 = $this->mockEventSink->spanByName('test_span_2_name');
+        $span2 = $this->mockEventSink->singleSpanByName('test_span_2_name');
         $this->assertSame('test_span_2_type', $span2->type);
     }
 }
