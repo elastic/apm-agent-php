@@ -47,6 +47,20 @@ final class RangeUtil
     }
 
     /**
+     * @param int $begin
+     * @param int $end
+     * @param int $step
+     *
+     * @return iterable<int>
+     */
+    public static function generateDown(int $begin, int $end, int $step = 1): iterable
+    {
+        for ($i = $begin; $i > $end; $i -= $step) {
+            yield $i;
+        }
+    }
+
+    /**
      * @param int $count
      *
      * @return iterable<int>

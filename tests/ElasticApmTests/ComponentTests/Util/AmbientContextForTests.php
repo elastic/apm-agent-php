@@ -87,7 +87,7 @@ final class AmbientContextForTests
         return self::$singletonInstance;
     }
 
-    public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
+    public static function reconfigure(?RawSnapshotSourceInterface $additionalConfigSource = null): void
     {
         self::getSingletonInstance()->readAndApplyConfig($additionalConfigSource);
     }

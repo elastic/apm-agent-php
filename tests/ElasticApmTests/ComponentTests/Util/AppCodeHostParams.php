@@ -26,7 +26,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\Parser as ConfigParser;
 use Elastic\Apm\Impl\Config\Snapshot as AgentConfigSnapshot;
-use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -36,6 +35,7 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 class AppCodeHostParams implements LoggableInterface
@@ -121,7 +121,7 @@ class AppCodeHostParams implements LoggableInterface
     /**
      * @return array<string, string|int|float|bool>
      */
-    public function getEffectiveAgentOptions(): array
+    private function getExplicitlySetAgentOptions(): array
     {
         $iniOptions = $this->getAgentOptions(AgentConfigSourceKind::iniFile());
         $envVarsOptions = $this->getAgentOptions(AgentConfigSourceKind::envVars());
@@ -137,10 +137,30 @@ class AppCodeHostParams implements LoggableInterface
         return array_merge($envVarsOptions, $iniOptions);
     }
 
+    /**
+     * @param string $optName
+     *
+     * @return mixed
+     */
+    private function getExplicitlySetAgentOptionValue(string $optName)
+    {
+        $explicitlySetOptions = $this->getExplicitlySetAgentOptions();
+        return ArrayUtil::getValueIfKeyExistsElse($optName, $explicitlySetOptions, null);
+    }
+
+    public function getExplicitlySetAgentStringOptionValue(string $optName): ?string
+    {
+        $optVal = $this->getExplicitlySetAgentOptionValue($optName);
+        if ($optVal !== null) {
+            Assert::assertIsString($optVal);
+        }
+        return $optVal;
+    }
+
     public function getEffectiveAgentConfig(): AgentConfigSnapshot
     {
         $configRawSnapshotSource = new MockConfigRawSnapshotSource();
-        foreach ($this->getEffectiveAgentOptions() as $optName => $optVal) {
+        foreach ($this->getExplicitlySetAgentOptions() as $optName => $optVal) {
             $configRawSnapshotSource->set($optName, strval($optVal));
         }
         // Set log level above ERROR to hide potential errors when parsing the provided test configuration snapshot
@@ -150,13 +170,6 @@ class AppCodeHostParams implements LoggableInterface
         $parser = new ConfigParser($loggerFactory);
         $allOptsMeta = AllOptionsMetadata::get();
         $rawSnapshot = $configRawSnapshotSource->currentSnapshot($allOptsMeta);
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $loggerFactory);
-    }
-
-    public function getSetAgentOptionValue(string $optName): ?string
-    {
-        $setAgentOptions = $this->getEffectiveAgentOptions();
-        $optVal = ArrayUtil::getValueIfKeyExistsElse($optName, $setAgentOptions, null);
-        return $optVal === null ? null : strval($optVal);
+        return new AgentConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $loggerFactory);
     }
 }

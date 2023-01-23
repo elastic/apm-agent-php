@@ -75,4 +75,9 @@ final class Level
         }
         return self::$intToName[$intValueToMap];
     }
+
+    public static function getHighest(): int
+    {
+        return self::TRACE;
+    }
 }
