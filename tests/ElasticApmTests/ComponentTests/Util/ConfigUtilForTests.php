@@ -59,12 +59,7 @@ final class ConfigUtilForTests
         $envVarConfigSource = new EnvVarsRawSnapshotSource(ConfigUtilForTests::ENV_VAR_NAME_PREFIX);
         $configSource =  $additionalConfigSource === null
             ? $envVarConfigSource
-            : new CompositeRawSnapshotSource(
-                [
-                    $additionalConfigSource,
-                    $envVarConfigSource,
-                ]
-            );
+            : new CompositeRawSnapshotSource([$additionalConfigSource, $envVarConfigSource]);
         $parser = new Parser($loggerFactory);
         $allOptsMeta = AllComponentTestsOptionsMetadata::get();
         $optNameToParsedValue = $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta));

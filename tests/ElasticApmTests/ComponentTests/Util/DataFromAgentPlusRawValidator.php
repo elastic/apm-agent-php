@@ -103,8 +103,8 @@ final class DataFromAgentPlusRawValidator
         array $headers,
         AppCodeHostParams $appCodeHostParams
     ): void {
-        $configuredApiKey = $appCodeHostParams->getSetAgentOptionValue(OptionNames::API_KEY);
-        $configuredSecretToken = $appCodeHostParams->getSetAgentOptionValue(OptionNames::SECRET_TOKEN);
+        $configuredApiKey = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::API_KEY);
+        $configuredSecretToken = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SECRET_TOKEN);
         self::verifyAuthIntakeApiHttpRequestHeader($configuredApiKey, $configuredSecretToken, $headers);
     }
 
@@ -139,8 +139,9 @@ final class DataFromAgentPlusRawValidator
         array $headers,
         AppCodeHostParams $appCodeHostParams
     ): void {
-        $configuredServiceName = $appCodeHostParams->getSetAgentOptionValue(OptionNames::SERVICE_NAME);
-        $configuredServiceVersion = $appCodeHostParams->getSetAgentOptionValue(OptionNames::SERVICE_VERSION);
+        $configuredServiceName = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SERVICE_NAME);
+        $configuredServiceVersion
+            = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SERVICE_VERSION);
         $expectedUserAgentHttpRequestHeaderValue = EventSender::buildUserAgentHttpHeader(
             MetadataValidator::deriveExpectedServiceName($configuredServiceName),
             Tracer::limitNullableKeywordString($configuredServiceVersion)
