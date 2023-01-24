@@ -47,7 +47,7 @@ class ComponentTestCaseBase extends TestCaseBase
 
     public const LOG_LEVEL_FOR_PROD_CODE_KEY = 'PROD_CODE';
     public const LOG_LEVEL_FOR_TEST_CODE_KEY = 'TEST_CODE';
-    private const LOG_LEVEL_FOR_CODE_KEYS = [self::LOG_LEVEL_FOR_PROD_CODE_KEY, self::LOG_LEVEL_FOR_TEST_CODE_KEY];
+    protected const LOG_LEVEL_FOR_CODE_KEYS = [self::LOG_LEVEL_FOR_PROD_CODE_KEY, self::LOG_LEVEL_FOR_TEST_CODE_KEY];
 
     protected function initTestCaseHandle(?int $escalatedLogLevelForProdCode = null): TestCaseHandle
     {
@@ -134,15 +134,53 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return mixed
+     */
+    protected static function getFromMap(string $argKey, array $argsMap)
+    {
+        self::assertArrayHasKey($argKey, $argsMap);
+        return $argsMap[$argKey];
+    }
+
+    /**
+     * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
      * @return bool
      */
-    protected static function getBoolFromArgsMap(string $argKey, array $argsMap): bool
+    protected static function getBoolFromMap(string $argKey, array $argsMap): bool
     {
-        self::assertArrayHasKey($argKey, $argsMap);
-        $val = $argsMap[$argKey];
-        self::assertIsBool($val, LoggableToString::convert(['argsMap' => $argsMap]));
+        $val = self::getFromMap($argKey, $argsMap);
+        self::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return int
+     */
+    protected static function getIntFromMap(string $argKey, array $argsMap): int
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        self::assertIsInt($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return array<mixed, mixed>
+     */
+    protected static function getArrayFromMap(string $argKey, array $argsMap): array
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        self::assertIsArray($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
         return $val;
     }
 
@@ -287,8 +325,22 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     protected function runAndEscalateLogLevelOnFailure(string $dbgTestDesc, callable $testCall): void
     {
-        /** @var AssertionFailedError $initiallyFailedTestException */
-        $initiallyFailedTestException = null;
+        $logLevelForTestCodeToRestore = AmbientContextForTests::testConfig()->logLevel;
+        try {
+            $this->runAndEscalateLogLevelOnFailureImpl($dbgTestDesc, $testCall);
+        } finally {
+            AmbientContextForTests::resetLogLevel($logLevelForTestCodeToRestore);
+        }
+    }
+
+    /**
+     * @param string           $dbgTestDesc
+     * @param callable(): void $testCall
+     *
+     * @return void
+     */
+    private function runAndEscalateLogLevelOnFailureImpl(string $dbgTestDesc, callable $testCall): void
+    {
         try {
             $testCall();
             return;
@@ -321,24 +373,21 @@ class ComponentTestCaseBase extends TestCaseBase
                 ['rerunCount' => $rerunCount, 'escalatedLogLevels' => $escalatedLogLevels]
             );
 
-            $logLevelOptName = AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME;
-            $logLevelEnvVarName = ConfigUtilForTests::envVarNameForTestOption($logLevelOptName);
-            $escalatedLogLevelForTestCode = $escalatedLogLevels[self::LOG_LEVEL_FOR_TEST_CODE_KEY];
-            putenv($logLevelEnvVarName . '=' . LogLevel::intToName($escalatedLogLevelForTestCode));
-            AmbientContextForTests::reconfigure();
-            Assert::assertSame($escalatedLogLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
-
+            AmbientContextForTests::resetLogLevel($escalatedLogLevels[self::LOG_LEVEL_FOR_TEST_CODE_KEY]);
             $this->initTestCaseHandle($escalatedLogLevels[self::LOG_LEVEL_FOR_PROD_CODE_KEY]);
 
             ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Test failed - re-running it with escalated log levels...');
+            && $loggerProxy->log('Re-running failed test with escalated log levels...');
             try {
                 $testCall();
                 ($loggerProxy = $loggerPerIteration->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Test re-run with escalated log levels did NOT fail (which is bad :(');
+                && $loggerProxy->log('Re-run of failed test with escalated log levels did NOT fail (which is bad :(');
             } catch (AssertionFailedError $ex) {
                 ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Test re-run with escalated log levels failed (which is good :)', ['ex' => $ex]);
+                && $loggerProxy->log(
+                    'Re-run of failed test with escalated log levels failed (which is good :)',
+                    ['ex' => $ex]
+                );
                 throw $ex;
             }
         }
@@ -348,6 +397,7 @@ class ComponentTestCaseBase extends TestCaseBase
             'All test re-runs with escalated log levels did NOT fail (which is bad :('
             . ' - re-throwing original test failure exception'
         );
+
         throw $initiallyFailedTestException;
     }
 
@@ -396,7 +446,7 @@ class ComponentTestCaseBase extends TestCaseBase
      *
      * @return iterable<array<string, int>>
      */
-    public static function generateEscalatedLogLevels(array $initialLevels): iterable
+    protected static function generateEscalatedLogLevels(array $initialLevels): iterable
     {
         Assert::assertNotEmpty($initialLevels);
 

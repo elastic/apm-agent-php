@@ -183,4 +183,18 @@ final class IterableUtilForTests
             yield $tuple;
         }
     }
+
+    /**
+     * @template TKey
+     *
+     * @param iterable<TKey, mixed> $inputMap
+     *
+     * @return Generator<TKey>
+     */
+    public static function keys(iterable $inputMap): Generator
+    {
+        foreach ($inputMap as $key => $_) {
+            yield $key;
+        }
+    }
 }

@@ -65,4 +65,12 @@ trait SnapshotTrait
     {
         return ArrayUtil::getValueIfKeyExistsElse($optName, $this->optNameToParsedValue, null);
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getOptionNameToParsedValueMap(): array
+    {
+        return $this->optNameToParsedValue;
+    }
 }

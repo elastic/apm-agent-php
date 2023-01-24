@@ -162,9 +162,9 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
-        $isInferredSpansEnabled = self::getBoolFromArgsMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
-        $isTransactionSampled = self::getBoolFromArgsMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
-        $shouldCaptureSleeps = self::getBoolFromArgsMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
+        $isInferredSpansEnabled = self::getBoolFromMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
+        $isTransactionSampled = self::getBoolFromMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
+        $shouldCaptureSleeps = self::getBoolFromMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
