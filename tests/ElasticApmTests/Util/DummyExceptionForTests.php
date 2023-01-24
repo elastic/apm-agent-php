@@ -29,7 +29,7 @@ use Throwable;
 class DummyExceptionForTests extends RuntimeException
 {
     public const NAMESPACE = __NAMESPACE__;
-    public const CLASS_NAME = 'DummyExceptionForTests';
+    public const FQ_CLASS_NAME = __CLASS__;
 
     public function __construct(string $message, int $code = 0, Throwable $previous = null)
     {

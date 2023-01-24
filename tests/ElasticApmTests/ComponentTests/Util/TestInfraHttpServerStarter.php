@@ -76,7 +76,7 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
     {
         return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
-            getenv(),
+            EnvVarUtilForTests::getAll() /* <- baseEnvVars */,
             $spawnedProcessInternalId,
             $port,
             $this->resourcesCleaner,

@@ -244,6 +244,19 @@ final class PDOTest extends ComponentTestCaseBase
      */
     public function testAutoInstrumentation(array $testArgs): void
     {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestAutoInstrumentation($testArgs);
+            }
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $testArgs
+     */
+    private function implTestAutoInstrumentation(array $testArgs): void
+    {
         $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg(
             $testArgs,
             AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY

@@ -70,7 +70,7 @@ final class SyslogClearer extends TestInfraHttpServerProcessBase
         );
         ProcessUtilForTests::startProcessAndWaitUntilExit(
             $clearImplShellScriptFullPath,
-            getenv() /* <- envVars */,
+            EnvVarUtilForTests::getAll() /* <- envVars */,
             true /* <- shouldCaptureStdOutErr */,
             0 /* <- expectedExitCode */
         );
