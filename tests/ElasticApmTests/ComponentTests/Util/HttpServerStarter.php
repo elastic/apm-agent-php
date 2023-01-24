@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\RandomUtilForTests;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
@@ -149,7 +150,7 @@ abstract class HttpServerStarter
         };
 
         $portToStartSearchFrom = $lastTriedPort === null
-            ? self::PORTS_RANGE_BEGIN
+            ? RandomUtilForTests::generateIntInRange(self::PORTS_RANGE_BEGIN, self::PORTS_RANGE_END - 1)
             : $calcNextInCircularPortRange($lastTriedPort);
         $candidate = $portToStartSearchFrom;
         while (true) {

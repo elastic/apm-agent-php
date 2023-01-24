@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogSinkForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -96,6 +97,15 @@ final class AmbientContextForTests
     {
         $this->testConfig = ConfigUtilForTests::read($additionalConfigSource, $this->loggerFactory);
         $this->logBackend->setMaxEnabledLevel($this->testConfig->logLevel);
+    }
+
+    public static function resetLogLevel(int $logLevelForTestCode): void
+    {
+        $logLevelOptName = AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME;
+        $logLevelEnvVarName = ConfigUtilForTests::envVarNameForTestOption($logLevelOptName);
+        EnvVarUtilForTests::set($logLevelEnvVarName, LogLevel::intToName($logLevelForTestCode));
+        AmbientContextForTests::reconfigure();
+        Assert::assertSame($logLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
     }
 
     public static function dbgProcessName(): string

@@ -59,7 +59,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
             'Done',
             [
                 'AmbientContext::testConfig()' => AmbientContextForTests::testConfig(),
-                'Environment variables'        => getenv(),
+                'Environment variables'        => EnvVarUtilForTests::getAll(),
             ]
         );
     }
@@ -98,7 +98,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
         LoggingSubsystem::$isInTestingContext = true;
 
         try {
-            $dbgProcessName = getenv(self::DBG_PROCESS_NAME_ENV_VAR_NAME);
+            $dbgProcessName = EnvVarUtilForTests::get(self::DBG_PROCESS_NAME_ENV_VAR_NAME);
             TestCase::assertIsString($dbgProcessName);
             AmbientContextForTests::init($dbgProcessName);
             $thisObj = new static(); // @phpstan-ignore-line

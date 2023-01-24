@@ -109,7 +109,7 @@ final class SyslogClearerClient
         );
 
         ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['argv' => $argv, 'getenv()' => getenv()]);
+        && $loggerProxy->log('Entered', ['argv' => $argv, 'Environment variables' => EnvVarUtilForTests::getAll()]);
 
         return $localLogger;
     }

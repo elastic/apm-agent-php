@@ -25,6 +25,7 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
@@ -285,7 +286,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
             self::assertNotNull($error->exception);
             self::assertSame(DummyExceptionForTests::NAMESPACE, $error->exception->module);
-            self::assertSame(DummyExceptionForTests::CLASS_NAME, $error->exception->type);
+            self::assertSame(ClassNameUtil::fqToShort(DummyExceptionForTests::FQ_CLASS_NAME), $error->exception->type);
             self::assertNotNull($error->exception->stacktrace);
             $topFrame = $error->exception->stacktrace[0];
             self::assertSame(__CLASS__ . '::methodThrowingDummyExceptionForTests()', $topFrame->function);
