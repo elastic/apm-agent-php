@@ -73,7 +73,7 @@ final class AmbientContextForTests
 
         if (self::testConfig()->appCodePhpIni !== null && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
-            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optionName);
+            $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optionName);
             throw new RuntimeException(
                 "Option $optionName (environment variable $envVarName)"
                 . ' is set but it points to a file that does not exist: '
@@ -102,7 +102,7 @@ final class AmbientContextForTests
     public static function resetLogLevel(int $logLevelForTestCode): void
     {
         $logLevelOptName = AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME;
-        $logLevelEnvVarName = ConfigUtilForTests::envVarNameForTestOption($logLevelOptName);
+        $logLevelEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($logLevelOptName);
         EnvVarUtilForTests::set($logLevelEnvVarName, LogLevel::intToName($logLevelForTestCode));
         AmbientContextForTests::reconfigure();
         Assert::assertSame($logLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
