@@ -230,14 +230,35 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
     }
 
     /**
+     * @return array<string, ?string>
+     */
+    private static function unsetLogLevelRelatedEnvVars(): array
+    {
+        $envVars = EnvVarUtilForTests::getAll();
+        $logLevelRelatedEnvVarsToRestore = [];
+        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $envVars)) {
+                $logLevelRelatedEnvVarsToRestore[$envVarName] = $envVars[$envVarName];
+                EnvVarUtilForTests::unset($envVarName);
+            } else {
+                $logLevelRelatedEnvVarsToRestore[$envVarName] = null;
+            }
+
+            self::assertNull(EnvVarUtilForTests::get($envVarName));
+        }
+        return $logLevelRelatedEnvVarsToRestore;
+    }
+
+    /**
      * @dataProvider dataProviderForTestRunAndEscalateLogLevelOnFailure
      *
      * @param array<string, mixed> $testArgs
      */
     public function testRunAndEscalateLogLevelOnFailure(array $testArgs): void
     {
-        $prodCodeSyslogLevelEnvVarName = ConfigUtilForTests::envVarNameForAgentOption(OptionNames::LOG_LEVEL_SYSLOG);
-        $prodCodeSyslogLevelEnvVarValueToRestore = EnvVarUtilForTests::get($prodCodeSyslogLevelEnvVarName);
+        $logLevelRelatedEnvVarsToRestore = self::unsetLogLevelRelatedEnvVars();
+        $prodCodeSyslogLevelEnvVarName = ConfigUtilForTests::agentOptionNameToEnvVarName(OptionNames::LOG_LEVEL_SYSLOG);
         $initialLogLevelForProdCode = self::getIntFromMap(self::LOG_LEVEL_FOR_PROD_CODE_KEY, $testArgs);
         $initialLogLevelForProdCodeAsName = LogLevel::intToName($initialLogLevelForProdCode);
         EnvVarUtilForTests::set($prodCodeSyslogLevelEnvVarName, $initialLogLevelForProdCodeAsName);
@@ -276,7 +297,9 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         self::assertSame(!$shouldFail, $runAndEscalateLogLevelOnFailureExitedNormally);
 
         self::assertSame($initialLogLevelForProdCodeAsName, EnvVarUtilForTests::get($prodCodeSyslogLevelEnvVarName));
-        EnvVarUtilForTests::setOrUnset($prodCodeSyslogLevelEnvVarName, $prodCodeSyslogLevelEnvVarValueToRestore);
+        foreach ($logLevelRelatedEnvVarsToRestore as $envVarName => $envVarValue) {
+            EnvVarUtilForTests::setOrUnset($envVarName, $envVarValue);
+        }
 
         self::assertSame($initialLogLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
         AmbientContextForTests::resetLogLevel($logLevelForTestCodeToRestore);

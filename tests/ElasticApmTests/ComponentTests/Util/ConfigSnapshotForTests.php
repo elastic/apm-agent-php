@@ -108,7 +108,7 @@ final class ConfigSnapshotForTests implements LoggableInterface
     {
         if ($this->appCodeHostKind === null) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
-            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optionName);
+            $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optionName);
             throw new RuntimeException(
                 'Required configuration option ' . $optionName
                 . " (environment variable $envVarName)" . ' is not set'

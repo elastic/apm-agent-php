@@ -76,7 +76,7 @@ final class AgentConfigSourceBuilder implements LoggableInterface
         $result = $envVars;
         $agentOptionsToEnvVars = $this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::envVars());
         foreach ($agentOptionsToEnvVars as $optName => $optVal) {
-            $result[ConfigUtilForTests::envVarNameForAgentOption($optName)]
+            $result[ConfigUtilForTests::agentOptionNameToEnvVarName($optName)]
                 = ConfigUtilForTests::optionValueToString($optVal);
         }
         return $result;

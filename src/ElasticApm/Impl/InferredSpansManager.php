@@ -246,7 +246,7 @@ final class InferredSpansManager implements LoggableInterface
 
         if (!$this->enablePeriodicAlarmSignal()) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Failed to enabled periodic alarm signal - shutting down...');
+            && $loggerProxy->log('Failed to enable periodic alarm signal - shutting down...');
             $this->shutdown();
             return;
         }

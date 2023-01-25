@@ -148,7 +148,7 @@ abstract class SpawnedProcessBase implements LoggableInterface
     {
         $optValue = AmbientContextForTests::testConfig()->getOptionValueByName($optName);
         if ($optValue === null) {
-            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optName);
+            $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optName);
             throw new RuntimeException(
                 ExceptionUtil::buildMessage(
                     'Required configuration option is not set',

@@ -94,7 +94,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
             $this->appCodeHostParams->dbgProcessName
         );
         $dataPerRequestOptName = AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME;
-        $dataPerRequestEnvVarName = ConfigUtilForTests::envVarNameForTestOption($dataPerRequestOptName);
+        $dataPerRequestEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($dataPerRequestOptName);
         $envVars[$dataPerRequestEnvVarName] = $requestParams->dataPerRequest->serializeToString();
 
         $appCodeInvocation = $this->beforeAppCodeInvocation($requestParams);
