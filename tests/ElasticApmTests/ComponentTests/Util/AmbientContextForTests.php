@@ -99,13 +99,38 @@ final class AmbientContextForTests
         $this->logBackend->setMaxEnabledLevel($this->testConfig->logLevel);
     }
 
-    public static function resetLogLevel(int $logLevelForTestCode): void
+    public static function resetLogLevel(int $newVal): void
     {
-        $logLevelOptName = AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME;
-        $logLevelEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($logLevelOptName);
-        EnvVarUtilForTests::set($logLevelEnvVarName, LogLevel::intToName($logLevelForTestCode));
+        self::resetConfigOption(
+            AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME,
+            $newVal,
+            LogLevel::intToName($newVal)
+        );
+        Assert::assertSame($newVal, AmbientContextForTests::testConfig()->logLevel);
+    }
+
+    public static function resetEscalatedRerunsMaxCount(int $newVal): void
+    {
+        self::resetConfigOption(
+            AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME,
+            $newVal,
+            strval($newVal)
+        );
+        Assert::assertSame($newVal, AmbientContextForTests::testConfig()->escalatedRerunsMaxCount);
+    }
+
+    /**
+     * @param string $optName
+     * @param mixed $newVal
+     * @param string $newValAsEnvVar
+     *
+     * @return void
+     */
+    private static function resetConfigOption(string $optName, $newVal, string $newValAsEnvVar): void
+    {
+        $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optName);
+        EnvVarUtilForTests::set($envVarName, $newValAsEnvVar);
         AmbientContextForTests::reconfigure();
-        Assert::assertSame($logLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
     }
 
     public static function dbgProcessName(): string
