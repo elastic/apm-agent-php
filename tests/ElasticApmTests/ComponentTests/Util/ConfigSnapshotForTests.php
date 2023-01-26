@@ -60,6 +60,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var ?WildcardListMatcher */
     public $envVarsToPassThrough;
 
+    /** @var int */
+    public $escalatedRerunsMaxCount;
+
     /** @var ?string */
     public $group;
 
