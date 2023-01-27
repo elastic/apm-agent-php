@@ -589,7 +589,7 @@ ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapsh
 
 ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
         BackgroundBackendComm* backgroundBackendComm
-        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+        , /* in,out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
 )
 {
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -597,26 +597,26 @@ ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
 
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    BackgroundBackendCommSharedStateSnapshot localLockSharedStateSnapshot;
-    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ &localLockSharedStateSnapshot );
-    if ( areEqualSharedSnapshots( sharedStateSnapshot, &localLockSharedStateSnapshot ) )
+    BackgroundBackendCommSharedStateSnapshot localSharedStateSnapshot;
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ &localSharedStateSnapshot );
+    if ( areEqualSharedSnapshots( sharedStateSnapshot, &localSharedStateSnapshot ) )
     {
         ELASTIC_APM_LOG_DEBUG( "Shared state is the same - we need to wait; shared state snapshots: before lock: %s, after lock: %s"
                                , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream )
-                               , streamSharedStateSnapshot( &localLockSharedStateSnapshot, &txtOutStream ) );
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream ) );
         textOutputStreamRewind( &txtOutStream );
         ELASTIC_APM_CALL_IF_FAILED_GOTO( waitConditionVariable( backgroundBackendComm->condVar, backgroundBackendComm->mutex, __FUNCTION__ ) );
         backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
         ELASTIC_APM_LOG_DEBUG( "Waiting exited; shared state snapshots: after lock: %s, after wait: %s"
-                               , streamSharedStateSnapshot( &localLockSharedStateSnapshot, &txtOutStream )
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream )
                                , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream ) );
     }
     else
     {
         ELASTIC_APM_LOG_DEBUG( "Shared state is not the same - there is no need to wait; shared state snapshots: before lock: %s, after lock: %s"
                                , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream )
-                               , streamSharedStateSnapshot( &localLockSharedStateSnapshot, &txtOutStream ) );
-        *sharedStateSnapshot = localLockSharedStateSnapshot;
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream ) );
+        *sharedStateSnapshot = localSharedStateSnapshot;
     }
 
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
