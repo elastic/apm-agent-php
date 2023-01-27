@@ -107,25 +107,21 @@ class AppCodeHostParams implements LoggableInterface
      */
     private function removeLogLevelEnvVarsIfSetByOptions(array $input): array
     {
-        $output = $input;
         $isAnyLogLevelOptionsSet = false;
         foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
-            if (TextUtil::isPrefixOfIgnoreCase('log_level', $optName)) {
+            if (ConfigUtilForTests::isOptionLogLevelRelated($optName)) {
                 $isAnyLogLevelOptionsSet = true;
                 break;
             }
         }
-
         if (!$isAnyLogLevelOptionsSet) {
-            return $output;
+            return $input;
         }
 
-        $logLevelEnvVarNamePrefix = EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_LEVEL';
-        foreach ($input as $envVarName) {
-            if (
-                TextUtil::isPrefixOfIgnoreCase($logLevelEnvVarNamePrefix, $envVarName)
-                && array_key_exists($envVarName, $output)
-            ) {
+        $output = $input;
+        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $output)) {
                 unset($output[$envVarName]);
             }
         }
@@ -145,10 +141,7 @@ class AppCodeHostParams implements LoggableInterface
         $envVars = $this->removeLogLevelEnvVarsIfSetByOptions($envVars);
 
         foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
-            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
-                EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
-                $optName
-            );
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
             if (array_key_exists($envVarName, $envVars)) {
                 unset($envVars[$envVarName]);
             }
@@ -250,10 +243,9 @@ class AppCodeHostParams implements LoggableInterface
     public function getEffectiveAgentConfig(): AgentConfigSnapshot
     {
         $envVarsToInheritSource = new MockConfigRawSnapshotSource();
-        $envVarPrefix = EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX;
         $envVars = $this->selectEnvVarsToInherit(EnvVarUtilForTests::getAll());
         foreach (IterableUtilForTests::keys(AllOptionsMetadata::get()) as $optName) {
-            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName($envVarPrefix, $optName);
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
             if (array_key_exists($envVarName, $envVars)) {
                 $envVarsToInheritSource->set($optName, $envVars[$envVarName]);
             }

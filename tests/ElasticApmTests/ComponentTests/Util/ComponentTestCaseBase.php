@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\DataFromAgent;
+use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
@@ -364,8 +365,12 @@ class ComponentTestCaseBase extends TestCaseBase
             ]
         );
 
+        $escalatedLogLevelsSeq = self::generateLevelsForRunAndEscalateLogLevelOnFailure(
+            $initiallyFailedTestLogLevels,
+            AmbientContextForTests::testConfig()->escalatedRerunsMaxCount
+        );
         $rerunCount = 0;
-        foreach (self::generateEscalatedLogLevels($initiallyFailedTestLogLevels) as $escalatedLogLevels) {
+        foreach ($escalatedLogLevelsSeq as $escalatedLogLevels) {
             $this->tearDown();
 
             ++$rerunCount;
@@ -446,7 +451,7 @@ class ComponentTestCaseBase extends TestCaseBase
      *
      * @return iterable<array<string, int>>
      */
-    protected static function generateEscalatedLogLevels(array $initialLevels): iterable
+    public static function generateEscalatedLogLevels(array $initialLevels): iterable
     {
         Assert::assertNotEmpty($initialLevels);
 
@@ -466,6 +471,10 @@ class ComponentTestCaseBase extends TestCaseBase
 
         /** @var int $minInitialLevel */
         $minInitialLevel = min($initialLevels);
+        $maxDelta = 0;
+        foreach ($initialLevels as $initialLevel) {
+            $maxDelta = max($maxDelta, LogLevel::getHighest() - $initialLevel);
+        }
         foreach (RangeUtil::generateDown(LogLevel::getHighest(), $minInitialLevel) as $baseLevel) {
             Assert::assertGreaterThan(LogLevel::OFF, $baseLevel);
             $currentLevels = [];
@@ -473,13 +482,35 @@ class ComponentTestCaseBase extends TestCaseBase
                 $currentLevels[$levelTypeKey] = $baseLevel;
             }
             yield $currentLevels;
-            foreach (self::LOG_LEVEL_FOR_CODE_KEYS as $levelTypeKey) {
-                $currentLevels[$levelTypeKey] = $baseLevel - 1;
-                if (!$haveCurrentLevelsReachedInitial($currentLevels)) {
-                    yield $currentLevels;
+
+            foreach (RangeUtil::generate(1, $maxDelta + 1) as $delta) {
+                foreach (self::LOG_LEVEL_FOR_CODE_KEYS as $levelTypeKey) {
+                    if ($baseLevel < $initialLevels[$levelTypeKey] + $delta) {
+                        continue;
+                    }
+                    $currentLevels[$levelTypeKey] = $baseLevel - $delta;
+                    if (!$haveCurrentLevelsReachedInitial($currentLevels)) {
+                        yield $currentLevels;
+                    }
+                    $currentLevels[$levelTypeKey] = $baseLevel;
                 }
-                $currentLevels[$levelTypeKey] = $baseLevel;
             }
         }
+    }
+
+    /**
+     * @param array<string, int> $initialLevels
+     *
+     * @return iterable<array<string, int>>
+     */
+    protected static function generateLevelsForRunAndEscalateLogLevelOnFailure(
+        array $initialLevels,
+        int $eachLevelsSetMaxCount
+    ): iterable {
+        $result = self::generateEscalatedLogLevels($initialLevels);
+        $result = IterableUtilForTests::concat($result, [$initialLevels]);
+        /** @noinspection PhpUnnecessaryLocalVariableInspection */
+        $result = IterableUtilForTests::duplicateEachElement($result, $eachLevelsSetMaxCount);
+        return $result;
     }
 }

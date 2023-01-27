@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -31,6 +30,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\ConfigUtilForTests;
 use ElasticApmTests\TestsRootDir;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -84,10 +84,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private static function agentSyslogLevelEnvVarName(): string
     {
-        return EnvVarsRawSnapshotSource::optionNameToEnvVarName(
-            EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
-            OptionNames::LOG_LEVEL_SYSLOG
-        );
+        return ConfigUtilForTests::agentOptionNameToEnvVarName(OptionNames::LOG_LEVEL_SYSLOG);
     }
 
     /**

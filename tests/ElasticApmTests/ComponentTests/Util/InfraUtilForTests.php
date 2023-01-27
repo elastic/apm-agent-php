@@ -77,7 +77,7 @@ final class InfraUtilForTests
         string $dbgProcessName
     ): array {
         $dataPerProcessOptName = AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME;
-        $dataPerProcessEnvVarName = ConfigUtilForTests::envVarNameForTestOption($dataPerProcessOptName);
+        $dataPerProcessEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($dataPerProcessOptName);
         $dataPerProcess
             = self::buildTestInfraDataPerProcess($targetSpawnedProcessInternalId, $targetServerPort, $resourcesCleaner);
         return $baseEnvVars

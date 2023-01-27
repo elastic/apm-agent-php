@@ -39,149 +39,8 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
     private const FAIL_ON_RERUN_COUNT_KEY = 'FAIL_ON_RERUN_COUNT';
     private const SHOULD_FAIL_KEY = 'SHOULD_FAIL';
     private const TEST_SUCCEEDED_LABEL_KEY = 'TEST_SUCCEEDED_LABEL';
-
-    /**
-     * @param array<string, int>        $initialLevels
-     * @param array<array<string, int>> $expectedLevelsSeq
-     *
-     * @return void
-     */
-    private function generateEscalatedLogLevelsTestImpl(array $initialLevels, array $expectedLevelsSeq): void
-    {
-        $dbgCtx = ['initialLevels' => $initialLevels, 'expectedLevelsSeq' => $expectedLevelsSeq];
-        $actualEscalatedLevelsSeq = self::generateEscalatedLogLevels($initialLevels);
-        $i = 0;
-        foreach ($actualEscalatedLevelsSeq as $actualLevels) {
-            $dbgCtxPerIter = array_merge(['i' => $i, 'actualLevels' => $actualLevels], $dbgCtx);
-            self::assertGreaterThan($i, count($expectedLevelsSeq), LoggableToString::convert($dbgCtxPerIter));
-            $expectedLevels = $expectedLevelsSeq[$i];
-            $dbgCtxPerIter['expectedLevels'] = $expectedLevels;
-            self::assertCount(count($expectedLevels), $actualLevels, LoggableToString::convert($dbgCtxPerIter));
-            foreach ($expectedLevels as $levelTypeKey => $expectedLevel) {
-                $dbgCtxPerIter2 = array_merge(['levelTypeKey' => $levelTypeKey], $dbgCtxPerIter);
-                $dbgCtxPerIter2Str = LoggableToString::convert($dbgCtxPerIter2);
-                self::assertSame($expectedLevel, $actualLevels[$levelTypeKey], $dbgCtxPerIter2Str);
-            }
-            ++$i;
-        }
-        self::assertCount($i, $expectedLevelsSeq, LoggableToString::convert($dbgCtx));
-    }
-
-    public function testGenerateEscalatedLogLevels(): void
-    {
-        $prodCodeKey = ComponentTestCaseBase::LOG_LEVEL_FOR_PROD_CODE_KEY;
-        $testCodeKey = ComponentTestCaseBase::LOG_LEVEL_FOR_TEST_CODE_KEY;
-
-        /**
-         * When the initial already the highest
-         */
-        $this->generateEscalatedLogLevelsTestImpl(
-            // initialLevels:
-            [
-                $prodCodeKey => LogLevel::getHighest(),
-                $testCodeKey => LogLevel::getHighest(),
-            ],
-            // expectedEscalatedLevelsSeq:
-            []
-        );
-
-        /**
-         * When the initial one step below the highest
-         */
-        $this->generateEscalatedLogLevelsTestImpl(
-        // initialLevels:
-            [
-                $prodCodeKey => LogLevel::getHighest() - 1,
-                $testCodeKey => LogLevel::getHighest(),
-            ],
-            // expectedEscalatedLevelsSeq:
-            [
-                [
-                    $prodCodeKey => LogLevel::getHighest(),
-                    $testCodeKey => LogLevel::getHighest(),
-                ],
-                [
-                    $prodCodeKey => LogLevel::getHighest(),
-                    $testCodeKey => LogLevel::getHighest() - 1,
-                ],
-            ]
-        );
-        $this->generateEscalatedLogLevelsTestImpl(
-        // initialLevels:
-            [
-                $prodCodeKey => LogLevel::getHighest(),
-                $testCodeKey => LogLevel::getHighest() - 1,
-            ],
-            // expectedEscalatedLevelsSeq:
-            [
-                [
-                    $prodCodeKey => LogLevel::getHighest(),
-                    $testCodeKey => LogLevel::getHighest(),
-                ],
-                [
-                    $prodCodeKey => LogLevel::getHighest() - 1,
-                    $testCodeKey => LogLevel::getHighest(),
-                ],
-            ]
-        );
-
-        $this->generateEscalatedLogLevelsTestImpl(
-        // initialLevels:
-            [
-                $prodCodeKey => LogLevel::TRACE,
-                $testCodeKey => LogLevel::DEBUG,
-            ],
-            // expectedEscalatedLevelsSeq:
-            [
-                [
-                    $prodCodeKey => LogLevel::TRACE,
-                    $testCodeKey => LogLevel::TRACE,
-                ],
-                [
-                    $prodCodeKey => LogLevel::DEBUG,
-                    $testCodeKey => LogLevel::TRACE,
-                ],
-            ]
-        );
-
-        /**
-         * When the initial is the default
-         */
-        $this->generateEscalatedLogLevelsTestImpl(
-        // initialLevels:
-            [
-                $prodCodeKey => LogLevel::INFO,
-                $testCodeKey => LogLevel::INFO,
-            ],
-            // expectedEscalatedLevelsSeq:
-            [
-                [
-                    $prodCodeKey => LogLevel::TRACE,
-                    $testCodeKey => LogLevel::TRACE,
-                ],
-                [
-                    $prodCodeKey => LogLevel::DEBUG,
-                    $testCodeKey => LogLevel::TRACE,
-                ],
-                [
-                    $prodCodeKey => LogLevel::TRACE,
-                    $testCodeKey => LogLevel::DEBUG,
-                ],
-                [
-                    $prodCodeKey => LogLevel::DEBUG,
-                    $testCodeKey => LogLevel::DEBUG,
-                ],
-                [
-                    $prodCodeKey => LogLevel::INFO,
-                    $testCodeKey => LogLevel::DEBUG,
-                ],
-                [
-                    $prodCodeKey => LogLevel::DEBUG,
-                    $testCodeKey => LogLevel::INFO,
-                ],
-            ]
-        );
-    }
+    private const ESCALATED_RERUNS_MAX_COUNT_KEY
+        = AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME;
 
     /**
      * @return iterable<array{array<string, mixed>}>
@@ -196,6 +55,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
             ->addKeyedDimensionOnlyFirstValueCombinable(self::LOG_LEVEL_FOR_TEST_CODE_KEY, $initialLogLevels)
             ->addKeyedDimensionOnlyFirstValueCombinable(self::FAIL_ON_RERUN_COUNT_KEY, [1, 2, 3])
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::SHOULD_FAIL_KEY)
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::ESCALATED_RERUNS_MAX_COUNT_KEY, [2, 0])
             ->wrapResultIntoArray()
             ->build();
 
@@ -230,14 +90,35 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
     }
 
     /**
+     * @return array<string, ?string>
+     */
+    private static function unsetLogLevelRelatedEnvVars(): array
+    {
+        $envVars = EnvVarUtilForTests::getAll();
+        $logLevelRelatedEnvVarsToRestore = [];
+        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $envVars)) {
+                $logLevelRelatedEnvVarsToRestore[$envVarName] = $envVars[$envVarName];
+                EnvVarUtilForTests::unset($envVarName);
+            } else {
+                $logLevelRelatedEnvVarsToRestore[$envVarName] = null;
+            }
+
+            self::assertNull(EnvVarUtilForTests::get($envVarName));
+        }
+        return $logLevelRelatedEnvVarsToRestore;
+    }
+
+    /**
      * @dataProvider dataProviderForTestRunAndEscalateLogLevelOnFailure
      *
      * @param array<string, mixed> $testArgs
      */
     public function testRunAndEscalateLogLevelOnFailure(array $testArgs): void
     {
-        $prodCodeSyslogLevelEnvVarName = ConfigUtilForTests::envVarNameForAgentOption(OptionNames::LOG_LEVEL_SYSLOG);
-        $prodCodeSyslogLevelEnvVarValueToRestore = EnvVarUtilForTests::get($prodCodeSyslogLevelEnvVarName);
+        $logLevelRelatedEnvVarsToRestore = self::unsetLogLevelRelatedEnvVars();
+        $prodCodeSyslogLevelEnvVarName = ConfigUtilForTests::agentOptionNameToEnvVarName(OptionNames::LOG_LEVEL_SYSLOG);
         $initialLogLevelForProdCode = self::getIntFromMap(self::LOG_LEVEL_FOR_PROD_CODE_KEY, $testArgs);
         $initialLogLevelForProdCodeAsName = LogLevel::intToName($initialLogLevelForProdCode);
         EnvVarUtilForTests::set($prodCodeSyslogLevelEnvVarName, $initialLogLevelForProdCodeAsName);
@@ -246,16 +127,24 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         $initialLogLevelForTestCode = self::getIntFromMap(self::LOG_LEVEL_FOR_TEST_CODE_KEY, $testArgs);
         AmbientContextForTests::resetLogLevel($initialLogLevelForTestCode);
 
+        $rerunsMaxCountoRestore = AmbientContextForTests::testConfig()->escalatedRerunsMaxCount;
+        $rerunsMaxCount = self::getIntFromMap(self::ESCALATED_RERUNS_MAX_COUNT_KEY, $testArgs);
+        AmbientContextForTests::resetEscalatedRerunsMaxCount($rerunsMaxCount);
+
         $initialLevels = [];
         foreach (self::LOG_LEVEL_FOR_CODE_KEYS as $levelTypeKey) {
             $initialLevels[$levelTypeKey] = self::getIntFromMap($levelTypeKey, $testArgs);
         }
         $testArgs['initialLevels'] = $initialLevels;
-        $expectedEscalatedLevelsSeq = IterableUtilForTests::toList(self::generateEscalatedLogLevels($initialLevels));
-        $testArgs['expectedEscalatedLevelsSeq'] = $expectedEscalatedLevelsSeq;
+        $expectedEscalatedLevelsSeqCount = IterableUtilForTests::count(
+            self::generateLevelsForRunAndEscalateLogLevelOnFailure($initialLevels, $rerunsMaxCount)
+        );
+        if ($rerunsMaxCount === 0) {
+            self::assertSame(0, $expectedEscalatedLevelsSeqCount);
+        }
         $failOnRerunCountArg = self::getIntFromMap(self::FAIL_ON_RERUN_COUNT_KEY, $testArgs);
         $expectedFailOnRunCount
-            = $failOnRerunCountArg <= count($expectedEscalatedLevelsSeq) ? ($failOnRerunCountArg + 1) : 1;
+            = $failOnRerunCountArg <= $expectedEscalatedLevelsSeqCount ? ($failOnRerunCountArg + 1) : 1;
         $expectedMessage = self::buildFailMessage($expectedFailOnRunCount);
         $shouldFail = self::getBoolFromMap(self::SHOULD_FAIL_KEY, $testArgs);
 
@@ -275,11 +164,16 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         }
         self::assertSame(!$shouldFail, $runAndEscalateLogLevelOnFailureExitedNormally);
 
-        self::assertSame($initialLogLevelForProdCodeAsName, EnvVarUtilForTests::get($prodCodeSyslogLevelEnvVarName));
-        EnvVarUtilForTests::setOrUnset($prodCodeSyslogLevelEnvVarName, $prodCodeSyslogLevelEnvVarValueToRestore);
+        self::assertSame($rerunsMaxCount, AmbientContextForTests::testConfig()->escalatedRerunsMaxCount);
+        AmbientContextForTests::resetEscalatedRerunsMaxCount($rerunsMaxCountoRestore);
 
         self::assertSame($initialLogLevelForTestCode, AmbientContextForTests::testConfig()->logLevel);
         AmbientContextForTests::resetLogLevel($logLevelForTestCodeToRestore);
+
+        self::assertSame($initialLogLevelForProdCodeAsName, EnvVarUtilForTests::get($prodCodeSyslogLevelEnvVarName));
+        foreach ($logLevelRelatedEnvVarsToRestore as $envVarName => $envVarValue) {
+            EnvVarUtilForTests::setOrUnset($envVarName, $envVarValue);
+        }
     }
 
     /**
@@ -294,10 +188,19 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         $failOnRerunCountArg = self::getIntFromMap(self::FAIL_ON_RERUN_COUNT_KEY, $testArgs);
         /** @var array<string, int> $initialLevels */
         $initialLevels = self::getArrayFromMap('initialLevels', $testArgs);
-        /** @var array<array<string, int>> $expectedEscalatedLevelsSeq */
-        $expectedEscalatedLevelsSeq = self::getArrayFromMap('expectedEscalatedLevelsSeq', $testArgs);
         $shouldCurrentRunFail = $shouldFail && ($currentRunCount === 1 || $currentReRunCount === $failOnRerunCountArg);
-        $expectedLevels = $currentRunCount === 1 ? $initialLevels : $expectedEscalatedLevelsSeq[$currentReRunCount - 1];
+        if ($currentRunCount === 1) {
+            $expectedLevels = $initialLevels;
+        } else {
+            $rerunsMaxCount = self::getIntFromMap(self::ESCALATED_RERUNS_MAX_COUNT_KEY, $testArgs);
+            self::assertTrue(
+                IterableUtilForTests::getNthValue(
+                    self::generateLevelsForRunAndEscalateLogLevelOnFailure($initialLevels, $rerunsMaxCount),
+                    $currentReRunCount - 1,
+                    $expectedLevels /* <- out */
+                )
+            );
+        }
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();

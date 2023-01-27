@@ -440,6 +440,36 @@ struct BackgroundBackendCommSharedStateSnapshot
 };
 typedef struct BackgroundBackendCommSharedStateSnapshot BackgroundBackendCommSharedStateSnapshot;
 
+static inline bool isDataToSendQueueEmptyInSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+{
+    return sharedStateSnapshot->firstDataToSendNode == NULL;
+}
+
+String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot, TextOutputStream* txtOutStream )
+{
+    StringView serializedEvents = { 0 };
+    if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
+    {
+        serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+    }
+
+    streamPrintf(
+            txtOutStream
+            ,"{"
+             "total size of queued events: %"PRIu64
+             ", firstDataToSendNode %s NULL"
+             " (serializedEvents.length: %"PRIu64 ")"
+             ", shouldExit: %s"
+             ", shouldExitBy: %s"
+             "}"
+            , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+            , sharedStateSnapshot->firstDataToSendNode == NULL ? "==" : "!="
+            , (UInt64) serializedEvents.length
+            , boolToString( sharedStateSnapshot->shouldExit )
+            , sharedStateSnapshot->shouldExit ? streamUtcTimeSpecAsLocal( &(sharedStateSnapshot->shouldExitBy), txtOutStream ) : "N/A"
+    );
+}
+
 #define ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG() \
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY(); \
     ELASTIC_APM_ASSERT_VALID_PTR( backgroundBackendComm ); \
@@ -468,9 +498,27 @@ void backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot(
     sharedStateSnapshot->shouldExitBy = backgroundBackendComm->shouldExitBy;
 }
 
-static inline bool isDataToSendQueueEmptyInSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+static inline bool areEqualSharedSnapshots( const BackgroundBackendCommSharedStateSnapshot* val1, const BackgroundBackendCommSharedStateSnapshot* val2 )
 {
-    return sharedStateSnapshot->firstDataToSendNode == NULL;
+    if ( isDataToSendQueueEmptyInSnapshot( val1 ) != isDataToSendQueueEmptyInSnapshot( val2 ) )
+    {
+        return false;
+    }
+
+    if ( val1->shouldExit != val2->shouldExit )
+    {
+        return false;
+    }
+
+    if ( val1->shouldExit )
+    {
+        if ( compareAbsTimeSpecs( &( val1->shouldExitBy ), &( val2->shouldExitBy ) ) != 0 )
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 ResultCode backgroundBackendCommThreadFunc_getSharedStateSnapshot(
@@ -541,15 +589,35 @@ ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapsh
 
 ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
         BackgroundBackendComm* backgroundBackendComm
-        , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+        , /* in,out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
 )
 {
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( waitConditionVariable( backgroundBackendComm->condVar, backgroundBackendComm->mutex, __FUNCTION__ ) );
-    ELASTIC_APM_LOG_DEBUG( "Waiting exited" );
-
-    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+    BackgroundBackendCommSharedStateSnapshot localSharedStateSnapshot;
+    backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ &localSharedStateSnapshot );
+    if ( areEqualSharedSnapshots( sharedStateSnapshot, &localSharedStateSnapshot ) )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Shared state is the same - we need to wait; shared state snapshots: before lock: %s, after lock: %s"
+                               , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream )
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream ) );
+        textOutputStreamRewind( &txtOutStream );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( waitConditionVariable( backgroundBackendComm->condVar, backgroundBackendComm->mutex, __FUNCTION__ ) );
+        backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
+        ELASTIC_APM_LOG_DEBUG( "Waiting exited; shared state snapshots: after lock: %s, after wait: %s"
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream )
+                               , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream ) );
+    }
+    else
+    {
+        ELASTIC_APM_LOG_DEBUG( "Shared state is not the same - there is no need to wait; shared state snapshots: before lock: %s, after lock: %s"
+                               , streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream )
+                               , streamSharedStateSnapshot( &localSharedStateSnapshot, &txtOutStream ) );
+        *sharedStateSnapshot = localSharedStateSnapshot;
+    }
 
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
@@ -602,25 +670,15 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
 {
     StringView serializedEvents = { 0 };
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE( "Shared state snapshot: %s", streamSharedStateSnapshot( sharedStateSnapshot, &txtOutStream ) );
+
     if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
     {
         serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
     }
-
-    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-
-    ELASTIC_APM_LOG_TRACE( "Shared state snapshot: "
-                            " total size of queued events: %"PRIu64
-                            ", firstDataToSendNode %s NULL"
-                            " (serializedEvents.length: %"PRIu64 ")"
-                            ", shouldExit: %s"
-                            ", shouldExitBy: %s"
-                           , (UInt64) sharedStateSnapshot->dataToSendTotalSize
-                           , sharedStateSnapshot->firstDataToSendNode == NULL ? "==" : "!="
-                           , (UInt64) serializedEvents.length
-                           , boolToString( sharedStateSnapshot->shouldExit )
-                           , sharedStateSnapshot->shouldExit ? streamUtcTimeSpecAsLocal( &sharedStateSnapshot->shouldExitBy, &txtOutStream ) : "N/A" );
 
     ELASTIC_APM_ASSERT( (sharedStateSnapshot->dataToSendTotalSize == 0) == ( sharedStateSnapshot->firstDataToSendNode == NULL )
                         , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (serializedEvents.length: %"PRIu64 ")"
