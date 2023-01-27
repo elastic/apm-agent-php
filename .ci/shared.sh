@@ -46,6 +46,8 @@ function ensureSyslogIsRunning () {
 }
 
 function copySyslogFileAndPrintTheLastOne () {
+    echo "Content of /var/log/"
+    ls -l /var/log/
     local possibleSyslogFiles=(/var/log/messages /var/log/syslog)
     for syslogFile in "${possibleSyslogFiles[@]}"
     do
