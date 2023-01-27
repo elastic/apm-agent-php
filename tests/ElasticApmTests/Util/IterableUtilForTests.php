@@ -120,9 +120,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $iterable
+     * @template TValue
      *
-     * @return array<mixed>
+     * @param iterable<TValue> $iterable
+     *
+     * @return array<TValue>
      */
     public static function toList(iterable $iterable): array
     {
