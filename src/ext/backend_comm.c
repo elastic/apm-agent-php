@@ -780,6 +780,7 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
 
 static Mutex* g_backgroundBackendCommMutex = NULL;
 static BackgroundBackendComm* g_backgroundBackendComm = NULL;
+static pid_t g_pidOnBackgroundBackendCommInit = -1;
 
 static bool deriveAsyncBackendComm( const ConfigSnapshot* config, String* dbgReason )
 {
@@ -886,7 +887,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     goto finally;
 }
 
-ResultCode backgroundBackendCommOnRequestInit( const ConfigSnapshot* config )
+ResultCode backgroundBackendCommEnsureInited( const ConfigSnapshot* config )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendCommMutex: %p", g_backgroundBackendCommMutex );
 
@@ -908,9 +909,14 @@ ResultCode backgroundBackendCommOnRequestInit( const ConfigSnapshot* config )
     }
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( g_backgroundBackendCommMutex, &shouldUnlockMutex, __FUNCTION__ ) );
 
-    if ( g_backgroundBackendComm == NULL )
+    if ( g_backgroundBackendComm == NULL || g_pidOnBackgroundBackendCommInit != getCurrentProcessId() )
     {
+        ELASTIC_APM_LOG_DEBUG( "Starting thread for background backend communications because %s ..."
+                               "; g_pidOnBackgroundBackendCommInit: %d, parent PID: %d"
+                               , g_backgroundBackendComm == NULL ? "g_backgroundBackendComm == NULL" : "g_pidOnBackgroundBackendCommInit != getCurrentProcessId()"
+                               , (int)g_pidOnBackgroundBackendCommInit, (int)getParentProcessId() );
         ELASTIC_APM_CALL_IF_FAILED_GOTO( newBackgroundBackendComm( config, &g_backgroundBackendComm ) );
+        g_pidOnBackgroundBackendCommInit = getCurrentProcessId();
     }
 
     resultCode = resultSuccess;
@@ -1100,7 +1106,9 @@ ResultCode sendEventsToApmServer(
         , StringView userAgentHttpHeader
         , StringView serializedEvents )
 {
+    ResultCode resultCode;
     long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
+
     ELASTIC_APM_LOG_DEBUG(
             "Handling request to send events..."
             " disableSend: %s"
@@ -1113,15 +1121,28 @@ ResultCode sendEventsToApmServer(
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     String dbgAsyncBackendCommReason = NULL;
-    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
+    bool shouldSendAsync = deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason );
+    ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - sending events %s"
+                           , dbgAsyncBackendCommReason, ( shouldSendAsync ? "asynchronously" : "synchronously" ) );
+    if ( shouldSendAsync )
     {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - sending events synchronously", dbgAsyncBackendCommReason );
-        return sendEventsToApmServerWithDataConvertedForSync( disableSend
-                                                              , serverTimeoutMilliseconds
-                                                              , config
-                                                              , userAgentHttpHeader
-                                                              , serializedEvents );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommEnsureInited( config ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, userAgentHttpHeader, serializedEvents ) );
+    }
+    else
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( sendEventsToApmServerWithDataConvertedForSync(
+                disableSend
+                , serverTimeoutMilliseconds
+                , config
+                , userAgentHttpHeader
+                , serializedEvents ) );
     }
 
-    return enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, userAgentHttpHeader, serializedEvents );
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    goto finally;
 }

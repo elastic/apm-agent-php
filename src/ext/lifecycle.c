@@ -111,8 +111,8 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
     {
         ELASTIC_APM_LOG_DEBUG( "Process ID on %s init doesn't match the current process ID"
                                " (maybe the current process is a child process forked after the init step?)"
-                               "; pidOnInit: %d, currentPid: %d"
-                               , dbgDesc, (int)pidOnInit, (int)currentPid );
+                               "; PID on init: %d, current PID: %d, parent PID: %d"
+                               , dbgDesc, (int)pidOnInit, (int)currentPid, (int)(getParentProcessId()) );
         return false;
     }
     return true;
@@ -120,7 +120,7 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
 
 void elasticApmModuleInit( int type, int moduleNumber )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d, parent PID: %d", type, moduleNumber, (int)(getParentProcessId()) );
 
     registerOsSignalHandler();
 
@@ -551,16 +551,16 @@ void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 
 void elasticApmRequestInit()
 {
+    TimePoint requestInitStartTime;
+    getCurrentTime( &requestInitStartTime );
+
 #if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
     g_pidOnRequestInit = getCurrentProcessId();
 
-    TimePoint requestInitStartTime;
-    getCurrentTime( &requestInitStartTime );
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "parent PID: %d", (int)(getParentProcessId()) );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -585,7 +585,7 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnRequestInit( config ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommEnsureInited( config ) );
 
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
