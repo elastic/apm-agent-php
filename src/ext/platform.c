@@ -74,6 +74,19 @@ pid_t getCurrentThreadId()
     #endif
 }
 
+pid_t getParentProcessId()
+{
+    #ifdef PHP_WIN32
+
+    return -1;
+
+    #else
+
+    return getppid();
+
+    #endif
+}
+
 #ifdef PHP_WIN32
 void writeToWindowsSystemDebugger( String msg )
 {
