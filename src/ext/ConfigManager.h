@@ -85,6 +85,7 @@ enum OptionId
     optionId_allowAbortDialog,
     #endif
     optionId_apiKey,
+    optionId_atomicSite,
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
@@ -145,6 +146,7 @@ struct ConfigSnapshot
     AssertLevel assertLevel;
         #endif
     String apiKey;
+    String atomicSite;
     OptionalBool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
@@ -282,6 +284,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   endif
 
 #define ELASTIC_APM_CFG_OPT_NAME_API_KEY "api_key"
+#define ELASTIC_APM_CFG_OPT_NAME_ATOMIC_SITE "atomic_site"
 
 /**
  * Internal configuration option (not included in public documentation)

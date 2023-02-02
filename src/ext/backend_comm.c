@@ -173,10 +173,16 @@ ResultCode syncSendEventsToApmServer( bool disableSend
         urlBufferSize = 256
     };
     char url[urlBufferSize];
+    enum
+    {
+        atomicSiteBufferSize = 256
+    };
+    char atomicSite[atomicSiteBufferSize];
     struct curl_slist* requestHeaders = NULL;
     int snprintfRetVal;
     const char* authKind = NULL;
     const char* authValue = NULL;
+    const char* atomicSiteValue = NULL;
 
     /* get a curl handle */
     curl = curl_easy_init();
@@ -233,6 +239,26 @@ ResultCode syncSendEventsToApmServer( bool disableSend
         ELASTIC_APM_LOG_TRACE( "Adding header: %s", auth );
         ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, auth ) );
     }
+
+    // A8C: Add Atomic site ID if present
+    if ( ! isNullOrEmtpyString( config->atomicSite ) )
+    {
+        atomicSiteValue = config->atomicSite;
+    }
+
+    if ( atomicSiteValue != NULL )
+    {
+        snprintfRetVal = snprintf( atomicSite, atomicSiteBufferSize, "x-atomic-site: %u", atomicSiteValue );
+        if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
+        {
+            ELASTIC_APM_LOG_ERROR( "Failed to build x-atomic-site header."
+                                   " snprintfRetVal: %d. atomicSiteValue: %s.", snprintfRetVal, atomicSiteValue );
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
+        ELASTIC_APM_LOG_TRACE( "Adding header: %s", atomicSite );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, atomicSite ) );
+    }
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, "Content-Type: application/x-ndjson" ) );
     ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, requestHeaders );
 
