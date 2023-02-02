@@ -21,37 +21,17 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\StackTraceFrame;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 
-final class SpanExpectations extends ExecutionSegmentExpectations
+/**
+ * @group does_not_require_external_services
+ */
+final class SpanCompressionComponentTest extends ComponentTestCaseBase
 {
-    /** @var Optional<?string> */
-    public $action = null;
-
-    /** @var SpanContextExpectations */
-    public $context;
-
-    /** @var Optional<?string> */
-    public $subtype = null;
-
-    /** @var null|StackTraceFrame[] */
-    public $stackTrace = null;
-
-    /** @var ?bool */
-    public $allowExpectedStackTraceToBePrefix = null;
-
-    /** @var Optional<bool> */
-    public $isCompositeNull = null;
-
-    public function __construct()
+    public function testXyz(): void
     {
-        parent::__construct();
-        $this->action = new Optional();
-        $this->context = new SpanContextExpectations();
-        $this->subtype = new Optional();
-        $this->isCompositeNull = new Optional();
-        $this->isCompositeNull->setValue(true);
+        self::dummyAssert();
     }
 }

@@ -53,7 +53,7 @@ trait AssertValidTrait
     /**
      * @param mixed $stringValue
      * @param bool  $isNullable
-     * @param int   $maxLength
+     * @param ?int  $maxLength
      *
      * @return ?string
      */
@@ -81,6 +81,18 @@ trait AssertValidTrait
     public static function assertValidNullableKeywordString($keywordString): ?string
     {
         return self::assertValidString($keywordString, /* isNullable: */ true, Constants::KEYWORD_STRING_MAX_LENGTH);
+    }
+
+    /**
+     * @param mixed $stringValue
+     *
+     * @return string
+     */
+    public static function assertValidNonNullableString($stringValue): string
+    {
+        /** @var string $result */
+        $result = self::assertValidString($stringValue, /* isNullable: */ false);
+        return $result;
     }
 
     /**
@@ -261,6 +273,20 @@ trait AssertValidTrait
         TestCaseBase::assertTimestampInRange($outerBeginTimestamp, $nestedExecSeg->timestamp, $outerEndTimestamp);
         $nestedEndTimestamp = TestCaseBase::calcEndTime($nestedExecSeg);
         TestCaseBase::assertTimestampInRange($outerBeginTimestamp, $nestedEndTimestamp, $outerEndTimestamp);
+    }
+
+    /**
+     * @param mixed $count
+     * @param int   $minValue
+     *
+     * @return int
+     */
+    public static function assertValidCount($count, int $minValue = 0): int
+    {
+        TestCase::assertIsInt($count);
+        /** @var int $count */
+        TestCase::assertGreaterThanOrEqual($minValue, $count);
+        return $count;
     }
 
     /**

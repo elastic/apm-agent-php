@@ -21,37 +21,14 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Impl\StackTraceFrame;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-final class SpanExpectations extends ExecutionSegmentExpectations
+class SpanCompressionUnitTest extends TracerUnitTestCaseBase
 {
-    /** @var Optional<?string> */
-    public $action = null;
-
-    /** @var SpanContextExpectations */
-    public $context;
-
-    /** @var Optional<?string> */
-    public $subtype = null;
-
-    /** @var null|StackTraceFrame[] */
-    public $stackTrace = null;
-
-    /** @var ?bool */
-    public $allowExpectedStackTraceToBePrefix = null;
-
-    /** @var Optional<bool> */
-    public $isCompositeNull = null;
-
-    public function __construct()
+    public function testXyz(): void
     {
-        parent::__construct();
-        $this->action = new Optional();
-        $this->context = new SpanContextExpectations();
-        $this->subtype = new Optional();
-        $this->isCompositeNull = new Optional();
-        $this->isCompositeNull->setValue(true);
+        self::dummyAssert();
     }
 }

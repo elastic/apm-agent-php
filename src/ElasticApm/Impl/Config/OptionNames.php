@@ -58,6 +58,9 @@ final class OptionNames
     public const SERVICE_NAME = 'service_name';
     public const SERVICE_NODE_NAME = 'service_node_name';
     public const SERVICE_VERSION = 'service_version';
+    public const SPAN_COMPRESSION_ENABLED = 'span_compression_enabled';
+    public const SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION = 'span_compression_exact_match_max_duration';
+    public const SPAN_COMPRESSION_SAME_KIND_MAX_DURATION = 'span_compression_same_kind_max_duration';
     public const TRANSACTION_IGNORE_URLS = 'transaction_ignore_urls';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';

@@ -471,7 +471,13 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $result = new DistributedTracingDataInternal();
         $result->traceId = $this->traceId;
-        $result->parentId = $span === null ? $this->id : $span->getId();
+        if ($span === null) {
+            $result->parentId = $this->id;
+            $this->wasPropogatedViaDistributedTracing = true;
+        } else {
+            $result->parentId = $span->getId();
+            $span->wasPropogatedViaDistributedTracing = true;
+        }
         $result->isSampled = $this->isSampled;
         $result->outgoingTraceState = $this->outgoingTraceState;
         return $result;

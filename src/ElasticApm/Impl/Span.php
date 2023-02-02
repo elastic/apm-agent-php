@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
+use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
 
@@ -72,6 +73,12 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
     /** @var ObserverSet<Span> */
     public $onAboutToEnd;
 
+    /** @var bool */
+    protected $hasChildren = false;
+
+    /** @var ?SpanCompositeData */
+    public $composite = null;
+
     public function __construct(
         Tracer $tracer,
         Transaction $containingTransaction,
@@ -114,6 +121,8 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Span created');
+
+        $parentExecutionSegment->onChildSpanAboutToStart($this);
     }
 
     /**
@@ -249,6 +258,140 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         );
     }
 
+    public function isCompressionEligible(): bool
+    {
+        return !$this->wasPropogatedViaDistributedTracing
+               && !$this->hasChildren
+               && ($this->outcome === null || $this->outcome === Constants::OUTCOME_SUCCESS);
+    }
+
+    private function getServiceTarget(): ?SpanContextServiceTarget
+    {
+        return ($this->context === null || $this->context->service === null)
+            ? null
+            : $this->context->service->target;
+    }
+
+    private function getServiceTargetProp(bool $isName): ?string
+    {
+        $serviceTarget = $this->getServiceTarget();
+        return $serviceTarget === null ? null : ($isName ? $serviceTarget->name : $serviceTarget->type);
+    }
+
+    private function isSameKind(Span $other): bool
+    {
+        return $this->type === $other->type
+               && $this->subtype === $other->subtype
+               && $this->getServiceTargetProp(/* isName */ false) === $other->getServiceTargetProp(/* isName */ false)
+               && $this->getServiceTargetProp(/* isName */ true) === $other->getServiceTargetProp(/* isName */ true);
+    }
+
+    public function tryToAddToCompress(Span $sibling): bool
+    {
+        if ($this->composite === null) {
+            $compressionStrategy = $this->canCompressFirstPair($sibling);
+            if ($compressionStrategy === null) {
+                return false;
+            }
+            if ($compressionStrategy === Constants::COMPRESSION_STRATEGY_SAME_KIND) {
+                $serviceTarget = $this->getServiceTarget();
+                if ($serviceTarget === null) {
+                    return false;
+                }
+                $this->name = self::buildSameKindCompressedCompositeName($serviceTarget);
+            }
+            $this->composite = new SpanCompositeData($compressionStrategy, $this->duration);
+        } else {
+            if (!$this->canToAddToCompositeToCompress($this->composite, $sibling)) {
+                return false;
+            }
+        }
+
+        $this->composite->durationsSum += $sibling->duration;
+        ++$this->composite->count;
+        $this->recalcDurationForComposite($sibling);
+
+        return true;
+    }
+
+    private function canCompressFirstPair(Span $sibling): ?string
+    {
+        if (!$this->isSameKind($sibling)) {
+            return null;
+        }
+
+        $config = $this->containingTransaction->tracer()->getConfig();
+        $exactMatchMaxDuration = $config->spanCompressionExactMatchMaxDuration();
+        if ($this->name === $sibling->name) {
+            return ($this->duration <= $exactMatchMaxDuration && $sibling->duration <= $exactMatchMaxDuration)
+                ? Constants::COMPRESSION_STRATEGY_EXACT_MATCH
+                : null;
+        }
+
+        $sameKindMaxDuration = $config->spanCompressionSameKindMaxDuration();
+        return $this->duration <= $sameKindMaxDuration && $sibling->duration <= $sameKindMaxDuration
+            ? Constants::COMPRESSION_STRATEGY_SAME_KIND
+            : null;
+    }
+
+    private static function buildSameKindCompressedCompositeName(SpanContextServiceTarget $serviceTarget): string
+    {
+        $prefix = 'Calls to ';
+
+        if ($serviceTarget->type === null) {
+            if ($serviceTarget->name === null) {
+                return $prefix . 'unknown';
+            }
+            return $prefix . $serviceTarget->name;
+        }
+
+        if ($serviceTarget->name === null) {
+            return $prefix . $serviceTarget->type;
+        }
+
+        return $prefix . $serviceTarget->type . '/' . $serviceTarget->name;
+    }
+
+    public function calcEndTimestamp(): float
+    {
+        return $this->timestamp + TimeUtil::millisecondsToMicroseconds($this->duration);
+    }
+
+    private function recalcDurationForComposite(Span $sibling): void
+    {
+        $beginTimestamp = min($this->timestamp, $sibling->timestamp);
+        $endTimestamp = max($this->calcEndTimestamp(), $sibling->calcEndTimestamp());
+        $this->duration = TimeUtil::microsecondsToMilliseconds($endTimestamp - $beginTimestamp);
+    }
+
+    private function canToAddToCompositeToCompress(SpanCompositeData $compositeData, Span $sibling): bool
+    {
+        $config = $this->containingTransaction->tracer()->getConfig();
+        switch ($compositeData->compressionStrategy) {
+            case Constants::COMPRESSION_STRATEGY_EXACT_MATCH:
+                return $this->isSameKind($sibling)
+                       && $this->name === $sibling->name
+                       && $sibling->duration <= $config->spanCompressionExactMatchMaxDuration();
+
+            case Constants::COMPRESSION_STRATEGY_SAME_KIND:
+                return $this->isSameKind($sibling)
+                       && $sibling->duration <= $config->spanCompressionSameKindMaxDuration();
+
+            default:
+                ($loggerProxy = $this->logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Unexpected value for compression strategy: `' . $compositeData->compressionStrategy . '\''
+                );
+                return false;
+        }
+    }
+
+    protected function onChildSpanAboutToStart(Span $child): void
+    {
+        parent::onChildSpanAboutToStart($child);
+        $this->hasChildren = true;
+    }
+
     /** @inheritDoc */
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
@@ -265,10 +408,9 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
 
         $this->onAboutToEnd->callCallbacks($this);
 
-        $this->prepareForSerialization();
-
         if ($this->shouldBeSentToApmServer()) {
-            $this->containingTransaction->tracer()->sendSpanToApmServer($this);
+            $this->prepareForSerialization();
+            $this->parentExecutionSegment->onChildSpanEnded($this);
         }
 
         if ($this->containingTransaction->getCurrentSpan() === $this) {
@@ -318,6 +460,8 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stackTrace, /* ref */ $result);
 
         SerializationUtil::addNameValueIfNotNull('context', $this->context, /* ref */ $result);
+
+        SerializationUtil::addNameValueIfNotNull('composite', $this->composite, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

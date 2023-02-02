@@ -102,6 +102,21 @@ final class AllOptionsMetadata
             OptionNames::SERVICE_NAME             => new NullableStringOptionMetadata(),
             OptionNames::SERVICE_NODE_NAME        => new NullableStringOptionMetadata(),
             OptionNames::SERVICE_VERSION          => new NullableStringOptionMetadata(),
+            OptionNames::SPAN_COMPRESSION_ENABLED => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION
+                                                  => new DurationOptionMetadata(
+                                                      0.0 /* <- minValidValueInMilliseconds */,
+                                                      null /* <- maxValidValueInMilliseconds */,
+                                                      DurationUnits::MILLISECONDS /* <- defaultUnits */,
+                                                      50 /* <- defaultValueInMilliseconds - 50ms */
+                                                  ),
+            OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION
+                                                  => new DurationOptionMetadata(
+                                                      0.0 /* <- minValidValueInMilliseconds */,
+                                                      null /* <- maxValidValueInMilliseconds */,
+                                                      DurationUnits::MILLISECONDS /* <- defaultUnits */,
+                                                      0 /* <- defaultValueInMilliseconds - 50ms */
+                                                  ),
             OptionNames::TRANSACTION_IGNORE_URLS  => new NullableWildcardListOptionMetadata(),
             OptionNames::TRANSACTION_MAX_SPANS    => new IntOptionMetadata(
                 0 /* <- minValidValue */,

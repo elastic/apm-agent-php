@@ -715,6 +715,9 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, spanCompressionEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionExactMatchMaxDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionSameKindMaxDuration )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionIgnoreUrls )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
@@ -1002,6 +1005,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             serviceVersion,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            spanCompressionEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionExactMatchMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionSameKindMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(

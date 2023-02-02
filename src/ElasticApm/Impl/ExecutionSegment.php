@@ -72,6 +72,12 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
     /** @var ?string */
     public $outcome = null;
 
+    /** @var ?Span */
+    private $pendingCompositeChild = null;
+
+    /** @var bool */
+    protected $wasPropogatedViaDistributedTracing = false;
+
     /**
      * @var ?float
      *
@@ -475,6 +481,8 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
             return false;
         }
 
+        $this->flushPendingCompositeChild();
+
         $clock = $this->containingTransaction()->tracer()->getClock();
         $monotonicEndTime = $clock->getMonotonicClockCurrentTime();
         $systemClockEndTime = $clock->getSystemClockCurrentTime();
@@ -545,6 +553,42 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
             $parentBreakdownMetricsSelfTimeTracker = $parentExecutionSegment->breakdownMetricsSelfTimeTracker;
             $parentBreakdownMetricsSelfTimeTracker->onChildEnd($monotonicClockNow);
         }
+    }
+
+    protected function onChildSpanAboutToStart(Span $child): void
+    {
+    }
+
+    protected function onChildSpanEnded(Span $child): void
+    {
+        if (!$this->tryToCompressChild($child)) {
+            $this->flushPendingCompositeChild();
+            $this->containingTransaction()->tracer()->sendSpanToApmServer($child);
+        }
+    }
+
+    private function tryToCompressChild(Span $child): bool
+    {
+        if ($this->hasEnded() || !$child->isCompressionEligible()) {
+            return false;
+        }
+
+        if ($this->pendingCompositeChild === null) {
+            $this->pendingCompositeChild = $child;
+            return true;
+        }
+
+        return $this->pendingCompositeChild->tryToAddToCompress($child);
+    }
+
+    private function flushPendingCompositeChild(): void
+    {
+        if ($this->pendingCompositeChild === null) {
+            return;
+        }
+
+        $this->containingTransaction()->tracer()->sendSpanToApmServer($this->pendingCompositeChild);
+        $this->pendingCompositeChild = null;
     }
 
     /** @inheritDoc */
