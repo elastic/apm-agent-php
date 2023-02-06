@@ -569,16 +569,39 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
 
     private function tryToCompressChild(Span $child): bool
     {
-        if ($this->hasEnded() || !$child->isCompressionEligible()) {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['child' => $child]);
+
+        if ($this->hasEnded()) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - not going to compress because this execution segment already ended');
+            return false;
+        }
+
+        if (!$child->isCompressionEligible()) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - not going to compress because this execution segment already ended');
             return false;
         }
 
         if ($this->pendingCompositeChild === null) {
             $this->pendingCompositeChild = $child;
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - set pendingCompositeChild to child', ['child' => $child]);
             return true;
         }
 
-        return $this->pendingCompositeChild->tryToAddToCompress($child);
+        if ($this->pendingCompositeChild->tryToAddToCompress($child)) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - added to pendingCompositeChild', ['child' => $child]);
+            return true;
+        }
+
+        /**
+         * Flush and re-try from the given child
+         */
+        $this->flushPendingCompositeChild();
+        return $this->tryToCompressChild($child);
     }
 
     private function flushPendingCompositeChild(): void

@@ -25,8 +25,10 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
@@ -123,17 +125,6 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         && $loggerProxy->log('Span created');
 
         $parentExecutionSegment->onChildSpanAboutToStart($this);
-    }
-
-    /**
-     * @return array<string>
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return array_merge(
-            parent::propertiesExcludedFromLog(),
-            ['containingTransaction', 'parentSpan', 'stacktrace', 'context']
-        );
     }
 
     /** @inheritDoc */
@@ -260,9 +251,32 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
 
     public function isCompressionEligible(): bool
     {
-        return !$this->wasPropogatedViaDistributedTracing
-               && !$this->hasChildren
-               && ($this->outcome === null || $this->outcome === Constants::OUTCOME_SUCCESS);
+        if ($this->wasPropogatedViaDistributedTracing) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('This span is not eligible for compression'
+                . ' becasue its ID was propogated via distributed tracing');
+            return false;
+        }
+
+        if ($this->hasChildren) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('This span is not eligible for compression becasue it has children');
+            return false;
+        }
+
+        if ($this->outcome !== null && $this->outcome !== Constants::OUTCOME_SUCCESS) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'This span is not eligible its outcome is present and it is not success',
+                ['outcome' => $this->outcome]
+            );
+            return false;
+        }
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('This span is eligible for compression');
+
+        return true;
     }
 
     private function getServiceTarget(): ?SpanContextServiceTarget
@@ -288,21 +302,30 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
 
     public function tryToAddToCompress(Span $sibling): bool
     {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['sibling' => $sibling]);
+
         if ($this->composite === null) {
             $compressionStrategy = $this->canCompressFirstPair($sibling);
             if ($compressionStrategy === null) {
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Exiting - cannot compress first pair');
                 return false;
             }
             if ($compressionStrategy === Constants::COMPRESSION_STRATEGY_SAME_KIND) {
                 $serviceTarget = $this->getServiceTarget();
                 if ($serviceTarget === null) {
+                    ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log('Exiting - cannot start compressing becasue serviceTarget is null');
                     return false;
                 }
                 $this->name = self::buildSameKindCompressedCompositeName($serviceTarget);
             }
             $this->composite = new SpanCompositeData($compressionStrategy, $this->duration);
         } else {
-            if (!$this->canToAddToCompositeToCompress($this->composite, $sibling)) {
+            if (!$this->canAddToCompositeToCompress($this->composite, $sibling)) {
+                ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Exiting - cannot add sibling');
                 return false;
             }
         }
@@ -311,27 +334,64 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         ++$this->composite->count;
         $this->recalcDurationForComposite($sibling);
 
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Exiting - added sibling', ['sibling' => $sibling]);
         return true;
     }
 
     private function canCompressFirstPair(Span $sibling): ?string
     {
+        if (($loggerProxyTrace = $this->logger->ifTraceLevelEnabledNoLine(__FUNCTION__)) !== null) {
+            $localLogger = $this->logger->inherit()->addAllContext(
+                [
+                    'this'    => ['name' => $this->name, 'type' => $this->type, 'duration' => $this->duration],
+                    'sibling' => ['name' => $sibling->name, 'type' => $sibling->type, 'duration' => $sibling->duration],
+                ]
+            );
+            $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        }
+
         if (!$this->isSameKind($sibling)) {
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Cannot compress because not even same kind');
             return null;
         }
 
         $config = $this->containingTransaction->tracer()->getConfig();
         $exactMatchMaxDuration = $config->spanCompressionExactMatchMaxDuration();
         if ($this->name === $sibling->name) {
-            return ($this->duration <= $exactMatchMaxDuration && $sibling->duration <= $exactMatchMaxDuration)
-                ? Constants::COMPRESSION_STRATEGY_EXACT_MATCH
-                : null;
+            if ($this->duration <= $exactMatchMaxDuration && $sibling->duration <= $exactMatchMaxDuration) {
+                $loggerProxyTrace && $loggerProxyTrace->log(
+                    __LINE__,
+                    'Can compress as ' . Constants::COMPRESSION_STRATEGY_EXACT_MATCH
+                );
+                return Constants::COMPRESSION_STRATEGY_EXACT_MATCH;
+            } else {
+                $loggerProxyTrace && $loggerProxyTrace->log(
+                    __LINE__,
+                    'Cannot compress as ' . Constants::COMPRESSION_STRATEGY_EXACT_MATCH
+                    . ' because one of the durations is above configured threshold',
+                    ['exactMatchMaxDuration (ms)' => $exactMatchMaxDuration]
+                );
+                return null;
+            }
         }
 
         $sameKindMaxDuration = $config->spanCompressionSameKindMaxDuration();
-        return $this->duration <= $sameKindMaxDuration && $sibling->duration <= $sameKindMaxDuration
-            ? Constants::COMPRESSION_STRATEGY_SAME_KIND
-            : null;
+        if ($this->duration <= $sameKindMaxDuration && $sibling->duration <= $sameKindMaxDuration) {
+            $loggerProxyTrace && $loggerProxyTrace->log(
+                __LINE__,
+                'Can compress as ' . Constants::COMPRESSION_STRATEGY_SAME_KIND
+            );
+            return Constants::COMPRESSION_STRATEGY_SAME_KIND;
+        } else {
+            $loggerProxyTrace && $loggerProxyTrace->log(
+                __LINE__,
+                'Cannot compress as ' . Constants::COMPRESSION_STRATEGY_SAME_KIND
+                . ' because one of the durations is above configured threshold',
+                ['sameKindMaxDuration (ms)' => $sameKindMaxDuration]
+            );
+            return null;
+        }
     }
 
     private static function buildSameKindCompressedCompositeName(SpanContextServiceTarget $serviceTarget): string
@@ -364,7 +424,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         $this->duration = TimeUtil::microsecondsToMilliseconds($endTimestamp - $beginTimestamp);
     }
 
-    private function canToAddToCompositeToCompress(SpanCompositeData $compositeData, Span $sibling): bool
+    private function canAddToCompositeToCompress(SpanCompositeData $compositeData, Span $sibling): bool
     {
         $config = $this->containingTransaction->tracer()->getConfig();
         switch ($compositeData->compressionStrategy) {
@@ -464,5 +524,29 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         SerializationUtil::addNameValueIfNotNull('composite', $this->composite, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
+    }
+
+    /** @inheritDoc */
+    protected static function propertiesExcludedFromLog(): array
+    {
+        return array_merge(
+            parent::propertiesExcludedFromLog(),
+            ['containingTransaction', 'parentExecutionSegment', 'stackTrace', 'context']
+        );
+    }
+
+    /** @inheritDoc */
+    public function toLog(LogStreamInterface $stream): void
+    {
+        parent::toLogLoggableTraitImpl(
+            $stream,
+            /* customPropValues */
+            [
+                'containingTransaction ID'  => $this->containingTransaction->getId(),
+                'parentExecutionSegment ID' => $this->parentExecutionSegment->getId(),
+                'stackTrace count'          => $this->stackTrace === null ? null : count($this->stackTrace),
+                'context === null'          => $this->context === null,
+            ]
+        );
     }
 }
