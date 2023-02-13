@@ -1,0 +1,136 @@
+name: test
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.asciidoc"
+      - "**/*.md"
+      - "**/*.png"
+  push:
+    branches:
+      - "**/*.asciidoc"
+      - "**/*.md"
+      - "**/*.png"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: static-checks-unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+        dockerfile:
+          - "Dockerfile"
+          - "Dockerfile.alpine"
+    env:
+      PHP_VERSION: ${{ matrix.php-version }}
+      DOCKERFILE: ${{ matrix.dockerfile }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare
+        run: make -f .ci/Makefile prepare
+      - name: Build
+        run: make -f .ci/Makefile build
+      - name: Static Check / Unit tests
+        run: make -f .ci/Makefile static-check-unit-test
+      - name: Build parts for packages
+        run: make -f .ci/Makefile generate-for-package
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules/*.so
+  build-packages:
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules
+      - name: package
+        run: make -C packaging package
+      - name: package info
+        run: make -C packaging info
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: |
+            build/packages/*
+            !build/packages/**/*.sha512
+  test-packages-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: generate
+        run: |
+          MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh agent-upgrade | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+  test-packages:
+    needs:
+      - build-packages
+      - test-packages-matrix
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 10
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.test-packages-matrix.outputs.include) }}
+    env:
+      PHP_VERSION: ${{ matrix.item[0] }}
+      LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
+      TESTING_TYPE: ${{ matrix.item[2] }}
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.item[0] }},${{ matrix.item[1] }},${{ matrix.item[2] }},${{ matrix.item[3] }},${{ matrix.item[4] }}"
+    steps:
+      - uses: actions/checkout@v3
+
+      - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
+        name: lifecycle test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}"
+
+      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
+        name: lifecycle test on prod server apache
+        run: |
+          make -c packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
+
+      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
+        name: php upgrade test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
+
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        name: agent upgrade test
+        run: |
+          VERSION=1.0.0 make -C packaging package
+          mv build/packages build/local
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        name: agent upgrade test
+        run: |
+          make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
