@@ -8,6 +8,8 @@ on:
       - "**/*.png"
   push:
     branches:
+      - main
+    paths-ignore:
       - "**/*.asciidoc"
       - "**/*.md"
       - "**/*.png"
