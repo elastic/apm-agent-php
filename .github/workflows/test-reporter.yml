@@ -1,0 +1,20 @@
+---
+## Workflow to process the JUnit test results and add a report to the checks.
+name: test-reporter
+
+on:
+  workflow_run:
+    workflows:
+      - test
+    types: [completed]
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/test-reporter@c9b3d0e2bd2a4e96aaf424dbaa31c46b42318226
+        with:
+          artifact: test-results             # artifact name
+          name: test-report                  # Name of the check run which will be created
+          path: "**/*.xml"                   # Path to test results (inside artifact .zip)
+          reporter: java-junit               # Format of test results

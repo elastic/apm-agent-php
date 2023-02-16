@@ -51,6 +51,18 @@ jobs:
         with:
           name: package-parts
           path: src/ext/modules/*.so
+      - if: success() || failure()
+        name: Prepare Upload
+        run: >-
+          find build
+          -name "*junit.xml"
+          -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
+          \;
+      - if: success() || failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: build/*junit.xml
   build-packages:
     runs-on: ubuntu-latest
     needs:
@@ -148,3 +160,17 @@ jobs:
         name: agent upgrade test
         run: |
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
+
+      - run: ls -ll build
+      - if: success() || failure()
+        name: Prepare Upload
+        run: >-
+          find build
+          -name "phpunit-*junit.xml"
+          -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
+          \;
+      - if: success() || failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: build/*-phpunit-*junit.xml

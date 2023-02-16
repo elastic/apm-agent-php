@@ -5,6 +5,7 @@ on:
   workflow_run:
     workflows:
       - test
+      - test-reporter
       - update-specs
       - "Issue Labeler"
       - "Auto Assign to Project(s)"
