@@ -161,7 +161,6 @@ jobs:
         run: |
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
-      - run: ls -ll build
       - if: success() || failure()
         name: Prepare Upload
         run: >-
