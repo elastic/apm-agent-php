@@ -21,6 +21,7 @@ jobs:
   test:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +82,7 @@ jobs:
           MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh agent-upgrade | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
   test-packages:
+    timeout-minutes: 120
     needs:
       - build-packages
       - test-packages-matrix
