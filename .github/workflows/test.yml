@@ -106,7 +106,12 @@ jobs:
           make -C packaging "${LINUX_PACKAGE_TYPE}"
 
       - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
-        name: lifecycle test on prod server apache
+        uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
+        name: lifecycle test on prod server
         run: |
           make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
           make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
