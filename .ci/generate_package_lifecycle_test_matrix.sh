@@ -118,11 +118,11 @@ function main () {
     this_script_dir="$( realpath "${this_script_dir}" )"
     source "${this_script_dir}/shared.sh"
 
+    generatePhpUpgradeRows
+
     generateAgentUpgradeRows
 
     generateLifecycleRows
-
-    generatePhpUpgradeRows
 }
 
 main
