@@ -108,7 +108,7 @@ jobs:
       - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
         name: lifecycle test on prod server apache
         run: |
-          make -c packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
+          make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
           make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
 
       - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
