@@ -117,6 +117,11 @@ jobs:
           make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
 
       - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
         name: php upgrade test
         run: |
           make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
