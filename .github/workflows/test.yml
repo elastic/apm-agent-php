@@ -173,3 +173,21 @@ jobs:
         with:
           name: test-results
           path: build/*-phpunit-*junit.xml
+  snapshoty:
+    if: ${{ github.ref_name == 'main' }}
+    needs:
+      - test-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+      - name: Publish snaphosts
+        uses: elastic/apm-pipeline-library/.github/actions/snapshoty-simple@current
+        with:
+          config: '.ci/snapshoty.yml'
+          vaultUrl: ${{ secrets.VAULT_ADDR }}
+          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
+          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}

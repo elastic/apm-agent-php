@@ -172,7 +172,6 @@ pipeline {
                 // See the comment in generate_package_lifecycle_test_matrix.sh
                 packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1'])
             }
-            stash(allowEmpty: false, name: 'snapshoty', includes: "${BASE_DIR}/.ci/*,${BASE_DIR}/build/packages/*")
           }
           post {
             always {
@@ -194,36 +193,6 @@ pipeline {
           }
           steps {
             generatePackageLifecycleTestMatrix(shouldUseSignedBinaries: false)
-          }
-        }
-        stage('Publish snapshots') {
-          agent { label 'ubuntu-18.04 && immutable' }
-          options { skipDefaultCheckout() }
-          environment {
-            BUCKET_NAME = 'oblt-artifacts'
-            DOCKER_REGISTRY = 'docker.elastic.co'
-            DOCKER_REGISTRY_SECRET = 'secret/observability-team/ci/docker-registry/prod'
-            GCS_ACCOUNT_SECRET = 'secret/observability-team/ci/snapshoty'
-          }
-          when {
-            allOf {
-              branch 'main'
-              not { expression { isInternalCI() } }
-            }
-          }
-          steps {
-            withGithubNotify(context: 'Publish snapshot packages') {
-              deleteDir()
-              unstash(name: 'snapshoty')
-              dir(env.BASE_DIR) {
-                snapshoty(
-                  bucket: env.BUCKET_NAME,
-                  gcsAccountSecret: env.GCS_ACCOUNT_SECRET,
-                  dockerRegistry: env.DOCKER_REGISTRY,
-                  dockerSecret: env.DOCKER_REGISTRY_SECRET
-                )
-              }
-            }
           }
         }
       }
