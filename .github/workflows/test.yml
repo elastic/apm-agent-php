@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 120
     needs:
       - build-packages
-      - test-packages-matrix
+      - generate-test-packages-matrix
       - test
     runs-on: ubuntu-latest
     strategy:
