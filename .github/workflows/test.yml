@@ -70,7 +70,7 @@ jobs:
           path: |
             build/packages/*
             !build/packages/**/*.sha512
-  test-packages-matrix:
+  generate-test-packages-matrix:
     runs-on: ubuntu-latest
     outputs:
       include: ${{ steps.generate.outputs.matrix }}
@@ -90,7 +90,7 @@ jobs:
       max-parallel: 10
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.test-packages-matrix.outputs.include) }}
+        include: ${{ fromJSON(needs.generate-test-packages-matrix.outputs.include) }}
     env:
       PHP_VERSION: ${{ matrix.item[0] }}
       LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
