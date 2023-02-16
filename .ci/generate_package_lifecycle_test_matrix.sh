@@ -71,6 +71,7 @@ function generateLifecycleTarPackageRows () {
 }
 
 function generateLifecycleRows () {
+    generateLifecycleOnProdServerRows
     #
     # Lifecycle tests
     #
@@ -81,7 +82,6 @@ function generateLifecycleRows () {
         done
     done
 
-    generateLifecycleOnProdServerRows
     generateLifecycleWithIncreasedLogLevelRows
     generateLifecycleTarPackageRows
 }
