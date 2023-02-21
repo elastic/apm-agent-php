@@ -29,6 +29,16 @@ use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
 class CreateErrorTest extends TracerUnitTestCaseBase
 {
+    ///////////////////////////////////////////////////////////////////////////
+    // TODO: Sergey Kleyman: BEGIN: REMOVE
+    ///////////////////////////////////////
+    public function testDummy(): void {
+        self::fail('Dummy failure that should be reached');
+    }
+    ///////////////////////////////////////
+    // END
+    ////////////////////////////////////////////////////////////////////////////
+
     public function testFromThrowable(): void
     {
         // Arrange
