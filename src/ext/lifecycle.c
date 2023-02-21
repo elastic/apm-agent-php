@@ -120,11 +120,11 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
 
 void elasticApmModuleInit( int type, int moduleNumber )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d, parent PID: %d", type, moduleNumber, (int)(getParentProcessId()) );
-
-    registerOsSignalHandler();
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: type: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, type, moduleNumber, (int)(getParentProcessId()) );
 
     g_pidOnModuleInit = getCurrentProcessId();
+
+    registerOsSignalHandler();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -154,10 +154,8 @@ void elasticApmModuleInit( int type, int moduleNumber )
         goto finally;
     }
 
-    if ( getGlobalLogger()->maxEnabledLevel >= logLevel_debug )
-    {
-        registerAtExitLogging();
-    }
+    registerCallbacksToLogFork();
+    registerAtExitLogging();
 
     CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
@@ -167,8 +165,6 @@ void elasticApmModuleInit( int type, int moduleNumber )
         goto finally;
     }
     tracer->curlInited = true;
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnModuleInit( config ) );
 
     resultCode = resultSuccess;
     finally:
@@ -220,7 +216,6 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     unregisterElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
 
     resultCode = resultSuccess;
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 
     finally:
     destructTracer( tracer );
@@ -228,6 +223,8 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
+
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s exiting...", __FUNCTION__ );
 }
 
 typedef void (* ZendThrowExceptionHook )(
@@ -585,8 +582,6 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommEnsureInited( config ) );
-
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
@@ -725,6 +720,58 @@ void elasticApmRequestShutdown()
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
     return;
+
+    failure:
+    goto finally;
+}
+
+static pid_t g_lastDetectedCurrentProcessId = -1;
+
+ResultCode resetStateIfForkedChild( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    ResultCode resultCode;
+    pid_t lastDetectedCurrentProcessIdSaved;
+
+    if ( g_lastDetectedCurrentProcessId == -1 )
+    {
+        g_lastDetectedCurrentProcessId = getCurrentProcessId();
+        resultCode = resultSuccess;
+        goto finally;
+    }
+
+    if ( g_lastDetectedCurrentProcessId == getCurrentProcessId() )
+    {
+        resultCode = resultSuccess;
+        goto finally;
+    }
+    lastDetectedCurrentProcessIdSaved = g_lastDetectedCurrentProcessId;
+    g_lastDetectedCurrentProcessId = getCurrentProcessId();
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetLoggingStateInForkedChild() );
+    ELASTIC_APM_LOG_DEBUG( "Detected change in current process ID (PID) - handling it..."
+                           "; old PID: %d; parent PID: %d"
+                           , (int)lastDetectedCurrentProcessIdSaved, (int)(getParentProcessId()) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetBackgroundBackendCommStateInForkedChild() );
+
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode elasticApmEnterAgentCode( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetStateIfForkedChild( dbgCalledFromFile, dbgCalledFromLine, dbgCalledFromFunction ) );
+
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
 
     failure:
     goto finally;

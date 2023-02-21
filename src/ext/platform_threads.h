@@ -29,21 +29,25 @@ typedef struct Thread Thread;
 ResultCode newThread( Thread** threadOutPtr
                       , void* (* threadFunc )( void* )
                       , void* threadFuncArg
-                      , const char* dbgDesc );
-ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, const char* dbgDesc );
+                      , String dbgDesc );
+ResultCode timedJoinAndDeleteThread( Thread** threadOutPtr, void** threadFuncRetVal, const TimeSpec* timeoutAbsUtc, bool isCreatedByThisProcess, /* out */ bool* hasTimedOut, String dbgDesc );
 UInt64 getThreadId( Thread* thread );
 
 struct Mutex;
 typedef struct Mutex Mutex;
-ResultCode newMutex( Mutex** mtxOutPtr, const char* dbgDesc );
-ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, const char* dbgDesc );
-ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, const char* dbgDesc );
+ResultCode newMutex( Mutex** mtxOutPtr, String dbgDesc );
+ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc );
+ResultCode lockMutexNoLogging( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc );
+ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, String dbgDesc );
+ResultCode unlockMutexNoLogging( Mutex* mtx, /* in,out */ bool* shouldUnlock, String dbgDesc );
 ResultCode deleteMutex( Mutex** mtxOutPtr );
 
 struct ConditionVariable;
 typedef struct ConditionVariable ConditionVariable;
-ResultCode newConditionVariable( ConditionVariable** condVarOutPtr, const char* dbgDesc );
-ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const char* dbgDesc );
-ResultCode timedWaitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, const char* dbgDesc );
-ResultCode signalConditionVariable( ConditionVariable* condVar, const char* dbgDesc );
-ResultCode deleteConditionVariable( ConditionVariable** condVarOutPtr );
+ResultCode newConditionVariable( ConditionVariable** condVarOutPtr, String dbgDesc );
+ResultCode waitConditionVariable( ConditionVariable* condVar, Mutex* mtx, String dbgDesc );
+ResultCode timedWaitConditionVariable( ConditionVariable* condVar, Mutex* mtx, const TimeSpec* timeoutAbsUtc, /* out */ bool* hasTimedOut, String dbgDesc );
+ResultCode signalConditionVariable( ConditionVariable* condVar, String dbgDesc );
+ResultCode deleteConditionVariable( ConditionVariable** condVarOutPtr, bool isCreatedByThisProcess );
+
+void registerCallbacksToLogFork();

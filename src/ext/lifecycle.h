@@ -21,13 +21,10 @@
 
 #include "ResultCode.h"
 
-
 void elasticApmModuleInit( int type, int moduleNumber );
-
 void elasticApmModuleShutdown( int type, int moduleNumber );
 
 void elasticApmRequestInit();
-
 void elasticApmRequestShutdown();
 
 struct _zval_struct;
@@ -35,3 +32,5 @@ typedef struct _zval_struct zval;
 void elasticApmGetLastThrown( zval* return_value );
 
 void elasticApmGetLastPhpError( zval* return_value );
+
+ResultCode elasticApmEnterAgentCode( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction );

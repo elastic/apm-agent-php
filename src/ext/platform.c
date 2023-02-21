@@ -482,30 +482,19 @@ static String osSignalIdToName( int signalId )
     #undef ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE
 }
 
-#define ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ... ) \
-    do { \
-        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
-            " [PID: %d] [TID: %d] [" levelName "] " fmt \
-            , getCurrentProcessId(), getCurrentThreadId() \
-            , ##__VA_ARGS__ ); \
-    } while ( 0 )
-
-#define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
-
-#define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ##__VA_ARGS__ )
 
 #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 void handleOsSignalLinux_writeStackTraceFrameToSyslog( String frameDesc, void* ctx )
 {
     ELASTIC_APM_UNUSED( ctx );
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame: %s", frameDesc == NULL ? "<N/A>" : frameDesc );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "    Call stack frame: %s", frameDesc == NULL ? "<N/A>" : frameDesc );
 }
 
 void handleOsSignalLinux_writeStackTraceToSyslog_logError( String errorDesc, void* ctx )
 {
     ELASTIC_APM_UNUSED( ctx );
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "%s", errorDesc );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "%s", errorDesc );
 }
 #endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 
@@ -513,11 +502,11 @@ void handleOsSignalLinux_writeStackTraceToSyslog()
 {
 #   ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call stack:" );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Call stack:" );
     iterateOverCStackTrace( /* numberOfFramesToSkip */ 0, &handleOsSignalLinux_writeStackTraceFrameToSyslog, &handleOsSignalLinux_writeStackTraceToSyslog_logError, /* callbackCtx */ NULL );
 
 #   else // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER("C call stack capture is not supported by the platform");
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "C call stack capture is not supported by the platform");
 #   endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 }
 
@@ -527,7 +516,7 @@ OsSignalHandler oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
     handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
@@ -545,29 +534,6 @@ void handleOsSignalLinux( int signalId )
 }
 #endif // #ifndef PHP_WIN32
 
-#define ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ... ) \
-    do { \
-        fprintf( stderr, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
-            " [PID: %d] [TID: %d] [" levelName "] " fmt "\n" \
-            , getCurrentProcessId(), getCurrentThreadId(), ##__VA_ARGS__ ); \
-        fflush( stderr ); \
-    } while ( 0 )
-
-#ifdef PHP_WIN32
-#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
-        do { \
-            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
-        } while ( 0 )
-#else // #ifdef PHP_WIN32
-#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
-        do { \
-            ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ##__VA_ARGS__ ); \
-            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
-        } while ( 0 )
-#endif // #ifndef PHP_WIN32
-
-#define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
-
 void registerOsSignalHandler()
 {
 #ifndef PHP_WIN32
@@ -578,20 +544,20 @@ void registerOsSignalHandler()
 
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
+        ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
     }
     else
     {
         isOldSignalHandlerSet = true;
         oldSignalHandler = signal_retVal;
-        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Successfully registered signal handler" );
+        ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully registered signal handler" );
     }
 #endif
 }
 
 void atExitLogging()
 {
-    ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Callback registered with atexit() has been called" );
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "Callback registered with atexit() has been called" );
 }
 
 void registerAtExitLogging()
@@ -601,11 +567,11 @@ void registerAtExitLogging()
     // atexit returns 0 if successful, or a nonzero value if an error occurs
     if ( atexit_retVal != 0 )
     {
-        ELASTIC_APM_LOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
+        ELASTIC_APM_LOG_DIRECT_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
     }
     else
     {
-        ELASTIC_APM_LOG_DEBUG( "Registered callback with atexit()" );
+        ELASTIC_APM_LOG_DIRECT_DEBUG( "Registered callback with atexit()" );
     }
 #endif
 }
