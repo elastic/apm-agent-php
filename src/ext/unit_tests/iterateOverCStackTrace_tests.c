@@ -163,7 +163,7 @@ int run_iterateOverCStackTrace_tests()
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_iterateOverCStackTrace ),
         ////////////////////////////////////////
         // TODO: Sergey Kleyman: Remove BEGIN
-        ELASTIC_APM_CMOCKA_UNIT_TEST( test_dummy_fail_not_existing ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_dummy_fail ),
         // TODO: Sergey Kleyman: Remove END
         ////////////////////////////////////////
     };
