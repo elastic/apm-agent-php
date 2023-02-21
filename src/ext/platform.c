@@ -592,7 +592,7 @@ void registerAtExitLogging()
     }
     else
     {
-        ELASTIC_APM_LOG_DEBUG( "Registered callback with atexit()" )
+        ELASTIC_APM_LOG_DEBUG( "Registered callback with atexit()" );
     }
 #endif
 }
