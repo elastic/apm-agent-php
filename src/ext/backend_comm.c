@@ -418,7 +418,6 @@ static void freeDataToSendQueue( DataToSendQueue* dataQueue )
 
 struct BackgroundBackendComm
 {
-    int refCount;
     Mutex* mutex;
     ConditionVariable* condVar;
     Thread* thread;
@@ -730,8 +729,10 @@ void* backgroundBackendCommThreadFunc( void* arg )
     goto finally;
 }
 
-ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBackendCommOutPtr, const TimeSpec* timeoutAbsUtc )
+ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBackendCommOutPtr, const TimeSpec* timeoutAbsUtc, bool isCreatedByThisProcess )
 {
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isCreatedByThisProcess: %s", boolToString( isCreatedByThisProcess ) );
+
     ELASTIC_APM_ASSERT_VALID_PTR( backgroundBackendCommOutPtr );
     // ELASTIC_APM_ASSERT_VALID_PTR( timeoutAbsUtc ); <- timeoutAbsUtc can be NULL
 
@@ -744,12 +745,20 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
         goto finally;
     }
 
+    if ( ! isCreatedByThisProcess )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Deallocating memory related to background communication data structures inherited from parent process after fork"
+                               " without actually properly destroying synchronization primitives since it's impossible to do in child process"
+                               "; parent PID: %d"
+                               , (int)getParentProcessId() );
+    }
+
     if ( backgroundBackendComm->thread != NULL )
     {
         void* backgroundBackendCommThreadFuncRetVal = NULL;
         bool hasTimedOut;
         ELASTIC_APM_CALL_IF_FAILED_GOTO(
-                timedJoinAndDeleteThread( &( backgroundBackendComm->thread ), &backgroundBackendCommThreadFuncRetVal, timeoutAbsUtc, &hasTimedOut, __FUNCTION__ ) );
+                timedJoinAndDeleteThread( &( backgroundBackendComm->thread ), &backgroundBackendCommThreadFuncRetVal, timeoutAbsUtc, isCreatedByThisProcess, &hasTimedOut, __FUNCTION__ ) );
         if ( hasTimedOut )
         {
             ELASTIC_APM_LOG_ERROR( "Join to thread for background backend communications timed out - skipping the rest of cleanup and exiting" );
@@ -759,7 +768,7 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
 
     if ( backgroundBackendComm->condVar != NULL )
     {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( deleteConditionVariable( &( backgroundBackendComm->condVar ) ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( deleteConditionVariable( &( backgroundBackendComm->condVar ), isCreatedByThisProcess ) );
     }
 
     if ( backgroundBackendComm->mutex != NULL )
@@ -772,15 +781,14 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( BackgroundBackendComm, *backgroundBackendCommOutPtr );
 
     finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
     goto finally;
 }
 
-static Mutex* g_backgroundBackendCommMutex = NULL;
 static BackgroundBackendComm* g_backgroundBackendComm = NULL;
-static pid_t g_pidOnBackgroundBackendCommInit = -1;
 
 static bool deriveAsyncBackendComm( const ConfigSnapshot* config, String* dbgReason )
 {
@@ -800,47 +808,6 @@ static bool deriveAsyncBackendComm( const ConfigSnapshot* config, String* dbgRea
     return true;
 }
 
-ResultCode backgroundBackendCommOnModuleInit( const ConfigSnapshot* config )
-{
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendCommMutex: %p; g_backgroundBackendComm: %p"
-                                              , g_backgroundBackendCommMutex, g_backgroundBackendComm );
-
-    ResultCode resultCode;
-
-    if ( g_backgroundBackendCommMutex != NULL )
-    {
-        ELASTIC_APM_LOG_ERROR( "Unexpected state: g_backgroundBackendCommMutex != NULL" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-
-    if ( g_backgroundBackendComm != NULL )
-    {
-        ELASTIC_APM_LOG_ERROR( "Unexpected state: g_backgroundBackendComm != NULL" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-
-    String dbgAsyncBackendCommReason = NULL;
-    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
-    {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - no need to start background backend comm", dbgAsyncBackendCommReason );
-        resultCode = resultSuccess;
-        goto finally;
-    }
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( g_backgroundBackendCommMutex ), /* dbgDesc */ "g_backgroundBackendCommMutex" ) );
-
-    finally:
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-    return resultCode;
-
-    failure:
-    if ( g_backgroundBackendCommMutex != NULL )
-    {
-        deleteMutex( &g_backgroundBackendCommMutex );
-    }
-    goto finally;
-}
-
 ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBackendComm** backgroundBackendCommOut )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
@@ -849,7 +816,6 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     BackgroundBackendComm* backgroundBackendComm = NULL;
 
     ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( BackgroundBackendComm, /* out */ backgroundBackendComm );
-    backgroundBackendComm->refCount = 1;
     backgroundBackendComm->condVar = NULL;
     backgroundBackendComm->mutex = NULL;
     backgroundBackendComm->thread = NULL;
@@ -861,7 +827,6 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConditionVariable( &( backgroundBackendComm->condVar ), /* dbgDesc */ "Background backend communications" ) );
 
-    backgroundBackendComm->refCount = 2;
     resultCode = newThread( &( backgroundBackendComm->thread )
                             , &backgroundBackendCommThreadFunc
                             , /* threadFuncArg: */ backgroundBackendComm
@@ -869,10 +834,6 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     if ( resultCode == resultSuccess )
     {
         ELASTIC_APM_LOG_DEBUG( "Started thread for background backend communications; thread ID: %"PRIu64, getThreadId( backgroundBackendComm->thread ) );
-    }
-    else
-    {
-        --backgroundBackendComm->refCount;
     }
 
     resultCode = resultSuccess;
@@ -883,46 +844,24 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     return resultCode;
 
     failure:
-    unwindBackgroundBackendComm( &backgroundBackendComm, /* timeoutAbsUtc: */ NULL );
+    unwindBackgroundBackendComm( &backgroundBackendComm, /* timeoutAbsUtc: */ NULL, /* isCreatedByThisProcess */ true );
     goto finally;
 }
 
 ResultCode backgroundBackendCommEnsureInited( const ConfigSnapshot* config )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendCommMutex: %p", g_backgroundBackendCommMutex );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
-    bool shouldUnlockMutex = false;
 
-    String dbgAsyncBackendCommReason = NULL;
-    if ( ! deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason ) )
+    if ( g_backgroundBackendComm == NULL )
     {
-        ELASTIC_APM_LOG_DEBUG( "async_backend_comm (asyncBackendComm) configuration option is %s - no need to start background backend comm", dbgAsyncBackendCommReason );
-        resultCode = resultSuccess;
-        goto finally;
-    }
-
-    if ( g_backgroundBackendCommMutex == NULL )
-    {
-        ELASTIC_APM_LOG_ERROR( "Unexpected state: g_backgroundBackendCommMutex == NULL" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( g_backgroundBackendCommMutex, &shouldUnlockMutex, __FUNCTION__ ) );
-
-    if ( g_backgroundBackendComm == NULL || g_pidOnBackgroundBackendCommInit != getCurrentProcessId() )
-    {
-        ELASTIC_APM_LOG_DEBUG( "Starting thread for background backend communications because %s ..."
-                               "; g_pidOnBackgroundBackendCommInit: %d, parent PID: %d"
-                               , g_backgroundBackendComm == NULL ? "g_backgroundBackendComm == NULL" : "g_pidOnBackgroundBackendCommInit != getCurrentProcessId()"
-                               , (int)g_pidOnBackgroundBackendCommInit, (int)getParentProcessId() );
         ELASTIC_APM_CALL_IF_FAILED_GOTO( newBackgroundBackendComm( config, &g_backgroundBackendComm ) );
-        g_pidOnBackgroundBackendCommInit = getCurrentProcessId();
     }
 
     resultCode = resultSuccess;
 
     finally:
-    unlockMutex( g_backgroundBackendCommMutex, &shouldUnlockMutex, __FUNCTION__ );
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
@@ -971,19 +910,16 @@ void backgroundBackendCommOnModuleShutdown()
         return;
     }
 
-    ELASTIC_APM_ASSERT( g_backgroundBackendCommMutex != NULL, "%p", g_backgroundBackendCommMutex );
-
     ResultCode resultCode;
     TimeSpec shouldExitBy;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( backgroundBackendComm, /* out */ &shouldExitBy ) );
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
     resultCode = resultSuccess;
 
     finally:
 
     g_backgroundBackendComm = NULL;
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( deleteMutex( &g_backgroundBackendCommMutex ) );
     return;
 
     failure:
@@ -1088,11 +1024,8 @@ ResultCode sendEventsToApmServerWithDataConvertedForSync(
                                        , serializedEvents ) );
 
     resultCode = resultSuccess;
-
     finally:
-
     freeMallocedStringBuffer( /* in,out */ &userAgentHttpHeaderWithTermNull );
-
     return resultCode;
 
     failure:
@@ -1139,6 +1072,27 @@ ResultCode sendEventsToApmServer(
                 , serializedEvents ) );
     }
 
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode resetBackgroundBackendCommStateInForkedChild()
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_backgroundBackendComm %s NULL", (g_backgroundBackendComm == NULL) ? "==" : "!=" );
+
+    ResultCode resultCode;
+
+    if ( g_backgroundBackendComm != NULL )
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &g_backgroundBackendComm, /* timeoutAbsUtc: */ NULL, /* isCreatedByThisProcess */ false ) );
+    }
+
+    resultCode = resultSuccess;
     finally:
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
