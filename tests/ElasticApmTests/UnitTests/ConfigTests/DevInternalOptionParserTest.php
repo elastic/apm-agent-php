@@ -30,10 +30,22 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\TestCaseBase;
+use PHPUnit\Framework\Assert;
 use ReflectionClass;
 
 class DevInternalOptionParserTest extends TestCaseBase
 {
+    ///////////////////////////////////////////////////////////////////////////
+    // TODO: Sergey Kleyman: BEGIN: REMOVE
+    ///////////////////////////////////////
+    public function testDummy(): void
+    {
+        Assert::fail('Dummy failure to test CI');
+    }
+    ///////////////////////////////////////
+    // END
+    ////////////////////////////////////////////////////////////////////////////
+
     /**
      * @return string[]
      */
