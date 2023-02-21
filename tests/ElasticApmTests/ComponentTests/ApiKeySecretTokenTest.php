@@ -61,7 +61,6 @@ final class ApiKeySecretTokenTest extends ComponentTestCaseBase
     public function testDefaultApiKey(): void
     {
         $this->apiKeyConfigTestImpl(/* configuredApiKey: */ null, /* configuredSecretToken: */ null);
-        self::fail('Dummy failure to test CI');
     }
 
     public function testCustomApiKey(): void
