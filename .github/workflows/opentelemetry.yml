@@ -9,6 +9,7 @@ on:
       - update-specs
       - "Issue Labeler"
       - "Auto Assign to Project(s)"
+      - snapshoty
     types: [completed]
 
 jobs:
