@@ -20,7 +20,7 @@ jobs:
           --dir build/packages
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Publish snaphosts
+      - name: Publish snapshot
         uses: elastic/apm-pipeline-library/.github/actions/snapshoty-simple@current
         with:
           config: '.ci/snapshoty.yml'
