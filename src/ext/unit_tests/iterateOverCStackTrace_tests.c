@@ -144,11 +144,28 @@ void test_iterateOverCStackTrace( void** testFixtureState )
 #endif
 }
 
+////////////////////////////////////////
+// TODO: Sergey Kleyman: Remove BEGIN
+static
+void test_dummy_fail( void** testFixtureState )
+{
+    ELASTIC_APM_UNUSED( testFixtureState );
+
+    ELASTIC_APM_CMOCKA_FAIL_MSG( "Dummy test failed in %s", __FUNCTION__ );
+}
+// TODO: Sergey Kleyman: Remove END
+////////////////////////////////////////
+
 int run_iterateOverCStackTrace_tests()
 {
     const struct CMUnitTest tests [] =
     {
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_iterateOverCStackTrace ),
+        ////////////////////////////////////////
+        // TODO: Sergey Kleyman: Remove BEGIN
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_dummy_fail_not_existing ),
+        // TODO: Sergey Kleyman: Remove END
+        ////////////////////////////////////////
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );
