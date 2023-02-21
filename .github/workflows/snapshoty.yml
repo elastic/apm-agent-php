@@ -6,6 +6,8 @@ on:
       - test
     types:
       - completed
+    branches:
+      - main
 
 jobs:
   publish:
