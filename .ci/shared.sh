@@ -10,6 +10,7 @@ set -e
 # 5) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
 # 6) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
 # 7) composer.json
+# 8) tests/ElasticApmTests/ComponentTests/GenerateUnpackScriptsTest.php (search for "list of PHP versions")
 #
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1 8.2)
 

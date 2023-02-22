@@ -50,7 +50,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private const TESTS_GROUP_ENV_VAR_NAME = 'ELASTIC_APM_PHP_TESTS_GROUP';
 
     private const PHP_VERSION_7_4 = '7.4';
-    private const SUPPORTED_PHP_VERSIONS = ['7.2', '7.3', self::PHP_VERSION_7_4, '8.0', '8.1'];
+    // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
+    // See the comment in .ci/shared.sh
+    private const SUPPORTED_PHP_VERSIONS = ['7.2', '7.3', self::PHP_VERSION_7_4, '8.0', '8.1', '8.2'];
 
     private const LINUX_PACKAGE_TYPE_DEB = 'deb';
     private const LINUX_PACKAGE_TYPE_RPM = 'rpm';
@@ -97,10 +99,10 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         $outputLastLine = exec($command, /* out */ $outputLinesAsArray, /* out */ $exitCode);
         $ctx = LoggableToString::convert(
             [
-                'command' => $command,
-                'exitCode' => $exitCode,
+                'command'            => $command,
+                'exitCode'           => $exitCode,
                 'outputLinesAsArray' => $outputLinesAsArray,
-                'outputLastLine' => $outputLastLine
+                'outputLastLine'     => $outputLastLine,
             ]
         );
         self::assertSame(0, $exitCode, $ctx);
@@ -153,10 +155,10 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         }
         $ctx = LoggableToString::convert(
             [
-                'matrixRow' => $matrixRow,
-                'expectedEnvVars' => $expectedEnvVars,
+                'matrixRow'                  => $matrixRow,
+                'expectedEnvVars'            => $expectedEnvVars,
                 'actualEnvVarNameValueLines' => $actualEnvVarNameValueLines,
-                'actualEnvVars' => $actualEnvVars,
+                'actualEnvVars'              => $actualEnvVars,
             ]
         );
 
@@ -354,9 +356,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         foreach (self::SUPPORTED_PHP_VERSIONS as $phpVersion) {
             foreach (self::LINUX_NATIVE_PACKAGE_TYPES as $linuxPackageType) {
                 $whereEnvVarsLifecycle = [
-                    self::PHP_VERSION_KEY                 => $phpVersion,
-                    self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
-                    self::TESTING_TYPE_KEY                => self::LIFECYCLE_TESTING_TYPE,
+                    self::PHP_VERSION_KEY        => $phpVersion,
+                    self::LINUX_PACKAGE_TYPE_KEY => $linuxPackageType,
+                    self::TESTING_TYPE_KEY       => self::LIFECYCLE_TESTING_TYPE,
                 ];
                 $this->assertAllTestsAreLeaf($whereEnvVarsLifecycle);
                 foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
@@ -442,9 +444,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
             foreach ([self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM] as $linuxPackageType) {
                 $this->assertAllTestsAreSmoke(
                     [
-                        self::PHP_VERSION_KEY                 => $phpVersion,
-                        self::LINUX_PACKAGE_TYPE_KEY          => $linuxPackageType,
-                        self::TESTING_TYPE_KEY                => self::AGENT_UPGRADE_TESTING_TYPE,
+                        self::PHP_VERSION_KEY        => $phpVersion,
+                        self::LINUX_PACKAGE_TYPE_KEY => $linuxPackageType,
+                        self::TESTING_TYPE_KEY       => self::AGENT_UPGRADE_TESTING_TYPE,
                     ]
                 );
             }
@@ -455,9 +457,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     {
         $this->assertAllTestsAreSmoke(
             [
-                self::PHP_VERSION_KEY                 => self::earliestSupportedPhpVersion(),
-                self::LINUX_PACKAGE_TYPE_KEY          => self::LINUX_PACKAGE_TYPE_RPM,
-                self::TESTING_TYPE_KEY                => self::PHP_UPGRADE_TESTING_TYPE,
+                self::PHP_VERSION_KEY        => self::earliestSupportedPhpVersion(),
+                self::LINUX_PACKAGE_TYPE_KEY => self::LINUX_PACKAGE_TYPE_RPM,
+                self::TESTING_TYPE_KEY       => self::PHP_UPGRADE_TESTING_TYPE,
             ]
         );
     }
