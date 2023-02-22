@@ -3,7 +3,7 @@ name: loop
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 1 * * 0-5' # run at 2 AM UTC
+    - cron: '0 3 * * 5-6'
 
 permissions:
   contents: read
