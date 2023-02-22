@@ -23,20 +23,21 @@ artifacts:
     # Files pattern to match
     files_pattern: 'apm-agent-php_(?P<app_version>\d+\.\d+\.\d+(-\d+)?)[\.|_](all|noarch)\.(?P<extension>\S+)'
     # File layout on GCS bucket
-    output_pattern: '{project}/{jenkins_branch_name}/apm-agent-php-{app_version}-{jenkins_git_commit_short}.{extension}'
+    output_pattern: '{project}/{github_branch_name}/apm-agent-php-{app_version}-{github_sha_short}.{extension}'
     # List of metadata processors to use.
     metadata:
       # Define static custom metadata
       - name: 'custom'
         data:
           project: 'apm-agent-php'
-      # Add jenkins metadata
+      # Add github metadata
       - name: 'jenkins'
+      - name: 'github_actions'
   - path: './build/packages'
     files_pattern: 'apm-agent-php.tar'
-    output_pattern: '{project}/{jenkins_branch_name}/apm-agent-php-{jenkins_git_commit_short}.tar'
+    output_pattern: '{project}/{github_branch_name}/apm-agent-php-{github_sha_short}.tar'
     metadata:
       - name: 'custom'
         data:
           project: 'apm-agent-php'
-      - name: 'jenkins'
+      - name: 'github_actions'
