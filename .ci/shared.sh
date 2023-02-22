@@ -3,10 +3,11 @@ set -e
 
 #
 # Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
-# - generate_package_lifecycle_test_matrix.sh
-# - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
+# 1) .ci/shared.sh (this file; update ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS below)
+# 2) .ci/Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
+# 3) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
 #
-export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1)
+export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1 8.2)
 
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_NATIVE_PACKAGE_TYPES=(apk deb rpm)
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES=("${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_NATIVE_PACKAGE_TYPES[@]}" tar)
