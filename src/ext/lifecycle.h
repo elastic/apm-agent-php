@@ -22,9 +22,9 @@
 #include "ResultCode.h"
 
 
-void elasticApmModuleInit( int type, int moduleNumber );
+void elasticApmModuleInit( int moduleType, int moduleNumber );
 
-void elasticApmModuleShutdown( int type, int moduleNumber );
+void elasticApmModuleShutdown( int moduleType, int moduleNumber );
 
 void elasticApmRequestInit();
 

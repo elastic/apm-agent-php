@@ -30,7 +30,7 @@ build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar pre
 create-%: prepare  ## Create the specific package
 	@echo "Creating package $* ..."
 	mkdir -p $(PWD)/$(OUTPUT)
-	docker run --rm \
+	docker run -it --rm \
 		-v $(PWD):/app \
 		-e TYPE=$* \
 		-e NAME=$(NAME) \
@@ -55,7 +55,7 @@ tar: create-tar  ## Create the tar.gz
 
 .PHONY: version
 version:  ## Show the fpm version
-	docker run --rm $(IMAGE) --version || exit 1
+	docker run -it --rm $(IMAGE) --version || exit 1
 
 .PHONY: package
 package: apk deb rpm tar  ## Create all the installers
@@ -67,27 +67,27 @@ info: apk-info deb-info rpm-info tar-info  ## Show the package metadata for all 
 apk-info:  ## Show the apk package metadata
 	cd $(PWD) ;\
 	BINARY=$$(ls -1 $(OUTPUT)/*.apk) ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
 
 .PHONY: deb-info
 deb-info:  ## Show the deb package metadata
 	cd $(PWD) ;\
 	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
 	cd $(PWD) ;\
 	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	cd $(PWD) ;\
 	BINARY=$$(ls -1 $(OUTPUT)/*.tar) ;\
-	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
+	docker run -it --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: prepare-apk
 prepare-apk:  ## Build the docker image for the apk smoke tests
