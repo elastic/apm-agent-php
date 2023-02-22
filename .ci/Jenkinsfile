@@ -98,7 +98,7 @@ pipeline {
                 name 'PHP_VERSION'
                 // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
                 // See the comment in generate_package_lifecycle_test_matrix.sh
-                values '7.2', '7.3', '7.4', '8.0', '8.1', '8.2'
+                values '7.2', '7.3', '7.4', '8.0', '8.1'
               }
               axis {
                 name 'DOCKERFILE'
@@ -170,7 +170,7 @@ pipeline {
             initWorkspace(context: "Package", tab: 'artifacts') {
                 // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
                 // See the comment in generate_package_lifecycle_test_matrix.sh
-                packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2'])
+                packageGeneration(versions: ['7.2', '7.3', '7.4', '8.0', '8.1'])
             }
           }
           post {

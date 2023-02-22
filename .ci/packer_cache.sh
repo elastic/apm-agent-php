@@ -11,7 +11,6 @@ php:7.3-fpm
 php:7.4-fpm
 php:8.0-fpm
 php:8.1-fpm
-php:8.2-fpm
 ruby:2.7.1-alpine3.12
 ubuntu:20.04
 "
@@ -21,7 +20,7 @@ if [ -x "$(command -v docker)" ]; then
   (retry 2 docker pull "${di}") || echo "Error pulling ${di} Docker image, we continue"
   done
 
-  for version in 7.2 7.3 7.4 8.0 8.1 8.2
+  for version in 7.2 7.3 7.4 8.0 8.1
   do
     PHP_VERSION=${version} make -f .ci/Makefile prepare || true
     DOCKERFILE=Dockerfile.alpine PHP_VERSION=${version} make -f .ci/Makefile prepare || true

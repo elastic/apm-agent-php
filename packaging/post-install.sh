@@ -197,7 +197,7 @@ function get_extension_file() {
 function is_php_supported() {
     PHP_MAJOR_MINOR=$(php_command -r 'echo PHP_MAJOR_VERSION;').$(php_command -r 'echo PHP_MINOR_VERSION;')
     echo "Detected PHP version '${PHP_MAJOR_MINOR}'"
-    if  [ "${PHP_MAJOR_MINOR}" == "7.2" ] || [ "${PHP_MAJOR_MINOR}" == "7.3" ] || [ "${PHP_MAJOR_MINOR}" == "7.4" ] || [ "${PHP_MAJOR_MINOR}" == "8.0" ] || [ "${PHP_MAJOR_MINOR}" == "8.1" ] || [ "${PHP_MAJOR_MINOR}" == "8.2" ] ; then
+    if  [ "${PHP_MAJOR_MINOR}" == "7.2" ] || [ "${PHP_MAJOR_MINOR}" == "7.3" ] || [ "${PHP_MAJOR_MINOR}" == "7.4" ] || [ "${PHP_MAJOR_MINOR}" == "8.0" ] || [ "${PHP_MAJOR_MINOR}" == "8.1" ] ; then
         return 0
     else
         echo 'Failed. The supported PHP versions are 7.2-8.1.'
