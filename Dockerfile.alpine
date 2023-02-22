@@ -29,7 +29,7 @@ RUN docker-php-ext-install \
     pcntl \
     pdo_mysql
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app/src/ext
 

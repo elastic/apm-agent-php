@@ -20,7 +20,7 @@ RUN docker-php-ext-install \
     pcntl \
     pdo_mysql
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.20.5/cmake-3.20.5-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
       && mkdir /usr/bin/cmake \
