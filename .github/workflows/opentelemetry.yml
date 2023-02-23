@@ -4,6 +4,7 @@ name: OpenTelemetry Export Trace
 on:
   workflow_run:
     workflows:
+      - loop
       - test
       - test-reporter
       - update-specs
