@@ -5,17 +5,10 @@ set -e
 # Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
 # 1) .ci/shared.sh (this file; update ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS below)
 # 2) .ci/Jenkinsfile (the list of PHP versions might appear more than once - search for "list of PHP versions")
-<<<<<<< HEAD
 # 3) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
 # 4) .github/workflows/loop.yml (update jobs -> loop-matrix -> strategy -> matrix -> php-version)
 # 5) .ci/packer_cache.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
 # 6) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
-=======
-# 3) .ci/loop.groovy (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 4) .ci/packer_cache.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 5) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 6) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
->>>>>>> Added_PHP_v8.2
 # 7) composer.json
 # 8) tests/ElasticApmTests/ComponentTests/GenerateUnpackScriptsTest.php (search for "list of PHP versions")
 #
