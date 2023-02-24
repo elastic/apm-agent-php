@@ -51,7 +51,8 @@ function ensureSyslogIsRunning () {
     ps -ef | grep -v 'grep' | grep 'syslogd'
 }
 
-function copySyslogFileAndPrintTheLastOne () {
+function copySyslogFilesAndPrintTheMostRecentOne () {
+    local shouldPrintTheMostRecentSyslogFile="${1:?}"
     echo "Content of /var/log/"
     ls -l /var/log/
     local possibleSyslogFiles=(/var/log/messages /var/log/syslog)
@@ -65,11 +66,13 @@ function copySyslogFileAndPrintTheLastOne () {
         fi
     done
 
-    for syslogFile in "${possibleSyslogFiles[@]}"
-    do
-        if [[ -f "${syslogFile}" ]]; then
-            echo "Content of the most recent syslog file (${syslogFile}):"
-            cat "${syslogFile}"
-        fi
-    done
+    if [ "${shouldPrintTheMostRecentSyslogFile}" == "true" ] ; then
+        for syslogFile in "${possibleSyslogFiles[@]}"
+        do
+            if [[ -f "${syslogFile}" ]]; then
+                echo "Content of the most recent syslog file (${syslogFile}):"
+                cat "${syslogFile}"
+            fi
+        done
+    fi
 }

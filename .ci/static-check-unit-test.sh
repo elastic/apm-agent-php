@@ -11,7 +11,13 @@ thisScriptDir="$( realpath "${thisScriptDir}" )"
 source "${thisScriptDir}/shared.sh"
 
 function onScriptExit () {
-    copySyslogFileAndPrintTheLastOne
+    if [ -n "${scriptFinishedSuccessfully}" ] && [ "${scriptFinishedSuccessfully}" == "true" ] ; then
+        local shouldPrintTheMostRecentSyslogFile=false
+    else
+        local shouldPrintTheMostRecentSyslogFile=true
+    fi
+
+    copySyslogFilesAndPrintTheMostRecentOne ${shouldPrintTheMostRecentSyslogFile}
     if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
         chown --recursive "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
     fi
@@ -95,3 +101,5 @@ composer run-script static_check_and_run_unit_tests
 
 # Generate junit output for phpstan
 composer phpstan-junit-report-for-ci
+
+scriptFinishedSuccessfully=true

@@ -41,7 +41,12 @@ function runComponentTests () {
     set -e
 
     echo "${composerCommand[*]} exited with an error code ${composerCommandExitCode}"
-    copySyslogFileAndPrintTheLastOne
+    if [ ${composerCommandExitCode} -eq 0 ] ; then
+        local shouldPrintTheMostRecentSyslogFile=false
+    else
+        local shouldPrintTheMostRecentSyslogFile=true
+    fi
+    copySyslogFilesAndPrintTheMostRecentOne ${shouldPrintTheMostRecentSyslogFile}
     exit ${composerCommandExitCode}
 }
 
