@@ -27,8 +27,16 @@
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "lifecycle.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
+
+ResultCode elasticApmApiEntered( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    return elasticApmEnterAgentCode( dbgCalledFromFile, dbgCalledFromLine, dbgCalledFromFunction );
+}
 
 bool elasticApmIsEnabled()
 {
@@ -89,6 +97,12 @@ static uint32_t g_interceptedCallInProgressRegistrationId = 0;
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmEnterAgentCode( __FILE__, __LINE__, __FUNCTION__ ) );
+
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     bool shouldCallPostHook;
@@ -114,6 +128,12 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
     g_interceptedCallInProgressRegistrationId = 0;
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    resultCode = resultSuccess;
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 
 void resetCallInterceptionOnRequestShutdown()
