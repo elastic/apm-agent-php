@@ -87,14 +87,14 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         }
 
         $envVars = InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
-            $this->agentConfigSourceBuilder->getEnvVars(getenv()),
+            $this->agentConfigSourceBuilder->getEnvVars(EnvVarUtilForTests::getAll()),
             $this->appCodeHostParams->spawnedProcessInternalId,
             null /* <- targetServerPort */,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName
         );
         $dataPerRequestOptName = AllComponentTestsOptionsMetadata::DATA_PER_REQUEST_OPTION_NAME;
-        $dataPerRequestEnvVarName = ConfigUtilForTests::envVarNameForTestOption($dataPerRequestOptName);
+        $dataPerRequestEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($dataPerRequestOptName);
         $envVars[$dataPerRequestEnvVarName] = $requestParams->dataPerRequest->serializeToString();
 
         $appCodeInvocation = $this->beforeAppCodeInvocation($requestParams);

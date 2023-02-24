@@ -42,7 +42,7 @@ final class LoggerData
     /** @var string */
     public $srcCodeFile;
 
-    /** @var LoggerData|null */
+    /** @var ?LoggerData */
     public $inheritedData;
 
     /** @var array<string, mixed> */
@@ -52,12 +52,12 @@ final class LoggerData
     public $backend;
 
     /**
-     * @param string          $category
-     * @param string          $namespace
-     * @param class-string    $fqClassName
-     * @param string          $srcCodeFile
-     * @param Backend         $backend
-     * @param LoggerData|null $inheritedData
+     * @param string       $category
+     * @param string       $namespace
+     * @param class-string $fqClassName
+     * @param string       $srcCodeFile
+     * @param Backend      $backend
+     * @param ?LoggerData  $inheritedData
      */
     private function __construct(
         string $category,

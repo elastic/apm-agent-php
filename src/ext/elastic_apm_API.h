@@ -25,6 +25,8 @@
 #include "StringView.h"
 #include "ResultCode.h"
 
+ResultCode elasticApmApiEntered( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction );
+
 bool elasticApmIsEnabled();
 
 ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );

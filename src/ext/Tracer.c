@@ -69,7 +69,6 @@ ResultCode ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* co
     ELASTIC_APM_CALL_IF_FAILED_GOTO( reconfigureLogger( logger, &loggerConfig, config->logLevel ) );
 
     resultCode = resultSuccess;
-
     finally:
     return resultCode;
 

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
 use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\OptionNames;
@@ -30,7 +31,10 @@ use Elastic\Apm\Impl\Config\Parser;
 use Elastic\Apm\Impl\Config\RawSnapshotSourceInterface;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\IterableUtilForTests;
 use RuntimeException;
 
 final class ConfigUtilForTests
@@ -39,7 +43,7 @@ final class ConfigUtilForTests
 
     public const ENV_VAR_NAME_PREFIX = 'ELASTIC_APM_PHP_TESTS_';
 
-    public static function envVarNameForAgentOption(string $optName): string
+    public static function agentOptionNameToEnvVarName(string $optName): string
     {
         return EnvVarsRawSnapshotSource::optionNameToEnvVarName(
             EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
@@ -47,7 +51,7 @@ final class ConfigUtilForTests
         );
     }
 
-    public static function envVarNameForTestOption(string $optName): string
+    public static function testOptionNameToEnvVarName(string $optName): string
     {
         return EnvVarsRawSnapshotSource::optionNameToEnvVarName(self::ENV_VAR_NAME_PREFIX, $optName);
     }
@@ -59,12 +63,7 @@ final class ConfigUtilForTests
         $envVarConfigSource = new EnvVarsRawSnapshotSource(ConfigUtilForTests::ENV_VAR_NAME_PREFIX);
         $configSource =  $additionalConfigSource === null
             ? $envVarConfigSource
-            : new CompositeRawSnapshotSource(
-                [
-                    $additionalConfigSource,
-                    $envVarConfigSource,
-                ]
-            );
+            : new CompositeRawSnapshotSource([$additionalConfigSource, $envVarConfigSource]);
         $parser = new Parser($loggerFactory);
         $allOptsMeta = AllComponentTestsOptionsMetadata::get();
         $optNameToParsedValue = $parser->parse($allOptsMeta, $configSource->currentSnapshot($allOptsMeta));
@@ -73,17 +72,44 @@ final class ConfigUtilForTests
 
     public static function assertAgentDisabled(): void
     {
-        $envVarName = ConfigUtilForTests::envVarNameForAgentOption(OptionNames::ENABLED);
-        $envVarValue = getenv($envVarName);
+        $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName(OptionNames::ENABLED);
+        $envVarValue = EnvVarUtilForTests::get($envVarName);
         if ($envVarValue !== 'false') {
             throw new RuntimeException(
                 "Environment variable $envVarName should be set to `false'."
-                . ' Instead it is ' . ($envVarValue === false ? 'not set' : "set to `$envVarValue'") . '.'
+                . ' Instead it is ' . ($envVarValue === null ? 'not set' : 'set to `' . $envVarValue . '\'')
             );
         }
 
         if (GlobalTracerHolder::getValue()->isRecording()) {
             throw new RuntimeException('Tracer should not be recording component tests auxiliary processes');
+        }
+    }
+
+    /**
+     * @param string|int|float|bool $optVal
+     *
+     * @return string
+     */
+    public static function optionValueToString($optVal): string
+    {
+        return is_bool($optVal) ? BoolUtil::toString($optVal) : strval($optVal);
+    }
+
+    public static function isOptionLogLevelRelated(string $optName): bool
+    {
+        return TextUtil::isPrefixOfIgnoreCase(OptionNames::LOG_LEVEL, $optName);
+    }
+
+    /**
+     * @return iterable<string>
+     */
+    public static function allAgentLogLevelRelatedOptionNames(): iterable
+    {
+        foreach (IterableUtilForTests::keys(AllOptionsMetadata::get()) as $optName) {
+            if (ConfigUtilForTests::isOptionLogLevelRelated($optName)) {
+                yield $optName;
+            }
         }
     }
 }

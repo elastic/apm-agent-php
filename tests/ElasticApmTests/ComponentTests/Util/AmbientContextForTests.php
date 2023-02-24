@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use ElasticApmTests\Util\LogSinkForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -72,7 +73,7 @@ final class AmbientContextForTests
 
         if (self::testConfig()->appCodePhpIni !== null && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
-            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optionName);
+            $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optionName);
             throw new RuntimeException(
                 "Option $optionName (environment variable $envVarName)"
                 . ' is set but it points to a file that does not exist: '
@@ -87,7 +88,7 @@ final class AmbientContextForTests
         return self::$singletonInstance;
     }
 
-    public static function reconfigure(RawSnapshotSourceInterface $additionalConfigSource): void
+    public static function reconfigure(?RawSnapshotSourceInterface $additionalConfigSource = null): void
     {
         self::getSingletonInstance()->readAndApplyConfig($additionalConfigSource);
     }
@@ -96,6 +97,40 @@ final class AmbientContextForTests
     {
         $this->testConfig = ConfigUtilForTests::read($additionalConfigSource, $this->loggerFactory);
         $this->logBackend->setMaxEnabledLevel($this->testConfig->logLevel);
+    }
+
+    public static function resetLogLevel(int $newVal): void
+    {
+        self::resetConfigOption(
+            AllComponentTestsOptionsMetadata::LOG_LEVEL_OPTION_NAME,
+            $newVal,
+            LogLevel::intToName($newVal)
+        );
+        Assert::assertSame($newVal, AmbientContextForTests::testConfig()->logLevel);
+    }
+
+    public static function resetEscalatedRerunsMaxCount(int $newVal): void
+    {
+        self::resetConfigOption(
+            AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME,
+            $newVal,
+            strval($newVal)
+        );
+        Assert::assertSame($newVal, AmbientContextForTests::testConfig()->escalatedRerunsMaxCount);
+    }
+
+    /**
+     * @param string $optName
+     * @param mixed $newVal
+     * @param string $newValAsEnvVar
+     *
+     * @return void
+     */
+    private static function resetConfigOption(string $optName, $newVal, string $newValAsEnvVar): void
+    {
+        $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optName);
+        EnvVarUtilForTests::set($envVarName, $newValAsEnvVar);
+        AmbientContextForTests::reconfigure();
     }
 
     public static function dbgProcessName(): string

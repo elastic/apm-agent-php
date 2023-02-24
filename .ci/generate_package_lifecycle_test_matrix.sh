@@ -71,6 +71,7 @@ function generateLifecycleTarPackageRows () {
 }
 
 function generateLifecycleRows () {
+    generateLifecycleOnProdServerRows
     #
     # Lifecycle tests
     #
@@ -81,7 +82,6 @@ function generateLifecycleRows () {
         done
     done
 
-    generateLifecycleOnProdServerRows
     generateLifecycleWithIncreasedLogLevelRows
     generateLifecycleTarPackageRows
 }
@@ -118,11 +118,11 @@ function main () {
     this_script_dir="$( realpath "${this_script_dir}" )"
     source "${this_script_dir}/shared.sh"
 
+    generatePhpUpgradeRows
+
     generateAgentUpgradeRows
 
     generateLifecycleRows
-
-    generatePhpUpgradeRows
 }
 
 main

@@ -23,10 +23,6 @@
 #include "ConfigManager.h"
 #include "ResultCode.h"
 
-ResultCode backgroundBackendCommOnModuleInit( const ConfigSnapshot* config );
-
-ResultCode backgroundBackendCommOnRequestInit( const ConfigSnapshot* config );
-
 ResultCode sendEventsToApmServer(
         bool disableSend
         , double serverTimeoutMilliseconds
@@ -35,3 +31,5 @@ ResultCode sendEventsToApmServer(
         , StringView serializedEvents );
 
 void backgroundBackendCommOnModuleShutdown();
+
+ResultCode resetBackgroundBackendCommStateInForkedChild();

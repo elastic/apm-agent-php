@@ -415,6 +415,19 @@ final class MySQLiTest extends ComponentTestCaseBase
      */
     public function testAutoInstrumentation(array $testArgs): void
     {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestAutoInstrumentation($testArgs);
+            }
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $testArgs
+     */
+    private function implTestAutoInstrumentation(array $testArgs): void
+    {
         TestCase::assertNotCount(0, self::MESSAGES);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
