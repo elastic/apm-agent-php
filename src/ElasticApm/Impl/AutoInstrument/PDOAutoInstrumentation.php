@@ -28,6 +28,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\AutoInstrument\Util\DbAutoInstrumentationUtil;
 use Elastic\Apm\Impl\AutoInstrument\Util\DbConnectionStringParser;
+use Elastic\Apm\Impl\AutoInstrument\Util\MapPerWeakObject;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
@@ -45,9 +46,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     private const PDO_CLASS_NAME = 'PDO';
     private const PDO_STATEMENT_CLASS_NAME = 'PDOStatement';
 
-    private const DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE = [
-        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
-        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+    private const PER_OBJECT_KEYS_TO_PROPAGATE = [
+        DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE,
+        DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
     ];
 
     /** @var Logger */
@@ -55,6 +56,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
     /** @var AutoInstrumentationUtil */
     private $util;
+
+    /** @var MapPerWeakObject */
+    private $mapPerObject;
 
     /** @var DbConnectionStringParser */
     private $dataSourceNameParser;
@@ -71,8 +75,14 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         )->addContext('this', $this);
 
         $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
-
+        $this->mapPerObject = MapPerWeakObject::create($tracer->loggerFactory());
         $this->dataSourceNameParser = new DbConnectionStringParser($tracer->loggerFactory());
+    }
+
+    /** @inheritDoc */
+    public function isEnabled(): bool
+    {
+        return MapPerWeakObject::isSupported() && parent::isEnabled();
     }
 
     /** @inheritDoc */
@@ -135,19 +145,14 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 /** @var ?string $dbName */
                 $dbName = null;
                 $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
-                $dynamicallyAttachedProperties = [];
+                $mapToStoreForPdoObj = [];
                 if ($dbType !== null) {
-                    $dynamicallyAttachedProperties[DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE]
-                        = $dbType;
+                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE] = $dbType;
                 }
                 if ($dbName !== null) {
-                    $dynamicallyAttachedProperties[DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME]
-                        = $dbName;
+                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME] = $dbName;
                 }
-                $this->util->setDynamicallyAttachedProperties(
-                    $interceptedCallThis,
-                    $dynamicallyAttachedProperties
-                );
+                $this->mapPerObject->setMultiple($interceptedCallThis, $mapToStoreForPdoObj);
                 return null; // no post-hook
             }
         );
@@ -191,19 +196,17 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 /** @var ?string $statement */
 
                 /** @var string $dbType */
-                $dbType = $this->util->getDynamicallyAttachedProperty(
+                $dbType = $this->mapPerObject->getOr(
                     $interceptedCallThis,
-                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
+                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE,
                     Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
-
                 /** @var ?string $dbName */
-                $dbName = $this->util->getDynamicallyAttachedProperty(
+                $dbName = $this->mapPerObject->getOr(
                     $interceptedCallThis,
-                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                     null /* <- defaultValue */
                 );
-
                 return AutoInstrumentationUtil::createPostHookFromEndSpan(
                     DbAutoInstrumentationUtil::beginDbSpan(
                         self::PDO_CLASS_NAME,
@@ -254,9 +257,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 }
                 /** @var PDO $interceptedCallThis */
 
-                $dynPropsToPropagate = $this->util->getDynamicallyAttachedProperties(
+                $keyValueMapPerObjectToPropagate = $this->mapPerObject->getMultiple(
                     $interceptedCallThis,
-                    self::DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE
+                    self::PER_OBJECT_KEYS_TO_PROPAGATE
                 );
 
                 /**
@@ -271,7 +274,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                     bool $hasExitedByException,
                     $returnValueOrThrown
                 ) use (
-                    $dynPropsToPropagate
+                    $keyValueMapPerObjectToPropagate
                 ): void {
                     if ($hasExitedByException || $returnValueOrThrown === false) {
                         return;
@@ -286,10 +289,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                         return;
                     }
 
-                    $this->util->setDynamicallyAttachedProperties(
-                        $returnValueOrThrown,
-                        $dynPropsToPropagate
-                    );
+                    $this->mapPerObject->setMultiple($returnValueOrThrown, $keyValueMapPerObjectToPropagate);
                 };
             }
         );
@@ -329,19 +329,17 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                     : null;
 
                 /** @var string $dbType */
-                $dbType = $this->util->getDynamicallyAttachedProperty(
+                $dbType = $this->mapPerObject->getOr(
                     $interceptedCallThis,
-                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE,
+                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE,
                     Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
                 );
-
                 /** @var ?string $dbName */
-                $dbName = $this->util->getDynamicallyAttachedProperty(
+                $dbName = $this->mapPerObject->getOr(
                     $interceptedCallThis,
-                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                     null /* <- defaultValue */
                 );
-
                 return AutoInstrumentationUtil::createPostHookFromEndSpan(
                     DbAutoInstrumentationUtil::beginDbSpan(
                         $className,

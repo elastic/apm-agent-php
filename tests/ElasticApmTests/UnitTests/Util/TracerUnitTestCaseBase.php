@@ -37,8 +37,11 @@ class TracerUnitTestCaseBase extends TestCaseBase
     /** @var TracerInterface */
     protected $tracer;
 
+    /** @inheritDoc */
     public function setUp(): void
     {
+        parent::setUp();
+
         $this->setUpTestEnv();
     }
 
@@ -64,8 +67,11 @@ class TracerUnitTestCaseBase extends TestCaseBase
         GlobalTracerHolder::setValue($this->tracer);
     }
 
+    /** @inheritDoc */
     public function tearDown(): void
     {
         GlobalTracerHolder::unsetValue();
+
+        parent::tearDown();
     }
 }

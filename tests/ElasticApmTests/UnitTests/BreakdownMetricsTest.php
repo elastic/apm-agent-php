@@ -55,8 +55,11 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
     /** @var MockClock */
     protected $mockClock;
 
+    /** @inheritDoc */
     public function setUp(): void
     {
+        parent::setUp();
+
         $this->mockClock = new MockClock(/* initial */ 1000 * 1000 * 1000);
     }
 
