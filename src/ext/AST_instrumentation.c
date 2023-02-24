@@ -31,6 +31,7 @@ zend_ast_process_t original_zend_ast_process;
 
 #define ZEND_AST_ALLOC( size ) zend_arena_alloc(&CG(ast_arena), size);
 
+
 String zendAstKindToString( zend_ast_kind kind )
 {
 #   define ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( enumMember ) \
@@ -38,6 +39,7 @@ String zendAstKindToString( zend_ast_kind kind )
             return #enumMember; \
     /**/
 
+    // Up to date with  PHP v8.2.3
     switch ( kind )
     {
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ZVAL )
@@ -155,6 +157,51 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONST_ELEM )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_FOR )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_FOREACH )
+        #ifdef ZEND_AST_ATTRIBUTE
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ATTRIBUTE )
+        #endif
+        #ifdef ZEND_AST_ATTRIBUTE_GROUP
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ATTRIBUTE_GROUP )
+        #endif
+        #ifdef ZEND_AST_ATTRIBUTE_LIST
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ATTRIBUTE_LIST )
+        #endif
+        #ifdef ZEND_AST_CALLABLE_CONVERT
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CALLABLE_CONVERT )
+        #endif
+        #ifdef ZEND_AST_CLASS_CONST_GROUP
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CLASS_CONST_GROUP )
+        #endif
+        #ifdef ZEND_AST_CONST_ENUM_INIT
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONST_ENUM_INIT )
+        #endif
+        #ifdef ZEND_AST_ENUM_CASE
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ENUM_CASE )
+        #endif
+        #ifdef ZEND_AST_MATCH
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_MATCH )
+        #endif
+        #ifdef ZEND_AST_MATCH_ARM
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_MATCH_ARM )
+        #endif
+        #ifdef ZEND_AST_MATCH_ARM_LIST
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_MATCH_ARM_LIST )
+        #endif
+        #ifdef ZEND_AST_NAMED_ARG
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_NAMED_ARG )
+        #endif
+        #ifdef ZEND_AST_NULLSAFE_METHOD_CALL
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_NULLSAFE_METHOD_CALL )
+        #endif
+        #ifdef ZEND_AST_NULLSAFE_PROP
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_NULLSAFE_PROP )
+        #endif
+        #ifdef ZEND_AST_TYPE_INTERSECTION
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_TYPE_INTERSECTION )
+        #endif
+        #ifdef ZEND_AST_TYPE_UNION
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_TYPE_UNION )
+        #endif
 
         default:
             return "UNKNOWN";
