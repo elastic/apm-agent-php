@@ -34,6 +34,9 @@ use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
  */
 final class Backend implements LoggableInterface
 {
+    public const NAMESPACE_KEY = 'namespace';
+    public const CLASS_KEY = 'class';
+
     /** @var int */
     private $maxEnabledLevel;
 
@@ -83,8 +86,8 @@ final class Backend implements LoggableInterface
         }
 
         $result[] = [
-            'namespace' => $loggerData->namespace,
-            'class'     => ClassNameUtil::fqToShort($loggerData->fqClassName),
+            self::NAMESPACE_KEY => $loggerData->namespace,
+            self::CLASS_KEY     => ClassNameUtil::fqToShort($loggerData->fqClassName),
         ];
 
         $result[] = $statementCtx;

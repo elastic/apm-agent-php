@@ -66,7 +66,7 @@ final class LogSinkForTests extends SinkBase
         $formattedRecord .= ' [' . $this->dbgProcessName . ']';
         $formattedRecord .= ' [' . basename($srcCodeFile) . ':' . $srcCodeLine . ']';
         $formattedRecord .= ' [' . $srcCodeFunc . ']';
-        $formattedRecord .= ' ' . $messageWithContext;
+        $formattedRecord .= TextUtilForTests::combineWithSeparatorIfNotEmpty(' ', $messageWithContext);
         $this->consumeFormatted($statementLevel, $formattedRecord);
     }
 

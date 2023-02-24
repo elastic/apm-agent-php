@@ -21,38 +21,31 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace ElasticApmTests\UnitTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableStackTrace;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\SinkBase;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class CallerInfo implements LoggableInterface
+class MockLogPreformattedSink extends SinkBase
 {
-    use LoggableTrait;
+    /** @var MockLogPreformattedSinkStatement[] */
+    public $consumed = [];
 
-    /** @var string|null */
-    public $file;
-
-    /** @var int|null */
-    public $line;
-
-    /** @var string|null */
-    public $class;
-
-    /** @var string|null */
-    public $function;
-
-    public function __construct(?string $file, ?int $line, ?string $class, ?string $function)
-    {
-        $this->file =  LoggableStackTrace::adaptSourceCodeFilePath($file);
-        $this->line = $line;
-        $this->class = $class;
-        $this->function = $function;
+    /** @inheritDoc */
+    protected function consumePreformatted(
+        int $statementLevel,
+        string $category,
+        string $srcCodeFile,
+        int $srcCodeLine,
+        string $srcCodeFunc,
+        string $messageWithContext
+    ): void {
+        $this->consumed[] = new MockLogPreformattedSinkStatement(
+            $statementLevel,
+            $category,
+            $srcCodeFile,
+            $srcCodeLine,
+            $srcCodeFunc,
+            $messageWithContext
+        );
     }
 }
