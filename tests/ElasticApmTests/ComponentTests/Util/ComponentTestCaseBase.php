@@ -72,6 +72,8 @@ class ComponentTestCaseBase extends TestCaseBase
             $this->testCaseHandle->tearDown();
             $this->testCaseHandle = null;
         }
+
+        parent::tearDown();
     }
 
     public static function appCodeEmpty(): void
@@ -378,11 +380,12 @@ class ComponentTestCaseBase extends TestCaseBase
                 ['rerunCount' => $rerunCount, 'escalatedLogLevels' => $escalatedLogLevels]
             );
 
+            ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Re-running failed test with escalated log levels...');
+
             AmbientContextForTests::resetLogLevel($escalatedLogLevels[self::LOG_LEVEL_FOR_TEST_CODE_KEY]);
             $this->initTestCaseHandle($escalatedLogLevels[self::LOG_LEVEL_FOR_PROD_CODE_KEY]);
 
-            ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Re-running failed test with escalated log levels...');
             try {
                 $testCall();
                 ($loggerProxy = $loggerPerIteration->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
