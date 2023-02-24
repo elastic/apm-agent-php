@@ -230,7 +230,7 @@ final class IterableUtilForTests
     public static function duplicateEachElement(iterable $inputSeq, int $dupCount): iterable
     {
         foreach ($inputSeq as $key => $value) {
-            foreach (RangeUtil::generateUpTo($dupCount) as $_) {
+            foreach (RangeUtil::generateUpTo($dupCount) as $ignored) {
                 yield $key => $value;
             }
         }

@@ -25,6 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 
 final class TextUtilForTests
 {
@@ -93,5 +94,10 @@ final class TextUtilForTests
     public static function contains(string $haystack, string $needle): bool
     {
         return strpos($haystack, $needle) !== false;
+    }
+
+    public static function combineWithSeparatorIfNotEmpty(string $separator, string $partToAppend): string
+    {
+        return (TextUtil::isEmptyString($partToAppend) ? '' : $separator) . $partToAppend;
     }
 }

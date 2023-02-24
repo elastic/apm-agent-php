@@ -82,16 +82,10 @@ final class StackTraceUtil
     }
 
     /**
-     * @param LoggerFactory $loggerFactory
-     * @param int           $offset
-     * @param int           $options
-     * @param int           $limit
-     * @param bool          $includeElasticApmFrames
-     *
      * @return ClassicFormatStackTraceFrame[]
      */
     public static function captureInClassicFormat(
-        LoggerFactory $loggerFactory,
+        ?LoggerFactory $loggerFactory,
         int $offset = 0,
         int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
         int $limit = 0,
@@ -108,7 +102,7 @@ final class StackTraceUtil
      * @return PhpFormatStackTraceFrame[]
      */
     public static function captureInPhpFormat(
-        LoggerFactory $loggerFactory,
+        ?LoggerFactory $loggerFactory,
         int $offset = 0,
         int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
         int $limit = 0

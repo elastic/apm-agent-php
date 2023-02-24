@@ -102,7 +102,7 @@ class StackTraceUtilTest extends TestCaseBase
     private static function buildPhpFormatFrame(array $debugBacktraceFormatFrame): PhpFormatStackTraceFrame
     {
         $newFrame = new PhpFormatStackTraceFrame();
-        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame, self::noopLoggerFactory());
+        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame);
         return $newFrame;
     }
 
@@ -114,7 +114,7 @@ class StackTraceUtilTest extends TestCaseBase
     private static function buildClassicFormatFrame(array $debugBacktraceFormatFrame): ClassicFormatStackTraceFrame
     {
         $newFrame = new ClassicFormatStackTraceFrame();
-        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame, self::noopLoggerFactory());
+        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame);
         return $newFrame;
     }
 

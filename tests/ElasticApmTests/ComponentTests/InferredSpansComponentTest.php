@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\TransactionContext;
-use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -38,7 +37,6 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\InferredSpanExpectationsBuilder;
-use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TransactionExpectations;
 
