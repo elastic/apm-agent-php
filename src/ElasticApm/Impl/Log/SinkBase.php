@@ -56,12 +56,13 @@ abstract class SinkBase implements SinkInterface
         }
 
         if ($includeStacktrace === null ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
-            $combinedContext[LoggablePhpStacktrace::STACK_TRACE_KEY]
-                = LoggablePhpStacktrace::buildForCurrent($numberOfStackFramesToSkip + 1);
+            $combinedContext[LoggableStackTrace::STACK_TRACE_KEY]
+                = LoggableStackTrace::buildForCurrent($numberOfStackFramesToSkip + 1);
         }
 
-        $afterMessageDelimiter = TextUtil::isSuffixOf('.', $message) ? '' : '.';
-        $messageWithContext = $message . $afterMessageDelimiter . ' ' . LoggableToString::convert($combinedContext);
+        $ctxAsStr = LoggableToString::convert($combinedContext);
+        $msgCtxSeparator = (TextUtil::isEmptyString($message) || TextUtil::isEmptyString($ctxAsStr)) ? '' : ' ';
+        $messageWithContext = $message . $msgCtxSeparator . $ctxAsStr;
 
         $this->consumePreformatted(
             $statementLevel,

@@ -186,9 +186,9 @@ PHP_INI_END()
 #undef ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY
 #undef ELASTIC_APM_SECRET_INI_ENTRY
 
-ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
+ResultCode registerElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "module: { type: %d, number: %d }", type, module_number );
 
     ELASTIC_APM_ASSERT_VALID_PTR( iniEntriesRegistrationState );
 
@@ -222,17 +222,21 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
     return resultCode;
 
     failure:
-    unregisterElasticApmIniEntries( module_number, iniEntriesRegistrationState );
+    unregisterElasticApmIniEntries( type, module_number, iniEntriesRegistrationState );
     goto finally;
 }
 
-void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
+void unregisterElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "module: { type: %d, number: %d }", type, module_number );
+
     if ( iniEntriesRegistrationState->entriesRegistered )
     {
         UNREGISTER_INI_ENTRIES();
         iniEntriesRegistrationState->entriesRegistered = false;
     }
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
 }
 
 static PHP_GINIT_FUNCTION(elastic_apm)

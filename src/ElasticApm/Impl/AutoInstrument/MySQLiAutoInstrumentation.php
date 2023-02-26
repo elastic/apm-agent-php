@@ -27,6 +27,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\AutoInstrument\Util\DbAutoInstrumentationUtil;
+use Elastic\Apm\Impl\AutoInstrument\Util\MapPerWeakObject;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
@@ -47,15 +48,16 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     private const MYSQLI_CLASS_NAME = 'mysqli';
     private const MYSQLI_STMT_CLASS_NAME = 'mysqli_stmt';
 
-    private const DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE = [
-        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME
-    ];
+    private const PER_OBJECT_KEYS_TO_PROPAGATE = [DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME];
 
     /** @var Logger */
     private $logger;
 
     /** @var AutoInstrumentationUtil */
     private $util;
+
+    /** @var MapPerWeakObject */
+    private $mapPerObject;
 
     public function __construct(Tracer $tracer)
     {
@@ -69,6 +71,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         )->addContext('this', $this);
 
         $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
+        $this->mapPerObject = MapPerWeakObject::create($tracer->loggerFactory());
+    }
+
+    /** @inheritDoc */
+    public function isEnabled(): bool
+    {
+        return MapPerWeakObject::isSupported() && parent::isEnabled();
     }
 
     /** @inheritDoc */
@@ -198,9 +207,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                         /** @var mysqli $returnValueOrThrown */
                         $mysqliObj = $returnValueOrThrown;
                     }
-                    $this->util->setDynamicallyAttachedProperty(
+                    $this->mapPerObject->set(
                         $mysqliObj,
-                        DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                        DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                         $dbName
                     );
                 }
@@ -271,9 +280,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             /** @var mysqli $interceptedCallThis */
 
             /** @var ?string $currentDbName */
-            $currentDbName = $this->util->getDynamicallyAttachedProperty(
+            $currentDbName = $this->mapPerObject->getOr(
                 $interceptedCallThis,
-                DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                 null /* <- defaultValue */
             );
 
@@ -313,9 +322,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                     }
                     if ($this->util->verifyIsBool($returnValueOrThrown) && $returnValueOrThrown) {
                         DbAutoInstrumentationUtil::setServiceForDbSpan($span, self::DB_TYPE, $newDbName);
-                        $this->util->setDynamicallyAttachedProperty(
+                        $this->mapPerObject->set(
                             $interceptedCallThis,
-                            DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                            DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                             $newDbName
                         );
                     }
@@ -341,9 +350,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         ): ?callable {
             /** @var ?string $dbName */
             $dbName = ($interceptedCallThis !== null)
-                ? $this->util->getDynamicallyAttachedProperty(
+                ? $this->mapPerObject->getOr(
                     $interceptedCallThis,
-                    DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                     null /* <- defaultValue */
                 )
                 : null;
@@ -405,16 +414,16 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             }
             /** @var mysqli $interceptedCallThis */
 
-            $dynPropsToPropagate = $this->util->getDynamicallyAttachedProperties(
+            $keyValueMapPerObjectToPropagate = $this->mapPerObject->getMultiple(
                 $interceptedCallThis,
-                self::DYNAMICALLY_ATTACHED_PROPERTIES_TO_PROPAGATE
+                self::PER_OBJECT_KEYS_TO_PROPAGATE
             );
 
             if (
                 $this->util->verifyMinArgsCount(1, $interceptedCallArgs)
                 && $this->util->verifyIsString($interceptedCallArgs[0])
             ) {
-                $dynPropsToPropagate[DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_QUERY]
+                $keyValueMapPerObjectToPropagate[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_QUERY]
                     = $interceptedCallArgs[0];
             }
 
@@ -423,13 +432,13 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 bool $hasExitedByException,
                 $returnValueOrThrown
             ) use (
-                $dynPropsToPropagate
+                $keyValueMapPerObjectToPropagate
             ): void {
                 // We use 'instanceof mysqli_stmt' instead of verifyInstanceOf on purpose
                 // because mysqli_prepare return type is:
                 //      mysqli_stmt|false A statement object or FALSE if an error occurred.
                 if (!$hasExitedByException && $returnValueOrThrown instanceof mysqli_stmt) {
-                    $this->util->setDynamicallyAttachedProperties($returnValueOrThrown, $dynPropsToPropagate);
+                    $this->mapPerObject->setMultiple($returnValueOrThrown, $keyValueMapPerObjectToPropagate);
                 }
             };
         };
@@ -463,19 +472,17 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             /** @var mysqli_stmt $interceptedCallThis */
 
             /** @var ?string $dbName */
-            $dbName = $this->util->getDynamicallyAttachedProperty(
+            $dbName = $this->mapPerObject->getOr(
                 $interceptedCallThis,
-                DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME,
+                DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                 null /* <- defaultValue */
             );
-
             /** @var ?string $query */
-            $query = $this->util->getDynamicallyAttachedProperty(
+            $query = $this->mapPerObject->getOr(
                 $interceptedCallThis,
-                DbAutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_QUERY,
+                DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_QUERY,
                 null /* <- defaultValue */
             );
-
             return AutoInstrumentationUtil::createPostHookFromEndSpan(
                 self::beginSpan(
                     $className,

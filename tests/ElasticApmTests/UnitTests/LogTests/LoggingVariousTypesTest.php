@@ -160,6 +160,7 @@ class LoggingVariousTypesTest extends TestCaseBase
         ObjectForLoggableTraitTests::shouldExcludeProp();
         DerivedObjectForLoggableTraitTests::logWithoutClassName();
         DerivedObjectForLoggableTraitTests::shouldExcludeProp();
+
         parent::tearDown();
     }
 

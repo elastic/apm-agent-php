@@ -61,11 +61,11 @@ abstract class StackTraceFrameBase
      */
     public function copyDataFromFromDebugBacktraceFrame(
         array $debugBacktraceFormatFrame,
-        LoggerFactory $loggerFactory
+        ?LoggerFactory $loggerFactory = null
     ): void {
         /** @var ?Logger $logger */
         $logger = null;
-        if ($loggerFactory->isEnabledForLevel(LogLevel::ERROR)) {
+        if ($loggerFactory !== null && $loggerFactory->isEnabledForLevel(LogLevel::ERROR)) {
             $logger = $loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__)
                                     ->addContext('debugBacktraceFormatFrame', $debugBacktraceFormatFrame);
         }

@@ -7,9 +7,8 @@ parameters:
 
     reportUnmatchedIgnoredErrors: false
 
-    excludes_analyse:
-        # Temporarily disabling as it uses ...
-        # - src/ElasticApm/???.php
+    excludePaths:
+        - tests/polyfills/WeakMap.php
 
     ignoreErrors:
         #
