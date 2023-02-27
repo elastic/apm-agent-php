@@ -163,6 +163,7 @@ final class HttpDistributedTracing
             $isTraceStateValid = null;
             return null;
         }
+        /** @var DistributedTracingDataInternal $result */
 
         if (ArrayUtil::isEmpty($traceStateHeaderValues)) {
             $isTraceStateValid = null;

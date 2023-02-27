@@ -185,13 +185,13 @@ final class MySQLiTest extends ComponentTestCaseBase
      * @param MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder
      * @param string[]                            $queries
      * @param string                              $kind
-     * @param SpanExpectations[]             &$expectedSpans
+     * @param SpanExpectations[]                 &$expectedSpans
      */
     private static function addExpectationsForQueriesUsingKind(
         MySQLiDbSpanDataExpectationsBuilder $expectationsBuilder,
         array $queries,
         string $kind,
-        /* out */ array &$expectedSpans
+        array &$expectedSpans
     ): void {
         switch ($kind) {
             case self::QUERY_KIND_MULTI_QUERY:
@@ -310,12 +310,12 @@ final class MySQLiTest extends ComponentTestCaseBase
      */
     public static function extractSharedArgs(
         array $args,
-        /* out */ ?bool &$isOOPApi,
-        /* out */ ?string &$connectDbName,
-        /* out */ ?string &$workDbName,
-        /* out */ ?string &$queryKind,
-        /* out */ ?bool &$wrapInTx,
-        /* out */ ?bool &$rollback
+        ?bool &$isOOPApi /* <- out */,
+        ?string &$connectDbName /* <- out */,
+        ?string &$workDbName /* <- out */,
+        ?string &$queryKind /* <- out */,
+        ?bool &$wrapInTx /* <- out */,
+        ?bool &$rollback /* <- out */
     ): void {
         $isOOPApi = self::getMandatoryAppCodeArg($args, self::IS_OOP_API_KEY);
         self::assertIsBool($isOOPApi);
@@ -414,6 +414,19 @@ final class MySQLiTest extends ComponentTestCaseBase
      * @param array<string, mixed> $testArgs
      */
     public function testAutoInstrumentation(array $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestAutoInstrumentation($testArgs);
+            }
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $testArgs
+     */
+    private function implTestAutoInstrumentation(array $testArgs): void
     {
         TestCase::assertNotCount(0, self::MESSAGES);
 

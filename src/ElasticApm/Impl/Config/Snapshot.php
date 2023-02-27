@@ -204,7 +204,8 @@ final class Snapshot implements LoggableInterface
     {
         $this->effectiveLogLevel = max(
             ($this->logLevelStderr ?? $this->logLevel) ?? self::LOG_LEVEL_STDERR_DEFAULT,
-            ($this->logLevelSyslog ?? $this->logLevel) ?? self::LOG_LEVEL_SYSLOG_DEFAULT
+            ($this->logLevelSyslog ?? $this->logLevel) ?? self::LOG_LEVEL_SYSLOG_DEFAULT,
+            $this->logLevel ?? LogLevel::OFF
         );
     }
 

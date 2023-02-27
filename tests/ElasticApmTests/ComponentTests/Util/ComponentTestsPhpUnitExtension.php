@@ -89,7 +89,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         if (($runBeforeEachTest = AmbientContextForTests::testConfig()->runBeforeEachTest) !== null) {
             $exitCode = ProcessUtilForTests::startProcessAndWaitUntilExit(
                 $runBeforeEachTest,
-                getenv() /* <- envVars */,
+                EnvVarUtilForTests::getAll() /* <- envVars */,
                 true /* <- shouldCaptureStdOutErr */,
                 0 /* <- expectedExitCode */
             );
@@ -97,7 +97,10 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => getenv()]);
+        && $loggerProxy->log(
+            'Test starting...',
+            ['test' => $test, 'Environment variables' => EnvVarUtilForTests::getAll()]
+        );
 
         ConfigUtilForTests::assertAgentDisabled();
     }

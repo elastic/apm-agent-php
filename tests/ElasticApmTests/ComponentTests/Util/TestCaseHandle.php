@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -33,6 +34,7 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -66,7 +68,10 @@ final class TestCaseHandle implements LoggableInterface
     /** @var int[] */
     private $portsInUse = [];
 
-    public function __construct()
+    /** @var ?int */
+    private $escalatedLogLevelForProdCode;
+
+    public function __construct(?int $escalatedLogLevelForProdCode)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -77,6 +82,7 @@ final class TestCaseHandle implements LoggableInterface
 
         $this->resourcesCleaner = $this->startResourcesCleaner();
         $this->mockApmServer = $this->startMockApmServer($this->resourcesCleaner);
+        $this->escalatedLogLevelForProdCode = $escalatedLogLevelForProdCode;
     }
 
     /**
@@ -110,8 +116,9 @@ final class TestCaseHandle implements LoggableInterface
         TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
         $appCodeHostHandle = $this->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeHostParams) use ($setParamsFunc): void {
-                TestCase::assertInstanceOf(HttpAppCodeHostParams::class, $appCodeHostParams);
+                Assert::assertInstanceOf(HttpAppCodeHostParams::class, $appCodeHostParams);
                 if ($setParamsFunc !== null) {
+                    /** @noinspection PsalmAdvanceCallableParamsInspection */
                     $setParamsFunc($appCodeHostParams);
                 }
             }
@@ -196,6 +203,10 @@ final class TestCaseHandle implements LoggableInterface
 
     private function setMandatoryOptions(AppCodeHostParams $params): void
     {
+        if ($this->escalatedLogLevelForProdCode !== null) {
+            $escalatedLogLevelForProdCodeAsString = LogLevel::intToName($this->escalatedLogLevelForProdCode);
+            $params->setAgentOption(OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
+        }
         $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPort());
     }
 
@@ -210,6 +221,21 @@ final class TestCaseHandle implements LoggableInterface
             $appCodeInvocation->appCodeHostsParams[] = $this->additionalHttpAppCodeHost->appCodeHostParams;
         }
         $this->appCodeInvocation = $appCodeInvocation;
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function getProdCodeLogLevels(): array
+    {
+        $result = [];
+        /** @var ?AppCodeHostHandle $appCodeHost */
+        foreach ([$this->mainAppCodeHost, $this->additionalHttpAppCodeHost] as $appCodeHost) {
+            if ($appCodeHost !== null) {
+                $result[] = $appCodeHost->appCodeHostParams->getEffectiveAgentConfig()->effectiveLogLevel();
+            }
+        }
+        return $result;
     }
 
     public function tearDown(): void

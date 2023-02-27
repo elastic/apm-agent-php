@@ -19,8 +19,6 @@
  * under the License.
  */
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
@@ -41,8 +39,6 @@ use Throwable;
  */
 final class AutoInstrumentationUtil
 {
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX = 'Elastic_APM_dynamically_attached_property_';
-
     /** @var Logger */
     private $logger;
 
@@ -139,101 +135,6 @@ final class AutoInstrumentationUtil
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that(!$hasExitedByException)
         && $assertProxy->withContext('!$hasExitedByException', $dbgCtx);
-    }
-
-    /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed  $val
-     */
-    public function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        /** @noinspection PhpIssetCanBeReplacedWithCoalesceInspection */
-        $oldVal = isset($obj->{$propName}) ? $obj->{$propName} : 'not set';
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Setting dynamically attached property...',
-            [
-                'obj type'      => DbgUtil::getType($obj),
-                'obj ID'        => spl_object_id($obj),
-                'property name' => $propName,
-                'old value'     => $oldVal,
-                'new value'     => $val,
-            ]
-        );
-
-        $obj->{$propName} = $val;
-    }
-
-    /**
-     * @param object               $obj
-     * @param array<string, mixed> $propNameValues
-     */
-    public function setDynamicallyAttachedProperties(object $obj, array $propNameValues): void
-    {
-        foreach ($propNameValues as $propName => $propVal) {
-            $this->setDynamicallyAttachedProperty($obj, $propName, $propVal);
-        }
-    }
-
-    /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed &$value
-     *
-     * @return bool
-     */
-    private function getDynamicallyAttachedPropertyImpl(object $obj, string $propName, &$value): bool
-    {
-        $isSet = isset($obj->{$propName});
-        if ($isSet) {
-            $value = $obj->{$propName};
-        }
-        /** @noinspection PhpIssetCanBeReplacedWithCoalesceInspection */
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Getting dynamically attached property...',
-            [
-                'obj type'      => DbgUtil::getType($obj),
-                'obj ID'        => spl_object_id($obj),
-                'property name' => $propName,
-                'value'         => $isSet ? $value : 'not set',
-            ]
-        );
-        return $isSet;
-    }
-
-
-    /**
-     * @param object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
-     *
-     * @return mixed
-     */
-    public function getDynamicallyAttachedProperty(object $obj, string $propName, $defaultValue)
-    {
-        /** @var mixed $value */
-        $value = null;
-        return $this->getDynamicallyAttachedPropertyImpl($obj, $propName, /* ref */ $value) ? $value : $defaultValue;
-    }
-
-    /**
-     * @param object  $obj
-     * @param string[] $propNames
-     *
-     * @return array<string, mixed>
-     */
-    public function getDynamicallyAttachedProperties(object $obj, array $propNames): array
-    {
-        $propNameValues = [];
-        foreach ($propNames as $propName) {
-            $value = null;
-            if ($this->getDynamicallyAttachedPropertyImpl($obj, $propName, /* ref */ $value)) {
-                $propNameValues[$propName] = $value;
-            }
-        }
-        return $propNameValues;
     }
 
     /**

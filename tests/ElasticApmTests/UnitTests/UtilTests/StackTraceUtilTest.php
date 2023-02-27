@@ -102,7 +102,7 @@ class StackTraceUtilTest extends TestCaseBase
     private static function buildPhpFormatFrame(array $debugBacktraceFormatFrame): PhpFormatStackTraceFrame
     {
         $newFrame = new PhpFormatStackTraceFrame();
-        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame, self::noopLoggerFactory());
+        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame);
         return $newFrame;
     }
 
@@ -114,7 +114,7 @@ class StackTraceUtilTest extends TestCaseBase
     private static function buildClassicFormatFrame(array $debugBacktraceFormatFrame): ClassicFormatStackTraceFrame
     {
         $newFrame = new ClassicFormatStackTraceFrame();
-        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame, self::noopLoggerFactory());
+        $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame);
         return $newFrame;
     }
 
@@ -360,15 +360,15 @@ class StackTraceUtilTest extends TestCaseBase
                 $actualStackTrace = self::captureInPhpFormat($debugBacktraceOptions, $stackTraceSizeLimit);
                 $expectedLine = __LINE__ - 1;
             } else {
-                $actualStackTrace = StackTraceUtil::captureInPhpFormat(
+                $args = [
                     self::noopLoggerFactory(),
-                    /* offset */ 0,
+                    /* offset */
+                    0,
                     $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                    $stackTraceSizeLimit ?? 0
-                );
-                $expectedLine = __LINE__ - 2;
-                // It seems that the line used for stack trace is the last line fo function call
-                // but excluding the line with just a parenthesis
+                    $stackTraceSizeLimit ?? 0,
+                ];
+                $actualStackTrace = StackTraceUtil::captureInPhpFormat(...$args);
+                $expectedLine = __LINE__ - 1;
             }
         };
         $callCaptureInPhpFormat();
@@ -457,15 +457,14 @@ class StackTraceUtilTest extends TestCaseBase
             $frames = self::captureInClassicFormat($debugBacktraceOptions, $stackTraceSizeLimit);
             $expectedLine = __LINE__ - 1;
         } else {
-            $frames = StackTraceUtil::captureInClassicFormat(
+            $args = [
                 self::noopLoggerFactory(),
                 /* offset */ 0,
                 $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
                 $stackTraceSizeLimit ?? 0
-            );
-            $expectedLine = __LINE__ - 2;
-            // It seems that the line used for stack trace is the last line fo function call
-            // but excluding the line with just a parenthesis
+            ];
+            $frames = StackTraceUtil::captureInClassicFormat(...$args);
+            $expectedLine = __LINE__ - 1;
         }
         $expectedArgs = func_get_args();
         $ctx = LoggableToString::convert(
@@ -652,12 +651,12 @@ class StackTraceUtilTest extends TestCaseBase
                 case 1:
                     $result = $thisObj->funcB('funcA', $funcDepth + 1, $testArgs);
                     $expectedCapturedLine = __LINE__ - 1;
-                    $expectedConvertedLine = __LINE__ - 2;
+                    $expectedConvertedLine = $expectedCapturedLine;
                     break;
                 case 2:
                     $result = $thisObj->funcC('funcB', $funcDepth + 1, $testArgs);
                     $expectedCapturedLine = __LINE__ - 1;
-                    $expectedConvertedLine = __LINE__ - 2;
+                    $expectedConvertedLine = $expectedCapturedLine;
                     break;
                 default:
                     self::fail(LoggableToString::convert(['funcDepth' => $funcDepth, 'maxDepth' => $maxDepth]));

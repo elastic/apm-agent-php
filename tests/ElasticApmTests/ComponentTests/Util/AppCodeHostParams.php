@@ -24,19 +24,22 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
+use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
+use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\Parser as ConfigParser;
 use Elastic\Apm\Impl\Config\Snapshot as AgentConfigSnapshot;
-use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
+use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class AppCodeHostParams implements LoggableInterface
 {
@@ -98,16 +101,96 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
-     * @return string[]
+     * @param array<string, string> $input
+     *
+     * @return array<string, string>
      */
-    public function getSetAgentOptionNames(): array
+    private function removeLogLevelEnvVarsIfSetByOptions(array $input): array
     {
-        $result = [];
-        foreach ($this->agentOptions as $optNameToVal) {
-            TestCase::assertIsArray($optNameToVal);
-            $result = array_merge($result, array_keys($optNameToVal));
+        $isAnyLogLevelOptionsSet = false;
+        foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
+            if (ConfigUtilForTests::isOptionLogLevelRelated($optName)) {
+                $isAnyLogLevelOptionsSet = true;
+                break;
+            }
         }
-        return $result;
+        if (!$isAnyLogLevelOptionsSet) {
+            return $input;
+        }
+
+        $output = $input;
+        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $output)) {
+                unset($output[$envVarName]);
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * @param array<string, string> $baseEnvVars
+     *
+     * @return array<string, string>
+     */
+    public function selectEnvVarsToInherit(array $baseEnvVars): array
+    {
+        $envVars = $baseEnvVars;
+
+        $envVars = $this->removeLogLevelEnvVarsIfSetByOptions($envVars);
+
+        foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $envVars)) {
+                unset($envVars[$envVarName]);
+            }
+        }
+
+        return array_filter(
+            $envVars,
+            function (string $envVarName): bool {
+                // Return false for entries to be removed
+
+                // Keep environment variables related to testing infrastructure
+                if (TextUtil::isPrefixOfIgnoreCase(ConfigUtilForTests::ENV_VAR_NAME_PREFIX, $envVarName)) {
+                    return true;
+                }
+
+                // Keep environment variables related to agent's logging
+                if (
+                    TextUtil::isPrefixOfIgnoreCase(
+                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_',
+                        $envVarName
+                    )
+                ) {
+                    return true;
+                }
+
+                // Keep environment variables explicitly configured to be passed through
+                if (AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
+                    return true;
+                }
+
+                // Keep environment variables NOT related to Elastic APM
+                if (!TextUtil::isPrefixOfIgnoreCase(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX, $envVarName)) {
+                    return true;
+                }
+
+                return false;
+            },
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    /**
+     * @return iterable<string>
+     */
+    private function getExplicitlySetAgentOptionsNames(): iterable
+    {
+        foreach ($this->agentOptions as $optNameToVal) {
+            yield from array_keys($optNameToVal);
+        }
     }
 
     /**
@@ -121,7 +204,7 @@ class AppCodeHostParams implements LoggableInterface
     /**
      * @return array<string, string|int|float|bool>
      */
-    public function getEffectiveAgentOptions(): array
+    private function getExplicitlySetAgentOptions(): array
     {
         $iniOptions = $this->getAgentOptions(AgentConfigSourceKind::iniFile());
         $envVarsOptions = $this->getAgentOptions(AgentConfigSourceKind::envVars());
@@ -137,26 +220,50 @@ class AppCodeHostParams implements LoggableInterface
         return array_merge($envVarsOptions, $iniOptions);
     }
 
+    /**
+     * @param string $optName
+     *
+     * @return mixed
+     */
+    private function getExplicitlySetAgentOptionValue(string $optName)
+    {
+        $explicitlySetOptions = $this->getExplicitlySetAgentOptions();
+        return ArrayUtil::getValueIfKeyExistsElse($optName, $explicitlySetOptions, null);
+    }
+
+    public function getExplicitlySetAgentStringOptionValue(string $optName): ?string
+    {
+        $optVal = $this->getExplicitlySetAgentOptionValue($optName);
+        if ($optVal !== null) {
+            Assert::assertIsString($optVal);
+        }
+        return $optVal;
+    }
+
     public function getEffectiveAgentConfig(): AgentConfigSnapshot
     {
-        $configRawSnapshotSource = new MockConfigRawSnapshotSource();
-        foreach ($this->getEffectiveAgentOptions() as $optName => $optVal) {
-            $configRawSnapshotSource->set($optName, strval($optVal));
+        $envVarsToInheritSource = new MockConfigRawSnapshotSource();
+        $envVars = $this->selectEnvVarsToInherit(EnvVarUtilForTests::getAll());
+        foreach (IterableUtilForTests::keys(AllOptionsMetadata::get()) as $optName) {
+            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+            if (array_key_exists($envVarName, $envVars)) {
+                $envVarsToInheritSource->set($optName, $envVars[$envVarName]);
+            }
         }
+
+        $explicitlySetOptionsSource = new MockConfigRawSnapshotSource();
+        foreach ($this->getExplicitlySetAgentOptions() as $optName => $optVal) {
+            $explicitlySetOptionsSource->set($optName, strval($optVal));
+        }
+        $rawSnapshotSource = new CompositeRawSnapshotSource([$explicitlySetOptionsSource, $envVarsToInheritSource]);
+        $allOptsMeta = AllOptionsMetadata::get();
+        $rawSnapshot = $rawSnapshotSource->currentSnapshot($allOptsMeta);
+
         // Set log level above ERROR to hide potential errors when parsing the provided test configuration snapshot
         $logBackend = AmbientContextForTests::loggerFactory()->getBackend()->clone();
         $logBackend->setMaxEnabledLevel(LogLevel::CRITICAL);
         $loggerFactory = new LoggerFactory($logBackend);
         $parser = new ConfigParser($loggerFactory);
-        $allOptsMeta = AllOptionsMetadata::get();
-        $rawSnapshot = $configRawSnapshotSource->currentSnapshot($allOptsMeta);
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $loggerFactory);
-    }
-
-    public function getSetAgentOptionValue(string $optName): ?string
-    {
-        $setAgentOptions = $this->getEffectiveAgentOptions();
-        $optVal = ArrayUtil::getValueIfKeyExistsElse($optName, $setAgentOptions, null);
-        return $optVal === null ? null : strval($optVal);
+        return new AgentConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshot), $loggerFactory);
     }
 }

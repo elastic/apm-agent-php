@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\TransactionContext;
-use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -38,7 +37,6 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\InferredSpanExpectationsBuilder;
-use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -162,9 +160,9 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
-        $isInferredSpansEnabled = self::getBoolFromArgsMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
-        $isTransactionSampled = self::getBoolFromArgsMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
-        $shouldCaptureSleeps = self::getBoolFromArgsMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
+        $isInferredSpansEnabled = self::getBoolFromMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
+        $isTransactionSampled = self::getBoolFromMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
+        $shouldCaptureSleeps = self::getBoolFromMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(

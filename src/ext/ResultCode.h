@@ -28,6 +28,7 @@ enum ResultCode
     resultOutOfMemory,
     resultInvalidFormat,
     resultCurlFailure,
+    resultSyncObjUseAfterFork,
     resultFailure
 };
 typedef enum ResultCode ResultCode;
@@ -44,6 +45,12 @@ static inline String resultCodeToString( ResultCode resultCode )
 
         case resultInvalidFormat:
             return "resultInvalidFormat";
+
+        case resultCurlFailure:
+            return "resultCurlFailure";
+
+        case resultSyncObjUseAfterFork:
+            return "resultSyncObjUseAfterFork";
 
         case resultFailure:
             return "resultFailure";

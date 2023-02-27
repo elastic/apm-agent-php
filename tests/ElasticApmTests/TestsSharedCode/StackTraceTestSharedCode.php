@@ -60,13 +60,12 @@ final class StackTraceTestSharedCode
      */
     public static function myStaticMethod(callable $createSpan, array &$expectedData): void
     {
-        dummyFuncForTestsWithNamespace(
-            function () use ($createSpan, &$expectedData): void {
-                $expectedData[self::lineNumberKey('$createSpan')] = __LINE__ + 1;
-                $createSpan();
-            } // <- this line's number is used for dummyFuncForTestsWithNamespace() call stack's frame
-        );
-        $expectedData[self::lineNumberKey('dummyFuncForTestsWithNamespace')] = __LINE__ - 2;
+        $func = function () use ($createSpan, &$expectedData): void {
+            $expectedData[self::lineNumberKey('$createSpan')] = __LINE__ + 1;
+            $createSpan();
+        };
+        dummyFuncForTestsWithNamespace($func);
+        $expectedData[self::lineNumberKey('dummyFuncForTestsWithNamespace')] = __LINE__ - 1;
     }
 
     /**
@@ -77,13 +76,12 @@ final class StackTraceTestSharedCode
      */
     public function myInstanceMethod(callable $createSpan, array &$expectedData): void
     {
-        dummyFuncForTestsWithoutNamespace(
-            function () use ($createSpan, &$expectedData): void {
-                $expectedData[self::lineNumberKey('myStaticMethod')] = __LINE__ + 1;
-                self::myStaticMethod($createSpan, /* ref */ $expectedData);
-            } // <- this line's number is used for dummyFuncForTestsWithoutNamespace() call stack's frame
-        );
-        $expectedData[self::lineNumberKey('dummyFuncForTestsWithoutNamespace')] = __LINE__ - 2;
+        $func = function () use ($createSpan, &$expectedData): void {
+            $expectedData[self::lineNumberKey('myStaticMethod')] = __LINE__ + 1;
+            self::myStaticMethod($createSpan, /* ref */ $expectedData);
+        };
+        dummyFuncForTestsWithoutNamespace($func);
+        $expectedData[self::lineNumberKey('dummyFuncForTestsWithoutNamespace')] = __LINE__ - 1;
     }
 
     /**
@@ -253,14 +251,11 @@ final class StackTraceTestSharedCode
             },
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::captureCurrentSpan';
-                ElasticApm::getCurrentTransaction()->captureCurrentSpan(
-                    'test_span_name',
-                    'test_span_type',
-                    function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
-                    } // <- this line's number is used for captureCurrentSpan() call stack's frame
-                );
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;
+                $func = function (SpanInterface $span) use ($spanCreatingApi): void {
+                    $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                };
+                ElasticApm::getCurrentTransaction()->captureCurrentSpan('test_span_name', 'test_span_type', $func);
+                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(TransactionInterface::class, 'captureCurrentSpan');
             },
@@ -276,14 +271,11 @@ final class StackTraceTestSharedCode
             },
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::captureChildSpan';
-                ElasticApm::getCurrentTransaction()->captureChildSpan(
-                    'test_span_name',
-                    'test_span_type',
-                    function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
-                    } // <- this line's number is used for captureCurrentSpan() call stack's frame
-                );
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;
+                $func = function (SpanInterface $span) use ($spanCreatingApi): void {
+                    $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                };
+                ElasticApm::getCurrentTransaction()->captureChildSpan('test_span_name', 'test_span_type', $func);
+                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(TransactionInterface::class, 'captureChildSpan');
             },
@@ -304,14 +296,11 @@ final class StackTraceTestSharedCode
                 $spanCreatingApi = 'Span::captureChildSpan';
                 $parentSpan = ElasticApm::getCurrentTransaction()
                                         ->beginChildSpan('parent_span_name', 'parent_span_type');
-                $parentSpan->captureChildSpan(
-                    'test_span_name',
-                    'test_span_type',
-                    function (SpanInterface $span) use ($spanCreatingApi): void {
-                        $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
-                    } // <- this line's number is used for captureCurrentSpan() call stack's frame
-                );
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 2;
+                $func = function (SpanInterface $span) use ($spanCreatingApi): void {
+                    $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+                };
+                $parentSpan->captureChildSpan('test_span_name', 'test_span_type', $func);
+                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'captureChildSpan');
                 $parentSpan->end();
