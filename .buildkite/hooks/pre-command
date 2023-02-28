@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+##  This script prepares the Vault context and required tooling
+##  for the release pipelines.
+##
+##  NOTE: *_SECRET or *_TOKEN env variables are masked, hence if you'd like to avoid any
+##        surprises please use the suffix _SECRET or _TOKEN for those values that contain
+##        any sensitive data. Buildkite can mask those values automatically
+
+set -eo pipefail
+
+echo "--- Prepare vault context :vault:"
+INTERNAL_CI_TOKEN=$(vault read -field=token secret/ci/elastic-apm-agent-php/internal-ci-token)
+export INTERNAL_CI_TOKEN
+INTERNAL_CI_JOB_URL_SECRET=$(vault read -field=job-url secret/ci/elastic-apm-agent-php/internal-ci-token)
+export INTERNAL_CI_JOB_URL_SECRET
