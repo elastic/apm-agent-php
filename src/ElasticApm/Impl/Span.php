@@ -25,7 +25,6 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
