@@ -8,7 +8,7 @@
 set -eo pipefail
 
 set +x
-echo "--- Release the binaries to Maven Central :maven:"
+echo "--- Sign the binaries"
 if [[ "$dry_run" == "true" ]] ; then
   echo "run the signing job 'elastic+unified-release+master+sign-artifacts-with-gpg'" | tee -a release.txt
 else
