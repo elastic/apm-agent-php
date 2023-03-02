@@ -314,6 +314,9 @@ final class PDOTest extends ComponentTestCaseBase
                         $disableInstrumentationsOptVal
                     );
                 }
+
+                // Disable compressed spans
+                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
             }
         );
         $appCodeHost->sendRequest(
