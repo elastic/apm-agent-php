@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -16,6 +18,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.8.0"
+declare(strict_types=1);
+
+namespace ElasticApmTests\UnitTests\Util;
+
+use Elastic\Apm\Impl\Log\SinkBase;
+
+class MockLogPreformattedSink extends SinkBase
+{
+    /** @var MockLogPreformattedSinkStatement[] */
+    public $consumed = [];
+
+    /** @inheritDoc */
+    protected function consumePreformatted(
+        int $statementLevel,
+        string $category,
+        string $srcCodeFile,
+        int $srcCodeLine,
+        string $srcCodeFunc,
+        string $messageWithContext
+    ): void {
+        $this->consumed[] = new MockLogPreformattedSinkStatement(
+            $statementLevel,
+            $category,
+            $srcCodeFile,
+            $srcCodeLine,
+            $srcCodeFunc,
+            $messageWithContext
+        );
+    }
+}

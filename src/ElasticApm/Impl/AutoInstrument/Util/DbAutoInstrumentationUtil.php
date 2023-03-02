@@ -19,8 +19,6 @@
  * under the License.
  */
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
@@ -40,12 +38,9 @@ final class DbAutoInstrumentationUtil
 {
     use StaticClassTrait;
 
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX
-        = AutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'DB_';
-
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'type';
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'name';
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_QUERY = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'query';
+    public const PER_OBJECT_KEY_DB_TYPE = 'DB_type';
+    public const PER_OBJECT_KEY_DB_NAME = 'DB_name';
+    public const PER_OBJECT_KEY_DB_QUERY = 'DB_query';
 
     public static function beginDbSpan(
         ?string $className,

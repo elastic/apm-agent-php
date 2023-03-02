@@ -128,7 +128,10 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
 
     private function addMetadata(string $encodedJson): void
     {
-        $this->result->metadatas[] = $this->validateAndDeserializeMetadata($encodedJson);
+        $newMetadata  = $this->validateAndDeserializeMetadata($encodedJson);
+        $this->result->metadatas[] = $newMetadata;
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Added metadata', ['newMetadata' => $newMetadata]);
     }
 
     private function addTransaction(string $encodedJson): void
@@ -136,6 +139,8 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $newTransaction = $this->validateAndDeserializeTransaction($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newTransaction->id));
         $this->result->idToTransaction[$newTransaction->id] = $newTransaction;
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Added transaction', ['newTransaction' => $newTransaction]);
     }
 
     private function addSpan(string $encodedJson): void
@@ -143,18 +148,24 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $newSpan = $this->validateAndDeserializeSpan($encodedJson);
         TestCase::assertNull($this->result->executionSegmentByIdOrNull($newSpan->id));
         $this->result->idToSpan[$newSpan->id] = $newSpan;
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Added span', ['newSpan' => $newSpan]);
     }
 
     private function addError(string $encodedJson): void
     {
         $newError = $this->validateAndDeserializeError($encodedJson);
         ArrayUtilForTests::addUnique($newError->id, $newError, /* ref */ $this->result->idToError);
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Added error', ['newError' => $newError]);
     }
 
     private function addMetricSet(string $encodedJson): void
     {
         $newMetricSet = $this->validateAndDeserializeMetricSet($encodedJson);
         $this->result->metricSets[] = $newMetricSet;
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Added metric set', ['newMetricSet' => $newMetricSet]);
     }
 
     /**

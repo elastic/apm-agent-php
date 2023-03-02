@@ -118,13 +118,13 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
     return true;
 }
 
-void elasticApmModuleInit( int type, int moduleNumber )
+void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
-    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: type: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, type, moduleNumber, (int)(getParentProcessId()) );
+    registerOsSignalHandler();
+
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
 
     g_pidOnModuleInit = getCurrentProcessId();
-
-    registerOsSignalHandler();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -138,7 +138,7 @@ void elasticApmModuleInit( int type, int moduleNumber )
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
+    registerElasticApmIniEntries( moduleType, moduleNumber, &tracer->iniEntriesRegistrationState );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
@@ -179,13 +179,11 @@ void elasticApmModuleInit( int type, int moduleNumber )
     goto finally;
 }
 
-void elasticApmModuleShutdown( int type, int moduleNumber )
+void elasticApmModuleShutdown( int moduleType, int moduleNumber )
 {
-    ELASTIC_APM_UNUSED( type );
-
     ResultCode resultCode;
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "moduleType: %d, moduleNumber: %d", moduleType, moduleNumber );
 
     if ( ! doesCurrentPidMatchPidOnInit( g_pidOnModuleInit, "module" ) )
     {
@@ -213,7 +211,7 @@ void elasticApmModuleShutdown( int type, int moduleNumber )
         tracer->curlInited = false;
     }
 
-    unregisterElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
+    unregisterElasticApmIniEntries( moduleType, moduleNumber, &tracer->iniEntriesRegistrationState );
 
     resultCode = resultSuccess;
 

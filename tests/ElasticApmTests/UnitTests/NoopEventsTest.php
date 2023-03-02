@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
+use Closure;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
@@ -33,12 +34,17 @@ use ElasticApmTests\Util\TracerBuilderForTests;
 
 class NoopEventsTest extends TracerUnitTestCaseBase
 {
-    public function setUp(): void
+    /** @inheritDoc */
+    protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
-        $this->setUpTestEnv(
-            function (TracerBuilderForTests $builder): void {
-                $builder->withEnabled(false);
-            }
+        parent::setUpTestEnv(
+            function (TracerBuilderForTests $tracerBuilder) use ($tracerBuildCallback): void {
+                if ($tracerBuildCallback !== null) {
+                    $tracerBuildCallback($tracerBuilder);
+                }
+                $tracerBuilder->withEnabled(false);
+            },
+            $shouldCreateMockEventSink
         );
     }
 

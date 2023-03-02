@@ -625,4 +625,34 @@ class TestCaseBase extends TestCase
         }
         return $val == $optMeta->defaultValue();
     }
+
+    /**
+     * @param string|int          $key
+     * @param mixed               $expectedValue
+     * @param array<mixed, mixed> $array
+     * @param string              $message
+     *
+     * @return void
+     */
+    public static function assertArrayHasKeyWithValue($key, $expectedValue, array $array, string $message = ''): void
+    {
+        self::assertArrayHasKey($key, $array, $message);
+        self::assertSame($expectedValue, $array[$key], $message);
+    }
+
+    /**
+     * @return void
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+    }
+
+    /**
+     * @return void
+     */
+    public function tearDown(): void
+    {
+        parent::tearDown();
+    }
 }

@@ -387,19 +387,19 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         return $result;
     }
 
-    /** @noinspection PhpUnusedPrivateMethodInspection */
-    private static function generateOtherVendorKeyValuePairs(int $firstIndex, int $latIndex): string
-    {
-        TestCase::assertGreaterThanOrEqual($firstIndex, $latIndex);
-        $result = '';
-        foreach (RangeUtil::generateFromToIncluding($firstIndex, $latIndex) as $i) {
-            if ($i !== $firstIndex) {
-                $result .= ',';
-            }
-            $result .= 'v' . $i . '=_';
-        }
-        return $result;
-    }
+    // /** @noinspection PhpUnusedPrivateMethodInspection */
+    // private static function generateOtherVendorKeyValuePairs(int $firstIndex, int $latIndex): string
+    // {
+    //     TestCase::assertGreaterThanOrEqual($firstIndex, $latIndex);
+    //     $result = '';
+    //     foreach (RangeUtil::generateFromToIncluding($firstIndex, $latIndex) as $i) {
+    //         if ($i !== $firstIndex) {
+    //             $result .= ',';
+    //         }
+    //         $result .= 'v' . $i . '=_';
+    //     }
+    //     return $result;
+    // }
 
     // /**
     //  * @param ?string              $elasticVendorValue

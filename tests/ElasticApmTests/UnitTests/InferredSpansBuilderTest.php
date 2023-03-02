@@ -230,7 +230,6 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             $newStackTrace = [];
             $hasReachedTopOfStackTrace = false;
             foreach (ArrayUtilForTests::iterateListInReverse($inputStackTracesLines) as $line) {
-                $newFrame = new ClassicFormatStackTraceFrame();
                 if (strlen($line) >= ($columnIndex + 1) && !TextUtil::isEmptyString(trim($line[$columnIndex]))) {
                     self::assertFalse($hasReachedTopOfStackTrace);
                     $newStackTrace[] = self::charDiagramFuncNameToStackTraceFrame(/* funcName */ $line[$columnIndex]);
