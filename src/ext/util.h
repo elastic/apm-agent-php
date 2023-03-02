@@ -138,12 +138,13 @@ bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw1 );
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw2 );
 
-    if ( strVw1.length != strVw2.length )
-    {
-        return false;
-    }
+    if ( strVw1.length != strVw2.length ) return false;
 
-    return strncmp( strVw1.begin, strVw2.begin, strVw1.length ) == 0;
+    ELASTIC_APM_FOR_EACH_INDEX( i, strVw1.length )
+        if ( strVw1.begin[ i ] != strVw2.begin[ i ] )
+            return false;
+
+    return true;
 }
 
 static inline
