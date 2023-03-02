@@ -122,7 +122,12 @@ bool areStringsEqualIgnoringCase( String str1, String str2 )
     ELASTIC_APM_ASSERT_VALID_STRING( str2 );
 
     for ( const char *p1 = str1, *p2 = str2; areCharsEqualIgnoringCase( *p1, *p2 ) ; ++p1, ++p2 )
-        if ( *p1 == '\0' ) return true;
+    {
+        if ( *p1 == '\0' )
+        {
+            return true;
+        }
+    }
 
     return false;
 }
@@ -133,13 +138,12 @@ bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw1 );
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw2 );
 
-    if ( strVw1.length != strVw2.length ) return false;
+    if ( strVw1.length != strVw2.length )
+    {
+        return false;
+    }
 
-    ELASTIC_APM_FOR_EACH_INDEX( i, strVw1.length )
-        if ( strVw1.begin[ i ] != strVw2.begin[ i ] )
-            return false;
-
-    return true;
+    return strncmp( strVw1.begin, strVw2.begin, strVw1.length ) == 0;
 }
 
 static inline

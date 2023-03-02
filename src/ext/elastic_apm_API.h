@@ -46,3 +46,6 @@ ResultCode elasticApmSendToServer(
         , StringView serializedEvents );
 
 ResultCode replaceSleepWithResumingAfterSignalImpl();
+
+void elasticApmBeforeLoadingAgentPhpCode();
+void elasticApmAfterLoadingAgentPhpCode();

@@ -30,12 +30,10 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
  *
  * @internal
  */
-final class InstrumentationNames
+final class InstrumentationKeywords
 {
     use StaticClassTrait;
 
-    public const CURL = 'curl';
-    public const PDO = 'pdo';
-    public const MYSQLI = 'mysqli';
-    public const WORDPRESS = 'wordpress';
+    public const DB = 'db';
+    public const HTTP_CLIENT = 'http-client';
 }

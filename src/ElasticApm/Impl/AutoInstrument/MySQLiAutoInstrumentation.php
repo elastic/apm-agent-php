@@ -75,9 +75,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function isEnabled(): bool
+    public function doesNeedAttachContextToExternalObjects(): bool
     {
-        return MapPerWeakObject::isSupported() && parent::isEnabled();
+        return true;
     }
 
     /** @inheritDoc */
@@ -87,9 +87,9 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function otherNames(): array
+    public function keywords(): array
     {
-        return [InstrumentationNames::DB];
+        return [InstrumentationKeywords::DB];
     }
 
     /** @inheritDoc */

@@ -1,5 +1,3 @@
-<?php
-
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -19,23 +17,13 @@
  * under the License.
  */
 
-declare(strict_types=1);
+#pragma once
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+#include <zend_ast.h>
 
-use Elastic\Apm\Impl\Util\StaticClassTrait;
-
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class InstrumentationNames
-{
-    use StaticClassTrait;
-
-    public const CURL = 'curl';
-    public const PDO = 'pdo';
-    public const MYSQLI = 'mysqli';
-    public const WORDPRESS = 'wordpress';
-}
+void wordPressInstrumentationOnModuleInit();
+void wordPressInstrumentationOnModuleShutdown();
+void wordPressInstrumentationOnRequestInit();
+void wordPressInstrumentationOnRequestShutdown();
+void wordPressInstrumentationOnAstGlobal( zend_ast* astGlobal );
+zend_ast* wordPressInstrumentationOnAstFunction( zend_ast* astFuncDecl );

@@ -33,9 +33,17 @@ final class LoggerFactory
     /** @var Backend */
     private $backend;
 
-    public function __construct(Backend $backend)
+    /** @var array<string, mixed> */
+    public $context;
+
+    /**
+     * @param Backend              $backend
+     * @param array<string, mixed> $context
+     */
+    public function __construct(Backend $backend, array $context = [])
     {
         $this->backend = $backend;
+        $this->context = $context;
     }
 
     /**
@@ -52,7 +60,7 @@ final class LoggerFactory
         string $fqClassName,
         string $srcCodeFile
     ): Logger {
-        return Logger::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $this->backend);
+        return Logger::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $this->context, $this->backend);
     }
 
     public function getBackend(): Backend
@@ -63,5 +71,35 @@ final class LoggerFactory
     public function isEnabledForLevel(int $level): bool
     {
         return $this->backend->isEnabledForLevel($level);
+    }
+
+    public function inherit(): self
+    {
+        return new self($this->backend);
+    }
+
+    /**
+     * @param string $key
+     * @param mixed  $value
+     *
+     * @return self
+     */
+    public function addContext(string $key, $value): self
+    {
+        $this->context[$key] = $value;
+        return $this;
+    }
+
+    /**
+     * @param array<string, mixed> $keyValuePairs
+     *
+     * @return self
+     */
+    public function addAllContext(array $keyValuePairs): self
+    {
+        foreach ($keyValuePairs as $key => $value) {
+            $this->addContext($key, $value);
+        }
+        return $this;
     }
 }

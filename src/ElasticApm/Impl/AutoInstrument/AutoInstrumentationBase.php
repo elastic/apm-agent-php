@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\AutoInstrument\Util\MapPerWeakObject;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
@@ -56,24 +58,42 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     }
 
     /** @inheritDoc */
-    public function isEnabled(): bool
+    public function isEnabled(?string &$reason = null): bool
     {
+        if ($this->doesNeedAttachContextToExternalObjects() && !MapPerWeakObject::isSupported()) {
+            $reason = 'Instrumentation ' . $this->name() . ' needs to attach context to external objects'
+                      . ' but none of the MapPerWeakObject implementations is supported by the current environment';
+            return false;
+        }
+
         $disabledInstrumentationsMatcher = $this->tracer->getConfig()->disableInstrumentations();
         if ($disabledInstrumentationsMatcher === null) {
             return true;
         }
 
         if ($disabledInstrumentationsMatcher->match($this->name()) !== null) {
+            $reason = 'name (`' . $this->name() . '\') is matched by '
+                      . OptionNames::DISABLE_INSTRUMENTATIONS . ' configuration option';
             return false;
         }
 
-        foreach ($this->otherNames() as $otherName) {
-            if ($disabledInstrumentationsMatcher->match($otherName) !== null) {
+        foreach ($this->keywords() as $keyword) {
+            if ($disabledInstrumentationsMatcher->match($keyword) !== null) {
+                $reason = 'one of keywords (`' . $keyword . '\') is matched by '
+                          . OptionNames::DISABLE_INSTRUMENTATIONS . ' configuration option';
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function doesNeedAttachContextToExternalObjects(): bool
+    {
+        return false;
     }
 
     /**

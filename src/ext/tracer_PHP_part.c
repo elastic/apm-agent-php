@@ -22,6 +22,7 @@
 #include "Tracer.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "elastic_apm_API.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
@@ -36,6 +37,8 @@
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
+    elasticApmBeforeLoadingAgentPhpCode();
+
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
@@ -79,6 +82,7 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
     finally:
     zval_dtor( &requestInitStartTimeZval );
     zval_dtor( &maxEnabledLevel );
+    elasticApmAfterLoadingAgentPhpCode();
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 

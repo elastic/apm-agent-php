@@ -139,6 +139,7 @@ PHP_INI_BEGIN()
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
@@ -635,6 +636,27 @@ PHP_FUNCTION( elastic_apm_get_last_php_error )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_before_loading_agent_php_code_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_before_loading_agent_php_code(): void
+ */
+PHP_FUNCTION( elastic_apm_before_loading_agent_php_code )
+{
+    elasticApmBeforeLoadingAgentPhpCode();
+}
+/* }}} */
+
+
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_after_loading_agent_php_code_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_after_loading_agent_php_code(): void
+ */
+PHP_FUNCTION( elastic_apm_after_loading_agent_php_code )
+{
+    elasticApmAfterLoadingAgentPhpCode();
+}
+/* }}} */
+
 /* {{{ arginfo
  */
 ZEND_BEGIN_ARG_INFO(elastic_apm_no_paramters_arginfo, 0)
@@ -655,6 +677,8 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_force_init_server_global_var, elastic_apm_force_init_server_global_var_arginfo )
     PHP_FE( elastic_apm_get_last_thrown, elastic_apm_get_last_thrown_arginfo )
     PHP_FE( elastic_apm_get_last_php_error, elastic_apm_get_last_php_error_arginfo )
+    PHP_FE( elastic_apm_before_loading_agent_php_code, elastic_apm_before_loading_agent_php_code_arginfo )
+    PHP_FE( elastic_apm_after_loading_agent_php_code, elastic_apm_after_loading_agent_php_code_arginfo )
     PHP_FE_END
 };
 /* }}} */

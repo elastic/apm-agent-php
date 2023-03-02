@@ -680,6 +680,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, astProcessEnabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
@@ -836,6 +837,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             assertLevelNames,
             /* isUniquePrefixEnough: */ true );
     #endif
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            astProcessEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED,
+            /* defaultValue: */ true );
 
     ELASTIC_APM_INIT_METADATA(
             buildOptionalBoolOptionMetadata,
@@ -1505,7 +1512,6 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
     ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
-static
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );

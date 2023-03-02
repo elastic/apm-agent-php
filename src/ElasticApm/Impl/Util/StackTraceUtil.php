@@ -59,15 +59,15 @@ final class StackTraceUtil
     private static $cachedElasticApmFilePrefix = null;
 
     /**
-     * @param LoggerFactory $loggerFactory
-     * @param int           $offset
-     * @param int           $options
-     * @param int           $limit
+     * @param ?LoggerFactory $loggerFactory
+     * @param int            $offset
+     * @param int            $options
+     * @param int            $limit
      *
      * @return ClassicFormatStackTraceFrame[]
      */
     public static function captureInClassicFormatExcludeElasticApm(
-        LoggerFactory $loggerFactory,
+        ?LoggerFactory $loggerFactory,
         int $offset = 0,
         int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
         int $limit = 0

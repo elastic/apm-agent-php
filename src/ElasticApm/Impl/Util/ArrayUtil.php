@@ -54,16 +54,14 @@ final class ArrayUtil
     }
 
     /**
-     * @param string|int               $key
-     * @param array<string|int, mixed> $array
-     * @param mixed                    $fallbackValue
+     * @template TKey of string|int
+     * @template TValue
      *
-     * @return mixed
+     * @param TKey                $key
+     * @param array<TKey, TValue> $array
+     * @param TValue              $fallbackValue
      *
-     * @template        T
-     * @phpstan-param   T[] $array
-     * @phpstan-param   T   $fallbackValue
-     * @phpstan-return  T
+     * @return TValue
      */
     public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
@@ -159,17 +157,15 @@ final class ArrayUtil
     }
 
     /**
-     * @param string        $key
-     * @param mixed         $defaultValue
-     * @param array<mixed>  $array
-     * @return mixed
+     * @template T
      *
-     * @template        T
-     * @phpstan-param   T   $defaultValue
-     * @phpstan-param   T[] $array
-     * @phpstan-return  T
+     * @param string           $key
+     * @param T                $defaultValue
+     * @param array<string, T> $array
+     *
+     * @return T
      */
-    public static function &getOrAdd(string $key, $defaultValue, array $array)
+    public static function & getOrAdd(string $key, $defaultValue, array &$array)
     {
         if (!array_key_exists($key, $array)) {
             $array[$key] = $defaultValue;

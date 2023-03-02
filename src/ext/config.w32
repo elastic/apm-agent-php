@@ -33,6 +33,7 @@ if (PHP_ELASTIC_APM != 'no') {
             "tracer_PHP_part.c" + " " +
             "util.c" + " " +
             "util_for_PHP.c" + " " +
+            "WordPress_instrumentation.c" + " " +
             "";
 
         EXTENSION('elastic_apm', ELASTIC_APM_PHP_EXT_SOURCES, null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');

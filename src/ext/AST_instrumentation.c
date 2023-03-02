@@ -23,14 +23,30 @@
 #include <zend_ast.h>
 #include <zend_compile.h>
 #include <zend_arena.h>
+#include <zend_API.h>
 #include "util.h"
+#include "util_for_PHP.h"
+#include "StringView.h"
+#include "WordPress_instrumentation.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_AUTO_INSTRUMENT
 
-zend_ast_process_t original_zend_ast_process;
+static bool isOriginalZendAstProcessSet = false;
+static zend_ast_process_t originalZendAstProcess = NULL;
 
-#define ZEND_AST_ALLOC( size ) zend_arena_alloc(&CG(ast_arena), size);
+//#define ZEND_AST_ALLOC( size ) zend_arena_alloc(&CG(ast_arena), size);
 
+static bool isLoadingAgentPhpCode = false;
+
+void elasticApmBeforeLoadingAgentPhpCode()
+{
+    isLoadingAgentPhpCode = true;
+}
+
+void elasticApmAfterLoadingAgentPhpCode()
+{
+    isLoadingAgentPhpCode = false;
+}
 
 String zendAstKindToString( zend_ast_kind kind )
 {
@@ -209,69 +225,9 @@ String zendAstKindToString( zend_ast_kind kind )
 #   undef ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE
 }
 
-static inline
-size_t calcAstListAllocSize( uint32_t children )
+String streamZendAstKind( zend_ast_kind kind, TextOutputStream* txtOutStream )
 {
-    return sizeof( zend_ast_list ) - sizeof( zend_ast* ) + sizeof( zend_ast* ) * children;
-}
-
-static
-zend_ast* createZvalAst( zval* zv, uint32_t attr, uint32_t lineno )
-{
-    #if PHP_VERSION_ID >= 70300 /* if PHP version is 7.3.0 and later */
-    zend_ast* ast = zend_ast_create_zval_with_lineno( zv, lineno );
-    ast->attr = attr;
-    #else
-    zend_ast* ast = zend_ast_create_zval_with_lineno( zv, attr, lineno );
-    #endif
-
-    return ast;
-}
-
-static
-zend_ast* createStringAst( char* str, size_t len, uint32_t attr, uint32_t lineno )
-{
-    zval zv;
-    zend_ast* ast;
-    ZVAL_NEW_STR( &zv, zend_string_init( str, len, 0 ) );
-    ast = createZvalAst( &zv, attr, /* lineno */ 0 );
-    return ast;
-}
-
-static
-zend_ast* createCatchTypeAst( uint32_t lineno )
-{
-    zend_ast * name = createStringAst( "Throwable", sizeof( "Throwable" ) - 1, ZEND_NAME_FQ, lineno );
-    return zend_ast_create_list( 1, ZEND_AST_NAME_LIST, name );
-}
-
-static
-zend_ast* createCatchAst( uint32_t lineno )
-{
-    zend_ast * exVarNameAst = createStringAst( "ex", sizeof( "ex" ) - 1, /* attr: */ 0, lineno );
-    zend_ast * catchTypeAst = createCatchTypeAst( lineno );
-
-    zend_ast * instrumentationPostHookCallAst =
-            zend_ast_create( ZEND_AST_CALL
-                             , createStringAst( "instrumentationPostHookException", sizeof( "instrumentationPostHookException" ) - 1, ZEND_NAME_FQ, lineno )
-                             , zend_ast_create_list( 1
-                                                     , ZEND_AST_ARG_LIST
-                                                     , zend_ast_create( ZEND_AST_VAR
-                                                                        , createStringAst( "ex", sizeof( "ex" ) - 1, /* attr: */ 0, lineno ) )
-            ) );
-
-    zend_ast * throwAst = zend_ast_create( ZEND_AST_THROW, instrumentationPostHookCallAst );
-    throwAst->lineno = lineno;
-    zend_ast * throwStmtListAst = zend_ast_create_list( 1, ZEND_AST_STMT_LIST, throwAst );
-    throwStmtListAst->lineno = lineno;
-    zend_ast * catchAst = zend_ast_create_list( 1
-                                                , ZEND_AST_CATCH_LIST
-                                                , zend_ast_create( ZEND_AST_CATCH
-                                                                   , catchTypeAst
-                                                                   , exVarNameAst
-                                                                   , throwStmtListAst ) );
-    catchAst->lineno = lineno;
-    return catchAst;
+    streamPrintf( txtOutStream, "%s (%d)", zendAstKindToString( kind ), (int)kind );
 }
 
 struct TransformContext
@@ -291,233 +247,817 @@ TransformContext makeTransformContext( TransformContext* base, bool isInsideFunc
     return transformCtx;
 }
 
-static
-zend_ast* transformAst( zend_ast* ast, int nestingDepth );
+zend_ast* transformAst( zend_ast* inAst, int nestingDepth );
 
-static
-zend_ast* transformFunctionAst( zend_ast* originalAst, int nestingDepth )
+void visitAstGlobal( zend_ast* astGlobal )
 {
-    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( originalAst->kind ) );
-
-    zend_ast * transformedAst;
-    zend_ast_decl* funcDeclAst = (zend_ast_decl*) originalAst;
-
-    TransformContext savedTransformCtx = makeTransformContext(
-            &g_transformContext
-            , /* isInsideFunction: */ true
-            , /* isFunctionRetByRef */ funcDeclAst->flags & ZEND_ACC_RETURN_REFERENCE );
-
-    if ( ! isStringViewPrefixIgnoringCase( stringToView( ZSTR_VAL( funcDeclAst->name ) )
-                                           , ELASTIC_APM_STRING_LITERAL_TO_VIEW( "functionToInstrument" ) ) )
-    {
-        transformedAst = originalAst;
-        goto finally;
-    }
-
-    zend_ast_list* funcStmtListAst = zend_ast_get_list( funcDeclAst->child[ 2 ] );
-
-    // guess at feasible line numbers
-    uint32_t funcStmtBeginLineNumber = funcStmtListAst->lineno;
-    uint32_t funcStmtEndLineNumber = funcStmtListAst->child[ funcStmtListAst->children - 1 ]->lineno;
-
-    zend_ast * callInstrumentationPreHookAst =
-            zend_ast_create(
-                    ZEND_AST_CALL
-                    , createStringAst( "instrumentationPreHook", sizeof( "instrumentationPreHook" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
-                    , zend_ast_create_list( 1
-                                            , ZEND_AST_ARG_LIST
-                                            , zend_ast_create( ZEND_AST_CALL
-                                                               , createStringAst( "func_get_args", sizeof( "func_get_args" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
-                                                               , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) )
-            ) );
-
-    zend_ast * callInstrumentationPostHookAst =
-            zend_ast_create(
-                    ZEND_AST_CALL
-                    , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
-                    , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) );
-
-    zend_ast * catchAst = createCatchAst( funcStmtEndLineNumber );
-    zend_ast * finallyAst = NULL;
-
-    zend_ast * tryCatchAst = zend_ast_create( ZEND_AST_TRY, transformAst( funcDeclAst->child[ 2 ], nestingDepth + 1 ), catchAst, finallyAst );
-    tryCatchAst->lineno = funcStmtBeginLineNumber;
-    zend_ast_list* newFuncBodyAst = ZEND_AST_ALLOC( calcAstListAllocSize( 3 ) );
-    newFuncBodyAst->kind = ZEND_AST_STMT_LIST;
-    newFuncBodyAst->lineno = funcStmtBeginLineNumber;
-    newFuncBodyAst->children = 3;
-    newFuncBodyAst->child[ 0 ] = callInstrumentationPreHookAst;
-    newFuncBodyAst->child[ 1 ] = tryCatchAst;
-    newFuncBodyAst->child[ 2 ] = callInstrumentationPostHookAst;
-    funcDeclAst->child[ 2 ] = (zend_ast*) newFuncBodyAst;
-    transformedAst = originalAst;
-
-    finally:
-    g_transformContext = savedTransformCtx;
-    textOutputStreamRewind( &txtOutStream );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( transformedAst->kind ) );
-    return transformedAst;
+    wordPressInstrumentationOnAstGlobal( astGlobal );
 }
 
-static
-zend_ast* transformReturnAst( zend_ast* originalAst, int nestingDepth )
+bool getStringFromAstZval( zend_ast* astZval, /* out */ StringView* pResult )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( originalAst->kind ) );
 
-    zend_ast * transformedAst;
-
-    // if there isn't an active function then don't wrap it
-    // e.g. return at file scope
-    if ( ! g_transformContext.isInsideFunction )
+    if ( astZval->kind != ZEND_AST_ZVAL )
     {
-        transformedAst = originalAst;
-        goto finally;
+        ELASTIC_APM_LOG_TRACE( "Returning false - astZval->kind: %s", streamZendAstKind( astZval->kind, &txtOutStream ) );
+        return false;
     }
 
-    zend_ast * returnExprAst = originalAst->child[ 0 ];
-    // If it's an empty return;
-    if ( returnExprAst == NULL )
+    zval* zVal = zend_ast_get_zval( astZval );
+    if ( zVal == NULL )
     {
-        zend_ast * callInstrumentationPostHookAst = zend_ast_create(
-                ZEND_AST_CALL
-                , createStringAst( "instrumentationPostHookRetVoid", sizeof( "instrumentationPostHookRetVoid" ) - 1, ZEND_NAME_FQ, originalAst->lineno )
-                , zend_ast_create_list( 0, ZEND_AST_ARG_LIST ) );
-        transformedAst = zend_ast_create_list( 2, ZEND_AST_STMT_LIST, callInstrumentationPostHookAst, originalAst );
-        goto finally;
+        ELASTIC_APM_LOG_TRACE( "Returning false - zVal == NULL" );
+        return false;
+    }
+    int zValType = (int)Z_TYPE_P( zVal );
+    if ( zValType != IS_STRING )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - zValType: %s (%d)", zend_get_type_by_const( zValType ), (int)zValType );
+        return false;
     }
 
-    // Either: return by reference or not
-    char* name;
-    size_t len;
-    if ( g_transformContext.isFunctionRetByRef )
-    {
-        name = "instrumentationPostHookRetByRef";
-        len = sizeof( "instrumentationPostHookRetByRef" ) - 1;
-    }
-    else
-    {
-        name = "instrumentationPostHookRetNotByRef";
-        len = sizeof( "instrumentationPostHookRetNotByRef" ) - 1;
-    }
-    zend_ast * callInstrumentationPostHookAst = zend_ast_create(
-            ZEND_AST_CALL
-            , createStringAst( name, len, ZEND_NAME_FQ, originalAst->lineno )
-            , zend_ast_create_list( 1, ZEND_AST_ARG_LIST, returnExprAst ) );
-    originalAst->child[ 0 ] = callInstrumentationPostHookAst;
-    transformedAst = originalAst;
-
-    finally:
-    textOutputStreamRewind( &txtOutStream );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( transformedAst->kind ) );
-    return transformedAst;
+    zend_string* zString = Z_STR_P( zVal );
+    *pResult = zStringToStringView( zString );
+    ELASTIC_APM_LOG_TRACE( "Returning true - with result string [length: %"PRIu64"]: %.*s", (UInt64)(pResult->length), (int)(pResult->length), pResult->begin );
+    return true;
 }
 
-static
-zend_ast* transformChildrenAst( zend_ast* ast, int nestingDepth )
+bool getAstGlobalName( zend_ast* astGlobal, /* out */ StringView* name )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( ast->kind ) );
 
-    zend_ast * transformedAst = ast;
+    ELASTIC_APM_ASSERT( astGlobal->kind == ZEND_AST_GLOBAL, "astGlobal->kind: %s", streamZendAstKind( astGlobal->kind, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
 
-    uint32_t childrenCount = zend_ast_get_num_children( ast );
+    uint32_t astGlobalChildrenCount = zend_ast_get_num_children( astGlobal );
+    if ( astGlobalChildrenCount < 1 )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astGlobalChildrenCount: %d", (int)astGlobalChildrenCount );
+        return false;
+    }
+
+    zend_ast* astGlobalChild = astGlobal->child[ 0 ];
+    if ( astGlobalChild == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astGlobalChild == NULL" );
+        return false;
+    }
+    if ( astGlobalChild->kind != ZEND_AST_VAR )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astGlobalChild->kind: %s", streamZendAstKind( astGlobalChild->kind, &txtOutStream ) );
+        return false;
+    }
+    uint32_t astGlobalChildChildrenCount = zend_ast_get_num_children( astGlobalChild );
+    if ( astGlobalChildChildrenCount < 1 )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astGlobalChildChildrenCount: %d", (int)astGlobalChildChildrenCount );
+        return false;
+    }
+
+    zend_ast* astGlobalGrandChild = astGlobalChild->child[ 0 ];
+    if ( astGlobalGrandChild == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astGlobalGrandChild == NULL" );
+        return false;
+    }
+
+    return getStringFromAstZval( astGlobalGrandChild, /* out */ name );
+}
+
+bool getAstFunctionName( zend_ast* astFunction, /* out */ StringView* name )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_ASSERT( astFunction->kind == ZEND_AST_FUNC_DECL, "astFunction->kind: %s", streamZendAstKind( astFunction->kind, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    zend_ast_decl* astFunctionAsDecl = (zend_ast_decl*)astFunction;
+
+    if ( astFunctionAsDecl->name == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astFunctionAsDecl->name == NULL" );
+        return false;
+    }
+
+    *name = zStringToStringView( astFunctionAsDecl->name );
+    ELASTIC_APM_LOG_TRACE( "Returning true - name [length: %"PRIu64"]: %.*s", (UInt64)(name->length), (int)(name->length), name->begin );
+    return true;
+}
+
+bool getAstFunctionParameterName( zend_ast* funcDeclAst, unsigned int parameterIndex, /* out */ StringView* name )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_ASSERT( funcDeclAst->kind == ZEND_AST_FUNC_DECL, "astFunc->kind: %s", streamZendAstKind( funcDeclAst->kind, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    zend_ast_decl* astFuncAsDecl = (zend_ast_decl*)funcDeclAst;
+    zend_ast* astFuncParams = astFuncAsDecl->child[ 0 ]; // function list of parameters is always child[ 0 ]
+    if ( astFuncParams->kind != ZEND_AST_PARAM_LIST || ! zend_ast_is_list( astFuncParams )  )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - zend_ast_is_list( astFuncParams ): %s, astFuncParams->kind: %s"
+                               , boolToString( zend_ast_is_list( astFuncParams ) ), streamZendAstKind( astFuncParams->kind, &txtOutStream ) );
+        textOutputStreamRewind( &txtOutStream );
+        return false;
+    }
+    zend_ast_list* astFuncParamsAsList = zend_ast_get_list( astFuncParams );
+
+    if ( parameterIndex >= astFuncParamsAsList->children )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - astFuncParamsAsList->children: %d, parameterIndex: %d", (int)astFuncParamsAsList->children, (int)parameterIndex );
+        return false;
+    }
+
+    zend_ast* param = astFuncParamsAsList->child[ parameterIndex ];
+    if ( param == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - param == NULL" );
+        return false;
+    }
+
+    if ( param->kind != ZEND_AST_PARAM )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - param->kind: %s", streamZendAstKind( param->kind, &txtOutStream ) );
+        textOutputStreamRewind( &txtOutStream );
+        return false;
+    }
+
+    if ( zend_ast_get_num_children( param ) == 0 )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - zend_ast_get_num_children( param ): %d", (int)zend_ast_get_num_children( param ) );
+        return false;
+    }
+
+    zend_ast* nameAst = param->child[ 1 ]; // parameter name is in child[ 1 ]->val
+    if ( nameAst == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "Returning false - nameAst == NULL" );
+        return false;
+    }
+
+    return getStringFromAstZval( nameAst, /* out */ name );
+}
+
+void dbgDumpAst( zend_ast* ast, UInt32 nestingDepth );
+
+void dbgDumpAstPrint( String text, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE( "%s%s", streamIndent( nestingDepth, &txtOutStream ), text );
+}
+
+void dbgDumpAstNodeData( zend_ast_kind kind, uint32_t lineNumber, zend_ast_attr attr, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    dbgDumpAstPrint( streamPrintf( &txtOutStream, "%s (line: %u, attr: %u)", streamZendAstKind( kind, &txtOutStream ), (unsigned)lineNumber, (unsigned)attr ), nestingDepth );
+}
+
+void dbgDumpAstNode( zend_ast* ast, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    if ( ast == NULL )
+    {
+        dbgDumpAstPrint( "NULL", nestingDepth );
+        return;
+    }
+
+    dbgDumpAstNodeData( ast->kind, zend_ast_get_lineno( ast ), ast->attr, nestingDepth );
+}
+
+String dbgDumpAstZvalStreamVal( zend_ast* ast, TextOutputStream* txtOutStream )
+{
+    zval* zVal = zend_ast_get_zval( ast );
+    if ( zVal == NULL )
+    {
+        return "ast->val is NULL";
+    }
+
+    int zValType = (int)Z_TYPE_P( zVal );
+    switch ( zValType )
+    {
+        case IS_STRING:
+        {
+            StringView strVw = zStringToStringView( Z_STR_P( zVal ) );
+            return streamPrintf( txtOutStream, "type: string, value [length: %"PRIu64"]: %.*s", (UInt64)(strVw.length), (int)(strVw.length), strVw.begin );
+        }
+
+        case IS_LONG:
+            return streamPrintf( txtOutStream, "type: long, value: %"PRId64, (Int64)(Z_LVAL_P( zVal )) );
+
+        case IS_DOUBLE:
+            return streamPrintf( txtOutStream, "type: double, value: %f", (double)(Z_DVAL_P( zVal )) );
+
+        case IS_NULL:
+            return streamPrintf( txtOutStream, "type: null" );
+
+        case IS_FALSE:
+            return streamPrintf( txtOutStream, "type: false" );
+        case IS_TRUE:
+            return streamPrintf( txtOutStream, "type: true " );
+
+        default:
+            return streamPrintf( txtOutStream, "type: %s (%d)", zend_get_type_by_const( zValType ), (int)zValType );
+    }
+}
+
+void dbgDumpAstZval( zend_ast* ast, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    dbgDumpAstPrint(
+            streamPrintf(
+                    &txtOutStream
+                    , "%s (line: %d, attr: %d) [%s]"
+                    , streamZendAstKind( ast->kind, &txtOutStream )
+                    , (int)zend_ast_get_lineno( ast )
+                    , (int)(ast->attr)
+                    , dbgDumpAstZvalStreamVal( ast, &txtOutStream )
+            )
+            , nestingDepth
+    );
+}
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void dbgDumpAstGenericWithChildren( zend_ast* ast, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    dbgDumpAstNode( ast, nestingDepth );
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, zend_ast_get_num_children( ast ) )
+    {
+        dbgDumpAst( ast->child[ i ], nestingDepth + 1 );
+    }
+}
+#pragma clang diagnostic pop
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void dbgDumpAstList( zend_ast* ast, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    zend_ast_list* astAsList = zend_ast_get_list( ast );
+    dbgDumpAstNodeData( astAsList->kind, astAsList->lineno, astAsList->attr, nestingDepth );
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, astAsList->children )
+    {
+        dbgDumpAst( astAsList->child[ i ], nestingDepth + 1 );
+    }
+}
+#pragma clang diagnostic pop
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void dbgDumpAstDeclWithChildren( zend_ast* ast, UInt32 childrenCount, UInt32 nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    dbgDumpAstNode( ast, nestingDepth );
+
+    zend_ast_decl* astAsDecl = (zend_ast_decl*)ast;
     ELASTIC_APM_FOR_EACH_INDEX( i, childrenCount )
     {
-        if ( ast->child[ i ] != NULL )
-        {
-            ast->child[ i ] = transformAst( ast->child[ i ], nestingDepth + 1 );
-        }
+        dbgDumpAst( astAsDecl->child[ i ], nestingDepth + 1 );
+    }
+}
+#pragma clang diagnostic pop
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void dbgDumpAst( zend_ast* ast, UInt32 nestingDepth )
+{
+    if ( ast == NULL )
+    {
+        dbgDumpAstNode( ast, nestingDepth );
+        return;
     }
 
-    textOutputStreamRewind( &txtOutStream );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( transformedAst->kind ) );
-    return transformedAst;
-}
-
-static
-zend_ast* transformAst( zend_ast* ast, int nestingDepth )
-{
-    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( ast->kind ) );
-
-    zend_ast * transformedAst;
-
-    if ( zend_ast_is_list( ast ) )
+    if ( zend_ast_is_list( ast )  )
     {
-        zend_ast_list* list = zend_ast_get_list( ast );
-        uint32_t i;
-        for ( i = 0 ; i < list->children ; i ++ )
-        {
-            if ( list->child[ i ] )
-            {
-                list->child[ i ] = transformAst( list->child[ i ], nestingDepth + 1 );
-            }
-        }
-        transformedAst = ast;
-        goto finally;
+        dbgDumpAstList( ast, nestingDepth );
+        return;
     }
 
     switch ( ast->kind )
     {
+        case ZEND_AST_FUNC_DECL:
+            dbgDumpAstDeclWithChildren( ast, /* childrenCount */ 3, nestingDepth );
+            break;
+
+        case ZEND_AST_ARRAY_ELEM:
+        case ZEND_AST_CALL:
+        case ZEND_AST_GLOBAL:
+        case ZEND_AST_METHOD_CALL:
+        case ZEND_AST_PARAM:
+        case ZEND_AST_STATIC_CALL:
+        case ZEND_AST_VAR:
+            dbgDumpAstGenericWithChildren( ast, nestingDepth );
+            break;
+
         case ZEND_AST_ZVAL:
-        #ifdef ZEND_AST_CONSTANT
-        case ZEND_AST_CONSTANT:
-        #endif
-            transformedAst = ast;
+            dbgDumpAstZval( ast, nestingDepth );
+            break;
+
+        default:
+            dbgDumpAstNode( ast, nestingDepth );
+    }
+}
+#pragma clang diagnostic pop
+
+void zendStringReleaseAndNull( zend_string** inOutPtr )
+{
+    if ( *inOutPtr != NULL )
+    {
+        zend_string_release( *inOutPtr );
+        *inOutPtr = NULL;
+    }
+}
+
+void destroyAstAndNull( zend_ast** inOutPtr )
+{
+    if ( *inOutPtr != NULL )
+    {
+        zend_ast_destroy( *inOutPtr );
+        *inOutPtr = NULL;
+    }
+}
+
+ResultCode createZString( StringView inStr, zend_string** pResult )
+{
+    zend_string* localResult = zend_string_init( inStr.begin, inStr.length, /* persistent: */ 0 );
+    if ( localResult == NULL )
+    {
+        return resultOutOfMemory;
+    }
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    return resultSuccess;
+}
+
+ResultCode createAstWithOneChild( zend_ast_kind kind, zend_ast* child, zend_ast** pResult )
+{
+    ResultCode resultCode;
+    zend_ast* localResult = NULL;
+
+    localResult = zend_ast_create( kind, /* children: */ child );
+    if ( localResult == NULL )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultOutOfMemory );
+    }
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    goto finally;
+}
+
+ResultCode createAstWithAttributeAndTwoChildren( zend_ast_kind kind, zend_ast_attr attr, zend_ast* child1, zend_ast* child2, zend_ast** pResult )
+{
+    ResultCode resultCode;
+    zend_ast* localResult = NULL;
+
+    localResult = zend_ast_create_ex( kind, attr, /* children: */ child1, child2 );
+    if ( localResult == NULL )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultOutOfMemory );
+    }
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    goto finally;
+}
+
+ResultCode createAstWithThreeChildren( zend_ast_kind kind, zend_ast* child1, zend_ast* child2, zend_ast* child3, zend_ast** pResult )
+{
+    ResultCode resultCode;
+    zend_ast* localResult = NULL;
+
+    localResult = zend_ast_create( kind, /* children: */ child1, child2, child3 );
+    if ( localResult == NULL )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultOutOfMemory );
+    }
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    goto finally;
+}
+
+ResultCode createAstZVal( zval* zv, uint32_t lineNumber, zend_ast** pResult )
+{
+    #if PHP_VERSION_ID >= 70300 /* if PHP version is 7.3.0 and later */
+    zend_ast* localResult = zend_ast_create_zval_with_lineno( zv, lineNumber );
+    #else
+    zend_ast* localResult = zend_ast_create_zval_with_lineno( zv, /* attr */ 0, lineNumber );
+    #endif
+    if ( localResult == NULL )
+    {
+        return resultOutOfMemory;
+    }
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    return resultSuccess;
+}
+
+ResultCode createAstZValString( StringView inStr, uint32_t lineNumber, zend_ast** pResult )
+{
+    ResultCode resultCode;
+    zend_string* asZString = NULL;
+    zval stringAsZVal;
+    zend_ast* localResult = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createZString( inStr, /* out */ &asZString ) );
+    ZVAL_NEW_STR( &stringAsZVal, asZString );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstZVal( &stringAsZVal, lineNumber, /* out */ &localResult ) );
+    asZString = NULL;
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    zendStringReleaseAndNull( &asZString );
+    goto finally;
+}
+
+ResultCode createAstVar( StringView name, uint32_t lineNumber, zend_ast** pResult )
+{
+    //    ZEND_AST_VAR (256) (line: 121)
+    //        ZEND_AST_ZVAL (64) (line: 483) [type: string, value [length: 9]: hook_name]
+
+    ResultCode resultCode;
+    zend_ast* nameAst = NULL;
+    zend_ast* localResult = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstZValString( name, lineNumber, /* out */ &nameAst ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstWithOneChild( /* kind */ ZEND_AST_VAR, /* child */ nameAst, /* out */ &localResult ) );
+    nameAst = NULL;
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    destroyAstAndNull( &nameAst );
+    goto finally;
+}
+
+ResultCode createAstList( zend_ast_kind kind, uint32_t lineNumber, zend_ast** pResult )
+{
+    zend_ast* localResult = zend_ast_create_list( /* init_children */ 0, kind );
+    if ( localResult == NULL )
+    {
+        return resultOutOfMemory;
+    }
+    ((zend_ast_list*)localResult)->lineno = lineNumber;
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    return resultSuccess;
+}
+
+ResultCode addToAstList( zend_ast* newElement, zend_ast** pInSrcListOutNewList )
+{
+    zend_ast* localResult = zend_ast_list_add( /* in */ *pInSrcListOutNewList, newElement );
+    if ( localResult == NULL )
+    {
+        return resultOutOfMemory;
+    }
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pInSrcListOutNewList );
+    return resultSuccess;
+}
+
+ResultCode createAstArrayForParameters( zend_ast* funcDeclAst, BoolArrayView shouldPassParameterByRef, zend_ast** pResult )
+{
+    //                ZEND_AST_ARRAY (129) (line: 121, attr: 3) <- [$hook_name, /* ref */ &$callback] and 3 == ZEND_ARRAY_SYNTAX_SHORT
+    //                    ZEND_AST_ARRAY_ELEM (526) (line: 121, attr: 0)
+    //                        ZEND_AST_VAR (256) (line: 121, attr: 0)
+    //                            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 9]: hook_name]
+    //                        NULL
+    //                    ZEND_AST_ARRAY_ELEM (526) (line: 121, attr: 1) <- attr == 1 because callback variable is taken by reference
+    //                        ZEND_AST_VAR (256) (line: 121, attr: 0)
+    //                            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 8]: callback]
+    //                        NULL
+
+    ResultCode resultCode;
+    uint32_t lineNumber = zend_ast_get_lineno( funcDeclAst );
+    zend_ast* varAst = NULL;
+    zend_ast* arrayElementAst = NULL;
+    zend_ast* localResult = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstList( ZEND_AST_ARRAY, lineNumber, /* out */ &localResult ) );
+    ((zend_ast_list*)localResult)->attr = ZEND_ARRAY_SYNTAX_SHORT;
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, shouldPassParameterByRef.size )
+    {
+        StringView parameterName;
+        // ZEND_AST_ARRAY_ELEM attribute should be 1 when passed by reference and 0 when passed by value
+        zend_ast_attr arrayElemAttr = shouldPassParameterByRef.values[ i ] ? 1 : 0;
+        if ( ! getAstFunctionParameterName( funcDeclAst, /* parameterIndex */ i, /* out */ &( parameterName ) ) )
+        {
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        }
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstVar( parameterName, lineNumber, /* out */ &varAst ) );
+
+        // Array element value is the first child (i.e., index 0) and array element key is the second child (i.e., index 1)
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstWithAttributeAndTwoChildren(
+                ZEND_AST_ARRAY_ELEM
+                , arrayElemAttr
+                , /* array element value: */ varAst
+                , /* array element key: */ NULL
+                , /* out */ &arrayElementAst ) );
+        varAst = NULL;
+
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( addToAstList( arrayElementAst, /* out */ &localResult ) );
+        arrayElementAst = NULL;
+    }
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    destroyAstAndNull( &arrayElementAst );
+    destroyAstAndNull( &varAst );
+    goto finally;
+}
+
+ResultCode createAstStaticCall( StringView className, StringView methodName, zend_ast* argList, uint32_t lineNumber, zend_ast** pResult )
+{
+    //        ZEND_AST_STATIC_CALL (770) (line: 121)
+    //            ZEND_AST_ZVAL (64) (line: 0) [type: string, value [length: 60]: Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation]
+    //            ZEND_AST_ZVAL (64) (line: 483) [type: string, value [length: 29]: preprocessAddFilterParameters]
+    //            ZEND_AST_ARG_LIST (128) (line: 121)
+
+    ResultCode resultCode;
+    zend_ast* classNameAst = NULL;
+    zend_ast* methodNameAst = NULL;
+    zend_ast* localResult = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstZValString( className, lineNumber, /* out */ &classNameAst ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstZValString( methodName, lineNumber, /* out */ &methodNameAst ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstWithThreeChildren( ZEND_AST_STATIC_CALL, classNameAst, methodNameAst, argList, /* out */ &localResult ) );
+    classNameAst = NULL;
+    methodNameAst = NULL;
+
+    ELASTIC_APM_MOVE_PTR( /* in,out */ localResult, /* out */ *pResult );
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    destroyAstAndNull( &localResult );
+    destroyAstAndNull( &methodNameAst );
+    destroyAstAndNull( &classNameAst );
+    goto finally;
+}
+
+zend_ast* insertAstFunctionPreHook( zend_ast* funcDeclAst, StringView className, StringView methodName, BoolArrayView shouldPassParameterByRef )
+{
+    //    ZEND_AST_STMT_LIST (132) (line: 121, attr: 0) <- new body
+    //        ZEND_AST_STATIC_CALL (770) (line: 121, attr: 0)
+    //            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 45]: Elastic\Apm\Impl\AutoInstrument\PhpPartFacade]
+    //            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 26]: onWordPressFunctionPreHook]
+    //            ZEND_AST_ARG_LIST (128) (line: 121, attr: 0)
+    //                ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 10]: add_filter]
+    //                ZEND_AST_ARRAY (129) (line: 121, attr: 3) <- [$hook_name, /* ref */ &$callback]
+    //                    ZEND_AST_ARRAY_ELEM (526) (line: 121, attr: 0)
+    //                        ZEND_AST_VAR (256) (line: 121, attr: 0)
+    //                            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 9]: hook_name]
+    //                        NULL
+    //                    ZEND_AST_ARRAY_ELEM (526) (line: 121, attr: 1) <- &$callback
+    //                        ZEND_AST_VAR (256) (line: 121, attr: 0)
+    //                            ZEND_AST_ZVAL (64) (line: 121, attr: 0) [type: string, value [length: 8]: callback]
+    //                        NULL
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+    dbgDumpAst( funcDeclAst, 0 );
+
+    ResultCode resultCode;
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    uint32_t lineNumber = zend_ast_get_lineno( funcDeclAst );
+    StringView funcName;
+    zend_ast* originalFuncBody = NULL; // it's not created by this function, so we should NOT clean it on failure
+    zend_ast* funcNameAst = NULL;
+    zend_ast* arrayParametersAst = NULL;
+    zend_ast* argListAst = NULL;
+    zend_ast* callAst = NULL;
+    zend_ast* newFuncBody = NULL;
+    zend_ast** astsToCleanOnFailure[] = { &funcNameAst, &arrayParametersAst, &argListAst, &callAst, &newFuncBody };
+
+    ELASTIC_APM_ASSERT( funcDeclAst->kind == ZEND_AST_FUNC_DECL, "funcDeclAst->kind: %s", streamZendAstKind( funcDeclAst->kind, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    zend_ast_decl* funcDecl = (zend_ast_decl*)funcDeclAst;
+    originalFuncBody = funcDecl->child[ 2 ]; // function body is always child[ 2 ]
+    if ( originalFuncBody == NULL )
+    {
+        ELASTIC_APM_LOG_TRACE( "originalFuncBody == NULL" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+    if ( originalFuncBody->kind != ZEND_AST_STMT_LIST )
+    {
+        ELASTIC_APM_LOG_TRACE( "originalFuncBody->kind: %s", streamZendAstKind( originalFuncBody->kind, &txtOutStream ) );
+        textOutputStreamRewind( &txtOutStream );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if ( ! getAstFunctionName( funcDeclAst, &funcName ) )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstZValString( funcName, lineNumber, /* out */ &funcNameAst ) );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstArrayForParameters( funcDeclAst, shouldPassParameterByRef, /* out */ &arrayParametersAst ) );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstList( ZEND_AST_ARG_LIST, lineNumber, /* out */ &argListAst ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToAstList( funcNameAst, /* in,out */ &argListAst ) );
+    funcNameAst = NULL;
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToAstList( arrayParametersAst, /* in,out */ &argListAst ) );
+    arrayParametersAst = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstStaticCall( className, methodName, argListAst, lineNumber, /* out */ &callAst ) );
+    argListAst = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createAstList( ZEND_AST_STMT_LIST, lineNumber, /* out */ &newFuncBody ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToAstList( callAst, /* in,out */ &newFuncBody ) );
+    callAst = NULL;
+
+    // Attaching originalFuncBody at the end of newFuncBody should be the last step that can fail
+    // because on failure we will destroy newFuncBody which will recursively destroy all of its children,
+    // but we should NOT destroy originalFuncBody because we didn't create it
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToAstList( originalFuncBody, /* in,out */ &newFuncBody ) );
+    ELASTIC_APM_MOVE_PTR( /* in,out */ newFuncBody, /* out */ funcDecl->child[ 2 ] ); // function body is always child[ 2 ]
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG();
+    dbgDumpAst( funcDeclAst, 0 );
+    return funcDeclAst;
+
+    failure:
+    ELASTIC_APM_FOR_EACH_INDEX( i, ELASTIC_APM_STATIC_ARRAY_SIZE( astsToCleanOnFailure ) )
+    {
+        destroyAstAndNull( astsToCleanOnFailure[ i ] );
+    };
+    goto finally;
+}
+
+zend_ast* transformAstFunction( zend_ast* inAst )
+{
+    zend_ast* outAst = inAst;
+
+    outAst = wordPressInstrumentationOnAstFunction( outAst );
+
+    return outAst;
+}
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+void transformChildrenAst( zend_ast* children[], uint32_t childrenCount, int nestingDepth )
+{
+    ELASTIC_APM_FOR_EACH_INDEX( i, childrenCount )
+    {
+        if ( children[ i ] != NULL )
+        {
+            children[ i ] = transformAst( children[ i ], nestingDepth + 1 );
+        }
+    }
+}
+#pragma clang diagnostic pop
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+zend_ast* transformAst( zend_ast* inAst, int nestingDepth )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_TRACE( "%s%s (line: %d)", streamIndent( nestingDepth, &txtOutStream ), streamZendAstKind( inAst->kind, &txtOutStream ), (int)zend_ast_get_lineno( inAst ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    zend_ast* outAst = inAst;
+
+    if ( zend_ast_is_list( inAst ) )
+    {
+        zend_ast_list* astAsList = zend_ast_get_list( inAst );
+        transformChildrenAst( astAsList->child, /* childrenCount: */ astAsList->children, nestingDepth );
+        outAst = inAst;
+        goto finally;
+    }
+
+    switch ( inAst->kind )
+    {
+        case ZEND_AST_GLOBAL:
+            visitAstGlobal( inAst );
             goto finally;
 
         case ZEND_AST_FUNC_DECL:
-        case ZEND_AST_METHOD:
-            transformedAst = transformFunctionAst( ast, nestingDepth + 1 );
-            goto finally;
-
-        case ZEND_AST_RETURN:
-            transformedAst = transformReturnAst( ast, nestingDepth + 1 );
+            outAst = transformAstFunction( inAst );
             goto finally;
 
         default:
-            transformedAst = transformChildrenAst( ast, nestingDepth + 1 );
             goto finally;
     }
 
     finally:
+    ELASTIC_APM_LOG_TRACE( "%sExited - inAst: %s (line: %d), outAst: %s (line: %d)"
+                           , streamIndent( nestingDepth, &txtOutStream )
+                           , streamZendAstKind( inAst->kind, &txtOutStream ), (int)zend_ast_get_lineno( inAst )
+                           , streamZendAstKind( outAst->kind, &txtOutStream ), (int)zend_ast_get_lineno( outAst ) );
     textOutputStreamRewind( &txtOutStream );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "%s: kind: %s", streamIndent( nestingDepth, &txtOutStream ), zendAstKindToString( transformedAst->kind ) );
-    return transformedAst;
+    return outAst;
 }
+#pragma clang diagnostic pop
 
-static
-void elasticApmProcessAstRoot( zend_ast* ast )
+void elasticApmProcessAst( zend_ast* ast )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "ast->kind: %s", zendAstKindToString( ast->kind ) );
+    ELASTIC_APM_ASSERT( isOriginalZendAstProcessSet, "originalZendAstProcess: %p", originalZendAstProcess );
 
-    zend_ast * transformedAst = transformAst( ast, 0 );
-    if ( original_zend_ast_process != NULL ) original_zend_ast_process( transformedAst );
+    zend_ast* outAst = ast;
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    if ( ! isLoadingAgentPhpCode )
+    {
+        outAst = transformAst( outAst, /* nestingDepth: */ 0 );
+    }
+
+    if ( originalZendAstProcess != NULL )
+    {
+        originalZendAstProcess( outAst );
+    }
 }
 
-void astInstrumentationInit()
+void elasticApmAstInstrumentationOnModuleInit( const ConfigSnapshot* config )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    if ( config->astProcessEnabled )
+    {
+        originalZendAstProcess = zend_ast_process;
+        isOriginalZendAstProcessSet = true;
+        zend_ast_process = elasticApmProcessAst;
+        ELASTIC_APM_LOG_DEBUG( "Changed zend_ast_process: from %p to elasticApmProcessAst (%p)", originalZendAstProcess, elasticApmProcessAst );
+    } else {
+        ELASTIC_APM_LOG_DEBUG( "AST processing will be DISABLED because configuration option %s (astProcessEnabled) is set to false", ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED );
+    }
 
-    original_zend_ast_process = zend_ast_process;
-    zend_ast_process = elasticApmProcessAstRoot;
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    wordPressInstrumentationOnModuleInit();
 }
 
-void astInstrumentationShutdown()
+void elasticApmAstInstrumentationOnModuleShutdown()
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    wordPressInstrumentationOnModuleShutdown();
 
-    zend_ast_process = original_zend_ast_process;
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    if ( isOriginalZendAstProcessSet )
+    {
+        zend_ast_process_t zendAstProcessBeforeRestore = zend_ast_process;
+        zend_ast_process = originalZendAstProcess;
+        originalZendAstProcess = NULL;
+        isOriginalZendAstProcessSet = false;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_ast_process: from %p (%s elasticApmProcessAst: %p) -> %p"
+                               , zendAstProcessBeforeRestore, zendAstProcessBeforeRestore == elasticApmProcessAst ? "==" : "!=", elasticApmProcessAst, originalZendAstProcess );
+    }
 }
+
+void elasticApmAstInstrumentationOnRequestInit()
+{
+    wordPressInstrumentationOnRequestInit();
+}
+
+void elasticApmAstInstrumentationOnRequestShutdown()
+{
+    wordPressInstrumentationOnRequestShutdown();
+}
+

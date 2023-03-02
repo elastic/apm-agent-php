@@ -34,6 +34,7 @@ final class OptionNames
 {
     use StaticClassTrait;
 
+    public const ABORT_ON_MEMORY_LEAK = 'abort_on_memory_leak';
     public const API_KEY = 'api_key';
     public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
@@ -44,6 +45,7 @@ final class OptionNames
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
     public const HOSTNAME = 'hostname';
+    public const INTERNAL_CHECKS_LEVEL = 'internal_checks_level';
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
     public const LOG_LEVEL_STDERR = 'log_level_stderr';

@@ -40,6 +40,7 @@
 #include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "AST_instrumentation.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -166,6 +167,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     }
     tracer->curlInited = true;
 
+    elasticApmAstInstrumentationOnModuleInit( config );
+
     resultCode = resultSuccess;
     finally:
 
@@ -202,6 +205,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
+
+    elasticApmAstInstrumentationOnModuleShutdown();
 
     backgroundBackendCommOnModuleShutdown();
 
@@ -449,6 +454,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     tempPhpErrorData.type = type;
     tempPhpErrorData.lineNumber = lineNumber;
 
+    freeAndZeroLastPhpErrorData( &g_lastPhpErrorData );
     shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
     zeroLastPhpErrorData( &tempPhpErrorData );
     g_lastPhpErrorDataSet = true;
@@ -585,13 +591,10 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
-    if ( config->profilingInferredSpansEnabled ) {
+    if ( config->profilingInferredSpansEnabled )
+    {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
     }
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
-
-//    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     if ( config->captureErrors )
     {
@@ -613,6 +616,15 @@ void elasticApmRequestInit()
     {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
     }
+
+    if ( config->astProcessEnabled )
+    {
+        elasticApmAstInstrumentationOnRequestInit();
+    }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
+
+//    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     resultCode = resultSuccess;
 
@@ -673,6 +685,16 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
+    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
+    shutdownTracerPhpPart( config );
+
+    // sendMetrics( tracer, config );
+
+    if ( config->astProcessEnabled )
+    {
+        elasticApmAstInstrumentationOnRequestShutdown();
+    }
+
     if ( isOriginalZendThrowExceptionHookSet )
     {
         ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
@@ -694,11 +716,6 @@ void elasticApmRequestShutdown()
         originalZendErrorCallback = NULL;
         isOriginalZendErrorCallbackSet = false;
     }
-
-    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
-    shutdownTracerPhpPart( config );
-
-    // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
 

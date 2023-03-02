@@ -32,7 +32,17 @@
 static inline
 bool isEmtpyZstring( const zend_string* zStr )
 {
+    ELASTIC_APM_ASSERT_VALID_PTR( zStr );
+
     return ZSTR_LEN( zStr ) == 0;
+}
+
+static inline
+StringView zStringToStringView( const zend_string* zStr )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( zStr );
+
+    return makeStringView( ZSTR_VAL( zStr ), ZSTR_LEN( zStr ) );
 }
 
 static inline

@@ -41,11 +41,12 @@ final class Logger implements LoggableInterface
     }
 
     /**
-     * @param string       $category
-     * @param string       $namespace
-     * @param class-string $fqClassName
-     * @param string       $srcCodeFile
-     * @param Backend      $backend
+     * @param string               $category
+     * @param string               $namespace
+     * @param class-string         $fqClassName
+     * @param string               $srcCodeFile
+     * @param array<string, mixed> $context
+     * @param Backend              $backend
      *
      * @return static
      */
@@ -54,9 +55,10 @@ final class Logger implements LoggableInterface
         string $namespace,
         string $fqClassName,
         string $srcCodeFile,
+        array $context,
         Backend $backend
     ): self {
-        return new self(LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend));
+        return new self(LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $context, $backend));
     }
 
     public function inherit(): self
@@ -70,7 +72,7 @@ final class Logger implements LoggableInterface
      *
      * @return Logger
      */
-    public function addContext(string $key, $value): Logger
+    public function addContext(string $key, $value): self
     {
         $this->data->context[$key] = $value;
         return $this;
@@ -81,12 +83,20 @@ final class Logger implements LoggableInterface
      *
      * @return Logger
      */
-    public function addAllContext(array $keyValuePairs): Logger
+    public function addAllContext(array $keyValuePairs): self
     {
         foreach ($keyValuePairs as $key => $value) {
             $this->addContext($key, $value);
         }
         return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getContext(): array
+    {
+        return $this->data->context;
     }
 
     public function ifCriticalLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
@@ -117,6 +127,11 @@ final class Logger implements LoggableInterface
     public function ifTraceLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
     {
         return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
+    }
+
+    public function ifDebugLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::DEBUG, $srcCodeFunc);
     }
 
     public function ifTraceLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine

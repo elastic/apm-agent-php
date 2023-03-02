@@ -197,7 +197,7 @@ final class PhpPartFacade
      *
      * @phpstan-param Closure(self): void $implFunc
      */
-    private static function callFromExtension(string $dbgCallDesc, Closure $implFunc): void
+    private static function callAndSwallowThrowable(string $dbgCallDesc, Closure $implFunc): void
     {
         BootstrapStageLogger::logDebug(
             'Starting to handle ' . $dbgCallDesc . ' call...',
@@ -245,7 +245,7 @@ final class PhpPartFacade
      */
     private static function callWithTransactionForExtensionRequest(string $dbgCallDesc, Closure $implFunc): void
     {
-        self::callFromExtension(
+        self::callAndSwallowThrowable(
             $dbgCallDesc,
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {
@@ -514,5 +514,24 @@ final class PhpPartFacade
      */
     public static function emptyMethod(): void
     {
+    }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     *
+     * @param string  $funcName
+     * @param mixed[] $funcArgs
+     *
+     * @return void
+     */
+    public static function onWordPressFunctionPreHook(string $funcName, array $funcArgs): void
+    {
+        $interceptionManager = self::singletonInstance()->interceptionManager;
+        if ($interceptionManager !== null) {
+            $interceptionManager->onWordPressFunctionPreHook($funcName, $funcArgs);
+        }
     }
 }

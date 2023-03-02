@@ -100,6 +100,7 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     tracer_PHP_part.c \
     util.c \
     util_for_PHP.c \
+    WordPress_instrumentation.c \
   "
 
   PHP_NEW_EXTENSION(elastic_apm, $ELASTIC_APM_PHP_EXT_SOURCES, $ext_shared)

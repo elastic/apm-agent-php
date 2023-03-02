@@ -19,6 +19,30 @@
 
 #pragma once
 
-void astInstrumentationInit();
+#include <zend_ast.h>
+#include "ConfigManager.h"
+#include "StringView.h"
+#include "TextOutputStream.h"
+#include "ResultCode.h"
 
-void astInstrumentationShutdown();
+struct BoolArrayView
+{
+    unsigned int size;
+    bool* values;
+};
+typedef struct BoolArrayView BoolArrayView;
+
+#define ELASTIC_APM_MAKE_BOOL_ARRAY_VIEW( staticArrayVar ) \
+    ( (BoolArrayView){ .size = ELASTIC_APM_STATIC_ARRAY_SIZE( (staticArrayVar) ), .values = &((staticArrayVar)[0]) } )
+
+void elasticApmAstInstrumentationOnModuleInit( const ConfigSnapshot* config );
+void elasticApmAstInstrumentationOnModuleShutdown();
+
+void elasticApmAstInstrumentationOnRequestInit();
+void elasticApmAstInstrumentationOnRequestShutdown();
+
+String streamZendAstKind( zend_ast_kind kind, TextOutputStream* txtOutStream );
+
+bool getAstGlobalName( zend_ast* astGlobal, /* out */ StringView* name );
+bool getAstFunctionName( zend_ast* astFunction, /* out */ StringView* name );
+zend_ast* insertAstFunctionPreHook( zend_ast* funcDeclAst, StringView className, StringView methodName, BoolArrayView shouldPassParameterByRef );

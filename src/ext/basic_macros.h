@@ -136,3 +136,9 @@
 //// ELASTIC_APM_IF_VA_ARGS_EMPTY_ELSE
 ////
 ////////////////////////////////////////////////////////////////////////////////
+
+#define ELASTIC_APM_MOVE_PTR( srcPtrLval, dstPtrLval ) \
+    do { \
+        (dstPtrLval) = (srcPtrLval); \
+        (srcPtrLval) = NULL; \
+    } while ( 0 )

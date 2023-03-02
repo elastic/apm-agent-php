@@ -88,6 +88,7 @@ enum OptionId
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
+    optionId_astProcessEnabled,
     optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
@@ -148,6 +149,7 @@ struct ConfigSnapshot
     AssertLevel assertLevel;
         #endif
     String apiKey;
+    bool astProcessEnabled;
     OptionalBool asyncBackendComm;
     String bootstrapPhpPartFile;
     bool breakdownMetrics;
@@ -295,6 +297,11 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED "ast_process_enabled"
 
 /**
  * Internal configuration option (not included in public documentation)
