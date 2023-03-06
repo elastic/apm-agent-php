@@ -39,10 +39,6 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
 void resetCallInterceptionOnRequestShutdown();
 
-ResultCode elasticApmSendToServer(
-        long disableSend
-        , double serverTimeoutMilliseconds
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents );
+ResultCode elasticApmSendToServer( StringView userAgentHttpHeader, StringView serializedEvents );
 
 ResultCode replaceSleepWithResumingAfterSignalImpl();
