@@ -17,17 +17,15 @@
  * under the License.
  */
 
-#pragma once
-
-#include "StringView.h"
-#include "ConfigManager.h"
 #include "ResultCode.h"
+#include "basic_macros.h"
 
-ResultCode sendEventsToApmServer(
-        const ConfigSnapshot* config
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents );
-
-void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config );
-
-ResultCode resetBackgroundBackendCommStateInForkedChild();
+StringView resultCodeNames[ numberOfResultCodes ] =
+{
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSuccess ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultOutOfMemory ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultParsingFailed ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultCurlFailure ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSyncObjUseAfterFork ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultFailure ),
+};
