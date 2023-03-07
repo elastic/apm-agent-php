@@ -119,7 +119,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
         if ($request->getUri()->getPath() === TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH) {
             $this->cleanTestScoped();
-            return new Response(/* status: */ 202);
+            return new Response(/* status: */ 200);
         }
 
         return null;
