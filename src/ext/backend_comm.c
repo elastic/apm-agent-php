@@ -327,11 +327,6 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
 
     resultCode = resultSuccess;
     finally:
-    ////////////////////////////////////////
-    // TODO: Sergey Kleyman: Remove BEGIN
-    cleanupConnectionData( connectionData );
-    // TODO: Sergey Kleyman: Remove END
-    ////////////////////////////////////////
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
