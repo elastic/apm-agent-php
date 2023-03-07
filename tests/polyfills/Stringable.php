@@ -19,15 +19,31 @@
  * under the License.
  */
 
+/** @noinspection PhpElementIsNotAvailableInCurrentPhpVersionInspection */
+/** @noinspection PhpIllegalPsrClassPathInspection */
+
 declare(strict_types=1);
 
-error_reporting(E_ALL | E_STRICT);
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
 
-if (!function_exists('array_key_first')) {
-    require __DIR__ . '/array_key_first.php';
-}
-
-if (PHP_MAJOR_VERSION < 8) {
-    require __DIR__ . '/Stringable.php';
-    require __DIR__ . '/WeakMap.php';
+/**
+ * Stringable interface marks classes as available for serialization
+ * in a string.
+ *
+ * @since 8.0
+ */
+interface Stringable
+{
+    /**
+     * Magic method {@see https://www.php.net/manual/en/language.oop5.magic.php}
+     * called during serialization to string.
+     *
+     * @return string Returns string representation of the object that
+     * implements this interface (and/or "__toString" magic method).
+     */
+    public function __toString(): string;
 }
