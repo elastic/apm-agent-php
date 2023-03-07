@@ -43,7 +43,7 @@ final class HttpAppCodeRequestParams extends AppCodeRequestParams
         $this->urlParts = new UrlParts();
         $this->urlParts->scheme('http')
                        ->host(HttpServerHandle::DEFAULT_HOST)
-                       ->port($httpServerHandle->getPort())
+                       ->port($httpServerHandle->getMainPort())
                        ->path('/');
     }
 }

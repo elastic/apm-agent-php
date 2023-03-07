@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ErrorException;
 use Exception;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -39,6 +40,7 @@ use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Http\HttpServer;
 use React\Promise\Promise;
+use React\Socket\ConnectionInterface;
 use React\Socket\SocketServer;
 use RuntimeException;
 use Throwable;
@@ -55,8 +57,8 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /** @var ?LoopInterface */
     protected $reactLoop = null;
 
-    /** @var ?SocketServer */
-    protected $serverSocket = null;
+    /** @var SocketServer[] */
+    protected $serverSockets = [];
 
     public function __construct()
     {
@@ -88,17 +90,48 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         );
     }
 
+    /** @inheritDoc */
     protected function processConfig(): void
     {
         parent::processConfig();
 
-        TestCase::assertNotNull(
-            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
+        Assert::assertCount(
+            $this->expectedPortsCount(),
+            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts,
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );
 
         // At this point request is not parsed and applied to config yet
         TestCase::assertNull(AmbientContextForTests::testConfig()->dataPerRequest);
+    }
+
+    /**
+     * @return int
+     */
+    protected function expectedPortsCount(): int
+    {
+        return 1;
+    }
+
+    /**
+     * @param int                 $socketIndex
+     * @param ConnectionInterface $connection
+     *
+     * @return void
+     */
+    protected function onNewConnection(int $socketIndex, ConnectionInterface $connection): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'New connection',
+            [
+                'socketIndex' => $socketIndex,
+                'connection addresses' => [
+                    'remote' => $connection->getRemoteAddress(),
+                    'local'  => $connection->getLocalAddress(),
+                ]
+            ]
+        );
     }
 
     /**
@@ -131,34 +164,45 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     private function runHttpServer(): void
     {
         $this->reactLoop = Loop::get();
-        $thisServerPort = AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort;
-        TestCase::assertNotNull($thisServerPort);
-        $uri = HttpServerHandle::DEFAULT_HOST . ':' . $thisServerPort;
-        $this->serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
-        $httpServer = new HttpServer(
-            /**
-             * @param ServerRequestInterface $request
-             *
-             * @return ResponseInterface|Promise
-             */
-            function (ServerRequestInterface $request) {
-                return $this->processRequestWrapper($request);
-            }
-        );
-        $httpServer->listen($this->serverSocket);
-
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Waiting for incoming requests...',
-            ['serverSocketAddress' => $this->serverSocket->getAddress()]
-        );
+        TestCase::assertNotEmpty(AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts);
+        foreach (AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts as $port) {
+            $uri = HttpServerHandle::DEFAULT_HOST . ':' . $port;
+            $serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
+            $socketIndex = count($this->serverSockets);
+            $this->serverSockets[] = $serverSocket;
+            $serverSocket->on(
+                'connection' /* <- event */,
+                function (ConnectionInterface $connection) use ($socketIndex): void {
+                    $this->onNewConnection($socketIndex, $connection);
+                }
+            );
+            $httpServer = new HttpServer(
+                /**
+                 * @param ServerRequestInterface $request
+                 *
+                 * @return ResponseInterface|Promise
+                 */
+                function (ServerRequestInterface $request) {
+                    return $this->processRequestWrapper($request);
+                }
+            );
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Listening for incoming requests...',
+                ['serverSocket address' => $serverSocket->getAddress()]
+            );
+            $httpServer->listen($serverSocket);
+        }
 
         $this->beforeLoopRun();
 
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
         $this->reactLoop->run();
     }
 
+    /**
+     * @return void
+     */
     protected function beforeLoopRun(): void
     {
     }
@@ -261,8 +305,9 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
      */
     protected function exit(): void
     {
-        TestCase::assertNotNull($this->serverSocket);
-        $this->serverSocket->close();
+        foreach ($this->serverSockets as $serverSocket) {
+            $serverSocket->close();
+        }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Exiting...');

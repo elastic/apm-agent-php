@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use ElasticApmTests\Util\FileUtilForTests;
+use PHPUnit\Framework\Assert;
 
 final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
 {
@@ -69,20 +70,22 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     }
 
     /** @inheritDoc */
-    protected function buildCommandLine(int $port): string
+    protected function buildCommandLine(array $ports): string
     {
+        Assert::assertCount(1, $ports);
         return InfraUtilForTests::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
-               . " -S localhost:$port"
+               . " -S localhost:" . $ports[0]
                . ' "' . FileUtilForTests::listToPath([__DIR__, self::APP_CODE_HOST_ROUTER_SCRIPT]) . '"';
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
+    protected function buildEnvVars(string $spawnedProcessInternalId, array $ports): array
     {
+        Assert::assertCount(1, $ports);
         return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(EnvVarUtilForTests::getAll()),
             $spawnedProcessInternalId,
-            $port,
+            $ports,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName
         );

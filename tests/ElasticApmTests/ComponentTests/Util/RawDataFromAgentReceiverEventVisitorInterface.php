@@ -23,20 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class TestInfraDataPerProcess extends TestInfraData
+interface RawDataFromAgentReceiverEventVisitorInterface
 {
-    /** @var int */
-    public $rootProcessId;
-
-    /** @var ?string */
-    public $resourcesCleanerSpawnedProcessInternalId = null;
-
-    /** @var ?int */
-    public $resourcesCleanerPort = null;
-
-    /** @var string */
-    public $thisSpawnedProcessInternalId;
-
-    /** @var int[] */
-    public $thisServerPorts = [];
+    public function visitConnectionStarted(RawDataFromAgentReceiverEventConnectionStarted $event): void;
+    public function visitRequest(RawDataFromAgentReceiverEventRequest $event): void;
 }

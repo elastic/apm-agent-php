@@ -25,15 +25,15 @@ namespace ElasticApmTests\Util;
 
 class DataFromAgentExpectations extends ExpectationsBase
 {
-    /** @var ErrorExpectations */
-    public $error;
+    /** @var ErrorExpectations[] */
+    public $errors = [];
 
     /** @var array<string, MetadataExpectations> */
-    public $agentEphemeralIdToMetadata;
+    public $agentEphemeralIdToMetadata = [];
 
-    /** @var MetricSetExpectations */
-    public $metricSet;
+    /** @var MetricSetExpectations[] */
+    public $metricSets = [];
 
-    /** @var TraceExpectations */
-    public $trace;
+    /** @var TraceExpectations[] */
+    public $traces = [];
 }

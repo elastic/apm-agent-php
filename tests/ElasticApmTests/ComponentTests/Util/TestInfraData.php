@@ -27,10 +27,12 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+use ElasticApmTests\Util\Deserialization\JsonSerializableTrait;
 use JsonSerializable;
 
 abstract class TestInfraData implements JsonSerializable, JsonDeserializableInterface, LoggableInterface
 {
     use LoggableTrait;
+    use JsonSerializableTrait;
     use JsonDeserializableTrait;
 }
