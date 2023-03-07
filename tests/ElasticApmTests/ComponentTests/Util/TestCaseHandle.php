@@ -46,14 +46,14 @@ final class TestCaseHandle implements LoggableInterface
     public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
     public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
 
-    /** @var AppCodeInvocation[] */
-    public $appCodeInvocations = [];
-
     /** @var ResourcesCleanerHandle */
-    protected $resourcesCleaner;
+    private $resourcesCleaner;
 
     /** @var MockApmServerHandle */
-    protected $mockApmServer;
+    private $mockApmServer;
+
+    /** @var AppCodeInvocation[] */
+    public $appCodeInvocations = [];
 
     /** @var ?AppCodeHostHandle */
     protected $mainAppCodeHost = null;
@@ -65,7 +65,7 @@ final class TestCaseHandle implements LoggableInterface
     private $logger;
 
     /** @var int[] */
-    private $portsInUse = [];
+    private $portsInUse;
 
     /** @var ?int */
     private $escalatedLogLevelForProdCode;
@@ -79,8 +79,12 @@ final class TestCaseHandle implements LoggableInterface
             __FILE__
         )->addContext('this', $this);
 
-        $this->resourcesCleaner = $this->startResourcesCleaner();
-        $this->mockApmServer = $this->startMockApmServer($this->resourcesCleaner);
+        $globalTestInfra = ComponentTestsPhpUnitExtension::getGlobalTestInfra();
+        $globalTestInfra->onTestStart();
+        $this->resourcesCleaner = $globalTestInfra->getResourcesCleaner();
+        $this->mockApmServer = $globalTestInfra->getMockApmServer();
+        $this->portsInUse = $globalTestInfra->getPortsInUse();
+
         $this->escalatedLogLevelForProdCode = $escalatedLogLevelForProdCode;
     }
 
@@ -242,7 +246,7 @@ final class TestCaseHandle implements LoggableInterface
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Tearing down...');
 
-        $this->resourcesCleaner->signalAndWaitForItToExit();
+        ComponentTestsPhpUnitExtension::getGlobalTestInfra()->onTestEnd();
     }
 
     /**
@@ -256,32 +260,6 @@ final class TestCaseHandle implements LoggableInterface
             TestCase::assertNotContains($port, $this->portsInUse);
             $this->portsInUse[] = $port;
         }
-    }
-
-    private function startResourcesCleaner(): ResourcesCleanerHandle
-    {
-        $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
-            ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessName */,
-            'runResourcesCleaner.php' /* <- runScriptName */,
-            $this->portsInUse,
-            1 /* <- portsToAllocateCount */,
-            null /* <- resourcesCleaner */
-        );
-        $this->addPortsInUse($httpServerHandle->getPorts());
-        return new ResourcesCleanerHandle($httpServerHandle);
-    }
-
-    private function startMockApmServer(ResourcesCleanerHandle $resourcesCleaner): MockApmServerHandle
-    {
-        $httpServerHandle = TestInfraHttpServerStarter::startTestInfraHttpServer(
-            ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgProcessName */,
-            'runMockApmServer.php' /* <- runScriptName */,
-            $this->portsInUse,
-            2 /* <- portsToAllocateCount */,
-            $resourcesCleaner
-        );
-        $this->addPortsInUse($httpServerHandle->getPorts());
-        return new MockApmServerHandle($httpServerHandle);
     }
 
     private function startBuiltinHttpServerAppCodeHost(
