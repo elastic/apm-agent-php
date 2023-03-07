@@ -178,6 +178,19 @@ class ComponentTestCaseBase extends TestCaseBase
      * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
+     * @return string
+     */
+    protected static function getStringFromMap(string $argKey, array $argsMap): string
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
      * @return array<mixed, mixed>
      */
     protected static function getArrayFromMap(string $argKey, array $argsMap): array

@@ -23,20 +23,35 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class TestInfraDataPerProcess extends TestInfraData
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+use ElasticApmTests\Util\Deserialization\JsonSerializableTrait;
+use JsonSerializable;
+
+final class IntakeApiConnection implements JsonSerializable, JsonDeserializableInterface, LoggableInterface
 {
-    /** @var int */
-    public $rootProcessId;
+    use JsonSerializableTrait;
+    use JsonDeserializableTrait;
+    use LoggableTrait;
 
-    /** @var ?string */
-    public $resourcesCleanerSpawnedProcessInternalId = null;
+    /** @var IntakeApiRequest[] */
+    private $requests;
 
-    /** @var ?int */
-    public $resourcesCleanerPort = null;
+    /**
+     * @param IntakeApiRequest[] $requests
+     */
+    public function __construct(array $requests)
+    {
+        $this->requests = $requests;
+    }
 
-    /** @var string */
-    public $thisSpawnedProcessInternalId;
-
-    /** @var int[] */
-    public $thisServerPorts = [];
+    /**
+     * @return IntakeApiRequest[]
+     */
+    public function getIntakeApiRequests(): array
+    {
+        return $this->requests;
+    }
 }

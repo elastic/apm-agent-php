@@ -28,10 +28,12 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
@@ -65,41 +67,45 @@ abstract class HttpServerStarter
     }
 
     /**
-     * @param int $port
+     * @param int[] $ports
      *
      * @return string
      */
-    abstract protected function buildCommandLine(int $port): string;
+    abstract protected function buildCommandLine(array $ports): string;
 
     /**
      * @param string $spawnedProcessInternalId
-     * @param int    $port
+     * @param int[]  $ports
      *
      * @return array<string, string>
      */
-    abstract protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array;
+    abstract protected function buildEnvVars(string $spawnedProcessInternalId, array $ports): array;
 
     /**
      * @param int[] $portsInUse
+     * @param int   $portsToAllocateCount
      *
      * @return HttpServerHandle
      */
-    protected function startHttpServer(array $portsInUse): HttpServerHandle
+    protected function startHttpServer(array $portsInUse, int $portsToAllocateCount = 1): HttpServerHandle
     {
+        Assert::assertGreaterThanOrEqual(1, $portsToAllocateCount);
         /** @var ?int $lastTriedPort */
         $lastTriedPort = ArrayUtil::isEmpty($portsInUse) ? null : ArrayUtilForTests::getLastValue($portsInUse);
         for ($tryCount = 0; $tryCount < self::MAX_TRIES_TO_START_SERVER; ++$tryCount) {
-            $currentTryPort = self::findFreePortToListen($portsInUse, $lastTriedPort);
-            $lastTriedPort = $currentTryPort;
+            /** @var int[] $currentTryPorts */
+            $currentTryPorts = [];
+            self::findFreePortsToListen($portsInUse, $portsToAllocateCount, $lastTriedPort, /* out */ $currentTryPorts);
+            Assert::assertSame($portsToAllocateCount, count($currentTryPorts));
             $currentTrySpawnedProcessInternalId = InfraUtilForTests::generateSpawnedProcessInternalId();
-            $cmdLine = $this->buildCommandLine($currentTryPort);
-            $envVars = $this->buildEnvVars($currentTrySpawnedProcessInternalId, $currentTryPort);
+            $cmdLine = $this->buildCommandLine($currentTryPorts);
+            $envVars = $this->buildEnvVars($currentTrySpawnedProcessInternalId, $currentTryPorts);
 
             $logger = $this->logger->inherit()->addAllContext(
                 [
                     'tryCount'                           => $tryCount,
                     'maxTries'                           => self::MAX_TRIES_TO_START_SERVER,
-                    'currentTryPort'                     => $currentTryPort,
+                    'currentTryPorts'                    => $currentTryPorts,
                     'currentTrySpawnedProcessInternalId' => $currentTrySpawnedProcessInternalId,
                     'cmdLine'                            => $cmdLine,
                     'envVars'                            => $envVars,
@@ -115,7 +121,7 @@ abstract class HttpServerStarter
             if (
                 $this->isHttpServerRunning(
                     $currentTrySpawnedProcessInternalId,
-                    $currentTryPort,
+                    $currentTryPorts[0],
                     $logger,
                     /* ref */ $pid
                 )
@@ -126,7 +132,7 @@ abstract class HttpServerStarter
                     $this->dbgServerDesc,
                     $pid,
                     $currentTrySpawnedProcessInternalId,
-                    $currentTryPort
+                    $currentTryPorts
                 );
             }
 
@@ -135,6 +141,29 @@ abstract class HttpServerStarter
         }
 
         throw new RuntimeException('Failed to start ' . $this->dbgServerDesc . ' HTTP server');
+    }
+
+    /**
+     * @param int[]  $portsInUse
+     * @param ?int   $lastTriedPort
+     * @param int    $portsToFindCount
+     * @param int[] &$result
+     *
+     * @return void
+     */
+    private static function findFreePortsToListen(
+        array $portsInUse,
+        int $portsToFindCount,
+        ?int $lastTriedPort,
+        array &$result
+    ): void {
+        $result = [];
+        $lastTriedPortLocal = $lastTriedPort;
+        foreach (RangeUtil::generateUpTo($portsToFindCount) as $ignored) {
+            $foundPort = self::findFreePortToListen($portsInUse, $lastTriedPortLocal);
+            $result[] = $foundPort;
+            $lastTriedPortLocal = $foundPort;
+        }
     }
 
     /**

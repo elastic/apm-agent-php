@@ -116,9 +116,10 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
                 $dataPerRequest = $serverAppCode->buildDataPerRequest(
                     AppCodeTarget::asRouted([__CLASS__, 'appCodeServer'])
                 );
+                $additionalAppCodeHostPort = $serverAppCode->getHttpServerHandle()->getMainPort();
                 $reqParams->setAppCodeArgs(
                     [
-                        self::SERVER_PORT_KEY                      => $serverAppCode->getPort(),
+                        self::SERVER_PORT_KEY                      => $additionalAppCodeHostPort,
                         self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY => $dataPerRequest->serializeToString(),
                     ]
                 );

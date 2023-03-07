@@ -31,6 +31,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\TimerInterface;
+use React\Socket\SocketServer;
 
 final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
@@ -80,6 +81,8 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     /** @inheritDoc */
     protected function beforeLoopRun(): void
     {
+        parent::beforeLoopRun();
+
         TestCase::assertNotNull($this->reactLoop);
         $this->parentProcessTrackingTimer = $this->reactLoop->addPeriodicTimer(
             1 /* interval in seconds */,

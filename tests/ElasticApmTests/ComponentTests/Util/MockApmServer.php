@@ -29,11 +29,12 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\Http\Message\Response;
 use React\Promise\Promise;
+use React\Socket\ConnectionInterface;
 
 final class MockApmServer extends TestInfraHttpServerProcessBase
 {
@@ -41,14 +42,14 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     private const INTAKE_API_URI = '/intake/v2/events';
     public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
     public const FROM_INDEX_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'FROM_INDEX';
-    public const INTAKE_API_REQUESTS_JSON_KEY = 'intake_api_requests_received_from_agent';
+    public const RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY = 'raw_data_from_agent_receiver_events';
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
+
+    /** @var RawDataFromAgentReceiverEvent[] */
+    private $receiverEvents = [];
 
     /** @var int */
     public static $pendingDataRequestNextId = 1;
-
-    /** @var IntakeApiRequest[] */
-    private $receivedIntakeApiRequests = [];
 
     /** @var Map<int, MockApmServerPendingDataRequest> */
     private $pendingDataRequests;
@@ -68,6 +69,40 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+    }
+
+    /**
+     * @return int
+     */
+    protected function expectedPortsCount(): int
+    {
+        return 2;
+    }
+
+    /** @inheritDoc */
+    protected function onNewConnection(int $socketIndex, ConnectionInterface $connection): void
+    {
+        parent::onNewConnection($socketIndex, $connection);
+        Assert::assertCount(2, $this->serverSockets);
+        Assert::assertLessThan(count($this->serverSockets), $socketIndex);
+
+        // $socketIndex 0 is used for test infrastructure communication
+        // $socketIndex 1 is used for APM Agent <-> Server communication
+        if ($socketIndex == 1) {
+            $this->addReceiverEvent(new RawDataFromAgentReceiverEventConnectionStarted());
+        }
+    }
+
+    private function addReceiverEvent(RawDataFromAgentReceiverEvent $event): void
+    {
+        Assert::assertNotNull($this->reactLoop);
+        $this->receiverEvents[] = $event;
+
+        foreach ($this->pendingDataRequests as $pendingDataRequest) {
+            $this->reactLoop->cancelTimer($pendingDataRequest->timer);
+            ($pendingDataRequest->resolveCallback)($this->fulfillDataRequest($pendingDataRequest->fromIndex));
+        }
+        $this->pendingDataRequests->clear();
     }
 
     /** @inheritDoc */
@@ -92,7 +127,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
     {
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
 
         if ($request->getBody()->getSize() === 0) {
             return $this->buildIntakeApiErrorResponse(
@@ -109,13 +144,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Received request for Intake API', ['newRequest' => $newRequest]);
 
-        $this->receivedIntakeApiRequests[] = $newRequest;
-
-        foreach ($this->pendingDataRequests as $pendingDataRequest) {
-            $this->reactLoop->cancelTimer($pendingDataRequest->timer);
-            ($pendingDataRequest->resolveCallback)($this->fulfillDataRequest($pendingDataRequest->fromIndex));
-        }
-        $this->pendingDataRequests->clear();
+        $this->addReceiverEvent(new RawDataFromAgentReceiverEventRequest($newRequest));
 
         return new Response(/* status: */ 202);
     }
@@ -144,11 +173,11 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     private function getIntakeApiRequests(ServerRequestInterface $request)
     {
         $fromIndex = intval(self::getRequiredRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
-        if (!NumericUtil::isInClosedInterval(0, $fromIndex, count($this->receivedIntakeApiRequests))) {
+        if (!NumericUtil::isInClosedInterval(0, $fromIndex, count($this->receiverEvents))) {
             return $this->buildErrorResponse(
                 400 /* status */,
                 'Invalid `' . self::FROM_INDEX_HEADER_NAME . '\' HTTP request header value: $fromIndex'
-                . ' (should be in range[0, ' . count($this->receivedIntakeApiRequests) . '])'
+                . ' (should be in range[0, ' . count($this->receiverEvents) . '])'
             );
         }
 
@@ -159,7 +188,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         return new Promise(
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = self::$pendingDataRequestNextId++;
-                TestCase::assertNotNull($this->reactLoop);
+                Assert::assertNotNull($this->reactLoop);
                 $timer = $this->reactLoop->addTimer(
                     self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
@@ -176,13 +205,13 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function hasNewDataFromAgentRequest(int $fromIndex): bool
     {
-        return count($this->receivedIntakeApiRequests) > $fromIndex;
+        return count($this->receiverEvents) > $fromIndex;
     }
 
     private function fulfillDataRequest(int $fromIndex): ResponseInterface
     {
         $newData = $this->hasNewDataFromAgentRequest($fromIndex)
-            ? array_slice($this->receivedIntakeApiRequests, $fromIndex)
+            ? array_slice($this->receiverEvents, $fromIndex)
             : [];
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -193,7 +222,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             // headers:
             ['Content-Type' => 'application/json'],
             // body:
-            JsonUtil::encode([self::INTAKE_API_REQUESTS_JSON_KEY => $newData], /* prettyPrint: */ true)
+            JsonUtil::encode([self::RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY => $newData], /* prettyPrint: */ true)
         );
     }
 
@@ -241,7 +270,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     /** @inheritDoc */
     protected function exit(): void
     {
-        TestCase::assertNotNull($this->reactLoop);
+        Assert::assertNotNull($this->reactLoop);
 
         foreach ($this->pendingDataRequests as $pendingDataRequest) {
             $this->reactLoop->cancelTimer($pendingDataRequest->timer);

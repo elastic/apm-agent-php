@@ -21,22 +21,28 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\ComponentTests\Util;
+namespace ElasticApmTests\Util\Deserialization;
 
-final class TestInfraDataPerProcess extends TestInfraData
+use Elastic\Apm\Impl\Util\ClassNameUtil;
+
+trait JsonSerializableTrait
 {
-    /** @var int */
-    public $rootProcessId;
+    /**
+     * @return array<string, mixed>
+     *
+     * Called by json_encode
+     * @noinspection PhpUnused
+     */
+    public function jsonSerialize(): array
+    {
+        $result = [];
 
-    /** @var ?string */
-    public $resourcesCleanerSpawnedProcessInternalId = null;
+        $className = ClassNameUtil::fqToShort(get_class($this));
+        foreach (get_object_vars($this) as $propName => $propValue) {
+            JsonUtilForTests::assertJsonDeserializable($propValue, $className . '->' . $propName);
+            $result[$propName] = $propValue;
+        }
 
-    /** @var ?int */
-    public $resourcesCleanerPort = null;
-
-    /** @var string */
-    public $thisSpawnedProcessInternalId;
-
-    /** @var int[] */
-    public $thisServerPorts = [];
+        return $result;
+    }
 }

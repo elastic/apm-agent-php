@@ -73,6 +73,10 @@ abstract class SpawnedProcessBase implements LoggableInterface
             __FILE__
         );
     }
+
+    /**
+     * @return void
+     */
     protected function processConfig(): void
     {
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);

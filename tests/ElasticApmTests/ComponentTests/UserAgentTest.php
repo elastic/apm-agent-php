@@ -121,7 +121,7 @@ final class UserAgentTest extends ComponentTestCaseBase
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
-        foreach ($dataFromAgent->intakeApiRequests as $intakeApiRequest) {
+        foreach ($dataFromAgent->getAllIntakeApiRequests() as $intakeApiRequest) {
             DataFromAgentPlusRawValidator::verifyUserAgentIntakeApiHttpRequestHeader(
                 $expectedUserAgentHeaderValue,
                 $intakeApiRequest->headers

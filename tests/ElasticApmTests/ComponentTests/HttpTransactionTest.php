@@ -348,6 +348,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
             function (AppCodeRequestParams $appCodeRequestParams) use ($urlParts, $expectedTxName): void {
                 $appCodeRequestParams->expectedTransactionName->setValue($expectedTxName);
                 self::assertInstanceOf(HttpAppCodeRequestParams::class, $appCodeRequestParams);
+                /** @var HttpAppCodeRequestParams $appCodeRequestParams */
                 $appCodeRequestParams->urlParts->path($urlParts->path)->query($urlParts->query);
             }
         );

@@ -32,7 +32,6 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
-use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
@@ -47,8 +46,8 @@ final class TestCaseHandle implements LoggableInterface
     public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
     public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
 
-    /** @var ?AppCodeInvocation */
-    public $appCodeInvocation = null;
+    /** @var AppCodeInvocation[] */
+    public $appCodeInvocations = [];
 
     /** @var ResourcesCleanerHandle */
     protected $resourcesCleaner;
@@ -152,7 +151,7 @@ final class TestCaseHandle implements LoggableInterface
         ExpectedEventCounts $expectedEventCounts,
         bool $shouldValidate = true
     ): DataFromAgentPlusRaw {
-        TestCase::assertNotNull($this->appCodeInvocation);
+        TestCase::assertNotEmpty($this->appCodeInvocations);
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
         $hasPassed = (new PollingCheck(
             __FUNCTION__ . ' passes',
@@ -177,13 +176,14 @@ final class TestCaseHandle implements LoggableInterface
         $dataFromAgent = $dataFromAgentAccumulator->getAccumulatedData();
         if ($shouldValidate) {
             $expectations = new DataFromAgentPlusRawExpectations(
-                $this->appCodeInvocation,
-                ArrayUtilForTests::getLastValue($dataFromAgent->intakeApiRequests)->timeReceivedAtApmServer
+                $this->appCodeInvocations,
+                $dataFromAgent->getRaw()->getTimeAllDataReceivedAtApmServer()
             );
 
+            $validatorClassName = ClassNameUtil::fqToShort(DataFromAgentPlusRawValidator::class);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Before DataFromAgentPlusRawValidator::validate: data that can be used for '
+                'Before ' . $validatorClassName . '::validate: data that can be used for '
                 . ClassNameUtil::fqToShort(DataFromAgentPlusRawValidatorDebugTest::class),
                 [
                     self::SERIALIZED_EXPECTATIONS_KEY    => serialize($expectations),
@@ -192,7 +192,7 @@ final class TestCaseHandle implements LoggableInterface
             );
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Before DataFromAgentPlusRawValidator::validate',
+                'Before ' . $validatorClassName . '::validate',
                 ['expectations' => $expectations, 'dataFromAgent' => $dataFromAgent]
             );
             DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
@@ -207,12 +207,11 @@ final class TestCaseHandle implements LoggableInterface
             $escalatedLogLevelForProdCodeAsString = LogLevel::intToName($this->escalatedLogLevelForProdCode);
             $params->setAgentOption(OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
         }
-        $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPort());
+        $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPortForAgent());
     }
 
-    public function setAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
+    public function addAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
     {
-        TestCase::assertNull($this->appCodeInvocation);
         $appCodeInvocation->appCodeHostsParams = [];
         if ($this->mainAppCodeHost !== null) {
             $appCodeInvocation->appCodeHostsParams[] = $this->mainAppCodeHost->appCodeHostParams;
@@ -220,7 +219,7 @@ final class TestCaseHandle implements LoggableInterface
         if ($this->additionalHttpAppCodeHost !== null) {
             $appCodeInvocation->appCodeHostsParams[] = $this->additionalHttpAppCodeHost->appCodeHostParams;
         }
-        $this->appCodeInvocation = $appCodeInvocation;
+        $this->appCodeInvocations[] = $appCodeInvocation;
     }
 
     /**
@@ -246,10 +245,17 @@ final class TestCaseHandle implements LoggableInterface
         $this->resourcesCleaner->signalAndWaitForItToExit();
     }
 
-    private function addPortInUse(int $port): void
+    /**
+     * @param int[] $ports
+     *
+     * @return void
+     */
+    private function addPortsInUse(array $ports): void
     {
-        TestCase::assertNotContains($port, $this->portsInUse);
-        $this->portsInUse[] = $port;
+        foreach ($ports as $port) {
+            TestCase::assertNotContains($port, $this->portsInUse);
+            $this->portsInUse[] = $port;
+        }
     }
 
     private function startResourcesCleaner(): ResourcesCleanerHandle
@@ -258,9 +264,10 @@ final class TestCaseHandle implements LoggableInterface
             ClassNameUtil::fqToShort(ResourcesCleaner::class) /* <- dbgProcessName */,
             'runResourcesCleaner.php' /* <- runScriptName */,
             $this->portsInUse,
+            1 /* <- portsToAllocateCount */,
             null /* <- resourcesCleaner */
         );
-        $this->addPortInUse($httpServerHandle->getPort());
+        $this->addPortsInUse($httpServerHandle->getPorts());
         return new ResourcesCleanerHandle($httpServerHandle);
     }
 
@@ -270,9 +277,10 @@ final class TestCaseHandle implements LoggableInterface
             ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgProcessName */,
             'runMockApmServer.php' /* <- runScriptName */,
             $this->portsInUse,
+            2 /* <- portsToAllocateCount */,
             $resourcesCleaner
         );
-        $this->addPortInUse($httpServerHandle->getPort());
+        $this->addPortsInUse($httpServerHandle->getPorts());
         return new MockApmServerHandle($httpServerHandle);
     }
 
@@ -287,7 +295,7 @@ final class TestCaseHandle implements LoggableInterface
             $this->portsInUse,
             $dbgInstanceName
         );
-        $this->addPortInUse($result->getPort());
+        $this->addPortsInUse($result->getHttpServerHandle()->getPorts());
         return $result;
     }
 
@@ -322,8 +330,8 @@ final class TestCaseHandle implements LoggableInterface
         ExpectedEventCounts $expectedEventCounts,
         DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
     ): bool {
-        $newIntakeApiRequests = $this->mockApmServer->fetchNewData();
-        $dataFromAgentAccumulator->addIntakeApiRequests($newIntakeApiRequests);
+        $newReceiverEvents = $this->mockApmServer->fetchNewData();
+        $dataFromAgentAccumulator->addReceiverEvents($newReceiverEvents);
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
     }
 

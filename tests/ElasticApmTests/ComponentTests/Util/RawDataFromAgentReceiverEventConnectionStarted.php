@@ -23,20 +23,22 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class TestInfraDataPerProcess extends TestInfraData
+final class RawDataFromAgentReceiverEventConnectionStarted extends RawDataFromAgentReceiverEvent
 {
-    /** @var int */
-    public $rootProcessId;
+    /**
+     * @noinspection PhpUnusedParameterInspection
+     *
+     * @param array<string, mixed> $decodedJson
+     *
+     * @return self
+     */
+    public static function leafDeserializeFromDecodedJson(array $decodedJson): self
+    {
+        return new self();
+    }
 
-    /** @var ?string */
-    public $resourcesCleanerSpawnedProcessInternalId = null;
-
-    /** @var ?int */
-    public $resourcesCleanerPort = null;
-
-    /** @var string */
-    public $thisSpawnedProcessInternalId;
-
-    /** @var int[] */
-    public $thisServerPorts = [];
+    public function visit(RawDataFromAgentReceiverEventVisitorInterface $visitor): void
+    {
+        $visitor->visitConnectionStarted($this);
+    }
 }
