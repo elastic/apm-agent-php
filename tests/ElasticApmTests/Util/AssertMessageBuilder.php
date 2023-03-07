@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use ArrayAccess;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Stringable;
 

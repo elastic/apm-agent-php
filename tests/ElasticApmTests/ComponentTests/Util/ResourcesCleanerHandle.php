@@ -52,7 +52,7 @@ final class ResourcesCleanerHandle extends HttpServerHandle
     {
         $response = $this->sendRequest(
             HttpConstantsForTests::METHOD_POST,
-            ResourcesCleaner::CLEAN_TEST_SCOPED_URI_PATH
+            TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH
         );
         Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
     }

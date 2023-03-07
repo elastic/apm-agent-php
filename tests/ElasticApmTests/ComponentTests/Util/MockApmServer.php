@@ -46,10 +46,10 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
 
     /** @var RawDataFromAgentReceiverEvent[] */
-    private $receiverEvents = [];
+    private $receiverEvents;
 
     /** @var int */
-    public static $pendingDataRequestNextId = 1;
+    public $pendingDataRequestNextId;
 
     /** @var Map<int, MockApmServerPendingDataRequest> */
     private $pendingDataRequests;
@@ -62,6 +62,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         parent::__construct();
 
         $this->pendingDataRequests = new Map();
+        $this->cleanTestScoped();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -114,6 +115,11 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
         if (TextUtil::isPrefixOf(self::MOCK_API_URI_PREFIX, $request->getUri()->getPath())) {
             return $this->processMockApiRequest($request);
+        }
+
+        if ($request->getUri()->getPath() === TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH) {
+            $this->cleanTestScoped();
+            return new Response(/* status: */ 202);
         }
 
         return null;
@@ -187,7 +193,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
         return new Promise(
             function ($resolve) use ($fromIndex) {
-                $pendingDataRequestId = self::$pendingDataRequestNextId++;
+                $pendingDataRequestId = $this->pendingDataRequestNextId++;
                 Assert::assertNotNull($this->reactLoop);
                 $timer = $this->reactLoop->addTimer(
                     self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
@@ -265,6 +271,13 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
                 /* prettyPrint: */ true
             )
         );
+    }
+
+    private function cleanTestScoped(): void
+    {
+        $this->receiverEvents = [];
+        $this->pendingDataRequestNextId = 1;
+        $this->pendingDataRequests->clear();
     }
 
     /** @inheritDoc */

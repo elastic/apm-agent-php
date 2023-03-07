@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -xe
+set -xe -o pipefail
 
 # Disable Elastic APM for any process outside the component tests to prevent noise in the logs
 export ELASTIC_APM_ENABLED=false
@@ -27,6 +27,6 @@ else
 fi
 
 # Run component tests
-mkdir -p /app/build/
+mkdir -p ./build/
 composer run-script run_component_tests 2>&1 | tee /app/build/run_component_tests_output.txt
 

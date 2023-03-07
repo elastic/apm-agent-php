@@ -31,7 +31,6 @@ use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use GuzzleHttp\Exception\GuzzleException;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 class HttpServerHandle implements LoggableInterface

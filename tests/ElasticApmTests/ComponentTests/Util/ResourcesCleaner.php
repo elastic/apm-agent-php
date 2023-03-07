@@ -37,7 +37,6 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const REGISTER_FILE_TO_DELETE_URI_PATH = '/register_file_to_delete';
-    public const CLEAN_TEST_SCOPED_URI_PATH = '/clean_test_scoped';
 
     public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
     public const IS_TEST_SCOPED_QUERY_HEADER_NAME

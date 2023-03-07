@@ -23,9 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\Assert;
 
 final class GlobalTestInfra
@@ -47,11 +45,17 @@ final class GlobalTestInfra
 
     public function onTestStart(): void
     {
-        $this->resourcesCleaner->cleanTestScoped();
+        $this->cleanTestScoped();
     }
 
     public function onTestEnd(): void
     {
+        $this->cleanTestScoped();
+    }
+
+    private function cleanTestScoped(): void
+    {
+        $this->mockApmServer->cleanTestScoped();
         $this->resourcesCleaner->cleanTestScoped();
     }
 

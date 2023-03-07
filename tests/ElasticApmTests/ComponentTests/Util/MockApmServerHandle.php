@@ -104,4 +104,13 @@ final class MockApmServerHandle extends HttpServerHandle
         }
         return $newReceiverEvents;
     }
+
+    public function cleanTestScoped(): void
+    {
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_POST,
+            TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH
+        );
+        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
+    }
 }

@@ -49,6 +49,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
 {
     use HttpServerProcessTrait;
 
+    public const CLEAN_TEST_SCOPED_URI_PATH = '/clean_test_scoped';
     public const EXIT_URI_PATH = '/exit';
 
     /** @var Logger */
