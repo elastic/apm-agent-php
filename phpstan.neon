@@ -8,6 +8,7 @@ parameters:
     reportUnmatchedIgnoredErrors: false
 
     excludePaths:
+        - tests/polyfills/Stringable.php
         - tests/polyfills/WeakMap.php
 
     ignoreErrors:

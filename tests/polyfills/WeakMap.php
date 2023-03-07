@@ -20,6 +20,7 @@
  */
 
 /** @noinspection PhpElementIsNotAvailableInCurrentPhpVersionInspection */
+/** @noinspection PhpIllegalPsrClassPathInspection */
 
 declare(strict_types=1);
 
