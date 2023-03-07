@@ -26,7 +26,7 @@
         <ini name="memory_limit" value="2G"/>
     </php>
     <logging>
-        <junit outputFile="build/phpunit-junit.xml"/>
+        <junit outputFile="build/unit-tests-phpunit-junit.xml"/>
     </logging>
     <testsuites>
         <testsuite name="Tests">
