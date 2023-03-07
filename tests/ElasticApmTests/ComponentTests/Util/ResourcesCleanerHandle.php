@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use PHPUnit\Framework\Assert;
 
 final class ResourcesCleanerHandle extends HttpServerHandle
 {
@@ -45,5 +46,14 @@ final class ResourcesCleanerHandle extends HttpServerHandle
     public function getClient(): ResourcesClient
     {
         return $this->resourcesClient;
+    }
+
+    public function cleanTestScoped(): void
+    {
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_POST,
+            ResourcesCleaner::CLEAN_TEST_SCOPED_URI_PATH
+        );
+        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
     }
 }

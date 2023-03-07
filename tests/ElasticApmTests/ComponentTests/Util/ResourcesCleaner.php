@@ -26,26 +26,35 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Ds\Set;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\TimerInterface;
-use React\Socket\SocketServer;
 
 final class ResourcesCleaner extends TestInfraHttpServerProcessBase
 {
     public const REGISTER_PROCESS_TO_TERMINATE_URI_PATH = '/register_process_to_terminate';
     public const REGISTER_FILE_TO_DELETE_URI_PATH = '/register_file_to_delete';
+    public const CLEAN_TEST_SCOPED_URI_PATH = '/clean_test_scoped';
 
     public const PID_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PID';
+    public const IS_TEST_SCOPED_QUERY_HEADER_NAME
+        = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'IS_TEST_SCOPED';
     public const PATH_QUERY_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'PATH';
 
     /** @var Set<string> */
-    private $filesToDeletePaths;
+    private $globalFilesToDeletePaths;
+
+    /** @var Set<string> */
+    private $testScopedFilesToDeletePaths;
 
     /** @var Set<int> */
-    private $processesToTerminateIds;
+    private $globalProcessesToTerminateIds;
+
+    /** @var Set<int> */
+    private $testScopedProcessesToTerminateIds;
 
     /** @var ?TimerInterface */
     private $parentProcessTrackingTimer = null;
@@ -57,8 +66,11 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         parent::__construct();
 
-        $this->filesToDeletePaths = new Set();
-        $this->processesToTerminateIds = new Set();
+        $this->globalFilesToDeletePaths = new Set();
+        $this->testScopedFilesToDeletePaths = new Set();
+
+        $this->globalProcessesToTerminateIds = new Set();
+        $this->testScopedProcessesToTerminateIds = new Set();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -100,8 +112,8 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     /** @inheritDoc */
     protected function exit(): void
     {
-        $this->cleanSpawnedProcesses();
-        $this->cleanFiles();
+        $this->cleanSpawnedProcesses(/* isTestScopedOnly */ false);
+        $this->cleanFiles(/* isTestScopedOnly */ false);
 
         TestCase::assertNotNull($this->reactLoop);
         TestCase::assertNotNull($this->parentProcessTrackingTimer);
@@ -110,15 +122,35 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
         parent::exit();
     }
 
-    private function cleanSpawnedProcesses(): void
+    private function cleanSpawnedProcesses(bool $isTestScopedOnly): void
+    {
+        $this->cleanSpawnedProcessesFrom(/* dbgSetDesc */ 'test scoped', $this->testScopedProcessesToTerminateIds);
+        if (!$isTestScopedOnly) {
+            $this->cleanSpawnedProcessesFrom(/* dbgSetDesc */ 'global', $this->globalProcessesToTerminateIds);
+        }
+    }
+
+    private function cleanTestScoped(): void
+    {
+        $this->cleanSpawnedProcesses(/* isTestScopedOnly */ true);
+        $this->cleanFiles(/* isTestScopedOnly */ true);
+    }
+
+    /**
+     * @param string   $dbgSetDesc
+     * @param Set<int> $processesToTerminateIds
+     *
+     * @return void
+     */
+    private function cleanSpawnedProcessesFrom(string $dbgSetDesc, Set $processesToTerminateIds): void
     {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Terminating spawned processes...',
-            ['processesToTerminateIds count' => $this->processesToTerminateIds->count()]
+            'Terminating spawned processes ()...',
+            ['dbgSetDesc' => $dbgSetDesc, 'processesToTerminateIds count' => $processesToTerminateIds->count()]
         );
 
-        foreach ($this->processesToTerminateIds as $spawnedProcessesId) {
+        foreach ($processesToTerminateIds as $spawnedProcessesId) {
             if (!ProcessUtilForTests::doesProcessExist($spawnedProcessesId)) {
                 ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
@@ -127,24 +159,49 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
                 );
                 continue;
             }
-            $termCmdExitCode = ProcessUtilForTests::terminateProcess($spawnedProcessesId);
+            $hasExitedNormally = ProcessUtilForTests::terminateProcess($spawnedProcessesId);
+            $hasExited = ProcessUtilForTests::waitForProcessToExit(
+                'Spawn process' /* <- dbgProcessDesc */,
+                $spawnedProcessesId,
+                10 * 1000 * 1000 /* <- maxWaitTimeInMicroseconds - 10 seconds */
+            );
             ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
                 'Issued command to terminate spawned process',
-                ['spawnedProcessesId' => $spawnedProcessesId, 'termCmdExitCode' => $termCmdExitCode]
+                [
+                    'spawnedProcessesId' => $spawnedProcessesId,
+                    'hasExited' => $hasExited,
+                    'hasExitedNormally' => $hasExitedNormally
+                ]
             );
+        }
+
+        $processesToTerminateIds->clear();
+    }
+
+    private function cleanFiles(bool $isTestScopedOnly): void
+    {
+        $this->cleanFilesFrom(/* dbgSetDesc */ 'test scoped', $this->testScopedFilesToDeletePaths);
+        if (!$isTestScopedOnly) {
+            $this->cleanFilesFrom(/* dbgSetDesc */ 'global', $this->globalFilesToDeletePaths);
         }
     }
 
-    private function cleanFiles(): void
+    /**
+     * @param string      $dbgSetDesc
+     * @param Set<string> $filesToDeletePaths
+     *
+     * @return void
+     */
+    private function cleanFilesFrom(string $dbgSetDesc, Set $filesToDeletePaths): void
     {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Deleting files...',
-            ['filesToDeletePaths count' => $this->filesToDeletePaths->count()]
+            ['dbgSetDesc' => $dbgSetDesc, 'filesToDeletePaths count' => $filesToDeletePaths->count()]
         );
 
-        foreach ($this->filesToDeletePaths as $fileToDeletePath) {
+        foreach ($filesToDeletePaths as $fileToDeletePath) {
             if (!file_exists($fileToDeletePath)) {
                 ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log(
@@ -161,6 +218,8 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
                 ['fileToDeletePath' => $fileToDeletePath, 'unlinkRetVal' => $unlinkRetVal]
             );
         }
+
+        $filesToDeletePaths->clear();
     }
 
     /** @inheritDoc */
@@ -168,38 +227,55 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         switch ($request->getUri()->getPath()) {
             case self::REGISTER_PROCESS_TO_TERMINATE_URI_PATH:
-                return $this->registerProcessToTerminate($request);
+                $this->registerProcessToTerminate($request);
+                break;
             case self::REGISTER_FILE_TO_DELETE_URI_PATH:
-                return $this->registerFileToDelete($request);
+                $this->registerFileToDelete($request);
+                break;
+            case self::CLEAN_TEST_SCOPED_URI_PATH:
+                $this->cleanTestScoped();
+                break;
             default:
                 return null;
         }
+        return self::buildDefaultResponse();
     }
 
-    protected function registerProcessToTerminate(ServerRequestInterface $request): ResponseInterface
+    protected function registerProcessToTerminate(ServerRequestInterface $request): void
     {
         $pid = intval(self::getRequiredRequestHeader($request, self::PID_QUERY_HEADER_NAME));
-        $this->processesToTerminateIds->add($pid);
+        $isTestScopedAsString = self::getRequiredRequestHeader($request, self::IS_TEST_SCOPED_QUERY_HEADER_NAME);
+        $isTestScoped = JsonUtil::decode($isTestScopedAsString, /* asAssocArray */ true);
+        $processesToTerminateIds
+            = $isTestScoped ? $this->testScopedProcessesToTerminateIds : $this->globalProcessesToTerminateIds;
+        $processesToTerminateIds->add($pid);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Successfully registered process to terminate',
-            ['pid' => $pid, 'processesToTerminateIds count' => $this->processesToTerminateIds->count()]
+            [
+                'pid' => $pid,
+                'isTestScoped' => $isTestScoped,
+                'processesToTerminateIds count' => $processesToTerminateIds->count(),
+            ]
         );
-
-        return self::buildDefaultResponse();
     }
 
-    protected function registerFileToDelete(ServerRequestInterface $request): ResponseInterface
+    protected function registerFileToDelete(ServerRequestInterface $request): void
     {
         $path = self::getRequiredRequestHeader($request, self::PATH_QUERY_HEADER_NAME);
-        $this->filesToDeletePaths->add($path);
+        $isTestScopedAsString = self::getRequiredRequestHeader($request, self::IS_TEST_SCOPED_QUERY_HEADER_NAME);
+        $isTestScoped = JsonUtil::decode($isTestScopedAsString, /* asAssocArray */ true);
+        $filesToDeletePaths = $isTestScoped ? $this->testScopedFilesToDeletePaths : $this->globalFilesToDeletePaths;
+        $filesToDeletePaths->add($path);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'Successfully registered file to delete',
-            ['path' => $path, 'filesToDeletePaths count' => $this->filesToDeletePaths->count()]
+            [
+                'path' => $path,
+                'isTestScoped' => $isTestScoped,
+                'filesToDeletePaths count' => $filesToDeletePaths->count(),
+            ]
         );
-
-        return self::buildDefaultResponse();
     }
 
     protected function shouldRegisterThisProcessWithResourcesCleaner(): bool
