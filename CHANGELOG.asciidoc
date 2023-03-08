@@ -22,7 +22,7 @@ endif::[]
 // CHANGELOG_AUTOMATION_KEYWORD
 
 [[release-notes-v1.8.1]]
-=== v1.8.1 - 2023/03/08
+=== v1.8.1 - 2023/03/09
 [float]
 ==== Bug fixes
 * Fix for the agent causing very high CPU usage because it's creating frequent connections to Elastic APM Server {pull}877[#877]
