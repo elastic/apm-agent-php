@@ -174,6 +174,15 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     ELASTIC_APM_ASSERT( connectionData->curlHandle == NULL, "" );
     ELASTIC_APM_ASSERT( connectionData->requestHeaders == NULL, "" );
 
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+            "config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
+            "; userAgentHttpHeader: `%s'"
+            , config->serverUrl
+            , boolToString( config->disableSend )
+            , streamDuration( config->serverTimeout, &txtOutStream )
+            , streamStringView( userAgentHttpHeader, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
+
     connectionData->curlHandle = curl_easy_init();
     if ( connectionData->curlHandle == NULL )
     {
@@ -249,6 +258,9 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     int snprintfRetVal;
 
     ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
+    ELASTIC_APM_ASSERT( connectionData->curlHandle != NULL, "" );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POST, 1L );
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POSTFIELDS, serializedEvents.begin );

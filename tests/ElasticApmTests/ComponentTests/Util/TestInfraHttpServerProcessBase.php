@@ -298,7 +298,10 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
             return $response;
         }
 
-        return self::buildErrorResponse(400, 'Unknown URI path: `' . $request->getRequestTarget() . '\'');
+        return self::buildErrorResponse(
+            HttpConstantsForTests::STATUS_BAD_REQUEST,
+            'Unknown URI path: `' . $request->getRequestTarget() . '\''
+        );
     }
 
     /**

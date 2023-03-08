@@ -375,7 +375,7 @@ class ComponentTestCaseBase extends TestCaseBase
         $initiallyFailedTestLogLevels = $this->getCurrentLogLevels($this->testCaseHandle);
         $logger->addAllContext(
             [
-                'initiallyFailedTestLogLevels' => $initiallyFailedTestLogLevels,
+                'initiallyFailedTestLogLevels' => self::logLevelsWithNames($initiallyFailedTestLogLevels),
                 'initiallyFailedTestException' => $initiallyFailedTestException,
             ]
         );
@@ -390,7 +390,7 @@ class ComponentTestCaseBase extends TestCaseBase
 
             ++$rerunCount;
             $loggerPerIteration = $logger->inherit()->addAllContext(
-                ['rerunCount' => $rerunCount, 'escalatedLogLevels' => $escalatedLogLevels]
+                ['rerunCount' => $rerunCount, 'escalatedLogLevels' => self::logLevelsWithNames($escalatedLogLevels)]
             );
 
             ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
@@ -527,6 +527,20 @@ class ComponentTestCaseBase extends TestCaseBase
         $result = IterableUtilForTests::concat($result, [$initialLevels]);
         /** @noinspection PhpUnnecessaryLocalVariableInspection */
         $result = IterableUtilForTests::duplicateEachElement($result, $eachLevelsSetMaxCount);
+        return $result;
+    }
+
+    /**
+     * @param array<string, int> $logLevels
+     *
+     * @return array<string, string>
+     */
+    protected static function logLevelsWithNames(array $logLevels): array
+    {
+        $result = [];
+        foreach ($logLevels as $levelTypeKey => $logLevel) {
+            $result[$levelTypeKey] = LogLevel::intToName($logLevel) . '(' . $logLevel . ')';
+        }
         return $result;
     }
 }

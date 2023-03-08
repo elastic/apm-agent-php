@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -76,12 +77,21 @@ final class MockApmServerHandle extends HttpServerHandle
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
         );
 
+        $responseBody = $response->getBody()->getContents();
         if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
-            throw new RuntimeException('Received unexpected status code');
+            throw new RuntimeException(
+                'Received unexpected status code; ' . LoggableToString::convert(
+                    [
+                        'expected' => HttpConstantsForTests::STATUS_OK,
+                        'actual'   => $response->getStatusCode(),
+                        'body'     => $responseBody,
+                    ]
+                )
+            );
         }
 
         /** @var array<string, mixed> $decodedBody */
-        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
+        $decodedBody = JsonUtil::decode($responseBody, /* asAssocArray */ true);
 
         $receiverEventsJson = $decodedBody[MockApmServer::RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY];
         /** @var array<array<string, mixed>> $receiverEventsJson */
@@ -107,6 +117,8 @@ final class MockApmServerHandle extends HttpServerHandle
 
     public function cleanTestScoped(): void
     {
+        $this->nextIntakeApiRequestIndexToFetch = 0;
+
         $response = $this->sendRequest(
             HttpConstantsForTests::METHOD_POST,
             TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH

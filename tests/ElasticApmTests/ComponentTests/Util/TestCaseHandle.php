@@ -170,9 +170,9 @@ final class TestCaseHandle implements LoggableInterface
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
                 [
-                    'expected event counts'     => $expectedEventCounts,
-                    'actual event counts'       => $dataFromAgentAccumulator->dbgCounts(),
-                    '$dataFromAgentAccumulator' => $dataFromAgentAccumulator,
+                    'expected event counts'    => $expectedEventCounts,
+                    'actual event counts'      => $dataFromAgentAccumulator->dbgCounts(),
+                    'dataFromAgentAccumulator' => $dataFromAgentAccumulator,
                 ]
             )
         );

@@ -137,7 +137,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
         if ($request->getBody()->getSize() === 0) {
             return $this->buildIntakeApiErrorResponse(
-                400 /* status */,
+                HttpConstantsForTests::STATUS_BAD_REQUEST /* status */,
                 'Intake API request should not have empty body'
             );
         }
@@ -168,7 +168,10 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             return $this->getIntakeApiRequests($request);
         }
 
-        return $this->buildErrorResponse(400 /* status */, 'Unknown Mock API command `' . $command . '\'');
+        return $this->buildErrorResponse(
+            HttpConstantsForTests::STATUS_BAD_REQUEST,
+            'Unknown Mock API command `' . $command . '\''
+        );
     }
 
     /**
@@ -181,8 +184,8 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         $fromIndex = intval(self::getRequiredRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
         if (!NumericUtil::isInClosedInterval(0, $fromIndex, count($this->receiverEvents))) {
             return $this->buildErrorResponse(
-                400 /* status */,
-                'Invalid `' . self::FROM_INDEX_HEADER_NAME . '\' HTTP request header value: $fromIndex'
+                HttpConstantsForTests::STATUS_BAD_REQUEST /* status */,
+                'Invalid `' . self::FROM_INDEX_HEADER_NAME . '\' HTTP request header value: ' . $fromIndex
                 . ' (should be in range[0, ' . count($this->receiverEvents) . '])'
             );
         }
