@@ -166,11 +166,11 @@ jobs:
         name: Prepare Upload
         run: >-
           find build
-          -name "phpunit-*junit.xml"
+          -name "*junit.xml"
           -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
           \;
       - if: success() || failure()
         uses: actions/upload-artifact@v3
         with:
           name: test-results
-          path: build/*-phpunit-*junit.xml
+          path: build/*junit.xml

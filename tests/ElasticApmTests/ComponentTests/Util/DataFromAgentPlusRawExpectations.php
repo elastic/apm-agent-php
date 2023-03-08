@@ -33,43 +33,56 @@ use ElasticApmTests\Util\MetricSetExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TraceExpectations;
 use ElasticApmTests\Util\TransactionExpectations;
+use PHPUnit\Framework\Assert;
 
 final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 {
-    /** @var AppCodeInvocation */
-    public $appCodeInvocation;
+    /** @var AppCodeInvocation[] */
+    public $appCodeInvocations;
 
     /** @var float */
-    public $timeReceivedLastIntakeApiRequest;
+    public $timeAllDataReceivedAtApmServer;
 
-    public function __construct(AppCodeInvocation $appCodeInvocation, float $timeReceivedLastIntakeApiRequest)
+    /**
+     * @param AppCodeInvocation[] $appCodeInvocations
+     * @param float               $timeAllDataReceivedAtApmServer
+     */
+    public function __construct(array $appCodeInvocations, float $timeAllDataReceivedAtApmServer)
     {
-        $this->appCodeInvocation = $appCodeInvocation;
-        $this->timeReceivedLastIntakeApiRequest = $timeReceivedLastIntakeApiRequest;
-        $this->fillExpectations();
+        $this->appCodeInvocations = $appCodeInvocations;
+        $this->timeAllDataReceivedAtApmServer = $timeAllDataReceivedAtApmServer;
+        $this->fillExpectationsFromParsedData();
     }
 
-    private function fillExpectations(): void
+    private function fillExpectationsFromParsedData(): void
+    {
+        Assert::assertNotEmpty($this->appCodeInvocations);
+        foreach ($this->appCodeInvocations as $appCodeInvocation) {
+            $this->addExpectationsForAppCodeInvocation($appCodeInvocation);
+        }
+    }
+
+    private function addExpectationsForAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
     {
         $transactionExpectations = new TransactionExpectations();
-        $transactionExpectations->isSampled = $this->deriveIsSampledExpectation();
-        $transactionExpectations->timestampBefore = $this->appCodeInvocation->timestampBefore;
-        $transactionExpectations->timestampAfter = $this->timeReceivedLastIntakeApiRequest;
-        if (!$this->appCodeInvocation->appCodeRequestParams->shouldAssumeNoDroppedSpans) {
+        $transactionExpectations->isSampled = self::deriveIsSampledExpectation($appCodeInvocation);
+        $transactionExpectations->timestampBefore = $appCodeInvocation->timestampBefore;
+        $transactionExpectations->timestampAfter = $this->timeAllDataReceivedAtApmServer;
+        if (!$appCodeInvocation->appCodeRequestParams->shouldAssumeNoDroppedSpans) {
             $transactionExpectations->droppedSpansCount = null;
         }
 
-        $this->fillErrorExpectations($transactionExpectations);
-        $this->fillMetadataExpectations($transactionExpectations);
-        $this->fillMetricSetExpectations($transactionExpectations);
-        $this->fillTraceExpectations($transactionExpectations);
+        self::addErrorExpectations($transactionExpectations);
+        self::addMetadataExpectations($appCodeInvocation, $transactionExpectations);
+        self::addMetricSetExpectations($transactionExpectations);
+        self::addTraceExpectations($appCodeInvocation, $transactionExpectations);
     }
 
-    private function deriveIsSampledExpectation(): ?bool
+    private static function deriveIsSampledExpectation(AppCodeInvocation $appCodeInvocation): ?bool
     {
         /** @var ?bool $sampleRate */
         $sampleRate = null;
-        foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
+        foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $currentSampleRate = self::deriveIsSampledExpectationForAppCodeHost($appCodeHostParams);
             if ($sampleRate === null) {
                 $sampleRate = $currentSampleRate;
@@ -89,28 +102,30 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         return $sampleRate === 0.0 ? false : ($sampleRate === 1.0 ? true : null);
     }
 
-    private function fillErrorExpectations(TransactionExpectations $transactionExpectations): void
+    private function addErrorExpectations(TransactionExpectations $transactionExpectations): void
     {
-        $this->error = new ErrorExpectations();
+        $errorExpectations = new ErrorExpectations();
         TestCaseBase::assertGreaterThanZero(
-            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->error)
+            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $errorExpectations)
         );
+        $this->errors[] = $errorExpectations;
     }
 
-    private function fillMetadataExpectations(TransactionExpectations $transactionExpectations): void
-    {
-        $this->agentEphemeralIdToMetadata = [];
-        foreach ($this->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
+    private function addMetadataExpectations(
+        AppCodeInvocation $appCodeInvocation,
+        TransactionExpectations $transactionExpectations
+    ): void {
+        foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
             $metadataExpectations
-                = self::buildMetadataExpectationsForHost($transactionExpectations, $appCodeHostParams);
+                = self::buildMetadataExpectationsForHost($appCodeHostParams, $transactionExpectations);
             $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessInternalId);
             $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessInternalId] = $metadataExpectations;
         }
     }
 
     private static function buildMetadataExpectationsForHost(
-        TransactionExpectations $transactionExpectations,
-        AppCodeHostParams $appCodeHostParams
+        AppCodeHostParams $appCodeHostParams,
+        TransactionExpectations $transactionExpectations
     ): MetadataExpectations {
         $metadata = new MetadataExpectations();
         TestCaseBase::assertGreaterThanZero(
@@ -135,32 +150,36 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         return $metadata;
     }
 
-    private function fillMetricSetExpectations(TransactionExpectations $transactionExpectations): void
+    private function addMetricSetExpectations(TransactionExpectations $transactionExpectations): void
     {
-        $this->metricSet = new MetricSetExpectations();
+        $metricSetExpectations = new MetricSetExpectations();
         TestCaseBase::assertGreaterThanZero(
-            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->metricSet)
+            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metricSetExpectations)
         );
+        $this->metricSets[] = $metricSetExpectations;
     }
 
-    private function fillTraceExpectations(TransactionExpectations $transactionExpectations): void
-    {
-        $this->trace = new TraceExpectations();
-        $this->trace->transaction = $transactionExpectations;
-        self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $this->trace->span);
-        $this->trace->span->timestampAfter = $this->appCodeInvocation->timestampAfter;
+    private function addTraceExpectations(
+        AppCodeInvocation $appCodeInvocation,
+        TransactionExpectations $transactionExpectations
+    ): void {
+        $traceExpectations = new TraceExpectations();
+        $traceExpectations->transaction = $transactionExpectations;
+        self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $traceExpectations->span);
+        $traceExpectations->span->timestampAfter = $appCodeInvocation->timestampAfter;
 
-        $appCodeRequestParams = $this->appCodeInvocation->appCodeRequestParams;
-        $this->trace->shouldVerifyRootTransaction = $appCodeRequestParams->shouldVerifyRootTransaction;
-        $this->trace->rootTransactionName = $appCodeRequestParams->expectedTransactionName->getValue();
-        $this->trace->rootTransactionType = $appCodeRequestParams->expectedTransactionType->getValue();
+        $appCodeRequestParams = $appCodeInvocation->appCodeRequestParams;
+        $traceExpectations->shouldVerifyRootTransaction = $appCodeRequestParams->shouldVerifyRootTransaction;
+        $traceExpectations->rootTransactionName = $appCodeRequestParams->expectedTransactionName->getValue();
+        $traceExpectations->rootTransactionType = $appCodeRequestParams->expectedTransactionType->getValue();
 
         if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-            $this->trace->isRootTransactionHttp = true;
-            $this->trace->rootTransactionHttpRequestMethod = $appCodeRequestParams->httpRequestMethod;
-            $this->trace->rootTransactionUrlParts = $appCodeRequestParams->urlParts;
+            $traceExpectations->isRootTransactionHttp = true;
+            $traceExpectations->rootTransactionHttpRequestMethod = $appCodeRequestParams->httpRequestMethod;
+            $traceExpectations->rootTransactionUrlParts = $appCodeRequestParams->urlParts;
         } else {
-            $this->trace->isRootTransactionHttp = false;
+            $traceExpectations->isRootTransactionHttp = false;
         }
+        $this->traces[] = $traceExpectations;
     }
 }

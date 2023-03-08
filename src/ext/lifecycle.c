@@ -203,7 +203,7 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         goto finally;
     }
 
-    backgroundBackendCommOnModuleShutdown();
+    backgroundBackendCommOnModuleShutdown( config );
 
     if ( tracer->curlInited )
     {

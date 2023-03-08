@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -xe
+set -xe -o pipefail
 
 function printInfoAboutEnvironment () {
     echo 'PHP version:'
@@ -34,11 +34,17 @@ function runComponentTests () {
     run_command_with_timeout_and_retries_args=(--max-tries=3 "${run_command_with_timeout_and_retries_args[@]}")
     run_command_with_timeout_and_retries_args=(--increase-timeout-exponentially=yes "${run_command_with_timeout_and_retries_args[@]}")
 
+    mkdir -p ./build/
+
     set +e
     # shellcheck disable=SC2086 # composerCommand is not wrapped in quotes on purpose because it might contained multiple space separated strings
     .ci/run_command_with_timeout_and_retries.sh "${run_command_with_timeout_and_retries_args[@]}" -- "${composerCommand[@]}"
     local composerCommandExitCode=$?
     set -e
+
+    echo "Content of ./build/ begin"
+    ls -l ./build/
+    echo "Content of ./build/ end"
 
     echo "${composerCommand[*]} exited with an error code ${composerCommandExitCode}"
     if [ ${composerCommandExitCode} -eq 0 ] ; then

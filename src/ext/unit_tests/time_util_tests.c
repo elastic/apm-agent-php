@@ -110,12 +110,55 @@ void test_calcTimeValDiff( void** testFixtureState )
     }
 }
 
+static
+void impl_test_one_durationToMilliseconds( Duration inputDuration, Int64 expectedDurationInMilliseconds )
+{
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    Int64 actualDurationInMilliseconds = durationToMilliseconds( inputDuration );
+    ELASTIC_APM_CMOCKA_ASSERT_MSG(
+            actualDurationInMilliseconds == expectedDurationInMilliseconds
+            , "inputDuration: %s, expectedDurationInMilliseconds: %"PRId64", actualDurationInMilliseconds: %"PRId64
+            , streamDuration( inputDuration, &txtOutStream ), expectedDurationInMilliseconds, actualDurationInMilliseconds );
+}
+
+static
+void test_durationToMilliseconds( void** testFixtureState )
+{
+    ELASTIC_APM_UNUSED( testFixtureState );
+
+    // Test zero
+    ELASTIC_APM_FOR_EACH_INDEX( i, numberOfDurationUnits )
+    {
+        impl_test_one_durationToMilliseconds( makeDuration( 0, (DurationUnits)i ), /* expectedDurationInMilliseconds */ 0 );
+    }
+
+    Int64 factor[ numberOfDurationUnits ] =
+    {
+        [ durationUnits_millisecond ] = 1,
+        [ durationUnits_second ] = 1000,
+        [ durationUnits_minute ] = 60 * 1000,
+    };
+    Int64 valueInUnitsVariants[] = { 1, -1, 123, -4567890, INT8_MAX, INT8_MIN, INT16_MAX, INT16_MIN, INT32_MAX, INT32_MIN };
+    ELASTIC_APM_FOR_EACH_INDEX( valueVariantIndex, ELASTIC_APM_STATIC_ARRAY_SIZE( valueInUnitsVariants ) )
+    {
+        Int64 valueInUnits = valueInUnitsVariants[ valueVariantIndex ];
+        ELASTIC_APM_FOR_EACH_INDEX( i, numberOfDurationUnits )
+        {
+            Int64 expectedDurationInMilliseconds = valueInUnits * factor[ i ];
+            impl_test_one_durationToMilliseconds( makeDuration( valueInUnits, (DurationUnits)i ), expectedDurationInMilliseconds );
+        }
+    }
+}
+
 int run_time_util_tests( int argc, const char* argv[] )
 {
     const struct CMUnitTest tests [] =
     {
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_calcEndTimeVal ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_calcTimeValDiff ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_durationToMilliseconds ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

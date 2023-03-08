@@ -49,6 +49,8 @@ int run_Logger_tests();
 int run_config_tests();
 int run_time_util_tests();
 int run_iterateOverCStackTrace_tests();
+int run_ResultCode_tests();
+int run_parse_value_with_units_tests();
 
 int main( int argc, char* argv[] )
 {
@@ -71,6 +73,8 @@ int main( int argc, char* argv[] )
     failedTestsCount += run_config_tests();
     failedTestsCount += run_time_util_tests();
     failedTestsCount += run_iterateOverCStackTrace_tests();
+    failedTestsCount += run_ResultCode_tests();
+    failedTestsCount += run_parse_value_with_units_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
 

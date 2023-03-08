@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
@@ -54,7 +55,8 @@ final class ResourcesClient
         $this->resourcesCleanerPort = $resourcesCleanerPort;
     }
 
-    private function registerFileToDelete(string $fullPath): void
+    /** @noinspection PhpSameParameterValueInspection */
+    private function registerFileToDelete(string $fullPath, bool $isTestScoped): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -68,7 +70,11 @@ final class ResourcesClient
                 ->path(ResourcesCleaner::REGISTER_FILE_TO_DELETE_URI_PATH)
                 ->port($this->resourcesCleanerPort),
             TestInfraDataPerRequest::withSpawnedProcessInternalId($this->resourcesCleanerSpawnedProcessInternalId),
-            [ResourcesCleaner::PATH_QUERY_HEADER_NAME => $fullPath] /* <- headers */
+            /* headers: */
+            [
+                ResourcesCleaner::PATH_QUERY_HEADER_NAME           => $fullPath,
+                ResourcesCleaner::IS_TEST_SCOPED_QUERY_HEADER_NAME => BoolUtil::toString($isTestScoped),
+            ]
         );
         if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException(
@@ -102,7 +108,7 @@ final class ResourcesClient
         }
 
         if ($shouldBeDeletedOnTestExit) {
-            $this->registerFileToDelete($tempFileFullPath);
+            $this->registerFileToDelete($tempFileFullPath, /* isTestScoped */ true);
         }
         return $tempFileFullPath;
     }

@@ -27,10 +27,12 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
 use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+use ElasticApmTests\Util\Deserialization\JsonSerializableTrait;
 use JsonSerializable;
 
 final class IntakeApiRequest implements JsonSerializable, JsonDeserializableInterface, LoggableInterface
 {
+    use JsonSerializableTrait;
     use JsonDeserializableTrait;
     use LoggableTrait;
 

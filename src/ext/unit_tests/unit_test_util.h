@@ -128,13 +128,20 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
         ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( callAssertResultCode, resultSuccess ); \
     } while ( 0 )
 
-
-#define ELASTIC_APM_CMOCKA_ASSERT( cond ) assert_true( cond )
 #define ELASTIC_APM_CMOCKA_ASSERT_VALID_PTR( ptr ) assert_ptr_not_equal( (ptr), NULL )
 #define ELASTIC_APM_CMOCKA_ASSERT_NULL_PTR( ptr ) assert_ptr_equal( (ptr), NULL )
 
 #define ELASTIC_APM_CMOCKA_FAIL_MSG( fmt, ... ) ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__, __LINE__, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_CMOCKA_FAIL() ELASTIC_APM_CMOCKA_FAIL_MSG( "" )
+
+#define ELASTIC_APM_CMOCKA_ASSERT( cond ) assert_true( cond )
+#define ELASTIC_APM_CMOCKA_ASSERT_MSG( cond, fmt, ... ) \
+    do { \
+        if ( ! (cond) ) \
+        { \
+            ELASTIC_APM_CMOCKA_FAIL_MSG( "Condition %s failed; " fmt, ELASTIC_APM_PP_STRINGIZE( cond ), ##__VA_ARGS__ ); \
+        } \
+    } while ( 0 )
 
 #define ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, setupFunc, teardownFunc, initialState ) \
     ( struct CMUnitTest ) \

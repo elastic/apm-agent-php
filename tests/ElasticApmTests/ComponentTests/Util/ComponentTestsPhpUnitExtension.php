@@ -63,6 +63,9 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     /** @var Logger */
     private $logger;
 
+    /** @var ?GlobalTestInfra */
+    private static $globalTestInfra = null;
+
     public function __construct()
     {
         parent::__construct(self::DBG_PROCESS_NAME);
@@ -75,6 +78,14 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             __CLASS__,
             __FILE__
         )->addContext('appCodeHostKind', AmbientContextForTests::testConfig()->appCodeHostKind());
+    }
+
+    public static function getGlobalTestInfra(): GlobalTestInfra
+    {
+        if (self::$globalTestInfra === null) {
+            self::$globalTestInfra = new GlobalTestInfra();
+        }
+        return self::$globalTestInfra;
     }
 
     public static function initSingletons(): void

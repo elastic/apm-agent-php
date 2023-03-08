@@ -25,7 +25,7 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 final class ArrayUtilForTests
 {
@@ -48,16 +48,18 @@ final class ArrayUtilForTests
      */
     public static function getSingleValue(array $array)
     {
-        TestCase::assertCount(1, $array);
+        Assert::assertCount(1, $array);
         return self::getFirstValue($array);
     }
 
     /**
      * @template T
+     *
      * @param   T[] $array
+     *
      * @return  T
      */
-    public static function getLastValue(array $array)
+    public static function &getLastValue(array $array)
     {
         return $array[count($array) - 1];
     }
@@ -69,7 +71,7 @@ final class ArrayUtilForTests
      */
     public static function addUnique($key, $value, array &$result): void
     {
-        TestCase::assertArrayNotHasKey(
+        Assert::assertArrayNotHasKey(
             $key,
             $result,
             LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result])
@@ -114,5 +116,38 @@ final class ArrayUtilForTests
         for ($i = $arrayCount - 1; $i >= 0; --$i) {
             yield $array[$i];
         }
+    }
+
+    /**
+     * @template TKey of string|int
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $from
+     * @param array<TKey, TValue> $to
+     */
+    public static function append(array $from, array &$to): void
+    {
+        $to = array_merge($to, $from);
+    }
+
+    /**
+     * @template TKey
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $map
+     * @param TKey                $keyToFind
+     *
+     * @return  int
+     */
+    public static function getAdditionOrderIndex(array $map, $keyToFind): int
+    {
+        $additionOrderIndex = 0;
+        foreach ($map as $key => $ignored) {
+            if ($key === $keyToFind) {
+                return $additionOrderIndex;
+            }
+            ++$additionOrderIndex;
+        }
+        Assert::fail('Not found key in map; ' . LoggableToString::convert(['keyToFind' => $keyToFind, 'map' => $map]));
     }
 }

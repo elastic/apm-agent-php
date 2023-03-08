@@ -83,6 +83,11 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
         );
     }
 
+    protected function isThisProcessTestScoped(): bool
+    {
+        return true;
+    }
+
     protected function registerWithResourcesCleaner(): void
     {
         // We don't want any of the infrastructure operations to be recorded as application's APM events

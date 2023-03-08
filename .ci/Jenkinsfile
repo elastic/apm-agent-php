@@ -143,7 +143,7 @@ pipeline {
                 }
                 post {
                   always {
-                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml,${BASE_DIR}/phpunit-junit.xml")
+                    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
                   }
                 }
               }
@@ -559,7 +559,7 @@ def runTestingCommand(def args = [:]) {
       }
     }
   } finally {
-    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/phpunit-*junit.xml")
+    junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
   }
 }
 
