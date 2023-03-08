@@ -539,7 +539,7 @@ class ComponentTestCaseBase extends TestCaseBase
     {
         $result = [];
         foreach ($logLevels as $levelTypeKey => $logLevel) {
-            $result[$levelTypeKey] = LogLevel::intToName($logLevel) . '(' . $logLevel . ')';
+            $result[$levelTypeKey] = LogLevel::intToName($logLevel) . ' (' . $logLevel . ')';
         }
         return $result;
     }

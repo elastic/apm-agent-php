@@ -42,7 +42,9 @@ function runComponentTests () {
     local composerCommandExitCode=$?
     set -e
 
+    echo "Content of ./build/ begin"
     ls -l ./build/
+    echo "Content of ./build/ end"
 
     echo "${composerCommand[*]} exited with an error code ${composerCommandExitCode}"
     if [ ${composerCommandExitCode} -eq 0 ] ; then
