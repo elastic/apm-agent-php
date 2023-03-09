@@ -18,72 +18,14 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: static-checks-unit-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
-        dockerfile:
-          - "Dockerfile"
-          - "Dockerfile.alpine"
-    env:
-      PHP_VERSION: ${{ matrix.php-version }}
-      DOCKERFILE: ${{ matrix.dockerfile }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Prepare
-        run: make -f .ci/Makefile prepare
-      - name: Build
-        run: make -f .ci/Makefile build
-      - name: Static Check / Unit tests
-        run: make -f .ci/Makefile static-check-unit-test
-      - name: Build parts for packages
-        run: make -f .ci/Makefile generate-for-package
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules/*.so
-      - if: success() || failure()
-        name: Prepare Upload
-        run: >-
-          find build
-          -name "*junit.xml"
-          -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
-          \;
-      - if: success() || failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: build/*junit.xml
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+
   build-packages:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/build-packages.yml
     needs:
-      - test
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules
-      - name: package
-        run: make -C packaging package
-      - name: package info
-        run: make -C packaging info
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package
-          path: |
-            build/packages/*
-            !build/packages/**/*.sha512
+      - build-test
+
   generate-test-packages-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -94,12 +36,13 @@ jobs:
         run: |
           MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
   test-packages:
     timeout-minutes: 120
     needs:
       - build-packages
       - generate-test-packages-matrix
-      - test
+      - build-test
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 20

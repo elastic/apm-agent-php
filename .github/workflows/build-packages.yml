@@ -1,0 +1,31 @@
+name: build-packages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules
+
+      - name: package
+        run: make -C packaging package
+
+      - name: package info
+        run: make -C packaging info
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: |
+            build/packages/*
+            !build/packages/**/*.sha512

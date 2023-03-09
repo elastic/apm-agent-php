@@ -11,61 +11,19 @@ on:
   #  tags: [ "v*" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
-        dockerfile:
-          - "Dockerfile"
-          - "Dockerfile.alpine"
-    env:
-      PHP_VERSION: ${{ matrix.php-version }}
-      DOCKERFILE: ${{ matrix.dockerfile }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build
-        run: make -f .ci/Makefile build
-      - name: Build parts for packages
-        run: make -f .ci/Makefile generate-for-package
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules/*.so
-  generate-packages:
-    runs-on: ubuntu-latest
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+
+  build-packages:
+    uses: ./.github/workflows/build-packages.yml
     needs:
-      - build
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules
-      - name: package
-        run: make -C packaging package
-      - name: package info
-        run: make -C packaging info
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package
-          path: |
-            build/packages/*
-            !build/packages/**/*.sha512
+      - build-test
 
   release:
     name: Release
     runs-on: ubuntu-latest
     needs:
-      - generate-packages
+      - build-packages
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3

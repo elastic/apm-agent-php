@@ -1,0 +1,51 @@
+name: build
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: static-checks-unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+          - "8.2"
+        dockerfile:
+          - "Dockerfile"
+          - "Dockerfile.alpine"
+    env:
+      PHP_VERSION: ${{ matrix.php-version }}
+      DOCKERFILE: ${{ matrix.dockerfile }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: make -f .ci/Makefile prepare
+      - run: make -f .ci/Makefile build
+      - run: make -f .ci/Makefile static-check-unit-test
+      - run: make -f .ci/Makefile generate-for-package
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules/*.so
+      - if: success() || failure()
+        name: Prepare Upload
+        run: >-
+          find build
+          -name "*junit.xml"
+          -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
+          \;
+      - if: success() || failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: build/*junit.xml
