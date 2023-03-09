@@ -148,7 +148,7 @@ jobs:
       - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
         name: agent upgrade test - prepare
         run: |
-          cp -rf build/packages build/backup
+          mv build/packages build/backup
           VERSION=1.0.0 make -C packaging package
           mv build/packages build/local
           mv build/backup build/packages
