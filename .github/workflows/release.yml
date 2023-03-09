@@ -43,7 +43,7 @@ jobs:
   generate-packages:
     runs-on: ubuntu-latest
     needs:
-      - test
+      - build
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
