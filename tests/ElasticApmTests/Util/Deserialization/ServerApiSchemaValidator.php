@@ -32,6 +32,7 @@ use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 final class ServerApiSchemaValidator
@@ -205,6 +206,7 @@ final class ServerApiSchemaValidator
     {
         $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
         $pathToTempFile = tempnam(sys_get_temp_dir(), $fileNamePrefix);
+        Assert::assertNotFalse($pathToTempFile);
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,

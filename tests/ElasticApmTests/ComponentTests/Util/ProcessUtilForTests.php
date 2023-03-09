@@ -101,6 +101,7 @@ final class ProcessUtilForTests
         if ($shouldCaptureStdOutErr) {
             $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
             $tempOutputFilePath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
+            Assert::assertNotFalse($tempOutputFilePath);
             if (file_exists($tempOutputFilePath)) {
                 TestCase::assertTrue(unlink($tempOutputFilePath));
             }
