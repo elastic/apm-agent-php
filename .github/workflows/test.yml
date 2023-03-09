@@ -174,3 +174,17 @@ jobs:
         with:
           name: test-results
           path: build/*junit.xml
+
+      # Store syslog
+      - if: failure()
+        name: Prepare Upload
+        continue-on-error: true
+        run: |-
+          find build/syslog -name "syslog" -exec bash -c 'mv {} "build/syslog/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"' \;
+          find build/syslog -name "messages" -exec bash -c 'mv {} "build/syslog/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'  \;
+      - if: failure()
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        with:
+          name: syslogs
+          path: build/syslog/**
