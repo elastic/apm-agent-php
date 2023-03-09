@@ -92,7 +92,7 @@ final class ResourcesClient
 
     public function createTempFile(string $type, bool $shouldBeDeletedOnTestExit = true): string
     {
-        $fileNamePrefix = 'Elastic_APM_PHP_Agent_component_tests_-_' . $type . '_-_';
+        $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
         $tempFileFullPath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
         if ($tempFileFullPath === false) {
             throw new RuntimeException(
