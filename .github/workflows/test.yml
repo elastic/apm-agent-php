@@ -147,10 +147,6 @@ jobs:
         run: |
           VERSION=1.0.0 make -C packaging package
           mv build/packages build/local
-
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        name: agent upgrade test
-        run: |
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
       - if: success() || failure()
