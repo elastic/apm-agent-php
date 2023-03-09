@@ -4,8 +4,8 @@ name: OpenTelemetry Export Trace
 on:
   workflow_run:
     workflows:
+      - ci
       - loop
-      - test
       - test-reporter
       - update-specs
       - "Issue Labeler"
