@@ -156,7 +156,7 @@ struct ConfigSnapshot
     bool captureErrors;
     String devInternal;
     String disableInstrumentations;
-    String disableSend;
+    bool disableSend;
     bool enabled;
     String environment;
     String hostname;
@@ -181,7 +181,7 @@ struct ConfigSnapshot
     String sanitizeFieldNames;
     String secretToken;
     String serverUrl;
-    String serverTimeout;
+    Duration serverTimeout;
     String serviceName;
     String serviceNodeName;
     String serviceVersion;

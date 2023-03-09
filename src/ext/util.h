@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "constants.h"
 #include "basic_types.h"
 #include "StringView.h"
@@ -88,6 +89,16 @@ static inline char charToUpperCase( char c )
     return c;
 }
 
+static inline char charToLowerCase( char c )
+{
+    if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( 'A', c, 'Z' ) )
+    {
+        return (char) ( (char) ( c - 'A' ) + 'a' );
+    }
+
+    return c;
+}
+
 static inline void copyStringAsUpperCase( String src, /* out */ MutableString dst )
 {
     size_t i = 0;
@@ -106,11 +117,18 @@ bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( str );
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( prefix );
 
-    if ( prefix.length > str.length ) return false;
+    if ( prefix.length > str.length )
+    {
+        return false;
+    }
 
     ELASTIC_APM_FOR_EACH_INDEX( i, prefix.length )
+    {
         if ( ! areCharsEqualIgnoringCase( str.begin[ i ], prefix.begin[ i ] ) )
+        {
             return false;
+        }
+    }
 
     return true;
 }
@@ -133,16 +151,45 @@ bool areStringsEqualIgnoringCase( String str1, String str2 )
 }
 
 static inline
+bool areStringViewsEqualIgnoringCase( StringView strVw1, StringView strVw2 )
+{
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw1 );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw2 );
+
+    if ( strVw1.length != strVw2.length )
+    {
+        return false;
+    }
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, strVw1.length )
+    {
+        if ( ! areCharsEqualIgnoringCase( strVw1.begin[ i ], strVw2.begin[ i ] ) )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline
 bool areStringViewsEqual( StringView strVw1, StringView strVw2 )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw1 );
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strVw2 );
 
-    if ( strVw1.length != strVw2.length ) return false;
+    if ( strVw1.length != strVw2.length )
+    {
+        return false;
+    }
 
     ELASTIC_APM_FOR_EACH_INDEX( i, strVw1.length )
+    {
         if ( strVw1.begin[ i ] != strVw2.begin[ i ] )
+        {
             return false;
+        }
+    }
 
     return true;
 }
@@ -250,3 +297,101 @@ bool isWhiteSpace( char c )
 StringView trimStringView( StringView src );
 
 StringView findEndOfLineSequence( StringView text );
+
+static inline
+bool isDecimalDigit( char c )
+{
+    return isdigit( c ) != 0;
+}
+
+typedef bool (* CharPredicate)( char c );
+
+bool findCharByPredicate( StringView src, CharPredicate predicate, size_t* foundPosition );
+
+static inline
+bool isDecimalDigitOrSign( char c )
+{
+    return ( c == '-' ) || isDecimalDigit( c );
+}
+
+static inline
+bool isNotDecimalDigitOrSign( char c )
+{
+    return ! isDecimalDigitOrSign( c );
+}
+
+ResultCode parseDecimalInteger( StringView inputString, /* out */ Int64* result );
+ResultCode parseDecimalIntegerWithUnits( StringView inputString, StringView unitNames[], size_t numberOfUnits, /* out */ Int64* valueInUnits, /* out */ size_t* unitsIndex );
+
+static inline
+bool ifThen( bool ifCond, bool thenCond )
+{
+    return ( ! ifCond ) || thenCond;
+}
+
+enum SizeUnits
+{
+    sizeUnits_byte,
+    sizeUnits_kibibyte,
+    sizeUnits_mebibyte,
+    sizeUnits_gibibyte,
+
+    numberOfSizeUnits
+};
+typedef enum SizeUnits SizeUnits;
+extern StringView sizeUnitsNames[ numberOfSizeUnits ];
+
+struct Size
+{
+    Int64 valueInUnits;
+    SizeUnits units;
+};
+typedef struct Size Size;
+
+static inline
+bool isValidSizeUnits( SizeUnits units )
+{
+    return ( sizeUnits_byte <= units ) && ( units < numberOfSizeUnits );
+}
+
+#define ELASTIC_APM_UNKNOWN_SIZE_UNITS_AS_STRING "<UNKNOWN SizeUnits>"
+
+static inline
+String sizeUnitsToString( SizeUnits sizeUnits )
+{
+    if ( isValidSizeUnits( sizeUnits ) )
+    {
+        return sizeUnitsNames[ sizeUnits ].begin;
+    }
+    return ELASTIC_APM_UNKNOWN_SIZE_UNITS_AS_STRING;
+}
+
+static inline
+Size makeSize( Int64 valueInUnits, SizeUnits units )
+{
+    return (Size){ .valueInUnits = valueInUnits, .units = units };
+}
+
+ResultCode parseSize( StringView inputString, SizeUnits defaultUnits, /* out */ Size* result );
+
+String streamSize( Size size, TextOutputStream* txtOutStream );
+
+Int64 sizeToBytes( Size size );
+
+#define ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( ElementType, ViewTypeName ) \
+    struct ViewTypeName \
+    { \
+        ElementType* values; \
+        size_t size; \
+    }; \
+    typedef struct ViewTypeName ViewTypeName
+
+#define ELASTIC_APM_DEFINE_ARRAY_VIEW( ElementType ) ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( ElementType, ELASTIC_APM_PP_CONCAT( ElementType, ArrayView ) )
+
+#define ELASTIC_APM_STATIC_ARRAY_TO_VIEW( ViewTypeName, staticArray ) ((ViewTypeName){ .values = &((staticArray)[0]), .size = ELASTIC_APM_STATIC_ARRAY_SIZE( staticArray ) })
+
+#define ELASTIC_APM_EMPTY_ARRAY_VIEW( ViewTypeName ) ((ViewTypeName){ .values = NULL, .size = 0 })
+
+ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( int, IntArrayView );
+ELASTIC_APM_DEFINE_ARRAY_VIEW( StringView );
+ELASTIC_APM_DEFINE_ARRAY_VIEW( Int64 );

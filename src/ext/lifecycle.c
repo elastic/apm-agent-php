@@ -208,7 +208,7 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
 
     elasticApmAstInstrumentationOnModuleShutdown();
 
-    backgroundBackendCommOnModuleShutdown();
+    backgroundBackendCommOnModuleShutdown( config );
 
     if ( tracer->curlInited )
     {

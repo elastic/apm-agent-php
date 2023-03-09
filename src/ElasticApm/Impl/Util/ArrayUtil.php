@@ -157,15 +157,16 @@ final class ArrayUtil
     }
 
     /**
-     * @template T
+     * @template TKey of string|int
+     * @template TValue
      *
-     * @param string           $key
-     * @param T                $defaultValue
-     * @param array<string, T> $array
+     * @param TKey                $key
+     * @param TValue              $defaultValue
+     * @param array<TKey, TValue> $array
      *
-     * @return T
+     * @return TValue
      */
-    public static function & getOrAdd(string $key, $defaultValue, array &$array)
+    public static function &getOrAdd($key, $defaultValue, array &$array)
     {
         if (!array_key_exists($key, $array)) {
             $array[$key] = $defaultValue;

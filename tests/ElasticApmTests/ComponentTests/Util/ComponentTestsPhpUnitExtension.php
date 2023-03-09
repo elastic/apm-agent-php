@@ -63,9 +63,17 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     /** @var Logger */
     private $logger;
 
+    /** @var GlobalTestInfra */
+    private static $globalTestInfra = null;
+
     public function __construct()
     {
         parent::__construct(self::DBG_PROCESS_NAME);
+
+        // We spin off test infrastructure servers here and not on demand
+        // in self::getGlobalTestInfra() because PHPUnit might fork to run individual tests
+        // and ResourcesCleaner would track the PHPUnit child process as its master which would be wrong
+        self::$globalTestInfra = new GlobalTestInfra();
 
         GlobalTracerHolder::setValue(NoopTracer::singletonInstance());
 
@@ -75,6 +83,19 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             __CLASS__,
             __FILE__
         )->addContext('appCodeHostKind', AmbientContextForTests::testConfig()->appCodeHostKind());
+    }
+
+    public function __destruct()
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Destroying...');
+
+        self::$globalTestInfra->getResourcesCleaner()->signalAndWaitForItToExit();
+    }
+
+    public static function getGlobalTestInfra(): GlobalTestInfra
+    {
+        return self::$globalTestInfra;
     }
 
     public static function initSingletons(): void

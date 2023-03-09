@@ -58,6 +58,7 @@ final class SyslogClearerClient
             ClassNameUtil::fqToShort(SyslogClearer::class) /* <- dbgServerDesc */,
             'runSyslogClearer.php' /* <- runScriptName */,
             [HttpServerStarter::PORTS_RANGE_END - 2] /* <- portsInUse */,
+            1 /* <- portsToAllocateCount */,
             null /* <- resourcesCleaner */
         );
 

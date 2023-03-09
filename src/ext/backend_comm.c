@@ -107,9 +107,9 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     return dataSize;
 }
 
-#define ELASTIC_APM_CURL_EASY_SETOPT( curl, curlOptionId, ... ) \
+#define ELASTIC_APM_CURL_EASY_SETOPT( curlHandle, curlOptionId, ... ) \
     do { \
-        CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curl, curlOptionId, __VA_ARGS__ ); \
+        CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curlHandle, curlOptionId, __VA_ARGS__ ); \
         if ( curl_easy_setopt_ret_val != CURLE_OK ) \
         { \
             ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option. curlOptionId: %d.", curlOptionId ); \
@@ -127,86 +127,88 @@ ResultCode addToCurlStringList( /* in,out */ struct curl_slist** pList, const ch
     if ( newList == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "Failed to curl_slist_append(); strToAdd: %s", strToAdd );
-        return resultFailure;
+        return resultCurlFailure;
     }
 
     *pList = newList;
     return resultSuccess;
 }
 
-ResultCode syncSendEventsToApmServer( bool disableSend
-                                      , double serverTimeoutMilliseconds
-                                      , const ConfigSnapshot* config
-                                      , String userAgentHttpHeader
-                                      , StringView serializedEvents )
+struct ConnectionData
 {
-    long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "Sending events to APM Server..."
-            "; config->serverUrl: %s"
-            "; disableSend: %s"
-            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
-            "; userAgentHttpHeader: `%s'"
-            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
-            , config->serverUrl
-            , boolToString( disableSend )
-            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
-            , userAgentHttpHeader
-            , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+    CURL* curlHandle;
+    struct curl_slist* requestHeaders;
+};
+typedef struct ConnectionData ConnectionData;
+ConnectionData g_connectionData = { .curlHandle = NULL, .requestHeaders = NULL };
 
-    if ( disableSend )
+void cleanupConnectionData( ConnectionData* connectionData )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
+
+    if ( connectionData->requestHeaders != NULL )
     {
-        ELASTIC_APM_LOG_DEBUG( "disable_send (disableSend) configuration option is set to true - discarding events instead of sending" );
-        return resultSuccess;
+        curl_slist_free_all( connectionData->requestHeaders );
+        connectionData->requestHeaders = NULL;
     }
 
+    if ( connectionData->curlHandle != NULL )
+    {
+        curl_easy_cleanup( connectionData->curlHandle );
+        connectionData->curlHandle = NULL;
+    }
+}
+
+ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
+{
     ResultCode resultCode;
-    CURL* curl = NULL;
-    CURLcode result;
-    enum
-    {
-        authBufferSize = 256
-    };
+    enum { authBufferSize = 256 };
     char auth[authBufferSize];
-    enum
-    {
-        urlBufferSize = 256
-    };
-    char url[urlBufferSize];
-    struct curl_slist* requestHeaders = NULL;
-    int snprintfRetVal;
     const char* authKind = NULL;
     const char* authValue = NULL;
+    int snprintfRetVal;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    /* get a curl handle */
-    curl = curl_easy_init();
-    if ( curl == NULL )
+    ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
+    ELASTIC_APM_ASSERT( connectionData->curlHandle == NULL, "" );
+    ELASTIC_APM_ASSERT( connectionData->requestHeaders == NULL, "" );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+            "config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
+            "; userAgentHttpHeader: `%s'"
+            , config->serverUrl
+            , boolToString( config->disableSend )
+            , streamDuration( config->serverTimeout, &txtOutStream )
+            , streamStringView( userAgentHttpHeader, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    connectionData->curlHandle = curl_easy_init();
+    if ( connectionData->curlHandle == NULL )
     {
         ELASTIC_APM_LOG_ERROR( "curl_easy_init() returned NULL" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultCurlFailure );
     }
 
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POST, 1L );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDS, serializedEvents.begin );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_WRITEFUNCTION, logResponse );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_WRITEFUNCTION, logResponse );
 
-    if ( serverTimeoutMillisecondsLong == 0 )
+    if ( config->serverTimeout.valueInUnits == 0 )
     {
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-                "Timeout is disabled. serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
-                , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong );
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Timeout is disabled. %s (serverTimeout): %s"
+                                                  , ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT, streamDuration( config->serverTimeout, &txtOutStream ) );
+        textOutputStreamRewind( &txtOutStream );
     }
     else
     {
-        ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_TIMEOUT_MS, serverTimeoutMillisecondsLong );
+        long serverTimeoutInMilliseconds = (long)durationToMilliseconds( config->serverTimeout );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_TIMEOUT_MS, serverTimeoutInMilliseconds );
     }
 
     if ( ! config->verifyServerCert )
     {
         ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false"
                                " - disabling SSL/TLS certificate verification for communication with APM Server..." );
-        ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_SSL_VERIFYPEER, 0L );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYPEER, 0L );
     }
 
     // Authorization with API key or secret token if present
@@ -231,23 +233,49 @@ ResultCode syncSendEventsToApmServer( bool disableSend
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
         }
         ELASTIC_APM_LOG_TRACE( "Adding header: %s", auth );
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, auth ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &connectionData->requestHeaders, auth ) );
     }
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &requestHeaders, "Content-Type: application/x-ndjson" ) );
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_HTTPHEADER, requestHeaders );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( addToCurlStringList( /* in,out */ &connectionData->requestHeaders, "Content-Type: application/x-ndjson" ) );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_HTTPHEADER, connectionData->requestHeaders );
 
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_USERAGENT, userAgentHttpHeader );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_USERAGENT, userAgentHttpHeader );
+
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, ConnectionData* connectionData, StringView serializedEvents )
+{
+    ResultCode resultCode;
+    CURLcode curlResult;
+    enum { urlBufferSize = 256 };
+    char url[urlBufferSize];
+    int snprintfRetVal;
+
+    ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
+    ELASTIC_APM_ASSERT( connectionData->curlHandle != NULL, "" );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POST, 1L );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POSTFIELDS, serializedEvents.begin );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
 
     snprintfRetVal = snprintf( url, urlBufferSize, "%s/intake/v2/events", config->serverUrl );
-    if ( snprintfRetVal < 0 || snprintfRetVal >= authBufferSize )
+    if ( snprintfRetVal < 0 || snprintfRetVal >= urlBufferSize )
     {
         ELASTIC_APM_LOG_ERROR( "Failed to build full URL to APM Server's intake API. snprintfRetVal: %d", snprintfRetVal );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
-    ELASTIC_APM_CURL_EASY_SETOPT( curl, CURLOPT_URL, url );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_URL, url );
 
-    result = curl_easy_perform( curl );
-    if ( result != CURLE_OK )
+    curlResult = curl_easy_perform( connectionData->curlHandle );
+    if ( curlResult != CURLE_OK )
     {
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
@@ -257,35 +285,65 @@ ResultCode syncSendEventsToApmServer( bool disableSend
                 " Error message: `%s'."
                 " Current process command line: `%s'"
                 , url
-                , curl_easy_strerror( result )
+                , curl_easy_strerror( curlResult )
                 , streamCurrentProcessCommandLine( &txtOutStream ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     long responseCode;
-    curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &responseCode );
+    curl_easy_getinfo( connectionData->curlHandle, CURLINFO_RESPONSE_CODE, &responseCode );
     ELASTIC_APM_LOG_DEBUG( "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
 
     resultCode = resultSuccess;
-
     finally:
-
-    if ( curl != NULL )
-    {
-        curl_easy_cleanup( curl );
-        curl = NULL;
-    }
-
-    if ( requestHeaders != NULL )
-    {
-        curl_slist_free_all( requestHeaders );
-        requestHeaders = NULL;
-    }
-
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
+    goto finally;
+}
+
+ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView userAgentHttpHeader, StringView serializedEvents )
+{
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ResultCode resultCode;
+    ConnectionData* connectionData = &g_connectionData;
+
+    ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
+            "Sending events to APM Server..."
+            "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
+            "; userAgentHttpHeader: `%s'"
+            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            , config->serverUrl
+            , boolToString( config->disableSend )
+            , streamDuration( config->serverTimeout, &txtOutStream )
+            , streamStringView( userAgentHttpHeader, &txtOutStream )
+            , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+    textOutputStreamRewind( &txtOutStream );
+
+    if ( config->disableSend )
+    {
+        ELASTIC_APM_LOG_DEBUG( "disable_send (disableSend) configuration option is set to true - discarding events instead of sending" );
+        ELASTIC_APM_CALL_EARLY_GOTO_FINALLY_WITH_SUCCESS();
+    }
+
+    if ( connectionData->curlHandle == NULL )
+    {
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( initConnectionData( config, connectionData, userAgentHttpHeader ) );
+    }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServerWithConn( config, connectionData, serializedEvents ) );
+
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode;
+
+    failure:
+    cleanupConnectionData( connectionData );
     goto finally;
 }
 
@@ -301,8 +359,6 @@ struct DataToSendNode
     DataToSendNode* prev;
     DataToSendNode* next;
 
-    bool disableSend;
-    double serverTimeoutMilliseconds;
     StringBuffer userAgentHttpHeader;
     StringBuffer serializedEvents;
 };
@@ -336,8 +392,6 @@ static void initDataToSendQueue( DataToSendQueue* dataQueue )
 
 static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
                                             , UInt64 id
-                                            , bool disableSend
-                                            , double serverTimeoutMilliseconds
                                             , StringView userAgentHttpHeader
                                             , StringView serializedEvents )
 {
@@ -355,8 +409,6 @@ static ResultCode addCopyToDataToSendQueue( DataToSendQueue* dataQueue
     resultCode = resultSuccess;
 
     newNode->id = id;
-    newNode->disableSend = disableSend;
-    newNode->serverTimeoutMilliseconds = serverTimeoutMilliseconds;
 
     newNode->next = &( dataQueue->tail );
     newNode->prev = dataQueue->tail.prev;
@@ -424,7 +476,6 @@ struct BackgroundBackendComm
     DataToSendQueue dataToSendQueue;
     size_t dataToSendTotalSize;
     size_t nextEventsBatchId;
-    double lastServerTimeoutMilliseconds;
     bool shouldExit;
     TimeSpec shouldExitBy;
 };
@@ -623,8 +674,7 @@ ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
 
 ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
         const ConfigSnapshot* config
-        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
-)
+        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
 {
     // This function is called only when data-queue-to-send is not empty
     // so firstDataToSendNode is not NULL
@@ -641,10 +691,8 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 
     ResultCode resultCode;
 
-    resultCode = syncSendEventsToApmServer( sharedStateSnapshot->firstDataToSendNode->disableSend
-                                            , sharedStateSnapshot->firstDataToSendNode->serverTimeoutMilliseconds
-                                            , config
-                                            , sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader.begin
+    resultCode = syncSendEventsToApmServer( config
+                                            , viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader )
                                             , serializedEvents );
     // If we failed to send the currently first batch we return success nevertheless
     // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
@@ -822,7 +870,6 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     initDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize = 0;
     backgroundBackendComm->nextEventsBatchId = 1;
-    backgroundBackendComm->lastServerTimeoutMilliseconds = 0;
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConditionVariable( &( backgroundBackendComm->condVar ), /* dbgDesc */ "Background backend communications" ) );
@@ -870,38 +917,40 @@ ResultCode backgroundBackendCommEnsureInited( const ConfigSnapshot* config )
 }
 
 static
-ResultCode signalBackgroundBackendCommThreadToExit( BackgroundBackendComm* backgroundBackendComm, /* out */ TimeSpec* shouldExitBy )
+ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
+                                                    , BackgroundBackendComm* backgroundBackendComm
+                                                    , /* out */ TimeSpec* shouldExitBy )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     bool shouldUnlockMutex = false;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ ) );
 
     backgroundBackendComm->shouldExit = true;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ shouldExitBy ) );
-    addDelayToAbsTimeSpec( /* in, out */ shouldExitBy, lround( backgroundBackendComm->lastServerTimeoutMilliseconds * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_MILLISECOND ) );
+    addDelayToAbsTimeSpec( /* in, out */ shouldExitBy, (long)durationToMilliseconds( config->serverTimeout ) * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_MILLISECOND );
     backgroundBackendComm->shouldExitBy = *shouldExitBy;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( signalConditionVariable( backgroundBackendComm->condVar, __FUNCTION__ ) );
 
     resultCode = resultSuccess;
-
     finally:
     unlockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ );
-    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
-            "shouldExitBy: %s, backgroundBackendComm->lastServerTimeoutMilliseconds: %f"
-            , streamUtcTimeSpecAsLocal( shouldExitBy, &txtOutStream ), backgroundBackendComm->lastServerTimeoutMilliseconds );
+            "shouldExitBy: %s, serverTimeout: %s"
+            , streamUtcTimeSpecAsLocal( shouldExitBy, &txtOutStream ), streamDuration( config->serverTimeout, &txtOutStream ) );
+    textOutputStreamRewind( &txtOutStream );
     return resultCode;
 
     failure:
     goto finally;
 }
 
-void backgroundBackendCommOnModuleShutdown()
+void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config )
 {
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
 
@@ -913,12 +962,12 @@ void backgroundBackendCommOnModuleShutdown()
     ResultCode resultCode;
     TimeSpec shouldExitBy;
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( backgroundBackendComm, /* out */ &shouldExitBy ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( config, backgroundBackendComm, /* out */ &shouldExitBy ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
+
     resultCode = resultSuccess;
-
     finally:
-
+    cleanupConnectionData( &g_connectionData );
     g_backgroundBackendComm = NULL;
     return;
 
@@ -927,23 +976,18 @@ void backgroundBackendCommOnModuleShutdown()
 }
 
 static
-ResultCode enqueueEventsToSendToApmServer(
-        bool disableSend
-        , double serverTimeoutMilliseconds
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents )
+ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, StringView serializedEvents )
 {
-    long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
     ELASTIC_APM_LOG_DEBUG(
             "Queueing events to send asynchronously..."
-            "; disableSend: %s"
-            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
             "; userAgentHttpHeader [length: %"PRIu64"]: `%.*s'"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
-            , boolToString( disableSend )
-            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+    textOutputStreamRewind( &txtOutStream );
 
     ResultCode resultCode;
     bool shouldUnlockMutex = false;
@@ -964,14 +1008,11 @@ ResultCode enqueueEventsToSendToApmServer(
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             addCopyToDataToSendQueue( &( backgroundBackendComm->dataToSendQueue )
                                       , id
-                                      , disableSend
-                                      , serverTimeoutMilliseconds
                                       , userAgentHttpHeader
                                       , serializedEvents ) );
 
     backgroundBackendComm->dataToSendTotalSize += serializedEvents.length;
     ++backgroundBackendComm->nextEventsBatchId;
-    backgroundBackendComm->lastServerTimeoutMilliseconds = serverTimeoutMilliseconds;
 
     ELASTIC_APM_LOG_DEBUG(
             "Queued a batch of events"
@@ -991,11 +1032,7 @@ ResultCode enqueueEventsToSendToApmServer(
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
             "Finished queueing events to send asynchronously"
-            "; disableSend: %s"
-            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
-            , boolToString( disableSend )
-            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     return resultCode;
@@ -1004,54 +1041,23 @@ ResultCode enqueueEventsToSendToApmServer(
     goto finally;
 }
 
-ResultCode sendEventsToApmServerWithDataConvertedForSync(
-        bool disableSend
-        , double serverTimeoutMilliseconds
-        , const ConfigSnapshot* config
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents )
+ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView userAgentHttpHeader, StringView serializedEvents )
 {
     ResultCode resultCode;
-    StringBuffer userAgentHttpHeaderWithTermNull = { 0 };
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( dupMallocStringView( userAgentHttpHeader, /* out */ &userAgentHttpHeaderWithTermNull ) );
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO(
-            syncSendEventsToApmServer( disableSend
-                                       , serverTimeoutMilliseconds
-                                       , config
-                                       , userAgentHttpHeaderWithTermNull.begin
-                                       , serializedEvents ) );
-
-    resultCode = resultSuccess;
-    finally:
-    freeMallocedStringBuffer( /* in,out */ &userAgentHttpHeaderWithTermNull );
-    return resultCode;
-
-    failure:
-    goto finally;
-}
-
-ResultCode sendEventsToApmServer(
-        bool disableSend
-        , double serverTimeoutMilliseconds
-        , const ConfigSnapshot* config
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents )
-{
-    ResultCode resultCode;
-    long serverTimeoutMillisecondsLong = (long) ceil( serverTimeoutMilliseconds );
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     ELASTIC_APM_LOG_DEBUG(
             "Handling request to send events..."
-            " disableSend: %s"
-            "; serverTimeoutMilliseconds: %f (as integer: %"PRIu64")"
+            "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
             "; userAgentHttpHeader [length: %"PRIu64"]: `%.*s'"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
-            , boolToString( disableSend )
-            , serverTimeoutMilliseconds, (UInt64) serverTimeoutMillisecondsLong
+            , config->serverUrl
+            , boolToString( config->disableSend )
+            , streamDuration( config->serverTimeout, &txtOutStream )
             , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
+    textOutputStreamRewind( &txtOutStream );
 
     String dbgAsyncBackendCommReason = NULL;
     bool shouldSendAsync = deriveAsyncBackendComm( config, &dbgAsyncBackendCommReason );
@@ -1060,16 +1066,11 @@ ResultCode sendEventsToApmServer(
     if ( shouldSendAsync )
     {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommEnsureInited( config ) );
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( enqueueEventsToSendToApmServer( disableSend, serverTimeoutMilliseconds, userAgentHttpHeader, serializedEvents ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( enqueueEventsToSendToApmServer( userAgentHttpHeader, serializedEvents ) );
     }
     else
     {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( sendEventsToApmServerWithDataConvertedForSync(
-                disableSend
-                , serverTimeoutMilliseconds
-                , config
-                , userAgentHttpHeader
-                , serializedEvents ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServer( config, userAgentHttpHeader, serializedEvents ) );
     }
 
     resultCode = resultSuccess;

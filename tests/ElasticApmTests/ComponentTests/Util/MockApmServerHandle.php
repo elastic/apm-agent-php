@@ -23,11 +23,13 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 final class MockApmServerHandle extends HttpServerHandle
@@ -44,7 +46,7 @@ final class MockApmServerHandle extends HttpServerHandle
             ClassNameUtil::fqToShort(MockApmServer::class) /* <- dbgServerDesc */,
             $httpSpawnedProcessHandle->getSpawnedProcessOsId(),
             $httpSpawnedProcessHandle->getSpawnedProcessInternalId(),
-            $httpSpawnedProcessHandle->getPort()
+            $httpSpawnedProcessHandle->getPorts()
         );
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -55,8 +57,14 @@ final class MockApmServerHandle extends HttpServerHandle
         )->addContext('this', $this);
     }
 
+    public function getPortForAgent(): int
+    {
+        Assert::assertCount(2, $this->getPorts());
+        return $this->getPorts()[1];
+    }
+
     /**
-     * @return IntakeApiRequest[]
+     * @return RawDataFromAgentReceiverEvent[]
      */
     public function fetchNewData(): array
     {
@@ -69,33 +77,52 @@ final class MockApmServerHandle extends HttpServerHandle
             [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
         );
 
+        $responseBody = $response->getBody()->getContents();
         if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
-            throw new RuntimeException('Received unexpected status code');
+            throw new RuntimeException(
+                'Received unexpected status code; ' . LoggableToString::convert(
+                    [
+                        'expected' => HttpConstantsForTests::STATUS_OK,
+                        'actual'   => $response->getStatusCode(),
+                        'body'     => $responseBody,
+                    ]
+                )
+            );
         }
 
         /** @var array<string, mixed> $decodedBody */
-        $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
+        $decodedBody = JsonUtil::decode($responseBody, /* asAssocArray */ true);
 
-        $requestsJson = $decodedBody[MockApmServer::INTAKE_API_REQUESTS_JSON_KEY];
-        /** @var array<array<string, mixed>> $requestsJson */
-        $newIntakeApiRequests = [];
-        foreach ($requestsJson as $requestJson) {
-            $newIntakeApiRequest = new IntakeApiRequest();
-            $newIntakeApiRequest->deserializeFromDecodedJson($requestJson);
-            $newIntakeApiRequests[] = $newIntakeApiRequest;
+        $receiverEventsJson = $decodedBody[MockApmServer::RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY];
+        /** @var array<array<string, mixed>> $receiverEventsJson */
+        $newReceiverEvents = [];
+        foreach ($receiverEventsJson as $receiverEventJson) {
+            $newReceiverEvent = RawDataFromAgentReceiverEvent::deserializeFromDecodedJson($receiverEventJson);
+            $newReceiverEvents[] = $newReceiverEvent;
         }
 
-        if (ArrayUtil::isEmpty($newIntakeApiRequests)) {
+        if (ArrayUtil::isEmpty($newReceiverEvents)) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Fetched NO new intake API requests received from agent');
+            && $loggerProxy->log('Fetched NO new data from agent receiver events');
         } else {
-            $this->nextIntakeApiRequestIndexToFetch += count($newIntakeApiRequests);
+            $this->nextIntakeApiRequestIndexToFetch += count($newReceiverEvents);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Fetched new intake API requests received from agent',
-                ['count($newIntakeApiRequests)' => count($newIntakeApiRequests)]
+                'Fetched new data from agent receiver events',
+                ['count(newReceiverEvents)' => count($newReceiverEvents)]
             );
         }
-        return $newIntakeApiRequests;
+        return $newReceiverEvents;
+    }
+
+    public function cleanTestScoped(): void
+    {
+        $this->nextIntakeApiRequestIndexToFetch = 0;
+
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_POST,
+            TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH
+        );
+        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
     }
 }

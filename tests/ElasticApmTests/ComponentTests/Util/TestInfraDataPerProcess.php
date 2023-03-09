@@ -37,6 +37,6 @@ final class TestInfraDataPerProcess extends TestInfraData
     /** @var string */
     public $thisSpawnedProcessInternalId;
 
-    /** @var ?int */
-    public $thisServerPort = null;
+    /** @var int[] */
+    public $thisServerPorts = [];
 }

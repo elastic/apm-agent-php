@@ -26,37 +26,22 @@ namespace ElasticApmTests\Util\Deserialization;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\AssertMessageBuilder;
+use PHPUnit\Framework\Assert;
 
 trait JsonDeserializableTrait
 {
-    /**
-     * @return array<string, mixed>
-     *
-     * Called by json_encode
-     * @noinspection PhpUnused
-     */
-    public function jsonSerialize(): array
-    {
-        $result = [];
-
-        $className = ClassNameUtil::fqToShort(get_class($this));
-        foreach (get_object_vars($this) as $propName => $propValue) {
-            JsonUtilForTests::assertJsonDeserializable($propValue, $className . '->' . $propName);
-            $result[$propName] = $propValue;
-        }
-
-        return $result;
-    }
-
     /**
      * @param array<string, mixed> $decodedJson
      */
     public function deserializeFromDecodedJson(array $decodedJson): void
     {
+        $msgBeforeIt = new AssertMessageBuilder(['decodedJson' => $decodedJson]);
         foreach ($decodedJson as $jsonKey => $jsonVal) {
-            TestCase::assertIsString($jsonKey);
-            TestCase::assertTrue(property_exists($this, $jsonKey));
+            $thisClassName = ClassNameUtil::fqToShort(get_called_class());
+            $msg = $msgBeforeIt->inherit(['jsonKey' => $jsonKey, 'this class' => $thisClassName]);
+            Assert::assertIsString($jsonKey, $msg->s());
+            Assert::assertTrue(property_exists($this, $jsonKey), $msg->s());
             $this->$jsonKey = $this->deserializePropertyValue($jsonKey, $jsonVal);
         }
     }

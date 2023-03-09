@@ -248,26 +248,16 @@ static inline bool longToBool( long longVal )
     return longVal != 0;
 }
 
-ResultCode elasticApmSendToServer(
-        long disableSend
-        , double serverTimeoutMilliseconds
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents )
+ResultCode elasticApmSendToServer( StringView userAgentHttpHeader, StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO(
-            sendEventsToApmServer( longToBool( disableSend )
-                                   , serverTimeoutMilliseconds
-                                   , getTracerCurrentConfigSnapshot( tracer )
-                                   , userAgentHttpHeader
-                                   , serializedEvents ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( sendEventsToApmServer( getTracerCurrentConfigSnapshot( tracer ), userAgentHttpHeader, serializedEvents ) );
 
     resultCode = resultSuccess;
-
     finally:
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;

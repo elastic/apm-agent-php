@@ -142,3 +142,5 @@
         (dstPtrLval) = (srcPtrLval); \
         (srcPtrLval) = NULL; \
     } while ( 0 )
+
+#define ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( enumElement ) [enumElement] = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PP_STRINGIZE( enumElement ) )

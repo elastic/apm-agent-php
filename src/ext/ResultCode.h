@@ -21,43 +21,39 @@
 
 #include <stdbool.h>
 #include "basic_types.h"
+#include "StringView.h"
 
 enum ResultCode
 {
     resultSuccess,
     resultOutOfMemory,
-    resultInvalidFormat,
+    resultParsingFailed,
     resultCurlFailure,
     resultSyncObjUseAfterFork,
-    resultFailure
+    resultFailure,
+
+    numberOfResultCodes
 };
 typedef enum ResultCode ResultCode;
 
-static inline String resultCodeToString( ResultCode resultCode )
+extern StringView resultCodeNames[ numberOfResultCodes ];
+
+static inline
+bool isValidResultCode( ResultCode resultCode )
 {
-    switch ( resultCode )
+    return ( resultSuccess <= resultCode ) && ( resultCode < numberOfResultCodes );
+}
+
+#define ELASTIC_APM_UNKNOWN_RESULT_CODE_AS_STRING "<UNKNOWN ResultCode>"
+
+static inline
+String resultCodeToString( ResultCode resultCode )
+{
+    if ( isValidResultCode( resultCode ) )
     {
-        case resultSuccess:
-            return "resultSuccess";
-
-        case resultOutOfMemory:
-            return "resultOutOfMemory";
-
-        case resultInvalidFormat:
-            return "resultInvalidFormat";
-
-        case resultCurlFailure:
-            return "resultCurlFailure";
-
-        case resultSyncObjUseAfterFork:
-            return "resultSyncObjUseAfterFork";
-
-        case resultFailure:
-            return "resultFailure";
-
-        default:
-            return "UNKNOWN";
+        return resultCodeNames[ resultCode ].begin;
     }
+    return ELASTIC_APM_UNKNOWN_RESULT_CODE_AS_STRING;
 }
 
 #define ELASTIC_APM_CALL_IF_FAILED_GOTO( expr ) \
@@ -73,3 +69,9 @@ static inline String resultCodeToString( ResultCode resultCode )
     } while ( 0 )
 
 #define ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE() ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure )
+
+#define ELASTIC_APM_CALL_EARLY_GOTO_FINALLY_WITH_SUCCESS() \
+    do { \
+        resultCode = resultSuccess; \
+        goto finally; \
+    } while ( 0 )
