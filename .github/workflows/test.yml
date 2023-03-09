@@ -114,17 +114,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts
+          path: src/ext/modules
+
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
         run: |
           make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
-          make -C packaging "${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing"
 
-      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
-        uses: actions/download-artifact@v3
-        with:
-          name: package
-          path: build/packages
       - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
         name: lifecycle test on prod server
         run: |
@@ -132,34 +137,21 @@ jobs:
           make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
 
       - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: package
-          path: build/packages
-      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
         name: php upgrade test
         run: |
           make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
           make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
 
+      ## Agent upgrade requires to build the package with a different version
+      ## Then download the packages for the current version.
+      ## Run the upgrade testing.
       - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        name: agent upgrade test
+        name: agent upgrade test - prepare
         run: |
+          mv build/packages build/backup
           VERSION=1.0.0 make -C packaging package
           mv build/packages build/local
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        uses: actions/download-artifact@v3
-        with:
-          name: package
-          path: build/packages
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        name: agent upgrade test
-        run: |
+          mv build/backup build/packages
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
       - if: success() || failure()
@@ -169,6 +161,7 @@ jobs:
           -name "*junit.xml"
           -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
           \;
+
       - if: success() || failure()
         uses: actions/upload-artifact@v3
         with:
