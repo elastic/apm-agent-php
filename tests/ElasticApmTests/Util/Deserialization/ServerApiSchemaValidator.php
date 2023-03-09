@@ -203,8 +203,8 @@ final class ServerApiSchemaValidator
      */
     private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $pathToTempFile = tempnam(sys_get_temp_dir(), '');
-        $pathToTempFile .= '_' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
+        $pathToTempFile = tempnam(sys_get_temp_dir(), $fileNamePrefix);
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,

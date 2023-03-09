@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -98,8 +99,8 @@ final class ProcessUtilForTests
         $descriptorSpec = [];
         $tempOutputFilePath = '';
         if ($shouldCaptureStdOutErr) {
-            $tempOutputFilePath = tempnam(sys_get_temp_dir(), '');
-            $tempOutputFilePath .= '_' . str_replace('\\', '_', __CLASS__) . '_stdout+stderr.txt';
+            $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
+            $tempOutputFilePath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
             if (file_exists($tempOutputFilePath)) {
                 TestCase::assertTrue(unlink($tempOutputFilePath));
             }
@@ -128,6 +129,7 @@ final class ProcessUtilForTests
                 $logCtx['file for stdout + stderr'] = $tempOutputFilePath;
                 if (file_exists($tempOutputFilePath)) {
                     $logCtx['stdout + stderr'] = file_get_contents($tempOutputFilePath);
+                    Assert::assertTrue(unlink($tempOutputFilePath));
                 }
             }
 
