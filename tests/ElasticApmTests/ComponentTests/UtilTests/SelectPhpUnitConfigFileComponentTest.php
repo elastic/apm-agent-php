@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\SelectPhpUnitConfigFile;
 use ElasticApmTests\Util\TestCaseBase;
@@ -34,16 +35,24 @@ use PHPUnit\Runner\Version;
  */
 final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
 {
-    private const EXPECTED_CONFIG_FILES = [
-        SelectPhpUnitConfigFile::TESTS_TYPE_UNIT => [
-            8 => 'phpunit_v8_format.xml',
-            9 => 'phpunit.xml.dist',
-        ],
-        SelectPhpUnitConfigFile::TESTS_TYPE_COMPONENT => [
-            8 => 'phpunit_component_tests_v8_format.xml',
-            9 => 'phpunit_component_tests.xml',
-        ],
-    ];
+    private const EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION = [
+            SelectPhpUnitConfigFile::TESTS_TYPE_UNIT      => [8 => 'phpunit_v8_format.xml'],
+            SelectPhpUnitConfigFile::TESTS_TYPE_COMPONENT => [8 => 'phpunit_component_tests_v8_format.xml'],
+        ];
+
+    private const EXPECTED_DEFAULT_CONFIG_FILES = [
+            SelectPhpUnitConfigFile::TESTS_TYPE_UNIT      => 'phpunit.xml.dist',
+            SelectPhpUnitConfigFile::TESTS_TYPE_COMPONENT => 'phpunit_component_tests.xml',
+        ];
+
+    public static function testAllExpectedFilesExist(): void
+    {
+        foreach (self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION as $phpUnitMajorVerionToFileName) {
+            foreach ($phpUnitMajorVerionToFileName as $fileName) {
+                self::assertFileExists($fileName);
+            }
+        }
+    }
 
     private static function getCurrentPhpUnitMajorVersion(): int
     {
@@ -69,12 +78,16 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
         $phpUnitMajorVerion = self::getCurrentPhpUnitMajorVersion();
         $dbgMsg = new AssertMessageBuilder(['phpUnitMajorVerion' => $phpUnitMajorVerion]);
 
-        self::assertArrayHasKey($testsType, self::EXPECTED_CONFIG_FILES, $dbgMsg->s());
-        $phpUnitMajorVerionToFileName = self::EXPECTED_CONFIG_FILES[$testsType];
+        $phpUnitMajorVerionToFileName = ArrayUtil::getValueIfKeyExistsElse(
+            $testsType,
+            self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION,
+            null /* <- fallbackValue */
+        );
         $dbgMsg->add('phpUnitMajorVerionToFileName', $phpUnitMajorVerionToFileName);
+        self::assertNotNull($phpUnitMajorVerionToFileName, $dbgMsg->s());
 
-        self::assertArrayHasKey($phpUnitMajorVerion, $phpUnitMajorVerionToFileName, $dbgMsg->s());
-        return $phpUnitMajorVerionToFileName[$phpUnitMajorVerion];
+        $fileName = ArrayUtil::getValueIfKeyExistsElse($phpUnitMajorVerion, $phpUnitMajorVerionToFileName, null);
+        return $fileName === null ? self::EXPECTED_DEFAULT_CONFIG_FILES[$testsType] : $fileName;
     }
 
     /**
@@ -125,15 +138,8 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
         $expectedPhpUnitConfigFileName = self::getExpectedPhpUnitConfigFile($testsType);
         $dbgMsg = new AssertMessageBuilder(['expectedPhpUnitConfigFileName' => $expectedPhpUnitConfigFileName]);
 
-        // $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';
-
-        $command = 'php'
-                   . ' '
-                   . '/mnt/hgfs/Git/Elastic/PHP_Agent/PHP_my_fork/tests/ElasticApmTests/Util/'
-                   . 'runSelectPhpUnitConfigFile.php';
-
+        $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';
         $command .= ' ' . '--' . SelectPhpUnitConfigFile::TESTS_TYPE_CMD_LINE_OPT_NAME . '=' . $testsType;
-
         $dbgMsg->add('command', $command);
         $outputLines = SelectPhpUnitConfigFile::execExternalCommand($command);
         self::assertCount(1, $outputLines);
