@@ -3,5 +3,6 @@
     <rule ref="PSR12" />
     <rule ref="Generic.PHP.RequireStrictTypes" />
 
+    <exclude-pattern>*/polyfills/Stringable.php</exclude-pattern>
     <exclude-pattern>*/polyfills/WeakMap.php</exclude-pattern>
 </ruleset>

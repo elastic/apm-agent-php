@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
@@ -73,6 +74,10 @@ abstract class SpawnedProcessBase implements LoggableInterface
             __FILE__
         );
     }
+
+    /**
+     * @return void
+     */
     protected function processConfig(): void
     {
         self::getRequiredTestOption(AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME);
@@ -178,6 +183,11 @@ abstract class SpawnedProcessBase implements LoggableInterface
         return true;
     }
 
+    protected function isThisProcessTestScoped(): bool
+    {
+        return false;
+    }
+
     protected function registerWithResourcesCleaner(): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -194,7 +204,11 @@ abstract class SpawnedProcessBase implements LoggableInterface
                 ->path(ResourcesCleaner::REGISTER_PROCESS_TO_TERMINATE_URI_PATH)
                 ->port(AmbientContextForTests::testConfig()->dataPerProcess->resourcesCleanerPort),
             TestInfraDataPerRequest::withSpawnedProcessInternalId($resCleanerId),
-            [ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid())]
+            [
+                ResourcesCleaner::PID_QUERY_HEADER_NAME => strval(getmypid()),
+                ResourcesCleaner::IS_TEST_SCOPED_QUERY_HEADER_NAME
+                                                        => BoolUtil::toString($this->isThisProcessTestScoped()),
+            ]
         );
         if ($response->getStatusCode() !== HttpConstantsForTests::STATUS_OK) {
             throw new RuntimeException(

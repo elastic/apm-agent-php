@@ -23,8 +23,14 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
+use PHPUnit\Framework\Assert;
+
 final class TraceActual
 {
+    /** @var TransactionDto */
+    public $rootTransaction;
+
     /** @var array<string, TransactionDto> */
     public $idToTransaction;
 
@@ -37,7 +43,31 @@ final class TraceActual
      */
     public function __construct(array $idToTransaction, array $idToSpan)
     {
+        $this->rootTransaction = self::findRootTransaction($idToTransaction);
         $this->idToTransaction = $idToTransaction;
         $this->idToSpan = $idToSpan;
+    }
+
+    /**
+     * @param array<string, TransactionDto> $idToTransaction
+     *
+     * @return TransactionDto
+     */
+    public static function findRootTransaction(array $idToTransaction): TransactionDto
+    {
+        /** @var ?TransactionDto $rootTransaction */
+        $rootTransaction = null;
+        foreach ($idToTransaction as $currentTransaction) {
+            if ($currentTransaction->parentId === null) {
+                Assert::assertNull($rootTransaction, 'Found more than one root transaction');
+                $rootTransaction = $currentTransaction;
+            }
+        }
+        Assert::assertNotNull(
+            $rootTransaction,
+            'Root transaction not found. ' . LoggableToString::convert(['idToTransaction' => $idToTransaction])
+        );
+        /** @var TransactionDto $rootTransaction */
+        return $rootTransaction;
     }
 }

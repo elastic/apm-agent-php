@@ -89,7 +89,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
         $envVars = InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
             $this->agentConfigSourceBuilder->getEnvVars(EnvVarUtilForTests::getAll()),
             $this->appCodeHostParams->spawnedProcessInternalId,
-            null /* <- targetServerPort */,
+            [] /* <- targetServerPorts */,
             $this->resourcesCleaner,
             $this->appCodeHostParams->dbgProcessName
         );

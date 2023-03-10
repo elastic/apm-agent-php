@@ -70,7 +70,7 @@ abstract class AppCodeHostHandle implements LoggableInterface
     protected function afterAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void
     {
         $appCodeInvocation->after();
-        $this->testCaseHandle->setAppCodeInvocation($appCodeInvocation);
+        $this->testCaseHandle->addAppCodeInvocation($appCodeInvocation);
     }
 
     /**

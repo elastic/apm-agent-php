@@ -73,8 +73,9 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
 
     protected function processConfig(): void
     {
-        TestCase::assertNotNull(
-            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPort,
+        TestCase::assertCount(
+            1,
+            AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts,
             LoggableToString::convert(AmbientContextForTests::testConfig())
         );
 

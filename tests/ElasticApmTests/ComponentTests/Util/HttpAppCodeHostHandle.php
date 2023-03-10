@@ -56,9 +56,9 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
         )->addContext('this', $this);
     }
 
-    public function getPort(): int
+    public function getHttpServerHandle(): HttpServerHandle
     {
-        return $this->httpServerHandle->getPort();
+        return $this->httpServerHandle;
     }
 
     public function buildDataPerRequest(AppCodeTarget $appCodeTarget): TestInfraDataPerRequest

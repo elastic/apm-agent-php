@@ -59,7 +59,7 @@ final class DataFromAgentPlusRawValidator
     {
         DataFromAgentValidator::validate($this->actual, $this->expectations);
 
-        foreach ($this->actual->intakeApiRequests as $intakeApiRequest) {
+        foreach ($this->actual->getAllIntakeApiRequests() as $intakeApiRequest) {
             $this->validateIntakeApiRequest($intakeApiRequest);
         }
     }
@@ -74,9 +74,11 @@ final class DataFromAgentPlusRawValidator
     private function findAppCodeHostsParamsBySpawnedProcessInternalId(
         string $spawnedProcessInternalId
     ): AppCodeHostParams {
-        foreach ($this->expectations->appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
-            if ($appCodeHostParams->spawnedProcessInternalId === $spawnedProcessInternalId) {
-                return $appCodeHostParams;
+        foreach ($this->expectations->appCodeInvocations as $appCodeInvocation) {
+            foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
+                if ($appCodeHostParams->spawnedProcessInternalId === $spawnedProcessInternalId) {
+                    return $appCodeHostParams;
+                }
             }
         }
         TestCase::fail(

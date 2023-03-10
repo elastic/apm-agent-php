@@ -27,6 +27,24 @@ use ElasticApmTests\Util\DataFromAgent;
 
 final class DataFromAgentPlusRaw extends DataFromAgent
 {
-    /** @var IntakeApiRequest[] */
-    public $intakeApiRequests = [];
+    /** @var RawDataFromAgent */
+    private $raw;
+
+    public function __construct(RawDataFromAgent $raw)
+    {
+        $this->raw = $raw;
+    }
+
+    public function getRaw(): RawDataFromAgent
+    {
+        return $this->raw;
+    }
+
+    /**
+     * @return IntakeApiRequest[]
+     */
+    public function getAllIntakeApiRequests(): array
+    {
+        return $this->raw->getAllIntakeApiRequests();
+    }
 }

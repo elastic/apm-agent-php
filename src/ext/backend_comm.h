@@ -24,12 +24,10 @@
 #include "ResultCode.h"
 
 ResultCode sendEventsToApmServer(
-        bool disableSend
-        , double serverTimeoutMilliseconds
-        , const ConfigSnapshot* config
+        const ConfigSnapshot* config
         , StringView userAgentHttpHeader
         , StringView serializedEvents );
 
-void backgroundBackendCommOnModuleShutdown();
+void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config );
 
 ResultCode resetBackgroundBackendCommStateInForkedChild();

@@ -60,8 +60,7 @@ class DataFromAgent implements LoggableInterface
      */
     private static function singleEvent(array $events)
     {
-        TestCase::assertCount(1, $events);
-        return ArrayUtilForTests::getFirstValue($events);
+        return ArrayUtilForTests::getSingleValue($events);
     }
 
     /**

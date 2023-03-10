@@ -28,5 +28,6 @@ if (!function_exists('array_key_first')) {
 }
 
 if (PHP_MAJOR_VERSION < 8) {
+    require __DIR__ . '/Stringable.php';
     require __DIR__ . '/WeakMap.php';
 }

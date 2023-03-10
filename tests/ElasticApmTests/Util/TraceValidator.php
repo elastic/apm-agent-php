@@ -26,7 +26,6 @@ namespace ElasticApmTests\Util;
 use Ds\Queue;
 use Ds\Set;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
@@ -59,7 +58,7 @@ final class TraceValidator
     {
         $idToTransaction = $this->actual->idToTransaction;
         $idToSpan = $this->actual->idToSpan;
-        $rootTransaction = self::findRootTransaction($idToTransaction);
+        $rootTransaction = $this->actual->rootTransaction;
         if ($this->expectations->shouldVerifyRootTransaction) {
             $this->validateRootTransaction($rootTransaction);
         }
@@ -190,29 +189,6 @@ final class TraceValidator
         }
 
         TestCase::assertCount($idsReachableFromRoot->count(), $idToParentId);
-    }
-
-    /**
-     * @param array<string, TransactionDto> $idToTransaction
-     *
-     * @return TransactionDto
-     */
-    public static function findRootTransaction(array $idToTransaction): TransactionDto
-    {
-        /** @var ?TransactionDto $rootTransaction */
-        $rootTransaction = null;
-        foreach ($idToTransaction as $currentTransaction) {
-            if ($currentTransaction->parentId === null) {
-                TestCase::assertNull($rootTransaction, 'Found more than one root transaction');
-                $rootTransaction = $currentTransaction;
-            }
-        }
-        TestCase::assertNotNull(
-            $rootTransaction,
-            'Root transaction not found. ' . LoggableToString::convert(['idToTransaction' => $idToTransaction])
-        );
-        /** @var TransactionDto $rootTransaction */
-        return $rootTransaction;
     }
 
     private function assertTransactionsGraphIsTree(TransactionDto $rootTransaction): void

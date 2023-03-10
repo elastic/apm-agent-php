@@ -57,7 +57,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
     private function __construct(IntakeApiRequest $intakeApiRequest)
     {
         $this->intakeApiRequest = $intakeApiRequest;
-        $this->result = new DataFromAgentPlusRaw();
+        $this->result = new DataFromAgent();
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,

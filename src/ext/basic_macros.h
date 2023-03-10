@@ -136,3 +136,5 @@
 //// ELASTIC_APM_IF_VA_ARGS_EMPTY_ELSE
 ////
 ////////////////////////////////////////////////////////////////////////////////
+
+#define ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( enumElement ) [enumElement] = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PP_STRINGIZE( enumElement ) )
