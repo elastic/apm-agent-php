@@ -22,45 +22,45 @@ help: ## Display this help text
 
 .PHONY: prepare
 prepare:  ## Build docker image for building and testing the project
-	echo "::group::$@"  # Helping to group logs in GitHub actions
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		${ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
-	echo "::endgroup::"
+	@echo "::endgroup::"
 
 .PHONY: build
 build: prepare  ## Build the project
-	echo "::group::$@"  # Helping to group logs in GitHub actions
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX)
-	echo "::endgroup::"
+	@echo "::endgroup::"
 
 .PHONY: static-check-unit-test
 static-check-unit-test: prepare  ## Test the static check and unit tests
-	echo "::group::$@"  # Helping to group logs in GitHub actions
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \
 		-e CHOWN_RESULTS_UID=$(CURRENT_UID) -e CHOWN_RESULTS_GID=$(CURRENT_GID) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/static-check-unit-test.sh
-	echo "::endgroup::"
+	@echo "::endgroup::"
 
 .PHONY: generate-for-package
 generate-for-package: prepare  ## Generate the agent extension for the package
-	echo "::group::$@"  # Helping to group logs in GitHub actions
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \
 		-v $(PWD):/app \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		/app/.ci/generate-for-package.sh
-	echo "::endgroup::"
+	@echo "::endgroup::"
 
 .PHONY: interactive
 interactive: prepare  ## Run an interactive docker shell
@@ -71,13 +71,13 @@ interactive: prepare  ## Run an interactive docker shell
 
 .PHONY: component-test
 component-test: prepare  ## Run component-test
-	echo "::group::$@"  # Helping to group logs in GitHub actions
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as root to install the extension
 	docker run -t --rm \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/component-test.sh'
-	echo "::endgroup::"
+	@echo "::endgroup::"
 
 .PHONY: loop
 loop:  ## Bump the version given VERSION
