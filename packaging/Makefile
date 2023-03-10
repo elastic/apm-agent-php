@@ -1,4 +1,5 @@
 SHELL = /bin/bash
+MAKEFLAGS += --no-print-directory
 IMAGE:=php-packaging
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../src/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
