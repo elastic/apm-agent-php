@@ -97,6 +97,7 @@ abstract class HttpServerStarter
             $currentTryPorts = [];
             self::findFreePortsToListen($portsInUse, $portsToAllocateCount, $lastTriedPort, /* out */ $currentTryPorts);
             Assert::assertSame($portsToAllocateCount, count($currentTryPorts));
+            $lastTriedPort = ArrayUtilForTests::getLastValue($currentTryPorts);
             $currentTrySpawnedProcessInternalId = InfraUtilForTests::generateSpawnedProcessInternalId();
             $cmdLine = $this->buildCommandLine($currentTryPorts);
             $envVars = $this->buildEnvVars($currentTrySpawnedProcessInternalId, $currentTryPorts);
