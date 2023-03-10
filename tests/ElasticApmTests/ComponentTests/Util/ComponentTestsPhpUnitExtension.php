@@ -44,6 +44,7 @@ use PHPUnit\Runner\AfterTestErrorHook;
 use PHPUnit\Runner\AfterTestFailureHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
+use Throwable;
 
 /**
  * Referenced in PHPUnit's configuration file - phpunit_component_tests.xml
@@ -70,11 +71,6 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     {
         parent::__construct(self::DBG_PROCESS_NAME);
 
-        // We spin off test infrastructure servers here and not on demand
-        // in self::getGlobalTestInfra() because PHPUnit might fork to run individual tests
-        // and ResourcesCleaner would track the PHPUnit child process as its master which would be wrong
-        self::$globalTestInfra = new GlobalTestInfra();
-
         GlobalTracerHolder::setValue(NoopTracer::singletonInstance());
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -83,6 +79,17 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             __CLASS__,
             __FILE__
         )->addContext('appCodeHostKind', AmbientContextForTests::testConfig()->appCodeHostKind());
+
+        try {
+            // We spin off test infrastructure servers here and not on demand
+            // in self::getGlobalTestInfra() because PHPUnit might fork to run individual tests
+            // and ResourcesCleaner would track the PHPUnit child process as its master which would be wrong
+            self::$globalTestInfra = new GlobalTestInfra();
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $this->logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->logThrowable($throwable, 'Throwable escaped from GlobalTestInfra contructor');
+            throw $throwable;
+        }
     }
 
     public function __destruct()
