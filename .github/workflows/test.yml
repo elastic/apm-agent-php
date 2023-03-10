@@ -163,7 +163,7 @@ jobs:
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
       - if: success() || failure()
-        name: Prepare Upload
+        name: Prepare test result files
         run: >-
           find build
           -name "*junit.xml"
@@ -177,15 +177,15 @@ jobs:
 
       # Store syslog
       - if: failure()
-        name: Prepare Upload
+        name: Prepare syslog files
         continue-on-error: true
         run: |-
           cd build/syslog || true
-          find . -name "syslog" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"' \;
-          find . -name "messages" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'  \;
+          find . -name "syslog" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
+          find . -name "messages" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
       - if: failure()
         uses: actions/upload-artifact@v3
         continue-on-error: true
         with:
           name: syslogs
-          path: build/syslog/**
+          path: build/syslog/
