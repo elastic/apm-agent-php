@@ -123,10 +123,17 @@ final class SelectPhpUnitConfigFile
         throw new RuntimeException($msg . '; ' . LoggableToString::convert($ctx));
     }
 
-    private static function extractCommandLineOptionValue(string $cmdLineArg, string $optName): ?string
+    private function extractCommandLineOptionValue(string $cmdLineArg, string $optName): ?string
     {
         $prefix = '--' . $optName . '=';
-        return TextUtil::isPrefixOf($prefix, $cmdLineArg) ? substr($cmdLineArg, /* offset */ strlen($prefix)) : null;
+        if (!TextUtil::isPrefixOf($prefix, $cmdLineArg)) {
+            return null;
+        }
+        $optValue = substr($cmdLineArg, /* offset */ strlen($prefix));
+        if ($optValue === false) { // @phpstan-ignore-line
+            $this->fail('substr failed', ['cmdLineArg' => $cmdLineArg, 'optName' => $optName]);
+        }
+        return $optValue;
     }
 
     /**
@@ -147,7 +154,7 @@ final class SelectPhpUnitConfigFile
 
             $isKnownOption = false;
             foreach (self::ALL_CMD_LINE_OPT_NAMES as $optName) {
-                if (($optValue = self::extractCommandLineOptionValue($cmdLineArg, $optName)) !== null) {
+                if (($optValue = $this->extractCommandLineOptionValue($cmdLineArg, $optName)) !== null) {
                     $optNameToValue[$optName] = $optValue;
                     $isKnownOption = true;
                     break;
@@ -220,12 +227,8 @@ final class SelectPhpUnitConfigFile
         /** @var string[] $output */
         $output = [];
         $exitCode = 0;
-        $execRetVal = exec($command, /* out */ $output, /* out */ $exitCode);
+        exec($command, /* out */ $output, /* out */ $exitCode);
         ArrayUtilForTests::append(['output' => $output, 'exitCode' => $exitCode], /* ref */ $dbgCtx);
-        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
-        if ($execRetVal === false) {
-            $this->fail('exec failed', $dbgCtx);
-        }
         if ($exitCode !== 0) {
             $this->fail('Command exit code signals a failutre', $dbgCtx);
         }
