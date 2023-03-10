@@ -161,7 +161,7 @@ jobs:
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
       - if: success() || failure()
-        name: Prepare Upload
+        name: Prepare test result files
         run: >-
           find build
           -name "*junit.xml"
@@ -176,7 +176,7 @@ jobs:
 
       # Store syslog
       - if: failure()
-        name: Prepare Upload
+        name: Prepare syslog files
         continue-on-error: true
         run: |-
           mkdir build/syslog-files
