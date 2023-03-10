@@ -655,4 +655,20 @@ class TestCaseBase extends TestCase
     {
         parent::tearDown();
     }
+
+    /**
+     * @param iterable<array<string, mixed>> $srcDataProvider
+     *
+     * @return iterable<string, array<mixed>>
+     */
+    protected static function wrapDataProviderFromKeyValueMapToNamedDataSet(iterable $srcDataProvider): iterable
+    {
+        $dataSetIdex = 0;
+        foreach ($srcDataProvider as $namedValuesMap) {
+            $dataSetName = '#' . $dataSetIdex;
+            $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
+            yield $dataSetName => array_values($namedValuesMap);
+            ++$dataSetIdex;
+        }
+    }
 }

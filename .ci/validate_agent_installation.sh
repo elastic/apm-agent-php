@@ -14,10 +14,13 @@ function runComponentTests () {
     local composerCommand=(composer run-script --)
 
     if [ -z "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND}" ] || [ "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND}" == "all" ]; then
-        composerCommand=("${composerCommand[@]}" run_component_tests)
+        composerCommand=("${composerCommand[@]}" run_component_tests_custom_config)
     else
-        composerCommand=("${composerCommand[@]}" run_component_tests_configured)
+        composerCommand=("${composerCommand[@]}" run_component_tests_configured_custom_config)
     fi
+
+    phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=component)
+    composerCommand=("${composerCommand[@]}" -c "${phpUnitConfigFile}")
 
     if [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ] ; then
         composerCommand=("${composerCommand[@]}" --group "${ELASTIC_APM_PHP_TESTS_GROUP}")
@@ -45,6 +48,8 @@ function runComponentTests () {
     echo "Content of ./build/ begin"
     ls -l ./build/
     echo "Content of ./build/ end"
+
+    ls -l ./build/component-tests-phpunit-junit.xml
 
     echo "${composerCommand[*]} exited with an error code ${composerCommandExitCode}"
     if [ ${composerCommandExitCode} -eq 0 ] ; then
