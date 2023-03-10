@@ -34,6 +34,15 @@ use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
  */
 final class ApiKeySecretTokenTest extends ComponentTestCaseBase
 {
+    public function testDummyFailure(): void
+    {
+        $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+        ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Logged before dummy failure');
+
+        self::fail('Dummy failure');
+    }
+
     private function apiKeyConfigTestImpl(?string $configuredApiKey, ?string $configuredSecretToken): void
     {
         $testCaseHandle = $this->getTestCaseHandle();

@@ -103,6 +103,15 @@ final class MySQLiTest extends ComponentTestCaseBase
         = /** @lang text */
         'SELECT * FROM messages';
 
+    public function testDummyFailure(): void
+    {
+        $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+        ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Logged before dummy failure');
+
+        self::fail('Dummy failure');
+    }
+
     public function testPrerequisitesSatisfied(): void
     {
         $extensionName = 'mysqli';
