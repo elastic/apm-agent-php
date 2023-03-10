@@ -204,9 +204,7 @@ final class ServerApiSchemaValidator
      */
     private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
-        $pathToTempFile = tempnam(sys_get_temp_dir(), $fileNamePrefix);
-        Assert::assertNotFalse($pathToTempFile);
+        $pathToTempFile = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'processed Intake API schema');
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,

@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
@@ -99,12 +100,8 @@ final class ProcessUtilForTests
         $descriptorSpec = [];
         $tempOutputFilePath = '';
         if ($shouldCaptureStdOutErr) {
-            $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
-            $tempOutputFilePath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
-            Assert::assertNotFalse($tempOutputFilePath);
-            if (file_exists($tempOutputFilePath)) {
-                TestCase::assertTrue(unlink($tempOutputFilePath));
-            }
+            $tempOutputFilePath
+                = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawn process stdout and stderr');
             $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
             $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }

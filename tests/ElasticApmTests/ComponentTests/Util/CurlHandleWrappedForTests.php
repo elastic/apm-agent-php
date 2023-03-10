@@ -46,7 +46,7 @@ final class CurlHandleWrappedForTests implements LoggableInterface
     public function __construct(ResourcesClient $resourcesClient, $curlHandle)
     {
         $this->constructCurlHandleWrappedTrait($curlHandle);
-        $this->tempFileForVerboseOutput = $resourcesClient->createTempFile('curl_verbose');
+        $this->tempFileForVerboseOutput = $resourcesClient->createTempFile('curl verbose output');
     }
 
     /**
