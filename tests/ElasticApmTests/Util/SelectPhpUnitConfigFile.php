@@ -53,7 +53,7 @@ final class SelectPhpUnitConfigFile
 
     public static function getFullPathToRunScript(): string
     {
-        return 'php ' . '"' . FileUtilForTests::listToPath([__DIR__, 'runSelectPhpUnitConfigFile.php']) . '"';
+        return FileUtilForTests::listToPath([__DIR__, 'runSelectPhpUnitConfigFile.php']);
     }
 
     /**
