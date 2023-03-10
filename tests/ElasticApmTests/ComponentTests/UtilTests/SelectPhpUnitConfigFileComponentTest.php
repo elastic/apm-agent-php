@@ -138,15 +138,8 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
         $expectedPhpUnitConfigFileName = self::getExpectedPhpUnitConfigFile($testsType);
         $dbgMsg = new AssertMessageBuilder(['expectedPhpUnitConfigFileName' => $expectedPhpUnitConfigFileName]);
 
-        // $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';
-
-        $command = 'php'
-                   . ' '
-                   . '/mnt/hgfs/Git/Elastic/PHP_Agent/PHP_my_fork/tests/ElasticApmTests/Util/'
-                   . 'runSelectPhpUnitConfigFile.php';
-
+        $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';
         $command .= ' ' . '--' . SelectPhpUnitConfigFile::TESTS_TYPE_CMD_LINE_OPT_NAME . '=' . $testsType;
-
         $dbgMsg->add('command', $command);
         $outputLines = SelectPhpUnitConfigFile::execExternalCommand($command);
         self::assertCount(1, $outputLines);
