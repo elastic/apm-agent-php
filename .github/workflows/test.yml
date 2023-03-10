@@ -180,12 +180,13 @@ jobs:
         name: Prepare Upload
         continue-on-error: true
         run: |-
+          mkdir build/syslog-files
           cd build/syslog || true
-          find . -name "syslog" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
-          find . -name "messages" -exec bash -c 'mv {} "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
+          find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
+          find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//,/-}-$(basename {})"' \;
       - if: failure()
         uses: actions/upload-artifact@v3
         continue-on-error: true
         with:
           name: syslogs
-          path: build/syslog/
+          path: build/syslog-files/
