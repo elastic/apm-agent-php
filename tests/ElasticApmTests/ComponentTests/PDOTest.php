@@ -281,7 +281,7 @@ final class PDOTest extends ComponentTestCaseBase
         $dbName = $dbNameArg;
         if ($dbNameArg === self::FILE_DB_NAME) {
             $resourcesClient = $testCaseHandle->getResourcesClient();
-            $dbFileFullPath = $resourcesClient->createTempFile(ClassNameUtil::fqToShort(__CLASS__) . '_temp_DB');
+            $dbFileFullPath = $resourcesClient->createTempFile('temp DB for ' . ClassNameUtil::fqToShort(__CLASS__));
             $dbName = $dbFileFullPath;
             $appCodeArgs[DbAutoInstrumentationUtilForTests::DB_NAME_KEY] = $dbName;
         }

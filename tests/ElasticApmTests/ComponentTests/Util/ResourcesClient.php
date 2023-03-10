@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 
@@ -90,23 +91,9 @@ final class ResourcesClient
         );
     }
 
-    public function createTempFile(string $type, bool $shouldBeDeletedOnTestExit = true): string
+    public function createTempFile(?string $dbgTempFilePurpose = null, bool $shouldBeDeletedOnTestExit = true): string
     {
-        $fileNamePrefix = 'ElasticApmTests_PID_' . getmypid() . '_';
-        $tempFileFullPath = tempnam(sys_get_temp_dir(), $fileNamePrefix);
-        if ($tempFileFullPath === false) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Failed to create a temporary INI file',
-                    [
-                        'type'               => $type,
-                        'sys_get_temp_dir()' => sys_get_temp_dir(),
-                        'fileNamePrefix'     => $fileNamePrefix,
-                    ]
-                )
-            );
-        }
-
+        $tempFileFullPath = FileUtilForTests::createTempFile($dbgTempFilePurpose);
         if ($shouldBeDeletedOnTestExit) {
             $this->registerFileToDelete($tempFileFullPath, /* isTestScoped */ true);
         }
