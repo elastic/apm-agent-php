@@ -63,7 +63,7 @@ function copySyslogFilesAndPrintTheMostRecentOne () {
             mkdir -p "${syslogCopyDir}"
             cp "${syslogFile}"* ${syslogCopyDir}
             echo "syslog files (${syslogFile}*) copied to ${syslogCopyDir}"
-            chmod 755 ${syslogCopyDir}/*
+            chmod -R 755 ${syslogCopyDir}
         fi
     done
 
