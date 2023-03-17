@@ -95,24 +95,79 @@ static CallToInterceptData g_functionsToInterceptData[maxFunctionsToIntercept];
 static uint32_t g_interceptedCallInProgressRegistrationId = 0;
 
 static
+String buildFuncDescForInterceptRegistrationId( uint32_t interceptRegistrationId, TextOutputStream* txtOutStream )
+{
+    ELASTIC_APM_ASSERT(interceptRegistrationId < g_nextFreeFunctionToInterceptId,
+                       "interceptRegistrationId: %u, g_nextFreeFunctionToInterceptId: %u"
+                       , (unsigned)interceptRegistrationId, (unsigned)g_nextFreeFunctionToInterceptId );
+
+    zend_function* funcEntry = g_functionsToInterceptData[ interceptRegistrationId ].funcEntry;
+    ELASTIC_APM_ASSERT(funcEntry != NULL, "interceptRegistrationId: %u", (unsigned)interceptRegistrationId);
+
+    String funcName = ZSTR_VAL(funcEntry->internal_function.function_name);
+    zend_class_entry* classEntry = funcEntry->internal_function.scope;
+    String className = classEntry == NULL ? NULL : ZSTR_VAL(classEntry->name);
+    bool isStatic = (funcEntry->internal_function.fn_flags & ZEND_ACC_STATIC) != 0;
+
+    return className == NULL ? funcName : streamPrintf(txtOutStream, "%s%s%s", className, isStatic ? "::" : "->", funcName);
+}
+
+static
+String findReasonCannotCallPhpCode()
+{
+    if (!EG(active))
+    {
+        return "!EG(active)";
+    }
+
+    if (EG(exception) != NULL)
+    {
+        return "EG(exception)";
+    }
+
+    return NULL;
+}
+
+static
+String buildFuncExitDesc(zval* return_value, zend_object* exception, TextOutputStream* txtOutStream)
+{
+    if (exception == NULL)
+    {
+        return streamPrintf(txtOutStream, "exited with return value of type %s (%u)", zend_get_type_by_const(Z_TYPE_P(return_value)), Z_TYPE_P(return_value));
+    }
+
+    if ((exception->ce == NULL) || (exception->ce->name == NULL))
+    {
+        return streamPrintf(txtOutStream, "thrown object of unknown type");
+    }
+
+    return streamPrintf(txtOutStream, "thrown object of type %s", ZSTR_VAL(exception->ce->name));
+}
+
+static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
     ResultCode resultCode;
+    bool shouldCallPostHook;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    String funcDesc = buildFuncDescForInterceptRegistrationId( interceptRegistrationId, &txtOutStream );
 
     // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
     // which might deadlock in forked child
     ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmEnterAgentCode( __FILE__, __LINE__, __FUNCTION__ ) );
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
-
-    bool shouldCallPostHook;
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u, funcDesc: %s", interceptRegistrationId, funcDesc );
 
     if ( g_interceptedCallInProgressRegistrationId != 0 )
     {
-        ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG(
-                "There's already an intercepted call in progress with interceptRegistrationId: %u."
-                "Nesting intercepted calls is not supported yet so invoking the original handler directly..."
-                , g_interceptedCallInProgressRegistrationId );
+        String inProgressFuncDesc = buildFuncDescForInterceptRegistrationId( g_interceptedCallInProgressRegistrationId, &txtOutStream );
+        ELASTIC_APM_LOG_TRACE(
+                "There's already an intercepted call in progress with interceptRegistrationId: %u (%s)."
+                " New call interceptRegistrationId: %u (%s)."
+                " Nesting intercepted calls is not supported yet so invoking the original handler directly..."
+                , g_interceptedCallInProgressRegistrationId, inProgressFuncDesc
+                , interceptRegistrationId, funcDesc );
         g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
         return;
     }
@@ -121,15 +176,39 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
 
     shouldCallPostHook = tracerPhpPartInterceptedCallPreHook( interceptRegistrationId, execute_data );
     g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+    ELASTIC_APM_LOG_TRACE(
+            "Call to handler exited"
+            "; %s"
+            "; interceptRegistrationId: %u (%s)"
+            , buildFuncExitDesc(return_value, EG(exception), &txtOutStream)
+            , interceptRegistrationId, funcDesc );
     if ( shouldCallPostHook ) {
-        tracerPhpPartInterceptedCallPostHook( interceptRegistrationId, return_value );
+        String reasonCannotCallPhpCode = findReasonCannotCallPhpCode();
+        if (reasonCannotCallPhpCode == NULL)
+        {
+            resultCode = tracerPhpPartInterceptedCallPostHook( return_value );
+            if (resultCode != resultSuccess)
+            {
+                ELASTIC_APM_LOG_ERROR( "Post-hook call failed"
+                                       "; interceptRegistrationId: %u, funcDesc: %s, resultCode: %s (%d)"
+                                       , interceptRegistrationId, funcDesc
+                                       , resultCodeToString( resultCode ), resultCode );
+            }
+        }
+        else
+        {
+            ELASTIC_APM_LOG_DEBUG( "Post-hook cannot be called"
+                                   "; reasonCannotCallPhpCode: %s; interceptRegistrationId: %u, funcDesc: %s"
+                                   , reasonCannotCallPhpCode, interceptRegistrationId, funcDesc );
+        }
     }
 
     g_interceptedCallInProgressRegistrationId = 0;
 
-    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
     resultCode = resultSuccess;
     finally:
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "resultCode: %s (%d), interceptRegistrationId: %u, funcDesc: %s", resultCodeToString( resultCode ), resultCode, interceptRegistrationId, funcDesc );
+    ELASTIC_APM_UNUSED(resultCode);
     return;
 
     failure:
@@ -201,7 +280,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "className: `%s'; methodName: `%s', interceptRegistrationId: %u", className, methodName, *interceptRegistrationId );
     return resultCode;
 
     failure:
@@ -231,7 +310,7 @@ ResultCode elasticApmInterceptCallsToInternalFunctionEx( String functionName, ui
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", *interceptRegistrationId );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "functionName: `%s', interceptRegistrationId: %u", functionName, *interceptRegistrationId );
     return resultCode;
 
     failure:

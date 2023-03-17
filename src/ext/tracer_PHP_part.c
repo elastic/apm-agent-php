@@ -159,11 +159,12 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ &preHookRetVal ) );
-    ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+    ELASTIC_APM_LOG_TRACE( "Finished call to PHP part. Return value type: %s (%u)"
+                           , zend_get_type_by_const(Z_TYPE(preHookRetVal)), Z_TYPE(preHookRetVal) );
 
     if ( Z_TYPE( preHookRetVal ) != IS_FALSE && Z_TYPE( preHookRetVal ) != IS_TRUE )
     {
-        ELASTIC_APM_LOG_ERROR( "Call to PHP part returned value that is not bool. Return value type: %u", Z_TYPE_P( &preHookRetVal ) );
+        ELASTIC_APM_LOG_ERROR( "Call to PHP part returned value that is not bool. Return value type: %s (%u)", zend_get_type_by_const(Z_TYPE(preHookRetVal)), Z_TYPE(preHookRetVal) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
     shouldCallPostHook = ( Z_TYPE( preHookRetVal ) == IS_TRUE );
@@ -181,10 +182,10 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     goto finally;
 }
 
-void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
+ResultCode tracerPhpPartInterceptedCallPostHook( zval* interceptedCallRetValOrThrown )
 {
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u"
-                                              , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptedCallRetValOrThrown type: %s (%u)"
+                                              , zend_get_type_by_const( Z_TYPE_P( interceptedCallRetValOrThrown ) ), Z_TYPE_P( interceptedCallRetValOrThrown ) );
 
     ResultCode resultCode;
     zval phpPartArgs[ 2 ];
@@ -206,10 +207,10 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
 
     finally:
 
-    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u."
-                                                         , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptedCallRetValOrThrown type: %s (%u)"
+                                                         , zend_get_type_by_const( Z_TYPE_P( interceptedCallRetValOrThrown ) ), Z_TYPE_P( interceptedCallRetValOrThrown ) );
     ELASTIC_APM_UNUSED( resultCode );
-    return;
+    return resultCode;
 
     failure:
     goto finally;
