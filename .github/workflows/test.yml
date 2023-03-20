@@ -110,7 +110,7 @@ jobs:
       PHP_VERSION: ${{ matrix.item[0] }}
       LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
       TESTING_TYPE: ${{ matrix.item[2] }}
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.item[0] }},${{ matrix.item[1] }},${{ matrix.item[2] }},${{ matrix.item[3] }},${{ matrix.item[4] }},${{ matrix.item[5] || 'noop'}}"
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.item[0] }},${{ matrix.item[1] }},${{ matrix.item[2] }},${{ matrix.item[3] }},${{ matrix.item[4] }},${{ matrix.item[5] || 'noop=noop'}}"
     steps:
       - uses: actions/checkout@v3
 
