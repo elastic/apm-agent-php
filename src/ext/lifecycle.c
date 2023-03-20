@@ -449,6 +449,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     tempPhpErrorData.type = type;
     tempPhpErrorData.lineNumber = lineNumber;
 
+    freeAndZeroLastPhpErrorData( &g_lastPhpErrorData );
     shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
     zeroLastPhpErrorData( &tempPhpErrorData );
     g_lastPhpErrorDataSet = true;
