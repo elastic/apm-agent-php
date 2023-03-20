@@ -242,8 +242,10 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return $this->tempIniFileFullPath;
         }
 
-        $shouldBeDeletedOnTestExit = AmbientContextForTests::testConfig()->deleteTempPhpIni;
-        $tempIniFileFullPath = $this->resourcesClient->createTempFile('php_ini', $shouldBeDeletedOnTestExit);
+        $tempIniFileFullPath = $this->resourcesClient->createTempFile(
+            'php.ini for app code host' /* <- dbgTempFilePurpose */,
+            AmbientContextForTests::testConfig()->deleteTempPhpIni /* <- shouldBeDeletedOnTestExit */
+        );
 
         $this->writeTempIniContent($tempIniFileFullPath);
 
