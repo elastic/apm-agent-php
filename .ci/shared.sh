@@ -35,7 +35,7 @@ function ensureSyslogIsRunningImpl () {
                 sed -i '/\/var\/log\/messages/s/messages/syslog/' /etc/rsyslog.conf
             fi
         fi
-        rsyslogd -dn &
+        rsyslogd
     else
         if which syslogd; then
             syslogd
