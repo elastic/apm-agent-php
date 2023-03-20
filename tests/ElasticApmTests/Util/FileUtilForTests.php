@@ -24,9 +24,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 /**
@@ -92,5 +95,30 @@ final class FileUtilForTests
             $result .= $pathElement;
         }
         return $result;
+    }
+
+    public static function createTempFile(?string $dbgTempFilePurpose = null): string
+    {
+        $tempFileFullPath = tempnam(sys_get_temp_dir(), /* prefix */ 'ElasticApmTests_');
+        $logCategory = LogCategoryForTests::TEST;
+        $logger
+            = AmbientContextForTests::loggerFactory()->loggerForClass($logCategory, __NAMESPACE__, __CLASS__, __FILE__);
+
+        if ($tempFileFullPath === false) {
+            ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->includeStackTrace()->log(
+                'Failed to create a temporary file',
+                ['$dbgTempFilePurpose' => $dbgTempFilePurpose]
+            );
+            Assert::fail(LoggableToString::convert(['$dbgTempFilePurpose' => $dbgTempFilePurpose]));
+        }
+
+        ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->includeStackTrace()->log(
+            'Created a temporary file',
+            ['tempFileFullPath' => $tempFileFullPath, '$dbgTempFilePurpose' => $dbgTempFilePurpose]
+        );
+
+        return $tempFileFullPath;
     }
 }
