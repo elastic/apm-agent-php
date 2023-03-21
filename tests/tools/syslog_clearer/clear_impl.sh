@@ -20,3 +20,4 @@ chmod "u=rw,o=,g=" "${temp_logrotate_config_file}"
 logrotate --force --verbose "${temp_logrotate_config_file}"
 rm -f /var/log/syslog.*
 rm -f /var/log/messages.*
+rm -f "${temp_logrotate_config_file}"
