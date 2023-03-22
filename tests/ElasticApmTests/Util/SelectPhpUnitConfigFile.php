@@ -70,6 +70,10 @@ final class SelectPhpUnitConfigFile
     {
         $appCodeHostKindOptName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
         $appCodeHostKindEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($appCodeHostKindOptName);
+        // We unset ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND env var because it might be set to 'all'
+        // which is not a valid AppCodeHostKind "enum" value
+        // and we don't care about APP_CODE_HOST_KIND for this utility anyway
+        // because we are not going to run any component tests
         EnvVarUtilForTests::unset($appCodeHostKindEnvVarName);
         AmbientContextForTests::init(/* dbgProcessName */ ClassNameUtil::fqToShort(__CLASS__));
     }
@@ -116,7 +120,7 @@ final class SelectPhpUnitConfigFile
      *
      * @return never
      */
-    private function fail(string $msg, array $ctx): void
+    private function fail(string $msg, array $ctx = []): void
     {
         ($loggerProxy = $this->logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log($msg, $ctx);
@@ -250,11 +254,17 @@ final class SelectPhpUnitConfigFile
 
     private function selectConfigFile(string $testsType, int $phpUnitMajorVersion): string
     {
-        $listOfFilesInRepoRootDir = $this->execExternalCommand(/* command */ 'ls -1');
         $configForFileNamePhpUnitMajorVersion = self::buildConfigFileName($testsType, $phpUnitMajorVersion);
+        $listOfFilesInRepoRootDir = scandir('.');
+        if ($listOfFilesInRepoRootDir === false) {
+            $this->fail('Failed to get list of files in the repo root directory');
+        }
+        // First we try to find configuration file specific to the given PHPUnit major version
         if (in_array($configForFileNamePhpUnitMajorVersion, $listOfFilesInRepoRootDir)) {
             return $configForFileNamePhpUnitMajorVersion;
         }
+        // If we didn't find file specific to the given PHPUnit major version
+        // then we return the default configuration file
         return self::buildConfigFileName($testsType);
     }
 }

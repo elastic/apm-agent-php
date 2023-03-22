@@ -27,7 +27,9 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -98,11 +100,8 @@ final class ProcessUtilForTests
         $descriptorSpec = [];
         $tempOutputFilePath = '';
         if ($shouldCaptureStdOutErr) {
-            $tempOutputFilePath = tempnam(sys_get_temp_dir(), '');
-            $tempOutputFilePath .= '_' . str_replace('\\', '_', __CLASS__) . '_stdout+stderr.txt';
-            if (file_exists($tempOutputFilePath)) {
-                TestCase::assertTrue(unlink($tempOutputFilePath));
-            }
+            $tempOutputFilePath
+                = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawn process stdout and stderr');
             $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
             $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }
@@ -128,6 +127,7 @@ final class ProcessUtilForTests
                 $logCtx['file for stdout + stderr'] = $tempOutputFilePath;
                 if (file_exists($tempOutputFilePath)) {
                     $logCtx['stdout + stderr'] = file_get_contents($tempOutputFilePath);
+                    Assert::assertTrue(unlink($tempOutputFilePath));
                 }
             }
 
