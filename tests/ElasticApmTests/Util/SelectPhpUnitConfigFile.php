@@ -254,8 +254,8 @@ final class SelectPhpUnitConfigFile
 
     private function selectConfigFile(string $testsType, int $phpUnitMajorVersion): string
     {
-        $listOfFilesInRepoRootDir = $this->execExternalCommand(/* command */ 'ls -1');
         $configForFileNamePhpUnitMajorVersion = self::buildConfigFileName($testsType, $phpUnitMajorVersion);
+        $listOfFilesInRepoRootDir = scandir('.');
         // First we try to find configuration file specific to the given PHPUnit major version
         if (in_array($configForFileNamePhpUnitMajorVersion, $listOfFilesInRepoRootDir)) {
             return $configForFileNamePhpUnitMajorVersion;
