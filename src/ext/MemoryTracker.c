@@ -66,9 +66,7 @@ typedef struct EmbeddedTrackingDataHeader EmbeddedTrackingDataHeader;
 struct DeserializedTrackingData
 {
     EmbeddedTrackingDataHeader* embedded;
-
     void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
-
     UInt32 suffixMagic;
 };
 typedef struct DeserializedTrackingData DeserializedTrackingData;
@@ -83,8 +81,9 @@ void constructMemoryTracker( MemoryTracker* memTracker )
     memTracker->level = memoryTrackingLevel_all;
     memTracker->abortOnMemoryLeak = ELASTIC_APM_MEMORY_TRACKING_DEFAULT_ABORT_ON_MEMORY_LEAK;
     memTracker->allocatedPersistent = 0;
+    initIntrusiveDoublyLinkedList( &memTracker->allocatedPersistentBlocks );
     memTracker->allocatedRequestScoped = 0;
-    initIntrusiveDoublyLinkedList( &memTracker->allocatedBlocks );
+    initIntrusiveDoublyLinkedList( &memTracker->allocatedRequestScopedBlocks );
 
     ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
 }
@@ -138,6 +137,7 @@ void addToTrackedAllocatedBlocks(
         MemoryTracker* memTracker,
         const void* allocatedBlock,
         size_t originallyRequestedSize,
+        bool isPersistent,
         StringView filePath,
         UInt lineNumber,
         bool isString,
@@ -146,8 +146,11 @@ void addToTrackedAllocatedBlocks(
 {
     EmbeddedTrackingDataHeader* trackingDataHeader = allocatedBlockToTrackingData( allocatedBlock, originallyRequestedSize );
     ELASTIC_APM_ZERO_STRUCT( trackingDataHeader );
+    UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
+    IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
 
-    addToIntrusiveDoublyLinkedListBack( &memTracker->allocatedBlocks, &trackingDataHeader->intrusiveNode );
+    *allocated += originallyRequestedSize;
+    addToIntrusiveDoublyLinkedListBack( allocatedBlocks, &trackingDataHeader->intrusiveNode );
 
     trackingDataHeader->prefixMagic = prefixMagicExpectedValue;
     trackingDataHeader->fileName = extractLastPartOfFilePathStringView( filePath ).begin;
@@ -182,19 +185,19 @@ void memoryTrackerAfterAlloc(
     ELASTIC_APM_ASSERT_GE_UINT64( actuallyRequestedSize, originallyRequestedSize );
     ELASTIC_APM_ASSERT_LE_UINT64( stackTraceAddressesCount, maxCaptureStackTraceDepth );
 
-    UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
-    *allocated += originallyRequestedSize;
-
     if ( actuallyRequestedSize > originallyRequestedSize )
+    {
         addToTrackedAllocatedBlocks(
                 memTracker,
                 allocatedBlock,
                 originallyRequestedSize,
+                isPersistent,
                 filePath,
                 lineNumber,
                 isString,
                 stackTraceAddresses,
                 stackTraceAddressesCount );
+    }
 
     ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker );
 }
@@ -226,6 +229,7 @@ void removeFromTrackedAllocatedBlocks(
         MemoryTracker* memTracker,
         const void* allocatedBlock,
         size_t originallyRequestedSize,
+        IntrusiveDoublyLinkedList* allocatedBlocks,
         size_t* possibleActuallyRequestedSize )
 {
     EmbeddedTrackingDataHeader* trackingDataHeader = allocatedBlockToTrackingData( allocatedBlock, originallyRequestedSize );
@@ -242,7 +246,7 @@ void removeFromTrackedAllocatedBlocks(
             memoryTrackerCalcSizeToAlloc(memTracker, originallyRequestedSize, trackingDataHeader->stackTraceAddressesCount );
 
     removeCurrentNodeIntrusiveDoublyLinkedList(
-            nodeToIntrusiveDoublyLinkedListIterator( &memTracker->allocatedBlocks, &trackingDataHeader->intrusiveNode ) );
+            nodeToIntrusiveDoublyLinkedListIterator( allocatedBlocks, &trackingDataHeader->intrusiveNode ) );
 
     trackingDataHeader->prefixMagic = invalidMagicValue;
     memcpy( postHeader, &invalidMagicValue, ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
@@ -259,6 +263,7 @@ void memoryTrackerBeforeFree(
     ELASTIC_APM_ASSERT_VALID_PTR( possibleActuallyRequestedSize );
 
     UInt64* allocated = isPersistent ? &memTracker->allocatedPersistent : &memTracker->allocatedRequestScoped;
+    IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
 
     ELASTIC_APM_ASSERT( *allocated >= originallyRequestedSize
             , "Attempting to free more %s memory than allocated. Allocated: %"PRIu64". Attempting to free: %"PRIu64
@@ -269,7 +274,7 @@ void memoryTrackerBeforeFree(
     // if the current level (i.e., at the moment of call to free()) includes tracking for each allocation
     // then the level at the moment of call to malloc() included tracking for each allocation as well
     if ( memTracker->level >= memoryTrackingLevel_eachAllocation )
-        removeFromTrackedAllocatedBlocks( memTracker, allocatedBlock, originallyRequestedSize, possibleActuallyRequestedSize );
+        removeFromTrackedAllocatedBlocks( memTracker, allocatedBlock, originallyRequestedSize, allocatedBlocks, possibleActuallyRequestedSize );
 
     *allocated -= originallyRequestedSize;
 }
@@ -357,10 +362,7 @@ String streamAllocCallStackTrace(
 }
 
 static
-void reportAllocation(
-        const IntrusiveDoublyLinkedListNode* intrusiveListNode,
-        size_t allocationIndex,
-        size_t numberOfAllocations )
+void reportAllocation( const IntrusiveDoublyLinkedListNode* intrusiveListNode, size_t allocationIndex, size_t numberOfAllocations )
 {
     const EmbeddedTrackingDataHeader* trackingDataHeader = fromIntrusiveNodeToTrackingData( intrusiveListNode );
 
@@ -387,9 +389,13 @@ void ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
 static
 void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt64 allocated, bool isPersistent )
 {
-    if ( allocated == 0 ) return;
+    if ( allocated == 0 )
+    {
+        return;
+    }
 
-    const size_t numberOfAllocations = calcIntrusiveDoublyLinkedListSize( &memTracker->allocatedBlocks );
+    const IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
+    const size_t numberOfAllocations = calcIntrusiveDoublyLinkedListSize( allocatedBlocks );
     const size_t numberOfAllocationsToReport = ELASTIC_APM_MIN( numberOfAllocations, maxNumberOfLeakedAllocationsToReport );
     const IntrusiveDoublyLinkedListNode* allocationsToReport[ maxNumberOfLeakedAllocationsToReport ];
 
@@ -397,7 +403,7 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
     // because the code below might do more allocations
     {
         size_t allocationIndex = 0;
-        ELASTIC_APM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( allocationsIt, &memTracker->allocatedBlocks )
+        ELASTIC_APM_FOR_EACH_IN_INTRUSIVE_LINKED_LIST( allocationsIt, allocatedBlocks )
         {
             allocationsToReport[ allocationIndex++ ] = currentNodeIntrusiveDoublyLinkedList( allocationsIt );
             if ( allocationIndex == numberOfAllocationsToReport ) break;
@@ -417,7 +423,11 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
     #ifdef ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC
     ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
     #else
-    if ( memTracker->abortOnMemoryLeak ) elasticApmAbort();
+    if ( memTracker->abortOnMemoryLeak )
+    {
+        ELASTIC_APM_FORCE_LOG_CRITICAL("Aborting on memory leak...");
+        elasticApmAbort();
+    }
     #endif
 }
 
