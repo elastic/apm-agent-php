@@ -168,16 +168,16 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
                 " Nesting intercepted calls is not supported yet so invoking the original handler directly..."
                 , g_interceptedCallInProgressRegistrationId, inProgressFuncDesc
                 , interceptRegistrationId, funcDesc );
-        g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+        g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, /* out */ return_value );
         return;
     }
 
     g_interceptedCallInProgressRegistrationId = interceptRegistrationId;
 
     shouldCallPostHook = tracerPhpPartInterceptedCallPreHook( interceptRegistrationId, execute_data );
-    g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
+    g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, /* out */ return_value );
     ELASTIC_APM_LOG_TRACE(
-            "Call to handler exited"
+            "Call to the original handler exited"
             "; %s"
             "; interceptRegistrationId: %u (%s)"
             , buildFuncExitDesc(return_value, EG(exception), &txtOutStream)
