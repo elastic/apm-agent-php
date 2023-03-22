@@ -120,7 +120,7 @@ final class SelectPhpUnitConfigFile
      *
      * @return never
      */
-    private function fail(string $msg, array $ctx): void
+    private function fail(string $msg, array $ctx = []): void
     {
         ($loggerProxy = $this->logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log($msg, $ctx);
@@ -256,6 +256,9 @@ final class SelectPhpUnitConfigFile
     {
         $configForFileNamePhpUnitMajorVersion = self::buildConfigFileName($testsType, $phpUnitMajorVersion);
         $listOfFilesInRepoRootDir = scandir('.');
+        if ($listOfFilesInRepoRootDir === false) {
+            $this->fail('Failed to get list of files in the repo root directory');
+        }
         // First we try to find configuration file specific to the given PHPUnit major version
         if (in_array($configForFileNamePhpUnitMajorVersion, $listOfFilesInRepoRootDir)) {
             return $configForFileNamePhpUnitMajorVersion;
