@@ -32,6 +32,7 @@ use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 final class ServerApiSchemaValidator
@@ -203,8 +204,7 @@ final class ServerApiSchemaValidator
      */
     private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $pathToTempFile = tempnam(sys_get_temp_dir(), '');
-        $pathToTempFile .= '_' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $pathToTempFile = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'processed Intake API schema');
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,

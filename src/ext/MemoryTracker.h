@@ -81,8 +81,9 @@ struct MemoryTracker
     bool abortOnMemoryLeak;
 
     UInt64 allocatedPersistent;
+    IntrusiveDoublyLinkedList allocatedPersistentBlocks;
     UInt64 allocatedRequestScoped;
-    IntrusiveDoublyLinkedList allocatedBlocks;
+    IntrusiveDoublyLinkedList allocatedRequestScopedBlocks;
 };
 typedef struct MemoryTracker MemoryTracker;
 
@@ -91,9 +92,9 @@ void assertValidMemoryTracker( MemoryTracker* memTracker )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( memTracker );
     ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKING_LEVEL( memTracker->level );
-    ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST( &memTracker->allocatedBlocks );
+    ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST( &memTracker->allocatedPersistentBlocks );
+    ELASTIC_APM_ASSERT_VALID_INTRUSIVE_LINKED_LIST( &memTracker->allocatedRequestScopedBlocks );
 }
-ELASTIC_APM_SUPPRESS_UNUSED( assertValidMemoryTracker );
 
 #define ELASTIC_APM_ASSERT_VALID_MEMORY_TRACKER( memTracker ) \
     ELASTIC_APM_ASSERT_VALID_OBJ( assertValidMemoryTracker( memTracker ) ) \
