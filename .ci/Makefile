@@ -1,5 +1,6 @@
 
 SHELL=/bin/bash -o pipefail
+MAKEFLAGS += --no-print-directory
 IMAGE := test-php
 PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
