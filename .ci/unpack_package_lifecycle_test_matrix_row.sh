@@ -119,9 +119,6 @@ function unpackRowOptionalPartsToEnvVars () {
         'agent_syslog_level')
                 export ELASTIC_APM_LOG_LEVEL_SYSLOG="${value}"
                 ;;
-        'noop')
-                echo "Noop optional part (to help with storing syslogs with optional parts)"
-                ;;
         *)
                 echo "Unknown optional part key: \`${key}' (value: \`${value}')"
                 exit 1

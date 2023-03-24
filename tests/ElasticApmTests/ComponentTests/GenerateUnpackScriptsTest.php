@@ -245,8 +245,6 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
             case 'agent_syslog_level':
                 ArrayUtilForTests::addUnique(self::agentSyslogLevelEnvVarName(), $value, /* ref */ $result);
                 break;
-            case 'noop':
-                break;
             default:
                 self::fail(LoggableToString::convert(['key' => $key, 'value' => $value]));
         }
