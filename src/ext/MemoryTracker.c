@@ -68,13 +68,7 @@ struct DeserializedTrackingData
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
     EmbeddedTrackingDataHeader* embedded;
-#pragma clang diagnostic pop
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnusedLocalVariable"
     void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
-#pragma clang diagnostic pop
-
     UInt32 suffixMagic;
 };
 typedef struct DeserializedTrackingData DeserializedTrackingData;
@@ -397,7 +391,10 @@ void ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
 static
 void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt64 allocated, bool isPersistent )
 {
-    if ( allocated == 0 ) return;
+    if ( allocated == 0 )
+    {
+        return;
+    }
 
     const IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
     const size_t numberOfAllocations = calcIntrusiveDoublyLinkedListSize( allocatedBlocks );
@@ -428,7 +425,11 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
     #ifdef ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC
     ELASTIC_APM_ON_MEMORY_LEAK_CUSTOM_FUNC();
     #else
-    if ( memTracker->abortOnMemoryLeak ) elasticApmAbort();
+    if ( memTracker->abortOnMemoryLeak )
+    {
+        ELASTIC_APM_FORCE_LOG_CRITICAL("Aborting on memory leak...");
+        elasticApmAbort();
+    }
     #endif
 }
 
