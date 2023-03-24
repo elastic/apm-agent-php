@@ -41,3 +41,10 @@ require __DIR__ . '/ElasticApmTests/ComponentTests/appCodeForTestPhpErrorUncaugh
 require __DIR__ . '/ElasticApmTests/ComponentTests/appCodeForTestPhpErrorUndefinedVariable.php';
 
 TestsRootDir::$fullPath = __DIR__;
+
+/*
+Dummy comment to verify allowed max line length (which is 200)
+
+1--------10--------20--------30--------40--------50--------60--------70--------80--------90--------100-------110-------120-------130-------140-------150-------160-------170-------180-------190------->
+|--------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+*/
