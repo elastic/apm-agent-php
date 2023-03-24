@@ -1,0 +1,98 @@
+---
+
+name: stash action
+inputs:
+  testing-type:
+    description: 'A directory that describes what to stash'
+    required: true
+  php-version:
+    description: 'Stash name'
+    required: true
+  package-type:
+    description: 'Stash name'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set environment
+      run: |-
+        echo "PHP_VERSION=${{ inputs.php-version }}" >> $GITHUB_ENV
+
+    - uses: actions/download-artifact@v3
+      with:
+        name: package
+        path: build/packages
+
+    - uses: actions/download-artifact@v3
+      with:
+        name: package-parts
+        path: src/ext/modules
+
+    - if: ${{ inputs.testing-type == 'lifecycle' }}
+      name: lifecycle test
+      run: |
+        make -C packaging "prepare-${{ inputs.package-type }}"
+        make -C packaging "${{ inputs.package-type }}-lifecycle-testing"
+      shell: bash
+
+    - if: ${{ startsWith(inputs.testing-type, 'lifecycle-') }}
+      name: lifecycle test on prod server
+      run: |
+        make -C packaging prepare-${{ inputs.package-type }}-${{ inputs.testing-type }}"
+        make -C packaging "${{ inputs.package-type }}-lifecycle-testing-in-${{ inputs.testing-type }}"
+      shell: bash
+
+    - if: ${{ inputs.testing-type == 'php-upgrade' }}
+      name: php upgrade test
+      run: |
+        make -C packaging "prepare-${{ inputs.package-type }}"
+        make -C packaging "${{ inputs.package-type }}-php-upgrade-testing"
+      shell: bash
+
+    ## Agent upgrade requires to build the package with a different version
+    ## Then download the packages for the current version.
+    ## Run the upgrade testing.
+    - if: ${{ inputs.testing-type == 'agent-upgrade' }}
+      name: agent upgrade test - prepare
+      run: |
+        mv build/packages build/backup
+        VERSION=1.0.0 make -C packaging package
+        mv build/packages build/local
+        mv build/backup build/packages
+        make -C packaging "${{ inputs.package-type }}-agent-upgrade-testing-local"
+      shell: bash
+
+    - if: success() || failure()
+      name: Prepare test result files
+      run: >-
+        find build
+        -name "*junit.xml"
+        -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
+        \;
+      shell: bash
+
+    - if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: build/*junit.xml
+        if-no-files-found: error
+
+    # Store syslog
+    - if: failure()
+      name: Prepare syslog files
+      continue-on-error: true
+      run: |-
+        mkdir build/syslog-files
+        cd build/syslog || true
+        find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+        find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+      shell: bash
+
+    - if: failure()
+      uses: actions/upload-artifact@v3
+      continue-on-error: true
+      with:
+        name: syslogs
+        path: build/syslog-files/

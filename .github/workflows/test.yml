@@ -91,103 +91,108 @@ jobs:
           path: |
             build/packages/*
             !build/packages/**/*.sha512
-  generate-test-packages-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      include: ${{ steps.generate.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: generate
-        run: |
-          MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
-          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
-  test-packages:
+
+  test-packages-lifecycle-apache:
     timeout-minutes: 120
     needs:
       - build-packages
-      - generate-test-packages-matrix
       - test
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 20
+      max-parallel: 10
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.generate-test-packages-matrix.outputs.include) }}
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+          - "8.2"
+        package-type:
+          - deb
+        type:
+          - "no_ext_svc"
+          - "with_ext_svc"
+        testing-type:
+          - "lifecycle-apache"
+          - "lifecycle-fpm"
     env:
-      PHP_VERSION: ${{ matrix.item[0] }}
-      LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
-      TESTING_TYPE: ${{ matrix.item[2] }}
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},http,${{ matrix.type }}"
+      PHP_VERSION: ${{ matrix.php-version }}
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/download-artifact@v3
+      - uses: ./.github/workflows/test-packages/action.yml
         with:
-          name: package
-          path: build/packages
+          package-type: ${{ matrix.package-type }}
+          testing-type: ${{ matrix.testing-type }}
 
-      - uses: actions/download-artifact@v3
+  test-packages-lifecycle:
+    timeout-minutes: 120
+    needs:
+      - build-packages
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 10
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+          - "8.2"
+        package-type:
+          - deb
+          - rpm
+          - apk
+        type:
+          - "no_ext_svc"
+          - "with_ext_svc"
+        sub-type:
+          - "http"
+          - "cli"
+        testing-type:
+          - "lifecycle"
+    env:
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},${{ matrix.sub-type }},${{ matrix.type }}"
+      PHP_VERSION: ${{ matrix.php-version }}
+    steps:
+      - uses: ./.github/workflows/test-packages/action.yml
         with:
-          name: package-parts
-          path: src/ext/modules
+          package-type: ${{ matrix.package-type }}
+          testing-type: ${{ matrix.testing-type }}
 
-      - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
-        name: lifecycle test
-        run: |
-          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
-          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing"
-
-      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
-        name: lifecycle test on prod server
-        run: |
-          make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
-          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
-
-      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
-        name: php upgrade test
-        run: |
-          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
-          make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
-
-      ## Agent upgrade requires to build the package with a different version
-      ## Then download the packages for the current version.
-      ## Run the upgrade testing.
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        name: agent upgrade test - prepare
-        run: |
-          mv build/packages build/backup
-          VERSION=1.0.0 make -C packaging package
-          mv build/packages build/local
-          mv build/backup build/packages
-          make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
-
-      - if: success() || failure()
-        name: Prepare test result files
-        run: >-
-          find build
-          -name "*junit.xml"
-          -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
-          \;
-
-      - if: success() || failure()
-        uses: actions/upload-artifact@v3
+  test-packages-lifecycle-debug:
+    timeout-minutes: 120
+    needs:
+      - build-packages
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "8.2"
+        package-type:
+          - apk
+          - deb
+        type:
+          - "no_ext_svc"
+          - "with_ext_svc"
+        sub-type:
+          - "http"
+          - "cli"
+        testing-type:
+          - "lifecycle"
+    env:
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},lifecycle,${{ matrix.sub-type }},${{ matrix.type }},agent_syslog_level=DEBUG"
+      PHP_VERSION: ${{ matrix.php-version }}
+    steps:
+      - uses: ./.github/workflows/test-packages/action.yml
         with:
-          name: test-results
-          path: build/*junit.xml
-          if-no-files-found: error
-
-      # Store syslog
-      - if: failure()
-        name: Prepare syslog files
-        continue-on-error: true
-        run: |-
-          mkdir build/syslog-files
-          cd build/syslog || true
-          find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
-          find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
-      - if: failure()
-        uses: actions/upload-artifact@v3
-        continue-on-error: true
-        with:
-          name: syslogs
-          path: build/syslog-files/
+          package-type: ${{ matrix.package-type }}
+          testing-type: ${{ matrix.testing-type }}
