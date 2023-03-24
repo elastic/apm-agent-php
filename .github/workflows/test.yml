@@ -122,7 +122,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/workflows/test-packages/action.yml
+      - uses: ./.github/workflows/test-packages
         with:
           package-type: ${{ matrix.package-type }}
           testing-type: ${{ matrix.testing-type }}
@@ -161,7 +161,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/workflows/test-packages/action.yml
+      - uses: ./.github/workflows/test-packages
         with:
           package-type: ${{ matrix.package-type }}
           testing-type: ${{ matrix.testing-type }}
@@ -195,7 +195,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/workflows/test-packages/action.yml
+      - uses: ./.github/workflows/test-packages
         with:
           package-type: ${{ matrix.package-type }}
           testing-type: ${{ matrix.testing-type }}
