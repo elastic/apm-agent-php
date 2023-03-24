@@ -121,6 +121,7 @@ jobs:
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},http,${{ matrix.type }}"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
+      - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages/action.yml
         with:
           package-type: ${{ matrix.package-type }}
@@ -159,6 +160,7 @@ jobs:
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},${{ matrix.sub-type }},${{ matrix.type }}"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
+      - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages/action.yml
         with:
           package-type: ${{ matrix.package-type }}
@@ -192,6 +194,7 @@ jobs:
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},lifecycle,${{ matrix.sub-type }},${{ matrix.type }},agent_syslog_level=DEBUG"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
+      - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages/action.yml
         with:
           package-type: ${{ matrix.package-type }}
