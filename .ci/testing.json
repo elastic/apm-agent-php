@@ -1,0 +1,25 @@
+{
+  "comment": "This is consumed by the CI, please add the list of testing and php versions",
+  "versions": [ "7.2", "7.3", "7.4", "8.0", "8.1", "8.2" ],
+  "lifecycle": {
+    "comment": "This is consumed by the CI, and it runs against all the php versions defined in .ci/php-versions.json",
+    "package": [ "deb", "rpm", "apk" ],
+    "group": [ "no_ext_svc", "with_ext_svc"],
+    "subgroup": [ "http", "cli"],
+    "testing": [ "lifecycle" ]
+  },
+  "lifecycle_apache": {
+    "comment": "This is consumed by the CI, and it runs against all the php versions defined in .ci/php-versions.json",
+    "package": [ "deb" ],
+    "group": [ "no_ext_svc", "with_ext_svc"],
+    "subgroup": [ "http" ],
+    "testing": [ "lifecycle-apache", "lifecycle-fpm" ]
+  },
+  "lifecycle_debug": {
+    "comment": "This is consumed by the CI, and it runs against the latest and oldest php versions defined in .ci/php-versions.json",
+    "package": [ "deb", "apk" ],
+    "group": [ "no_ext_svc", "with_ext_svc"],
+    "subgroup": [ "http", "cli"],
+    "testing": [ "lifecycle" ]
+  }
+}

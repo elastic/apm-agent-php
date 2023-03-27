@@ -30,13 +30,22 @@ jobs:
     outputs:
       php-versions: ${{ steps.generate-matrix.outputs.php-versions }}
       php-versions-limits: ${{ steps.generate-matrix.outputs.php-versions-limits }}
+      lifecycle-package: ${{ steps.generate-matrix.outputs.lifecycle-type }}
+      lifecycle-group: ${{ steps.generate-matrix.outputs.lifecycle-group }}
+      lifecycle-subgroup: ${{ steps.generate-matrix.outputs.lifecycle-subgroup }}
+      lifecycle-testing: ${{ steps.generate-matrix.outputs.lifecycle-testing }}
+      lifecycle-apache-package: ${{ steps.generate-matrix.outputs.lifecycle-apache-package }}
+      lifecycle-apache-group: ${{ steps.generate-matrix.outputs.lifecycle-apache-group }}
+      lifecycle-apache-subgroup: ${{ steps.generate-matrix.outputs.lifecycle-apache-subgroup }}
+      lifecycle-apache-testing: ${{ steps.generate-matrix.outputs.lifecycle-apache-testing }}
+      lifecycle-debug-package: ${{ steps.generate-matrix.outputs.lifecycle-debug-package }}
+      lifecycle-debug-group: ${{ steps.generate-matrix.outputs.lifecycle-debug-group }}
+      lifecycle-debug-subgroup: ${{ steps.generate-matrix.outputs.lifecycle-debug-subgroup }}
+      lifecycle-debug-testing: ${{ steps.generate-matrix.outputs.lifecycle-debug-testing }}
     steps:
       - uses: actions/checkout@v3
       - id: generate-matrix
-        run: |
-          echo "php-versions=$(jq -c .versions .ci/php-versions.json)" >> $GITHUB_OUTPUT
-          ## gather the oldest and newest PHP versions to be used for testing purposes.
-          echo "php-versions-limits=$(jq -c .versions .ci/php-versions.json | jq -c '[.[0, -1]]')" >> $GITHUB_OUTPUT
+        run: .ci/generate-github-matrix.sh
 
   test:
     name: static-checks-unit-tests
@@ -114,23 +123,19 @@ jobs:
       fail-fast: false
       matrix:
         php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions) }}
-        package-type:
-          - deb
-        type:
-          - "no_ext_svc"
-          - "with_ext_svc"
-        testing-type:
-          - "lifecycle-apache"
-          - "lifecycle-fpm"
+        package: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-apache-package) }}
+        group: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-apache-group) }}
+        subgroup: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-apache-subgroup) }}
+        testing: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-apache-testing) }}
     env:
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},http,${{ matrix.type }}"
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package }},${{ matrix.testing }},${{ matrix.subgroup }},${{ matrix.group }}"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages
         with:
-          package-type: ${{ matrix.package-type }}
-          testing-type: ${{ matrix.testing-type }}
+          package: ${{ matrix.package }}
+          testing: ${{ matrix.testing }}
 
   test-packages-lifecycle:
     timeout-minutes: 120
@@ -143,27 +148,19 @@ jobs:
       fail-fast: false
       matrix:
         php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions) }}
-        package-type:
-          - deb
-          - rpm
-          - apk
-        type:
-          - "no_ext_svc"
-          - "with_ext_svc"
-        sub-type:
-          - "http"
-          - "cli"
-        testing-type:
-          - "lifecycle"
+        package: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-package) }}
+        group: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-group) }}
+        subgroup: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-subgroup) }}
+        testing: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-testing) }}
     env:
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},${{ matrix.testing-type }},${{ matrix.sub-type }},${{ matrix.type }}"
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package }},${{ matrix.testing }},${{ matrix.subgroup }},${{ matrix.group }}"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages
         with:
-          package-type: ${{ matrix.package-type }}
-          testing-type: ${{ matrix.testing-type }}
+            package-type: ${{ matrix.package }}
+            testing-type: ${{ matrix.testing }}
 
   test-packages-lifecycle-debug:
     timeout-minutes: 120
@@ -176,23 +173,16 @@ jobs:
       fail-fast: false
       matrix:
         php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions-limits) }}
-        package-type:
-          - apk
-          - deb
-        type:
-          - "no_ext_svc"
-          - "with_ext_svc"
-        sub-type:
-          - "http"
-          - "cli"
-        testing-type:
-          - "lifecycle"
+        package: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-debug-package) }}
+        group: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-debug-group) }}
+        subgroup: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-debug-subgroup) }}
+        testing: ${{ fromJSON(needs.prepare-matrix.outputs.lifecycle-debug-testing) }}
     env:
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package-type }},lifecycle,${{ matrix.sub-type }},${{ matrix.type }},agent_syslog_level=DEBUG"
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ matrix.php-version }},${{ matrix.package }},${{ matrix.testing }},${{ matrix.subgroup }},${{ matrix.group }},agent_syslog_level=DEBUG"
       PHP_VERSION: ${{ matrix.php-version }}
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/workflows/test-packages
         with:
-          package-type: ${{ matrix.package-type }}
-          testing-type: ${{ matrix.testing-type }}
+          package-type: ${{ matrix.package }}
+          testing-type: ${{ matrix.testing }}
