@@ -1,15 +1,11 @@
 ---
-
-name: stash action
+name: test packages
 inputs:
   testing-type:
-    description: 'A directory that describes what to stash'
-    required: true
-  php-version:
-    description: 'Stash name'
+    description: 'What type of testing to be done'
     required: true
   package-type:
-    description: 'Stash name'
+    description: 'What type of package to be tested'
     required: true
 
 runs:
