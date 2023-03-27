@@ -24,20 +24,27 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      php-versions: ${{ steps.generate-matrix.outputs.php-versions }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: generate-matrix
+        run: |
+          echo "php-versions=$(jq -c .versions .ci/php-versions.json)" >> $GITHUB_OUTPUT
+
   test:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs:
+      - prepare-matrix
     strategy:
       fail-fast: false
       matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
+        php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions) }}
         dockerfile:
           - "Dockerfile"
           - "Dockerfile.alpine"
@@ -71,6 +78,7 @@ jobs:
           name: test-results
           path: build/*junit.xml
           if-no-files-found: error
+
   build-packages:
     runs-on: ubuntu-latest
     needs:
@@ -102,13 +110,7 @@ jobs:
       max-parallel: 10
       fail-fast: false
       matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
+        php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions) }}
         package-type:
           - deb
         type:
@@ -137,13 +139,7 @@ jobs:
       max-parallel: 10
       fail-fast: false
       matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
+        php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions) }}
         package-type:
           - deb
           - rpm
