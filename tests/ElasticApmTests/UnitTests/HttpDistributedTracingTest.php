@@ -28,6 +28,7 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\Impl\DistributedTracingDataInternal;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ExternalTestData;
@@ -180,7 +181,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
      */
     public function testParseTraceParentHeader(string $headerValue, ?DistributedTracingDataInternal $expectedData): void
     {
-        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
+        $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $isTraceParentValid = true;
         /** @var ?bool */
         $isTraceStateValid = null;
@@ -247,7 +248,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
             }
         }
 
-        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
+        $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
 
         $actualIsTraceParentValid = true;
         /** @var ?bool */
@@ -363,7 +364,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         $actualIsTraceParentValid = true;
         /** @var ?bool */
         $actualIsTraceStateValid = null;
-        $httpDistributedTracing = new HttpDistributedTracing(self::noopLoggerFactory());
+        $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $distTracingData = $httpDistributedTracing->parseHeadersImpl(
             ['01-0af7651916cd43dd8448eb211c80319c-b9c7c989f97918e1-01'],
             [$vendorKey . '=1'],
