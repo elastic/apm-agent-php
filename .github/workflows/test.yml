@@ -29,11 +29,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       php-versions: ${{ steps.generate-matrix.outputs.php-versions }}
+      php-versions-limits: ${{ steps.generate-matrix.outputs.php-versions-limits }}
     steps:
       - uses: actions/checkout@v3
       - id: generate-matrix
         run: |
           echo "php-versions=$(jq -c .versions .ci/php-versions.json)" >> $GITHUB_OUTPUT
+          ## gather the oldest and newest PHP versions to be used for testing purposes.
+          echo "php-versions-limits=$(jq -c .versions .ci/php-versions.json | jq -c '[.[0, -1]]')" >> $GITHUB_OUTPUT
 
   test:
     name: static-checks-unit-tests
@@ -172,9 +175,7 @@ jobs:
       max-parallel: 5
       fail-fast: false
       matrix:
-        php-version:
-          - "7.2"
-          - "8.2"
+        php-version: ${{ fromJSON(needs.prepare-matrix.outputs.php-versions-limits) }}
         package-type:
           - apk
           - deb
