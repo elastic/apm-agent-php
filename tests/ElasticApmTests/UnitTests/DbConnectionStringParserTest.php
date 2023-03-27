@@ -28,6 +28,7 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\Impl\AutoInstrument\Util\DbConnectionStringParser;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use ElasticApmTests\Util\TestCaseBase;
 
 class DbConnectionStringParserTest extends TestCaseBase
@@ -365,7 +366,7 @@ class DbConnectionStringParserTest extends TestCaseBase
         $actualDbType = null;
         /** @var ?string $actualDbName */
         $actualDbName = null;
-        $parser = new DbConnectionStringParser(self::noopLoggerFactory());
+        $parser = new DbConnectionStringParser(NoopLoggerFactory::singletonInstance());
         $parser->parse($dsn, /* ref */ $actualDbType, /* ref */ $actualDbName);
         $dbgCtx = LoggableToString::convert(
             [
