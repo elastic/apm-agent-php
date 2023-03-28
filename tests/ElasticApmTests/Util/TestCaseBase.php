@@ -57,9 +57,6 @@ class TestCaseBase extends TestCase
 
     public const DURATION_COMPARISON_PRECISION_MILLISECONDS = self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS / 1000;
 
-    /** @var ?LoggerFactory */
-    private static $noopLoggerFactory = null;
-
     /** @var ?Logger */
     private $logger = null;
 
@@ -339,16 +336,6 @@ class TestCaseBase extends TestCase
                                     ->withClock(AmbientContextForTests::clock())
                                     ->withLogSink(NoopLogSink::singletonInstance())
                                     ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
-    }
-
-    public static function noopLoggerFactory(): LoggerFactory
-    {
-        if (self::$noopLoggerFactory === null) {
-            self::$noopLoggerFactory = new LoggerFactory(
-                new LogBackend(LogLevel::OFF, NoopLogSink::singletonInstance())
-            );
-        }
-        return self::$noopLoggerFactory;
     }
 
     public static function getParentId(ExecutionSegmentDto $execSegData): ?string
