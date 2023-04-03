@@ -168,14 +168,6 @@ final class TransactionForExtensionRequest
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('$_SERVER variable is not populated - forcing PHP engine to populate it...');
 
-            /**
-             * elastic_apm_* functions are provided by the elastic_apm extension
-             *
-             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
-             * @phpstan-ignore-next-line
-             */
-            \elastic_apm_force_init_server_global_var();
-
             /** @phpstan-ignore-next-line */
             if (!self::isGlobalServerVarSet()) {
                 ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))

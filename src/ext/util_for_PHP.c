@@ -272,3 +272,40 @@ bool isPhpRunningAsCliScript()
 {
     return strcmp( sapi_module.name, "cli" ) == 0;
 }
+
+bool detectOpcachePreload() {
+    if (PHP_VERSION_ID < 70400) {
+        return false;
+    }
+
+    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
+    if (!opcacheEnabled) {
+        return false;
+    }
+
+    const char *preloadValue = INI_STR("opcache.preload");
+    if (!preloadValue || strlen(preloadValue) == 0) {
+        return false;
+    }
+
+    // lookup for opcache_get_status
+    if (EG(function_table) && !zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("opcache_get_status"))) {
+        return false;
+    }
+
+    zval *server = zend_hash_str_find(&EG(symbol_table), ZEND_STRL("_SERVER"));
+    if (!server || Z_TYPE_P(server) != IS_ARRAY) {
+        return true; // actually should be available in preload
+    }
+
+    // not available in preload request
+    zval *script = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SCRIPT_NAME"));
+    if (!script) {
+        return true;
+    }
+    return false;
+}
+
+void enableAccessToServerGlobal() {
+    zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+}
