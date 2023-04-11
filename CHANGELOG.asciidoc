@@ -21,6 +21,12 @@ endif::[]
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
 
+[[release-notes-v1.8.2]]
+=== v1.8.2 - 2023/04/11
+[float]
+==== Bug fixes
+* Fixed agent issue causing PHP to crash when opcache preload feature was enabled {pull}913[#913]
+
 [[release-notes-v1.8.1]]
 === v1.8.1 - 2023/03/09
 [float]
