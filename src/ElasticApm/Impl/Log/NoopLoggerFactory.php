@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -16,6 +18,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.8.2"
+declare(strict_types=1);
+
+namespace Elastic\Apm\Impl\Log;
+
+use Elastic\Apm\Impl\Log\Backend as LogBackend;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class NoopLoggerFactory
+{
+    use StaticClassTrait;
+
+    /** @var ?LoggerFactory */
+    private static $singletonInstance = null;
+
+    public static function singletonInstance(): LoggerFactory
+    {
+        if (self::$singletonInstance === null) {
+            self::$singletonInstance = new LoggerFactory(new LogBackend(LogLevel::OFF, NoopLogSink::singletonInstance()));
+        }
+        return self::$singletonInstance;
+    }
+}

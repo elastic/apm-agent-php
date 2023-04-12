@@ -46,6 +46,8 @@
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
 
+static uint64_t requestCounter = 0;
+
 static
 String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoBuffer )
 {
@@ -449,6 +451,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     tempPhpErrorData.type = type;
     tempPhpErrorData.lineNumber = lineNumber;
 
+    freeAndZeroLastPhpErrorData( &g_lastPhpErrorData );
     shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
     zeroLastPhpErrorData( &tempPhpErrorData );
     g_lastPhpErrorDataSet = true;
@@ -546,6 +549,8 @@ void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 
 void elasticApmRequestInit()
 {
+    requestCounter++;
+
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
@@ -584,6 +589,17 @@ void elasticApmRequestInit()
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
+
+
+    if (requestCounter == 1) {
+        enableAccessToServerGlobal();
+        bool preloadDetected = detectOpcachePreload();
+        if (preloadDetected) {
+            ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
+            resultCode = resultSuccess;
+            goto finally;
+        }
+    }
 
     if ( config->profilingInferredSpansEnabled ) {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
@@ -672,6 +688,14 @@ void elasticApmRequestShutdown()
         resultCode = resultSuccess;
         goto finally;
     }
+
+    bool preloadDetected = requestCounter == 1 && detectOpcachePreload();
+    if (preloadDetected) {
+        ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
+        resultCode = resultSuccess;
+        goto finally;
+    }
+
 
     if ( isOriginalZendThrowExceptionHookSet )
     {

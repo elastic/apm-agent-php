@@ -97,6 +97,14 @@ abstract class HttpServerStarter
             $currentTryPorts = [];
             self::findFreePortsToListen($portsInUse, $portsToAllocateCount, $lastTriedPort, /* out */ $currentTryPorts);
             Assert::assertSame($portsToAllocateCount, count($currentTryPorts));
+            /**
+             * We repeat $currentTryPorts type to fix PHPStan's
+             * "Unable to resolve the template type T in call to method static method" error
+             *
+             * @var int[] $currentTryPorts
+             * @noinspection PhpRedundantVariableDocTypeInspection
+             */
+            $lastTriedPort = ArrayUtilForTests::getLastValue($currentTryPorts);
             $currentTrySpawnedProcessInternalId = InfraUtilForTests::generateSpawnedProcessInternalId();
             $cmdLine = $this->buildCommandLine($currentTryPorts);
             $envVars = $this->buildEnvVars($currentTrySpawnedProcessInternalId, $currentTryPorts);

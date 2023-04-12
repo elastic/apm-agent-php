@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -16,6 +18,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#pragma once
 
-#define PHP_ELASTIC_APM_VERSION "1.8.2"
+declare(strict_types=1);
+
+require __DIR__ . '/../../bootstrap.php';
+
+use ElasticApmTests\Util\SelectPhpUnitConfigFile;
+
+$phpUnitConfigFileName = SelectPhpUnitConfigFile::run($argv);
+echo $phpUnitConfigFileName;

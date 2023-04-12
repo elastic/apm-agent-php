@@ -1,7 +1,18 @@
 <?xml version="1.0"?>
 <ruleset name="ElasticApm">
+    <!-- see https://github.com/squizlabs/PHP_CodeSniffer/wiki/Annotated-Ruleset -->
+
     <rule ref="PSR12" />
     <rule ref="Generic.PHP.RequireStrictTypes" />
+
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <!-- warning for line length above lineLimit -->
+            <property name="lineLimit" value="200"/>
+            <!-- error for line length above absoluteLineLimit -->
+            <property name="absoluteLineLimit" value="200"/>
+        </properties>
+    </rule>
 
     <exclude-pattern>*/polyfills/Stringable.php</exclude-pattern>
     <exclude-pattern>*/polyfills/WeakMap.php</exclude-pattern>

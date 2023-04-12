@@ -63,6 +63,8 @@ ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCoun
 void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );
 
 bool isPhpRunningAsCliScript();
+bool detectOpcachePreload();
+void enableAccessToServerGlobal();
 
 #define ELASTIC_APM_ZEND_ADD_ASSOC( map, key, valueType, value ) ELASTIC_APM_PP_CONCAT( ELASTIC_APM_PP_CONCAT( add_assoc_, valueType ), _ex)( (map), (key), sizeof( key ) - 1, (value) )
 

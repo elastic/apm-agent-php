@@ -57,9 +57,6 @@ class TestCaseBase extends TestCase
 
     public const DURATION_COMPARISON_PRECISION_MILLISECONDS = self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS / 1000;
 
-    /** @var ?LoggerFactory */
-    private static $noopLoggerFactory = null;
-
     /** @var ?Logger */
     private $logger = null;
 
@@ -339,16 +336,6 @@ class TestCaseBase extends TestCase
                                     ->withClock(AmbientContextForTests::clock())
                                     ->withLogSink(NoopLogSink::singletonInstance())
                                     ->withEventSink($eventSink ?? NoopEventSink::singletonInstance());
-    }
-
-    public static function noopLoggerFactory(): LoggerFactory
-    {
-        if (self::$noopLoggerFactory === null) {
-            self::$noopLoggerFactory = new LoggerFactory(
-                new LogBackend(LogLevel::OFF, NoopLogSink::singletonInstance())
-            );
-        }
-        return self::$noopLoggerFactory;
     }
 
     public static function getParentId(ExecutionSegmentDto $execSegData): ?string
@@ -654,5 +641,21 @@ class TestCaseBase extends TestCase
     public function tearDown(): void
     {
         parent::tearDown();
+    }
+
+    /**
+     * @param iterable<array<string, mixed>> $srcDataProvider
+     *
+     * @return iterable<string, array<mixed>>
+     */
+    protected static function wrapDataProviderFromKeyValueMapToNamedDataSet(iterable $srcDataProvider): iterable
+    {
+        $dataSetIdex = 0;
+        foreach ($srcDataProvider as $namedValuesMap) {
+            $dataSetName = '#' . $dataSetIdex;
+            $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
+            yield $dataSetName => array_values($namedValuesMap);
+            ++$dataSetIdex;
+        }
     }
 }

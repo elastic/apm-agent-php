@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\PhpFormatStackTraceFrame;
@@ -361,7 +362,7 @@ class StackTraceUtilTest extends TestCaseBase
                 $expectedLine = __LINE__ - 1;
             } else {
                 $args = [
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     /* offset */
                     0,
                     $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
@@ -458,7 +459,7 @@ class StackTraceUtilTest extends TestCaseBase
             $expectedLine = __LINE__ - 1;
         } else {
             $args = [
-                self::noopLoggerFactory(),
+                NoopLoggerFactory::singletonInstance(),
                 /* offset */ 0,
                 $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
                 $stackTraceSizeLimit ?? 0
@@ -556,12 +557,12 @@ class StackTraceUtilTest extends TestCaseBase
         if ($debugBacktraceOptions === null) {
             if ($stackTraceSizeLimit === null) {
                 $result = StackTraceUtil::captureInPhpFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */
                 );
             } else {
                 $result = StackTraceUtil::captureInPhpFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     DEBUG_BACKTRACE_PROVIDE_OBJECT,
                     $stackTraceSizeLimit
@@ -570,13 +571,13 @@ class StackTraceUtilTest extends TestCaseBase
         } else {
             if ($stackTraceSizeLimit === null) {
                 $result = StackTraceUtil::captureInPhpFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     $debugBacktraceOptions
                 );
             } else {
                 $result = StackTraceUtil::captureInPhpFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     $debugBacktraceOptions,
                     $stackTraceSizeLimit
@@ -595,12 +596,12 @@ class StackTraceUtilTest extends TestCaseBase
         if ($debugBacktraceOptions === null) {
             if ($stackTraceSizeLimit === null) {
                 $result = StackTraceUtil::captureInClassicFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */
                 );
             } else {
                 $result = StackTraceUtil::captureInClassicFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     DEBUG_BACKTRACE_PROVIDE_OBJECT,
                     $stackTraceSizeLimit
@@ -609,13 +610,13 @@ class StackTraceUtilTest extends TestCaseBase
         } else {
             if ($stackTraceSizeLimit === null) {
                 $result = StackTraceUtil::captureInClassicFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     $debugBacktraceOptions
                 );
             } else {
                 $result = StackTraceUtil::captureInClassicFormat(
-                    self::noopLoggerFactory(),
+                    NoopLoggerFactory::singletonInstance(),
                     1 /* <- offset */,
                     $debugBacktraceOptions,
                     $stackTraceSizeLimit
