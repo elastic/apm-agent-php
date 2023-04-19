@@ -1,0 +1,159 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "configurePresets": [
+    {
+        "name": "default",
+        "hidden": true,
+        "displayName": "Default Config",
+        "description": "Default build using Makefiles",
+        "generator": "Unix Makefiles",
+        "binaryDir": "${sourceDir}/_build/${presetName}",
+        "environment": {
+            "MY_ENVIRONMENT_VARIABLE": "Test",
+            "PATH": "$env{HOME}/ninja/bin:$penv{PATH}"
+        }
+    },
+    {
+        "name": "binutils",
+        "hidden": true,
+        "environment": {
+            "PATH": "/opt/binutils-2.40/bin:$penv{PATH}"
+        }
+    },
+    {
+        "name": "gcc",
+        "hidden": true,
+        "environment": {
+            "COMPILER_HOME_PATH": "/opt/gcc-12.2.0"
+        },
+        "cacheVariables": {
+            "CMAKE_C_COMPILER": {
+                "type": "STRING",
+                "value": "$env{COMPILER_HOME_PATH}/bin/gcc"
+            },
+            "CMAKE_CXX_COMPILER": {
+                "type": "STRING",
+                "value": "$env{COMPILER_HOME_PATH}/bin/g++"
+            }
+        }
+    },
+    {
+        "name": "debug",
+        "hidden": true,
+        "cacheVariables": {
+            "CMAKE_BUILD_TYPE": {
+                "type": "STRING",
+                "value": "Debug"
+            }
+        }
+    },
+    {
+        "name": "release",
+        "hidden": true,
+        "cacheVariables": {
+            "CMAKE_BUILD_TYPE": {
+                "type": "STRING",
+                "value": "Release"
+            }
+        }
+    },    
+    {
+        "name": "os-type-unix",
+        "hidden": true,
+        "inherits": [
+            "default",
+            "gcc"
+        ],
+        "generator": "Unix Makefiles"
+    },
+    {
+    	"name": "linux-x86-64-release",
+        "inherits": [
+            "os-type-unix",
+            "release",
+            "binutils"
+        ]
+	},
+    {
+    	"name": "linux-x86-64-debug",
+        "inherits": [
+            "os-type-unix",
+            "debug",
+            "binutils"
+        ]
+	},
+    {
+        "name": "linuxmusl-x86-64-release",
+        "inherits": [
+            "os-type-unix",
+            "release",
+            "binutils"
+        ]
+	},
+    {
+        "name": "linuxmusl-x86-64-debug",
+        "inherits": [
+            "os-type-unix",
+            "debug",
+            "binutils"
+        ]
+	}
+    ],
+    "buildPresets": [
+    {
+        "name": "default",
+        "configurePreset": "default"
+    },
+    {
+        "name": "release",
+        "hidden": true,
+        "configuration": "Release"
+    },
+    {
+        "name": "debug",
+        "hidden": true,
+        "configuration": "Debug"
+    },
+    {
+        "name": "linux-x86-64-debug",
+        "configurePreset": "linux-x86-64-debug",
+        "inherits": [
+            "debug"
+        ]
+    },
+    {
+        "name": "linux-x86-64-release",
+        "configurePreset": "linux-x86-64-release",
+        "inherits": [
+            "release"
+        ]
+    },
+    {
+        "name": "linuxmusl-x86-64-debug",
+        "configurePreset": "linuxmusl-x86-64-debug",
+        "inherits": [
+            "debug"
+        ]
+    },
+    {
+        "name": "linuxmusl-x86-64-release",
+        "configurePreset": "linuxmusl-x86-64-release",
+        "inherits": [
+            "release"
+        ]
+    }
+    ],
+    "testPresets": [
+      {
+        "name": "default",
+        "configurePreset": "default",
+        "output": {"outputOnFailure": true},
+        "execution": {"noTestsAction": "error", "stopOnFailure": true}
+      }
+    ]
+  }

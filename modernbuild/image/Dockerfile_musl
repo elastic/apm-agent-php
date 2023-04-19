@@ -1,0 +1,87 @@
+FROM alpine:3.10 as devtools_alpine
+
+ARG GCC_VERSION=12.2.0
+ARG BINUTILS_VERSION=2.40
+ARG CMAKE_VERSION=3.26.3
+ARG USER_NAME=build
+
+#binutils: bison - gprofng, texinfo - makeinfo
+
+RUN apk update \
+    && apk add sudo curl wget git make autoconf bzip2 \
+    texinfo bison \
+    binutils gcc g++ zlib-dev gettext-dev linux-headers
+
+RUN adduser --disabled-password --gecos '' ${USER_NAME} \
+    && echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >>/etc/sudoers
+
+USER ${USER_NAME}
+
+RUN mkdir -p /home/${USER_NAME}/prerequisities
+WORKDIR /home/${USER_NAME}/prerequisities
+
+RUN curl -LO https://gcc.gnu.org/pub/gcc/releases/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.xz \
+ && tar -xf gcc-${GCC_VERSION}.tar.xz \
+ && rm gcc-${GCC_VERSION}.tar.xz
+
+
+RUN cd gcc-${GCC_VERSION} \
+ && ./contrib/download_prerequisites \
+ && SHARED_CONFIGURE_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete" \
+ && SHARED_CONFIGURE_OPTIONS="$SHARED_CONFIGURE_OPTIONS --disable-libstdcxx-visibility" \
+ && CONFIGURE_OPTIONS="$SHARED_CONFIGURE_OPTIONS --with-tune=generic --enable-libstdcxx-debug-flags=-gdwarf-2" \
+ && CONFIGURE_OPTIONS="$CONFIGURE_OPTIONS --build=x86_64-linux-musl --host=x86_64-linux-musl --target=x86_64-linux-musl --disable-multilib --disable-libsanitizer" \
+ && echo $CONFIGURE_OPTIONS \
+ && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CONFIGURE_OPTIONS \
+ && make -j$(nproc) \
+ && sudo make install \
+ && cd - \
+ && rm -rf gcc-${GCC_VERSION}
+
+RUN curl -LO https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.xz \
+ && tar -xf binutils-${BINUTILS_VERSION}.tar.xz \
+ && rm binutils-${BINUTILS_VERSION}.tar.xz 
+
+RUN cd binutils-${BINUTILS_VERSION} \
+ && ./configure --help \
+ && ./configure --prefix=/opt/binutils-${BINUTILS_VERSION} --enable-gold  --build=x86_64-linux-musl --host=x86_64-linux-musl --target=x86_64-linux-musl --enable-shared --disable-multilib --with-system-zlib --enable-install-libiberty  --disable-gprofng --enable-ld=default --enable-64-bit-bfd --enable-relro --enable-deterministic-archives --enable-default-execstack=no --enable-default-hash-style=gnu --with-pic  --disable-werror --disable-nls --with-mmap  \ 
+
+ && make -j$(nproc) \
+ && sudo make install \
+ && cd - \
+ && rm -rf binutils-${BINUTILS_VERSION}
+
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz \
+ && tar -xf cmake-${CMAKE_VERSION}.tar.gz \
+ && rm cmake-${CMAKE_VERSION}.tar.gz 
+
+RUN sudo apk add curl-dev
+
+RUN cd cmake-${CMAKE_VERSION} \
+ && ./bootstrap --prefix=/opt/cmake-${CMAKE_VERSION} --parallel="${nproc:-2}"\
+ && make -j$(nproc)\
+ && sudo make install
+
+FROM alpine:3.16
+
+COPY --from=devtools_alpine /opt /opt
+
+ARG GCC_VERSION=12.2.0
+ARG BINUTILS_VERSION=2.40
+ARG CMAKE_VERSION=3.26.3
+ARG USER_NAME=build
+
+RUN apk add --no-cache sudo curl wget git make autoconf bzip2 \
+    libstdc++ libintl icu musl-dev curl-dev linux-headers \
+    python3 py3-pip py3-virtualenv bash
+
+RUN adduser --disabled-password --gecos '' ${USER_NAME} \
+    && echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >>/etc/sudoers
+
+USER ${USER_NAME}
+
+WORKDIR /source/modernbuild
+
+ENV PATH="/opt/binutils-${BINUTILS_VERSION}/bin:/opt/cmake-${CMAKE_VERSION}/bin:${PATH}"
+ENV CMAKE_INSTALL_PREFIX=/opt/cmake-${CMAKE_VERSION}
+ 

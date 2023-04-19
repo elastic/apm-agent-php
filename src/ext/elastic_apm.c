@@ -655,9 +655,14 @@ zend_module_entry elastic_apm_module_entry = {
 };
 /* }}} */
 
-#ifdef COMPILE_DL_ELASTIC_APM
-#   ifdef ZTS
-ZEND_TSRMLS_CACHE_DEFINE()
-#   endif
-ZEND_GET_MODULE(elastic_apm)
-#endif
+
+// #ifdef COMPILE_DL_ELASTIC_APM
+// #   ifdef ZTS
+// ZEND_TSRMLS_CACHE_DEFINE()
+// #   endif
+// extern "C" ZEND_GET_MODULE(elastic_apm)
+// #endif
+
+extern __attribute__((visibility("default"))) void *get_module(void) {
+    return &elastic_apm_module_entry;
+}
