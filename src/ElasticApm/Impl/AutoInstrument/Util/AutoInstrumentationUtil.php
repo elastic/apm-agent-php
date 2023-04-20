@@ -273,4 +273,28 @@ final class AutoInstrumentationUtil
         );
         return false;
     }
+
+    /**
+     * @param int     $expectedArgsCount
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    public function verifyExactArgsCount(int $expectedArgsCount, array $interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) === $expectedArgsCount) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Actual number of arguments does not equal the expected number',
+            [
+                'expected number of arguments' => $expectedArgsCount,
+                'actual number of arguments'   => count($interceptedCallArgs),
+                'actual arguments'             => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+            ]
+        );
+        return false;
+    }
 }
