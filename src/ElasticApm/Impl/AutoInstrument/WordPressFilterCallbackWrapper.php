@@ -26,7 +26,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\SpanInterface;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Throwable;
 
 /**
@@ -34,27 +35,37 @@ use Throwable;
  *
  * @internal
  */
-final class WordPressFilterCallbackWrapper
+final class WordPressFilterCallbackWrapper implements LoggableInterface
 {
+    use LoggableTrait;
+
     /** @var string */
     private $hookName;
 
     /** @var mixed */
     private $callback;
 
-    /** @var string */
-    private $pluginName;
+    /** @var ?string */
+    private $addonName;
 
     /**
-     * @param string $hookName
-     * @param mixed  $callback
-     * @param string $pluginName
+     * @param string  $hookName
+     * @param mixed   $callback
+     * @param ?string $addonName
      */
-    public function __construct(string $hookName, $callback, string $pluginName)
+    public function __construct(string $hookName, $callback, ?string $addonName)
     {
         $this->hookName = $hookName;
         $this->callback = $callback;
-        $this->pluginName = $pluginName;
+        $this->addonName = $addonName;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getWrappedCallback()
+    {
+        return $this->callback;
     }
 
     /**
@@ -62,31 +73,19 @@ final class WordPressFilterCallbackWrapper
      */
     public function __invoke()
     {
-        // $shouldCreateSpan = false;
-        $shouldCreateSpan = true;
-
-        /** @var ?SpanInterface $span */
-        $span = null;
-        /** @noinspection PhpUnnecessaryLocalVariableInspection, PhpConditionAlreadyCheckedInspection */
-        if ($shouldCreateSpan) { // @phpstan-ignore-line
-            $name = $this->hookName . ' (' . $this->pluginName . ')';
-            $type = 'wordpress_plugin';
-            $subtype = $this->pluginName;
-            $action = $this->hookName;
-            $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
-        }
+        $name = $this->hookName . ' - ' . ($this->addonName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE);
+        $type = $this->addonName === null ? WordPressAutoInstrumentation::SPAN_TYPE_FOR_CORE : WordPressAutoInstrumentation::SPAN_TYPE_FOR_ADDONS;
+        $subtype = $this->addonName;
+        $action = $this->hookName;
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
 
         try {
             return call_user_func_array($this->callback, func_get_args()); // @phpstan-ignore-line
         } catch (Throwable $throwable) {
-            if ($span !== null) {
-                $span->createErrorFromThrowable($throwable);
-            }
+            $span->createErrorFromThrowable($throwable);
             throw $throwable;
         } finally {
-            if ($span !== null) {
-                $span->end();
-            }
+            $span->end();
         }
     }
 }

@@ -137,10 +137,12 @@
 ////
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ELASTIC_APM_MOVE_PTR( srcPtrLval, dstPtrLval ) \
+#define ELASTIC_APM_MOVE_PTR( srcPtrLval, /* out */ dstPtrLval ) \
     do { \
         (dstPtrLval) = (srcPtrLval); \
         (srcPtrLval) = NULL; \
     } while ( 0 )
 
 #define ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( enumElement ) [enumElement] = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PP_STRINGIZE( enumElement ) )
+
+#define ELASTIC_APM_BUILD_PHP_VERSION_ID( major, minor, patch ) ( ((major)*100 + (minor))*100 + (patch) )

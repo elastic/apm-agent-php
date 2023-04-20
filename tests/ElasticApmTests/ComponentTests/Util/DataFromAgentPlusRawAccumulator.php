@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -130,7 +129,7 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
         foreach (get_object_vars($from) as $propName => $propValue) {
             TestCase::assertIsArray($propValue);
             TestCase::assertIsArray($to->$propName);
-            ArrayUtilForTests::append(/* from */ $propValue, /* to, ref */ $to->$propName);
+            ArrayUtil::append(/* from */ $propValue, /* to, ref */ $to->$propName);
         }
     }
 

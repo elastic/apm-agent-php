@@ -188,7 +188,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 }
             }
 
-            return AutoInstrumentationUtil::createPostHookFromEndSpan(
+            return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
                 self::beginSpan($className, $funcName, $dbName, /* statement: */ null),
                 /**
                  * doBeforeSpanEnd
@@ -217,7 +217,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         };
 
         $funcName = 'mysqli_connect';
-        $ctx->interceptCallsToFunction(
+        $ctx->interceptCallsToInternalFunction(
             $funcName,
             /**
              * @param mixed[] $interceptedCallArgs
@@ -236,7 +236,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
 
         $className = self::MYSQLI_CLASS_NAME;
         $methodName = '__construct';
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             $className,
             $methodName,
             function (
@@ -301,7 +301,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 $currentDbName,
                 null /* <- statement */
             );
-            return AutoInstrumentationUtil::createPostHookFromEndSpan(
+            return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
                 $span,
                 /**
                  * doBeforeSpanEnd
@@ -368,7 +368,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 }
             }
 
-            return AutoInstrumentationUtil::createPostHookFromEndSpan(
+            return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
                 self::beginSpan(
                     $className,
                     $funcName,
@@ -483,7 +483,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
                 DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_QUERY,
                 null /* <- defaultValue */
             );
-            return AutoInstrumentationUtil::createPostHookFromEndSpan(
+            return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
                 self::beginSpan(
                     $className,
                     $methodName,
@@ -516,7 +516,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
         callable $preHook
     ): void {
         $funcName = self::buildFuncName($className, $methodName);
-        $ctx->interceptCallsToFunction(
+        $ctx->interceptCallsToInternalFunction(
             $className . '_' . $methodName,
             /**
              * @param array $interceptedCallArgs
@@ -545,7 +545,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
             }
         );
 
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             $className,
             $methodName,
             /**

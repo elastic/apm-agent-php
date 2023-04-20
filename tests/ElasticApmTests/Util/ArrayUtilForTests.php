@@ -119,18 +119,6 @@ final class ArrayUtilForTests
     }
 
     /**
-     * @template TKey of string|int
-     * @template TValue
-     *
-     * @param array<TKey, TValue> $from
-     * @param array<TKey, TValue> $to
-     */
-    public static function append(array $from, array &$to): void
-    {
-        $to = array_merge($to, $from);
-    }
-
-    /**
      * @template TKey
      * @template TValue
      *

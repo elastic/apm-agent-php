@@ -28,6 +28,7 @@
 #include "log.h"
 #include "MemoryTracker.h"
 #include "ResultCode.h"
+#include "TextOutputStream_forward_decl.h"
 
 static inline
 bool isEmtpyZstring( const zend_string* zStr )
@@ -43,6 +44,18 @@ StringView zStringToStringView( const zend_string* zStr )
     ELASTIC_APM_ASSERT_VALID_PTR( zStr );
 
     return makeStringView( ZSTR_VAL( zStr ), ZSTR_LEN( zStr ) );
+}
+
+static inline
+String nullableZStringToString( const zend_string* zStr )
+{
+    return zStr == NULL ? NULL : ZSTR_VAL( zStr );
+}
+
+static inline
+StringView nullableZStringToStringView( const zend_string* zStr )
+{
+    return zStr == NULL ? ELASTIC_APM_EMPTY_STRING_VIEW : zStringToStringView( zStr );
 }
 
 static inline
@@ -90,3 +103,6 @@ bool isPhpRunningAsCliScript();
         } \
     } while( 0 ) \
     /**/
+
+
+String streamZVal( const zval* zVal, TextOutputStream* txtOutStream );

@@ -25,42 +25,123 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
+use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\TestCaseBase;
 
 class WordPressAutoInstrumentationUnitTest extends TestCaseBase
 {
-    private static function findPluginSubDirNameInStackTraceFrameFilePathTestImpl(
-        string $filePath,
-        ?string $expectedPluginSubDirName
-    ): void {
+    private static function findAddonNameInStackTraceFrameFilePathTestImpl(string $filePath, ?string $expectedAddonName): void
+    {
         $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/')
-                ? $filePath
-                : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
+            ? $filePath
+            : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
         $actualPluginSubDirName
-            = WordPressAutoInstrumentation::findPluginSubDirNameInStackTraceFrameFilePath($adaptedFilePath);
+            = WordPressAutoInstrumentation::findAddonNameInStackTraceFrameFilePath($adaptedFilePath);
         $ctx = [
-            'filePath' => $filePath,
-            'adaptedFilePath' => $adaptedFilePath,
-            'expectedPluginSubDirName' => $expectedPluginSubDirName,
+            'filePath'               => $filePath,
+            'adaptedFilePath'        => $adaptedFilePath,
+            'expectedAddonName'      => $expectedAddonName,
             'actualPluginSubDirName' => $actualPluginSubDirName,
         ];
-        self::assertSame($expectedPluginSubDirName, $actualPluginSubDirName, LoggableToString::convert($ctx));
+        self::assertSame($expectedAddonName, $actualPluginSubDirName, LoggableToString::convert($ctx));
     }
 
-    public function testFindPluginSubDirNameInStackTraceFrameFilePath(): void
+    public function testFindAddonNameInStackTraceFrameFilePath(): void
     {
-        /** @var callable(string, ?string): void $testImpl */
-        $testImpl = [__CLASS__, 'findPluginSubDirNameInStackTraceFrameFilePathTestImpl'];
+        $testImpl = function (string $filePath, ?string $expectedPluginSubDirName): void {
+            self::findAddonNameInStackTraceFrameFilePathTestImpl($filePath, $expectedPluginSubDirName);
+        };
 
         $testImpl('/var/www/html/wp-content/plugins/hello-dolly/hello.php', 'hello-dolly');
         $testImpl('/var/www/html/wp-content/plugins/hello-dolly/', 'hello-dolly');
         $testImpl('/var/www/html/wp-content/plugins/hello-dolly', null);
         $testImpl('/wp-content/plugins/hello-dolly/hello.php', 'hello-dolly');
         $testImpl('wp-content/plugins/hello-dolly/hello.php', null);
+        $testImpl('/wp-content/plugins/hello.php', 'hello');
+
+        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly/hello.php', 'hello-dolly');
+        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly/', 'hello-dolly');
+        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly', null);
+        $testImpl('/wp-content/mu-plugins/hello-dolly/hello.php', 'hello-dolly');
+        $testImpl('wp-content/mu-plugins/hello-dolly/hello.php', null);
+        $testImpl('/wp-content/mu-plugins/hello.php', 'hello');
+
+        $testImpl('/var/www/html/wp-content/themes/hello-dolly/hello.php', 'hello-dolly');
+        $testImpl('/var/www/html/wp-content/themes/hello-dolly/', 'hello-dolly');
+        $testImpl('/var/www/html/wp-content/themes/hello-dolly', null);
+        $testImpl('/wp-content/themes/hello-dolly/hello.php', 'hello-dolly');
+        $testImpl('wp-content/themes/hello-dolly/hello.php', null);
+        $testImpl('/wp-content/themes/hello.php', 'hello');
 
         $testImpl('', null);
         $testImpl('/', null);
         $testImpl('//', null);
         $testImpl('/abc', null);
+    }
+
+    private static function findThemeNameFromDirPathTestImpl(string $themeDirPath, ?string $expectedThemeName): void
+    {
+        $actualThemeName = WordPressAutoInstrumentation::findThemeNameFromDirPath($themeDirPath);
+        $ctx = ['themeDirPath' => $themeDirPath, 'expectedThemeName' => $expectedThemeName, 'actualThemeName' => $actualThemeName];
+        self::assertSame($expectedThemeName, $actualThemeName, LoggableToString::convert($ctx));
+    }
+
+    public function testFindThemeNameFromDirPath(): void
+    {
+        $testImpl = function (string $themeDirPath, ?string $expectedThemeName): void {
+            self::findThemeNameFromDirPathTestImpl($themeDirPath, $expectedThemeName);
+        };
+
+        $testImpl('/var/www/html/wp-content/themes/generatepress', 'generatepress');
+        $testImpl('/var/www/html/wp-content/themes/generatepress/', 'generatepress');
+        $testImpl('/var/www/html/wp-content/themes/generatepress/.', '.');
+        $testImpl('/var/www/html/wp-content/themes/generatepress/./', '.');
+        $testImpl('generatepress', 'generatepress');
+        $testImpl('generatepress/', 'generatepress');
+        $testImpl('/.', '.');
+        $testImpl('.', '.');
+        $testImpl('/./', '.');
+
+        $testImpl('/', null);
+        $testImpl('', null);
+    }
+
+    /**
+     * @return iterable<array{string, string}>
+     */
+    public static function dataProviderForTestFoldTextWithMarkersIntoOneLine(): iterable
+    {
+        yield ['', ''];
+        yield ['some text', 'some text'];
+
+        $indent = "\t \t";
+        $whiteSpace = "\t\t  \t\t";
+        $whiteSpaceBeforeBeginMarker = "\t\t\t  \t\t\t  \t\t\t";
+        $input
+            = $indent . 'Original line 1' . PHP_EOL .
+              $indent . 'Original line 2' . $whiteSpaceBeforeBeginMarker . WordPressAutoInstrumentationTest::FOLD_INTO_ONE_LINE_BEGIN_MARKER . $whiteSpace . PHP_EOL .
+              $indent . 'Injected into line 2 - part A' . $whiteSpace . PHP_EOL .
+              $indent . 'Injected into line 2 - part B' . $whiteSpace . PHP_EOL .
+              $indent . WordPressAutoInstrumentationTest::FOLD_INTO_ONE_LINE_END_MARKER . $whiteSpace . PHP_EOL .
+              $indent . 'Original line 3' . PHP_EOL;
+        $expectedOutput
+            = $indent . 'Original line 1' . PHP_EOL .
+              $indent . 'Original line 2' . $whiteSpaceBeforeBeginMarker . ' ' . 'Injected into line 2 - part A' . ' ' . 'Injected into line 2 - part B' . PHP_EOL .
+              $indent . 'Original line 3' . PHP_EOL;
+        yield [$input, $expectedOutput];
+        yield [$expectedOutput, $expectedOutput];
+    }
+
+    /**
+     * @dataProvider dataProviderForTestFoldTextWithMarkersIntoOneLine
+     *
+     * @param string $input
+     * @param string $expectedOutput
+     */
+    public static function testFoldTextWithMarkersIntoOneLine(string $input, string $expectedOutput): void
+    {
+        $actualOutput = WordPressAutoInstrumentationTest::adaptManuallyInstrumentedSourceFileContent($input);
+        self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
     }
 }

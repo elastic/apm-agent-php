@@ -27,11 +27,8 @@ use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
-use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -650,12 +647,12 @@ class TestCaseBase extends TestCase
      */
     protected static function wrapDataProviderFromKeyValueMapToNamedDataSet(iterable $srcDataProvider): iterable
     {
-        $dataSetIdex = 0;
+        $dataSetIndex = 0;
         foreach ($srcDataProvider as $namedValuesMap) {
-            $dataSetName = '#' . $dataSetIdex;
+            $dataSetName = '#' . $dataSetIndex;
             $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
             yield $dataSetName => array_values($namedValuesMap);
-            ++$dataSetIdex;
+            ++$dataSetIndex;
         }
     }
 }

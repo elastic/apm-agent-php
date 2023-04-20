@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Tracer;
 
 /**
@@ -34,7 +33,7 @@ use Elastic\Apm\Impl\Tracer;
 final class BuiltinPlugin extends PluginBase
 {
     /** @var ?WordPressAutoInstrumentation */
-    private $wordPressAutoInstrumentationIfEnabled = null;
+    private $wordPressAutoInstrumentationIfEnabled;
 
     public function __construct(Tracer $tracer)
     {

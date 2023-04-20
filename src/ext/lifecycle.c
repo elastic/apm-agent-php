@@ -24,12 +24,15 @@
 #include <curl/curl.h>
 #include <inttypes.h> // PRIu64
 #include <stdbool.h>
+#include <time.h>
+#include <stdlib.h>
 #include <php.h>
 #include <zend_compile.h>
 #include <zend_exceptions.h>
 #include <zend_builtin_functions.h>
 #include "php_elastic_apm.h"
 #include "log.h"
+#include "ConfigSnapshot.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "util_for_PHP.h"
@@ -158,6 +161,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     registerCallbacksToLogFork();
     registerAtExitLogging();
 
+    srand( time(NULL) );
+
     CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
     {
@@ -167,7 +172,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     }
     tracer->curlInited = true;
 
-    elasticApmAstInstrumentationOnModuleInit( config );
+    astInstrumentationOnModuleInit( config );
 
     resultCode = resultSuccess;
     finally:
@@ -206,7 +211,7 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         goto finally;
     }
 
-    elasticApmAstInstrumentationOnModuleShutdown();
+    astInstrumentationOnModuleShutdown();
 
     backgroundBackendCommOnModuleShutdown( config );
 
@@ -305,7 +310,7 @@ void elasticApmZendThrowExceptionHook(
     }
 }
 // In PHP 8.1 filename parameter of zend_error_cb() was changed from "const char*" to "zend_string*"
-#if PHP_VERSION_ID < 80100
+#if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 1
 #else
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 0
@@ -435,6 +440,15 @@ void resetLastPhpErrorData()
 void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, const char* message )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
+
+    ////////////////////////////////////////
+    // TODO: Sergey Kleyman: Remove BEGIN
+    if ( isStringViewPrefixIgnoringCase( stringToView( message ), ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Allowed memory size" ) ) && ( strstr( message, "bytes exhausted (tried to allocate" ) != NULL ) )
+    {
+        ELASTIC_APM_LOG_CRITICAL( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
+    }
+    // TODO: Sergey Kleyman: Remove END
+    ////////////////////////////////////////
 
     ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
@@ -619,10 +633,10 @@ void elasticApmRequestInit()
 
     if ( config->astProcessEnabled )
     {
-        elasticApmAstInstrumentationOnRequestInit();
+        astInstrumentationOnRequestInit( config );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
@@ -685,14 +699,13 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
-    shutdownTracerPhpPart( config );
+    tracerPhpPartOnRequestShutdown();
 
     // sendMetrics( tracer, config );
 
     if ( config->astProcessEnabled )
     {
-        elasticApmAstInstrumentationOnRequestShutdown();
+        astInstrumentationOnRequestShutdown();
     }
 
     if ( isOriginalZendThrowExceptionHookSet )

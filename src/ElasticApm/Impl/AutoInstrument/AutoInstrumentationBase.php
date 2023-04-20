@@ -43,18 +43,9 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     /** @var Tracer */
     protected $tracer;
 
-    /** @var Logger */
-    private $logger;
-
     public function __construct(Tracer $tracer)
     {
         $this->tracer = $tracer;
-        $this->logger = $tracer->loggerFactory()->loggerForClass(
-            LogCategory::AUTO_INSTRUMENTATION,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        );
     }
 
     /** @inheritDoc */
@@ -63,6 +54,14 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
         if ($this->doesNeedAttachContextToExternalObjects() && !MapPerWeakObject::isSupported()) {
             $reason = 'Instrumentation ' . $this->name() . ' needs to attach context to external objects'
                       . ' but none of the MapPerWeakObject implementations is supported by the current environment';
+            return false;
+        }
+
+        $isUserlandCodeInstrumentationEnabled = $this->tracer->getConfig()->astProcessEnabled();
+        if ($this->doesNeedUserlandCodeInstrumentation() && (!$isUserlandCodeInstrumentationEnabled)) {
+            $reason = 'Instrumentation ' . $this->name() . ' needs userland code instrumentation'
+                      . ' but AST-process is the only currently supported mechanism to instrument userland code and it is DISABLED'
+                      . ' (via ' . OptionNames::AST_PROCESS_ENABLED . ' configuration option)';
             return false;
         }
 
@@ -97,20 +96,11 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     }
 
     /**
-     * @param mixed[] $interceptedCallArgs
-     *
      * @return bool
      */
-    protected function verifyAtLeastOneArgument(array $interceptedCallArgs): bool
+    public function doesNeedUserlandCodeInstrumentation(): bool
     {
-        if (count($interceptedCallArgs) < 1) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Number of received arguments for call is less than expected.');
-
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     /**

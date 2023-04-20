@@ -29,9 +29,10 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
@@ -39,7 +40,6 @@ use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
@@ -118,25 +118,6 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param array<string, mixed> $appCodeArgs
-     * @param string               $appArgNameKey
-     *
-     * @return mixed
-     */
-    protected static function getMandatoryAppCodeArg(array $appCodeArgs, string $appArgNameKey)
-    {
-        if (!array_key_exists($appArgNameKey, $appCodeArgs)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Expected key is not found in app code args',
-                    ['appArgNameKey' => $appArgNameKey, 'appCodeArgs' => $appCodeArgs]
-                )
-            );
-        }
-        return $appCodeArgs[$appArgNameKey];
-    }
-
-    /**
      * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
@@ -178,12 +159,42 @@ class ComponentTestCaseBase extends TestCaseBase
      * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
+     * @return ?string
+     */
+    protected static function getNullableStringFromMap(string $argKey, array $argsMap): ?string
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        if ($val !== null) {
+            self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        }
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
      * @return string
      */
     protected static function getStringFromMap(string $argKey, array $argsMap): string
     {
+        $val = self::getNullableStringFromMap($argKey, $argsMap);
+        self::assertNotNull($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return ?float
+     */
+    protected static function getNullableFloatFromMap(string $argKey, array $argsMap): ?float
+    {
         $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        if ($val !== null) {
+            self::assertIsFloat($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        }
         return $val;
     }
 
@@ -286,7 +297,7 @@ class ComponentTestCaseBase extends TestCaseBase
                               ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
                               ->build();
                 $instr = new $instrClassName($tracer);
-                self::assertFalse($instr->isEnabled(), $disableInstrumentationsOptVal);
+                self::assertFalse($instr->isEnabled(), (new AssertMessageBuilder(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]))->s());
             }
         }
 
@@ -303,7 +314,14 @@ class ComponentTestCaseBase extends TestCaseBase
                           ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
                           ->build();
             $instr = new $instrClassName($tracer);
-            self::assertTrue($instr->isEnabled(), $disableInstrumentationsOptVal);
+            self::assertTrue($instr->isEnabled(), (new AssertMessageBuilder(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]))->s());
+        }
+
+        foreach ([true, false] as $astProcessEnabled) {
+            $expectedIsEnabled = $astProcessEnabled || (!$instr->doesNeedUserlandCodeInstrumentation());
+            $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
+            $instr = new $instrClassName($tracer);
+            self::assertSame($expectedIsEnabled, $instr->isEnabled(), (new AssertMessageBuilder(['astProcessEnabled' => $astProcessEnabled]))->s());
         }
     }
 

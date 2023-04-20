@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "TextOutputStream_forward_decl.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,7 +45,6 @@ struct TextOutputStream
     // otherwise user provided strings are written as text (i.e., no quotes)
     bool shouldEncloseUserString;
 };
-typedef struct TextOutputStream TextOutputStream;
 
 struct TextOutputStreamState
 {

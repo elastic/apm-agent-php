@@ -140,9 +140,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template T
      *
-     * @return Generator<mixed>
+     * @param iterable<T> $inputIterable
+     *
+     * @return Generator<T>
      */
     public static function iterableToGenerator(iterable $inputIterable): Generator
     {
@@ -152,9 +154,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template T
      *
-     * @return Iterator<mixed>
+     * @param iterable<T> $inputIterable
+     *
+     * @return Iterator<T>
      */
     public static function iterableToIterator(iterable $inputIterable): Iterator
     {

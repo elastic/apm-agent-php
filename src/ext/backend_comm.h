@@ -20,7 +20,7 @@
 #pragma once
 
 #include "StringView.h"
-#include "ConfigManager.h"
+#include "ConfigSnapshot_forward_decl.h"
 #include "ResultCode.h"
 
 ResultCode sendEventsToApmServer(

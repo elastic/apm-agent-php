@@ -1,5 +1,9 @@
 <?php
 
+/** @noinspection PhpFullyQualifiedNameUsageInspection */
+
+/** @noinspection PhpUndefinedConstantInspection */
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -19,21 +23,20 @@
  * under the License.
  */
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Tracer;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -42,62 +45,54 @@ use Elastic\Apm\Impl\Util\StackTraceUtil;
  */
 final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 {
+    public const SPAN_NAME_PART_FOR_CORE = 'WordPress core';
+
+    public const SPAN_TYPE_FOR_CORE = 'wordpress_core';
+    public const SPAN_TYPE_FOR_ADDONS = 'wordpress_addon';
+
+    public const LABEL_KEY_FOR_WORDPRESS_THEME = 'wordpress_theme';
+
     private const WORDPRESS_PLUGINS_SUBDIR_SUBPATH
         = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR;
 
-    private const CALLBACK_WRAPPERS_MAX_COUNT = 1000;
+    private const WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH
+        = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'mu-plugins' . DIRECTORY_SEPARATOR;
 
-    private const LOG_DBG_COUNT_STAT_EVERY = 1000;
+    private const WORDPRESS_THEMES_SUBDIR_SUBPATH
+        = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR;
 
-    // private const GC_COLLECT_CYCLES_EVERY_WRAPPERS_COUNT = 1000;
+    private const WORDPRESS_ADDONS_SUBDIRS_SUBPATHS = [
+        self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH,
+        self::WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH,
+        self::WORDPRESS_THEMES_SUBDIR_SUBPATH,
+    ];
 
-    // private const UNIQUE_CALLBACKS_MAX_COUNT = 1000;
-    //
-    // private const CALLBACK_TYPE_STRING_KEY = 'string';
-    // private const CALLBACK_TYPE_CLASS_STATIC_METHOD_KEY = 'class::staticMethod';
-    // private const CALLBACK_TYPE_OBJECT_METHOD_KEY = 'object->method';
-    // private const CALLBACK_TYPE_OTHER_KEY = 'OTHER';
-    //
-    // private const STAT_UNIQUE_COUNT_KEY = 'unique count';
-    // private const STAT_TOTAL_COUNT_KEY = 'total count';
-    // private const STAT_UNIQUE_REACHED_MAX_KEY = 'unique reached max';
-    // private const STAT_REPEATED_MAX_COUNT_KEY = 'repeated max count';
-    // private const STAT_REPEATED_MIN_COUNT_KEY = 'repeated min count';
+    /**
+     * \ELASTIC_APM_* constants are provided by the elastic_apm extension
+     *
+     * @phpstan-ignore-next-line
+     */
+    private const DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS = \ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS;
 
     /** @var Logger */
     private $logger;
 
+    /** @var AutoInstrumentationUtil */
+    private $util;
+
     /** @var bool */
     private $isInFailedMode = false;
 
-    /** @var array<string, array<string, WordPressFilterCallbackWrapper>> */
-    private $hookNameToOriginalCallbackIdToWrapper = [];
-
-    /** @var int */
-    private $callbackWrappersTotalCount = 0;
-
     /** @var bool */
-    private $wpPluginDirectoryConstantsPreHookWasCalled = false;
-
-    /** @var bool */
-    private $doActionPluginsLoadedWasCalled = false;
-
-    /** @var int */
-    private $dbgStatCountTimesCallbackNotWrappedBecauseReachedMax = 0;
-
-    /** @var int */
-    private $dbgStatCountTimesCallbackWrapperNotFound = 0;
+    private $isReadyToWrapFilterCallbacks = false;
 
     public function __construct(Tracer $tracer)
     {
         parent::__construct($tracer);
 
-        $this->logger = $tracer->loggerFactory()->loggerForClass(
-            LogCategory::AUTO_INSTRUMENTATION,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+
+        $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
     }
 
     /** @inheritDoc */
@@ -116,6 +111,12 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     {
     }
 
+    /** @inheritDoc */
+    public function doesNeedUserlandCodeInstrumentation(): bool
+    {
+        return false;
+    }
+
     private function switchToFailedMode(): void
     {
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
@@ -123,21 +124,65 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         $this->isInFailedMode = true;
     }
 
-    public static function findPluginSubDirNameInStackTraceFrameFilePath(string $filePath): ?string
+    private function setReadyToWrapFilterCallbacks(): void
     {
-        $pluginsSubDirPos = strpos($filePath, self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH);
-        if ($pluginsSubDirPos === false) {
-            return null;
-        }
-        $posAfterPluginsSubDir = $pluginsSubDirPos + strlen(self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH);
-        $dirSeparatorAfterPluginPos = strpos($filePath, DIRECTORY_SEPARATOR, $posAfterPluginsSubDir);
-        if ($dirSeparatorAfterPluginPos === false) {
-            return null;
-        }
-        return substr($filePath, $posAfterPluginsSubDir, $dirSeparatorAfterPluginPos - $posAfterPluginsSubDir);
+        $this->isReadyToWrapFilterCallbacks = true;
     }
 
-    private function findPluginName(): ?string
+    public static function findAddonNameInStackTraceFrameFilePath(string $filePath, ?Logger $loggerArg = null): ?string
+    {
+        $logger = null;
+        $loggerProxyTrace = null;
+        if ($loggerArg !== null && $loggerArg->ifTraceLevelEnabledNoLine(__FUNCTION__) !== null) {
+            $logger = $loggerArg->inherit()->addContext('filePath', $filePath);
+            $loggerProxyTrace = $logger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        }
+
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+
+        /** @var ?int $posAfterAddonsSubDir */
+        $posAfterAddonsSubDir = null;
+        foreach (self::WORDPRESS_ADDONS_SUBDIRS_SUBPATHS as $addonSubDirSubPath) {
+            $pluginsSubDirPos = strpos($filePath, $addonSubDirSubPath);
+            if ($pluginsSubDirPos !== false) {
+                $posAfterAddonsSubDir = $pluginsSubDirPos + strlen($addonSubDirSubPath);
+                break;
+            }
+        }
+        if ($posAfterAddonsSubDir === null) {
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, '$posAfterAddonsSubDir === null - returning null');
+            return null;
+        }
+        $logger && $logger->addContext('posAfterAddonsSubDir', $posAfterAddonsSubDir);
+
+        $dirSeparatorAfterPluginPos = strpos($filePath, DIRECTORY_SEPARATOR, $posAfterAddonsSubDir);
+        if ($dirSeparatorAfterPluginPos !== false && $dirSeparatorAfterPluginPos > $posAfterAddonsSubDir) {
+            return substr($filePath, $posAfterAddonsSubDir, $dirSeparatorAfterPluginPos - $posAfterAddonsSubDir);
+        }
+
+        $fileExtAfterPluginPos = strpos($filePath, '.php', $posAfterAddonsSubDir);
+        if ($fileExtAfterPluginPos !== false && $fileExtAfterPluginPos > $posAfterAddonsSubDir) {
+            return substr($filePath, $posAfterAddonsSubDir, $fileExtAfterPluginPos - $posAfterAddonsSubDir);
+        }
+
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Returning null');
+        return null;
+    }
+
+    public static function findThemeNameFromDirPath(string $themeDirPath): ?string
+    {
+        if (TextUtil::isEmptyString($themeDirPath)) {
+            return null;
+        }
+
+        $dirName = basename($themeDirPath);
+        if (TextUtil::isEmptyString($dirName)) {
+            return null;
+        }
+        return basename($dirName);
+    }
+
+    private function findAddonName(): ?string
     {
         static $callsCount = 0;
         ++$callsCount;
@@ -186,11 +231,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
             return true;
         };
 
-        $stackTrace = StackTraceUtil::captureInClassicFormatExcludeElasticApm(
-            null /* <- loggerFactory */,
-            0 /* <- offset */,
-            0 /* <- options */
-        );
+        $stackTrace = StackTraceUtil::captureInClassicFormatExcludeElasticApm(/* loggerFactory */ null, /* offset */ 0, /* options */ 0);
 
         $retVal = null;
         // $forceLogResultAndStats = false;
@@ -209,7 +250,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
                 break;
             }
 
-            $pluginName = self::findPluginSubDirNameInStackTraceFrameFilePath($filePath);
+            $pluginName = self::findAddonNameInStackTraceFrameFilePath($filePath, $this->logger);
             if ($pluginName !== null) {
                 $retVal = $pluginName;
                 $addToPositiveCache($filePath, $pluginName);
@@ -256,595 +297,211 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         return $retVal;
     }
 
-    /**
-     * @param string  $funcName
-     * @param mixed[] $funcArgs
-     */
-    public function onFunctionPreHook(string $funcName, array $funcArgs): void
+    public function directCall(string $method): void
     {
         if ($this->isInFailedMode) {
             return;
         }
 
-        // We should all the function instrumented by wordPressInstrumentationOnModuleInit
-        // in src/ext/WordPress_instrumentation.c
-        switch ($funcName) {
-            case 'wp_plugin_directory_constants':
-                $this->preHookWpPluginDirectoryConstants();
+        $logger = $this->logger->inherit()->addAllContext(['method' => $method]);
+
+        switch ($method) {
+            case self::DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS:
+                $this->setReadyToWrapFilterCallbacks();
                 return;
-            case 'do_action':
-                $this->preHookDoAction($funcArgs);
-                return;
-            case 'add_filter':
-            case 'add_action':
-                $this->preHookAddFilter($funcArgs);
-                return;
-            case 'remove_filter':
-            case 'remove_action':
-                $this->preHookRemoveFilter($funcArgs);
-                return;
+
             default:
-                ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Unknown function', ['funcName' => $funcName]);
+                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Unexpected  method');
                 $this->switchToFailedMode();
         }
     }
 
-    private function preHookWpPluginDirectoryConstants(): void
-    {
-        if (!$this->wpPluginDirectoryConstantsPreHookWasCalled) {
-            $this->wpPluginDirectoryConstantsPreHookWasCalled = true;
-        }
-    }
-
     /**
-     * @param mixed[] $funcArgs
-     */
-    private function preHookDoAction(array $funcArgs): void
-    {
-        if ($this->doActionPluginsLoadedWasCalled) {
-            return;
-        }
-
-        if (count($funcArgs) !== 1) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected number of passed parameters to be 1',
-                ['count($funcArgs)' => count($funcArgs), 'funcArgs' => $funcArgs]
-            );
-            $this->switchToFailedMode();
-            return;
-        }
-
-        $hookName = $funcArgs[0];
-        if (!is_string($hookName)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected 1st argument (hookName) to be a string',
-                ['hookName type' => DbgUtil::getType($hookName), 'hookName' => $hookName]
-            );
-            $this->switchToFailedMode();
-            return;
-        }
-
-        if ($hookName === 'plugins_loaded') {
-            $this->doActionPluginsLoadedWasCalled = true;
-        }
-    }
-
-    /**
-     * @param mixed $callback
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
      *
-     * @return string
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
      */
-    private function buildOriginalCallbackId($callback): ?string
+    public function preHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
     {
-        if (is_string($callback)) {
-            return $callback;
+        if ($this->isInFailedMode) {
+            return null /* <- null means there is no post-hook */;
         }
 
-        if (is_object($callback)) {
-            return spl_object_hash($callback);
-        }
-
-        if (!is_array($callback)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected callback to be an array but it is not',
-                ['callback type' => DbgUtil::getType($callback), 'callback' => $callback]
-            );
-            return null;
-        }
-
-        if (count($callback) != 2) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected callback to be an array of two element but it is not',
-                ['count($callback)' => count($callback), 'callback' => $callback]
-            );
-            return null;
-        }
-
-        $callbackSecondElement = $callback[1];
-        if (!is_string($callbackSecondElement)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected callback array second element to be a string but it is not',
-                [
-                    'callbackSecondElement type' => DbgUtil::getType($callbackSecondElement),
-                    'callbackSecondElement' => $callbackSecondElement,
-                    'callback' => $callback,
-                ]
-            );
-            return null;
-        }
-
-        $callbackFirstElement = $callback[0];
-        if (is_object($callbackFirstElement)) {
-            return spl_object_hash($callbackFirstElement) . '->' . $callbackSecondElement;
-        }
-
-        if (!is_string($callbackFirstElement)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected callback array first element to be a string but it is not',
-                [
-                    'callbackFirstElement type' => DbgUtil::getType($callbackFirstElement),
-                    'callbackFirstElement' => $callbackFirstElement,
-                    'callback' => $callback,
-                ]
-            );
-            return null;
-        }
-
-        return $callbackFirstElement . '::' . $callbackSecondElement;
-    }
-
-    /**
-     * @param int                  $dbgCountStat
-     * @param string               $dbgCountStatDesc
-     * @param string               $logMsg
-     * @param array<string, mixed> $ctx
-     * @param int                  $firstOccurrenceLogLevel
-     * @param int                  $followingOccurrencesLogLevel
-     *
-     * @return void
-     */
-    private function incrementDbgCountStat(
-        int &$dbgCountStat,
-        string $dbgCountStatDesc,
-        string $logMsg,
-        array $ctx = [],
-        int $firstOccurrenceLogLevel = LogLevel::WARNING,
-        int $followingOccurrencesLogLevel = LogLevel::INFO
-    ): void {
-        ++$dbgCountStat;
-        if (($dbgCountStat % self::LOG_DBG_COUNT_STAT_EVERY) === 1) {
-            $logLevel = $dbgCountStat === 1 ? $firstOccurrenceLogLevel : $followingOccurrencesLogLevel;
-            ($loggerProxy = $this->logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__))
-            && $loggerProxy->log($logMsg, array_merge($ctx, [$dbgCountStatDesc => $dbgCountStat]));
-        }
-    }
-
-    /**
-     * @param mixed[] $funcArgs
-     *
-     * @return void
-     */
-    private function preHookAddFilter(array $funcArgs): void
-    {
-        if (!$this->wpPluginDirectoryConstantsPreHookWasCalled) {
-            return;
-        }
-
-        if ($this->callbackWrappersTotalCount === self::CALLBACK_WRAPPERS_MAX_COUNT) {
-            $this->incrementDbgCountStat(
-                $this->dbgStatCountTimesCallbackNotWrappedBecauseReachedMax /* <- ref */,
-                'countTimesCallbackNotWrappedBecauseReachedMax' /* <- dbgCountStatDesc */,
-                'Reached max number of callback wrappers' /* <- logMsg */
-            );
-            return;
-        }
-
-        $pluginName = $this->findPluginName();
-        if ($pluginName === null) {
-            $this->dbgAddFilterStats(/* isAdd */ true, $pluginName);
-            return;
-        }
-        $this->dbgAddFilterStats(/* isAdd */ true, $pluginName);
-
-        if (!$this->wrapAndTrackFilterCallack($funcArgs, $pluginName)) {
-            $this->switchToFailedMode();
-        }
-    }
-
-    /**
-     * @param mixed[] $funcArgs
-     *
-     * @return void
-     */
-    private function preHookRemoveFilter(array $funcArgs): void
-    {
-        $this->dbgAddFilterStats(/* isAdd */ false, /* pluginName */ null);
-
-        if (!$this->preHookRemoveFilterImpl($funcArgs)) {
-            $this->switchToFailedMode();
-        }
-    }
-
-    /**
-     * @param mixed[] $funcArgs
-     *
-     * @return bool
-     */
-    private function verifyAddRemoveFilterArgs(array $funcArgs): bool
-    {
-        if (count($funcArgs) !== 2) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected number of passed parameters to be 2',
-                ['count($funcArgs)' => count($funcArgs), 'funcArgs' => $funcArgs]
-            );
-            return false;
-        }
-
-        $hookNameArg = $funcArgs[0];
-        if (!is_string($hookNameArg)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected 1st argument (hookName) to be a string',
-                ['hookNameArg type' => DbgUtil::getType($hookNameArg), 'hookNameArg' => $hookNameArg]
-            );
-            return false;
-        }
-
-        $callbackArg = $funcArgs[1];
-        if (!is_callable($callbackArg, /* syntax_only: */ true)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Expected 2nd argument (callback) to be a callable',
-                ['callbackArg type' => DbgUtil::getType($callbackArg), 'callback' => $callbackArg]
-            );
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * @param mixed[] $funcArgs
-     * @param string  $pluginName
-     *
-     * @return bool
-     */
-    private function wrapAndTrackFilterCallack(array $funcArgs, string $pluginName): bool
-    {
-        if (!$this->verifyAddRemoveFilterArgs($funcArgs)) {
-            return false;
-        }
-        /** @var string $hookName */
-        $hookName = $funcArgs[0];
-        $callback =& $funcArgs[1];
-
-        $originalCallbackId = $this->buildOriginalCallbackId($callback);
-        if ($originalCallbackId === null) {
-            return false;
-        }
-
-        $originalCallbackToWrapper
-            = ArrayUtil::getOrAdd($hookName, /* defaultValue */ [], $this->hookNameToOriginalCallbackIdToWrapper);
-
-        $wrapper = new WordPressFilterCallbackWrapper($hookName, $callback, $pluginName);
-        $originalCallbackToWrapper[$originalCallbackId] = $wrapper;
-        ++$this->callbackWrappersTotalCount;
-
-        $callback = $wrapper;
-
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Added callback wrapper',
-            ['hookName' => $hookName, 'originalCallbackId' => $originalCallbackId]
+        $logger = $this->logger->inherit()->addAllContext(
+            ['instrumentedClassFullName' => $instrumentedClassFullName, 'instrumentedFunction' => $instrumentedFunction, 'capturedArgs' => $capturedArgs]
         );
-        return true;
+
+        // We should cover all the function instrumented in src/ext/WordPress_instrumentation.c
+
+        if ($instrumentedClassFullName !== null) {
+            if ($instrumentedClassFullName !== 'WP_Hook') {
+                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Unexpected instrumentedClassFullName');
+                $this->switchToFailedMode();
+                return null /* <- null means there is no post-hook */;
+            }
+            if ($instrumentedFunction !== 'add_filter') {
+                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Unexpected instrumentedFunction');
+                $this->switchToFailedMode();
+                return null /* <- null means there is no post-hook */;
+            }
+
+            $this->preHookAddFilter($capturedArgs);
+            return null /* <- null means there is no post-hook */;
+        }
+
+        switch ($instrumentedFunction) {
+            case '_wp_filter_build_unique_id':
+                $this->preHookWpFilterBuildUniqueId($capturedArgs);
+                return null /* <- null means there is no post-hook */;
+            case 'get_template':
+                /**
+                 * @param ?Throwable $thrown
+                 * @param mixed      $returnValue
+                 */
+                return function (?Throwable $thrown, $returnValue): void {
+                    $this->postHookGetTemplate($thrown, $returnValue);
+                };
+            default:
+                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Unexpected instrumentedFunction');
+                $this->switchToFailedMode();
+        }
+        return null /* <- null means there is no post-hook */;
     }
 
     /**
-     * @param mixed[] $funcArgs
+     * @param mixed[] $capturedArgs
+     *
+     * @return void
+     */
+    private function preHookAddFilter(array $capturedArgs): void
+    {
+        if (!$this->isReadyToWrapFilterCallbacks) {
+            static $isFirstTime = true;
+            if ($isFirstTime) {
+                ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('First attempt to wrap callback but it is not ready yet');
+                $isFirstTime = false;
+            }
+            return;
+        }
+
+        if (!$this->preHookAddFilterImpl($capturedArgs)) {
+            $this->switchToFailedMode();
+        }
+    }
+
+    /**
+     * @param mixed[] $capturedArgs
+     *
+     * @return void
+     */
+    private function preHookWpFilterBuildUniqueId(array $capturedArgs): void
+    {
+        if (!$this->preHookWpFilterBuildUniqueIdImpl($capturedArgs)) {
+            $this->switchToFailedMode();
+        }
+    }
+
+    /**
+     * @param mixed[] $capturedArgs
      *
      * @return bool
      */
-    private function preHookRemoveFilterImpl(array $funcArgs): bool
+    private function preHookAddFilterImpl(array $capturedArgs): bool
     {
-        if (!$this->verifyAddRemoveFilterArgs($funcArgs)) {
+        if (!$this->verifyHookNameCallbackArgs($capturedArgs)) {
             return false;
         }
         /** @var string $hookName */
-        $hookName = $funcArgs[0];
-        $callback =& $funcArgs[1];
+        $hookName = $capturedArgs[0];
+        $callback =& $capturedArgs[1];
 
-        $wrapper = null;
-        $originalCallbackId = null;
-        /** @var ?array<string, WordPressFilterCallbackWrapper> $originalCallbackToWrapper */
-        $originalCallbackToWrapper = null;
-        if (array_key_exists($hookName, $this->hookNameToOriginalCallbackIdToWrapper)) {
-            $originalCallbackToWrapper =& $this->hookNameToOriginalCallbackIdToWrapper[$hookName];
-            $originalCallbackId = $this->buildOriginalCallbackId($callback);
-            if ($originalCallbackId === null) {
-                return false;
-            }
-            if (array_key_exists($originalCallbackId, $originalCallbackToWrapper)) {
-                $wrapper = $originalCallbackToWrapper[$originalCallbackId];
-            }
-        }
-
-        if ($wrapper === null) {
-            $this->incrementDbgCountStat(
-                $this->dbgStatCountTimesCallbackWrapperNotFound /* <- ref */,
-                'countTimesCallbackWrapperNotFound' /* <- dbgCountStatDesc */,
-                'Not found wrapper for callback' /* <- logMsg */,
-                ['hookName' => $hookName, 'originalCallbackId' => $originalCallbackId],
-                LogLevel::TRACE /* <- firstOccurrenceLogLevel */,
-                LogLevel::TRACE  /* <- followingOccurrencesLogLevel */
-            );
+        if ($callback instanceof WordPressFilterCallbackWrapper) {
             return true;
         }
-        /** @var array<string, WordPressFilterCallbackWrapper> $originalCallbackToWrapper */
 
-        unset($originalCallbackToWrapper[$originalCallbackId]);
-        --$this->callbackWrappersTotalCount;
-
+        $originalCallback = $callback;
+        $wrapper = new WordPressFilterCallbackWrapper($hookName, $originalCallback, $this->findAddonName());
         $callback = $wrapper;
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Removed callback wrapper',
-            ['hookName' => $hookName, 'originalCallbackId' => $originalCallbackId]
-        );
+        && $loggerProxy->log('Callback has been wrapped', ['original callback' => $originalCallback, 'wrapper' => $wrapper]);
         return true;
     }
 
-    // /**
-    //  * @param mixed $hookName
-    //  * @param mixed &$callback
-    //  *
-    //  * @return void
-    //  */
-    // public function preprocessAddFilterParameters($hookName, /* in,out */ &$callback): void
-    // {
-    //     // static $callsCount = 0;
-    //     // ++$callsCount;
-    //     // if (($callsCount % 1000) === 1) {
-    //     //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-    //     //     && $loggerProxy->log('', ['callsCount' => $callsCount]);
-    //     // }
-    //
-    //     if (!is_string($hookName)) {
-    //         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-    //         && $loggerProxy->log(
-    //             'Expected 1st argument (hookName) to be a string',
-    //             ['hookName type' => DbgUtil::getType($hookName), 'hookName' => $hookName]
-    //         );
-    //         return;
-    //     }
-    //     /** @var string $callback */
-    //
-    //     if (!is_callable($callback, /* syntax_only: */ true)) {
-    //         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-    //         && $loggerProxy->log(
-    //             'Expected 2nd argument (callback) to be a callable',
-    //             ['callback type' => DbgUtil::getType($callback), 'callback' => $callback]
-    //         );
-    //         return;
-    //     }
-    //     /** @var callable|string $callback */
-    //
-    //     $pluginName = $this->findPluginName();
-    //     if ($pluginName === null) {
-    //         return;
-    //     }
-    //
-    //     $this->dumpFirstStackTraceForEachPlugin($pluginName);
-    //
-    //     // ++$this->callsCount;
-    //     // $this->addStats($callback);
-    //     //
-    //     // if (($this->callsCount % self::LOG_STATS_EVERY_CALL_COUNT) === 1) {
-    //     //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-    //     //     && $loggerProxy->log(
-    //     //         '',
-    //     //         [
-    //     //             'callsCount' => $this->callsCount,
-    //     //             'callbackWrappersCount' => $this->callbackWrappersCount,
-    //     //             'callbackStatsByType' => $this->callbackStatsByType,
-    //     //         ]
-    //     //     );
-    //     // }
-    //
-    //     if ($this->callbackWrappersCount >= self::CALLBACK_WRAPPERS_MAX_COUNT) {
-    //         return;
-    //     }
-    //     ++$this->callbackWrappersCount;
-    //
-    //     // if (($this->callbackWrappersCount % self::GC_COLLECT_CYCLES_EVERY_WRAPPERS_COUNT) === 0) {
-    //     //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-    //     //     && $loggerProxy->log('Calling gc_collect_cycles()...');
-    //     //
-    //     //     $collectedCyclesCount = gc_collect_cycles();
-    //     //
-    //     //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-    //     //     && $loggerProxy->log('Called gc_collect_cycles()', ['collectedCyclesCount' => $collectedCyclesCount]);
-    //     // }
-    //
-    //     if ($this->callbackWrappersCount === self::CALLBACK_WRAPPERS_MAX_COUNT) {
-    //         ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-    //         && $loggerProxy->log('Callback wrappers count reached max (' . self::CALLBACK_WRAPPERS_MAX_COUNT . ')');
-    //     }
-    //
-    //     // $wrappedCallback = function () use ($hookName, $callback, $isWordPressCore) {
-    //     //     $callbackAsString = self::callableToString($callback);
-    //     //
-    //     //     $name = $hookName;
-    //     //     $type = $isWordPressCore ? 'wordpress' : 'wordpress_plugin';
-    //     //     $subtype = $isWordPressCore ? 'wordpress_core' : 'gp-premium';
-    //     //     $action = $callbackAsString;
-    //     //
-    //     //     // $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
-    //     //     // $span->context()->setLabel($key, $value);
-    //     //
-    //     //     // call_user_func_array($callback, func_get_args());
-    //     //     $callback(...func_get_args());
-    //     //
-    //     //     // $span->end();
-    //     // };
-    //
-    //     $callback = new WordPressFilterCallbackWrapper($hookName, $callback);
-    // }
-
-    // private function addStatsForType(string $callbackTypeKey, ?string $callbackAsString): void
-    // {
-    //     $stats =& ArrayUtil::getOrAdd($callbackTypeKey, [], /* ref */ $this->callbackStatsByType);
-    //     $totalCount =& ArrayUtil::getOrAdd(self::STAT_TOTAL_COUNT_KEY, 0, /* ref */ $stats);
-    //     ++$totalCount;
-    //
-    //     if ($callbackAsString === null) {
-    //         return;
-    //     }
-    //
-    //     $shouldUpdateMinMax = true;
-    //     $uniqueCallbacks =& ArrayUtil::getOrAdd($callbackTypeKey, [], /* ref */ $this->uniqueCallbacksByType);
-    //     if (array_key_exists($callbackAsString, $uniqueCallbacks)) {
-    //         ++$uniqueCallbacks[$callbackAsString];
-    //     } else {
-    //         if (count($uniqueCallbacks) < self::UNIQUE_CALLBACKS_MAX_COUNT) {
-    //             $uniqueCallbacks[$callbackAsString] = 1;
-    //             $stats[self::STAT_UNIQUE_COUNT_KEY] = count($uniqueCallbacks);
-    //         } else {
-    //             $stats[self::STAT_UNIQUE_REACHED_MAX_KEY] = true;
-    //             $shouldUpdateMinMax = false;
-    //         }
-    //     }
-    //
-    //     if ($shouldUpdateMinMax) {
-    //         /** @var ?int $minRepeatCount */
-    //         $minRepeatCount = null;
-    //         /** @var ?int $minRepeatCount */
-    //         $maxRepeatCount = null;
-    //         foreach ($uniqueCallbacks as $repeatCount) {
-    //             $minRepeatCount = min($repeatCount, $minRepeatCount ?? $repeatCount);
-    //             $maxRepeatCount = max($repeatCount, $maxRepeatCount ?? $repeatCount);
-    //         }
-    //         if ($minRepeatCount !== null) {
-    //             $stats[self::STAT_REPEATED_MIN_COUNT_KEY] = $minRepeatCount;
-    //         }
-    //         if ($maxRepeatCount !== null) {
-    //             $stats[self::STAT_REPEATED_MAX_COUNT_KEY] = $maxRepeatCount;
-    //         }
-    //     }
-    // }
-    //
-    // /**
-    //  * @param callable|string $callback
-    //  *
-    //  * @return void
-    //  */
-    // private function addStats($callback): void
-    // {
-    //     if (is_string($callback)) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_STRING_KEY, $callback);
-    //         return;
-    //     }
-    //
-    //     if (!is_array($callback)) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_OTHER_KEY . ' !is_array($callback)', null);
-    //         return;
-    //     }
-    //
-    //     if (count($callback) !== 2) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_OTHER_KEY . ' count($callback) !== 2', null);
-    //         return;
-    //     }
-    //
-    //     if (!is_string($callback[1])) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_OTHER_KEY . ' !is_string($callback[1])', null);
-    //         return;
-    //     }
-    //
-    //     if (is_object($callback[0])) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_OBJECT_METHOD_KEY, null);
-    //         return;
-    //     }
-    //
-    //     if (!is_string($callback[0])) {
-    //         $this->addStatsForType(self::CALLBACK_TYPE_OTHER_KEY . ' !is_string($callback[0])', null);
-    //         return;
-    //     }
-    //
-    //     $this->addStatsForType(self::CALLBACK_TYPE_CLASS_STATIC_METHOD_KEY, $callback[0] . '::' . $callback[1]);
-    // }
-
-    // private function dumpFirstStackTraceForEachPlugin(string $pluginName): void
-    // {
-    //     /** @var array<string, true> $encounteredPlugins */
-    //     static $encounteredPlugins = [];
-    //     if (array_key_exists($pluginName, $encounteredPlugins)) {
-    //         return;
-    //     }
-    //     $encounteredPlugins[$pluginName] = true;
-    //
-    //     $stackTrace = StackTraceUtil::captureInClassicFormatExcludeElasticApm(
-    //         null /* <- loggerFactory */,
-    //         0 /* <- offset */,
-    //         0 /* <- options */
-    //     );
-    //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-    //     && $loggerProxy->log('', ['pluginName' => $pluginName, 'stackTrace' => $stackTrace]);
-    // }
-
-    private function dbgAddFilterStats(bool $isAdd, ?string $pluginName): void
+    /**
+     * @param mixed[] $capturedArgs
+     *
+     * @return bool
+     */
+    private function preHookWpFilterBuildUniqueIdImpl(array $capturedArgs): bool
     {
-        /** @var array<string, int> $callTypeToStats */
-        static $callTypeToStats = [];
-        $callType = $isAdd ? 'add' : 'remove';
-        $statsForCurrentCallType =& ArrayUtil::getOrAdd($callType, [], $callTypeToStats);
-        $totalCurrentCallTypeCount =& ArrayUtil::getOrAdd('total calls count', 0, $statsForCurrentCallType);
-        ++$totalCurrentCallTypeCount;
-
-        $eventType =
-            ($this->wpPluginDirectoryConstantsPreHookWasCalled ? 'after' : 'before') . ' wp_plugin_directory_constants';
-        $eventType .= ' | ';
-        $eventType .=
-            ($this->doActionPluginsLoadedWasCalled ? 'after' : 'before') . ' do_action(\'plugins_loaded\')';
-        $eventType .= ' | ';
-        $eventType .= '$pluginName: ' . ($pluginName === null ? 'null' : $pluginName);
-
-        $eventCount =& ArrayUtil::getOrAdd($eventType, 0, $statsForCurrentCallType);
-        ++$eventCount;
-
-        if (($totalCurrentCallTypeCount % 100) === 1) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                $callType . ': ' . $totalCurrentCallTypeCount,
-                ['callTypeToStats' => $callTypeToStats]
-            );
+        if (!$this->verifyHookNameCallbackArgs($capturedArgs)) {
+            return false;
         }
+        $callback =& $capturedArgs[1];
+
+        if (!($callback instanceof WordPressFilterCallbackWrapper)) {
+            return true;
+        }
+
+        $wrapper = $callback;
+        $originalCallback = $wrapper->getWrappedCallback();
+        $callback = $originalCallback;
+
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Callback has been unwrapped', ['original callback' => $originalCallback, 'wrapper' => $wrapper]);
+        return true;
     }
 
-    /** @inheritDoc */
-    protected static function propertiesExcludedFromLog(): array
+    /**
+     * @param mixed[] $capturedArgs
+     *
+     * @return bool
+     */
+    private function verifyHookNameCallbackArgs(array $capturedArgs): bool
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['hookNameToOriginalCallbackIdToWrapper']);
+        //
+        // We should get (see src/ext/WordPress_instrumentation.c):
+        //      [0] $hook_name parameter by value
+        //      [1] $callback parameter by reference
+        //
+        // function add_filter($hook_name, $callback, $priority = 10, $accepted_args = 1)
+        // function _wp_filter_build_unique_id($hook_name, $callback, $priority)
+
+        return $this->util->verifyArgsMinCount(2, $capturedArgs)
+               && $this->util->verifyIsString($capturedArgs[0], 'hook_name')
+               && $this->util->verifyIsCallable($capturedArgs[1], /* shouldCheckSyntaxOnly */ true, '$callback');
     }
 
-    /** @inheritDoc */
-    public function toLog(LogStreamInterface $stream): void
+    /**
+     * @param ?Throwable $thrown
+     * @param mixed      $returnValue
+     */
+    private function postHookGetTemplate(?Throwable $thrown, $returnValue): void
     {
-        parent::toLogLoggableTraitImpl(
-            $stream,
-            /* customPropValues */
-            [
-                'hookNameToOriginalCallbackIdToWrapper top level count (number of hookName-s)'
-                => count($this->hookNameToOriginalCallbackIdToWrapper)
-            ]
-        );
+        $logger = $this->logger->inherit()->addAllContext(['thrown' => $thrown, 'returnValue' => $returnValue]);
+
+        if ($thrown !== null) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Instrumented function has thrown so there is no return value');
+            return;
+        }
+
+        if ($returnValue === null) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Return value is null');
+            return;
+        }
+
+        if (!is_string($returnValue)) {
+            ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Return value is not a string', ['Return value type' => DbgUtil::getType($returnValue)]);
+            $this->switchToFailedMode();
+            return;
+        }
+
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Recording WordPress theme as a label on transaction', ['theme' => $returnValue, 'label key' => self::LABEL_KEY_FOR_WORDPRESS_THEME]);
+        ElasticApm::getCurrentTransaction()->context()->setLabel(self::LABEL_KEY_FOR_WORDPRESS_THEME, $returnValue);
     }
 }

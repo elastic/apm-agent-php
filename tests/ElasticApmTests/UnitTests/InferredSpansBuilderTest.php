@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
+use Closure;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\InferredSpansBuilder;
 use Elastic\Apm\Impl\Log\LoggableToString;
@@ -64,6 +65,21 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
     private const EXPECTED_SPANS_KEY = 'EXPECTED_SPANS';
     private const EXPECTED_STACK_TRACES_KEY = 'EXPECTED_STACK_TRACES';
     private const INPUT_OPTIONS_KEY = 'INPUT_OPTIONS';
+
+    /** @inheritDoc */
+    protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
+    {
+        parent::setUpTestEnv(
+            function (TracerBuilderForTests $tracerBuilder) use ($tracerBuildCallback): void {
+                if ($tracerBuildCallback !== null) {
+                    $tracerBuildCallback($tracerBuilder);
+                }
+                // Disable span compression to have separate spans
+                $tracerBuilder->withBoolConfig(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+            },
+            $shouldCreateMockEventSink
+        );
+    }
 
     private static function newInferredSpansBuilder(TracerInterface $tracer): InferredSpansBuilder
     {

@@ -18,6 +18,7 @@
  */
 
 #include "ConfigManager.h"
+#include "ConfigSnapshot.h"
 #ifdef ELASTIC_APM_MOCK_STDLIB
 #   include "mock_stdlib.h"
 #else
@@ -764,6 +765,9 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, astProcessEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, astProcessDebugDumpConvertedBackToSource )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, astProcessDebugDumpForPathPrefix )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, astProcessDebugDumpOutDir )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
@@ -926,6 +930,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             astProcessEnabled,
             ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED,
             /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            astProcessDebugDumpConvertedBackToSource,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            astProcessDebugDumpForPathPrefix,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            astProcessDebugDumpOutDir,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_OUT_DIR,
+            /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
             buildOptionalBoolOptionMetadata,

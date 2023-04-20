@@ -20,29 +20,33 @@
 #pragma once
 
 #include <zend_ast.h>
-#include "ConfigManager.h"
+#include "ConfigSnapshot_forward_decl.h"
 #include "StringView.h"
 #include "TextOutputStream.h"
 #include "ResultCode.h"
+#include "ArrayView.h"
 
-struct BoolArrayView
+enum ArgCaptureSpec
 {
-    unsigned int size;
-    bool* values;
+    captureArgByValue,
+    captureArgByRef,
+    dontCaptureArg
 };
-typedef struct BoolArrayView BoolArrayView;
+typedef enum ArgCaptureSpec ArgCaptureSpec;
+ELASTIC_APM_DECLARE_ARRAY_VIEW( ArgCaptureSpec, ArgCaptureSpecArrayView );
 
-#define ELASTIC_APM_MAKE_BOOL_ARRAY_VIEW( staticArrayVar ) \
-    ( (BoolArrayView){ .size = ELASTIC_APM_STATIC_ARRAY_SIZE( (staticArrayVar) ), .values = &((staticArrayVar)[0]) } )
+void astInstrumentationOnModuleInit( const ConfigSnapshot* config );
+void astInstrumentationOnModuleShutdown();
 
-void elasticApmAstInstrumentationOnModuleInit( const ConfigSnapshot* config );
-void elasticApmAstInstrumentationOnModuleShutdown();
+void astInstrumentationOnRequestInit( const ConfigSnapshot* config );
+void astInstrumentationOnRequestShutdown();
 
-void elasticApmAstInstrumentationOnRequestInit();
-void elasticApmAstInstrumentationOnRequestShutdown();
+zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView namespace, StringView funcName, size_t minParamsCount );
+zend_ast_decl* findClassAst( zend_ast* rootAst, StringView namespace, StringView className );
+zend_ast_decl** findChildSlotForMethodAst( zend_ast_decl* astClass, StringView methodName, size_t minParamsCount );
+
+ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs );
+ResultCode appendDirectCallToInstrumentation( zend_ast_decl** pAstChildSlot, StringView constNameForMethodName );
+ResultCode wrapStandaloneFunctionAstWithPrePostHooks( zend_ast_decl** pAstChildSlot );
 
 String streamZendAstKind( zend_ast_kind kind, TextOutputStream* txtOutStream );
-
-bool getAstGlobalName( zend_ast* astGlobal, /* out */ StringView* name );
-bool getAstFunctionName( zend_ast* astFunction, /* out */ StringView* name );
-zend_ast* insertAstFunctionPreHook( zend_ast* funcDeclAst, StringView className, StringView methodName, BoolArrayView shouldPassParameterByRef );

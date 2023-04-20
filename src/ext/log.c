@@ -261,7 +261,10 @@ StringView insertPrefixAtEachNewLine(
 
     // If we didn't write anything to new message part then it means the old one is just one line
     // so there's no need to insert any prefixes
-    if ( isEmptyStringView( textOutputStreamContentAsStringView( &txtOutStream ) ) ) return makeEmptyStringView();
+    if ( isEmptyStringView( textOutputStreamContentAsStringView( &txtOutStream ) ) )
+    {
+        return ELASTIC_APM_EMPTY_STRING_VIEW;
+    }
 
     streamStringView( oldMessageLeft, &txtOutStream );
 

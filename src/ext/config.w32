@@ -13,6 +13,7 @@ if (PHP_ELASTIC_APM != 'no') {
 	    && CHECK_LIB("normaliz.lib", "elastic_apm", PHP_ELASTIC_APM)
     ) {
         ELASTIC_APM_PHP_EXT_SOURCES =
+            "AST_debug.c" + " " +
             "AST_instrumentation.c" + " " +
             "backend_comm.c" + " " +
             "ConfigManager.c" + " " +

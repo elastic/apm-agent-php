@@ -83,7 +83,7 @@ final class InterceptionManager
      *
      * @return bool
      */
-    public function interceptedCallPreHook(
+    public function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         array $interceptedCallArgs
@@ -141,7 +141,7 @@ final class InterceptionManager
      * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
      */
-    public function interceptedCallPostHook(
+    public function internalFuncCallPostHook(
         int $numberOfStackFramesToSkip,
         bool $hasExitedByException,
         $returnValueOrThrown
@@ -180,17 +180,9 @@ final class InterceptionManager
         $this->interceptedCallInProgressPreHookRetVal = null;
     }
 
-    /**
-     * @param string  $funcName
-     * @param mixed[] $funcArgs
-     *
-     * @return void
-     */
-    public function onWordPressFunctionPreHook(string $funcName, array $funcArgs): void
+    public function astInstrumentationDirectCall(string $method): void
     {
-        $localLogger = $this->logger->inherit()->addAllContext(
-            ['funcName' => $funcName, 'funcArgs count' => count($funcArgs)]
-        );
+        $localLogger = $this->logger->inherit()->addAllContext(['method' => $method]);
 
         $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
@@ -207,16 +199,56 @@ final class InterceptionManager
 
         static $dbgImplFuncDesc = null;
         if ($dbgImplFuncDesc === null) {
-            $dbgImplFuncDesc = ClassNameUtil::fqToShort(WordPressAutoInstrumentation::class) . '->onFunctionPreHook';
+            $dbgImplFuncDesc = ClassNameUtil::fqToShort(WordPressAutoInstrumentation::class) . '->directCall';
         }
         /** @var string $dbgImplFuncDesc */
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling ' . $dbgImplFuncDesc . '...');
         try {
-            $wordPressAutoInstrumIfEnabled->onFunctionPreHook($funcName, $funcArgs);
+            $wordPressAutoInstrumIfEnabled->directCall($method);
             $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, $dbgImplFuncDesc . ' completed without throwing');
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->logThrowable($throwable, $dbgImplFuncDesc . ' has thrown');
+        }
+    }
+
+    /**
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
+     *
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
+     */
+    public function astInstrumentationPreHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
+    {
+        $localLogger = $this->logger->inherit()->addAllContext(['instrumentedClassFullName' => $instrumentedClassFullName]);
+
+        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+
+        $wordPressAutoInstrumIfEnabled = $this->builtinPlugin->getWordPressAutoInstrumentationIfEnabled();
+        if ($wordPressAutoInstrumIfEnabled === null) {
+            static $loggedOnce = false;
+            if (!$loggedOnce) {
+                $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'WordPress instrumentation is DISABLED');
+                $loggedOnce = true;
+            }
+            return null;
+        }
+
+        static $dbgImplFuncDesc = null;
+        if ($dbgImplFuncDesc === null) {
+            $dbgImplFuncDesc = ClassNameUtil::fqToShort(WordPressAutoInstrumentation::class) . '->preHook';
+        }
+        /** @var string $dbgImplFuncDesc */
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling ' . $dbgImplFuncDesc . '...');
+        try {
+            $retVal = $wordPressAutoInstrumIfEnabled->preHook($instrumentedClassFullName, $instrumentedFunction, $capturedArgs);
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, $dbgImplFuncDesc . ' completed without throwing', ['retVal == null' => ($retVal == null)]);
+            return $retVal;
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable($throwable, $dbgImplFuncDesc . ' has thrown');
+            return null;
         }
     }
 }

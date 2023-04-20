@@ -148,7 +148,7 @@ final class PhpPartFacade
      *
      * @return bool
      */
-    public static function interceptedCallPreHook(
+    public static function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         ...$interceptedCallArgs
@@ -160,7 +160,7 @@ final class PhpPartFacade
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        return $interceptionManager->interceptedCallPreHook(
+        return $interceptionManager->internalFuncCallPreHook(
             $interceptRegistrationId,
             $thisObj,
             $interceptedCallArgs
@@ -175,14 +175,14 @@ final class PhpPartFacade
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
      */
-    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    public static function internalFuncCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        $interceptionManager->interceptedCallPostHook(
+        $interceptionManager->internalFuncCallPostHook(
             1 /* <- $numberOfStackFramesToSkip */,
             $hasExitedByException,
             $returnValueOrThrown
@@ -522,16 +522,29 @@ final class PhpPartFacade
      *
      * @noinspection PhpUnused
      *
-     * @param string  $funcName
-     * @param mixed[] $funcArgs
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
      *
-     * @return void
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
      */
-    public static function onWordPressFunctionPreHook(string $funcName, array $funcArgs): void
+    public static function astInstrumentationPreHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
     {
-        $interceptionManager = self::singletonInstance()->interceptionManager;
-        if ($interceptionManager !== null) {
-            $interceptionManager->onWordPressFunctionPreHook($funcName, $funcArgs);
+        return (($interceptionManager = self::singletonInstance()->interceptionManager) !== null)
+            ? $interceptionManager->astInstrumentationPreHook($instrumentedClassFullName, $instrumentedFunction, $capturedArgs)
+            : null;
+    }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     */
+    public static function astInstrumentationDirectCall(string $method): void
+    {
+        if (($interceptionManager = self::singletonInstance()->interceptionManager) !== null) {
+            $interceptionManager->astInstrumentationDirectCall($method);
         }
     }
 }

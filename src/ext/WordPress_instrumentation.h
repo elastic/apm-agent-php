@@ -20,10 +20,11 @@
 #pragma once
 
 #include <zend_ast.h>
+#include "StringView.h"
 
-void wordPressInstrumentationOnModuleInit();
-void wordPressInstrumentationOnModuleShutdown();
 void wordPressInstrumentationOnRequestInit();
 void wordPressInstrumentationOnRequestShutdown();
-void wordPressInstrumentationOnAstGlobal( zend_ast* astGlobal );
-zend_ast* wordPressInstrumentationOnAstFunction( zend_ast* astFuncDecl );
+
+bool wordPressInstrumentationShouldTransformAstInFile( StringView compiledFileFullPath, /* out */ size_t* pFileIndex );
+void wordPressInstrumentationTransformAst( size_t fileIndex, StringView compiledFileFullPath, zend_ast* ast );
+

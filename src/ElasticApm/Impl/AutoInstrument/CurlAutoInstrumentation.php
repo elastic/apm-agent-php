@@ -98,7 +98,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         string $funcName,
         int $funcId
     ): void {
-        $ctx->interceptCallsToFunction(
+        $ctx->interceptCallsToInternalFunction(
             $funcName,
             /**
              * @param mixed[] $interceptedCallArgs

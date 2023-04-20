@@ -25,12 +25,14 @@
 #include <php_ini.h>
 #include <php.h>
 #include <zend_types.h>
+#include "constants.h"
 #include "lifecycle.h"
 #include "supportability_zend.h"
 #include "elastic_apm_API.h"
 #include "ConfigManager.h"
 #include "elastic_apm_assert.h"
 #include "elastic_apm_alloc.h"
+#include "tracer_PHP_part.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
@@ -140,6 +142,9 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL )
     #endif
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_OUT_DIR )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
@@ -282,6 +287,10 @@ PHP_MINIT_FUNCTION(elastic_apm)
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_MEMORY_TRACKING_LEVEL_EACH_ALLOCATION", memoryTrackingLevel_eachAllocation, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_MEMORY_TRACKING_LEVEL_EACH_ALLOCATION_WITH_STACK_TRACE", memoryTrackingLevel_eachAllocationWithStackTrace, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_MEMORY_TRACKING_LEVEL_ALL", memoryTrackingLevel_all, CONST_CS|CONST_PERSISTENT );
+
+    REGISTER_STRING_CONSTANT( ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS_CONST_NAME
+                              , ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS
+                              , CONST_CS | CONST_PERSISTENT );
 
     elasticApmModuleInit( type, module_number );
 
@@ -636,7 +645,6 @@ PHP_FUNCTION( elastic_apm_before_loading_agent_php_code )
 }
 /* }}} */
 
-
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_after_loading_agent_php_code_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
 ZEND_END_ARG_INFO()
 /* {{{ elastic_apm_after_loading_agent_php_code(): void
@@ -644,6 +652,26 @@ ZEND_END_ARG_INFO()
 PHP_FUNCTION( elastic_apm_after_loading_agent_php_code )
 {
     elasticApmAfterLoadingAgentPhpCode();
+}
+/* }}} */
+
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_ast_instrumentation_pre_hook_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_after_loading_agent_php_code(): void
+ */
+PHP_FUNCTION( elastic_apm_ast_instrumentation_pre_hook )
+{
+    tracerPhpPartAstInstrumentationCallPreHook( execute_data, return_value );
+}
+/* }}} */
+
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_ast_instrumentation_direct_call_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_after_loading_agent_php_code(): void
+ */
+PHP_FUNCTION( elastic_apm_ast_instrumentation_direct_call )
+{
+    tracerPhpPartAstInstrumentationDirectCall( execute_data );
 }
 /* }}} */
 
@@ -669,6 +697,8 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_get_last_php_error, elastic_apm_get_last_php_error_arginfo )
     PHP_FE( elastic_apm_before_loading_agent_php_code, elastic_apm_before_loading_agent_php_code_arginfo )
     PHP_FE( elastic_apm_after_loading_agent_php_code, elastic_apm_after_loading_agent_php_code_arginfo )
+    PHP_FE( elastic_apm_ast_instrumentation_pre_hook, elastic_apm_ast_instrumentation_pre_hook_arginfo )
+    PHP_FE( elastic_apm_ast_instrumentation_direct_call, elastic_apm_ast_instrumentation_direct_call_arginfo )
     PHP_FE_END
 };
 /* }}} */

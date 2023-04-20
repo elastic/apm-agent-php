@@ -21,6 +21,7 @@
 #include <limits.h>
 #include "time_util.h"
 #include "util.h"
+#include "ArrayView.h"
 
 typedef bool ( * IsValidUnitsGenericWrapper )( int value );
 typedef String ( * UnitsToStringGenericWrapper )( int value );
@@ -171,7 +172,7 @@ typedef struct UnitsTypeMetaData UnitsTypeMetaData;
         , .unitsNames = ELASTIC_APM_UNITS_NAMES( unitsPrefix ) \
         , .isValidUnits = &( ELASTIC_APM_IS_VALID_UNITS_GENERIC_WRAPPER_FUNC_NAME( UnitsType ) ) \
         , .invalidUnitsAsString = (invalidUnitsAsStringParam)                                          \
-        , .invalidUnits = ELASTIC_APM_STATIC_ARRAY_TO_VIEW( IntArrayView, ELASTIC_APM_INVALID_UNITS_ARRAY_NAME( unitsPrefix ) ) \
+        , .invalidUnits = ELASTIC_APM_MAKE_ARRAY_VIEW_FROM_STATIC( IntArrayView, ELASTIC_APM_INVALID_UNITS_ARRAY_NAME( unitsPrefix ) ) \
         , .unitsToString = &( ELASTIC_APM_UNITS_TO_STRING_GENERIC_WRAPPER_FUNC_NAME( unitsPrefix ) ) \
         , .getValueInUnits = &( ELASTIC_APM_GET_VALUE_IN_UNITS_GENERIC_WRAPPER_FUNC_NAME( UnitsType ) ) \
         , .getUnits = &( ELASTIC_APM_GET_UNITS_GENERIC_WRAPPER_FUNC_NAME( UnitsType ) ) \
@@ -208,7 +209,7 @@ void impl_test_unitsToString( UnitsTypeMetaData unitsTypeMetaData )
                                                 , "%s units validValue: %d", unitsTypeMetaData.dbgUnitsTypeAsString, validUnits );
     }
 
-    ELASTIC_APM_FOR_EACH_INDEX( invalidValueIndex, unitsTypeMetaData.invalidUnits.size )
+    ELASTIC_APM_FOR_EACH_INDEX( invalidValueIndex, unitsTypeMetaData.invalidUnits.count )
     {
         int invalidValue = unitsTypeMetaData.invalidUnits.values[ invalidValueIndex ];
         ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( unitsTypeMetaData.invalidUnitsAsString, unitsTypeMetaData.unitsToString( invalidValue )
@@ -356,7 +357,7 @@ void impl_test_parse( UnitsTypeMetaData unitsTypeMetaData )
                 ELASTIC_APM_FOR_EACH_INDEX( includeUnitsVariantIndex, ELASTIC_APM_STATIC_ARRAY_SIZE( includeUnitsVariants ) )
                 {
                     bool includeUnits = includeUnitsVariants[ includeUnitsVariantIndex ];
-                    StringView unitsBase = includeUnits ? unitsTypeMetaData.unitsNames[ units ] : makeEmptyStringView();
+                    StringView unitsBase = includeUnits ? unitsTypeMetaData.unitsNames[ units ] : ELASTIC_APM_EMPTY_STRING_VIEW;
                     ELASTIC_APM_CMOCKA_ASSERT_MSG( generatedUnitsBufferSize >= ( unitsBase.length + 1 )
                                                    , "generatedUnitsBufferSize: %d, unitsBase [length: %d]: %.*s"
                                                    , generatedUnitsBufferSize, ((int)unitsBase.length), ((int)unitsBase.length), unitsBase.begin );

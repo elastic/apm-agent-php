@@ -25,10 +25,14 @@ namespace ElasticApmTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\EnvVarUtilForTests;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
+use ElasticApmTests\ComponentTests\Util\ProcessUtilForTests;
 use PHPUnit\Framework\Assert;
 use RuntimeException;
 
@@ -120,5 +124,58 @@ final class FileUtilForTests
         );
 
         return $tempFileFullPath;
+    }
+
+    private static function buildTempSubDirFullPath(string $subDirName): string
+    {
+        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $subDirName;
+    }
+
+    public static function deleteTempSubDir(string $subDirName): void
+    {
+        $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
+        $msg = new AssertMessageBuilder(['subDirName' => $subDirName, 'tempSubDirFullPath' => $tempSubDirFullPath]);
+        if (!file_exists($tempSubDirFullPath)) {
+            return;
+        }
+        Assert::assertTrue(is_dir($tempSubDirFullPath), $msg->s());
+
+        $deleteDirShellCmd = OsUtilForTests::isWindows()
+            ? sprintf('rd /s /q "%s"', $tempSubDirFullPath)
+            : sprintf('rm -rf "%s"', $tempSubDirFullPath);
+
+        ProcessUtilForTests::startProcessAndWaitUntilExit($deleteDirShellCmd, EnvVarUtilForTests::getAll(), /* shouldCaptureStdOutErr */ true, /* $expectedExitCode */ 0);
+    }
+
+    /**
+     * @param class-string $testClassName
+     * @param string       $testMethodName
+     *
+     * @return string
+     */
+    public static function buildTempSubDirName(string $testClassName, string $testMethodName): string
+    {
+        return 'ElasticApmTests_' . ClassNameUtil::fqToShort($testClassName) . '_' . $testMethodName . '_PID=' . getmypid();
+    }
+
+    public static function createTempSubDir(string $subDirName): string
+    {
+        $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
+        $msg = new AssertMessageBuilder(['subDirName' => $subDirName, 'tempSubDirFullPath' => $tempSubDirFullPath]);
+        self::deleteTempSubDir($tempSubDirFullPath);
+        Assert::assertTrue(mkdir($tempSubDirFullPath), $msg->s());
+        return $tempSubDirFullPath;
+    }
+
+    public static function convertPathRelativeTo(string $absPath, string $relativeToAbsPath): string
+    {
+        Assert::assertTrue(TextUtil::isPrefixOf($relativeToAbsPath, $absPath));
+        $relPath = substr($absPath, /* offset */ strlen($relativeToAbsPath));
+        foreach (['/', DIRECTORY_SEPARATOR] as $dirSeparator) {
+            while (TextUtil::isPrefixOf($dirSeparator, $relPath)) {
+                $relPath = substr($relPath, /* offset */ strlen($dirSeparator));
+            }
+        }
+        return $relPath;
     }
 }

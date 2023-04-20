@@ -20,10 +20,11 @@
 #include "util_for_PHP.h"
 #include <stdio.h>
 #include <php_main.h>
+#include <zend_hash.h>
+#include <zend_compile.h>
 #include "util.h"
 #include "platform.h"
 #include "time_util.h"
-#include "ConfigManager.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
@@ -70,14 +71,14 @@ ResultCode loadPhpFile( const char* phpFilePath )
     //      https://github.com/php/php-src/blob/php-8.1.0/ext/spl/php_spl.c
     // the second half of spl_autoload()
 
-#       if PHP_VERSION_ID >= 80100
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
     zend_string* phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
     zend_stream_init_filename_ex( &file_handle, phpFilePathAsZendString );
     should_destroy_file_handle = true;
 #       endif
 
     int php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
-#               if PHP_VERSION_ID < 80100
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
             phpFilePath,
 #               endif
             &file_handle
@@ -92,7 +93,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
 
     if ( ! file_handle.opened_path ) {
         file_handle.opened_path =
-#               if PHP_VERSION_ID < 80100
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
             zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
 #               else
             zend_string_copy( phpFilePathAsZendString );
@@ -103,7 +104,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
     ZVAL_NULL( &dummy );
     if ( ! zend_hash_add( &EG(included_files), opened_path, &dummy ) )
     {
-#           if PHP_VERSION_ID < 80100
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
         zend_file_handle_dtor( &file_handle );
         should_destroy_file_handle = false;
 #           endif
@@ -143,7 +144,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
 
     if ( opened_path != NULL )
     {
-#           if PHP_VERSION_ID < 70300
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 7, 3, 0 ) /* if PHP version before 7.3.0 */
         zend_string_release( opened_path );
 #else
         zend_string_release_ex( opened_path, /* persistent: */ 0 );
@@ -157,7 +158,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
         should_destroy_file_handle = false;
     }
 
-#       if PHP_VERSION_ID >= 80100
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
     zend_string_release( phpFilePathAsZendString );
 #       endif
 
@@ -271,4 +272,39 @@ ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCoun
 bool isPhpRunningAsCliScript()
 {
     return strcmp( sapi_module.name, "cli" ) == 0;
+}
+
+String streamZVal( const zval* zVal, TextOutputStream* txtOutStream )
+{
+    if ( zVal == NULL )
+    {
+        return "NULL";
+    }
+
+    int zValType = (int)Z_TYPE_P( zVal );
+    switch ( zValType )
+    {
+        case IS_STRING:
+        {
+            StringView strVw = zStringToStringView( Z_STR_P( zVal ) );
+            return streamPrintf( txtOutStream, "type: string, value [length: %"PRIu64"]: %.*s", (UInt64)(strVw.length), (int)(strVw.length), strVw.begin );
+        }
+
+        case IS_LONG:
+            return streamPrintf( txtOutStream, "type: long, value: %"PRId64, (Int64)(Z_LVAL_P( zVal )) );
+
+        case IS_DOUBLE:
+            return streamPrintf( txtOutStream, "type: double, value: %f", (double)(Z_DVAL_P( zVal )) );
+
+        case IS_NULL:
+            return streamPrintf( txtOutStream, "type: null" );
+
+        case IS_FALSE:
+            return streamPrintf( txtOutStream, "type: false" );
+        case IS_TRUE:
+            return streamPrintf( txtOutStream, "type: true " );
+
+        default:
+            return streamPrintf( txtOutStream, "type: %s (type ID as int: %d)", zend_get_type_by_const( zValType ), (int)zValType );
+    }
 }
