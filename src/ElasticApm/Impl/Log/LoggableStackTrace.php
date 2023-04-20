@@ -36,12 +36,15 @@ final class LoggableStackTrace
 {
     public const STACK_TRACE_KEY = 'stacktrace';
 
+    public const MAX_NUMBER_OF_STACK_FRAMES = 100;
+
     /**
      * @param int $numberOfStackFramesToSkip
+     * @param int $maxNumberOfStackFrames
      *
      * @return ClassicFormatStackTraceFrame[]
      */
-    public static function buildForCurrent(int $numberOfStackFramesToSkip): array
+    public static function buildForCurrent(int $numberOfStackFramesToSkip, int $maxNumberOfStackFrames = self::MAX_NUMBER_OF_STACK_FRAMES): array
     {
         /**
          * @param string $key
@@ -58,7 +61,7 @@ final class LoggableStackTrace
             null /* <- loggerFactory */,
             $numberOfStackFramesToSkip + 1 /* <- offset */,
             DEBUG_BACKTRACE_IGNORE_ARGS /* <- options */,
-            100 /* limit */
+            $maxNumberOfStackFrames /* <- limit */
         );
         $result = [];
 
