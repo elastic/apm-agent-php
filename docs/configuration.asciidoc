@@ -532,6 +532,82 @@ the recommended value for this field is the commit identifier of the deployed re
 the output of git rev-parse HEAD.
 
 [float]
+[[config-span-compression-enabled]]
+==== `span_compression_enabled`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_ENABLED` | `elastic_apm.span_compression_enabled`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+Setting this option to true will enable span compression feature.
+Span compression reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that some information
+such as DB statements of all the compressed spans will not be collected.
+
+[float]
+[[config-span-compression-exact-match-max-duration]]
+==== `span_compression_exact_match_max_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION` | `elastic_apm.span_compression_exact_match_max_duration`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `50ms`       | Duration
+|============
+
+Consecutive spans that are exact match and that are under this threshold
+will be compressed into a single composite span.
+This option does not apply to composite spans.
+This reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-span-compression-same-kind-max-duration]]
+==== `span_compression_same_kind_max_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION` | `elastic_apm.span_compression_same_kind_max_duration`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `0ms`       | Duration
+|============
+
+Consecutive spans to the same destination that are under this threshold
+will be compressed into a single composite span.
+This option does not apply to composite spans.
+This reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
 [[config-transaction-ignore-urls]]
 ==== `transaction_ignore_urls`
 
