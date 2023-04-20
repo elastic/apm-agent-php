@@ -7,7 +7,7 @@ on:
       - loop
       - test
       - test-reporter
-      - update-specs
+      - updatecli
       - "Issue Labeler"
       - "Auto Assign to Project(s)"
       - snapshoty

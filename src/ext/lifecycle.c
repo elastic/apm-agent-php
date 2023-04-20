@@ -50,6 +50,8 @@
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
 
+static uint64_t requestCounter = 0;
+
 static
 String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoBuffer )
 {
@@ -160,8 +162,6 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerCallbacksToLogFork();
     registerAtExitLogging();
-
-    srand( time(NULL) );
 
     CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
@@ -441,15 +441,6 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
 
-    ////////////////////////////////////////
-    // TODO: Sergey Kleyman: Remove BEGIN
-    if ( isStringViewPrefixIgnoringCase( stringToView( message ), ELASTIC_APM_STRING_LITERAL_TO_VIEW( "Allowed memory size" ) ) && ( strstr( message, "bytes exhausted (tried to allocate" ) != NULL ) )
-    {
-        ELASTIC_APM_LOG_CRITICAL( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
-    }
-    // TODO: Sergey Kleyman: Remove END
-    ////////////////////////////////////////
-
     ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
     zeroLastPhpErrorData( &tempPhpErrorData );
@@ -566,6 +557,8 @@ void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
 
 void elasticApmRequestInit()
 {
+    requestCounter++;
+
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
 
@@ -605,10 +598,21 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
-    if ( config->profilingInferredSpansEnabled )
-    {
+    enableAccessToServerGlobal();
+
+    if (requestCounter == 1) {
+        bool preloadDetected = detectOpcachePreload();
+        if (preloadDetected) {
+            ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
+            resultCode = resultSuccess;
+            goto finally;
+        }
+    }
+
+    if ( config->profilingInferredSpansEnabled ) {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
     }
+
 
     if ( config->captureErrors )
     {
@@ -637,8 +641,6 @@ void elasticApmRequestInit()
     }
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
-
-//    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     resultCode = resultSuccess;
 
@@ -699,14 +701,19 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
+    bool preloadDetected = requestCounter == 1 && detectOpcachePreload();
+    if (preloadDetected) {
+        ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
+        resultCode = resultSuccess;
+        goto finally;
+    }
+	
     tracerPhpPartOnRequestShutdown();
-
-    // sendMetrics( tracer, config );
 
     if ( config->astProcessEnabled )
     {
         astInstrumentationOnRequestShutdown();
-    }
+    }	
 
     if ( isOriginalZendThrowExceptionHookSet )
     {
