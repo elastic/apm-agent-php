@@ -51,14 +51,14 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     /** @inheritDoc */
     public function isEnabled(?string &$reason = null): bool
     {
-        if ($this->doesNeedAttachContextToExternalObjects() && !MapPerWeakObject::isSupported()) {
+        if ($this->requiresAttachContextToExternalObjects() && !MapPerWeakObject::isSupported()) {
             $reason = 'Instrumentation ' . $this->name() . ' needs to attach context to external objects'
                       . ' but none of the MapPerWeakObject implementations is supported by the current environment';
             return false;
         }
 
         $isUserlandCodeInstrumentationEnabled = $this->tracer->getConfig()->astProcessEnabled();
-        if ($this->doesNeedUserlandCodeInstrumentation() && (!$isUserlandCodeInstrumentationEnabled)) {
+        if ($this->requiresUserlandCodeInstrumentation() && (!$isUserlandCodeInstrumentationEnabled)) {
             $reason = 'Instrumentation ' . $this->name() . ' needs userland code instrumentation'
                       . ' but AST-process is the only currently supported mechanism to instrument userland code and it is DISABLED'
                       . ' (via ' . OptionNames::AST_PROCESS_ENABLED . ' configuration option)';
@@ -90,7 +90,7 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     /**
      * @return bool
      */
-    public function doesNeedAttachContextToExternalObjects(): bool
+    public function requiresAttachContextToExternalObjects(): bool
     {
         return false;
     }
@@ -98,7 +98,7 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
     /**
      * @return bool
      */
-    public function doesNeedUserlandCodeInstrumentation(): bool
+    public function requiresUserlandCodeInstrumentation(): bool
     {
         return false;
     }

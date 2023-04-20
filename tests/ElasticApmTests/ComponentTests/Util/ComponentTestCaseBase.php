@@ -318,7 +318,7 @@ class ComponentTestCaseBase extends TestCaseBase
         }
 
         foreach ([true, false] as $astProcessEnabled) {
-            $expectedIsEnabled = $astProcessEnabled || (!$instr->doesNeedUserlandCodeInstrumentation());
+            $expectedIsEnabled = $astProcessEnabled || (!$instr->requiresUserlandCodeInstrumentation());
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
             $instr = new $instrClassName($tracer);
             self::assertSame($expectedIsEnabled, $instr->isEnabled(), (new AssertMessageBuilder(['astProcessEnabled' => $astProcessEnabled]))->s());

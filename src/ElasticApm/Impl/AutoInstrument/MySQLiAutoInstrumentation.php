@@ -75,7 +75,7 @@ final class MySQLiAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function doesNeedAttachContextToExternalObjects(): bool
+    public function requiresAttachContextToExternalObjects(): bool
     {
         return true;
     }

@@ -80,7 +80,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function doesNeedAttachContextToExternalObjects(): bool
+    public function requiresAttachContextToExternalObjects(): bool
     {
         return true;
     }

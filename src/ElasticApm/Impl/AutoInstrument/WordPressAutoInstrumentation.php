@@ -121,7 +121,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function doesNeedUserlandCodeInstrumentation(): bool
+    public function requiresUserlandCodeInstrumentation(): bool
     {
         return false;
     }
