@@ -177,7 +177,7 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
      * @param ?string $dbgParamName
      *
      * @return bool
@@ -188,7 +188,7 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
      * @param ?string $dbgParamName
      *
      * @return bool
@@ -199,7 +199,7 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
      * @param ?string $dbgParamName
      *
      * @return bool
@@ -210,7 +210,7 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param mixed $actualValue
+     * @param mixed   $actualValue
      * @param ?string $dbgParamName
      *
      * @return bool
@@ -223,7 +223,7 @@ final class AutoInstrumentationUtil
     /**
      * @param class-string $expectedClass
      * @param mixed        $actualValue
-     * @param ?string $dbgParamName
+     * @param ?string      $dbgParamName
      *
      * @return bool
      */
