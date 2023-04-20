@@ -145,12 +145,8 @@ final class AutoInstrumentationUtil
      *
      * @return bool
      */
-    public function verifyType(
-        bool $isOfExpectedType,
-        string $dbgExpectedType,
-        $dbgActualValue,
-        ?string $dbgParamName = null
-    ): bool {
+    public function verifyType(bool $isOfExpectedType, string $dbgExpectedType, $dbgActualValue, ?string $dbgParamName = null): bool
+    {
         if ($isOfExpectedType) {
             return true;
         }
