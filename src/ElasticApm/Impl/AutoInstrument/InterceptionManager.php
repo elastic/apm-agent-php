@@ -99,8 +99,7 @@ final class InterceptionManager
         );
         $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
 
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered');
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
         $interceptRegistration
             = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
@@ -130,8 +129,7 @@ final class InterceptionManager
             $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
         }
 
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
         return $shouldCallPostHook;
     }
 
