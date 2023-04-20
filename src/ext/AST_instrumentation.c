@@ -177,9 +177,18 @@ bool isZendAstListKind( zend_ast_kind kind )
 }
 
 /**
+ * zend_ast_create and zend_ast_create_ex allowed up to 4 child* parameters for version before PHP v8
+ * and the limit was increased to 5 in PHP v8
+ *
  * @see ZEND_AST_SPEC_CALL_EX
  */
-static size_t g_maxCreateAstChildCount = 5;
+static size_t g_maxCreateAstChildCount =
+    #if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 )
+    4
+    #else
+    5
+    #endif
+;
 
 zend_ast* createAstEx( zend_ast_kind kind, zend_ast_attr attr, ZendAstPtrArrayView children )
 {
@@ -201,8 +210,10 @@ zend_ast* createAstEx( zend_ast_kind kind, zend_ast_attr attr, ZendAstPtrArrayVi
             return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ] );
         case 4:
             return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ], children.values[ 3 ] );
+        #if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 )
         case 5:
             return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ], children.values[ 3 ], children.values[ 4 ] );
+        #endif
     }
 }
 
