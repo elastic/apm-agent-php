@@ -37,4 +37,5 @@ final class InstrumentationNames
     public const CURL = 'curl';
     public const PDO = 'pdo';
     public const MYSQLI = 'mysqli';
+    public const WORDPRESS = 'wordpress';
 }

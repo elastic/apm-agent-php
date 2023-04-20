@@ -515,4 +515,36 @@ final class PhpPartFacade
     public static function emptyMethod(): void
     {
     }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     *
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
+     *
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
+     */
+    public static function astInstrumentationPreHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
+    {
+        return (($interceptionManager = self::singletonInstance()->interceptionManager) !== null)
+            ? $interceptionManager->astInstrumentationPreHook($instrumentedClassFullName, $instrumentedFunction, $capturedArgs)
+            : null;
+    }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     */
+    public static function astInstrumentationDirectCall(string $method): void
+    {
+        if (($interceptionManager = self::singletonInstance()->interceptionManager) !== null) {
+            $interceptionManager->astInstrumentationDirectCall($method);
+        }
+    }
 }

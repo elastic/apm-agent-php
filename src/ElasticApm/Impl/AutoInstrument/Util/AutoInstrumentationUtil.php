@@ -251,6 +251,19 @@ final class AutoInstrumentationUtil
     }
 
     /**
+     * @param mixed   $actualValue
+     * @param bool    $shouldCheckSyntaxOnly
+     * @param ?string $dbgParamName
+     *
+     * @return bool
+     */
+    public function verifyIsCallable($actualValue, bool $shouldCheckSyntaxOnly, ?string $dbgParamName = null): bool
+    {
+        $isCallable = is_callable($actualValue, $shouldCheckSyntaxOnly);
+        return $this->verifyType($isCallable, 'callable', $actualValue, $dbgParamName);
+    }
+
+    /**
      * @param int     $expectedMinArgsCount
      * @param mixed[] $interceptedCallArgs
      *
