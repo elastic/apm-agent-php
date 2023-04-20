@@ -292,14 +292,14 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param int     $expectedArgsMinCount
+     * @param int     $expectedArgsCount
      * @param mixed[] $interceptedCallArgs
      *
      * @return bool
      */
-    public function verifyArgsMinCount(int $expectedArgsMinCount, array $interceptedCallArgs): bool
+    public function verifyExactArgsCount(int $expectedArgsCount, array $interceptedCallArgs): bool
     {
-        if (count($interceptedCallArgs) >= $expectedArgsMinCount) {
+        if (count($interceptedCallArgs) === $expectedArgsCount) {
             return true;
         }
 
@@ -307,9 +307,9 @@ final class AutoInstrumentationUtil
         && $loggerProxy->log(
             'Actual number of arguments does not equal the expected number',
             [
-                'expected number of arguments to be at least' => $expectedArgsMinCount,
-                'actual number of arguments'                  => count($interceptedCallArgs),
-                'actual arguments'                            => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+                'expected number of arguments' => $expectedArgsCount,
+                'actual number of arguments'   => count($interceptedCallArgs),
+                'actual arguments'             => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         return false;

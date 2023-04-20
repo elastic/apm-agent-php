@@ -223,6 +223,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
      */
     private static function getCallbackSourceFilePathImplForClass($classInstanceOrName, Logger $logger): ?string
     {
+        /** @var object|class-string $classInstanceOrName */
         $reflectClass = new ReflectionClass($classInstanceOrName);
         if (($srcFilePath = $reflectClass->getFileName()) === false) {
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -262,7 +263,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         }
 
         if (ArrayUtil::isEmpty($callback)) {
-            ($loggerProxy = logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('callback is an empty array');
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('callback is an empty array');
             return null;
         }
 
@@ -272,7 +273,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
             return self::getCallbackSourceFilePathImplForClass($firstElement, $logger);
         }
 
-        ($loggerProxy = logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('callback is an array but its first element is of unexpected type', ['firstElement type' => DbgUtil::getType($firstElement), 'firstElement' => $firstElement]);
         return null;
     }
@@ -484,7 +485,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         // function add_filter($hook_name, $callback, $priority = 10, $accepted_args = 1)
         // function _wp_filter_build_unique_id($hook_name, $callback, $priority)
 
-        return $this->util->verifyArgsMinCount(2, $capturedArgs)
+        return $this->util->verifyExactArgsCount(2, $capturedArgs)
                && $this->util->verifyIsString($capturedArgs[0], 'hook_name')
                && $this->util->verifyIsCallable($capturedArgs[1], /* shouldCheckSyntaxOnly */ true, '$callback');
     }

@@ -154,11 +154,19 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
         return __FUNCTION__;
     }
 
-    public function __call($methodName, $args)
+    /**
+     * @param string  $methodName
+     * @param mixed[] $args
+     */
+    public function __call(string $methodName, array $args): void
     {
     }
 
-    public static function __callStatic($methodName, $args)
+    /**
+     * @param string  $methodName
+     * @param mixed[] $args
+     */
+    public static function __callStatic(string $methodName, array $args): void
     {
     }
 
@@ -171,7 +179,6 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
              */
             function ($callback, ?string $expectedResult): void {
                 $msg = new AssertMessageBuilder(['callback' => $callback, 'expectedResult' => $expectedResult]);
-                self::assertTrue(is_callable($callback, /* syntax_only */ true), $msg->s());
                 $actualResult = WordPressAutoInstrumentation::getCallbackSourceFilePath($callback, AmbientContextForTests::loggerFactory());
                 $msg->add('actualResult', $actualResult);
                 self::assertSame($expectedResult, $actualResult, $msg->s());
@@ -193,7 +200,17 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
         $testImpl([__CLASS__, 'implictNonExistentMethod'], __FILE__);
         $testImpl([$this, 'implictNonExistentMethod'], __FILE__);
 
+        $testImpl('', null);
+        $testImpl(null, null);
+        $testImpl(new stdClass(), null);
+        $testImpl(1, null);
         $testImpl([stdClass::class, 'implictNonExistentMethod'], null);
         $testImpl('invalid name', null);
+        $testImpl([], null);
+        $testImpl([1], null);
+        $testImpl([1, 2], null);
+        $testImpl(['a', 'b'], null);
+        $testImpl(['a'], null);
+        $testImpl([stdClass::class], null);
     }
 }
