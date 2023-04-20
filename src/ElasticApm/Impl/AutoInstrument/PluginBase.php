@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 
 /**
@@ -36,13 +37,16 @@ abstract class PluginBase implements PluginInterface
     /** @var AutoInstrumentationInterface[] */
     private $enabledInstrumentations;
 
+    /** @var Logger */
+    private $logger;
+
     /**
      * @param Tracer $tracer
      * @param AutoInstrumentationInterface[]  $allInstrumentations
      */
     public function __construct(Tracer $tracer, array $allInstrumentations)
     {
-        $logger = $tracer->loggerFactory()->loggerForClass(
+        $this->logger = $tracer->loggerFactory()->loggerForClass(
             LogCategory::AUTO_INSTRUMENTATION,
             __NAMESPACE__,
             __CLASS__,
@@ -51,13 +55,7 @@ abstract class PluginBase implements PluginInterface
 
         $this->enabledInstrumentations = [];
         foreach ($allInstrumentations as $instr) {
-            $isEnabled = $instr->isEnabled();
-            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Instrumentation ' . $instr->name() . ' is ' . ($isEnabled ?  'enabled' : 'disabled'),
-                ['instrumentation other names' => $instr->otherNames()]
-            );
-            if ($isEnabled) {
+            if ($this->checkIfInstrumentationEnabled($instr)) {
                 $this->enabledInstrumentations[] = $instr;
             }
         }
@@ -68,5 +66,18 @@ abstract class PluginBase implements PluginInterface
         foreach ($this->enabledInstrumentations as $instr) {
             $instr->register($ctx);
         }
+    }
+
+    protected function checkIfInstrumentationEnabled(AutoInstrumentationInterface $instr): bool
+    {
+        $isEnabled = $instr->isEnabled(/* ref */ $reasonIfDisabled);
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Instrumentation `' . $instr->name() . '\' is ' . ($isEnabled ? 'enabled' : 'DISABLED'),
+            ($isEnabled ? [] : ['reason' => $reasonIfDisabled])
+        );
+
+        return $isEnabled;
     }
 }

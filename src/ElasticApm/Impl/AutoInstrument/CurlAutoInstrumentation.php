@@ -73,9 +73,9 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function otherNames(): array
+    public function keywords(): array
     {
-        return [InstrumentationNames::HTTP_CLIENT];
+        return [InstrumentationKeywords::HTTP_CLIENT];
     }
 
     /** @inheritDoc */
@@ -98,7 +98,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         string $funcName,
         int $funcId
     ): void {
-        $ctx->interceptCallsToFunction(
+        $ctx->interceptCallsToInternalFunction(
             $funcName,
             /**
              * @param mixed[] $interceptedCallArgs

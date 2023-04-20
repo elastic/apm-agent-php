@@ -38,12 +38,16 @@ interface AutoInstrumentationInterface
     /**
      * @return string[]
      */
-    public function otherNames(): array;
+    public function keywords(): array;
 
     /**
+     * @param ?string $reason
+     *
      * @return bool
+     *
+     * @phpstan-assert-if-false !null $reason
      */
-    public function isEnabled(): bool;
+    public function isEnabled(?string &$reason = null): bool;
 
     /**
      * @param RegistrationContextInterface $ctx
