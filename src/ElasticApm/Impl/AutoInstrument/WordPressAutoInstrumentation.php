@@ -496,7 +496,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
      */
     private function postHookGetTemplate(?Throwable $thrown, $returnValue): void
     {
-        $logger = $this->logger->inherit()->addAllContext(['thrown' => $thrown, 'returnValue' => $returnValue]);
+        $logger = $this->logger->inherit()->addAllContext(['thrown' => $thrown, 'returnValue type' => DbgUtil::getType($returnValue), 'returnValue' => $returnValue]);
 
         if ($thrown !== null) {
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Instrumented function has thrown so there is no return value');
@@ -509,8 +509,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         }
 
         if (!is_string($returnValue)) {
-            ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Return value is not a string', ['Return value type' => DbgUtil::getType($returnValue)]);
-            $this->switchToFailedMode();
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Return value is not a string');
             return;
         }
 
