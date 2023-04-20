@@ -140,7 +140,7 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
      */
     public static function testFoldTextWithMarkersIntoOneLine(string $input, string $expectedOutput): void
     {
-        $actualOutput = WordPressAutoInstrumentationTest::adaptManuallyInstrumentedSourceFileContent($input);
+        $actualOutput = WordPressAutoInstrumentationTest::foldTextWithMarkersIntoOneLine($input);
         self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
     }
 
@@ -212,5 +212,42 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
         $testImpl(['a', 'b'], null);
         $testImpl(['a'], null);
         $testImpl([stdClass::class], null);
+    }
+
+    /**
+     * @return iterable<array{string, string}>
+     */
+    public static function dataProviderForTestRemoveAttributes(): iterable
+    {
+        yield ['', ''];
+        yield ['some text', 'some text'];
+
+        $input
+            = '#[MyDummyAttribute]' . PHP_EOL .
+              'function get_template()' . PHP_EOL;
+        $expectedOutput
+            = 'function get_template()' . PHP_EOL;
+        yield [$input, $expectedOutput];
+        yield [$expectedOutput, $expectedOutput];
+
+        $input
+            = '{ #[MyDummyAttribute]' . PHP_EOL .
+              'function get_template()' . PHP_EOL;
+        $expectedOutput
+            = '{ function get_template()' . PHP_EOL;
+        yield [$input, $expectedOutput];
+        yield [$expectedOutput, $expectedOutput];
+    }
+
+    /**
+     * @dataProvider dataProviderForTestRemoveAttributes
+     *
+     * @param string $input
+     * @param string $expectedOutput
+     */
+    public static function testRemoveAttributes(string $input, string $expectedOutput): void
+    {
+        $actualOutput = WordPressAutoInstrumentationTest::removeAttributes($input);
+        self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
     }
 }

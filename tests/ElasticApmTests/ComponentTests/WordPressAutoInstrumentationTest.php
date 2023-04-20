@@ -131,6 +131,26 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         return $baseDir . DIRECTORY_SEPARATOR . ($isExpectedVariant ? 'expected_process_AST_output' : 'mock_src');
     }
 
+    public static function removeAttributes(string $fileContents): string
+    {
+        $adaptedLines = [];
+        foreach (TextUtilForTests::iterateLinesEx($fileContents) as [$line, $endOfLine]) {
+            $line = trim($line);
+
+            if (TextUtil::isSuffixOf(']', $line)) {
+                $attrStartPos = strpos($line, '#[');
+                if ($attrStartPos !== false) {
+                    $line = substr($line, /* offset */ 0, $attrStartPos);
+                    $endOfLine = '';
+                }
+            }
+
+            $adaptedLines[] = $line . $endOfLine;
+        }
+
+        return implode(/* separator */ '', $adaptedLines);
+    }
+
     public static function foldTextWithMarkersIntoOneLine(string $fileContents): string
     {
         $adaptedLines = [];
@@ -146,9 +166,15 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                     continue;
                 }
 
-                $trimmedLine = trim($line);
-                if (!TextUtil::isEmptyString($trimmedLine)) {
-                    $adaptedLines[] = ' ' . $trimmedLine;
+                $line = trim($line);
+
+                // Attributes were introduced in PHP 8 and earlier PHP versions interpret the rest of the line after # as a comment
+                if (PHP_MAJOR_VERSION < 8 && TextUtil::isPrefixOf('#', $line)) {
+                    continue;
+                }
+
+                if (!TextUtil::isEmptyString($line)) {
+                    $adaptedLines[] = ' ' . $line;
                 }
                 continue;
             }
@@ -169,15 +195,26 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         return implode(/* separator */ '', $adaptedLines);
     }
 
-    public static function adaptManuallyInstrumentedSourceFileContent(string $fileContents): string
+    private static function adaptSourceFileContent(bool $isExpectedVariant, string $fileContents): string
     {
-        return self::foldTextWithMarkersIntoOneLine($fileContents);
+        $adaptedFileContents = $fileContents;
+
+        // Attributes were introduced in PHP 8 and earlier PHP versions interpret the rest of the line after # as a comment
+        if (PHP_MAJOR_VERSION < 8) {
+            $adaptedFileContents = self::removeAttributes($adaptedFileContents);
+        }
+
+        if ($isExpectedVariant) {
+            $adaptedFileContents = self::foldTextWithMarkersIntoOneLine($adaptedFileContents);
+        }
+
+        return $adaptedFileContents;
     }
 
     private static function adaptSourceTree(bool $isExpectedVariant, string $fromDir, string $toDir): void
     {
         $logger = self::getLoggerForThisClass();
-        $loggerProxy = $logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyDebug = $logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
 
         self::assertNotFalse($fromDirEntries = scandir($fromDir), AssertMessageBuilder::buildString(['fromDir' => $fromDir]));
         foreach ($fromDirEntries as $entryName) {
@@ -187,7 +224,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $fromDirEntryFullPath = $fromDir . DIRECTORY_SEPARATOR . $entryName;
             if (is_dir($fromDirEntryFullPath)) {
                 $toSubDirFullPath = $toDir . DIRECTORY_SEPARATOR . $entryName;
-                $loggerProxy && $loggerProxy->log(__LINE__, 'Creating directory...', ['toSubDirFullPath' => $toSubDirFullPath]);
+                $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Creating directory...', ['toSubDirFullPath' => $toSubDirFullPath]);
                 self::assertTrue(mkdir($toSubDirFullPath));
                 self::adaptSourceTree($isExpectedVariant, $fromDirEntryFullPath, $toSubDirFullPath);
                 continue;
@@ -199,13 +236,18 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             }
             $srcFileRelPath = FileUtilForTests::convertPathRelativeTo($fromDirEntryFullPath, $fromDir);
             $adaptedSrcFileFullPath = FileUtilForTests::listToPath([$toDir, $srcFileRelPath]);
-            $loggerProxy && $loggerProxy->log(__LINE__, 'Creating file...', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
+            $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Creating file...', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
             $msg = new AssertMessageBuilder(['fromDirEntryFullPath' => $fromDirEntryFullPath, 'adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
             self::assertFileExists($fromDirEntryFullPath, $msg->s());
             self::assertNotFalse($srcFileContents = file_get_contents($fromDirEntryFullPath), $msg->s());
-            $adaptedSrcFileContents = $isExpectedVariant ? self::adaptManuallyInstrumentedSourceFileContent($srcFileContents) : $srcFileContents;
+            $adaptedSrcFileContents = self::adaptSourceFileContent($isExpectedVariant, $srcFileContents);
+            if ($adaptedSrcFileContents !== $srcFileContents) {
+                ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Contents of ' . $adaptedSrcFileFullPath . ':' . "\n" . $adaptedSrcFileContents);
+            }
             self::assertNotFalse(file_put_contents($adaptedSrcFileFullPath, $adaptedSrcFileContents), $msg->s());
             self::assertFileExists($adaptedSrcFileFullPath, $msg->s());
+            $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Created file', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
         }
     }
 
