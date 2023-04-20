@@ -25,32 +25,31 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\TestCaseBase;
+use stdClass;
+
+use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME;
 
 class WordPressAutoInstrumentationUnitTest extends TestCaseBase
 {
-    private static function findAddonNameInStackTraceFrameFilePathTestImpl(string $filePath, ?string $expectedAddonName): void
+    public function testFindAddonNameInFilePath(): void
     {
-        $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/')
-            ? $filePath
-            : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
-        $actualPluginSubDirName
-            = WordPressAutoInstrumentation::findAddonNameInStackTraceFrameFilePath($adaptedFilePath);
-        $ctx = [
-            'filePath'               => $filePath,
-            'adaptedFilePath'        => $adaptedFilePath,
-            'expectedAddonName'      => $expectedAddonName,
-            'actualPluginSubDirName' => $actualPluginSubDirName,
-        ];
-        self::assertSame($expectedAddonName, $actualPluginSubDirName, LoggableToString::convert($ctx));
-    }
-
-    public function testFindAddonNameInStackTraceFrameFilePath(): void
-    {
-        $testImpl = function (string $filePath, ?string $expectedPluginSubDirName): void {
-            self::findAddonNameInStackTraceFrameFilePathTestImpl($filePath, $expectedPluginSubDirName);
+        $testImpl = function (string $filePath, ?string $expectedAddonName): void {
+            $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/')
+                ? $filePath
+                : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
+            $actualPluginSubDirName
+                = WordPressAutoInstrumentation::findAddonNameInFilePath($adaptedFilePath, AmbientContextForTests::loggerFactory());
+            $ctx = [
+                'filePath'               => $filePath,
+                'adaptedFilePath'        => $adaptedFilePath,
+                'expectedAddonName'      => $expectedAddonName,
+                'actualPluginSubDirName' => $actualPluginSubDirName,
+            ];
+            self::assertSame($expectedAddonName, $actualPluginSubDirName, AssertMessageBuilder::buildString($ctx));
         };
 
         $testImpl('/var/www/html/wp-content/plugins/hello-dolly/hello.php', 'hello-dolly');
@@ -143,5 +142,58 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
     {
         $actualOutput = WordPressAutoInstrumentationTest::adaptManuallyInstrumentedSourceFileContent($input);
         self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
+    }
+
+    public static function dummyStaticMethodForTestGetCallbackSourceFilePath(): string
+    {
+        return __FUNCTION__;
+    }
+
+    public function dummyMethodForTestGetCallbackSourceFilePath(): string
+    {
+        return __FUNCTION__;
+    }
+
+    public function __call($methodName, $args)
+    {
+    }
+
+    public static function __callStatic($methodName, $args)
+    {
+    }
+
+    public function testGetCallbackSourceFilePath(): void
+    {
+        $testImpl =
+            /**
+             * @param mixed   $callback
+             * @param ?string $expectedResult
+             */
+            function ($callback, ?string $expectedResult): void {
+                $msg = new AssertMessageBuilder(['callback' => $callback, 'expectedResult' => $expectedResult]);
+                self::assertTrue(is_callable($callback, /* syntax_only */ true), $msg->s());
+                $actualResult = WordPressAutoInstrumentation::getCallbackSourceFilePath($callback, AmbientContextForTests::loggerFactory());
+                $msg->add('actualResult', $actualResult);
+                self::assertSame($expectedResult, $actualResult, $msg->s());
+            };
+
+        $testImpl('\dummyFuncForTestsWithoutNamespace', DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME);
+        $testImpl('dummyFuncForTestsWithoutNamespace', DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME);
+        $testImpl('\ElasticApmTests\dummyFuncForTestsWithNamespace', DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME);
+        $testImpl('ElasticApmTests\dummyFuncForTestsWithNamespace', DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME);
+
+        $testImpl(__CLASS__ . '::' . self::dummyStaticMethodForTestGetCallbackSourceFilePath(), __FILE__);
+        $testImpl([__CLASS__, self::dummyStaticMethodForTestGetCallbackSourceFilePath()], __FILE__);
+
+        $testImpl(__CLASS__ . '::' . self::dummyMethodForTestGetCallbackSourceFilePath(), __FILE__);
+        $testImpl([__CLASS__, self::dummyMethodForTestGetCallbackSourceFilePath()], __FILE__);
+        $testImpl([$this, self::dummyMethodForTestGetCallbackSourceFilePath()], __FILE__);
+
+        $testImpl(__CLASS__ . '::' . 'implictNonExistentMethod', __FILE__);
+        $testImpl([__CLASS__, 'implictNonExistentMethod'], __FILE__);
+        $testImpl([$this, 'implictNonExistentMethod'], __FILE__);
+
+        $testImpl([stdClass::class, 'implictNonExistentMethod'], null);
+        $testImpl('invalid name', null);
     }
 }

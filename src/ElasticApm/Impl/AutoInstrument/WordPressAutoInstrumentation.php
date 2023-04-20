@@ -27,15 +27,20 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Closure;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
+use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\LogCategory;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionFunction;
 use Throwable;
 
 /**
@@ -74,6 +79,9 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
      */
     private const DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS = \ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS;
 
+    /** @var LoggerFactory */
+    private $loggerFactory;
+
     /** @var Logger */
     private $logger;
 
@@ -90,7 +98,8 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     {
         parent::__construct($tracer);
 
-        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+        $this->loggerFactory = $tracer->loggerFactory();
+        $this->logger = $this->loggerFactory->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
     }
@@ -119,6 +128,10 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 
     private function switchToFailedMode(): void
     {
+        if ($this->isInFailedMode) {
+            return;
+        }
+
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->includeStackTrace()->log('Switching to FAILED mode');
         $this->isInFailedMode = true;
@@ -129,12 +142,12 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         $this->isReadyToWrapFilterCallbacks = true;
     }
 
-    public static function findAddonNameInStackTraceFrameFilePath(string $filePath, ?Logger $loggerArg = null): ?string
+    public static function findAddonNameInFilePath(string $filePath, LoggerFactory $loggerFactory): ?string
     {
         $logger = null;
         $loggerProxyTrace = null;
-        if ($loggerArg !== null && $loggerArg->ifTraceLevelEnabledNoLine(__FUNCTION__) !== null) {
-            $logger = $loggerArg->inherit()->addContext('filePath', $filePath);
+        if ($loggerFactory->isEnabledForLevel(Level::TRACE)) {
+            $logger = $loggerFactory->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('filePath', $filePath);
             $loggerProxyTrace = $logger->ifTraceLevelEnabledNoLine(__FUNCTION__);
         }
 
@@ -182,119 +195,119 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         return basename($dirName);
     }
 
-    private function findAddonName(): ?string
+    /**
+     * @param Closure|string $callback
+     * @param Logger         $logger
+     *
+     * @return ?string
+     *
+     * @throws ReflectionException
+     */
+    private static function getCallbackSourceFilePathImplForFunc($callback, Logger $logger): ?string
     {
-        static $callsCount = 0;
-        ++$callsCount;
+        $reflectFunc = new ReflectionFunction($callback);
+        if (($srcFilePath = $reflectFunc->getFileName()) === false) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Failed to get file name from ReflectionFunction of captured callback');
+            return null;
+        }
+        return $srcFilePath;
+    }
 
-        /** @var array<string, array<string, mixed>> $positiveCache */
-        static $positiveCache = [];
-        $positiveCacheCountOnEntry = count($positiveCache);
-        $addToPositiveCache = function (string $filePath, string $pluginName) use (&$positiveCache): void {
-            $positiveCache[$filePath] = [];
-            $cache =& $positiveCache[$filePath];
-            $cache['plugin name'] = $pluginName;
-            $cache['fetch count'] = 0;
-        };
+    /**
+     * @param object|string $classInstanceOrName
+     * @param Logger         $logger
+     *
+     * @return ?string
+     *
+     * @throws ReflectionException
+     */
+    private static function getCallbackSourceFilePathImplForClass($classInstanceOrName, Logger $logger): ?string
+    {
+        $reflectClass = new ReflectionClass($classInstanceOrName);
+        if (($srcFilePath = $reflectClass->getFileName()) === false) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Failed to get file name from ReflectionClass of captured callback', ['classInstanceOrName' => $classInstanceOrName]);
+            return null;
+        }
+        return $srcFilePath;
+    }
 
-        /** @var array<string, array<string, mixed>> $negativeCache */
-        static $negativeCache = [];
-        $negativeCacheCountOnEntry = count($negativeCache);
-        $addToNegativeCache = function (string $filePath, string $reason) use (&$negativeCache): void {
-            $negativeCache[$filePath] = [];
-            $cache =& $negativeCache[$filePath];
-            $cache['reason'] = $reason;
-            $cache['fetch count'] = 0;
-        };
-        $tryToFetchFromCache = function (
-            string $filePath,
-            ?string &$pluginName
-        ) use (
-            &$positiveCache,
-            &$negativeCache
-        ): bool {
-            if (array_key_exists($filePath, $positiveCache)) {
-                $cache =& $positiveCache[$filePath];
-                $isPositive = true;
-            } elseif (array_key_exists($filePath, $negativeCache)) {
-                $cache =& $negativeCache[$filePath];
-                $isPositive = false;
-            } else {
-                return false;
-            }
-            ++$cache['fetch count'];
-            if ($isPositive) {
-                $pluginName = $cache['plugin name'];
-                return true;
-            }
-            $pluginName = null;
-            return true;
-        };
-
-        $stackTrace = StackTraceUtil::captureInClassicFormatExcludeElasticApm(/* loggerFactory */ null, /* offset */ 0, /* options */ 0);
-
-        $retVal = null;
-        // $forceLogResultAndStats = false;
-        // $expectedRetVal = null;
-        foreach ($stackTrace as $stackTraceFrame) {
-            $filePath = $stackTraceFrame->file;
-            if ($filePath === null) {
-                continue;
-            }
-
-            if ($tryToFetchFromCache($filePath, /* ref */ $pluginName)) {
-                if ($pluginName === null) {
-                    continue;
-                }
-                $retVal = $pluginName;
-                break;
-            }
-
-            $pluginName = self::findAddonNameInStackTraceFrameFilePath($filePath, $this->logger);
-            if ($pluginName !== null) {
-                $retVal = $pluginName;
-                $addToPositiveCache($filePath, $pluginName);
-                break;
-            }
-
-            $addToNegativeCache($filePath, '');
-            /** @var ?string $pluginName */
-            $pluginName = null;
-            $fetchRetVal = $tryToFetchFromCache($filePath, /* ref */ $pluginName);
-            assert($fetchRetVal === true, LoggableToString::convert(['fetchRetVal' => $fetchRetVal]));
-            assert($pluginName === null, LoggableToString::convert(['pluginName' => $pluginName]));
+    /**
+     * @param mixed  $callback
+     * @param Logger $logger
+     *
+     * @return ?string
+     *
+     * @throws ReflectionException
+     */
+    private static function getCallbackSourceFilePathImpl($callback, Logger $logger): ?string
+    {
+        // If callback is a Closure or string but not 'Class::method'
+        if ($callback instanceof Closure) {
+            return self::getCallbackSourceFilePathImplForFunc($callback, $logger);
         }
 
-        // if ($expectedRetVal !== null) {
-        //     assert(
-        //         $retVal === $expectedRetVal,
-        //         LoggableToString::convert(['expectedRetVal' => $expectedRetVal, 'retVal' => $retVal])
-        //     );
-        // }
-
-        // if ($forceLogResultAndStats) {
-        //     ($loggerProxy = $this->logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-        //     && $loggerProxy->log('', ['retVal' => $retVal]);
-        // }
-
-        // if ($forceLogResultAndStats || (($callsCount % 1000) === 1)) {
-        if (($callsCount % 1000) === 1) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('', ['callsCount' => $callsCount, 'positiveCache' => $positiveCache]);
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('', ['callsCount' => $callsCount, 'negativeCache' => $negativeCache]);
-        } else {
-            if ($positiveCacheCountOnEntry === 0 && count($positiveCache) === 1) { // @phpstan-ignore-line
-                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('', ['count' => count($positiveCache), 'positiveCache' => $positiveCache]);
+        // If callback is a string but not 'Class::method'
+        if (is_string($callback)) {
+            if (($afterClassNamePos = strpos($callback, '::')) === false) {
+                return self::getCallbackSourceFilePathImplForFunc($callback, $logger);
             }
-            if ($negativeCacheCountOnEntry === 0 && count($negativeCache) === 1) { // @phpstan-ignore-line
-                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('', ['count' => count($negativeCache), 'negativeCache' => $negativeCache]);
-            }
+            $className = substr($callback, /* offset */ 0, /* length */ $afterClassNamePos);
+            return self::getCallbackSourceFilePathImplForClass($className, $logger);
         }
 
-        return $retVal;
+        if (!is_array($callback)) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('callback of unexpected type');
+            return null;
+        }
+
+        if (ArrayUtil::isEmpty($callback)) {
+            ($loggerProxy = logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('callback is an empty array');
+            return null;
+        }
+
+        $firstElement = $callback[0];
+
+        if (is_string($firstElement) || is_object($firstElement)) {
+            return self::getCallbackSourceFilePathImplForClass($firstElement, $logger);
+        }
+
+        ($loggerProxy = logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('callback is an array but its first element is of unexpected type', ['firstElement type' => DbgUtil::getType($firstElement), 'firstElement' => $firstElement]);
+        return null;
+    }
+
+    /**
+     * @param mixed         $callback
+     * @param LoggerFactory $loggerFactory
+     *
+     * @return ?string
+     */
+    public static function getCallbackSourceFilePath($callback, LoggerFactory $loggerFactory): ?string
+    {
+        $logger = $loggerFactory->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)
+                                ->addAllContext(['callback type' => DbgUtil::getType($callback), 'callback' => $callback]);
+
+        try {
+            return self::getCallbackSourceFilePathImpl($callback, $logger);
+        } catch (ReflectionException $e) {
+            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->logThrowable($e, 'Failed to reflect captured callback');
+            return null;
+        }
+    }
+
+    /**
+     * @param mixed $callback
+     *
+     * @return string
+     */
+    private function findAddonName($callback): ?string
+    {
+        if (($srcFilePath = self::getCallbackSourceFilePath($callback, $this->loggerFactory)) === null) {
+            return null;
+        }
+
+        return self::findAddonNameInFilePath($srcFilePath, $this->loggerFactory);
     }
 
     public function directCall(string $method): void
@@ -423,7 +436,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         }
 
         $originalCallback = $callback;
-        $wrapper = new WordPressFilterCallbackWrapper($hookName, $originalCallback, $this->findAddonName());
+        $wrapper = new WordPressFilterCallbackWrapper($hookName, $originalCallback, $this->findAddonName($originalCallback));
         $callback = $wrapper;
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
