@@ -117,9 +117,13 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
     public function testIsAutoInstrumentationEnabled(): void
     {
         // In production code ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS is defined by the native part of the agent
-        // but we don't load elastic_apm extension in the component tests so we need to define a dummy
-        define('ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS', 'dummy unused value');
-        $this->implTestIsAutoInstrumentationEnabled(WordPressAutoInstrumentation::class, /* expectedNames */ ['wordpress']);
+        // but if we don't load elastic_apm extension in the component tests so we need to define a dummy
+        $constantName = 'ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS';
+        if (!defined($constantName)) {
+            define($constantName, 'dummy unused value');
+        }
+
+        self::implTestIsAutoInstrumentationEnabled(WordPressAutoInstrumentation::class, /* expectedNames */ ['wordpress']);
     }
 
     private static function buildInputOrExpectedOutputVariantSubDir(string $baseDir, bool $isExpectedVariant): string
