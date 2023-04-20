@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\DataFromAgent;
@@ -191,11 +192,14 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     protected static function getNullableFloatFromMap(string $argKey, array $argsMap): ?float
     {
-        $val = self::getFromMap($argKey, $argsMap);
-        if ($val !== null) {
-            self::assertIsFloat($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        $value = self::getFromMap($argKey, $argsMap);
+        if ($value === null || is_float($value)) {
+            return $value;
         }
-        return $val;
+        if (is_int($value)) {
+            return floatval($value);
+        }
+        self::fail('Value is not a float' . LoggableToString::convert(['value type' => DbgUtil::getType($value), 'value' => $value, 'argKey' => $argKey, 'argsMap' => $argsMap]));
     }
 
     /**
