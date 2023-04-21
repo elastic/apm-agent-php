@@ -28,6 +28,7 @@
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
 #include "lifecycle.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
 
