@@ -119,6 +119,31 @@ final class Logger implements LoggableInterface
         return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
     }
 
+    public function ifCriticalLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::CRITICAL, $srcCodeFunc);
+    }
+
+    public function ifErrorLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::ERROR, $srcCodeFunc);
+    }
+
+    public function ifWarningLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::WARNING, $srcCodeFunc);
+    }
+
+    public function ifInfoLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::INFO, $srcCodeFunc);
+    }
+
+    public function ifDebugLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::DEBUG, $srcCodeFunc);
+    }
+
     public function ifTraceLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
     {
         return $this->ifLevelEnabledNoLine(Level::TRACE, $srcCodeFunc);
