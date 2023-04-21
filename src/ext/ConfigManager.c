@@ -18,6 +18,7 @@
  */
 
 #include "ConfigManager.h"
+#include "ConfigSnapshot.h"
 #ifdef ELASTIC_APM_MOCK_STDLIB
 #   include "mock_stdlib.h"
 #else
