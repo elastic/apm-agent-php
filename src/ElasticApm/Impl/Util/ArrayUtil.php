@@ -54,16 +54,14 @@ final class ArrayUtil
     }
 
     /**
-     * @param string|int               $key
-     * @param array<string|int, mixed> $array
-     * @param mixed                    $fallbackValue
+     * @template TKey of string|int
+     * @template TValue
      *
-     * @return mixed
+     * @param TKey                $key
+     * @param array<TKey, TValue> $array
+     * @param TValue              $fallbackValue
      *
-     * @template        T
-     * @phpstan-param   T[] $array
-     * @phpstan-param   T   $fallbackValue
-     * @phpstan-return  T
+     * @return TValue
      */
     public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
