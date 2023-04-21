@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\FileUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
 use stdClass;
@@ -42,7 +43,7 @@ final class WordPressMockBridge
 {
     use StaticClassTrait;
 
-    /** @var ?string */
+    /** @var mixed */
     public static $activeTheme = null;
 
     /** @var null|array<mixed> */
@@ -58,14 +59,19 @@ final class WordPressMockBridge
     public static $mockPluginCallbackCallsCount = 0;
 
     /** @var int */
+    public static $mockThemeCallbackCallsCount = 0;
+
+    /** @var int */
     public static $mockPartOfCoreCallbackCallsCount = 0;
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
     public const MOCK_PLUGIN_HOOK_NAME = 'media_upload_newtab';
+    public const MOCK_THEME_HOOK_NAME = 'set_header_font';
     public const MOCK_PART_OF_CORE_HOOK_NAME = 'update_footer';
 
     public const MOCK_MU_PLUGIN_NAME = 'my_mock_mu_plugin';
     public const MOCK_PLUGIN_NAME = 'my_mock_plugin';
+    public const MOCK_THEME_NAME = 'my_mock_theme';
 
     public static function loadMockSource(string $srcVariantBaseDir, bool $isExpectedVariant): void
     {
@@ -80,10 +86,16 @@ final class WordPressMockBridge
         $wpContentDir = $srcVariantBaseDir . DIRECTORY_SEPARATOR . 'wp-content';
         require FileUtilForTests::listToPath([$wpContentDir, 'mu-plugins', self::MOCK_MU_PLUGIN_NAME . '.php']);
         require FileUtilForTests::listToPath([$wpContentDir, 'plugins', self::MOCK_PLUGIN_NAME, 'main.php']);
+        require FileUtilForTests::listToPath([$wpContentDir, 'themes', self::MOCK_THEME_NAME, 'index.php']);
         require FileUtilForTests::listToPath([$srcVariantBaseDir, 'wp-admin', 'part_of_core.php']);
     }
 
-    private static function callWpGetTemplate(): ?string
+    /**
+     * @return mixed
+     *
+     * @noinspection PhpReturnDocTypeMismatchInspection
+     */
+    private static function callWpGetTemplate()
     {
         /**
          * @noinspection PhpFullyQualifiedNameUsageInspection
@@ -121,10 +133,19 @@ final class WordPressMockBridge
         \do_action($hookName, ...$args);
     }
 
-    public static function runMockSource(int $muPluginCallsCount, int $pluginCallsCount, int $partOfCoreCallsCount): void
+    public static function runMockSource(MixedMap $appCodeArgs): void
     {
-        $activeTheme = self::callWpGetTemplate();
-        Assert::assertSame(self::$activeTheme, $activeTheme);
+        $activeTheme = $appCodeArgs->getNullableString(WordPressAutoInstrumentationTest::EXPECTED_THEME_KEY);
+        $muPluginCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::MU_PLUGIN_CALLS_COUNT_KEY);
+        $pluginCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::PLUGIN_CALLS_COUNT_KEY);
+        $themeCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::THEME_CALLS_COUNT_KEY);
+        $partOfCoreCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLS_COUNT_KEY);
+
+        // Have instrumented get_template() return non-string value first to test that instrumentation handles it correctly
+        WordPressMockBridge::$activeTheme = false;
+        Assert::assertSame(self::$activeTheme, self::callWpGetTemplate());
+        WordPressMockBridge::$activeTheme = $activeTheme;
+        Assert::assertSame(self::$activeTheme, self::callWpGetTemplate());
 
         $applyFiltersCallsCount = 0;
         $doActionCallsCount = 0;
@@ -180,6 +201,10 @@ final class WordPressMockBridge
             $invokeCallbacks(self::MOCK_PLUGIN_HOOK_NAME);
         }
 
+        foreach (RangeUtil::generateUpTo($themeCallsCount) as $ignored) {
+            $invokeCallbacks(self::MOCK_THEME_HOOK_NAME);
+        }
+
         foreach (RangeUtil::generateUpTo($partOfCoreCallsCount) as $ignored) {
             $invokeCallbacks(self::MOCK_PART_OF_CORE_HOOK_NAME);
         }
@@ -189,6 +214,7 @@ final class WordPressMockBridge
         $txCtx->setLabel(WordPressAutoInstrumentationTest::DO_ACTION_CALLS_COUNT_KEY, $doActionCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::MU_PLUGIN_CALLS_COUNT_KEY, self::$mockMuPluginCallbackCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::PLUGIN_CALLS_COUNT_KEY, self::$mockPluginCallbackCallsCount);
+        $txCtx->setLabel(WordPressAutoInstrumentationTest::THEME_CALLS_COUNT_KEY, self::$mockThemeCallbackCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLS_COUNT_KEY, self::$mockPartOfCoreCallbackCallsCount);
     }
 

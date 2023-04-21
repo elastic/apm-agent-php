@@ -43,6 +43,7 @@ use ElasticApmTests\Util\AssertMessageBuilder;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TextUtilForTests;
@@ -62,9 +63,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private const IS_AST_PROCESS_ENABLED_KEY = 'IS_AST_PROCESS_ENABLED';
     private const IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY = 'IS_AST_PROCESS_DEBUG_DUMP_ENABLED';
-    private const EXPECTED_THEME_KEY = 'EXPECTED_THEME';
+    public const EXPECTED_THEME_KEY = 'EXPECTED_THEME';
     public const MU_PLUGIN_CALLS_COUNT_KEY = 'MU_PLUGIN_CALLS_COUNT';
     public const PLUGIN_CALLS_COUNT_KEY = 'PLUGIN_CALLS_COUNT';
+    public const THEME_CALLS_COUNT_KEY = 'THEME_CALLS_COUNT';
     public const PART_OF_CORE_CALLS_COUNT_KEY = 'PART_OF_CORE_CALLS_COUNT';
 
     public const APPLY_FILTERS_CALLS_COUNT_KEY = 'APPLY_FILTERS_COUNT_CALLS';
@@ -478,6 +480,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             ->addKeyedDimensionOnlyFirstValueCombinable(self::EXPECTED_THEME_KEY, ['my_favorite_theme', null, 'some_other_theme'])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::PLUGIN_CALLS_COUNT_KEY, [10, 1, 2, 0])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::MU_PLUGIN_CALLS_COUNT_KEY, [7, 1, 2, 0])
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::THEME_CALLS_COUNT_KEY, [13, 1, 2, 0])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::PART_OF_CORE_CALLS_COUNT_KEY, [11, 1, 2, 0])
             ->wrapResultIntoArray()
             ->build();
@@ -495,7 +498,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
             function () use ($testArgs): void {
-                $this->implTestOnMockSource($testArgs);
+                $this->implTestOnMockSource(new MixedMap($testArgs));
             }
         );
     }
@@ -508,26 +511,20 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         $srcVariantBaseDir = self::buildInputOrExpectedOutputVariantSubDir(self::SRC_VARIANTS_DIR, /* isExpectedVariant */ false);
         WordPressMockBridge::loadMockSource($srcVariantBaseDir, /* isExpectedVariant */ false);
 
-        WordPressMockBridge::$activeTheme = self::getNullableStringFromMap(self::EXPECTED_THEME_KEY, $appCodeArgs);
-        $muPluginCallsCount = self::getIntFromMap(self::MU_PLUGIN_CALLS_COUNT_KEY, $appCodeArgs);
-        $pluginCallsCount = self::getIntFromMap(self::PLUGIN_CALLS_COUNT_KEY, $appCodeArgs);
-        $partOfCoreCallsCount = self::getIntFromMap(self::PART_OF_CORE_CALLS_COUNT_KEY, $appCodeArgs);
-        WordPressMockBridge::runMockSource($muPluginCallsCount, $pluginCallsCount, $partOfCoreCallsCount);
+        WordPressMockBridge::runMockSource(new MixedMap($appCodeArgs));
     }
 
-    /**
-     * @param array<string, mixed> $testArgs
-     */
-    private function implTestOnMockSource(array $testArgs): void
+    private function implTestOnMockSource(MixedMap $testArgs): void
     {
-        $isAstProcessEnabled = self::getBoolFromMap(self::IS_AST_PROCESS_ENABLED_KEY, $testArgs);
-        $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
-        $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
+        $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
+        $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
+        $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
         $isWordPressDataToBeExpected = $isAstProcessEnabled && $isInstrumentationEnabled;
-        $expectedTheme = self::getNullableStringFromMap(self::EXPECTED_THEME_KEY, $testArgs);
-        $expectedMuPluginCallsCount = self::getIntFromMap(self::MU_PLUGIN_CALLS_COUNT_KEY, $testArgs);
-        $expectedPluginCallsCount = self::getIntFromMap(self::PLUGIN_CALLS_COUNT_KEY, $testArgs);
-        $expectedPartOfCoreCallsCount = self::getIntFromMap(self::PART_OF_CORE_CALLS_COUNT_KEY, $testArgs);
+        $expectedTheme = $testArgs->getNullableString(self::EXPECTED_THEME_KEY);
+        $expectedMuPluginCallsCount = $testArgs->getInt(self::MU_PLUGIN_CALLS_COUNT_KEY);
+        $expectedPluginCallsCount = $testArgs->getInt(self::PLUGIN_CALLS_COUNT_KEY);
+        $expectedThemeCallsCount = $testArgs->getInt(self::THEME_CALLS_COUNT_KEY);
+        $expectedPartOfCoreCallsCount = $testArgs->getInt(self::PART_OF_CORE_CALLS_COUNT_KEY);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
@@ -547,21 +544,23 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
              * @see WordPressMockBridge::runMockSource
              */
             foreach (RangeUtil::generateUpTo($expectedMuPluginCallsCount) as $ignored) {
-                $expectedSpans[] = $expectationsBuilder->forAddonFilterCallback(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, WordPressMockBridge::MOCK_MU_PLUGIN_NAME);
+                $expectedSpans[] = $expectationsBuilder->forPluginFilterCallback(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, WordPressMockBridge::MOCK_MU_PLUGIN_NAME);
             }
             foreach (RangeUtil::generateUpTo($expectedPluginCallsCount) as $ignored) {
-                $expectedSpans[] = $expectationsBuilder->forAddonFilterCallback(WordPressMockBridge::MOCK_PLUGIN_HOOK_NAME, WordPressMockBridge::MOCK_PLUGIN_NAME);
+                $expectedSpans[] = $expectationsBuilder->forPluginFilterCallback(WordPressMockBridge::MOCK_PLUGIN_HOOK_NAME, WordPressMockBridge::MOCK_PLUGIN_NAME);
+            }
+            foreach (RangeUtil::generateUpTo($expectedThemeCallsCount) as $ignored) {
+                $expectedSpans[] = $expectationsBuilder->forThemeFilterCallback(WordPressMockBridge::MOCK_THEME_HOOK_NAME, WordPressMockBridge::MOCK_THEME_NAME);
             }
             foreach (RangeUtil::generateUpTo($expectedPartOfCoreCallsCount) as $ignored) {
                 $expectedSpans[] = $expectationsBuilder->forCoreFilterCallback(WordPressMockBridge::MOCK_PART_OF_CORE_HOOK_NAME);
             }
         }
 
-        $appCodeArgs = $testArgs;
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestOnMockSource']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($appCodeArgs): void {
-                $appCodeRequestParams->setAppCodeArgs($appCodeArgs);
+            function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
+                $appCodeRequestParams->setAppCodeArgs($testArgs->asArray());
             }
         );
 
@@ -584,6 +583,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         self::assertSame($expectedMuPluginCallsCount, $actualMuPluginCallsCount);
         $actualPluginCallsCount = self::getLabel($tx, self::PLUGIN_CALLS_COUNT_KEY);
         self::assertSame($expectedPluginCallsCount, $actualPluginCallsCount);
+        $actualThemeCallsCount = self::getLabel($tx, self::THEME_CALLS_COUNT_KEY);
+        self::assertSame($expectedThemeCallsCount, $actualThemeCallsCount);
         $actualPartOfCoreCallsCount = self::getLabel($tx, self::PART_OF_CORE_CALLS_COUNT_KEY);
         self::assertSame($expectedPartOfCoreCallsCount, $actualPartOfCoreCallsCount);
 
@@ -591,7 +592,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         self::assertIsInt($applyFiltersCallsCount);
         $doActionCallsCount = self::getLabel($tx, self::DO_ACTION_CALLS_COUNT_KEY);
         self::assertIsInt($doActionCallsCount);
-        self::assertSame($applyFiltersCallsCount + $doActionCallsCount, $expectedMuPluginCallsCount + $expectedPluginCallsCount + $expectedPartOfCoreCallsCount);
+        self::assertSame($applyFiltersCallsCount + $doActionCallsCount, $expectedMuPluginCallsCount + $expectedPluginCallsCount + $actualThemeCallsCount + $expectedPartOfCoreCallsCount);
 
         if (!$isWordPressDataToBeExpected) {
             return;

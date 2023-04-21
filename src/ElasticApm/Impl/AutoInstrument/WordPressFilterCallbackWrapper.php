@@ -45,19 +45,24 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
     /** @var mixed */
     private $callback;
 
+    /** @var string */
+    private $callbackGroupKind;
+
     /** @var ?string */
-    private $addonName;
+    private $callbackGroupName;
 
     /**
      * @param string  $hookName
      * @param mixed   $callback
-     * @param ?string $addonName
+     * @param string  $callbackGroupKind
+     * @param ?string $callbackGroupName
      */
-    public function __construct(string $hookName, $callback, ?string $addonName)
+    public function __construct(string $hookName, $callback, string $callbackGroupKind, ?string $callbackGroupName)
     {
         $this->hookName = $hookName;
         $this->callback = $callback;
-        $this->addonName = $addonName;
+        $this->callbackGroupKind = $callbackGroupKind;
+        $this->callbackGroupName = $callbackGroupName;
     }
 
     /**
@@ -73,19 +78,18 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
      */
     public function __invoke()
     {
-        $name = $this->hookName . ' - ' . ($this->addonName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE);
-        $type = $this->addonName === null ? WordPressAutoInstrumentation::SPAN_TYPE_FOR_CORE : WordPressAutoInstrumentation::SPAN_TYPE_FOR_ADDONS;
-        $subtype = $this->addonName;
-        $action = $this->hookName;
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
-
-        try {
-            return call_user_func_array($this->callback, func_get_args()); // @phpstan-ignore-line
-        } catch (Throwable $throwable) {
-            $span->createErrorFromThrowable($throwable);
-            throw $throwable;
-        } finally {
-            $span->end();
-        }
+        $args = func_get_args();
+        return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+            $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
+            $type = $this->callbackGroupKind /* <- type */,
+            /**
+             * @return mixed
+             */
+            function () use ($args) {
+                return call_user_func_array($this->callback, $args); // @phpstan-ignore-line - $this->callback should have type callable
+            },
+            $this->callbackGroupName /* <- subtype */,
+            $this->hookName /* <- action */
+        );
     }
 }

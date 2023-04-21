@@ -36,7 +36,7 @@ function get_templateElasticApmWrapped_suffixToBeRemovedByElasticApmTests(
     /** doc comment for param3 */
     #[MyDummyAttribute()]
     float &$param3 = MY_DUMMY_GLOBAL_FLOAT_CONST
-): ?string {
+) {
     /**
      * get_template() body
      */
@@ -59,7 +59,7 @@ function get_template(
     /** doc comment for param3 */
     #[MyDummyAttribute()]
     float &$param3 = MY_DUMMY_GLOBAL_FLOAT_CONST
-): ?string {
+) {
     $args = \func_get_args();
     $postHook = \elastic_apm_ast_instrumentation_pre_hook(/* instrumentedClassFullName */ null, __FUNCTION__, $args);
     try {

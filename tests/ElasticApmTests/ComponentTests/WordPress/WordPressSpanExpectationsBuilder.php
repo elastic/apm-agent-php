@@ -35,24 +35,35 @@ use ElasticApmTests\Util\SpanExpectationsBuilder;
 final class WordPressSpanExpectationsBuilder extends SpanExpectationsBuilder
 {
     private const EXPECTED_SPAN_TYPE_FOR_CORE = 'wordpress_core';
-    private const EXPECTED_SPAN_TYPE_FOR_ADDONS = 'wordpress_addon';
+    private const EXPECTED_SPAN_TYPE_FOR_PLUGIN = 'wordpress_plugin';
+    private const EXPECTED_SPAN_TYPE_FOR_THEME = 'wordpress_theme';
 
     public function __construct(SpanExpectations $shared)
     {
         parent::__construct($shared);
     }
 
-    public function forAddonFilterCallback(string $hookName, string $addonName): SpanExpectations
+    private function forAddonFilterCallback(string $hookName, string $addonGroup, string $addonName): SpanExpectations
     {
         /**
          * @see WordPressFilterCallbackWrapper::__invoke
          */
         $result = $this->startNew();
         $result->name->setValue($hookName . ' - ' . $addonName);
-        $result->type->setValue(self::EXPECTED_SPAN_TYPE_FOR_ADDONS);
+        $result->type->setValue($addonGroup);
         $result->subtype->setValue($addonName);
         $result->action->setValue($hookName);
         return $result;
+    }
+
+    public function forPluginFilterCallback(string $hookName, string $pluginName): SpanExpectations
+    {
+        return $this->forAddonFilterCallback($hookName, /* addonGroup */ self::EXPECTED_SPAN_TYPE_FOR_PLUGIN, $pluginName);
+    }
+
+    public function forThemeFilterCallback(string $hookName, string $themeName): SpanExpectations
+    {
+        return $this->forAddonFilterCallback($hookName, /* addonGroup */ self::EXPECTED_SPAN_TYPE_FOR_THEME, $themeName);
     }
 
     public function forCoreFilterCallback(string $hookName): SpanExpectations

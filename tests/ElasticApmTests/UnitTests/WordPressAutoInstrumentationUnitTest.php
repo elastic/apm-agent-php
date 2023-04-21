@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageBuilder;
@@ -37,73 +36,66 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
 {
     public function testFindAddonNameInFilePath(): void
     {
-        $testImpl = function (string $filePath, ?string $expectedAddonName): void {
+        $testImpl = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName): void {
             $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/')
                 ? $filePath
                 : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
-            $actualPluginSubDirName
-                = WordPressAutoInstrumentation::findAddonNameInFilePath($adaptedFilePath, AmbientContextForTests::loggerFactory());
+            $actualGroupKind = 'dummy actualGroupKind';
+            $actualGroupName = 'dummy actualGroupName';
+            WordPressAutoInstrumentation::findAddonInfoFromFilePath($adaptedFilePath, AmbientContextForTests::loggerFactory(), /* out */ $actualGroupKind, /* out */ $actualGroupName);
             $ctx = [
-                'filePath'               => $filePath,
-                'adaptedFilePath'        => $adaptedFilePath,
-                'expectedAddonName'      => $expectedAddonName,
-                'actualPluginSubDirName' => $actualPluginSubDirName,
+                'filePath'          => $filePath,
+                'adaptedFilePath'   => $adaptedFilePath,
+                'expectedGroupKind' => $expectedGroupKind,
+                'actualGroupKind'   => $actualGroupKind,
+                'expectedGroupName' => $expectedGroupName,
+                'actualGroupName'   => $actualGroupName,
             ];
-            self::assertSame($expectedAddonName, $actualPluginSubDirName, AssertMessageBuilder::buildString($ctx));
+            self::assertSame($expectedGroupKind, $actualGroupKind, AssertMessageBuilder::buildString($ctx));
+            self::assertSame($expectedGroupName, $actualGroupName, AssertMessageBuilder::buildString($ctx));
         };
 
-        $testImpl('/var/www/html/wp-content/plugins/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/plugins/hello-dolly/', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/plugins/hello-dolly', null);
-        $testImpl('/wp-content/plugins/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('wp-content/plugins/hello-dolly/hello.php', null);
-        $testImpl('/wp-content/plugins/hello.php', 'hello');
+        $pluginFilePathToExpectedName = [
+            '/var/www/html/wp-content/plugins/hello-dolly/hello.php' => 'hello-dolly',
+            '/var/www/html/wp-content/plugins/hello-dolly/'          => 'hello-dolly',
+            '/wp-content/plugins/hello-dolly/hello.php'              => 'hello-dolly',
+            '/wp-content/plugins/hello.php'                          => 'hello',
 
-        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly/', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/mu-plugins/hello-dolly', null);
-        $testImpl('/wp-content/mu-plugins/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('wp-content/mu-plugins/hello-dolly/hello.php', null);
-        $testImpl('/wp-content/mu-plugins/hello.php', 'hello');
+            '/var/www/html/wp-content/mu-plugins/hello-dolly/hello.php' => 'hello-dolly',
+            '/var/www/html/wp-content/mu-plugins/hello-dolly/'          => 'hello-dolly',
+            '/wp-content/mu-plugins/hello-dolly/hello.php'              => 'hello-dolly',
+            '/wp-content/mu-plugins/hello.php'                          => 'hello',
+            'mock_src/wp-content/mu-plugins/my_mock_mu_plugin.php'      => 'my_mock_mu_plugin',
+        ];
+        foreach ($pluginFilePathToExpectedName as $filePath => $expectedGroupName) {
+            $testImpl($filePath, /* $expectedGroupKind */ WordPressAutoInstrumentation::CALLBACK_GROUP_KIND_PLUGIN, $expectedGroupName);
+        }
 
-        $testImpl('/var/www/html/wp-content/themes/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/themes/hello-dolly/', 'hello-dolly');
-        $testImpl('/var/www/html/wp-content/themes/hello-dolly', null);
-        $testImpl('/wp-content/themes/hello-dolly/hello.php', 'hello-dolly');
-        $testImpl('wp-content/themes/hello-dolly/hello.php', null);
-        $testImpl('/wp-content/themes/hello.php', 'hello');
+        $themeFilePathToExpectedName = [
+            '/var/www/html/wp-content/themes/hello-dolly/hello.php' => 'hello-dolly',
+            '/var/www/html/wp-content/themes/hello-dolly/'          => 'hello-dolly',
+            '/wp-content/themes/hello-dolly/hello.php'              => 'hello-dolly',
+            '/wp-content/themes/hello.php'                          => 'hello',
+        ];
+        foreach ($themeFilePathToExpectedName as $filePath => $expectedGroupName) {
+            $testImpl($filePath, /* $expectedGroupKind */ WordPressAutoInstrumentation::CALLBACK_GROUP_KIND_THEME, $expectedGroupName);
+        }
 
-        $testImpl('', null);
-        $testImpl('/', null);
-        $testImpl('//', null);
-        $testImpl('/abc', null);
-    }
-
-    private static function findThemeNameFromDirPathTestImpl(string $themeDirPath, ?string $expectedThemeName): void
-    {
-        $actualThemeName = WordPressAutoInstrumentation::findThemeNameFromDirPath($themeDirPath);
-        $ctx = ['themeDirPath' => $themeDirPath, 'expectedThemeName' => $expectedThemeName, 'actualThemeName' => $actualThemeName];
-        self::assertSame($expectedThemeName, $actualThemeName, LoggableToString::convert($ctx));
-    }
-
-    public function testFindThemeNameFromDirPath(): void
-    {
-        $testImpl = function (string $themeDirPath, ?string $expectedThemeName): void {
-            self::findThemeNameFromDirPathTestImpl($themeDirPath, $expectedThemeName);
-        };
-
-        $testImpl('/var/www/html/wp-content/themes/generatepress', 'generatepress');
-        $testImpl('/var/www/html/wp-content/themes/generatepress/', 'generatepress');
-        $testImpl('/var/www/html/wp-content/themes/generatepress/.', '.');
-        $testImpl('/var/www/html/wp-content/themes/generatepress/./', '.');
-        $testImpl('generatepress', 'generatepress');
-        $testImpl('generatepress/', 'generatepress');
-        $testImpl('/.', '.');
-        $testImpl('.', '.');
-        $testImpl('/./', '.');
-
-        $testImpl('/', null);
-        $testImpl('', null);
+        $coreFilePaths = [
+            'wp-content/plugins/hello-dolly/hello.php',
+            '/var/www/html/wp-content/plugins/hello-dolly',
+            '/var/www/html/wp-content/mu-plugins/hello-dolly',
+            'wp-content/mu-plugins/hello-dolly/hello.php',
+            '/var/www/html/wp-content/themes/hello-dolly',
+            'wp-content/themes/hello-dolly/hello.php',
+            '',
+            '/',
+            '//',
+            '/abc',
+        ];
+        foreach ($coreFilePaths as $filePath) {
+            $testImpl($filePath, /* $expectedGroupKind */ WordPressAutoInstrumentation::CALLBACK_GROUP_KIND_CORE, /* expectedGroupName */ null);
+        }
     }
 
     /**
@@ -199,6 +191,10 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
         $testImpl(__CLASS__ . '::' . 'implictNonExistentMethod', __FILE__);
         $testImpl([__CLASS__, 'implictNonExistentMethod'], __FILE__);
         $testImpl([$this, 'implictNonExistentMethod'], __FILE__);
+
+        $dummyClosure = function () {
+        };
+        $testImpl($dummyClosure, __FILE__);
 
         $testImpl('', null);
         $testImpl(null, null);

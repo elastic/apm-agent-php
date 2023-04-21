@@ -36,7 +36,7 @@ function get_template(
     /** doc comment for param3 */
     #[MyDummyAttribute()]
     float &$param3 = MY_DUMMY_GLOBAL_FLOAT_CONST
-): ?string {
+) {
     /**
      * get_template() body
      */
