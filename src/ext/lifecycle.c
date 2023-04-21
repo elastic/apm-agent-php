@@ -41,6 +41,7 @@
 #include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "AST_instrumentation.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -169,6 +170,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     }
     tracer->curlInited = true;
 
+    astInstrumentationOnModuleInit( config );
+
     resultCode = resultSuccess;
     finally:
 
@@ -205,6 +208,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
         goto finally;
     }
+
+    astInstrumentationOnModuleShutdown();
 
     backgroundBackendCommOnModuleShutdown( config );
 
@@ -606,9 +611,6 @@ void elasticApmRequestInit()
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
-
-//    readSystemMetrics( &tracer->startSystemMetricsReading );
 
     if ( config->captureErrors )
     {
@@ -630,6 +632,13 @@ void elasticApmRequestInit()
     {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
     }
+
+    if ( config->astProcessEnabled )
+    {
+        astInstrumentationOnRequestInit( config );
+    }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
 
     resultCode = resultSuccess;
 
@@ -696,7 +705,13 @@ void elasticApmRequestShutdown()
         resultCode = resultSuccess;
         goto finally;
     }
+	
+    tracerPhpPartOnRequestShutdown();
 
+    if ( config->astProcessEnabled )
+    {
+        astInstrumentationOnRequestShutdown();
+    }	
 
     if ( isOriginalZendThrowExceptionHookSet )
     {
@@ -719,11 +734,6 @@ void elasticApmRequestShutdown()
         originalZendErrorCallback = NULL;
         isOriginalZendErrorCallbackSet = false;
     }
-
-    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
-    shutdownTracerPhpPart( config );
-
-    // sendMetrics( tracer, config );
 
     resetCallInterceptionOnRequestShutdown();
 
