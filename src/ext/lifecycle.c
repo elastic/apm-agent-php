@@ -24,8 +24,6 @@
 #include <curl/curl.h>
 #include <inttypes.h> // PRIu64
 #include <stdbool.h>
-#include <time.h>
-#include <stdlib.h>
 #include <php.h>
 #include <zend_compile.h>
 #include <zend_exceptions.h>
