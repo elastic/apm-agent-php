@@ -60,6 +60,15 @@ void vElasticApmAssertFailed(
                     , msgPrintfFmt
                     , msgPrintfFmtArgs );
 
+    void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
+    size_t stackTraceAddressesCount = 0;
+    stackTraceAddressesCount = ELASTIC_APM_CAPTURE_STACK_TRACE( &(stackTraceAddresses[ 0 ]), ELASTIC_APM_STATIC_ARRAY_SIZE( stackTraceAddresses ) );
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE * 10 ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_FORCE_LOG_CRITICAL( "Stack trace:\n%s", streamStackTrace( &( stackTraceAddresses[ 0 ] ), stackTraceAddressesCount, /* linePrefix: */ "\t", &txtOutStream ) );
+
     elasticApmAbort();
 }
 
