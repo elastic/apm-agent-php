@@ -20,6 +20,11 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.8.3]]
+=== v1.8.3 - 2023/04/21
+[float]
+==== Bug fixes
+* Fixed issue with missing transaction details on some setups {pull}916[#916]
 
 [[release-notes-v1.8.2]]
 === v1.8.2 - 2023/04/12
