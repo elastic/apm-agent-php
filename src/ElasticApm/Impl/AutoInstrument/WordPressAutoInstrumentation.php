@@ -37,7 +37,6 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
-use Elastic\Apm\Impl\Util\TextUtil;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
@@ -52,10 +51,13 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 {
     public const SPAN_NAME_PART_FOR_CORE = 'WordPress core';
 
-    public const SPAN_TYPE_FOR_CORE = 'wordpress_core';
-    public const SPAN_TYPE_FOR_ADDONS = 'wordpress_addon';
+    public const THEME_KEYWORD = 'wordpress_theme';
 
-    public const LABEL_KEY_FOR_WORDPRESS_THEME = 'wordpress_theme';
+    public const CALLBACK_GROUP_KIND_CORE = 'wordpress_core';
+    public const CALLBACK_GROUP_KIND_PLUGIN = 'wordpress_plugin';
+    public const CALLBACK_GROUP_KIND_THEME = self::THEME_KEYWORD;
+
+    public const LABEL_KEY_FOR_WORDPRESS_THEME = self::THEME_KEYWORD;
 
     private const WORDPRESS_PLUGINS_SUBDIR_SUBPATH
         = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR;
@@ -66,10 +68,10 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     private const WORDPRESS_THEMES_SUBDIR_SUBPATH
         = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR;
 
-    private const WORDPRESS_ADDONS_SUBDIRS_SUBPATHS = [
-        self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH,
-        self::WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH,
-        self::WORDPRESS_THEMES_SUBDIR_SUBPATH,
+    private const CALLBACK_SUBDIR_SUBPATH_TO_GROUP_KIND = [
+        self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH => self::CALLBACK_GROUP_KIND_PLUGIN,
+        self::WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH => self::CALLBACK_GROUP_KIND_PLUGIN,
+        self::WORDPRESS_THEMES_SUBDIR_SUBPATH => self::CALLBACK_GROUP_KIND_THEME,
     ];
 
     /**
@@ -142,7 +144,18 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         $this->isReadyToWrapFilterCallbacks = true;
     }
 
-    public static function findAddonNameInFilePath(string $filePath, LoggerFactory $loggerFactory): ?string
+    /**
+     * @param string        $filePath
+     * @param LoggerFactory $loggerFactory
+     * @param ?string       $groupKind
+     * @param ?string       $groupName
+     *
+     * @return void
+     *
+     * @param-out string  $groupKind
+     * @param-out ?string $groupName
+     */
+    public static function findAddonInfoFromFilePath(string $filePath, LoggerFactory $loggerFactory, /* out */ ?string &$groupKind, /* out */ ?string &$groupName): void
     {
         $logger = null;
         $loggerProxyTrace = null;
@@ -153,46 +166,40 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
+        $groupKind = self::CALLBACK_GROUP_KIND_CORE;
+        $groupName = null;
+
+        $currentGroupKind = null;
         /** @var ?int $posAfterAddonsSubDir */
         $posAfterAddonsSubDir = null;
-        foreach (self::WORDPRESS_ADDONS_SUBDIRS_SUBPATHS as $addonSubDirSubPath) {
-            $pluginsSubDirPos = strpos($filePath, $addonSubDirSubPath);
+        foreach (self::CALLBACK_SUBDIR_SUBPATH_TO_GROUP_KIND as $subDirSubPath => $currentGroupKind) {
+            $pluginsSubDirPos = strpos($filePath, $subDirSubPath);
             if ($pluginsSubDirPos !== false) {
-                $posAfterAddonsSubDir = $pluginsSubDirPos + strlen($addonSubDirSubPath);
+                $posAfterAddonsSubDir = $pluginsSubDirPos + strlen($subDirSubPath);
                 break;
             }
         }
         if ($posAfterAddonsSubDir === null) {
-            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, '$posAfterAddonsSubDir === null - returning null');
-            return null;
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Not found any of the known sub-paths in the given path');
+            return;
         }
         $logger && $logger->addContext('posAfterAddonsSubDir', $posAfterAddonsSubDir);
 
         $dirSeparatorAfterPluginPos = strpos($filePath, DIRECTORY_SEPARATOR, $posAfterAddonsSubDir);
         if ($dirSeparatorAfterPluginPos !== false && $dirSeparatorAfterPluginPos > $posAfterAddonsSubDir) {
-            return substr($filePath, $posAfterAddonsSubDir, $dirSeparatorAfterPluginPos - $posAfterAddonsSubDir);
+            $groupKind = $currentGroupKind;
+            $groupName = substr($filePath, $posAfterAddonsSubDir, $dirSeparatorAfterPluginPos - $posAfterAddonsSubDir);
+            return;
         }
 
         $fileExtAfterPluginPos = strpos($filePath, '.php', $posAfterAddonsSubDir);
         if ($fileExtAfterPluginPos !== false && $fileExtAfterPluginPos > $posAfterAddonsSubDir) {
-            return substr($filePath, $posAfterAddonsSubDir, $fileExtAfterPluginPos - $posAfterAddonsSubDir);
+            $groupKind = $currentGroupKind;
+            $groupName = substr($filePath, $posAfterAddonsSubDir, $fileExtAfterPluginPos - $posAfterAddonsSubDir);
+            return;
         }
 
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Returning null');
-        return null;
-    }
-
-    public static function findThemeNameFromDirPath(string $themeDirPath): ?string
-    {
-        if (TextUtil::isEmptyString($themeDirPath)) {
-            return null;
-        }
-
-        $dirName = basename($themeDirPath);
-        if (TextUtil::isEmptyString($dirName)) {
-            return null;
-        }
-        return basename($dirName);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Found one of the known sub-paths but the suffix is not as expected');
     }
 
     /**
@@ -298,17 +305,19 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /**
-     * @param mixed $callback
-     *
-     * @return string
+     * @param mixed      $callback
+     * @param-out string $groupKind
+     * @param-out ?string $groupName
      */
-    private function findAddonName($callback): ?string
+    private function findCallbackInfo($callback, /* out */ ?string &$groupKind, /* out */ ?string &$groupName): void
     {
         if (($srcFilePath = self::getCallbackSourceFilePath($callback, $this->loggerFactory)) === null) {
-            return null;
+            $groupKind = self::CALLBACK_GROUP_KIND_CORE;
+            $groupName = null;
+            return;
         }
 
-        return self::findAddonNameInFilePath($srcFilePath, $this->loggerFactory);
+        self::findAddonInfoFromFilePath($srcFilePath, $this->loggerFactory, /* out */ $groupKind, /* out */ $groupName);
     }
 
     public function directCall(string $method): void
@@ -437,7 +446,8 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         }
 
         $originalCallback = $callback;
-        $wrapper = new WordPressFilterCallbackWrapper($hookName, $originalCallback, $this->findAddonName($originalCallback));
+        $this->findCallbackInfo($originalCallback, /* out */ $callbackGroupKind, /* out */ $callbackGroupName);
+        $wrapper = new WordPressFilterCallbackWrapper($hookName, $originalCallback, $callbackGroupKind, $callbackGroupName);
         $callback = $wrapper;
 
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
