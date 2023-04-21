@@ -29,6 +29,7 @@ use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -71,6 +72,12 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
 
     /** @var ?string */
     public $outcome = null;
+
+    /** @var ?Span */
+    private $pendingCompositeChild = null;
+
+    /** @var bool */
+    protected $wasPropogatedViaDistributedTracing = false;
 
     /**
      * @var ?float
@@ -475,6 +482,8 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
             return false;
         }
 
+        $this->flushPendingCompositeChild();
+
         $clock = $this->containingTransaction()->tracer()->getClock();
         $monotonicEndTime = $clock->getMonotonicClockCurrentTime();
         $systemClockEndTime = $clock->getSystemClockCurrentTime();
@@ -545,6 +554,90 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
             $parentBreakdownMetricsSelfTimeTracker = $parentExecutionSegment->breakdownMetricsSelfTimeTracker;
             $parentBreakdownMetricsSelfTimeTracker->onChildEnd($monotonicClockNow);
         }
+    }
+
+    protected function onChildSpanAboutToStart(Span $child): void
+    {
+    }
+
+    private function isSpanCompressionEnabled(): bool
+    {
+        /** @var ?bool $cachedConfigValue */
+        static $cachedConfigValue = null;
+        if ($cachedConfigValue === null) {
+            $cachedConfigValue = $this->containingTransaction()->getConfig()->spanCompressionEnabled();
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Span compression is ' . ($cachedConfigValue ? 'enabled' : 'DISABLED')
+                . ' via configuration option `' . OptionNames::SPAN_COMPRESSION_ENABLED . '\''
+            );
+        }
+        return $cachedConfigValue;
+    }
+
+    protected function onChildSpanEnded(Span $child): void
+    {
+        $shouldSendEndedSpanImmediately = false;
+
+        if ($this->isSpanCompressionEnabled()) {
+            if (!$this->tryToCompressChild($child)) {
+                $this->flushPendingCompositeChild();
+                $shouldSendEndedSpanImmediately = true;
+            }
+        } else {
+            $shouldSendEndedSpanImmediately = true;
+        }
+
+        if ($shouldSendEndedSpanImmediately) {
+            $this->containingTransaction()->tracer()->sendSpanToApmServer($child);
+        }
+    }
+
+    private function tryToCompressChild(Span $child): bool
+    {
+        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Entered', ['child' => $child]);
+
+        if ($this->hasEnded()) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - not going to compress because this execution segment already ended');
+            return false;
+        }
+
+        if (!$child->isCompressionEligible()) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - not going to compress because this execution segment already ended');
+            return false;
+        }
+
+        if ($this->pendingCompositeChild === null) {
+            $this->pendingCompositeChild = $child;
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - set pendingCompositeChild to child', ['child' => $child]);
+            return true;
+        }
+
+        if ($this->pendingCompositeChild->tryToAddToCompress($child)) {
+            ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Exiting - added to pendingCompositeChild', ['child' => $child]);
+            return true;
+        }
+
+        /**
+         * Flush and re-try from the given child
+         */
+        $this->flushPendingCompositeChild();
+        return $this->tryToCompressChild($child);
+    }
+
+    private function flushPendingCompositeChild(): void
+    {
+        if ($this->pendingCompositeChild === null) {
+            return;
+        }
+
+        $this->containingTransaction()->tracer()->sendSpanToApmServer($this->pendingCompositeChild);
+        $this->pendingCompositeChild = null;
     }
 
     /** @inheritDoc */
