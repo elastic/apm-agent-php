@@ -302,7 +302,7 @@ void elasticApmZendThrowExceptionHook(
     }
 }
 // In PHP 8.1 filename parameter of zend_error_cb() was changed from "const char*" to "zend_string*"
-#if PHP_VERSION_ID < 80100
+#if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 1
 #else
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 0

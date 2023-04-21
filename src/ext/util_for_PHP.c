@@ -70,14 +70,14 @@ ResultCode loadPhpFile( const char* phpFilePath )
     //      https://github.com/php/php-src/blob/php-8.1.0/ext/spl/php_spl.c
     // the second half of spl_autoload()
 
-#       if PHP_VERSION_ID >= 80100
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
     zend_string* phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
     zend_stream_init_filename_ex( &file_handle, phpFilePathAsZendString );
     should_destroy_file_handle = true;
 #       endif
 
     int php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
-#               if PHP_VERSION_ID < 80100
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
             phpFilePath,
 #               endif
             &file_handle
@@ -92,7 +92,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
 
     if ( ! file_handle.opened_path ) {
         file_handle.opened_path =
-#               if PHP_VERSION_ID < 80100
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
             zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
 #               else
             zend_string_copy( phpFilePathAsZendString );
@@ -103,7 +103,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
     ZVAL_NULL( &dummy );
     if ( ! zend_hash_add( &EG(included_files), opened_path, &dummy ) )
     {
-#           if PHP_VERSION_ID < 80100
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
         zend_file_handle_dtor( &file_handle );
         should_destroy_file_handle = false;
 #           endif
@@ -143,7 +143,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
 
     if ( opened_path != NULL )
     {
-#           if PHP_VERSION_ID < 70300
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 7, 3, 0 ) /* if PHP version before 7.3.0 */
         zend_string_release( opened_path );
 #else
         zend_string_release_ex( opened_path, /* persistent: */ 0 );
@@ -157,7 +157,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
         should_destroy_file_handle = false;
     }
 
-#       if PHP_VERSION_ID >= 80100
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
     zend_string_release( phpFilePathAsZendString );
 #       endif
 
