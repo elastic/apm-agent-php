@@ -25,10 +25,8 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 
 use Elastic\Apm\Impl\AutoInstrument\Util\MapPerWeakObject;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 
 /**
