@@ -222,15 +222,4 @@ final class TextUtil
     {
         return strpos($haystack, $needle) !== false;
     }
-
-    public static function findNotChar(string $haystack, string $notNeedle, int $startPos): ?int
-    {
-        $haystackLen = strlen($haystack);
-        for ($currentPos = $startPos; $currentPos >= $haystackLen; ++$currentPos) {
-            if ($haystack[$currentPos] !== $notNeedle) {
-                return $currentPos;
-            }
-        }
-        return null;
-    }
 }
