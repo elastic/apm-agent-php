@@ -111,8 +111,13 @@ static inline bool areCharsEqualIgnoringCase( char c1, char c2 )
     return charToUpperCase( c1 ) == charToUpperCase( c2 );
 }
 
+static inline bool areCharsEqual( char c1, char c2, bool shouldIgnoreCase )
+{
+    return shouldIgnoreCase ? areCharsEqualIgnoringCase( c1, c2 ) : ( c1 == c2 );
+}
+
 static inline
-bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
+bool isStringViewPrefix( StringView str, StringView prefix, bool shouldIgnoreCase )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( str );
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( prefix );
@@ -124,7 +129,36 @@ bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
 
     ELASTIC_APM_FOR_EACH_INDEX( i, prefix.length )
     {
-        if ( ! areCharsEqualIgnoringCase( str.begin[ i ], prefix.begin[ i ] ) )
+        if ( ! areCharsEqual( str.begin[ i ], prefix.begin[ i ], shouldIgnoreCase ) )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline
+bool isStringViewPrefixIgnoringCase( StringView str, StringView prefix )
+{
+    return isStringViewPrefix( str, prefix, /* shouldIgnoreCase */ true);
+}
+
+static inline
+bool isStringViewSuffix( StringView str, StringView suffix )
+{
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( str );
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( suffix );
+
+    if ( suffix.length > str.length )
+    {
+        return false;
+    }
+
+    size_t strBeginIndex = str.length - suffix.length;
+    ELASTIC_APM_FOR_EACH_INDEX( i, suffix.length )
+    {
+        if ( str.begin[ strBeginIndex + i ] != suffix.begin[ i ] )
         {
             return false;
         }
@@ -378,20 +412,106 @@ String streamSize( Size size, TextOutputStream* txtOutStream );
 
 Int64 sizeToBytes( Size size );
 
-#define ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( ElementType, ViewTypeName ) \
-    struct ViewTypeName \
-    { \
-        ElementType* values; \
-        size_t size; \
-    }; \
-    typedef struct ViewTypeName ViewTypeName
+static inline
+String stringIfNotNullElse( String str, String elseStr )
+{
+    return str == NULL ? elseStr: str;
+}
 
-#define ELASTIC_APM_DEFINE_ARRAY_VIEW( ElementType ) ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( ElementType, ELASTIC_APM_PP_CONCAT( ElementType, ArrayView ) )
+static inline
+ResultCode safeStringCopy( StringView src, char* dstBuf, size_t dstBufCapacity )
+{
+    ResultCode resultCode;
 
-#define ELASTIC_APM_STATIC_ARRAY_TO_VIEW( ViewTypeName, staticArray ) ((ViewTypeName){ .values = &((staticArray)[0]), .size = ELASTIC_APM_STATIC_ARRAY_SIZE( staticArray ) })
+    if ( src.length == 0 )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+    }
 
-#define ELASTIC_APM_EMPTY_ARRAY_VIEW( ViewTypeName ) ((ViewTypeName){ .values = NULL, .size = 0 })
+    // +1 for terminating '\0'
+    if ( src.length + 1 > dstBufCapacity )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultBufferIsTooSmall );
+    }
 
-ELASTIC_APM_DEFINE_ARRAY_VIEW_EX( int, IntArrayView );
-ELASTIC_APM_DEFINE_ARRAY_VIEW( StringView );
-ELASTIC_APM_DEFINE_ARRAY_VIEW( Int64 );
+#ifdef PHP_WIN32
+    // errno_t strncpy_s( char *restrict dest, size_t destsz, const char *restrict src, size_t count );
+    // returns zero on success, returns non-zero on error. Also, on error, writes zero to dest[0]
+    // (unless dest is a null pointer or destsz is zero or greater than RSIZE_MAX)
+    // and may clobber the rest of the destination array with unspecified values.
+
+    errno_t strncpy_s_ret_val = strncpy_s( /* dest */ dstBufCapacity, /* destsz */ dstBufCapacity, /* src */ src.begin, /* count */ src.length );
+    if ( strncpy_s_ret_val != 0 )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+#else // #ifdef PHP_WIN32
+    // char *strncpy( char *dest, const char *src, size_t count );
+    // Copies at most count characters of the character array pointed to by src (including the terminating null character,
+    // but not any of the characters that follow the null character) to character array pointed to by dest.
+    // If count is reached before the entire array src was copied, the resulting character array is not null-terminated.
+
+    strncpy( /* dest */ dstBuf, /* src */ src.begin, /* count */ src.length );
+    dstBuf[ src.length ] = '\0';
+#endif // #ifdef PHP_WIN32
+
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+static inline
+ResultCode appendToString( StringView suffixToAppend, size_t bufCapacity, /* in */ char* bufBegin, /* in,out */ size_t* bufContentLen )
+{
+    ResultCode resultCode;
+
+    if ( suffixToAppend.length == 0 )
+    {
+        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+    }
+
+    ELASTIC_APM_ASSERT_VALID_PTR( bufBegin );
+    ELASTIC_APM_ASSERT_VALID_PTR( bufContentLen );
+    ELASTIC_APM_ASSERT( *bufContentLen < bufCapacity, "*bufContentLen: %"PRIu64", bufCapacity: %"PRIu64, (UInt64)(*bufContentLen), (UInt64)bufCapacity );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( safeStringCopy( /* src */ suffixToAppend, /* dstBuf */ bufBegin + *bufContentLen, bufCapacity - *bufContentLen ) );
+
+    *bufContentLen += suffixToAppend.length;
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+struct StringBuffer
+{
+    char* begin;
+    size_t size;
+};
+typedef struct StringBuffer StringBuffer;
+
+#define ELASTIC_APM_MAKE_STRING_BUFFER( beginArg, sizeArg ) ((StringBuffer){ .begin = (beginArg), .size = (sizeArg) })
+
+#define ELASTIC_APM_EMPTY_STRING_BUFFER ( ELASTIC_APM_MAKE_STRING_BUFFER(  NULL, 0 ) )
+
+static inline
+StringView stringBufferToView( StringBuffer strBuf )
+{
+    // -1 since terminating '\0' is counted in buffer's size but not in string's length
+    return (StringView)
+    {
+        .begin = strBuf.begin,
+        .length = (strBuf.begin == NULL) ? 0 : (strBuf.size - 1)
+    };
+}
+
+static inline
+ResultCode appendToStringBuffer( StringView suffixToAppend, StringBuffer buf, /* in,out */ size_t* bufContentLen )
+{
+    return appendToString( suffixToAppend, buf.size, buf.begin, /* in,out */ bufContentLen );
+}
