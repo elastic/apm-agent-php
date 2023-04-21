@@ -28,7 +28,6 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
