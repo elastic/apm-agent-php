@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\WordPress;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use PHPUnit\Framework\Assert;
 
 /**

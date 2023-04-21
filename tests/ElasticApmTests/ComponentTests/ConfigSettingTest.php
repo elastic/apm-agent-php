@@ -36,7 +36,6 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\Util\TransactionExpectations;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**

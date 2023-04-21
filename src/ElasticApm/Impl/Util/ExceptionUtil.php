@@ -24,14 +24,9 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Util;
 
 use Elastic\Apm\Impl\Log\AdhocLoggableObject;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableStackTrace;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\PropertyLogPriority;
-use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
