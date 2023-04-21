@@ -101,6 +101,9 @@ enum OptionId
     optionId_serviceName,
     optionId_serviceNodeName,
     optionId_serviceVersion,
+    optionId_spanCompressionEnabled,
+    optionId_spanCompressionExactMatchMaxDuration,
+    optionId_spanCompressionSameKindMaxDuration,
     optionId_transactionIgnoreUrls,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -290,6 +293,9 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED "span_compression_enabled"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION "span_compression_exact_match_max_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION "span_compression_same_kind_max_duration"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS "transaction_ignore_urls"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
