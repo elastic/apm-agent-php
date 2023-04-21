@@ -36,6 +36,7 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
 use PHPUnit\Framework\Constraint\GreaterThan;
 use PHPUnit\Framework\Constraint\IsEqual;
@@ -653,6 +654,25 @@ class TestCaseBase extends TestCase
             $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
             yield $dataSetName => array_values($namedValuesMap);
             ++$dataSetIndex;
+        }
+    }
+
+    /** @inheritDoc */
+    public static function assertDirectoryDoesNotExist(string $directory, string $message = ''): void
+    {
+        /**
+         * Method assertDirectoryDoesNotExist was added in PHPUnit 9 as an alias for already existing assertDirectoryNotExists
+         * and assertDirectoryNotExists was deprecated.
+         * We still use PHPUnit 8.5 when testing under older PHP versions so we need a facade to work on both
+         *  - PHPUnit 8.5, where assertDirectoryDoesNotExist does not exist
+         *      and
+         *  - PHPUnit 9, where assertDirectoryNotExists is deprecated
+         */
+        if (method_exists(Assert::class, __FUNCTION__)) {
+            Assert::assertDirectoryDoesNotExist($directory, $message);
+        } else {
+            /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */
+            Assert::assertDirectoryNotExists($directory, $message);
         }
     }
 }

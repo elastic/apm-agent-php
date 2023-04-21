@@ -453,7 +453,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 self::verifyAstProcessGeneratedFiles($astProcessDebugDumpOutDir, $phpFileRelativePath);
             }
         } else {
-            self::assertDirectoryDoesNotExist($astProcessDebugDumpOutDir); // @phpstan-ignore-line
+            self::assertDirectoryDoesNotExist($astProcessDebugDumpOutDir);
         }
     }
 
