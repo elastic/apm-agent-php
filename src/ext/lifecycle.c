@@ -30,6 +30,7 @@
 #include <zend_builtin_functions.h>
 #include "php_elastic_apm.h"
 #include "log.h"
+#include "ConfigSnapshot.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "util_for_PHP.h"
