@@ -42,3 +42,6 @@ void resetCallInterceptionOnRequestShutdown();
 ResultCode elasticApmSendToServer( StringView userAgentHttpHeader, StringView serializedEvents );
 
 ResultCode replaceSleepWithResumingAfterSignalImpl();
+
+void elasticApmBeforeLoadingAgentPhpCode();
+void elasticApmAfterLoadingAgentPhpCode();
