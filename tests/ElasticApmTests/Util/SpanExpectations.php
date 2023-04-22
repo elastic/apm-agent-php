@@ -28,13 +28,13 @@ use Elastic\Apm\Impl\StackTraceFrame;
 final class SpanExpectations extends ExecutionSegmentExpectations
 {
     /** @var Optional<?string> */
-    public $action = null;
+    public $action;
 
     /** @var SpanContextExpectations */
     public $context;
 
     /** @var Optional<?string> */
-    public $subtype = null;
+    public $subtype;
 
     /** @var null|StackTraceFrame[] */
     public $stackTrace = null;
@@ -42,11 +42,16 @@ final class SpanExpectations extends ExecutionSegmentExpectations
     /** @var ?bool */
     public $allowExpectedStackTraceToBePrefix = null;
 
+    /** @var Optional<bool> */
+    public $isCompositeNull = null;
+
     public function __construct()
     {
         parent::__construct();
         $this->action = new Optional();
         $this->context = new SpanContextExpectations();
         $this->subtype = new Optional();
+        $this->isCompositeNull = new Optional();
+        $this->isCompositeNull->setValue(true);
     }
 }
