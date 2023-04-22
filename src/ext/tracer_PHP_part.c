@@ -22,6 +22,7 @@
 #include "Tracer.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
