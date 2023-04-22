@@ -20,7 +20,8 @@
 #pragma once
 
 #include "ResultCode.h"
-#include "ConfigManager.h"
+#include "ConfigSnapshot_forward_decl.h"
+#include "time_util.h"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
 
