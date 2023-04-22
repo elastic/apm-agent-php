@@ -168,29 +168,6 @@ bool isStringViewSuffix( StringView str, StringView suffix )
 }
 
 static inline
-bool isStringViewSuffix( StringView str, StringView suffix )
-{
-    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( str );
-    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( suffix );
-
-    if ( suffix.length > str.length )
-    {
-        return false;
-    }
-
-    size_t strBeginIndex = str.length - suffix.length;
-    ELASTIC_APM_FOR_EACH_INDEX( i, suffix.length )
-    {
-        if ( str.begin[ strBeginIndex + i ] != suffix.begin[ i ] )
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static inline
 bool areStringsEqualIgnoringCase( String str1, String str2 )
 {
     ELASTIC_APM_ASSERT_VALID_STRING( str1 );
