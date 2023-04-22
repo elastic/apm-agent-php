@@ -65,6 +65,17 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
     private const EXPECTED_STACK_TRACES_KEY = 'EXPECTED_STACK_TRACES';
     private const INPUT_OPTIONS_KEY = 'INPUT_OPTIONS';
 
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isCompatibleWithSpanCompression(): bool
+    {
+        return false;
+    }
+
     private static function newInferredSpansBuilder(TracerInterface $tracer): InferredSpansBuilder
     {
         self::assertInstanceOf(Tracer::class, $tracer);
