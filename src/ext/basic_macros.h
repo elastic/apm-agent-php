@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <string.h> // memset
+
 #define ELASTIC_APM_UNUSED( var ) (void)(var)
 
 #define ELASTIC_APM_PP_STRINGIZE_IMPL( token ) #token
