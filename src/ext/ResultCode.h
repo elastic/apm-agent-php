@@ -30,6 +30,7 @@ enum ResultCode
     resultParsingFailed,
     resultCurlFailure,
     resultSyncObjUseAfterFork,
+    resultBufferIsTooSmall,
     resultFailure,
 
     numberOfResultCodes
