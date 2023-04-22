@@ -111,6 +111,19 @@ class AppCodeHostParams implements LoggableInterface
             $this->setAgentOption($optName, $optVal, $sourceKind);
         }
     }
+
+    /**
+     * @param array<string, string|int|float|bool> $optsMap
+     * @param ?AgentConfigSourceKind               $sourceKind
+     */
+    public function setAgentOptions(array $optsMap, ?AgentConfigSourceKind $sourceKind = null): void
+    {
+        foreach ($optsMap as $optName => $optValue) {
+            $this->setAgentOption($optName, $optValue, $sourceKind);
+        }
+    }
+
+    /**
      * @param array<string, string> $input
      *
      * @return array<string, string>
