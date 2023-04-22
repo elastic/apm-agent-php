@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
 use ElasticApmTests\Util\TestCaseBase;
@@ -46,6 +47,17 @@ class TracerUnitTestCaseBase extends TestCaseBase
     }
 
     /**
+     * Sub-classes should override this method to return false
+     * in order to disable Span Compression feature and have all the expected spans individually.
+     *
+     * @return bool
+     */
+    protected function isCompatibleWithSpanCompression(): bool
+    {
+        return true;
+    }
+
+    /**
      * @param null|Closure(TracerBuilderForTests): void $tracerBuildCallback
      * @param bool                                      $shouldCreateMockEventSink
      *
@@ -58,6 +70,10 @@ class TracerUnitTestCaseBase extends TestCaseBase
         }
 
         $builder = self::buildTracerForTests($shouldCreateMockEventSink ? $this->mockEventSink : null);
+
+        if (!$this->isCompatibleWithSpanCompression()) {
+            $builder->withBoolConfig(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+        }
 
         if ($tracerBuildCallback !== null) {
             $tracerBuildCallback($builder);

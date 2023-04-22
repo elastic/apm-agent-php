@@ -238,16 +238,10 @@ final class StackTraceTestSharedCode
      */
     public static function allSpanCreatingApis(array &$expectedData): array
     {
-        $spanCount = 0;
-
         return [
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::beginCurrentSpan';
-                ++$spanCount;
-                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
-                    'test_span_name_' . $spanCount,
-                    'test_span_type_' . $spanCount
-                );
+                $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
@@ -255,26 +249,19 @@ final class StackTraceTestSharedCode
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
                 $span->end();
             },
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::captureCurrentSpan';
-                ++$spanCount;
                 $func = function (SpanInterface $span) use ($spanCreatingApi): void {
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
-                $spanName = 'test_span_name_' . $spanCount;
-                $spanType = 'test_span_type_' . $spanCount;
-                ElasticApm::getCurrentTransaction()->captureCurrentSpan($spanName, $spanType, $func);
+                ElasticApm::getCurrentTransaction()->captureCurrentSpan('test_span_name', 'test_span_type', $func);
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(TransactionInterface::class, 'captureCurrentSpan');
             },
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::beginChildSpan';
-                ++$spanCount;
-                $span = ElasticApm::getCurrentTransaction()->beginChildSpan(
-                    'test_span_name_' . $spanCount,
-                    'test_span_type_' . $spanCount
-                );
+                $span = ElasticApm::getCurrentTransaction()->beginChildSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
@@ -282,46 +269,37 @@ final class StackTraceTestSharedCode
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
                 $span->end();
             },
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::captureChildSpan';
-                ++$spanCount;
                 $func = function (SpanInterface $span) use ($spanCreatingApi): void {
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
-                $spanName = 'test_span_name_' . $spanCount;
-                $spanType = 'test_span_type_' . $spanCount;
-                ElasticApm::getCurrentTransaction()->captureChildSpan($spanName, $spanType, $func);
+                ElasticApm::getCurrentTransaction()->captureChildSpan('test_span_name', 'test_span_type', $func);
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(TransactionInterface::class, 'captureChildSpan');
             },
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Span::beginChildSpan';
-                ++$spanCount;
                 $parentSpan = ElasticApm::getCurrentTransaction()
                                         ->beginChildSpan('parent_span_name', 'parent_span_type');
-                $span = $parentSpan->beginChildSpan(
-                    'test_span_name_' . $spanCount,
-                    'test_span_type_' . $spanCount
-                );
+                $span = $parentSpan->beginChildSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
+
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'end');
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
                 $span->end();
                 $parentSpan->end();
             },
-            function () use (&$expectedData, &$spanCount): void {
+            function () use (&$expectedData): void {
                 $spanCreatingApi = 'Span::captureChildSpan';
-                ++$spanCount;
                 $parentSpan = ElasticApm::getCurrentTransaction()
                                         ->beginChildSpan('parent_span_name', 'parent_span_type');
                 $func = function (SpanInterface $span) use ($spanCreatingApi): void {
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
-                $spanName = 'test_span_name_' . $spanCount;
-                $spanType = 'test_span_type_' . $spanCount;
-                $parentSpan->captureChildSpan($spanName, $spanType, $func);
+                $parentSpan->captureChildSpan('test_span_name', 'test_span_type', $func);
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
                 $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
                     = self::buildMethodName(SpanInterface::class, 'captureChildSpan');
