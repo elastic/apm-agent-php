@@ -24,6 +24,7 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER
 
 #include <stddef.h>
+#include <string.h> // memcpy
 #include "util.h"
 #include "TextOutputStream.h"
 #include "elastic_apm_assert.h"
@@ -68,6 +69,7 @@ struct DeserializedTrackingData
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
     EmbeddedTrackingDataHeader* embedded;
+#pragma clang diagnostic pop
     void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
     UInt32 suffixMagic;
 };
