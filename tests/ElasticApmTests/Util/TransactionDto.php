@@ -145,19 +145,6 @@ class TransactionDto extends ExecutionSegmentDto
         }
     }
 
-    /**
-     * @param mixed $count
-     *
-     * @return int
-     */
-    public static function assertValidCount($count): int
-    {
-        TestCase::assertIsInt($count);
-        /** @var int $count */
-        TestCase::assertGreaterThanOrEqual(0, $count);
-        return $count;
-    }
-
     public function assertEquals(Transaction $original): void
     {
         self::assertEqualOriginalAndDto($original, $this);
