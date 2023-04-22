@@ -56,11 +56,9 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
     public static function appCodeClient(array $args): void
     {
         self::assertCurlExtensionIsLoaded();
-        $serverPort = self::getMandatoryAppCodeArg($args, self::SERVER_PORT_KEY);
-        self::assertIsInt($serverPort);
+        $serverPort = self::getIntFromMap(self::SERVER_PORT_KEY, $args);
 
-        $dataPerRequestSerialized = self::getMandatoryAppCodeArg($args, self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY);
-        self::assertIsString($dataPerRequestSerialized);
+        $dataPerRequestSerialized = self::getStringFromMap(self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY, $args);
         $dataPerRequest = new TestInfraDataPerRequest();
         $dataPerRequest->deserializeFromString($dataPerRequestSerialized);
 

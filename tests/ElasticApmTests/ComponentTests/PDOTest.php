@@ -184,12 +184,9 @@ final class PDOTest extends ComponentTestCaseBase
         /* out */ ?bool &$wrapInTx,
         /* out */ ?bool &$rollback
     ): void {
-        $dbName = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
-        self::assertIsString($dbName);
-        $wrapInTx = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
-        self::assertIsBool($wrapInTx);
-        $rollback = self::getMandatoryAppCodeArg($args, DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
-        self::assertIsBool($rollback);
+        $dbName = self::getStringFromMap(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $args);
+        $wrapInTx = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY, $args);
+        $rollback = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY, $args);
     }
 
     /**
@@ -257,15 +254,8 @@ final class PDOTest extends ComponentTestCaseBase
      */
     private function implTestAutoInstrumentation(array $testArgs): void
     {
-        $disableInstrumentationsOptVal = self::getMandatoryAppCodeArg(
-            $testArgs,
-            AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY
-        );
-        self::assertIsString($disableInstrumentationsOptVal);
-        $isInstrumentationEnabled = self::getMandatoryAppCodeArg(
-            $testArgs,
-            AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY
-        );
+        $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
+        $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
 
         self::extractSharedArgs(
             $testArgs,

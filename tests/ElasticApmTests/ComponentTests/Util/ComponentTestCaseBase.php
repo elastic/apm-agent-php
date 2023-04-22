@@ -118,25 +118,6 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param array<string, mixed> $appCodeArgs
-     * @param string               $appArgNameKey
-     *
-     * @return mixed
-     */
-    protected static function getMandatoryAppCodeArg(array $appCodeArgs, string $appArgNameKey)
-    {
-        if (!array_key_exists($appArgNameKey, $appCodeArgs)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Expected key is not found in app code args',
-                    ['appArgNameKey' => $appArgNameKey, 'appCodeArgs' => $appCodeArgs]
-                )
-            );
-        }
-        return $appCodeArgs[$appArgNameKey];
-    }
-
-    /**
      * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
@@ -178,13 +159,46 @@ class ComponentTestCaseBase extends TestCaseBase
      * @param string               $argKey
      * @param array<string, mixed> $argsMap
      *
+     * @return ?string
+     */
+    protected static function getNullableStringFromMap(string $argKey, array $argsMap): ?string
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        if ($val !== null) {
+            self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        }
+        return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
      * @return string
      */
     protected static function getStringFromMap(string $argKey, array $argsMap): string
     {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        $val = self::getNullableStringFromMap($argKey, $argsMap);
+        self::assertNotNull($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
         return $val;
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return ?float
+     */
+    protected static function getNullableFloatFromMap(string $argKey, array $argsMap): ?float
+    {
+        $value = self::getFromMap($argKey, $argsMap);
+        if ($value === null || is_float($value)) {
+            return $value;
+        }
+        if (is_int($value)) {
+            return floatval($value);
+        }
+        self::fail('Value is not a float' . LoggableToString::convert(['value type' => DbgUtil::getType($value), 'value' => $value, 'argKey' => $argKey, 'argsMap' => $argsMap]));
     }
 
     /**

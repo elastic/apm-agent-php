@@ -219,10 +219,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      */
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
-        $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        TestCase::assertIsString($optName);
-        /** @var string $optName */
-        $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
+        $optName = self::getStringFromMap(self::APP_CODE_ARGS_KEY_OPTION_NAME, $appCodeArgs);
+        $optExpectedVal = self::getFromMap(self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE, $appCodeArgs);
 
         $tracer = self::getTracerFromAppCode();
 
