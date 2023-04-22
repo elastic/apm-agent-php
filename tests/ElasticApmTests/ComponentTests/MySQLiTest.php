@@ -483,6 +483,9 @@ final class MySQLiTest extends ComponentTestCaseBase
                 if (!empty($disableInstrumentationsOptVal)) {
                     $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
                 }
+
+                // Disable compressed spans
+                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
             }
         );
         $appCodeHost->sendRequest(
