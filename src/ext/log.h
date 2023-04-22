@@ -265,9 +265,15 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
 }
 
 static inline
+LogLevel maxEnabledLogLevel()
+{
+    return getGlobalLogger()->maxEnabledLevel;
+}
+
+static inline
 bool canLogSecuritySensitive()
 {
-    return getGlobalLogger()->maxEnabledLevel >= logLevel_debug;
+    return maxEnabledLogLevel() >= logLevel_debug;
 }
 
 static inline
