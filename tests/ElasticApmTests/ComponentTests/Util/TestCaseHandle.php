@@ -41,7 +41,7 @@ final class TestCaseHandle implements LoggableInterface
 {
     use LoggableTrait;
 
-    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 6 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
+    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
 
     public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
     public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
