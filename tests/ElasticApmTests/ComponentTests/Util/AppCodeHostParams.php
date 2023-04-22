@@ -101,6 +101,16 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
+     * @param string                 $optName
+     * @param string|int|float|bool  $optVal
+     * @param ?AgentConfigSourceKind $sourceKind
+     */
+    public function setAgentOptionIfNotDefaultValue(string $optName, $optVal, ?AgentConfigSourceKind $sourceKind = null): void
+    {
+        if (!ConfigUtilForTests::isAgentOptionDefaultValue($optName, $optVal)) {
+            $this->setAgentOption($optName, $optVal, $sourceKind);
+        }
+    }
      * @param array<string, string> $input
      *
      * @return array<string, string>
