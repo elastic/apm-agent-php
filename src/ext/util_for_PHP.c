@@ -20,10 +20,11 @@
 #include "util_for_PHP.h"
 #include <stdio.h>
 #include <php_main.h>
+#include <zend_hash.h>
+#include <zend_compile.h>
 #include "util.h"
 #include "platform.h"
 #include "time_util.h"
-#include "ConfigManager.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
