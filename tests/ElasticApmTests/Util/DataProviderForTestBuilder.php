@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
 use PHPUnit\Framework\TestCase;
 
 final class DataProviderForTestBuilder
@@ -260,11 +261,14 @@ final class DataProviderForTestBuilder
      *
      * @return iterable<array<mixed, mixed>>
      */
-    private function buildImpl(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex): iterable
+    private function buildImpl(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex, int &$dataSetIndex): iterable
     {
         TestCase::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
         if ($currentGenIndex === count($this->generators)) {
-            yield $this->shouldWrapResultIntoArray ? [$resultSoFar] : $resultSoFar;
+            $dataSetName = '#' . $dataSetIndex;
+            $dataSetName .= ' ' . LoggableToString::convert($resultSoFar);
+            yield $dataSetName => ($this->shouldWrapResultIntoArray ? [$resultSoFar] : $resultSoFar);
+            ++$dataSetIndex;
             return;
         }
 
@@ -277,7 +281,7 @@ final class DataProviderForTestBuilder
 
         foreach ($resultsToGen as $resultSoFarPlusCurrent) {
             /** @var array<mixed, mixed> $resultSoFarPlusCurrent */
-            yield from $this->buildImpl($genIndexForAllValues, $resultSoFarPlusCurrent, $currentGenIndex + 1);
+            yield from $this->buildImpl($genIndexForAllValues, $resultSoFarPlusCurrent, $currentGenIndex + 1, $dataSetIndex);
         }
     }
 
@@ -348,11 +352,12 @@ final class DataProviderForTestBuilder
         $this->assertValid();
         TestCase::assertNotCount(0, $this->generators);
 
+        $dataSetIndex = 0;
         for ($genIndexForAllValues = 0; $genIndexForAllValues < count($this->generators); ++$genIndexForAllValues) {
             if ($genIndexForAllValues !== 0 && !$this->onlyFirstValueCombinable[$genIndexForAllValues]) {
                 continue;
             }
-            yield from $this->buildImpl($genIndexForAllValues, /* resultSoFar: */ [], 0 /* currentGenIndex */);
+            yield from $this->buildImpl($genIndexForAllValues, /* resultSoFar: */ [], 0 /* currentGenIndex */, /* ref */ $dataSetIndex);
         }
     }
 }
