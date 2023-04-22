@@ -70,7 +70,7 @@ pid_t getCurrentThreadId()
 
     #else
 
-    return syscall( SYS_gettid );
+    return (pid_t) syscall( SYS_gettid );
 
     #endif
 }
@@ -79,7 +79,7 @@ pid_t getParentProcessId()
 {
     #ifdef PHP_WIN32
 
-    return -1;
+    return (pid_t)( -1 );
 
     #else
 
@@ -193,7 +193,7 @@ String streamStackTraceLinux(
 
 #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
 
-    char** addressesAsSymbols = backtrace_symbols( addresses, addressesCount );
+    char** addressesAsSymbols = backtrace_symbols( addresses, (int)addressesCount );
     if ( addressesAsSymbols == NULL )
     {
         streamPrintf( txtOutStream, "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
@@ -303,10 +303,14 @@ String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE
 static
 String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutputStream* txtOutStream )
 {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "ConstantConditionsOC"
+#pragma ide diagnostic ignored "UnreachableCode"
     if ( maxPartsCount == 0 )
     {
         return "";
     }
+#pragma clang diagnostic pop
 
 #ifdef PHP_WIN32
     return "Not implemented on Windows";
