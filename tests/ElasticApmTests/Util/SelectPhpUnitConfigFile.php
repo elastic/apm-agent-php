@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
@@ -188,7 +187,7 @@ final class SelectPhpUnitConfigFile
         $command = './vendor/bin/phpunit --version';
         $dbgCtx = ['command' => $command];
         $output = $this->execExternalCommand($command);
-        ArrayUtil::append(/* from */ ['output' => $output], /* to,ref */ $dbgCtx);
+        ArrayUtilForTests::append(/* from */ ['output' => $output], /* to,ref */ $dbgCtx);
 
         // $ ./vendor/bin/phpunit --version
         // PHPUnit 9.6.4 by Sebastian Bergmann and contributors.
@@ -196,9 +195,9 @@ final class SelectPhpUnitConfigFile
         // $
 
         $strBeforeVersion = 'PHPUnit ';
-        ArrayUtil::append(/* from */ ['strBeforeVersion' => $strBeforeVersion], /* to, ref */ $dbgCtx);
+        ArrayUtilForTests::append(/* from */ ['strBeforeVersion' => $strBeforeVersion], /* to, ref */ $dbgCtx);
         foreach ($output as $outputLine) {
-            ArrayUtil::append(/* from */ ['outputLine' => $outputLine], /* to, ref */ $dbgCtx);
+            ArrayUtilForTests::append(/* from */ ['outputLine' => $outputLine], /* to, ref */ $dbgCtx);
             $strBeforeVersionPos = strpos($outputLine, $strBeforeVersion);
             if (!is_int($strBeforeVersionPos)) {
                 continue;
@@ -206,12 +205,12 @@ final class SelectPhpUnitConfigFile
             $outputPartStartingWithVersion = substr($outputLine, $strBeforeVersionPos + strlen($strBeforeVersion));
             // Limit to 2 parts since we are only interested in MAJOR part of the version
             $partsAsStrings = explode(/* separator */ '.', $outputPartStartingWithVersion, /* limit */ 2);
-            ArrayUtil::append(/* from */ ['partsAsStrings' => $partsAsStrings], /* to, ref */ $dbgCtx);
+            ArrayUtilForTests::append(/* from */ ['partsAsStrings' => $partsAsStrings], /* to, ref */ $dbgCtx);
             if ((!is_array($partsAsStrings)) || (count($partsAsStrings) < 2)) {
                 $this->fail('Failed to separate MAJOR part of the version', $dbgCtx);
             }
             $majorPartAsString = $partsAsStrings[0];
-            ArrayUtil::append(/* from */ ['majorPartAsString' => $majorPartAsString], /* to, ref */ $dbgCtx);
+            ArrayUtilForTests::append(/* from */ ['majorPartAsString' => $majorPartAsString], /* to, ref */ $dbgCtx);
             if (filter_var($majorPartAsString, FILTER_VALIDATE_INT) === false) {
                 $this->fail('MAJOR part of the version is not a valid integer', $dbgCtx);
             }
@@ -233,7 +232,7 @@ final class SelectPhpUnitConfigFile
         $output = [];
         $exitCode = 0;
         exec($command, /* out */ $output, /* out */ $exitCode);
-        ArrayUtil::append(/* from */ ['output' => $output, 'exitCode' => $exitCode], /* to,ref */ $dbgCtx);
+        ArrayUtilForTests::append(/* from */ ['output' => $output, 'exitCode' => $exitCode], /* to,ref */ $dbgCtx);
         if ($exitCode !== 0) {
             $this->fail('Command exit code signals a failutre', $dbgCtx);
         }

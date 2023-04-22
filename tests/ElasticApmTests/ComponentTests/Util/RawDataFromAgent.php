@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\Util\ArrayUtilForTests;
 
 final class RawDataFromAgent
@@ -58,7 +57,7 @@ final class RawDataFromAgent
         if ($this->allIntakeApiRequests === null) {
             $this->allIntakeApiRequests = [];
             foreach ($this->intakeApiConnections as $intakeApiConnection) {
-                ArrayUtil::append(/* from */ $intakeApiConnection->getIntakeApiRequests(), /* to, ref */ $this->allIntakeApiRequests);
+                ArrayUtilForTests::append(/* from */ $intakeApiConnection->getIntakeApiRequests(), /* to, ref */ $this->allIntakeApiRequests);
             }
         }
         return $this->allIntakeApiRequests;

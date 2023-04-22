@@ -138,4 +138,16 @@ final class ArrayUtilForTests
         }
         Assert::fail('Not found key in map; ' . LoggableToString::convert(['keyToFind' => $keyToFind, 'map' => $map]));
     }
+
+    /**
+     * @template TKey of string|int
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $from
+     * @param array<TKey, TValue> $to
+     */
+    public static function append(array $from, /* in,out */ array &$to): void
+    {
+        $to = array_merge($to, $from);
+    }
 }
