@@ -119,7 +119,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     goto finally;
 }
 
-bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
+bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
@@ -154,7 +154,7 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_PRE_HOOK_FUNC )
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ &preHookRetVal ) );
@@ -180,7 +180,7 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     goto finally;
 }
 
-void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
+void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u"
                                               , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
@@ -196,7 +196,7 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_POST_HOOK_FUNC )
                     , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
                     , phpPartArgs ) );
     ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
