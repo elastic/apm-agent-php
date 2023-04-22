@@ -24,7 +24,6 @@
 #include "basic_macros.h"
 #include "elastic_apm_API.h"
 #include "ConfigSnapshot.h"
-#include "elastic_apm_assert.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
