@@ -315,8 +315,8 @@ String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutput
 #ifdef PHP_WIN32
     return "Not implemented on Windows";
 #else
-    FILE* procSelfCmdLineFile = procSelfCmdLineFile = fopen( "/proc/self/cmdline", "rb" );
-    if ( procSelfCmdLineFile == NULL )
+    FILE* procSelfCmdLineFile = NULL;
+    if ( openFile( "/proc/self/cmdline", "rb", /* out */ &procSelfCmdLineFile ) )
     {
         return "Failed to open /proc/self/cmdline";
     }
@@ -535,7 +535,7 @@ void handleOsSignalLinux( int signalId )
     {
         signal( signalId, SIG_DFL );
     }
-    raise ( signalId );
+    raise( signalId );
 }
 #endif // #ifndef PHP_WIN32
 
@@ -580,3 +580,30 @@ void registerAtExitLogging()
     }
 #endif
 }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+int openFile( String fileName, String mode, /* out */ FILE** pFile )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( fileName );
+    ELASTIC_APM_ASSERT_VALID_PTR( mode );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pFile );
+
+#ifdef PHP_WIN32
+
+    return (int)fopen_s( /* out */ pFile, fileName, mode );
+
+#else // #ifdef PHP_WIN32
+
+    FILE* file = fopen( fileName, mode );
+    if ( file == NULL )
+    {
+        return (int)errno;
+    }
+
+    *pFile = file;
+    return 0;
+
+#endif // #ifdef PHP_WIN32
+}
+#pragma clang diagnostic pop
