@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\WordPress;
 
-use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanExpectationsBuilder;
 
