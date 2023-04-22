@@ -45,6 +45,7 @@
 
 #include "util.h"
 #include "log.h"
+#include "TextOutputStream.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
