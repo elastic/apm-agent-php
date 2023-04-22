@@ -149,6 +149,11 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::SERVICE_NAME                   => $stringRawToParsedValues(['my service \t name']),
             OptionNames::SERVICE_NODE_NAME              => $stringRawToParsedValues([' my_service_node_name  \t ']),
             OptionNames::SERVICE_VERSION                => $stringRawToParsedValues(['my service version ! 123']),
+            OptionNames::SPAN_COMPRESSION_ENABLED       => $boolRawToParsedValues(),
+            OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION
+                                                        => $durationRawToParsedValues,
+            OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION
+                                                        => $durationRawToParsedValues,
             OptionNames::TRANSACTION_IGNORE_URLS        => $wildcardListRawToParsedValues,
             OptionNames::TRANSACTION_MAX_SPANS          => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE        => $doubleRawToParsedValues,
