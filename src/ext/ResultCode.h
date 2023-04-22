@@ -71,7 +71,7 @@ String resultCodeToString( ResultCode resultCode )
 
 #define ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE() ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure )
 
-#define ELASTIC_APM_CALL_EARLY_GOTO_FINALLY_WITH_SUCCESS() \
+#define ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY() \
     do { \
         resultCode = resultSuccess; \
         goto finally; \
