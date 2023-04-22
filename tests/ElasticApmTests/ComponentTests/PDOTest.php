@@ -309,10 +309,7 @@ final class PDOTest extends ComponentTestCaseBase
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($disableInstrumentationsOptVal): void {
                 if (!empty($disableInstrumentationsOptVal)) {
-                    $appCodeParams->setAgentOption(
-                        OptionNames::DISABLE_INSTRUMENTATIONS,
-                        $disableInstrumentationsOptVal
-                    );
+                    $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
                 }
             }
         );
