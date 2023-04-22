@@ -28,6 +28,7 @@
 #include "log.h"
 #include "MemoryTracker.h"
 #include "ResultCode.h"
+#include "TextOutputStream_forward_decl.h"
 
 static inline
 bool isEmtpyZstring( const zend_string* zStr )
