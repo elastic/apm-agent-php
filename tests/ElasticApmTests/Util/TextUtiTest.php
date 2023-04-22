@@ -26,34 +26,65 @@ namespace ElasticApmTests\Util;
 final class TextUtiTest extends TestCaseBase
 {
     /**
-     * @return iterable<array{string, string[]}>
+     * @return iterable<array{string, array{string, string}[]}>
+     *                                              ^^^^^^------- end-of-line
+     *                                      ^^^^^^--------------- line text without end-of-line
+     *                        ^^^^^^----------------------------- input text
      */
     public function dataProviderForTestIterateLines(): iterable
     {
-        yield ['', ['']];
-        yield ["\n", ["\n", '']];
-        yield ["\r", ["\r", '']];
-        yield ["\r\n", ["\r\n", '']];
-        yield ["\n\r", ["\n", "\r", '']];
+        yield [
+            '' /* empty line without end-of-line */,
+            [['' /* <- empty line text */, '' /* <- no end-of-line */]]
+        ];
+
+        yield [
+            'some text without end-of-line',
+            [['some text without end-of-line', '' /* <- no end-of-line */]]
+        ];
+
+        yield [
+            PHP_EOL /* <- empty line */ .
+            'second line' . PHP_EOL .
+            PHP_EOL /* <- empty line */ .
+            'last non-empty line' . PHP_EOL
+            /* empty line without end-of-line */,
+            [
+                ['' /* <- empty line text */, PHP_EOL],
+                ['second line', PHP_EOL],
+                ['' /* <- empty line text */, PHP_EOL],
+                ['last non-empty line', PHP_EOL],
+                ['' /* <- empty line text */, '' /* <- no end-of-line */],
+            ],
+        ];
+
+        yield ["\n", [['' /* <- empty line text */, "\n"], ['' /* <- empty line text */, '' /* <- no end-of-line */]]];
+        yield ["\r", [['' /* <- empty line text */, "\r"], ['' /* <- empty line text */, '' /* <- no end-of-line */]]];
+        yield ["\r\n", [['' /* <- empty line text */, "\r\n"], ['' /* <- empty line text */, '' /* <- no end-of-line */]]];
+
+        // "\n\r" is not one line end-of-line but two "\n\r"
+        yield ["\n\r", [['' /* <- empty line text */, "\n"], ['' /* <- empty line text */, "\r"], ['' /* <- empty line text */, '']]];
     }
 
     /**
      * @dataProvider dataProviderForTestIterateLines
      *
-     * @param string   $inputText
-     * @param string[] $expectedLines
-     *
-     * @return void
+     * @param string                  $inputText
+     * @param array{string, string}[] $expectedLinesParts
+     *                      ^^^^^^------------------------------ end-of-line
+     *              ^^^^^^-------------------------------------- line text without end-of-line
      */
-    public function testIterateLines(string $inputText, array $expectedLines): void
+    public function testIterateLines(string $inputText, array $expectedLinesParts): void
     {
-        $actualLinesCount = IterableUtilForTests::count(TextUtilForTests::iterateLines($inputText));
-        self::assertSame(count($expectedLines), $actualLinesCount);
-
-        $index = 0;
-        foreach (TextUtilForTests::iterateLines($inputText) as $actualLine) {
-            self::assertSame($expectedLines[$index], $actualLine);
-            ++$index;
+        foreach ([true, false] as $keepEndOfLine) {
+            $index = 0;
+            foreach (TextUtilForTests::iterateLines($inputText, $keepEndOfLine) as $actualLine) {
+                $expectedLineParts = $expectedLinesParts[ $index ];
+                self::assertCount(2, $expectedLineParts);
+                $expectedLine = $expectedLineParts[0] . ($keepEndOfLine ? $expectedLineParts[1] : '');
+                self::assertSame($expectedLine, $actualLine);
+                ++$index;
+            }
         }
     }
 
