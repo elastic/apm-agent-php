@@ -30,6 +30,7 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 class SpanDto extends ExecutionSegmentDto
@@ -52,6 +53,9 @@ class SpanDto extends ExecutionSegmentDto
     /** @var ?SpanContextDto */
     public $context = null;
 
+    /** @var ?SpanCompositeDto */
+    public $composite = null;
+
     /**
      * @param mixed $value
      *
@@ -70,6 +74,9 @@ class SpanDto extends ExecutionSegmentDto
                 switch ($key) {
                     case 'action':
                         $result->action = self::assertValidKeywordString($value);
+                        return true;
+                    case 'composite':
+                        $result->composite = SpanCompositeDto::deserialize($value);
                         return true;
                     case 'context':
                         $result->context = SpanContextDto::deserialize($value);
@@ -124,7 +131,24 @@ class SpanDto extends ExecutionSegmentDto
                 );
             }
         }
+
         SpanContextDto::assertNullableMatches($expectations->context, $this->context);
+
+        if ($expectations->isCompositeNull->isValueSet()) {
+            Assert::assertSame(
+                $expectations->isCompositeNull->getValue(),
+                $this->composite === null,
+                LoggableToString::convert(
+                    [
+                        '$expectations->isCompositeNull' => $expectations->isCompositeNull->getValue(),
+                        '$this->composite'               => $this->composite,
+                    ]
+                )
+            );
+        }
+        if ($this->composite !== null) {
+            $this->composite->assertValid();
+        }
     }
 
     /**
