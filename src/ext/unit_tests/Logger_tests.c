@@ -62,7 +62,7 @@ StringView getLogLinePart( size_t partIndex, StringView logLine )
         {
             if( nextDelimiterPos >= logLineRemainder.length - 1 )
             {
-                return ELASTIC_APM_EMPTY_STRING_VIEW;
+                return makeEmptyStringView();
             }
             isInsideDelimitedPart = ! isInsideDelimitedPart;
             logLineRemainder = stringViewSkipFirstNChars( logLineRemainder, nextDelimiterPos + 1 );
@@ -74,7 +74,7 @@ StringView getLogLinePart( size_t partIndex, StringView logLine )
 
         if( nextDelimiterPos >= logLineRemainder.length - 1 )
         {
-            return ELASTIC_APM_EMPTY_STRING_VIEW;
+            return makeEmptyStringView();
         }
 
         isInsideDelimitedPart = ! isInsideDelimitedPart;
