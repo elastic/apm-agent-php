@@ -263,7 +263,7 @@ StringView insertPrefixAtEachNewLine(
     // so there's no need to insert any prefixes
     if ( isEmptyStringView( textOutputStreamContentAsStringView( &txtOutStream ) ) )
     {
-        return ELASTIC_APM_EMPTY_STRING_VIEW;
+        return makeEmptyStringView();
     }
 
     streamStringView( oldMessageLeft, &txtOutStream );
