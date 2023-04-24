@@ -465,8 +465,7 @@ final class MySQLiTest extends ComponentTestCaseBase
         $appCodeArgs[DbAutoInstrumentationUtilForTests::PASSWORD_KEY]
             = AmbientContextForTests::testConfig()->mysqlPassword;
 
-        $sharedExpectations
-            = MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $connectDbName);
+        $sharedExpectations = MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $connectDbName);
         $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder($isOOPApi, $sharedExpectations);
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
@@ -475,12 +474,8 @@ final class MySQLiTest extends ComponentTestCaseBase
             $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'ping');
 
             if ($connectDbName !== $workDbName) {
-                $expectedSpans[] = $expectationsBuilder->fromStatement(
-                    self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName
-                );
-                $expectationsBuilder->setPrototype(
-                    MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $workDbName)
-                );
+                $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName);
+                $expectationsBuilder->setPrototype(MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $workDbName));
                 $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'select_db');
             }
 
@@ -506,10 +501,7 @@ final class MySQLiTest extends ComponentTestCaseBase
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($disableInstrumentationsOptVal): void {
                 if (!empty($disableInstrumentationsOptVal)) {
-                    $appCodeParams->setAgentOption(
-                        OptionNames::DISABLE_INSTRUMENTATIONS,
-                        $disableInstrumentationsOptVal
-                    );
+                    $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
                 }
             }
         );

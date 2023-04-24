@@ -57,10 +57,7 @@ final class RawDataFromAgent
         if ($this->allIntakeApiRequests === null) {
             $this->allIntakeApiRequests = [];
             foreach ($this->intakeApiConnections as $intakeApiConnection) {
-                ArrayUtilForTests::append(
-                    $intakeApiConnection->getIntakeApiRequests() /* <- from */,
-                    $this->allIntakeApiRequests /* <- to, ref */
-                );
+                ArrayUtilForTests::append(/* from */ $intakeApiConnection->getIntakeApiRequests(), /* to, ref */ $this->allIntakeApiRequests);
             }
         }
         return $this->allIntakeApiRequests;
