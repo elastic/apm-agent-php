@@ -52,6 +52,8 @@ network utilisation and amount of storage reuired by Elasticsearch.
 
 - <<config-transaction-sample-rate>>
 - <<config-breakdown-metrics>>
+- <<configure-php-error-reporting>>
+- <<config-capture-errors>>
 
 [float]
 [[configure-logging]]
@@ -111,6 +113,9 @@ elastic_apm.log_level_syslog=TRACE
 The agent automatically creates APM error events for PHP errors triggered by the monitored application.
 APM error events are created only for PHP errors which level passes
 PHP https://www.php.net/manual/en/function.error-reporting.php[`error_reporting`] setting.
+
+In addition <<config-capture-errors>> configuration option controls
+if the agent captures any PHP errors.
 
 [float]
 [[configure-duration-format]]
@@ -246,6 +251,28 @@ Set it to `false` to disable the collection and reporting of
 breakdown metrics, which can reduce the overhead of the agent.
 
 NOTE: This feature requires APM Server and Kibana >= 7.3.
+
+[float]
+[[config-capture-errors]]
+==== `capture_errors`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_CAPTURE_ERRORS` | `elastic_apm.capture_errors`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+If this configuration option is set to `true` the agent will collect and report error events.
+Set it to `false` to disable the collection and reporting of APM
+error event, which can reduce the overhead of the agent.
+
+Also see <<configure-php-error-reporting>>.
 
 [float]
 [[config-disable-instrumentations]]
