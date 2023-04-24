@@ -178,8 +178,8 @@ Examples: `*foo*`, `/foo/*/bar, /*/baz*`.
 
 Matching is case insensitive by default.
 Prepending an element with `(?-i)` makes the matching case sensitive.
-For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
-on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
+For example `(?-i)/bar, /foo` matches `/bar` and `/FOO` but it doesn't match `/BAR`.
+On the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
 but doesn't match neither `/BAR` nor `/FOO`.
 
 Whitespace around commas separating wildcard expressions in the list is ignored.
