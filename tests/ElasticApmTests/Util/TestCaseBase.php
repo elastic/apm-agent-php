@@ -493,11 +493,9 @@ class TestCaseBase extends TestCase
             ),
             LoggableToString::convert(
                 [
-                    'before as duration' => TimeUtil::formatDurationInMicroseconds($before),
-                    'after as duration'  => TimeUtil::formatDurationInMicroseconds($after),
-                    'after - before'     => TimeUtil::formatDurationInMicroseconds($after - $before),
-                    'before as number'   => number_format($before),
-                    'after as number'    => number_format($after),
+                    'before'         => TimeUtilForTests::timestampToLoggable($before),
+                    'after'          => TimeUtilForTests::timestampToLoggable($after),
+                    'after - before' => TimeUtil::formatDurationInMicroseconds($after - $before),
                 ]
             )
         );
