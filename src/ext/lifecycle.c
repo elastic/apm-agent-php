@@ -590,9 +590,9 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
 
+    enableAccessToServerGlobal();
 
     if (requestCounter == 1) {
-        enableAccessToServerGlobal();
         bool preloadDetected = detectOpcachePreload();
         if (preloadDetected) {
             ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
