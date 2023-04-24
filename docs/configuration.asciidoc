@@ -293,10 +293,25 @@ Also see <<configure-php-error-reporting>>.
 A comma-separated list of wildcard expressions to match
 instrumentation names which should be disabled.
 When an instrumentation is disabled, no spans will be created for that instrumentation.
-An instrumentation may match more than one name -
-for example PDO instrumentation matches both `db` and  `pdo`.
+Each instrumentation has a name and any number of keywords.
+If instrumentation's name or any of its keywords match this configuration option
+then the instrumentation is disabled.
 
-Valid instrumentation names are `curl`, `db`, `http-client`, `pdo`.
+See <<configure-wildcard>> section for more details on how to use wildcard expressions.
+
+Supported instrumentations:
+[options="header"]
+|============
+| Name      | Keywords
+| `curl`    | `HTTP-client`
+| `PDO`     | `DB`
+| `MySQLi`  | `DB`
+|============
+
+Examples:
+
+- `db` disables both PDO and MySQLi instrumentations
+- `*HTTP*` disables curl instrumentation
 
 [float]
 [[config-disable-send]]
