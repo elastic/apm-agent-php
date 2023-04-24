@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <zend_types.h>
 #include "ResultCode.h"
 #include "ConfigSnapshot_forward_decl.h"
 #include "time_util.h"
