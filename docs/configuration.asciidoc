@@ -89,6 +89,13 @@ elastic_apm.log_level_syslog=TRACE
 ----
 
 [float]
+[[configure-php-error-reporting]]
+=== PHP errors as APM error events
+The agent automatically creates APM error events for PHP errors triggered by the monitored application.
+APM error events are created only for PHP errors which level passes
+PHP https://www.php.net/manual/en/function.error-reporting.php[`error_reporting`] setting.
+
+[float]
 [[configure-duration-format]]
 === Duration format
 The _duration_ format is used for configuration options like timeouts.
