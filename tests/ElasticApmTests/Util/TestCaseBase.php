@@ -650,12 +650,12 @@ class TestCaseBase extends TestCase
      */
     protected static function wrapDataProviderFromKeyValueMapToNamedDataSet(iterable $srcDataProvider): iterable
     {
-        $dataSetIdex = 0;
+        $dataSetIndex = 0;
         foreach ($srcDataProvider as $namedValuesMap) {
-            $dataSetName = '#' . $dataSetIdex;
+            $dataSetName = '#' . $dataSetIndex;
             $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
             yield $dataSetName => array_values($namedValuesMap);
-            ++$dataSetIdex;
+            ++$dataSetIndex;
         }
     }
 }

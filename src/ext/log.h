@@ -336,8 +336,8 @@ ResultCode resetLoggingStateInForkedChild();
 
 #else // #ifdef PHP_WIN32
 
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_critical, fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_warning, fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_debug, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_warning, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_debug, fmt, ##__VA_ARGS__ )
 
 #endif // #ifdef PHP_WIN32
