@@ -495,7 +495,7 @@ class TestCaseBase extends TestCase
                 [
                     'before'         => TimeUtilForTests::timestampToLoggable($before),
                     'after'          => TimeUtilForTests::timestampToLoggable($after),
-                    'after - before' => TimeUtil::formatDurationInMicroseconds($after - $before),
+                    'after - before' => TimeUtilForTests::timestampToLoggable($after - $before),
                 ]
             )
         );
