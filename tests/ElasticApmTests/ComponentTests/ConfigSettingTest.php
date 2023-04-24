@@ -264,6 +264,27 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         string $optRawVal,
         $optExpectedVal
     ): void {
+        $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $dbgTestArgs),
+            function () use ($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal): void {
+                $this->implTestAllWaysToSetConfig($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal);
+            }
+        );
+    }
+
+    /**
+     * @param AgentConfigSourceKind $agentConfigSourceKind
+     * @param string                $optName
+     * @param string                $optRawVal
+     * @param mixed                 $optExpectedVal
+     */
+    private function implTestAllWaysToSetConfig(
+        AgentConfigSourceKind $agentConfigSourceKind,
+        string $optName,
+        string $optRawVal,
+        $optExpectedVal
+    ): void {
         TransactionExpectations::$defaultIsSampled = null;
         TransactionExpectations::$defaultDroppedSpansCount = null;
         $testCaseHandle = $this->getTestCaseHandle();
