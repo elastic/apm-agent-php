@@ -80,7 +80,7 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
         $args = func_get_args();
         return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
             $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
-            $type = $this->callbackGroupKind /* <- type */,
+            $this->callbackGroupKind /* <- type */,
             /**
              * @return mixed
              */
