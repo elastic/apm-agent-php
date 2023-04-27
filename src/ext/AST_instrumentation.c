@@ -1216,8 +1216,8 @@ zend_ast* createWrapperFunctionBodyAst( StringView wrappedFunctionNewName, uint3
     // AST:
     //
     //    ZEND_AST_STMT_LIST (line: 48, attr: 0, childCount: 3)
-    //        ZEND_AST_ASSIGN (line: 48, attr: 0, childCount: 2)
-    //        ZEND_AST_ASSIGN (line: 48, attr: 0, childCount: 2)
+    //        ZEND_AST_ASSIGN (line: 48, attr: 0, childCount: 2) <- // part of prolog
+    //        ZEND_AST_ASSIGN (line: 48, attr: 0, childCount: 2) <- // part of prolog
     //        ZEND_AST_TRY (line: 48, attr: 0, childCount: 3)
 
     zend_ast* funcBodyAstStmtList = createAstList( ZEND_AST_STMT_LIST, lineNumber );
@@ -1239,6 +1239,8 @@ ResultCode createWrapperFunctionAst( zend_ast_decl* originalFuncAstDecl, StringV
     uint32_t lineNumber = originalFuncAstDecl->end_lineno;
 
     originalFuncBodyAst = originalFuncAstDecl->child[ g_funcDeclBodyChildIndex ];
+    // Temporarily set the body to NULL because we don't want to clone it
+    // We restore it back after clone call
     originalFuncAstDecl->child[ g_funcDeclBodyChildIndex ] = NULL;
     resultCode = cloneAstTree( (zend_ast*)originalFuncAstDecl, lineNumber, /* out */ (zend_ast**)&clonedFuncDecl );
     originalFuncAstDecl->child[ g_funcDeclBodyChildIndex ] = originalFuncBodyAst;
