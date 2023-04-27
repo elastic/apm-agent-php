@@ -270,7 +270,7 @@ NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 If this configuration option is set to `true` the agent will collect and report error events.
 Set it to `false` to disable the collection and reporting of APM
-error event, which can reduce the overhead of the agent.
+error events, which can reduce the overhead of the agent.
 
 Also see <<configure-php-error-reporting>>.
 
@@ -294,10 +294,10 @@ A comma-separated list of wildcard expressions to match
 instrumentation names which should be disabled.
 When an instrumentation is disabled, no spans will be created for that instrumentation.
 Each instrumentation has a name and any number of keywords.
-If instrumentation's name or any of its keywords match this configuration option
+If the instrumentation's name or any of its keywords match this configuration option
 then the instrumentation is disabled.
 
-See <<configure-wildcard>> section for more details on how to use wildcard expressions.
+See <<configure-wildcard>> for more details on how to use wildcard expressions.
 
 Supported instrumentations:
 [options="header"]
