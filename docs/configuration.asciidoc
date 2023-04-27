@@ -45,10 +45,10 @@ elastic_apm.service_name=SERVICE_NAME
 
 [float]
 [[configure-apm-data-amount]]
-=== Controlling amount of APM data emitted by the agent
-The following configuration settings control amount of APM data emitted by the agent
-and they can be tuned to reduce the agent overhead on the monitored application,
-network utilisation and amount of storage reuired by Elasticsearch.
+=== Control the amount of APM data emitted by the agent
+The following configuration settings control the amount of APM data emitted by the agent.
+They can be tuned to reduce the agent overhead on the monitored application,
+network utilization, and the amount of storage required by {es}.
 
 - <<config-transaction-sample-rate>>
 - <<config-breakdown-metrics>>
@@ -60,8 +60,8 @@ network utilisation and amount of storage reuired by Elasticsearch.
 NOTE: Configuration settings described in this section are related to logs emitted by the agent itself
 and not the logs emitted by the monitored application.
 The intended use case for these configuration settings is for the agent's supportability.
-The logs emitted by the agent are not stored in Elasticsearch by default
-so reducing the level for these logs will not reduced the amount of storage used Elasticsearch -
+The logs emitted by the agent are not stored in Elasticsearch by default,
+so reducing the level for these logs will not reduce the amount of storage used in Elasticsearch--
 see <<configure-apm-data-amount>> instead.
 
 The easiest way to configure the logging is by using the <<config-log-level-syslog>> configuration option.
