@@ -39,7 +39,6 @@ use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
