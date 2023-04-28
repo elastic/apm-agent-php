@@ -35,9 +35,9 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LOG
 
 #ifndef PHP_WIN32
-LogLevel g_elasticApmDirectLogLevelSyslog = logLevel_off;
+LogLevel g_elasticApmDirectLogLevelSyslog = logLevel_info;
 #endif // #ifndef PHP_WIN32
-LogLevel g_elasticApmDirectLogLevelStderr = logLevel_off;
+LogLevel g_elasticApmDirectLogLevelStderr = logLevel_error;
 
 String logLevelNames[numberOfLogLevels] =
         {
