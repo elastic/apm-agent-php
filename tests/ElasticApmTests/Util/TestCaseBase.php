@@ -27,11 +27,8 @@ use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\EventSinkInterface;
-use Elastic\Apm\Impl\Log\Backend as LogBackend;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopEventSink;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -496,11 +493,9 @@ class TestCaseBase extends TestCase
             ),
             LoggableToString::convert(
                 [
-                    'before as duration' => TimeUtil::formatDurationInMicroseconds($before),
-                    'after as duration'  => TimeUtil::formatDurationInMicroseconds($after),
-                    'after - before'     => TimeUtil::formatDurationInMicroseconds($after - $before),
-                    'before as number'   => number_format($before),
-                    'after as number'    => number_format($after),
+                    'before'         => TimeUtilForTests::timestampToLoggable($before),
+                    'after'          => TimeUtilForTests::timestampToLoggable($after),
+                    'after - before' => TimeUtilForTests::timestampToLoggable($after - $before),
                 ]
             )
         );

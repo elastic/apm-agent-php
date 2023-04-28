@@ -32,7 +32,6 @@ use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 final class ServerApiSchemaValidator

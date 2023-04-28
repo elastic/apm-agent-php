@@ -55,8 +55,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
      */
     public static function appCodeForTwoNestedSpansTest(array $args): void
     {
-        $transactionSampleRate = self::getMandatoryAppCodeArg($args, self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY);
-        /** @var ?float $transactionSampleRate */
+        $transactionSampleRate = self::getNullableFloatFromMap(self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY, $args);
         SamplingTestSharedCode::appCodeForTwoNestedSpansTest($transactionSampleRate ?? 1.0);
     }
 

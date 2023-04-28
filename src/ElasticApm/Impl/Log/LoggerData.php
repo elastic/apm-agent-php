@@ -46,24 +46,26 @@ final class LoggerData
     public $inheritedData;
 
     /** @var array<string, mixed> */
-    public $context = [];
+    public $context;
 
     /** @var Backend */
     public $backend;
 
     /**
-     * @param string       $category
-     * @param string       $namespace
-     * @param class-string $fqClassName
-     * @param string       $srcCodeFile
-     * @param Backend      $backend
-     * @param ?LoggerData  $inheritedData
+     * @param string               $category
+     * @param string               $namespace
+     * @param class-string         $fqClassName
+     * @param string               $srcCodeFile
+     * @param array<string, mixed> $context
+     * @param Backend              $backend
+     * @param ?LoggerData          $inheritedData
      */
     private function __construct(
         string $category,
         string $namespace,
         string $fqClassName,
         string $srcCodeFile,
+        array $context,
         Backend $backend,
         ?LoggerData $inheritedData
     ) {
@@ -71,24 +73,27 @@ final class LoggerData
         $this->namespace = $namespace;
         $this->fqClassName = $fqClassName;
         $this->srcCodeFile = $srcCodeFile;
+        $this->context = $context;
         $this->backend = $backend;
         $this->inheritedData = $inheritedData;
     }
 
     /**
-     * @param string       $category
-     * @param string       $namespace
-     * @param class-string $fqClassName
-     * @param string       $srcCodeFile
-     * @param Backend      $backend
+     * @param string               $category
+     * @param string               $namespace
+     * @param class-string         $fqClassName
+     * @param string               $srcCodeFile
+     * @param array<string, mixed> $context
+     * @param Backend              $backend
      *
-     * @return static
+     * @return self
      */
     public static function makeRoot(
         string $category,
         string $namespace,
         string $fqClassName,
         string $srcCodeFile,
+        array $context,
         Backend $backend
     ): self {
         return new self(
@@ -96,6 +101,7 @@ final class LoggerData
             $namespace,
             $fqClassName,
             $srcCodeFile,
+            $context,
             $backend,
             /* inheritedData */ null
         );
@@ -108,6 +114,7 @@ final class LoggerData
             $this->namespace,
             $this->fqClassName,
             $this->srcCodeFile,
+            [] /* <- context */,
             $this->backend,
             $this
         );

@@ -146,8 +146,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
      */
     public static function appCodeForTestPhpErrorUndefinedVariableWrapper(array $appCodeArgs): void
     {
-        /** @var bool $includeInErrorReporting */
-        $includeInErrorReporting = self::getMandatoryAppCodeArg($appCodeArgs, self::INCLUDE_IN_ERROR_REPORTING);
+        $includeInErrorReporting = self::getBoolFromMap(self::INCLUDE_IN_ERROR_REPORTING, $appCodeArgs);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

@@ -22,6 +22,7 @@
 #include "Tracer.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
@@ -30,8 +31,6 @@
 #define ELASTIC_APM_PHP_PART_SHUTDOWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "shutdown"
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPreHook"
 #define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
-#define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
-#define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
 #define ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "emptyMethod"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )

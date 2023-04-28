@@ -74,7 +74,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
 
         $isFirstLine = true;
         $encounteredEmptyLine = false;
-        foreach (self::iterateLines($this->intakeApiRequest->body) as $bodyLine) {
+        foreach (TextUtilForTests::iterateLines($this->intakeApiRequest->body, /* keepEndOfLine */ false) as $bodyLine) {
             if (TextUtil::isEmptyString($bodyLine)) {
                 $encounteredEmptyLine = true;
                 continue;
@@ -166,30 +166,6 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $this->result->metricSets[] = $newMetricSet;
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Added metric set', ['newMetricSet' => $newMetricSet]);
-    }
-
-    /**
-     * @param string $text
-     *
-     * @return iterable<string>
-     */
-    private static function iterateLines(string $text): iterable
-    {
-        $prevPos = 0;
-        $currentPos = $prevPos;
-        $textLen = strlen($text);
-        for (; $currentPos != $textLen;) {
-            $endOfLineSeqLength = TextUtilForTests::ifEndOfLineSeqGetLength($text, $textLen, $currentPos);
-            if ($endOfLineSeqLength === 0) {
-                ++$currentPos;
-                continue;
-            }
-            yield substr($text, $prevPos, $currentPos - $prevPos);
-            $prevPos = $currentPos + $endOfLineSeqLength;
-            $currentPos = $prevPos;
-        }
-
-        yield substr($text, $prevPos, $currentPos - $prevPos);
     }
 
     /**

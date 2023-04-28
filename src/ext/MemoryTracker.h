@@ -25,6 +25,7 @@
 #include "basic_macros.h"
 #include "IntrusiveDoublyLinkedList.h"
 #include "internal_checks.h"
+#include "TextOutputStream_forward_decl.h"
 
 #ifndef ELASTIC_APM_MEMORY_TRACKING_ENABLED_01
 #   if defined( ELASTIC_APM_MEMORY_TRACKING_ENABLED ) && ( ELASTIC_APM_MEMORY_TRACKING_ENABLED == 0 )
@@ -153,8 +154,6 @@ void memoryTrackerBeforeFree(
 void memoryTrackerRequestShutdown( MemoryTracker* memTracker );
 void destructMemoryTracker( MemoryTracker* memTracker );
 
-struct TextOutputStream;
-typedef struct TextOutputStream TextOutputStream;
 String streamMemoryTrackingLevel( MemoryTrackingLevel level, TextOutputStream* txtOutStream );
 
 MemoryTracker* getGlobalMemoryTracker();

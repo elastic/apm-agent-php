@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TimeUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -37,5 +38,15 @@ final class TimeUtilForTests
     public static function compareTimestamps(float $t1, float $t2): int
     {
         return ($t1 < $t2) ? -1 : (($t1 == $t2) ? 0 : 1);
+    }
+
+    /**
+     * @param float $timestamp
+     *
+     * @return array<string, mixed>
+     */
+    public static function timestampToLoggable(float $timestamp): array
+    {
+        return ['as duration' => TimeUtil::formatDurationInMicroseconds($timestamp), 'as number' => number_format($timestamp)];
     }
 }

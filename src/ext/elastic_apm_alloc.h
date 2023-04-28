@@ -248,9 +248,9 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
     ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( ( (ptr) == NULL ) ? 0 : ( strlen( ptr ) + 1 ), ptr )
 
 
-#define ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSize, outPtr, doOnFailure ) \
+#define ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSizeInBytes, outPtr, doOnFailure ) \
     do { \
-        void* mallocIfFailedDoExPtr = malloc( requestedSize ); \
+        void* mallocIfFailedDoExPtr = malloc( (requestedSizeInBytes) ); \
         if ( mallocIfFailedDoExPtr == NULL ) \
         { \
             resultCode = resultOutOfMemory; \
@@ -259,20 +259,41 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
         (outPtr) = (type*)(mallocIfFailedDoExPtr); \
     } while ( 0 )
 
-#define ELASTIC_APM_MALLOC_IF_FAILED_GOTO( type, requestedSize, outPtr ) \
-    ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSize, outPtr, /* doOnFailure: */ goto failure )
+#define ELASTIC_APM_MALLOC_IF_FAILED_GOTO( type, requestedSizeInBytes, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSizeInBytes, outPtr, /* doOnFailure: */ goto failure )
+
+#define ELASTIC_APM_MALLOC_STRING_IF_FAILED_GOTO( maxLength, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_GOTO( char, sizeof( char ) * ((maxLength) + 1) /* <- +1 for terminating '\0' */, outPtr )
+
+#define ELASTIC_APM_MALLOC_STRING_BUFFER_IF_FAILED_GOTO( maxLength, strBuf ) \
+    do { \
+        ELASTIC_APM_MALLOC_STRING_IF_FAILED_GOTO( (maxLength), /* outPtr */ (strBuf).begin ); \
+        (strBuf).size = (maxLength) + 1; \
+    } while ( 0 )
 
 #define ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
     ELASTIC_APM_MALLOC_IF_FAILED_GOTO( type, sizeof( type ), outPtr )
 
-#define ELASTIC_APM_FREE_AND_SET_TO_NULL( type, requestedSize, ptr ) \
+#define ELASTIC_APM_FREE_AND_SET_TO_NULL( type, requestedSizeInBytes, ptr ) \
     do { \
         if ( (ptr) != NULL ) \
         { \
             free( (void*)(ptr) ); \
             (ptr) = (type*)(NULL); \
-        }\
+        } \
     } while ( 0 )
 
 #define ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
     ELASTIC_APM_FREE_AND_SET_TO_NULL( type, sizeof( type ), ptr )
+
+#define ELASTIC_APM_FREE_STRING_AND_SET_TO_NULL( maxLength, ptr ) \
+    ELASTIC_APM_FREE_AND_SET_TO_NULL( char, sizeof( char ) * ((maxLength) + 1) /* <- +1 for terminating '\0' */, ptr )
+
+#define ELASTIC_APM_FREE_STRING_BUFFER_AND_SET_TO_NULL( strBuf ) \
+    do { \
+        if ( (strBuf).size != 0 ) \
+        { \
+            ELASTIC_APM_FREE_STRING_AND_SET_TO_NULL( /* maxLength */ (strBuf).size - 1, /* ptr */ (strBuf).begin ); \
+            (strBuf) = ELASTIC_APM_EMPTY_STRING_BUFFER; \
+        } \
+    } while ( 0 )
