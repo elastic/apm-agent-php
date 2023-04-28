@@ -20,6 +20,13 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.9.0]]
+=== v1.9.0 - 2023/04/28
+[float]
+==== Bug fixes
+* Added support for span compression {pull}xxxxxxxx[#xxxxxxxxx]
+* Added auto-instrumentation for capturing WordPress filters/actions callbacks and the active theme {pull}xxxxxxxx[#xxxxxxxxx]
+
 [[release-notes-v1.8.3]]
 === v1.8.3 - 2023/04/21
 [float]
