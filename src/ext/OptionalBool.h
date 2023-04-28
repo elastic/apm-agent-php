@@ -17,16 +17,30 @@
  * under the License.
  */
 
-#include "ResultCode.h"
-#include "basic_macros.h"
+#pragma once
 
-StringView resultCodeNames[ numberOfResultCodes ] =
+#include <stdbool.h>
+#include "basic_types.h"
+#include "basic_util.h"
+
+struct OptionalBool
 {
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSuccess ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultOutOfMemory ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultParsingFailed ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultCurlFailure ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSyncObjUseAfterFork ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultBufferIsTooSmall ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultFailure ),
+    bool isSet;
+    bool value;
 };
+typedef struct OptionalBool OptionalBool;
+
+static inline String optionalBoolToString( OptionalBool optionalBoolValue )
+{
+    return optionalBoolValue.isSet ? "not set" : boolToString( optionalBoolValue.value );
+}
+
+static inline OptionalBool makeNotSetOptionalBool()
+{
+    return (OptionalBool){ .isSet = false };
+}
+
+static inline OptionalBool makeSetOptionalBool( bool value )
+{
+    return (OptionalBool){ .isSet = true, .value = value };
+}

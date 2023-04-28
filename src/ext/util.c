@@ -57,7 +57,7 @@ StringView findEndOfLineSequence( StringView text )
         }
     }
 
-    return makeEmptyStringView();
+    return ELASTIC_APM_EMPTY_STRING_VIEW;
 }
 
 bool findCharByPredicate( StringView src, CharPredicate predicate, size_t* foundPosition )

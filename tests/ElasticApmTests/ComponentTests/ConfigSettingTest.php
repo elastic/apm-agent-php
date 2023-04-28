@@ -219,10 +219,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      */
     public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
     {
-        $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        TestCase::assertIsString($optName);
-        /** @var string $optName */
-        $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
+        $optName = self::getStringFromMap(self::APP_CODE_ARGS_KEY_OPTION_NAME, $appCodeArgs);
+        $optExpectedVal = self::getFromMap(self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE, $appCodeArgs);
 
         $tracer = self::getTracerFromAppCode();
 
@@ -261,6 +259,27 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param mixed                 $optExpectedVal
      */
     public function testAllWaysToSetConfig(
+        AgentConfigSourceKind $agentConfigSourceKind,
+        string $optName,
+        string $optRawVal,
+        $optExpectedVal
+    ): void {
+        $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $dbgTestArgs),
+            function () use ($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal): void {
+                $this->implTestAllWaysToSetConfig($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal);
+            }
+        );
+    }
+
+    /**
+     * @param AgentConfigSourceKind $agentConfigSourceKind
+     * @param string                $optName
+     * @param string                $optRawVal
+     * @param mixed                 $optExpectedVal
+     */
+    private function implTestAllWaysToSetConfig(
         AgentConfigSourceKind $agentConfigSourceKind,
         string $optName,
         string $optRawVal,

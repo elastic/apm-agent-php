@@ -23,22 +23,16 @@
 #include <stdlib.h> // NULL
 #include <inttypes.h> // PRId64, PRIu64
 #include <stdarg.h>
+#include "elastic_apm_assert_enabled.h"
 #include "basic_macros.h" // ELASTIC_APM_NO_RETURN_ATTRIBUTE, ELASTIC_APM_PRINTF_ATTRIBUTE
 #include "basic_types.h" // Int64, UInt64
 #include "internal_checks.h"
+#include "TextOutputStream_forward_decl.h"
 
 void elasticApmAbort() ELASTIC_APM_NO_RETURN_ATTRIBUTE;
 
 #define ELASTIC_APM_STATIC_ASSERT( cond ) \
     typedef char ELASTIC_APM_PP_CONCAT( elastic_apm_static_assert_t_, ELASTIC_APM_PP_CONCAT( __LINE__, ELASTIC_APM_PP_CONCAT( _, __COUNTER__ ) ) ) [ (cond) ? 1 : -1 ]
-
-#ifndef ELASTIC_APM_ASSERT_ENABLED_01
-#   if defined( ELASTIC_APM_ASSERT_ENABLED ) && ( ELASTIC_APM_ASSERT_ENABLED == 0 )
-#       define ELASTIC_APM_ASSERT_ENABLED_01 0
-#   else
-#       define ELASTIC_APM_ASSERT_ENABLED_01 1
-#   endif
-#endif
 
 #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 
@@ -206,6 +200,4 @@ bool isValidPtr( const void* ptr )
         , (UInt64)(rangeBeginIncluded), (UInt64)(x), (UInt64)(rangeEndExcluded) ) \
 /**/
 
-struct TextOutputStream;
-typedef struct TextOutputStream TextOutputStream;
 String streamAssertLevel( AssertLevel level, TextOutputStream* txtOutStream );

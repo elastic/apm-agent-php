@@ -17,16 +17,31 @@
  * under the License.
  */
 
-#include "ResultCode.h"
-#include "basic_macros.h"
+#pragma once
 
-StringView resultCodeNames[ numberOfResultCodes ] =
+/**
+ * The order is important because lower numeric values are considered contained in higher ones
+ * for example logLevel_error means that both logLevel_error and logLevel_critical is enabled.
+ */
+enum LogLevel
 {
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSuccess ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultOutOfMemory ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultParsingFailed ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultCurlFailure ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSyncObjUseAfterFork ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultBufferIsTooSmall ),
-    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultFailure ),
+    /**
+     * logLevel_not_set should not be used by logging statements - it is used only in configuration.
+     */
+    logLevel_not_set = -1,
+
+    /**
+     * logLevel_off should not be used by logging statements - it is used only in configuration.
+     */
+    logLevel_off = 0,
+
+    logLevel_critical,
+    logLevel_error,
+    logLevel_warning,
+    logLevel_info,
+    logLevel_debug,
+    logLevel_trace,
+
+    numberOfLogLevels
 };
+typedef enum LogLevel LogLevel;

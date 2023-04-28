@@ -75,6 +75,14 @@ final class AssertMessageBuilder implements Stringable
         return LoggableToString::convert($this->ctx);
     }
 
+    /**
+     * @param array<string, mixed> $ctx
+     */
+    public static function buildString(array $ctx): string
+    {
+        return LoggableToString::convert($ctx);
+    }
+
     /** @inheritDoc */
     public function __toString(): string
     {

@@ -215,7 +215,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public static function appCodeForSetOutcomeManually(array $appCodeArgs): void
     {
-        $shouldSetOutcomeManually = self::getMandatoryAppCodeArg($appCodeArgs, 'shouldSetOutcomeManually');
+        $shouldSetOutcomeManually = self::getBoolFromMap('shouldSetOutcomeManually', $appCodeArgs);
         if ($shouldSetOutcomeManually) {
             ElasticApm::getCurrentTransaction()->setOutcome(Constants::OUTCOME_UNKNOWN);
         }
@@ -415,7 +415,7 @@ final class HttpTransactionTest extends ComponentTestCaseBase
      */
     public static function appCodeTransactionIgnoreUrlsConfig(array $appCodeArgs): void
     {
-        $expectedShouldBeIgnored = self::getMandatoryAppCodeArg($appCodeArgs, 'expectedShouldBeIgnored');
+        $expectedShouldBeIgnored = self::getBoolFromMap('expectedShouldBeIgnored', $appCodeArgs);
         self::assertSame($expectedShouldBeIgnored, ElasticApm::getCurrentTransaction()->isNoop());
 
         if ($expectedShouldBeIgnored) {

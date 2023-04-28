@@ -18,6 +18,7 @@
  */
 
 #include "ConfigManager.h"
+#include "ConfigSnapshot.h"
 #ifdef ELASTIC_APM_MOCK_STDLIB
 #   include "mock_stdlib.h"
 #else
@@ -1568,7 +1569,6 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
     ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
-static
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );
