@@ -69,7 +69,7 @@ final class StackTraceUtil
     public static function captureInClassicFormatExcludeElasticApm(
         ?LoggerFactory $loggerFactory,
         int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
+        int $options = DEBUG_BACKTRACE_IGNORE_ARGS,
         int $limit = 0
     ): array {
         return self::captureInClassicFormat(
@@ -87,7 +87,7 @@ final class StackTraceUtil
     public static function captureInClassicFormat(
         ?LoggerFactory $loggerFactory,
         int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
+        int $options = DEBUG_BACKTRACE_IGNORE_ARGS,
         int $limit = 0,
         bool $includeElasticApmFrames = true
     ): array {
@@ -104,7 +104,7 @@ final class StackTraceUtil
     public static function captureInPhpFormat(
         ?LoggerFactory $loggerFactory,
         int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
+        int $options = DEBUG_BACKTRACE_IGNORE_ARGS,
         int $limit = 0
     ): array {
         $srcFrames = array_slice(debug_backtrace($options, $limit === 0 ? 0 : ($offset + $limit)), $offset);

@@ -67,6 +67,17 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         SharedCode::assertResults($testArgs, $this->mockEventSink->dataFromAgent);
     }
 
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
+
     public function testVariousCombinations(): void
     {
         TransactionExpectations::$defaultDroppedSpansCount = null;

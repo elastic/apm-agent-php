@@ -75,10 +75,8 @@ final class SpanContextServiceTargetDto
         self::assertSameNullableKeywordStringExpectedOptional($expectations->type, $this->type);
     }
 
-    public static function assertNullableMatches(
-        SpanContextServiceTargetExpectations $expectations,
-        ?self $actual
-    ): void {
+    public static function assertNullableMatches(SpanContextServiceTargetExpectations $expectations, ?self $actual): void
+    {
         if ($actual === null) {
             TestCase::assertTrue($expectations->isEmpty());
             return;

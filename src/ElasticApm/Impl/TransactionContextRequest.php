@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\TransactionContextRequestInterface;
 use Elastic\Apm\TransactionContextRequestUrlInterface;
 
@@ -72,10 +73,10 @@ final class TransactionContextRequest extends ContextPartWrapper implements Tran
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
         if (($this->method === null) && !SerializationUtil::prepareForSerialization(/* ref */ $this->url)) {
-            return false;
+            return BoolUtil::INT_FOR_FALSE;
         }
 
         /**
@@ -90,7 +91,7 @@ final class TransactionContextRequest extends ContextPartWrapper implements Tran
             $this->url = new TransactionContextRequestUrl($this->owner);
         }
 
-        return true;
+        return BoolUtil::INT_FOR_TRUE;
     }
 
     /** @inheritDoc */

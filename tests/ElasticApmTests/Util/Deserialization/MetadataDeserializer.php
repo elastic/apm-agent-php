@@ -168,7 +168,8 @@ final class MetadataDeserializer
     }
 
     /**
-     * @param mixed $value
+     * @param mixed       $value
+     * @param ServiceData $result
      */
     private static function deserializeServiceNodeSubObject($value, ServiceData $result): void
     {
@@ -217,7 +218,7 @@ final class MetadataDeserializer
     }
 
     /**
-     * @param mixed  $value
+     * @param mixed $value
      *
      * @return NameVersionData
      */

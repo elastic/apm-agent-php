@@ -77,13 +77,13 @@ final class MetricSetValidator
     public static function assertValidSamples($samples): array
     {
         TestCase::assertTrue(is_array($samples));
-        /** @var array<mixed, mixed> $samples */
+        /** @var array<mixed> $samples */
         TestCase::assertTrue(!ArrayUtil::isEmpty($samples));
 
         foreach ($samples as $key => $valueArr) {
             self::assertValidKeywordString($key);
             TestCase::assertTrue(is_array($valueArr));
-            /** @var array<mixed, mixed> $valueArr */
+            /** @var array<mixed> $valueArr */
             TestCase::assertTrue(count($valueArr) === 1);
             TestCase::assertTrue(array_key_exists('value', $valueArr));
             $value = $valueArr['value'];

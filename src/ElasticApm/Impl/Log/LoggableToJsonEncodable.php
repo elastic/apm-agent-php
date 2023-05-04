@@ -40,11 +40,11 @@ final class LoggableToJsonEncodable
 {
     use StaticClassTrait;
 
-    private const MAX_DEPTH = 10;
+    /** @var int */
+    public static $maxDepth = 10;
 
     private const IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK = 10000;
-    private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK
-        = 2 * self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK;
+    private const IS_DTO_OBJECT_CACHE_MAX_COUNT_HIGH_WATER_MARK = 2 * self::IS_DTO_OBJECT_CACHE_MAX_COUNT_LOW_WATER_MARK;
 
     /** @var array<string, bool> */
     private static $isDtoObjectCache = [];
@@ -67,7 +67,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_array($value)) {
-            if ($depth >= self::MAX_DEPTH) {
+            if ($depth >= self::$maxDepth) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -82,7 +82,7 @@ final class LoggableToJsonEncodable
         }
 
         if (is_object($value)) {
-            if ($depth >= self::MAX_DEPTH) {
+            if ($depth >= self::$maxDepth) {
                 return [
                     LogConsts::MAX_DEPTH_REACHED => $depth,
                     LogConsts::TYPE_KEY          => DbgUtil::getType($value),
@@ -95,9 +95,9 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertArray(array $array, int $depth): array
     {
@@ -105,11 +105,11 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      * @param bool                $isListArray
      * @param int                 $depth
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertArrayImpl(array $array, bool $isListArray, int $depth): array
     {
@@ -136,11 +136,11 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      * @param bool                $isListArray
      * @param int                 $depth
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertSmallArray(array $array, bool $isListArray, int $depth): array
     {
@@ -162,9 +162,9 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $mapArrayValue
+     * @param array<mixed> $mapArrayValue
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertSmallMapArray(array $mapArrayValue, int $depth): array
     {
@@ -174,7 +174,7 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $mapArrayValue
+     * @param array<mixed> $mapArrayValue
      *
      * @return bool
      */
@@ -189,9 +189,9 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $mapArrayValue
+     * @param array<mixed> $mapArrayValue
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertSmallStringKeysMapArray(array $mapArrayValue, int $depth): array
     {
@@ -203,10 +203,10 @@ final class LoggableToJsonEncodable
     }
 
     /**
-     * @param array<mixed, mixed> $mapArrayValue
+     * @param array<mixed> $mapArrayValue
      * @param int                 $depth
      *
-     * @return array<mixed, mixed>
+     * @return array<mixed>
      */
     private static function convertSmallMixedKeysMapArray(array $mapArrayValue, int $depth): array
     {

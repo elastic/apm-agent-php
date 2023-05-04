@@ -76,3 +76,10 @@ The spans are named after the schema `<method> <host>`, for example `GET elastic
 |
 
 |===
+
+[float]
+[[supported-php-errors]]
+=== Capturing PHP errors as APM error events
+
+The agent automatically creates APM error events for PHP errors triggered by the monitored application.
+See <<configure-php-error-reporting>> for the relevant configuration settings.

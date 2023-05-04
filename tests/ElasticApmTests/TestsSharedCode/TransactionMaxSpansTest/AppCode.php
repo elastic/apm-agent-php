@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 final class AppCode implements LoggableInterface
@@ -72,9 +73,9 @@ final class AppCode implements LoggableInterface
 
     public static function run(Args $testArgs, TransactionInterface $tx): void
     {
-        TestCase::assertGreaterThanOrEqual(0, $testArgs->numberOfSpansToCreate);
-        TestCase::assertGreaterThan(0, $testArgs->maxFanOut);
-        TestCase::assertGreaterThan(0, $testArgs->maxDepth);
+        Assert::assertGreaterThan(0, $testArgs->numberOfSpansToCreate);
+        Assert::assertGreaterThan(0, $testArgs->maxFanOut);
+        Assert::assertGreaterThan(0, $testArgs->maxDepth);
         (new self($testArgs, $tx))->runLoop();
     }
 
@@ -153,11 +154,10 @@ final class AppCode implements LoggableInterface
     private function createSpan(): void
     {
         ++$this->numberOfSpansCreated;
-        /** @noinspection PhpExpressionResultUnusedInspection */
         ++$this->topSpanInfo()->childCount;
-        /** @var ExecutionSegmentInterface */
+        /** @var ExecutionSegmentInterface $topExecSegment */
         $topExecSegment = ($this->actualSpansDepth() === 0) ? $this->tx : $this->topSpanInfo()->span;
-        /** @var ExecutionSegmentContextInterface */
+        /** @var ExecutionSegmentContextInterface $context */
         $context = $topExecSegment->context(); // @phpstan-ignore-line
         $context->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
         $spanName = $this->topSpanInfo()->name . '_' . $this->topSpanInfo()->childCount;

@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 
 /**
@@ -110,9 +111,9 @@ abstract class ExecutionSegmentContext extends ContextPartWrapper implements Exe
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return $this->labels !== null && !ArrayUtil::isEmpty($this->labels);
+        return BoolUtil::toInt($this->labels !== null && !ArrayUtil::isEmpty($this->labels));
     }
 
     /** @inheritDoc */

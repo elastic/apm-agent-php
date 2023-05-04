@@ -70,23 +70,16 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     /**
      * @param array<string, TransactionDto> $idToTransaction
      * @param array<string, SpanDto>        $idToSpan
-     * @param bool                           $forceEnableFlakyAssertions
+     * @param ?bool                         $flakyAssertionsEnabled
      */
-    public function assertValidOneTraceTransactionsAndSpans(
-        array $idToTransaction,
-        array $idToSpan,
-        bool $forceEnableFlakyAssertions = false
-    ): void {
+    public function assertValidOneTraceTransactionsAndSpans(array $idToTransaction, array $idToSpan, ?bool $flakyAssertionsEnabled = null): void
+    {
         $expected = new TraceExpectations();
         $expected->transaction->timestampBefore = $this->startTimestamp;
         $expected->transaction->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
         $expected->span->timestampBefore = $this->startTimestamp;
         $expected->span->timestampAfter = $this->mockClock->getSystemClockCurrentTime();
-        TraceValidator::validate(
-            new TraceActual($idToTransaction, $idToSpan),
-            $expected,
-            $forceEnableFlakyAssertions
-        );
+        TraceValidator::validate(new TraceActual($idToTransaction, $idToSpan), $expected, $flakyAssertionsEnabled);
     }
 
     /**
@@ -119,11 +112,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     private function assertInvalidTransactionsAndSpans(array $idToTransaction, array $idToSpan): void
     {
         try {
-            $this->assertValidOneTraceTransactionsAndSpans(
-                $idToTransaction,
-                $idToSpan,
-                /* forceEnableFlakyAssertions: */ true
-            );
+            $this->assertValidOneTraceTransactionsAndSpans($idToTransaction, $idToSpan, /* flakyAssertionsEnabled: */ true);
         } catch (Throwable $throwable) {
             if ($throwable instanceof PhpUnitException || $throwable instanceof InvalidEventDataException) {
                 return;

@@ -25,6 +25,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\Optional;
 
 class AppCodeRequestParams implements LoggableInterface
@@ -55,10 +56,10 @@ class AppCodeRequestParams implements LoggableInterface
     }
 
     /**
-     * @param array<string, mixed> $appCodeArgs
+     * @param MixedMap|array<string, mixed> $appCodeArgs
      */
-    public function setAppCodeArgs(array $appCodeArgs): void
+    public function setAppCodeArgs($appCodeArgs): void
     {
-        $this->dataPerRequest->appCodeArguments = $appCodeArgs;
+        $this->dataPerRequest->appCodeArguments = $appCodeArgs instanceof MixedMap ? $appCodeArgs->cloneAsArray() : $appCodeArgs;
     }
 }

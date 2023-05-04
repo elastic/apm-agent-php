@@ -25,6 +25,9 @@ namespace ElasticApmTests\Util;
 
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 
+/**
+ * @extends ExpectationsBase<mixed>
+ */
 class EventExpectations extends ExpectationsBase
 {
     /** @var float */
@@ -36,7 +39,6 @@ class EventExpectations extends ExpectationsBase
     public function __construct()
     {
         $this->timestampBefore = PhpUnitExtensionBase::$timestampBeforeTest;
-        $this->timestampAfter
-            = PhpUnitExtensionBase::$timestampAfterTest ?? AmbientContextForTests::clock()->getSystemClockCurrentTime();
+        $this->timestampAfter = PhpUnitExtensionBase::$timestampAfterTest ?? AmbientContextForTests::clock()->getSystemClockCurrentTime();
     }
 }

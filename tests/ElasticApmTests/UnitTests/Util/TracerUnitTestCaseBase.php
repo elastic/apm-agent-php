@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
 
@@ -52,7 +53,7 @@ class TracerUnitTestCaseBase extends TestCaseBase
      *
      * @return bool
      */
-    protected function isCompatibleWithSpanCompression(): bool
+    protected function isSpanCompressionCompatible(): bool
     {
         return true;
     }
@@ -71,8 +72,9 @@ class TracerUnitTestCaseBase extends TestCaseBase
 
         $builder = self::buildTracerForTests($shouldCreateMockEventSink ? $this->mockEventSink : null);
 
-        if (!$this->isCompatibleWithSpanCompression()) {
+        if (!$this->isSpanCompressionCompatible()) {
             $builder->withBoolConfig(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+            SpanExpectations::$assumeSpanCompressionDisabled = true;
         }
 
         if ($tracerBuildCallback !== null) {

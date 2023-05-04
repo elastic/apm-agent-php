@@ -23,15 +23,78 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
+use ElasticApmTests\TestsSharedCode\SpanCompressionSharedCode;
+use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
+use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group does_not_require_external_services
  */
 final class SpanCompressionComponentTest extends ComponentTestCaseBase
 {
-    public function testXyz(): void
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function dataProviderForTestOneCompressedSequence(): iterable
     {
-        self::dummyAssert();
+        /**
+         * @return iterable<array<string, mixed>>
+         */
+        $removeMockClock = function (): iterable {
+            $sharedCodeDataSets = SpanCompressionSharedCode::dataProviderForTestOneCompressedSequence();
+            foreach ($sharedCodeDataSets as $dataSet) {
+                /** @var MixedMap $testArgs */
+                $testArgs = ArrayUtilForTests::getSingleValue($dataSet);
+                $sharedCode = new SpanCompressionSharedCode($testArgs);
+                if ($sharedCode->mockClock === null) {
+                    yield $testArgs->cloneAsArray();
+                }
+            }
+        };
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($removeMockClock(), IterableUtilForTests::count($removeMockClock())));
+    }
+
+    public static function appCodeForTestOneCompressedSequence(MixedMap $appCodeArgs): void
+    {
+        (new SpanCompressionSharedCode($appCodeArgs))->implTestOneCompressedSequenceAct();
+    }
+
+    /**
+     * @dataProvider dataProviderForTestOneCompressedSequence
+     */
+    public function testOneCompressedSequence(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['testArgs' => $testArgs]);
+
+        $sharedCode = new SpanCompressionSharedCode($testArgs);
+        $testCaseHandle = $this->getTestCaseHandle();
+
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($sharedCode): void {
+                $appCodeParams->setAgentOptions($sharedCode->agentConfigOptions);
+            }
+        );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestOneCompressedSequence']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
+                $appCodeRequestParams->setAppCodeArgs($testArgs);
+            }
+        );
+
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans(count($sharedCode->expectedSpansForTestOneCompressedSequence()))
+        );
+
+        $sharedCode->implTestOneCompressedSequenceAssert($dataFromAgent);
     }
 }

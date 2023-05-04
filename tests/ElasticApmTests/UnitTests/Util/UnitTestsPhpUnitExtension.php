@@ -37,17 +37,9 @@ final class UnitTestsPhpUnitExtension extends PhpUnitExtensionBase
     public function __construct()
     {
         parent::__construct(/* dbgProcessName */ 'Unit tests');
-    }
-
-    public function executeBeforeTest(string $test): void
-    {
-        parent::executeBeforeTest($test);
 
         if (ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
-                . ' because it will cause a clash.'
-            );
+            throw new RuntimeException(ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests because it will cause a clash');
         }
     }
 }

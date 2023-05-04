@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegment;
-use PHPUnit\Framework\TestCase;
 
 abstract class ExecutionSegmentDto
 {
@@ -101,9 +100,12 @@ abstract class ExecutionSegmentDto
 
         self::assertValidId($this->id);
         TraceValidator::assertValidId($this->traceId);
+        TestCaseBase::assertSameExpectedOptional($expectations->traceId, $this->traceId);
 
         self::assertValidTimestamp($this->timestamp, $expectations);
+        TestCaseBase::assertSameExpectedOptional($expectations->timestamp, $this->timestamp);
         self::assertValidDuration($this->duration);
+        TestCaseBase::assertSameExpectedOptional($expectations->duration, $this->duration);
         self::assertValidTimestamp(TestCaseBase::calcEndTime($this), $expectations);
 
         self::assertValidOutcome($this->outcome);
@@ -127,9 +129,9 @@ abstract class ExecutionSegmentDto
      */
     public static function assertValidOutcome($outcome): ?string
     {
-        TestCase::assertTrue($outcome === null || is_string($outcome));
+        self::assertValidNullableString($outcome);
         /** @var ?string $outcome */
-        TestCase::assertTrue(ExecutionSegment::isValidOutcome($outcome));
+        TestCaseBase::assertTrue(ExecutionSegment::isValidOutcome($outcome));
         return $outcome;
     }
 

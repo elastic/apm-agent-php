@@ -42,6 +42,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PHPUnit\Framework\TestCase;
@@ -51,7 +52,7 @@ use PHPUnit\Framework\TestCase;
  * @group requires_external_services
  * @group requires_mysql_external_service
  */
-final class MySQLiTest extends ComponentTestCaseBase
+final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
 {
     private const IS_OOP_API_KEY = 'IS_OOP_API';
 
@@ -62,8 +63,7 @@ final class MySQLiTest extends ComponentTestCaseBase
     private const QUERY_KIND_QUERY = 'query';
     private const QUERY_KIND_REAL_QUERY = 'real_query';
     private const QUERY_KIND_MULTI_QUERY = 'multi_query';
-    private const QUERY_KIND_ALL_VALUES
-        = [self::QUERY_KIND_QUERY, self::QUERY_KIND_REAL_QUERY, self::QUERY_KIND_MULTI_QUERY];
+    private const QUERY_KIND_ALL_VALUES = [self::QUERY_KIND_QUERY, self::QUERY_KIND_REAL_QUERY, self::QUERY_KIND_MULTI_QUERY];
 
     private const DB_TYPE = 'mysql';
 
@@ -102,6 +102,17 @@ final class MySQLiTest extends ComponentTestCaseBase
     private const SELECT_SQL
         = /** @lang text */
         'SELECT * FROM messages';
+
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
 
     public function testPrerequisitesSatisfied(): void
     {
@@ -259,7 +270,7 @@ final class MySQLiTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<array{MixedMap}>
      */
     public function dataProviderForTestAutoInstrumentation(): iterable
     {
@@ -275,41 +286,35 @@ final class MySQLiTest extends ComponentTestCaseBase
             $connectDbNameVariants[] = null;
         }
 
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
-            ->addGeneratorOnlyFirstValueCombinable(
-                AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator(
-                    $disableInstrumentationsVariants
-                )
-            )
+            ->addGeneratorOnlyFirstValueCombinable(AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator($disableInstrumentationsVariants))
             ->addBoolKeyedDimensionAllValuesCombinable(self::IS_OOP_API_KEY)
-            ->addCartesianProductOnlyFirstValueCombinable(
-                [
-                    self::CONNECT_DB_NAME_KEY => $connectDbNameVariants,
-                    self::WORK_DB_NAME_KEY    => self::allDbNames(),
-                ]
-            )
+            ->addCartesianProductOnlyFirstValueCombinable([self::CONNECT_DB_NAME_KEY => $connectDbNameVariants, self::WORK_DB_NAME_KEY    => self::allDbNames()])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::QUERY_KIND_KEY, self::QUERY_KIND_ALL_VALUES)
-            ->addGeneratorOnlyFirstValueCombinable(
-                DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator()
-            )
-            ->wrapResultIntoArray()
+            ->addGeneratorOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator())
             ->build();
 
-        return self::adaptToSmoke($result);
+        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
     }
 
     /**
-     * @param array<string, mixed> $args
-     * @param ?bool               &$isOOPApi
-     * @param ?string             &$connectDbName
-     * @param ?string             &$workDbName
-     * @param ?string             &$queryKind
-     * @param ?bool               &$wrapInTx
-     * @param ?bool               &$rollback
+     * @param MixedMap  $args
+     * @param ?bool    &$isOOPApi
+     * @param ?string  &$connectDbName
+     * @param ?string  &$workDbName
+     * @param ?string  &$queryKind
+     * @param ?bool    &$wrapInTx
+     * @param ?bool    &$rollback
+     *
+     * @param-out bool    $isOOPApi
+     * @param-out ?string $connectDbName
+     * @param-out string  $workDbName
+     * @param-out string  $queryKind
+     * @param-out bool    $wrapInTx
+     * @param-out bool    $rollback
      */
     public static function extractSharedArgs(
-        array $args,
+        MixedMap $args,
         ?bool &$isOOPApi /* <- out */,
         ?string &$connectDbName /* <- out */,
         ?string &$workDbName /* <- out */,
@@ -317,18 +322,24 @@ final class MySQLiTest extends ComponentTestCaseBase
         ?bool &$wrapInTx /* <- out */,
         ?bool &$rollback /* <- out */
     ): void {
+<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
         $isOOPApi = self::getBoolFromMap(self::IS_OOP_API_KEY, $args);
         $connectDbName = self::getNullableStringFromMap(self::CONNECT_DB_NAME_KEY, $args);
         $workDbName = self::getStringFromMap(self::WORK_DB_NAME_KEY, $args);
         $queryKind = self::getStringFromMap(self::QUERY_KIND_KEY, $args);
         $wrapInTx = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY, $args);
         $rollback = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY, $args);
+=======
+        $isOOPApi = $args->getBool(self::IS_OOP_API_KEY);
+        $connectDbName = $args->getNullableString(self::CONNECT_DB_NAME_KEY);
+        $workDbName = $args->getString(self::WORK_DB_NAME_KEY);
+        $queryKind = $args->getString(self::QUERY_KIND_KEY);
+        $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
+        $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+>>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestAutoInstrumentation(array $appCodeArgs): void
+    public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
     {
         self::extractSharedArgs(
             $appCodeArgs,
@@ -339,10 +350,17 @@ final class MySQLiTest extends ComponentTestCaseBase
             /* out */ $wrapInTx,
             /* out */ $rollback
         );
+<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
         $host = self::getStringFromMap(DbAutoInstrumentationUtilForTests::HOST_KEY, $appCodeArgs);
         $port = self::getIntFromMap(DbAutoInstrumentationUtilForTests::PORT_KEY, $appCodeArgs);
         $user = self::getStringFromMap(DbAutoInstrumentationUtilForTests::USER_KEY, $appCodeArgs);
         $password = self::getStringFromMap(DbAutoInstrumentationUtilForTests::PASSWORD_KEY, $appCodeArgs);
+=======
+        $host = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::HOST_KEY);
+        $port = $appCodeArgs->getInt(DbAutoInstrumentationUtilForTests::PORT_KEY);
+        $user = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::USER_KEY);
+        $password = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::PASSWORD_KEY);
+>>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
 
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -384,7 +402,7 @@ final class MySQLiTest extends ComponentTestCaseBase
             $msgText = $row['text'];
             self::assertIsString($msgText);
             self::assertArrayHasKey($msgText, self::MESSAGES, $dbgCtx);
-            self::assertEquals(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
+            self::assertEqualsEx(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
         $queryResult->close();
 
@@ -398,10 +416,8 @@ final class MySQLiTest extends ComponentTestCaseBase
 
     /**
      * @dataProvider dataProviderForTestAutoInstrumentation
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testAutoInstrumentation(array $testArgs): void
+    public function testAutoInstrumentation(MixedMap $testArgs): void
     {
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
@@ -411,19 +427,21 @@ final class MySQLiTest extends ComponentTestCaseBase
         );
     }
 
-    /**
-     * @param array<string, mixed> $testArgs
-     */
-    private function implTestAutoInstrumentation(array $testArgs): void
+    private function implTestAutoInstrumentation(MixedMap $testArgs): void
     {
-        TestCase::assertNotCount(0, self::MESSAGES);
+        TestCase::assertNotEmpty(self::MESSAGES);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
+<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
         $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
         $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
+=======
+        $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
+        $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
+>>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
 
         self::extractSharedArgs(
             $testArgs,
@@ -437,7 +455,7 @@ final class MySQLiTest extends ComponentTestCaseBase
 
         $testCaseHandle = $this->getTestCaseHandle();
 
-        $appCodeArgs = $testArgs;
+        $appCodeArgs = $testArgs->clone();
 
         $appCodeArgs[DbAutoInstrumentationUtilForTests::HOST_KEY] = AmbientContextForTests::testConfig()->mysqlHost;
         $appCodeArgs[DbAutoInstrumentationUtilForTests::PORT_KEY] = AmbientContextForTests::testConfig()->mysqlPort;

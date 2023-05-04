@@ -36,11 +36,6 @@ final class LogLevelOptionParser extends EnumOptionParser
 {
     public function __construct()
     {
-        parent::__construct(
-            'log level' /* dbgEnumDesc */,
-            Level::nameIntPairs(),
-            false /* <- isCaseSensitive */,
-            true /* <- isUnambiguousPrefixAllowed */
-        );
+        parent::__construct(/* dbgEnumDesc */ 'log level', Level::nameIntPairs(), /* isCaseSensitive */ false, /* isUnambiguousPrefixAllowed */ true);
     }
 }

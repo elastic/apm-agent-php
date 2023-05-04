@@ -70,23 +70,41 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
         $result->assertValid();
         return $result;
     }
+
     /**
-     * @param mixed $custom
+     * @param Optional<?array<string, string|bool|int|float|null>> $expected
+     * @param mixed                                                $actual
      *
-     * @return array<string, string|bool|int|float|null>
+     * @phpstan-assert ?array<string, string|bool|int|float|null> $actual
      */
-    private static function assertValidCustom($custom): array
+    private static function assertCustomMatches(Optional $expected, $actual): void
     {
-        return self::assertValidKeyValueMap($custom, /* shouldBeKeywordString */ false);
+        self::assertKeyValueMapsMatch($expected, $actual, /* shouldKeyValueStringsBeKeyword */ false);
     }
 
-    /** @inheritDoc */
-    public function assertValid(): void
+    /**
+     * @param mixed $actual
+     *
+     * @return ?array<string, string|bool|int|float|null>
+     */
+    private static function assertValidCustom($actual): ?array
     {
-        parent::assertValid();
+        /**
+         * @var Optional<?array<string, string|bool|int|float|null>> $expected
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $expected = new Optional();
+        self::assertCustomMatches($expected, $actual);
+        return $actual;
+    }
+
+
+    public function assertMatches(TransactionContextExpectations $expectations): void
+    {
+        parent::assertMatchesExecutionSegment($expectations);
 
         if ($this->custom !== null) {
-            self::assertValidCustom($this->custom);
+            self::assertCustomMatches($expectations->custom, $this->custom);
         }
         if ($this->request !== null) {
             $this->request->assertValid();
@@ -94,5 +112,10 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
         if ($this->user !== null) {
             $this->user->assertValid();
         }
+    }
+
+    public function assertValid(): void
+    {
+        $this->assertMatches(new TransactionContextExpectations());
     }
 }

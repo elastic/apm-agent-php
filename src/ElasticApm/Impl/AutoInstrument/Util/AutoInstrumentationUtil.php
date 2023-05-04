@@ -24,9 +24,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
 use Closure;
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
@@ -55,6 +57,18 @@ final class AutoInstrumentationUtil
     public static function buildSpanNameFromCall(?string $className, string $funcName): string
     {
         return ($className === null) ? $funcName : ($className . '->' . $funcName);
+    }
+
+    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
+
+        if ($span instanceof Span) {
+            // Mark all spans created by auto-instrumentation as compressible
+            $span->setCompressible(true);
+        }
+
+        return $span;
     }
 
     /**

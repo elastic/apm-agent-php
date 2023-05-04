@@ -173,6 +173,16 @@ final class Logger implements LoggableInterface
             : null;
     }
 
+    public function isEnabledForLevel(int $level): bool
+    {
+        return $this->data->backend->isEnabledForLevel($level);
+    }
+
+    public function isTraceLevelEnabled(): bool
+    {
+        return $this->isEnabledForLevel(Level::TRACE);
+    }
+
     /**
      * @param mixed $value
      *
