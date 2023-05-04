@@ -71,8 +71,6 @@ final class SpanExpectations extends ExecutionSegmentExpectations
         }
         $this->context = new Optional();
         $this->subtype = new Optional();
-        $this->isCompositeNull = new Optional();
-        $this->isCompositeNull->setValue(true);
     }
 
     public function ensureNotNullContext(): SpanContextExpectations

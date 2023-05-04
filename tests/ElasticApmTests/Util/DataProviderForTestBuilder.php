@@ -469,7 +469,6 @@ final class DataProviderForTestBuilder
         $this->assertValid();
         TestCaseBase::assertNotEmpty($this->generators);
 
-        $dataSetIndex = 0;
         for ($genIndexForAllValues = 0; $genIndexForAllValues < count($this->generators); ++$genIndexForAllValues) {
             if ($genIndexForAllValues !== 0 && !$this->onlyFirstValueCombinable[$genIndexForAllValues]) {
                 continue;
@@ -511,7 +510,7 @@ final class DataProviderForTestBuilder
     /**
      * @return iterable<string, array<mixed>>
      */
-    public function build(?int $emitOnlyDataSetWithIndex = null): iterable
+    public function build(): iterable
     {
         return self::keyEachDataSetWithDbgDesc($this->buildWithoutDataSetName(), IterableUtilForTests::count($this->buildWithoutDataSetName()), $this->emitOnlyDataSetWithIndex);
     }
