@@ -405,7 +405,7 @@ final class CurlHandleTracker implements LoggableInterface
         if (!$this->util->verifyIsArray($optionsIdToValue)) {
             return;
         }
-        /** @var array<mixed> $optionsIdToValue */
+        /** @var array<array-key, mixed> $optionsIdToValue */
 
         foreach ($optionsIdToValue as $optionId => $optionValue) {
             $this->processSetOpt(
