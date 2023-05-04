@@ -39,7 +39,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\WordPress\WordPressSpanExpectationsBuilder;
 use ElasticApmTests\ComponentTests\WordPress\WordPressMockBridge;
-use ElasticApmTests\Util\AssertMessageBuilder;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -155,6 +155,9 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     public static function foldTextWithMarkersIntoOneLine(string $fileContents): string
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['fileContents' => $fileContents]);
+
         $adaptedLines = [];
         $isBetweenMarkers = false;
         foreach (TextUtilForTests::iterateLinesEx($fileContents) as [$line, $endOfLine]) {
@@ -187,7 +190,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 $adaptedLines[] = substr($line, /* offset */ 0, $beginMarkerStartPos);
                 // Verify that there is no non-whitespace text after marker end
                 $partAfterMarkerEnd = substr($line, /* offset */ $beginMarkerStartPos + strlen(WordPressAutoInstrumentationTest::FOLD_INTO_ONE_LINE_BEGIN_MARKER));
-                self::assertTrue(TextUtil::isEmptyString(trim($partAfterMarkerEnd)), AssertMessageBuilder::buildString(['partAfterMarkerEnd' => $partAfterMarkerEnd]));
+                $dbgCtx->add(['partAfterMarkerEnd' => $partAfterMarkerEnd]);
+                self::assertTrue(TextUtil::isEmptyString(trim($partAfterMarkerEnd)));
                 continue;
             }
 
@@ -215,12 +219,17 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function adaptSourceTree(bool $isExpectedVariant, string $fromDir, string $toDir): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['isExpectedVariant' => $isExpectedVariant, 'fromDir' => $fromDir, 'toDir' => $toDir]);
+
         $logger = self::getLoggerForThisClass();
         $loggerProxyDebug = $logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
 
-        self::assertNotFalse($fromDirEntries = scandir($fromDir), AssertMessageBuilder::buildString(['fromDir' => $fromDir]));
+        self::assertNotFalse($fromDirEntries = scandir($fromDir));
         foreach ($fromDirEntries as $entryName) {
+            AssertMessageStack::newSubScope(/* out */ $dbgCtx);
             if ($entryName == '.' || $entryName == '..') {
+                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
             $fromDirEntryFullPath = $fromDir . DIRECTORY_SEPARATOR . $entryName;
@@ -229,51 +238,49 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Creating directory...', ['toSubDirFullPath' => $toSubDirFullPath]);
                 self::assertTrue(mkdir($toSubDirFullPath));
                 self::adaptSourceTree($isExpectedVariant, $fromDirEntryFullPath, $toSubDirFullPath);
+                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
 
             $srcFileInfo = new SplFileInfo($fromDirEntryFullPath);
             if (!($srcFileInfo->isFile() && ($srcFileInfo->getExtension() === 'php'))) {
+                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
             $srcFileRelPath = FileUtilForTests::convertPathRelativeTo($fromDirEntryFullPath, $fromDir);
             $adaptedSrcFileFullPath = FileUtilForTests::listToPath([$toDir, $srcFileRelPath]);
             $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Creating file...', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
-            $msg = new AssertMessageBuilder(['fromDirEntryFullPath' => $fromDirEntryFullPath, 'adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
-            self::assertFileExists($fromDirEntryFullPath, $msg->s());
-            self::assertNotFalse($srcFileContents = file_get_contents($fromDirEntryFullPath), $msg->s());
+            $dbgCtx->add(['fromDirEntryFullPath' => $fromDirEntryFullPath, 'adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
+            self::assertFileExists($fromDirEntryFullPath);
+            self::assertNotFalse($srcFileContents = file_get_contents($fromDirEntryFullPath));
             $adaptedSrcFileContents = self::adaptSourceFileContent($isExpectedVariant, $srcFileContents);
             if ($adaptedSrcFileContents !== $srcFileContents) {
                 ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
                 && $loggerProxy->log('Contents of ' . $adaptedSrcFileFullPath . ':' . "\n" . $adaptedSrcFileContents);
             }
-            self::assertNotFalse(file_put_contents($adaptedSrcFileFullPath, $adaptedSrcFileContents), $msg->s());
-            self::assertFileExists($adaptedSrcFileFullPath, $msg->s());
+            self::assertNotFalse(file_put_contents($adaptedSrcFileFullPath, $adaptedSrcFileContents));
+            self::assertFileExists($adaptedSrcFileFullPath);
             $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Created file', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
         }
     }
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<string, array{MixedMap}>
      */
     public function dataProviderForTestAstProcessOnMockSource(): iterable
     {
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimensionAllValuesCombinable(self::IS_AST_PROCESS_ENABLED_KEY)
             ->addBoolKeyedDimensionAllValuesCombinable(self::IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY)
-            ->wrapResultIntoArray()
             ->build();
 
-        return self::adaptToSmoke($result);
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
     }
 
     /**
      * @dataProvider dataProviderForTestAstProcessOnMockSource
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testAstProcessOnMockSource(array $testArgs): void
+    public function testAstProcessOnMockSource(MixedMap $testArgs): void
     {
         $subDirName = FileUtilForTests::buildTempSubDirName(__CLASS__, __FUNCTION__);
         self::runAndEscalateLogLevelOnFailure(
@@ -301,13 +308,16 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function adaptManuallyInstrumentedGeneratedFile(/* in,out */ string &$filePath, /* in,out */ string &$fileContents): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['filePath' => $filePath, 'fileContents' => $fileContents]);
+
         $fileInfo = new SplFileInfo($filePath);
         $adaptedFileName = $fileInfo->getBasename($fileInfo->getExtension()) . self::ADAPTED_FILE_NAME_SUFFIX . '.' . $fileInfo->getExtension();
         $adaptedFilePath = $fileInfo->getPath() . DIRECTORY_SEPARATOR . $adaptedFileName;
         $adaptedFileContents = $fileContents;
         $adaptedFileContents = self::removeSuffixToBeRemovedByElasticApmTests($adaptedFileContents);
-        $msg = new AssertMessageBuilder(['adaptedFilePath' => $adaptedFilePath, 'adaptedFileContents' => $adaptedFileContents]);
-        self::assertNotFalse(file_put_contents($adaptedFilePath, $adaptedFileContents), $msg->s());
+        $dbgCtx->add(['adaptedFilePath' => $adaptedFilePath, 'adaptedFileContents' => $adaptedFileContents]);
+        self::assertNotFalse(file_put_contents($adaptedFilePath, $adaptedFileContents));
         $filePath = $adaptedFilePath;
         $fileContents = $adaptedFileContents;
     }
@@ -326,8 +336,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function verifyAstProcessGeneratedFiles(string $astProcessDebugDumpOutDir, string $phpFileRelativePath): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
+
         $logger = self::getLoggerForThisClass()->addAllContext(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
-        $msg = new AssertMessageBuilder(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
 
         /**
          * @param-out string $fileFullPath
@@ -340,18 +352,19 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             ?string &$fileContents
         ) use (
             $astProcessDebugDumpOutDir,
-            $phpFileRelativePath,
-            $msg
+            $phpFileRelativePath
         ): void {
+            AssertMessageStack::newScope(/* out */ $dbgCtx);
+            $dbgCtx->add(['isExpectedVariant' => $isExpectedVariant, 'isAstDebugDump' => $isAstDebugDump, 'fileFullPath' => $fileFullPath]);
+
             $outSubDir = self::buildInputOrExpectedOutputVariantSubDir($astProcessDebugDumpOutDir, $isExpectedVariant);
             $fileName = $phpFileRelativePath . '.' . ($isExpectedVariant ? self::BEFORE_AST_PROCESS_FILE_NAME_SUFFIX : self::AFTER_AST_PROCESS_FILE_NAME_SUFFIX);
             $fileName .= '.' . ($isAstDebugDump ? self::DEBUG_DUMP_FILE_EXTENSION : (self::AST_CONVERTED_BACK_TO_SOURCE_FILE_NAME_SUFFIX . '.' . self::CONVERTED_BACK_TO_SOURCE_FILE_EXTENSION));
 
             $fileFullPath = FileUtilForTests::listToPath([$outSubDir, $fileName]);
-            $msg = $msg->inherit(['fileFullPath' => $fileFullPath]);
-            self::assertFileExists($fileFullPath, $msg->s());
+            self::assertFileExists($fileFullPath);
             $fileContents = file_get_contents($fileFullPath);
-            self::assertNotFalse($fileContents, $msg->s());
+            self::assertNotFalse($fileContents);
         };
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Starting...');
@@ -396,34 +409,27 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         }
 
         if (!$astMatches) {
-            self::assertSame($expectedAstFilePath, $actualAstFilePath, $msg->s());
+            self::assertSame($expectedAstFilePath, $actualAstFilePath);
         } elseif (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
-            self::assertSame($expectedPhpFilePath, $actualPhpFileContents, $msg->s());
+            self::assertSame($expectedPhpFilePath, $actualPhpFileContents);
         }
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestAstProcessOnMockSource(array $appCodeArgs): void
+    public static function appCodeForTestAstProcessOnMockSource(MixedMap $appCodeArgs): void
     {
-        $srcVariantBaseDir = self::getStringFromMap(self::SRC_VARIANT_DIR_KEY, $appCodeArgs);
-        $isExpectedVariant = self::getBoolFromMap(self::IS_EXPECTED_VARIANT_KEY, $appCodeArgs);
+        $srcVariantBaseDir = $appCodeArgs->getString(self::SRC_VARIANT_DIR_KEY);
+        $isExpectedVariant = $appCodeArgs->getBool(self::IS_EXPECTED_VARIANT_KEY);
         WordPressMockBridge::loadMockSource($srcVariantBaseDir, $isExpectedVariant);
     }
 
-    /**
-     * @param string               $tempOutDir
-     * @param array<string, mixed> $testArgs
-     */
-    private function implTestAstProcessOnMockSource(string $tempOutDir, array $testArgs): void
+    private function implTestAstProcessOnMockSource(string $tempOutDir, MixedMap $testArgs): void
     {
         $adaptedSrcBaseDir = FileUtilForTests::listToPath([$tempOutDir, self::ADAPTED_SOURCE_DIR_NAME]);
         $astProcessDebugDumpOutDir = FileUtilForTests::listToPath([$tempOutDir, self::DEBUG_DUMP_DIR_NAME]);
         self::assertTrue(mkdir($adaptedSrcBaseDir));
 
-        $isAstProcessEnabled = self::getBoolFromMap(self::IS_AST_PROCESS_ENABLED_KEY, $testArgs);
-        $isAstProcessDebugDumpEnabled = self::getBoolFromMap(self::IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY, $testArgs);
+        $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
+        $isAstProcessDebugDumpEnabled = $testArgs->getBool(self::IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
@@ -460,7 +466,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<string, array{MixedMap}>
      */
     public function dataProviderForTestOnMockSource(): iterable
     {
@@ -469,7 +475,6 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             'WordPress' => false,
         ];
 
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimensionAllValuesCombinable(self::IS_AST_PROCESS_ENABLED_KEY)
             ->addGeneratorOnlyFirstValueCombinable(
@@ -482,40 +487,37 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             ->addKeyedDimensionOnlyFirstValueCombinable(self::MU_PLUGIN_CALLS_COUNT_KEY, [7, 1, 2, 0])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::THEME_CALLS_COUNT_KEY, [13, 1, 2, 0])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::PART_OF_CORE_CALLS_COUNT_KEY, [11, 1, 2, 0])
-            ->wrapResultIntoArray()
             ->build();
 
-        return self::adaptToSmoke($result);
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
     }
 
     /**
      * @dataProvider dataProviderForTestOnMockSource
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testOnMockSource(array $testArgs): void
+    public function testOnMockSource(MixedMap $testArgs): void
     {
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
             function () use ($testArgs): void {
-                $this->implTestOnMockSource(new MixedMap($testArgs));
+                $this->implTestOnMockSource($testArgs);
             }
         );
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestOnMockSource(array $appCodeArgs): void
+    public static function appCodeForTestOnMockSource(MixedMap $appCodeArgs): void
     {
         $srcVariantBaseDir = self::buildInputOrExpectedOutputVariantSubDir(self::SRC_VARIANTS_DIR, /* isExpectedVariant */ false);
         WordPressMockBridge::loadMockSource($srcVariantBaseDir, /* isExpectedVariant */ false);
 
-        WordPressMockBridge::runMockSource(new MixedMap($appCodeArgs));
+        WordPressMockBridge::runMockSource($appCodeArgs);
     }
 
     private function implTestOnMockSource(MixedMap $testArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['testArgs' => $testArgs]);
+
         $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
         $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
         $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
@@ -560,7 +562,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestOnMockSource']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
-                $appCodeRequestParams->setAppCodeArgs($testArgs->asArray());
+                $appCodeRequestParams->setAppCodeArgs($testArgs);
             }
         );
 
@@ -569,12 +571,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         );
 
         $tx = $dataFromAgent->singleTransaction();
+        $dbgCtx->add(['tx' => $tx]);
 
         if ((!$isWordPressDataToBeExpected) || ($expectedTheme === null)) {
-            self::assertTrue(
-                $tx->context === null || $tx->context->labels === null || !array_key_exists(self::EXPECTED_LABEL_KEY_FOR_WORDPRESS_THEME, $tx->context->labels),
-                AssertMessageBuilder::buildString(['tx' => $tx])
-            );
+            self::assertTrue($tx->context === null || $tx->context->labels === null || !array_key_exists(self::EXPECTED_LABEL_KEY_FOR_WORDPRESS_THEME, $tx->context->labels));
         } else {
             self::assertSame($expectedTheme, self::getLabel($tx, self::EXPECTED_LABEL_KEY_FOR_WORDPRESS_THEME));
         }

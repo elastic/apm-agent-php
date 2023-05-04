@@ -23,6 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+/**
+ * @extends ExpectationsBase<SpanContextServiceDto>
+ */
 class SpanContextServiceExpectations extends ExpectationsBase
 {
     /** @var SpanContextServiceTargetExpectations */

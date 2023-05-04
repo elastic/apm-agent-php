@@ -44,8 +44,27 @@ elastic_apm.service_name=SERVICE_NAME
 ----
 
 [float]
+[[configure-apm-data-amount]]
+=== Control the amount of APM data emitted by the agent
+The following configuration settings control the amount of APM data emitted by the agent.
+They can be tuned to reduce the agent overhead on the monitored application,
+network utilization, and the amount of storage required by {es}.
+
+- <<config-transaction-sample-rate>>
+- <<config-breakdown-metrics>>
+- <<configure-php-error-reporting>>
+- <<config-capture-errors>>
+
+[float]
 [[configure-logging]]
 === Logging
+
+NOTE: Configuration settings described in this section are related to logs emitted by the agent itself
+and not the logs emitted by the monitored application.
+The intended use case for these configuration settings is for the agent's supportability.
+The logs emitted by the agent are not stored in Elasticsearch by default,
+so reducing the level for these logs will not reduce the amount of storage used in Elasticsearch--
+see <<configure-apm-data-amount>> instead.
 
 The easiest way to configure the logging is by using the <<config-log-level-syslog>> configuration option.
 
@@ -87,6 +106,16 @@ except for `syslog`, where the log level is set to `TRACE`.
 elastic_apm.log_level=WARNING
 elastic_apm.log_level_syslog=TRACE
 ----
+
+[float]
+[[configure-php-error-reporting]]
+=== PHP errors as APM error events
+The agent automatically creates APM error events for PHP errors triggered by the monitored application.
+APM error events are created only for PHP errors which level is included in
+PHP https://www.php.net/manual/en/function.error-reporting.php[`error_reporting`] setting.
+
+In addition <<config-capture-errors>> configuration option controls
+if the agent captures any PHP errors.
 
 [float]
 [[configure-duration-format]]
@@ -149,8 +178,8 @@ Examples: `*foo*`, `/foo/*/bar, /*/baz*`.
 
 Matching is case insensitive by default.
 Prepending an element with `(?-i)` makes the matching case sensitive.
-For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
-on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
+For example `(?-i)/bar, /foo` matches `/bar` and `/FOO` but it doesn't match `/BAR`.
+On the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
 but doesn't match neither `/BAR` nor `/FOO`.
 
 Whitespace around commas separating wildcard expressions in the list is ignored.
@@ -224,6 +253,28 @@ breakdown metrics, which can reduce the overhead of the agent.
 NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 [float]
+[[config-capture-errors]]
+==== `capture_errors`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_CAPTURE_ERRORS` | `elastic_apm.capture_errors`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+If this configuration option is set to `true` the agent will collect and report error events.
+Set it to `false` to disable the collection and reporting of APM
+error events, which can reduce the overhead of the agent.
+
+Also see <<configure-php-error-reporting>>.
+
+[float]
 [[config-disable-instrumentations]]
 ==== `disable_instrumentations`
 
@@ -242,10 +293,25 @@ NOTE: This feature requires APM Server and Kibana >= 7.3.
 A comma-separated list of wildcard expressions to match
 instrumentation names which should be disabled.
 When an instrumentation is disabled, no spans will be created for that instrumentation.
-An instrumentation may match more than one name -
-for example PDO instrumentation matches both `db` and  `pdo`.
+Each instrumentation has a name and any number of keywords.
+If the instrumentation's name or any of its keywords match this configuration option
+then the instrumentation is disabled.
 
-Valid instrumentation names are `curl`, `db`, `http-client`, `pdo`.
+See <<configure-wildcard>> for more details on how to use wildcard expressions.
+
+Supported instrumentations:
+[options="header"]
+|============
+| Name      | Keywords
+| `curl`    | `HTTP-client`
+| `PDO`     | `DB`
+| `MySQLi`  | `DB`
+|============
+
+Examples:
+
+- `db` disables both PDO and MySQLi instrumentations
+- `*HTTP*` disables curl instrumentation
 
 [float]
 [[config-disable-send]]
@@ -576,6 +642,10 @@ This reduces the collection, processing, and storage overhead,
 and removes clutter from the UI.
 The tradeoff is that the DB statements of all the compressed spans will not be collected.
 
+Since it is *max* duration threshold setting this configuration option to 0
+effectively disables this compression strategy
+because only spans with duration 0 will be considered eligible for compression with this strategy.
+
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.
 This option's default unit is `ms`, so `5` is interpreted as `5ms`.
@@ -602,6 +672,10 @@ This option does not apply to composite spans.
 This reduces the collection, processing, and storage overhead,
 and removes clutter from the UI.
 The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+Since it is *max* duration threshold setting this configuration option to 0
+effectively disables this compression strategy
+because only spans with duration 0 will be considered eligible for compression with this strategy.
 
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.

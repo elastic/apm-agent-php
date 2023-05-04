@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class SpanContextDto extends ExecutionSegmentContextDto
 {
@@ -78,31 +77,18 @@ final class SpanContextDto extends ExecutionSegmentContextDto
         return $result;
     }
 
-    /** @inheritDoc */
+    public function assertMatches(SpanContextExpectations $expectations): void
+    {
+        parent::assertMatchesExecutionSegment($expectations);
+
+        SpanContextDbExpectations::assertNullableMatches($expectations->db, $this->db);
+        SpanContextDestinationExpectations::assertNullableMatches($expectations->destination, $this->destination);
+        SpanContextHttpExpectations::assertNullableMatches($expectations->http, $this->http);
+        SpanContextServiceExpectations::assertNullableMatches($expectations->service, $this->service);
+    }
+
     public function assertValid(): void
     {
         $this->assertMatches(new SpanContextExpectations());
-    }
-
-    public function assertMatches(SpanContextExpectations $expectations): void
-    {
-        parent::assertValid();
-
-        SpanContextDbDto::assertNullableMatches($expectations->db, $this->db);
-        SpanContextDestinationDto::assertNullableMatches($expectations->destination, $this->destination);
-        SpanContextHttpDto::assertNullableMatches($expectations->http, $this->http);
-        SpanContextServiceDto::assertNullableMatches($expectations->service, $this->service);
-    }
-
-    public static function assertNullableMatches(
-        SpanContextExpectations $expectations,
-        ?self $actual
-    ): void {
-        if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
-            return;
-        }
-
-        $actual->assertMatches($expectations);
     }
 }

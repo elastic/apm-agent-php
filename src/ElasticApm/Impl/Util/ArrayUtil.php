@@ -176,7 +176,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */
@@ -186,7 +186,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */

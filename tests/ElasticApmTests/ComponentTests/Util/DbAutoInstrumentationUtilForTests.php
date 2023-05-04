@@ -41,14 +41,14 @@ final class DbAutoInstrumentationUtilForTests
     public const ROLLBACK_KEY = 'ROLLBACK';
 
     /**
-     * @return callable(array<mixed, mixed>): iterable<array<mixed, mixed>>
+     * @return callable(array<mixed>): iterable<array<mixed>>
      */
     public static function wrapTxRelatedArgsDataProviderGenerator(): callable
     {
         /**
-         * @param array<mixed, mixed> $resultSoFar
+         * @param array<mixed> $resultSoFar
          *
-         * @return iterable<array<mixed, mixed>>
+         * @return iterable<array<mixed>>
          */
         return function (array $resultSoFar): iterable {
             foreach (IterableUtilForTests::ALL_BOOL_VALUES as $wrapInTx) {

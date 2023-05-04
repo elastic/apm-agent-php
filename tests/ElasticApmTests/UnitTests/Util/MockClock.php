@@ -35,7 +35,7 @@ class MockClock implements ClockInterface
     /** @var float */
     private $monotonicClockCurrentTime;
 
-    public function __construct(float $initial)
+    public function __construct(float $initial = 0)
     {
         $this->systemClockCurrentTime = $initial;
         $this->monotonicClockCurrentTime = 10 * $initial;

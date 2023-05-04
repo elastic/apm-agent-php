@@ -41,6 +41,17 @@ use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
 class StackTraceComponentTest extends ComponentTestCaseBase
 {
     /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function sharedCodeForTestAllSpanCreatingApis(): array

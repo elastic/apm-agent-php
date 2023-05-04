@@ -58,6 +58,11 @@ final class NoopSpan extends NoopExecutionSegment implements SpanInterface
     {
     }
 
+    /** @noinspection PhpUnused */
+    public function setCompressible(bool $isCompressible): void
+    {
+    }
+
     /** @inheritDoc */
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {

@@ -23,15 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\SpanToSendInterface;
 use Elastic\Apm\Impl\StackTraceFrame;
-use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
-use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\TestCase;
 
 class SpanDto extends ExecutionSegmentDto
 {
@@ -110,105 +106,96 @@ class SpanDto extends ExecutionSegmentDto
 
     public function assertMatches(SpanExpectations $expectations): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['expectations' => $expectations, 'this' => $this]);
         parent::assertMatchesExecutionSegment($expectations);
 
         self::assertValidId($this->parentId);
+        TestCaseBase::assertSameExpectedOptional($expectations->parentId, $this->parentId);
         self::assertValidId($this->transactionId);
+        TestCaseBase::assertSameExpectedOptional($expectations->transactionId, $this->transactionId);
+
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
         if ($this->stackTrace === null) {
-            TestCase::assertNull($expectations->stackTrace);
-            TestCase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+            TestCaseBase::assertNull($expectations->stackTrace);
+            TestCaseBase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
         } else {
             self::assertValidStacktrace($this->stackTrace);
             if ($expectations->stackTrace !== null) {
-                TestCase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
-                self::assertStackTraceMatches(
-                    $expectations->stackTrace,
-                    $expectations->allowExpectedStackTraceToBePrefix,
-                    $this->stackTrace,
-                    [ClassNameUtil::fqToShort(get_class($this)) => $this]
-                );
+                TestCaseBase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
+                self::assertStackTraceMatches($expectations->stackTrace, $expectations->allowExpectedStackTraceToBePrefix, $this->stackTrace);
             }
         }
 
-        SpanContextDto::assertNullableMatches($expectations->context, $this->context);
-
-        if ($expectations->isCompositeNull->isValueSet()) {
-            Assert::assertSame(
-                $expectations->isCompositeNull->getValue(),
-                $this->composite === null,
-                LoggableToString::convert(
-                    [
-                        '$expectations->isCompositeNull' => $expectations->isCompositeNull->getValue(),
-                        '$this->composite'               => $this->composite,
-                    ]
-                )
-            );
-        }
-        if ($this->composite !== null) {
-            $this->composite->assertValid();
-        }
+        SpanCompositeExpectations::assertNullableMatches($expectations->composite, $this->composite);
+        SpanContextExpectations::assertNullableMatches($expectations->context, $this->context);
     }
 
     /**
-     * @param StackTraceFrame[]    $expectedStackTrace
-     * @param bool                 $allowExpectedStackTraceToBePrefix
-     * @param StackTraceFrame[]    $actualStackTrace
-     * @param array<string, mixed> $ctxOuter
+     * @param StackTraceFrame[] $expectedStackTrace
+     * @param bool              $allowExpectedStackTraceToBePrefix
+     * @param StackTraceFrame[] $actualStackTrace
      *
      * @return void
      */
-    public static function assertStackTraceMatches(
-        array $expectedStackTrace,
-        bool $allowExpectedStackTraceToBePrefix,
-        array $actualStackTrace,
-        array $ctxOuter = []
-    ): void {
-        $ctxTop = array_merge(
-            [
-                'expectedStackTrace'                => $expectedStackTrace,
-                'actualStackTrace'                  => $actualStackTrace,
-                'allowExpectedStackTraceToBePrefix' => $allowExpectedStackTraceToBePrefix,
-            ],
-            $ctxOuter
-        );
-        $ctxTopStr = LoggableToString::convert($ctxTop);
+    public static function assertStackTraceMatches(array $expectedStackTrace, bool $allowExpectedStackTraceToBePrefix, array $actualStackTrace): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['expectedStackTrace' => $expectedStackTrace, 'allowExpectedStackTraceToBePrefix' => $allowExpectedStackTraceToBePrefix, 'actualStackTrace' => $actualStackTrace]);
         if ($allowExpectedStackTraceToBePrefix) {
-            TestCase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+            TestCaseBase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace));
         } else {
-            TestCase::assertSame(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
+            TestCaseBase::assertSame(count($expectedStackTrace), count($actualStackTrace));
         }
         $expectedStackTraceCount = count($expectedStackTrace);
         $actualStackTraceCount = count($actualStackTrace);
         foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
+            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
             $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
             $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
-            $ctxPerFrame = array_merge(
+            $dbgCtx->add(
                 [
                     'expectedApmFrame'                  => $expectedApmFrame,
                     'actualApmFrame'                    => $actualApmFrame,
                     '$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1,
                     '$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1,
-                ],
-                $ctxTop
+                ]
             );
-            $ctxPerFrameStr = LoggableToString::convert($ctxPerFrame);
-            TestCase::assertSame(count($expectedApmFrame), count($actualApmFrame), $ctxPerFrameStr);
+            TestCaseBase::assertSame(count($expectedApmFrame), count($actualApmFrame));
             foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
-                $ctxPerProp = LoggableToString::convert(
-                    array_merge(
-                        ['expectedPropName' => $expectedPropName, 'expectedPropVal' => $expectedPropVal],
-                        $ctxPerFrame
-                    )
-                );
-                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame, $ctxPerProp);
+                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame);
             }
+            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
     }
 
     public function assertEquals(SpanToSendInterface $original): void
     {
         self::assertEqualOriginalAndDto($original, $this);
+    }
+
+    public function assertService(?string $targetType, ?string $targetName, string $destinationName, string $destinationResource, string $destinationType): void
+    {
+        TestCaseBase::assertNotNull($this->context);
+        if ($targetType === null && $targetName === null) {
+            TestCaseBase::assertNull($this->context->service);
+        } else {
+            TestCaseBase::assertNotNull($this->context->service);
+            TestCaseBase::assertNotNull($this->context->service->target);
+            TestCaseBase::assertSame($this->context->service->target->type, $targetType);
+            TestCaseBase::assertSame($this->context->service->target->name, $targetName);
+        }
+
+        TestCaseBase::assertNotNull($this->context->destination);
+        TestCaseBase::assertNotNull($this->context->destination->service);
+        TestCaseBase::assertSame($this->context->destination->service->name, $destinationName);
+        TestCaseBase::assertSame($this->context->destination->service->resource, $destinationResource);
+        TestCaseBase::assertSame($this->context->destination->service->type, $destinationType);
+    }
+
+    public function getServiceTarget(): ?SpanContextServiceTargetDto
+    {
+        return ($this->context === null || $this->context->service === null) ? null : $this->context->service->target;
     }
 }

@@ -76,10 +76,10 @@ final class CombinatorialUtilForTests
     }
 
     /**
-     * @param array<mixed, mixed>           $values
+     * @param array<mixed>           $values
      * @param array<mixed, iterable<mixed>> $restOfIterables
      *
-     * @return iterable<array<mixed, mixed>>
+     * @return iterable<array<mixed>>
      */
     private static function cartesianProductImpl(array $values, array $restOfIterables): iterable
     {
@@ -103,7 +103,7 @@ final class CombinatorialUtilForTests
     /**
      * @param array<mixed, iterable<mixed>> $iterables
      *
-     * @return iterable<array<mixed, mixed>>
+     * @return iterable<array<mixed>>
      */
     public static function cartesianProduct(array $iterables): iterable
     {

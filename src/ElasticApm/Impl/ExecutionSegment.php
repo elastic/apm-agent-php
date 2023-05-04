@@ -29,7 +29,6 @@ use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\BreakdownMetrics\SelfTimeTracker as BreakdownMetricsSelfTimeTracker;
-use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
@@ -560,26 +559,11 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
     {
     }
 
-    private function isSpanCompressionEnabled(): bool
-    {
-        /** @var ?bool $cachedConfigValue */
-        static $cachedConfigValue = null;
-        if ($cachedConfigValue === null) {
-            $cachedConfigValue = $this->containingTransaction()->getConfig()->spanCompressionEnabled();
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Span compression is ' . ($cachedConfigValue ? 'enabled' : 'DISABLED')
-                . ' via configuration option `' . OptionNames::SPAN_COMPRESSION_ENABLED . '\''
-            );
-        }
-        return $cachedConfigValue;
-    }
-
     protected function onChildSpanEnded(Span $child): void
     {
         $shouldSendEndedSpanImmediately = false;
 
-        if ($this->isSpanCompressionEnabled()) {
+        if ($this->containingTransaction()->isSpanCompressionEnabled()) {
             if (!$this->tryToCompressChild($child)) {
                 $this->flushPendingCompositeChild();
                 $shouldSendEndedSpanImmediately = true;

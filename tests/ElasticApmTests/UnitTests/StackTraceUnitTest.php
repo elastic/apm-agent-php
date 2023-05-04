@@ -35,7 +35,7 @@ class StackTraceUnitTest extends TracerUnitTestCaseBase
      *
      * @inheritDoc
      */
-    protected function isCompatibleWithSpanCompression(): bool
+    protected function isSpanCompressionCompatible(): bool
     {
         return false;
     }

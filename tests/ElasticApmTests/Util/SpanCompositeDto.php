@@ -38,6 +38,8 @@ class SpanCompositeDto
     /** @var float */
     public $durationsSum;
 
+    private const COUNT_MIN_VALUE = 2;
+
     /**
      * @param mixed $value
      *
@@ -54,7 +56,7 @@ class SpanCompositeDto
                         $result->compressionStrategy = self::assertValidNonNullableString($value);
                         return true;
                     case 'count':
-                        $result->count = self::assertValidCount($value, /* minValue: */ 2);
+                        $result->count = self::assertValidCount($value, self::COUNT_MIN_VALUE);
                         return true;
                     case 'sum':
                         $result->durationsSum = self::assertValidDuration($value);
@@ -71,8 +73,17 @@ class SpanCompositeDto
 
     public function assertValid(): void
     {
-        self::assertValidString($this->compressionStrategy, /* isNullable: */ false);
-        self::assertValidCount($this->count, /* minValue: */ 2);
+        $this->assertMatches(new SpanCompositeExpectations());
+    }
+
+    public function assertMatches(SpanCompositeExpectations $expectations): void
+    {
+        self::assertSameNonNullableStringExpectedOptional($expectations->compressionStrategy, $this->compressionStrategy);
+
+        self::assertValidCount($this->count, self::COUNT_MIN_VALUE);
+        TestCaseBase::assertSameExpectedOptional($expectations->count, $this->count);
+
         self::assertValidDuration($this->durationsSum);
+        TestCaseBase::assertSameExpectedOptional($expectations->durationsSum, $this->durationsSum);
     }
 }

@@ -27,11 +27,10 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
-use ElasticApmTests\Util\AssertMessageBuilder;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\Assert;
 use stdClass;
 
 /**
@@ -143,21 +142,22 @@ final class WordPressMockBridge
 
         // Have instrumented get_template() return non-string value first to test that instrumentation handles it correctly
         WordPressMockBridge::$activeTheme = false;
-        Assert::assertSame(self::$activeTheme, self::callWpGetTemplate());
+        TestCaseBase::assertSame(self::$activeTheme, self::callWpGetTemplate());
         WordPressMockBridge::$activeTheme = $activeTheme;
-        Assert::assertSame(self::$activeTheme, self::callWpGetTemplate());
+        TestCaseBase::assertSame(self::$activeTheme, self::callWpGetTemplate());
 
         $applyFiltersCallsCount = 0;
         $doActionCallsCount = 0;
         $callIndex = 0;
 
         $invokeCallbacks = function (string $hookName) use (&$callIndex, &$applyFiltersCallsCount, &$doActionCallsCount): void {
-            $msg = new AssertMessageBuilder(['callIndex' => $callIndex, 'applyFiltersCallsCount' => $applyFiltersCallsCount, 'doActionCallsCount' => $doActionCallsCount]);
+            AssertMessageStack::newScope(/* out */ $dbgCtx);
+            $dbgCtx->add(['callIndex' => $callIndex, 'applyFiltersCallsCount' => $applyFiltersCallsCount, 'doActionCallsCount' => $doActionCallsCount]);
             $shouldUseApplyFilters = ($callIndex % 2) === 0;
-            $msg->add('shouldUseApplyFilters', $shouldUseApplyFilters);
+            $dbgCtx->add(['shouldUseApplyFilters' => $shouldUseApplyFilters]);
             // do_action allows no arguments but apply_filters requires at least one argument
             $argsCount = ($callIndex % 3) + ($shouldUseApplyFilters ? 1 : 0);
-            $msg->add('argsCount', $argsCount);
+            $dbgCtx->add(['argsCount' => $argsCount]);
             $args = [];
             foreach (RangeUtil::generateUpTo($argsCount) as $i) {
                 switch ($i % 4) {
@@ -175,15 +175,15 @@ final class WordPressMockBridge
                         break;
                 }
             }
-            $msg->add('args', $args);
-            Assert::assertCount($argsCount, $args, $msg->s());
+            $dbgCtx->add(['args' =>  $args]);
+            TestCaseBase::assertCount($argsCount, $args);
 
             self::$expectedCallbackArgs = $args;
             self::$expectedCallbackReturnValue = ($callIndex % 5) === 0 ? new stdClass() : 'dummy string return value';
             if ($shouldUseApplyFilters) {
                 $actualRetVal = self::callWpApplyFilters($hookName, ...$args);
                 ++$applyFiltersCallsCount;
-                Assert::assertSame(self::$expectedCallbackReturnValue, $actualRetVal, $msg->s());
+                TestCaseBase::assertSame(self::$expectedCallbackReturnValue, $actualRetVal);
             } else {
                 self::callWpDoAction($hookName, ...$args);
                 ++$doActionCallsCount;
@@ -223,7 +223,7 @@ final class WordPressMockBridge
      */
     public static function assertCallbackArgsAsExpected(array $actualArgs): void
     {
-        Assert::assertNotNull(self::$expectedCallbackArgs);
+        TestCaseBase::assertNotNull(self::$expectedCallbackArgs);
         TestCaseBase::assertEqualLists(self::$expectedCallbackArgs, $actualArgs);
     }
 

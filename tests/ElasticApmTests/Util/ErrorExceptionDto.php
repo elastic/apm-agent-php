@@ -62,7 +62,7 @@ class ErrorExceptionDto
                         $result->code = self::assertValidCode($value);
                         return true;
                     case 'message':
-                        $result->message = self::assertValidNullableNonKeywordString($value);
+                        $result->message = self::assertValidNullableString($value);
                         return true;
                     case 'module':
                         $result->module = self::assertValidNullableKeywordString($value);
@@ -86,7 +86,7 @@ class ErrorExceptionDto
     public function assertValid(): void
     {
         self::assertValidCode($this->code);
-        self::assertValidNullableNonKeywordString($this->message);
+        self::assertValidNullableString($this->message);
         self::assertValidNullableKeywordString($this->module);
         if ($this->stacktrace !== null) {
             self::assertValidStacktrace($this->stacktrace);

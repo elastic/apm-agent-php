@@ -25,7 +25,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
@@ -78,7 +78,7 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
     public function __invoke()
     {
         $args = func_get_args();
-        return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+        return AutoInstrumentationUtil::captureCurrentSpan(
             $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
             $this->callbackGroupKind /* <- type */,
             /**

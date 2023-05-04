@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 class TransactionDto extends ExecutionSegmentDto
 {
@@ -124,21 +123,20 @@ class TransactionDto extends ExecutionSegmentDto
         }
 
         if ($expectations->isSampled !== null) {
-            TestCase::assertSame($expectations->isSampled, $this->isSampled);
+            TestCaseBase::assertSame($expectations->isSampled, $this->isSampled);
         }
 
         self::assertValidCount($this->startedSpansCount);
         self::assertValidCount($this->droppedSpansCount);
 
         if (!$this->isSampled) {
-            TestCase::assertSame(0, $this->startedSpansCount);
-            TestCase::assertSame(0, $this->droppedSpansCount);
-            TestCase::assertNull($this->context);
+            TestCaseBase::assertSame(0, $this->startedSpansCount);
+            TestCaseBase::assertSame(0, $this->droppedSpansCount);
+            TestCaseBase::assertNull($this->context);
         }
 
-        if ($expectations->droppedSpansCount !== null) {
-            TestCase::assertSame($expectations->droppedSpansCount, $this->droppedSpansCount);
-        }
+        TestCaseBase::assertSameExpectedOptional($expectations->startedSpansCount, $this->startedSpansCount);
+        TestCaseBase::assertSameExpectedOptional($expectations->droppedSpansCount, $this->droppedSpansCount);
 
         if ($this->context !== null) {
             $this->context->assertValid();

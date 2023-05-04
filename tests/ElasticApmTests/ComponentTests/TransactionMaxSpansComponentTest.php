@@ -28,7 +28,6 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
@@ -36,8 +35,8 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
-use PHPUnit\Framework\TestCase;
 
 /**
  * @group smoke
@@ -59,14 +58,13 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForTestVariousCombinations(array $args): void
+    public static function appCodeForTestVariousCombinations(MixedMap $appCodeArgs): void
     {
-        $testArgsAsDecodedJson = ArrayUtil::getValueIfKeyExistsElse('testArgs', $args, null);
-        TestCase::assertNotNull($testArgsAsDecodedJson);
-        TestCase::assertIsArray($testArgsAsDecodedJson);
+        /**
+         * @var array<string, mixed> $testArgsAsDecodedJson
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $testArgsAsDecodedJson = $appCodeArgs->getArray('testArgs');
         $testArgs = new Args();
         $testArgs->deserializeFromDecodedJson($testArgsAsDecodedJson);
         SharedCode::appCode($testArgs, ElasticApm::getCurrentTransaction());

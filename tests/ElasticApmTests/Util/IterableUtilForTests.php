@@ -140,6 +140,33 @@ final class IterableUtilForTests
     }
 
     /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param iterable<TKey, TValue> $iterable
+     *
+     * @return array<TKey, TValue>
+     *
+     * @noinspection PhpUnused
+     */
+    public static function toMap(iterable $iterable): array
+    {
+        if (is_array($iterable)) {
+            return $iterable;
+        }
+
+        /**
+         * @var array<TKey, TValue> $result
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $result = [];
+        foreach ($iterable as $key => $val) {
+            $result[$key] = $val;
+        }
+        return $result;
+    }
+
+    /**
      * @template T
      *
      * @param iterable<T> $inputIterable

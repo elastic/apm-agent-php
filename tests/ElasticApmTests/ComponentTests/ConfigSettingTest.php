@@ -35,6 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
 use RuntimeException;
 
@@ -141,7 +142,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
                                                         => $intRawToParsedValues,
-            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
                                                         => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
@@ -224,13 +225,10 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
+    public static function appCodeForTestAllWaysToSetConfig(MixedMap $appCodeArgs): void
     {
-        $optName = self::getStringFromMap(self::APP_CODE_ARGS_KEY_OPTION_NAME, $appCodeArgs);
-        $optExpectedVal = self::getFromMap(self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE, $appCodeArgs);
+        $optName = $appCodeArgs->getString(self::APP_CODE_ARGS_KEY_OPTION_NAME);
+        $optExpectedVal = $appCodeArgs->get(self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
         $tracer = self::getTracerFromAppCode();
 
@@ -276,7 +274,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     ): void {
         $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
         self::runAndEscalateLogLevelOnFailure(
-            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $dbgTestArgs),
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, new MixedMap($dbgTestArgs)),
             function () use ($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal): void {
                 $this->implTestAllWaysToSetConfig($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal);
             }
@@ -307,12 +305,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllWaysToSetConfig']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($optName, $optExpectedVal): void {
-                $appCodeRequestParams->setAppCodeArgs(
-                    [
-                        self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
-                        self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal,
-                    ]
-                );
+                $appCodeRequestParams->setAppCodeArgs([self::APP_CODE_ARGS_KEY_OPTION_NAME => $optName, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal]);
                 if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
                     $appCodeRequestParams->expectedHttpResponseStatusCode = self::APP_CODE_RESPONSE_HTTP_STATUS_CODE;
                 }

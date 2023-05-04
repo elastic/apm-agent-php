@@ -26,7 +26,6 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
@@ -34,6 +33,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group smoke
@@ -140,12 +140,9 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         self::assertSame($query, $tx->context->request->url->query);
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForHttpStatus(array $args): void
+    public static function appCodeForHttpStatus(MixedMap $appCodeArgs): void
     {
-        $customHttpStatus = ArrayUtil::getValueIfKeyExistsElse('customHttpStatus', $args, null);
+        $customHttpStatus = $appCodeArgs->getIfKeyExistsElse('customHttpStatus', null);
         if ($customHttpStatus !== null) {
             /** @var int $customHttpStatus */
             http_response_code($customHttpStatus);
@@ -210,12 +207,9 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         self::assertSame('my manually set result', $tx->result);
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForSetOutcomeManually(array $appCodeArgs): void
+    public static function appCodeForSetOutcomeManually(MixedMap $appCodeArgs): void
     {
-        $shouldSetOutcomeManually = self::getBoolFromMap('shouldSetOutcomeManually', $appCodeArgs);
+        $shouldSetOutcomeManually = $appCodeArgs->getBool('shouldSetOutcomeManually');
         if ($shouldSetOutcomeManually) {
             ElasticApm::getCurrentTransaction()->setOutcome(Constants::OUTCOME_UNKNOWN);
         }
@@ -410,12 +404,9 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         return self::adaptToSmoke(self::dataProviderForTestTransactionIgnoreUrlsConfigImpl());
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeTransactionIgnoreUrlsConfig(array $appCodeArgs): void
+    public static function appCodeTransactionIgnoreUrlsConfig(MixedMap $appCodeArgs): void
     {
-        $expectedShouldBeIgnored = self::getBoolFromMap('expectedShouldBeIgnored', $appCodeArgs);
+        $expectedShouldBeIgnored = $appCodeArgs->getBool('expectedShouldBeIgnored');
         self::assertSame($expectedShouldBeIgnored, ElasticApm::getCurrentTransaction()->isNoop());
 
         if ($expectedShouldBeIgnored) {

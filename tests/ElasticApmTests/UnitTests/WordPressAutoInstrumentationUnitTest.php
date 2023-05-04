@@ -26,7 +26,7 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
-use ElasticApmTests\Util\AssertMessageBuilder;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\TestCaseBase;
 use stdClass;
 
@@ -37,22 +37,24 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
     public function testFindAddonNameInFilePath(): void
     {
         $testImpl = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName): void {
-            $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/')
-                ? $filePath
-                : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
+            AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+            $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/') ? $filePath : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
             $actualGroupKind = 'dummy actualGroupKind';
             $actualGroupName = 'dummy actualGroupName';
             WordPressAutoInstrumentation::findAddonInfoFromFilePath($adaptedFilePath, AmbientContextForTests::loggerFactory(), /* out */ $actualGroupKind, /* out */ $actualGroupName);
-            $ctx = [
-                'filePath'          => $filePath,
-                'adaptedFilePath'   => $adaptedFilePath,
-                'expectedGroupKind' => $expectedGroupKind,
-                'actualGroupKind'   => $actualGroupKind,
-                'expectedGroupName' => $expectedGroupName,
-                'actualGroupName'   => $actualGroupName,
-            ];
-            self::assertSame($expectedGroupKind, $actualGroupKind, AssertMessageBuilder::buildString($ctx));
-            self::assertSame($expectedGroupName, $actualGroupName, AssertMessageBuilder::buildString($ctx));
+            $dbgCtx->add(
+                [
+                    'filePath'          => $filePath,
+                    'adaptedFilePath'   => $adaptedFilePath,
+                    'expectedGroupKind' => $expectedGroupKind,
+                    'actualGroupKind'   => $actualGroupKind,
+                    'expectedGroupName' => $expectedGroupName,
+                    'actualGroupName'   => $actualGroupName,
+                ]
+            );
+            self::assertSame($expectedGroupKind, $actualGroupKind);
+            self::assertSame($expectedGroupName, $actualGroupName);
         };
 
         $pluginFilePathToExpectedName = [
@@ -132,8 +134,11 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
      */
     public static function testFoldTextWithMarkersIntoOneLine(string $input, string $expectedOutput): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['input' => $input, 'expectedOutput' => $expectedOutput]);
+
         $actualOutput = WordPressAutoInstrumentationTest::foldTextWithMarkersIntoOneLine($input);
-        self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
+        self::assertSame($expectedOutput, $actualOutput);
     }
 
     public static function dummyStaticMethodForTestGetCallbackSourceFilePath(): string
@@ -170,10 +175,11 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
              * @param ?string $expectedResult
              */
             function ($callback, ?string $expectedResult): void {
-                $msg = new AssertMessageBuilder(['callback' => $callback, 'expectedResult' => $expectedResult]);
+                AssertMessageStack::newScope(/* out */ $dbgCtx);
+                $dbgCtx->add(['callback' => $callback, 'expectedResult' => $expectedResult]);
                 $actualResult = WordPressAutoInstrumentation::getCallbackSourceFilePath($callback, AmbientContextForTests::loggerFactory());
-                $msg->add('actualResult', $actualResult);
-                self::assertSame($expectedResult, $actualResult, $msg->s());
+                $dbgCtx->add(['actualResult' => $actualResult]);
+                self::assertSame($expectedResult, $actualResult);
             };
 
         $testImpl('\dummyFuncForTestsWithoutNamespace', DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME);
@@ -243,7 +249,10 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
      */
     public static function testRemoveAttributes(string $input, string $expectedOutput): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['input' => $input, 'expectedOutput' => $expectedOutput]);
+
         $actualOutput = WordPressAutoInstrumentationTest::removeAttributes($input);
-        self::assertSame($expectedOutput, $actualOutput, (new AssertMessageBuilder(['input' => $input]))->s());
+        self::assertSame($expectedOutput, $actualOutput);
     }
 }

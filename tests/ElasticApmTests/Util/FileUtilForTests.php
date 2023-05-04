@@ -33,7 +33,6 @@ use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\Util\EnvVarUtilForTests;
 use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ProcessUtilForTests;
-use PHPUnit\Framework\Assert;
 use RuntimeException;
 
 /**
@@ -105,8 +104,7 @@ final class FileUtilForTests
     {
         $tempFileFullPath = tempnam(sys_get_temp_dir(), /* prefix */ 'ElasticApmTests_');
         $logCategory = LogCategoryForTests::TEST;
-        $logger
-            = AmbientContextForTests::loggerFactory()->loggerForClass($logCategory, __NAMESPACE__, __CLASS__, __FILE__);
+        $logger = AmbientContextForTests::loggerFactory()->loggerForClass($logCategory, __NAMESPACE__, __CLASS__, __FILE__);
 
         if ($tempFileFullPath === false) {
             ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
@@ -114,7 +112,7 @@ final class FileUtilForTests
                 'Failed to create a temporary file',
                 ['$dbgTempFilePurpose' => $dbgTempFilePurpose]
             );
-            Assert::fail(LoggableToString::convert(['$dbgTempFilePurpose' => $dbgTempFilePurpose]));
+            TestCaseBase::fail(LoggableToString::convert(['$dbgTempFilePurpose' => $dbgTempFilePurpose]));
         }
 
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
@@ -133,12 +131,15 @@ final class FileUtilForTests
 
     public static function deleteTempSubDir(string $subDirName): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['subDirName' => $subDirName]);
+
         $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
-        $msg = new AssertMessageBuilder(['subDirName' => $subDirName, 'tempSubDirFullPath' => $tempSubDirFullPath]);
+        $dbgCtx->add(['tempSubDirFullPath' => $tempSubDirFullPath]);
         if (!file_exists($tempSubDirFullPath)) {
             return;
         }
-        Assert::assertTrue(is_dir($tempSubDirFullPath), $msg->s());
+        TestCaseBase::assertTrue(is_dir($tempSubDirFullPath));
 
         $deleteDirShellCmd = OsUtilForTests::isWindows()
             ? sprintf('rd /s /q "%s"', $tempSubDirFullPath)
@@ -160,16 +161,19 @@ final class FileUtilForTests
 
     public static function createTempSubDir(string $subDirName): string
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['subDirName' => $subDirName]);
+
         $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
-        $msg = new AssertMessageBuilder(['subDirName' => $subDirName, 'tempSubDirFullPath' => $tempSubDirFullPath]);
+        $dbgCtx->add(['tempSubDirFullPath' => $tempSubDirFullPath]);
         self::deleteTempSubDir($tempSubDirFullPath);
-        Assert::assertTrue(mkdir($tempSubDirFullPath), $msg->s());
+        TestCaseBase::assertTrue(mkdir($tempSubDirFullPath));
         return $tempSubDirFullPath;
     }
 
     public static function convertPathRelativeTo(string $absPath, string $relativeToAbsPath): string
     {
-        Assert::assertTrue(TextUtil::isPrefixOf($relativeToAbsPath, $absPath));
+        TestCaseBase::assertTrue(TextUtil::isPrefixOf($relativeToAbsPath, $absPath));
         $relPath = substr($absPath, /* offset */ strlen($relativeToAbsPath));
         foreach (['/', DIRECTORY_SEPARATOR] as $dirSeparator) {
             while (TextUtil::isPrefixOf($dirSeparator, $relPath)) {

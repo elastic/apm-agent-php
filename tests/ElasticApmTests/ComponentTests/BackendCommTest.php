@@ -29,7 +29,8 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
-use ElasticApmTests\Util\AssertMessageBuilder;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group smoke
@@ -37,12 +38,9 @@ use ElasticApmTests\Util\AssertMessageBuilder;
  */
 final class BackendCommTest extends ComponentTestCaseBase
 {
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestNumberOfConnections(array $appCodeArgs): void
+    public static function appCodeForTestNumberOfConnections(MixedMap $appCodeArgs): void
     {
-        $txName = self::getStringFromMap('txName', $appCodeArgs);
+        $txName = $appCodeArgs->getString('txName');
         ElasticApm::getCurrentTransaction()->setName($txName);
     }
 
@@ -66,8 +64,9 @@ final class BackendCommTest extends ComponentTestCaseBase
         }
         $txCount = count($txNames);
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions($txCount));
-        $msg = new AssertMessageBuilder(['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
-        self::assertCount(1, $dataFromAgent->getRaw()->getIntakeApiConnections(), $msg->s());
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
+        self::assertCount(1, $dataFromAgent->getRaw()->getIntakeApiConnections());
         $txIndex = 0;
         foreach ($dataFromAgent->idToTransaction as $tx) {
             self::assertSame($txNames[$txIndex], $tx->name);

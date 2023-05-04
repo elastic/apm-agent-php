@@ -24,18 +24,16 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
-use PHPUnit\Framework\TestCase;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
+use PHPUnit\Framework\Assert;
 
 /**
  * @template T
  */
 final class Optional implements LoggableInterface
 {
-    use LoggableTrait;
-
     /** @var bool */
-    public $isValueSet = false;
+    private $isValueSet = false;
 
     /** @var T */
     private $value;
@@ -45,7 +43,7 @@ final class Optional implements LoggableInterface
      */
     public function getValue()
     {
-        TestCase::assertTrue($this->isValueSet);
+        Assert::assertTrue($this->isValueSet);
         return $this->value;
     }
 
@@ -71,6 +69,7 @@ final class Optional implements LoggableInterface
     public function reset(): void
     {
         $this->isValueSet = false;
+        unset($this->value);
     }
 
     public function isValueSet(): bool
@@ -86,5 +85,10 @@ final class Optional implements LoggableInterface
         if (!$this->isValueSet) {
             $this->setValue($value);
         }
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs($this->isValueSet ? $this->value : /** @lang text */ '<Optional NOT SET>');
     }
 }

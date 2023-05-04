@@ -133,7 +133,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         ConfigUtilForTests::assertAgentDisabled();
     }
 
-    public static function formatTime(float $durationInSeconds): string
+    private static function formatTime(float $durationInSeconds): string
     {
         // Round to milliseconds
         $roundedDurationInSeconds = round($durationInSeconds, /* precision */ 3);
@@ -149,14 +149,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     private function testFailed(string $issue, string $test, string $message, float $time): void
     {
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            "Test finished $issue",
-            [
-                'test'              => $test,
-                'message'           => $message,
-                'duration'          => self::formatTime($time),
-            ]
-        );
+        && $loggerProxy->log("Test finished $issue", ['test' => $test, 'message' => $message, 'duration' => self::formatTime($time)]);
     }
 
     public function executeAfterTestFailure(string $test, string $message, float $time): void
