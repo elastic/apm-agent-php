@@ -621,6 +621,11 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testOneCompressedSequence(MixedMap $testArgs): void
     {
+        if (!DataProviderForTestBuilder::isLongRunMode()) {
+            self::dummyAssert();
+            return;
+        }
+
         $sharedCode = new SpanCompressionSharedCode($testArgs);
         $this->rebuildTracer($sharedCode->mockClock, $sharedCode->agentConfigOptions);
 
@@ -873,6 +878,11 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testReasonsCompressionStops(MixedMap $testArgs): void
     {
+        if (!DataProviderForTestBuilder::isLongRunMode()) {
+            self::dummyAssert();
+            return;
+        }
+
         AssertMessageStack::newScope($dbgCtx);
         $dbgCtx->add(['testArgs' => $testArgs]);
         $reason = $testArgs->getString(self::REASON_COMPRESSION_STOPS_KEY);
