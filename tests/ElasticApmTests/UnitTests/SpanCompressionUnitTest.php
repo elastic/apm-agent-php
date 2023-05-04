@@ -841,8 +841,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                 }
             )
             // Uncomment to limit generated data to the data set with the index below
-            // TODO: Sergey Kleyman: COMMENT
-            ->emitOnlyDataSetWithIndex(26)
+            // ->emitOnlyDataSetWithIndex(26)
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap($result);
