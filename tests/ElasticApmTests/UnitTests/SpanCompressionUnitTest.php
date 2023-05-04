@@ -802,9 +802,10 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         ];
         $reasonsForExactMatchStrategy = array_merge([self::REASON_COMPRESSION_STOPS_DIFFERENT_NAME], $reasonsForSameKindStrategy);
 
+        $onlyFirstValueCombinable = !DataProviderForTestBuilder::isLongRunMode();
         $result = (new DataProviderForTestBuilder())
-            ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::WRAP_IN_PARENT_SPAN_KEY)
-            ->addKeyedDimensionAllValuesCombinable(self::STOPPING_SPAN_INDEX_KEY, DataProviderForTestBuilder::rangeUpTo(self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH + 1))
+            ->addBoolKeyedDimension(self::WRAP_IN_PARENT_SPAN_KEY, $onlyFirstValueCombinable)
+            ->addKeyedDimension(self::STOPPING_SPAN_INDEX_KEY, $onlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH + 1))
             ->addKeyedDimensionAllValuesCombinable(self::COMPRESSION_STRATEGY_KEY, $compressionStrategies)
             ->addConditionalKeyedDimensionAllValueCombinable(
                 self::REASON_COMPRESSION_STOPS_KEY /* <- new dimension key */,
@@ -813,14 +814,16 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                 $reasonsForExactMatchStrategy /* <- new dimension variants for true case */,
                 $reasonsForSameKindStrategy /* <- new dimension variants for false case */
             )
-            ->addConditionalKeyedDimensionAllValueCombinable(
+            ->addConditionalKeyedDimension(
                 self::ADD_DBG_LABEL_WITH_SPAN_INDEX_KEY /* <- new dimension key */,
+                $onlyFirstValueCombinable,
                 self::COMPRESSION_STRATEGY_KEY /* <- depends on dimension key */,
                 Constants::COMPRESSION_STRATEGY_EXACT_MATCH /* <- depends on dimension true value */,
                 [true, false] /* <- new dimension variants for true case */,
                 [false] /* <- new dimension variants for false case */
             )
-            ->addGeneratorAllValuesCombinable(
+            ->addGenerator(
+                $onlyFirstValueCombinable,
                 /**
                  * @param array<mixed> $resultSoFar
                  *
@@ -832,7 +835,8 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
             )
             // genServiceTargetRelatedDimensions must be before outcome related generattor
             // because outcome related generattor depends on value for COMPRESSIBLE_SPAN_HAS_SERVICE_TARGET_KEY
-            ->addGeneratorAllValuesCombinable(
+            ->addGenerator(
+                $onlyFirstValueCombinable,
                 /**
                  * @param array<mixed> $resultSoFar
                  *

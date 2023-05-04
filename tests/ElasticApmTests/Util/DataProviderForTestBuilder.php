@@ -24,7 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\ComponentTests\Util\ConfigUtilForTests;
 
 final class DataProviderForTestBuilder
 {
@@ -40,6 +42,12 @@ final class DataProviderForTestBuilder
     private function assertValid(): void
     {
         TestCaseBase::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
+    }
+
+    public static function isLongRunMode(): bool
+    {
+        $configForTests = ConfigUtilForTests::read(/* additionalConfigSource */ null, NoopLoggerFactory::singletonInstance());
+        return $configForTests->isLongRunMode;
     }
 
     /**

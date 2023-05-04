@@ -85,6 +85,7 @@ final class AllComponentTestsOptionsMetadata
             self::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME
                                                    => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
             'group'                                => new NullableStringOptionMetadata(),
+            'is_long_run_mode'                     => new BoolOptionMetadata(false),
             self::LOG_LEVEL_OPTION_NAME            => new LogLevelOptionMetadata(LogLevel::INFO),
             'mysql_host'                           => new NullableStringOptionMetadata(),
             'mysql_port'                           => new NullableIntOptionMetadata(1, 65535),
