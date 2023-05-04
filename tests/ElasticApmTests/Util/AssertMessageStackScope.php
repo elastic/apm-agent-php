@@ -28,18 +28,24 @@ final class AssertMessageStackScope
     /** @var AssertMessageStack */
     private $stack;
 
-    /** @var AssertMessageStackScopeData */
+    /** @var ?AssertMessageStackScopeData */
     private $data;
 
-    public function __construct(AssertMessageStack $stack, AssertMessageStackScopeData $data)
+    public function __construct(AssertMessageStack $stack, ?AssertMessageStackScopeData $data)
     {
-        TestCaseBase::assertSame(1, $data->refsFromStackCount);
+        if ($data !== null) {
+            TestCaseBase::assertSame(1, $data->refsFromStackCount);
+        }
         $this->stack = $stack;
         $this->data = $data;
     }
 
     public function __destruct()
     {
+        if ($this->data === null) {
+            return;
+        }
+
         if ($this->data->refsFromStackCount !== 0) {
             $this->stack->removeScope($this->data);
         }
@@ -50,6 +56,10 @@ final class AssertMessageStackScope
      */
     public function add(array $ctx): void
     {
+        if ($this->data === null) {
+            return;
+        }
+
         ArrayUtilForTests::append(/* from */ $ctx, /* to */ $this->data->ctx);
     }
 }

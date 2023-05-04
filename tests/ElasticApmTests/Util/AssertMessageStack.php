@@ -31,6 +31,9 @@ use PHPUnit\Framework\Assert;
 
 final class AssertMessageStack implements LoggableInterface
 {
+    /** @var bool */
+    public static $isEnabled = true;
+
     /** @var ?AssertMessageStack */
     private static $singleton = null;
 
@@ -113,11 +116,20 @@ final class AssertMessageStack implements LoggableInterface
      */
     public static function newScope(/* out */ ?AssertMessageStackScope &$scopeVar): void
     {
+        if (!self::$isEnabled) {
+            $scopeVar = new AssertMessageStackScope(self::ensureSingleton(), null);
+            return;
+        }
+
         $scopeVar = self::ensureSingleton()->newScopeImpl(/* numberOfStackFramesToSkip */ 1);
     }
 
     public static function newSubScope(/* ref */ AssertMessageStackScope &$scopeVar): void
     {
+        if (!self::$isEnabled) {
+            return;
+        }
+
         Assert::assertNotNull($scopeVar);
         $singleton = self::ensureSingleton();
         /** @var AssertMessageStackScopeData $topScope */
@@ -129,6 +141,10 @@ final class AssertMessageStack implements LoggableInterface
 
     public static function popSubScope(AssertMessageStackScope &$scopeVar): void
     {
+        if (!self::$isEnabled) {
+            return;
+        }
+
         Assert::assertNotNull($scopeVar);
         $singleton = self::ensureSingleton();
         $scopeToPopKey = self::getLastKeyInArray($singleton->scopesStack);
@@ -141,7 +157,9 @@ final class AssertMessageStack implements LoggableInterface
 
     public function removeScope(AssertMessageStackScopeData $scopeDataToRemove): void
     {
-        $dbgCtx = ['this' => $this, '$scopeDataToRemove' => $scopeDataToRemove];
+        $dbgCtx = ['temp dummy'];
+        // TODO: Sergey Kleyman: UNCOMMENT
+        // $dbgCtx = ['this' => $this, '$scopeDataToRemove' => $scopeDataToRemove];
         Assert::assertNotEmpty($this->scopesStack, LoggableToString::convert($dbgCtx));
         Assert::assertGreaterThan(0, $scopeDataToRemove->refsFromStackCount, LoggableToString::convert($dbgCtx));
         --$scopeDataToRemove->refsFromStackCount;
