@@ -326,7 +326,7 @@ final class PhpPartFacade
 
     /**
      * @param string                  $expectedKey
-     * @param array<mixed> $actualArray
+     * @param array<array-key, mixed> $actualArray
      *
      * @return bool
      */
@@ -347,8 +347,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return ?int
      */
@@ -366,8 +366,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return ?string
      */
@@ -385,8 +385,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return null|array<string, mixed>[]
      */
@@ -416,7 +416,7 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed> $dataFromExt
+     * @param array<array-key, mixed> $dataFromExt
      *
      * @return PhpErrorData
      */
@@ -460,7 +460,7 @@ final class PhpPartFacade
             );
             return;
         }
-        /** @var array<mixed> $lastPhpErrorData */
+        /** @var array<array-key, mixed> $lastPhpErrorData */
 
         $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
     }
