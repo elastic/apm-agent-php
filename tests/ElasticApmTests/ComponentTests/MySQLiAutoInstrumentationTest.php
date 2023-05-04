@@ -322,21 +322,12 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         ?bool &$wrapInTx /* <- out */,
         ?bool &$rollback /* <- out */
     ): void {
-<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
-        $isOOPApi = self::getBoolFromMap(self::IS_OOP_API_KEY, $args);
-        $connectDbName = self::getNullableStringFromMap(self::CONNECT_DB_NAME_KEY, $args);
-        $workDbName = self::getStringFromMap(self::WORK_DB_NAME_KEY, $args);
-        $queryKind = self::getStringFromMap(self::QUERY_KIND_KEY, $args);
-        $wrapInTx = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY, $args);
-        $rollback = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY, $args);
-=======
         $isOOPApi = $args->getBool(self::IS_OOP_API_KEY);
         $connectDbName = $args->getNullableString(self::CONNECT_DB_NAME_KEY);
         $workDbName = $args->getString(self::WORK_DB_NAME_KEY);
         $queryKind = $args->getString(self::QUERY_KIND_KEY);
         $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
         $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
->>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
     }
 
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
@@ -350,17 +341,10 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
             /* out */ $wrapInTx,
             /* out */ $rollback
         );
-<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
-        $host = self::getStringFromMap(DbAutoInstrumentationUtilForTests::HOST_KEY, $appCodeArgs);
-        $port = self::getIntFromMap(DbAutoInstrumentationUtilForTests::PORT_KEY, $appCodeArgs);
-        $user = self::getStringFromMap(DbAutoInstrumentationUtilForTests::USER_KEY, $appCodeArgs);
-        $password = self::getStringFromMap(DbAutoInstrumentationUtilForTests::PASSWORD_KEY, $appCodeArgs);
-=======
         $host = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::HOST_KEY);
         $port = $appCodeArgs->getInt(DbAutoInstrumentationUtilForTests::PORT_KEY);
         $user = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::USER_KEY);
         $password = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::PASSWORD_KEY);
->>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
 
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -435,13 +419,8 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
-<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/MySQLiTest.php
-        $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
-        $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
-=======
         $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
         $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
->>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/MySQLiAutoInstrumentationTest.php
 
         self::extractSharedArgs(
             $testArgs,

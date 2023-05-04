@@ -186,23 +186,11 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
      * @param-out bool   $wrapInTx
      * @param-out bool   $rollback
      */
-<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/PDOTest.php
-    public static function extractSharedArgs(
-        array $args,
-        /* out */ ?string &$dbName,
-        /* out */ ?bool &$wrapInTx,
-        /* out */ ?bool &$rollback
-    ): void {
-        $dbName = self::getStringFromMap(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $args);
-        $wrapInTx = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY, $args);
-        $rollback = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY, $args);
-=======
     public static function extractSharedArgs(MixedMap $args, /* out */ ?string &$dbName, /* out */ ?bool &$wrapInTx, /* out */ ?bool &$rollback): void
     {
         $dbName = $args->getString(DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
         $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
         $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
->>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/PDOAutoInstrumentationTest.php
     }
 
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
@@ -257,13 +245,8 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
 
     private function implTestAutoInstrumentation(MixedMap $testArgs): void
     {
-<<<<<<< HEAD:tests/ElasticApmTests/ComponentTests/PDOTest.php
-        $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
-        $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
-=======
         $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
         $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
->>>>>>> 5__Span_compression:tests/ElasticApmTests/ComponentTests/PDOAutoInstrumentationTest.php
 
         self::extractSharedArgs(
             $testArgs,
