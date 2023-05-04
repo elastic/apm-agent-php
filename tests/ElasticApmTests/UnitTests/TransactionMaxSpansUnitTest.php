@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\TracerBuilderForTests;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -80,6 +81,11 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 
     public function testVariousCombinations(): void
     {
+        if (!DataProviderForTestBuilder::isLongRunMode()) {
+            self::dummyAssert();
+            return;
+        }
+
         TransactionExpectations::$defaultDroppedSpansCount = null;
         TransactionExpectations::$defaultIsSampled = null;
         /** @var Args $testArgs */
