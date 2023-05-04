@@ -28,8 +28,8 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config );
 
-bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
+bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
 
-void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
+void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
 
 void tracerPhpPartInterceptedCallEmptyMethod();
