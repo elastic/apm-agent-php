@@ -815,6 +815,11 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         ];
         $reasonsForExactMatchStrategy = array_merge([self::REASON_COMPRESSION_STOPS_DIFFERENT_NAME], $reasonsForSameKindStrategy);
 
+        /**
+         * Negated boolean expression is always false.
+         *
+         * @phpstan-ignore-next-line
+         */
         $onlyFirstValueCombinable = !DataProviderForTestBuilder::isLongRunMode();
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimension(self::WRAP_IN_PARENT_SPAN_KEY, $onlyFirstValueCombinable)
