@@ -613,6 +613,10 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function dataProviderForTestOneCompressedSequence(): iterable
     {
+        if (!DataProviderForTestBuilder::isLongRunMode()) {
+            return ['dummy data set' => [new MixedMap([])]];
+        }
+
         return SpanCompressionSharedCode::dataProviderForTestOneCompressedSequence();
     }
 
@@ -794,6 +798,10 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public static function dataProviderForTestReasonsCompressionStops(): iterable
     {
+        if (!DataProviderForTestBuilder::isLongRunMode()) {
+            return ['dummy data set' => [new MixedMap([])]];
+        }
+
         $compressionStrategies = array_keys(SpanCompressionSharedCode::COMPRESSION_STRATEGY_TO_MAX_DURATION_OPTION_NAME);
 
         $reasonsForSameKindStrategy = [
