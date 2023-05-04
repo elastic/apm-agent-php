@@ -10,6 +10,7 @@ parameters:
     excludePaths:
         - tests/polyfills/Stringable.php
         - tests/polyfills/WeakMap.php
+        - tests/ElasticApmTests/Util/TestCaseBaseShim.php
 
     ignoreErrors:
         #

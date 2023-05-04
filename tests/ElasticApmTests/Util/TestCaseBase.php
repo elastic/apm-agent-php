@@ -37,7 +37,6 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
-use Exception;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Constraint\Constraint;
@@ -46,10 +45,9 @@ use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\ExpectationFailedException;
-use PHPUnit\Framework\TestCase;
 use Throwable;
 
-class TestCaseBase extends TestCase
+class TestCaseBase extends TestCaseBaseShim
 {
     /**
      * 10 milliseconds (10000 microseconds) precision
@@ -482,7 +480,7 @@ class TestCaseBase extends TestCase
                 'after - before' => TimeUtilForTests::timestampToLoggable($after - $before),
             ]
         );
-        self::assertThat($before, TestCase::logicalOr(new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS), new LessThan($after)));
+        self::assertThat($before, Assert::logicalOr(new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS), new LessThan($after)));
     }
 
     public static function assertTimestampInRange(float $pastTimestamp, float $timestamp, float $futureTimestamp): void
@@ -549,6 +547,10 @@ class TestCaseBase extends TestCase
      * @param T $rangeBegin
      * @param T $val
      * @param T $rangeInclusiveEnd
+     *
+     * @return void
+     *
+     * @noinspection PhpMissingParamTypeInspection
      */
     public static function assertInRangeInclusive($rangeBegin, $val, $rangeInclusiveEnd): void
     {
@@ -626,11 +628,6 @@ class TestCaseBase extends TestCase
             yield $dataSetName => array_values($namedValuesMap);
             ++$dataSetIndex;
         }
-    }
-
-    private static function addMessageStackToException(Exception $ex): void
-    {
-        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . AssertMessageStack::formatScopesStackAsString());
     }
 
     /**
@@ -745,22 +742,6 @@ class TestCaseBase extends TestCase
     /**
      * @inheritDoc
      *
-     * @param mixed $expected
-     * @param mixed $actual
-     */
-    public static function assertNotEquals($expected, $actual, string $message = ''): void
-    {
-        try {
-            Assert::assertNotEquals($expected, $actual, $message);
-        } catch (AssertionFailedError $ex) {
-            self::addMessageStackToException($ex);
-            throw $ex;
-        }
-    }
-
-    /**
-     * @inheritDoc
-     *
      * @param mixed $actual
      */
     public static function assertNotEmpty($actual, string $message = ''): void
@@ -799,22 +780,6 @@ class TestCaseBase extends TestCase
     {
         try {
             Assert::assertGreaterThan($expected, $actual, $message);
-        } catch (AssertionFailedError $ex) {
-            self::addMessageStackToException($ex);
-            throw $ex;
-        }
-    }
-
-    /**
-     * @inheritDoc
-     *
-     * @param mixed $expected
-     * @param mixed $actual
-     */
-    public static function assertEquals($expected, $actual, string $message = ''): void
-    {
-        try {
-            Assert::assertEquals($expected, $actual, $message);
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;
@@ -936,22 +901,6 @@ class TestCaseBase extends TestCase
     {
         try {
             Assert::assertEmpty($actual, $message);
-        } catch (AssertionFailedError $ex) {
-            self::addMessageStackToException($ex);
-            throw $ex;
-        }
-    }
-
-    /**
-     * @inheritDoc
-     *
-     * @param mixed           $needle
-     * @param iterable<mixed> $haystack
-     */
-    public static function assertContains($needle, iterable $haystack, string $message = ''): void
-    {
-        try {
-            Assert::assertContains($needle, $haystack, $message);
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;
