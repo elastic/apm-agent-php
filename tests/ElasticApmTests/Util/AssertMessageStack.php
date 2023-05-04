@@ -46,6 +46,32 @@ final class AssertMessageStack implements LoggableInterface
     }
 
     /**
+     * We do not use ArrayUtilForTests because it uses TestCaseBase and TestCaseBase uses this class
+     *
+     * @template TKey of array-key
+     *
+     * @param array<TKey, mixed> $array
+     *
+     * @return array-key
+     *
+     * @phpstan-return TKey
+     */
+    private static function getLastKeyInArray(array $array)
+    {
+        // We use Assert::assert* and not TestCaseBase::assert* because TestCaseBase uses this class
+
+        $dbgCtx = ['array' => $array];
+        Assert::assertNotEmpty($array);
+
+        $lastKey = array_key_last($array);
+        $dbgCtx['lastKey'] = $lastKey;
+        Assert::assertNotNull($lastKey, LoggableToString::convert($dbgCtx));
+        Assert::assertArrayHasKey($lastKey, $array, LoggableToString::convert($dbgCtx));
+
+        return $lastKey;
+    }
+
+    /**
      * We do not use ArrayUtilForTests::getLastValue because it uses TestCaseBase and TestCaseBase uses this class
      *
      * @template T
@@ -54,11 +80,18 @@ final class AssertMessageStack implements LoggableInterface
      *
      * @return  T
      */
-    private static function &getLastValueInArray(array $array)
+    private static function getLastValueInArray(array $array)
     {
         // We use Assert::assert* and not TestCaseBase::assert* because TestCaseBase uses this class
+
+        $dbgCtx = ['array' => $array];
         Assert::assertNotEmpty($array);
-        return $array[array_key_last($array)];
+
+        foreach (array_reverse($array) as $val) {
+            return $val;
+        }
+
+        Assert::fail(LoggableToString::convert($dbgCtx));
     }
 
     /** @noinspection PhpSameParameterValueInspection */
@@ -97,7 +130,7 @@ final class AssertMessageStack implements LoggableInterface
     {
         Assert::assertNotNull($scopeVar);
         $singleton = self::ensureSingleton();
-        $scopeToPopKey = array_key_last($singleton->scopesStack);
+        $scopeToPopKey = self::getLastKeyInArray($singleton->scopesStack);
         $scopeToPop = $singleton->scopesStack[$scopeToPopKey];
         Assert::assertSame(1, $scopeToPop->refsFromStackCount);
         --$scopeToPop->refsFromStackCount;

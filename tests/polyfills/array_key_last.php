@@ -32,7 +32,7 @@ declare(strict_types=1);
  */
 function array_key_last(array $arr)
 {
-    foreach (array_reverse($arr) as $key => $ignored) {
+    foreach (array_reverse($arr, /* preserve_keys */ true) as $key => $ignored) {
         return $key;
     }
     return null;
