@@ -806,9 +806,10 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimension(self::WRAP_IN_PARENT_SPAN_KEY, $onlyFirstValueCombinable)
             ->addKeyedDimension(self::STOPPING_SPAN_INDEX_KEY, $onlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH + 1))
-            ->addKeyedDimensionAllValuesCombinable(self::COMPRESSION_STRATEGY_KEY, $compressionStrategies)
-            ->addConditionalKeyedDimensionAllValueCombinable(
+            ->addKeyedDimension(self::COMPRESSION_STRATEGY_KEY, $onlyFirstValueCombinable, $compressionStrategies)
+            ->addConditionalKeyedDimension(
                 self::REASON_COMPRESSION_STOPS_KEY /* <- new dimension key */,
+                $onlyFirstValueCombinable,
                 self::COMPRESSION_STRATEGY_KEY /* <- depends on dimension key */,
                 Constants::COMPRESSION_STRATEGY_EXACT_MATCH /* <- depends on dimension true value */,
                 $reasonsForExactMatchStrategy /* <- new dimension variants for true case */,
