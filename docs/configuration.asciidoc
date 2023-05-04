@@ -642,6 +642,8 @@ This reduces the collection, processing, and storage overhead,
 and removes clutter from the UI.
 The tradeoff is that the DB statements of all the compressed spans will not be collected.
 
+Since it is *max* duration threshold setting this configuration option to 0 effectively disables this compression strategy.
+
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.
 This option's default unit is `ms`, so `5` is interpreted as `5ms`.
@@ -659,7 +661,7 @@ This option's default unit is `ms`, so `5` is interpreted as `5ms`.
 [options="header"]
 |============
 | Default                          | Type
-| `0ms`       | Duration
+| `0ms` (i.e., disabled)       | Duration
 |============
 
 Consecutive spans to the same destination that are under this threshold
@@ -668,6 +670,8 @@ This option does not apply to composite spans.
 This reduces the collection, processing, and storage overhead,
 and removes clutter from the UI.
 The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+Since it is *max* duration threshold setting this configuration option to 0 effectively disables this compression strategy.
 
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.

@@ -30,7 +30,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
  *
  * @internal
  */
-final class SpanCompositeData implements SerializableDataInterface
+final class SpanComposite implements SerializableDataInterface
 {
     /** @var string */
     public $compressionStrategy;

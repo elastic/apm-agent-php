@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Util\StackTraceFrameBase;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TestCaseBase;
@@ -211,23 +212,14 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @param StackTraceFrame[]    $expectedStackTrace
-     * @param StackTraceFrame[]    $actualStackTrace
-     * @param array<string, mixed> $ctxOuter
+     * @param StackTraceFrame[] $expectedStackTrace
+     * @param StackTraceFrame[] $actualStackTrace
      *
      * @return void
      */
-    public static function assertEqualApmStackTraces(
-        array $expectedStackTrace,
-        array $actualStackTrace,
-        array $ctxOuter = []
-    ): void {
-        SpanDto::assertStackTraceMatches(
-            $expectedStackTrace,
-            false /* <- allowExpectedStackTraceToBePrefix */,
-            $actualStackTrace,
-            $ctxOuter
-        );
+    public static function assertEqualApmStackTraces(array $expectedStackTrace, array $actualStackTrace): void
+    {
+        SpanDto::assertStackTraceMatches($expectedStackTrace, false /* <- allowExpectedStackTraceToBePrefix */, $actualStackTrace);
     }
 
     public function testSimpleConvertClassicToApmFormat(): void
@@ -284,8 +276,7 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function expectedToCaptureThisObject(?int $debugBacktraceOptions): bool
     {
-        return ($debugBacktraceOptions === null)
-               || (($debugBacktraceOptions & DEBUG_BACKTRACE_PROVIDE_OBJECT) !== 0);
+        return ($debugBacktraceOptions === null) || (($debugBacktraceOptions & DEBUG_BACKTRACE_PROVIDE_OBJECT) !== 0);
     }
 
     /**
@@ -295,8 +286,7 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function expectedToCaptureArgs(?int $debugBacktraceOptions): bool
     {
-        return ($debugBacktraceOptions === null)
-               || (($debugBacktraceOptions & DEBUG_BACKTRACE_IGNORE_ARGS) === 0);
+        return ($debugBacktraceOptions === null) || (($debugBacktraceOptions & DEBUG_BACKTRACE_IGNORE_ARGS) === 0);
     }
 
     /**
@@ -357,6 +347,7 @@ class StackTraceUtilTest extends TestCaseBase
                 $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
                 $stackTraceSizeLimit ?? 0
             );
+            /** @noinspection PhpIfWithCommonPartsInspection */
             if ($withOffset) {
                 $actualStackTrace = self::captureInPhpFormat($debugBacktraceOptions, $stackTraceSizeLimit);
                 $expectedLine = __LINE__ - 1;
@@ -454,6 +445,7 @@ class StackTraceUtilTest extends TestCaseBase
         ?int $stackTraceSizeLimit,
         bool $withOffset
     ): void {
+        /** @noinspection PhpIfWithCommonPartsInspection */
         if ($withOffset) {
             $frames = self::captureInClassicFormat($debugBacktraceOptions, $stackTraceSizeLimit);
             $expectedLine = __LINE__ - 1;
@@ -884,13 +876,9 @@ class StackTraceUtilTest extends TestCaseBase
      * @param TStackFrameFormat[] $stackTrace
      * @param int                 $maxDepth
      */
-    private static function assertStackTraceTopAsExpected(
-        string $testFuncName,
-        string $dbgStackTraceDesc,
-        array $stackTrace,
-        int $maxDepth
-    ): void {
-        self::assertGreaterThanZero(count($stackTrace));
+    private static function assertStackTraceTopAsExpected(string $testFuncName, string $dbgStackTraceDesc, array $stackTrace, int $maxDepth): void
+    {
+        self::assertGreaterThan(0, count($stackTrace));
         $isPhpFormat = $stackTrace[0] instanceof PhpFormatStackTraceFrame;
 
         /** @var ?int $funcAIndex */
@@ -938,7 +926,8 @@ class StackTraceUtilTest extends TestCaseBase
             }
             /** @var StackTraceFrameBase $stackTraceFrame */
             $stackTraceFrame = $stackTrace[$index];
-            $ctx = LoggableToString::convert(
+            AssertMessageStack::newScope(/* out */ $dbgCtx);
+            $dbgCtx->add(
                 [
                     'stackTraceFrame'   => $stackTraceFrame,
                     'dbgStackTraceDesc' => $dbgStackTraceDesc,
@@ -947,16 +936,16 @@ class StackTraceUtilTest extends TestCaseBase
                     'maxDepth'          => $maxDepth,
                 ]
             );
-            self::assertSame($funcName, $stackTraceFrame->function, $ctx);
-            self::assertSame($isStatic, $stackTraceFrame->isStaticMethod, $ctx);
+            self::assertSame($funcName, $stackTraceFrame->function);
+            self::assertSame($isStatic, $stackTraceFrame->isStaticMethod);
             if (($args = $stackTraceFrame->args) !== null) {
                 if ($expectedCalledFromFunc !== null) {
                     $calledFromFuncArgNum = 0;
-                    self::assertSameValueInArray($calledFromFuncArgNum, $expectedCalledFromFunc, $args, $ctx);
+                    self::assertSameValueInArray($calledFromFuncArgNum, $expectedCalledFromFunc, $args);
                 }
                 if ($expectedFuncDepth !== null) {
                     $funcDepthArgNum = 1;
-                    self::assertSameValueInArray($funcDepthArgNum, $expectedFuncDepth, $args, $ctx);
+                    self::assertSameValueInArray($funcDepthArgNum, $expectedFuncDepth, $args);
                 }
             }
         }

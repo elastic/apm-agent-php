@@ -42,12 +42,7 @@ class DbSpanExpectationsBuilder extends SpanExpectationsBuilder
         $result->action->setValue(self::DEFAULT_SPAN_ACTION);
 
         $serviceDst = $dbName === null ? $dbType : ($dbType . '/' . $dbName);
-        $result->context->destination->service->name->setValue($serviceDst);
-        $result->context->destination->service->resource->setValue($serviceDst);
-        $result->context->destination->service->type->setValue($dbType);
-
-        $result->context->service->target->name->setValue($dbName);
-        $result->context->service->target->type->setValue($dbType);
+        $result->setService(/* targetType */ $dbType, /* targetName */ $dbName, /* destinationName */ $serviceDst, /* destinationResource */ $serviceDst, /* destinationType */ $dbType);
 
         return $result;
     }
@@ -61,7 +56,7 @@ class DbSpanExpectationsBuilder extends SpanExpectationsBuilder
     {
         $result = $this->startNew();
         $result->name->setValue(self::buildNameFromStatement($statement));
-        $result->context->db->statement->setValue($statement);
+        $result->ensureNotNullContext()->ensureNotNullDb()->statement->setValue($statement);
         return $result;
     }
 }

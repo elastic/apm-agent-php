@@ -29,6 +29,8 @@ namespace Elastic\Apm\Impl\Config;
  * @internal
  *
  * @extends OptionWithDefaultValueMetadata<string>
+ *
+ * @noinspection PhpUnused
  */
 final class StringOptionMetadata extends OptionWithDefaultValueMetadata
 {

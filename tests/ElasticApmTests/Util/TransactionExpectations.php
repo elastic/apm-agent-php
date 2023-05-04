@@ -34,7 +34,10 @@ final class TransactionExpectations extends ExecutionSegmentExpectations
     /** @var ?int */
     public static $defaultDroppedSpansCount = 0;
 
-    /** @var ?int */
+    /** @var Optional<int> */
+    public $startedSpansCount;
+
+    /** @var Optional<int> */
     public $droppedSpansCount;
 
     public static function setDefaults(): void
@@ -47,6 +50,10 @@ final class TransactionExpectations extends ExecutionSegmentExpectations
     {
         parent::__construct();
         $this->isSampled = self::$defaultIsSampled;
-        $this->droppedSpansCount = self::$defaultDroppedSpansCount;
+        $this->startedSpansCount = new Optional();
+        $this->droppedSpansCount = new Optional();
+        if (self::$defaultDroppedSpansCount !== null) {
+            $this->droppedSpansCount->setValue(self::$defaultDroppedSpansCount);
+        }
     }
 }

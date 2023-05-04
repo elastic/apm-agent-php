@@ -28,30 +28,25 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template   T
+ * @template   TParsedValue
  *
- * @extends    OptionMetadata<T>
+ * @extends    OptionMetadata<TParsedValue>
  */
 abstract class OptionWithDefaultValueMetadata extends OptionMetadata
 {
     /**
-     * @var OptionParser
-     * @phpstan-var OptionParser<T>
+     * @var OptionParser<TParsedValue>
      */
     private $parser;
 
     /**
-     * @var mixed
-     * @phpstan-var T
+     * @var TParsedValue
      */
     private $defaultValue;
 
     /**
-     * @param OptionParser $parser
-     * @param mixed        $defaultValue
-     *
-     * @phpstan-param OptionParser<T> $parser
-     * @phpstan-param T $defaultValue
+     * @param OptionParser<TParsedValue> $parser
+     * @param TParsedValue               $defaultValue
      */
     public function __construct(OptionParser $parser, $defaultValue)
     {
@@ -59,14 +54,20 @@ abstract class OptionWithDefaultValueMetadata extends OptionMetadata
         $this->defaultValue = $defaultValue;
     }
 
+    /**
+     * @inheritDoc
+     *
+     * @return OptionParser<TParsedValue>
+     */
     public function parser(): OptionParser
     {
         return $this->parser;
     }
 
     /**
-     * @return mixed
-     * @phpstan-return T
+     * @inheritDoc
+     *
+     * @return TParsedValue
      */
     public function defaultValue()
     {

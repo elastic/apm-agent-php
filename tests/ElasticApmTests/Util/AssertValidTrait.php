@@ -24,12 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use PHPUnit\Framework\TestCase;
 
 trait AssertValidTrait
 {
@@ -41,12 +39,11 @@ trait AssertValidTrait
      */
     protected static function assertValidIdEx($id, int $expectedSizeInBytes): string
     {
-        TestCase::assertIsString($id);
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['$id' => $id, '$expectedSizeInBytes' => $expectedSizeInBytes]);
+        TestCaseBase::assertIsString($id);
         /** @var string $id */
-        TestCase::assertTrue(
-            IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes),
-            LoggableToString::convert(['$id' => $id, '$expectedSizeInBytes' => $expectedSizeInBytes])
-        );
+        TestCaseBase::assertTrue(IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes));
         return $id;
     }
 
@@ -60,15 +57,15 @@ trait AssertValidTrait
     public static function assertValidString($stringValue, bool $isNullable, ?int $maxLength = null): ?string
     {
         if ($stringValue === null) {
-            TestCase::assertTrue($isNullable);
+            TestCaseBase::assertTrue($isNullable);
             return null;
         }
 
-        TestCase::assertIsString($stringValue);
+        TestCaseBase::assertIsString($stringValue);
         /** @var string $stringValue */
 
         if ($maxLength !== null) {
-            TestCase::assertLessThanOrEqual($maxLength, strlen($stringValue));
+            TestCaseBase::assertLessThanOrEqual($maxLength, strlen($stringValue));
         }
         return $stringValue;
     }
@@ -132,9 +129,19 @@ trait AssertValidTrait
      * @param Optional<?string> $expected
      * @param ?string           $actual
      */
-    public static function assertSameNullableNonKeywordStringExpectedOptional(Optional $expected, ?string $actual): void
+    public static function assertSameNullableStringExpectedOptional(Optional $expected, ?string $actual): void
     {
-        self::assertValidNullableNonKeywordString($actual);
+        self::assertValidNullableString($actual);
+        TestCaseBase::assertSameExpectedOptional($expected, $actual);
+    }
+
+    /**
+     * @param Optional<string> $expected
+     * @param string           $actual
+     */
+    public static function assertSameNonNullableStringExpectedOptional(Optional $expected, string $actual): void
+    {
+        self::assertValidNonNullableString($actual);
         TestCaseBase::assertSameExpectedOptional($expected, $actual);
     }
 
@@ -143,7 +150,7 @@ trait AssertValidTrait
      *
      * @return string
      */
-    public static function assertValidNullableNonKeywordString($nonKeywordString): ?string
+    public static function assertValidNullableString($nonKeywordString): ?string
     {
         return self::assertValidString($nonKeywordString, /* isNullable: */ true);
     }
@@ -173,7 +180,7 @@ trait AssertValidTrait
         TestCaseBase::assertIsNumber($duration);
         /** @var float|int $duration */
 
-        TestCase::assertGreaterThanOrEqual(0, $duration);
+        TestCaseBase::assertGreaterThanOrEqual(0, $duration);
         return floatval($duration);
     }
 
@@ -184,9 +191,9 @@ trait AssertValidTrait
      */
     public static function assertValidStacktraceFrameFilename($filename): string
     {
-        TestCase::assertIsString($filename);
+        TestCaseBase::assertIsString($filename);
         /** @var string $filename */
-        TestCase::assertTrue(!TextUtil::isEmptyString($filename));
+        TestCaseBase::assertTrue(!TextUtil::isEmptyString($filename));
 
         return $filename;
     }
@@ -198,9 +205,9 @@ trait AssertValidTrait
      */
     public static function assertValidStacktraceFrameLineNumber($lineNumber): int
     {
-        TestCase::assertTrue(is_int($lineNumber));
+        TestCaseBase::assertTrue(is_int($lineNumber));
         /** @var int $lineNumber */
-        TestCase::assertTrue($lineNumber >= 0);
+        TestCaseBase::assertTrue($lineNumber >= 0);
 
         return $lineNumber;
     }
@@ -213,9 +220,9 @@ trait AssertValidTrait
     public static function assertValidStacktraceFrameFunction($function): ?string
     {
         if ($function !== null) {
-            TestCase::assertIsString($function);
+            TestCaseBase::assertIsString($function);
             /** @var string $function */
-            TestCase::assertTrue(!TextUtil::isEmptyString($function));
+            TestCaseBase::assertTrue(!TextUtil::isEmptyString($function));
         }
 
         return $function;
@@ -241,7 +248,7 @@ trait AssertValidTrait
     /**
      * @param mixed $value
      *
-     * @return int|null
+     * @return ?int
      */
     public static function assertValidNullableHttpStatusCode($value): ?int
     {
@@ -249,8 +256,7 @@ trait AssertValidTrait
             return null;
         }
 
-        TestCase::assertTrue(is_int($value));
-        assert(is_int($value));
+        TestCaseBase::assertIsInt($value);
         return $value;
     }
 
@@ -261,7 +267,7 @@ trait AssertValidTrait
      */
     public static function assertValidBool($value): bool
     {
-        TestCase::assertIsBool($value);
+        TestCaseBase::assertIsBool($value);
         /** @var bool $value */
         return $value;
     }
@@ -283,9 +289,9 @@ trait AssertValidTrait
      */
     public static function assertValidCount($count, int $minValue = 0): int
     {
-        TestCase::assertIsInt($count);
+        TestCaseBase::assertIsInt($count);
         /** @var int $count */
-        TestCase::assertGreaterThanOrEqual($minValue, $count);
+        TestCaseBase::assertGreaterThanOrEqual($minValue, $count);
         return $count;
     }
 
@@ -293,13 +299,14 @@ trait AssertValidTrait
      * @param mixed $original
      * @param mixed $dto
      */
-    public static function assertEqualOriginalAndDto($original, $dto, string $dbgPath = ''): void
+    public static function assertEqualOriginalAndDto($original, $dto): void
     {
         if (is_object($dto)) {
-            TestCase::assertIsObject($original);
+            TestCaseBase::assertIsObject($original);
             $originalPropNameToVal = get_object_vars($original);
             foreach (get_object_vars($dto) as $dtoPropName => $dtoPropVal) {
-                $ctx = LoggableToString::convert(
+                AssertMessageStack::newScope(/* out */ $dbgCtx);
+                $dbgCtx->add(
                     [
                         'dtoPropName'           => $dtoPropName,
                         'originalPropNameToVal' => $originalPropNameToVal,
@@ -307,37 +314,30 @@ trait AssertValidTrait
                         'original type'         => DbgUtil::getType($original),
                         'dto'                   => $dto,
                         'dto type'              => DbgUtil::getType($dto),
-                        'dbgPath'               => $dbgPath,
                     ]
                 );
                 if ($dtoPropVal !== null) {
-                    TestCase::assertArrayHasKey($dtoPropName, $originalPropNameToVal, $ctx);
+                    TestCaseBase::assertArrayHasKey($dtoPropName, $originalPropNameToVal);
                 }
                 if (array_key_exists($dtoPropName, $originalPropNameToVal)) {
-                    self::assertEqualOriginalAndDto(
-                        $originalPropNameToVal[$dtoPropName],
-                        $dtoPropVal,
-                        ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '->' . $dtoPropName /* dbgPath */
-                    );
+                    self::assertEqualOriginalAndDto($originalPropNameToVal[$dtoPropName], $dtoPropVal);
                 }
             }
             return;
         }
 
         if (is_array($dto)) {
-            TestCase::assertIsArray($original);
-            TestCase::assertSame(count($original), count($dto));
+            TestCaseBase::assertIsArray($original);
+            TestCaseBase::assertSameCount($original, $dto);
             foreach ($dto as $dtoArrayKey => $dtoArrayVal) {
-                TestCase::assertArrayHasKey($dtoArrayKey, $original);
-                self::assertEqualOriginalAndDto(
-                    $original[$dtoArrayKey],
-                    $dtoArrayVal,
-                    ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '[' . $dtoArrayKey . ']' /* dbgPath */
-                );
+                AssertMessageStack::newScope(/* out */ $dbgCtx);
+                $dbgCtx->add(['dtoArrayKey' => $dtoArrayKey, 'dtoArrayVal' => $dtoArrayVal]);
+                TestCaseBase::assertArrayHasKey($dtoArrayKey, $original);
+                self::assertEqualOriginalAndDto($original[$dtoArrayKey], $dtoArrayVal);
             }
             return;
         }
 
-        TestCase::assertSame($original, $dto);
+        TestCaseBase::assertSame($original, $dto);
     }
 }

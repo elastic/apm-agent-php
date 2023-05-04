@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class SpanContextHttpDto
 {
@@ -52,7 +51,7 @@ final class SpanContextHttpDto
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'url':
-                        $result->url = self::assertValidNullableNonKeywordString($value);
+                        $result->url = self::assertValidNullableString($value);
                         return true;
                     case 'status_code':
                         $result->statusCode = self::assertValidNullableHttpStatusCode($value);
@@ -77,23 +76,11 @@ final class SpanContextHttpDto
 
     public function assertMatches(SpanContextHttpExpectations $expectations): void
     {
-        self::assertSameNullableNonKeywordStringExpectedOptional($expectations->url, $this->url);
+        self::assertSameNullableStringExpectedOptional($expectations->url, $this->url);
 
         self::assertValidNullableHttpStatusCode($this->statusCode);
         TestCaseBase::assertSameExpectedOptional($expectations->statusCode, $this->statusCode);
 
         self::assertSameNullableKeywordStringExpectedOptional($expectations->method, $this->method);
-    }
-
-    public static function assertNullableMatches(
-        SpanContextHttpExpectations $expectations,
-        ?self $actual
-    ): void {
-        if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
-            return;
-        }
-
-        $actual->assertMatches($expectations);
     }
 }

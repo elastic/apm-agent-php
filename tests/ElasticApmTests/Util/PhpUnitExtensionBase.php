@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LoggableToJsonEncodable;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggingSubsystem;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -49,18 +50,23 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
     {
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
+        LoggableToJsonEncodable::$maxDepth = 20;
 
         AmbientContextForTests::init($dbgProcessName);
 
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(LogCategoryForTests::TEST_UTIL, __NAMESPACE__, __CLASS__, __FILE__);
     }
 
+    /**
+     * @param string $test
+     */
     public function executeBeforeTest(string $test): void
     {
         self::$timestampBeforeTest = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->includeStackTrace()->log('', ['timestampBeforeTest' => TimeUtilForTests::timestampToLoggable(self::$timestampBeforeTest)]);
         self::$timestampAfterTest = null;
+        SpanExpectations::setDefaults();
         TransactionExpectations::setDefaults();
     }
 }

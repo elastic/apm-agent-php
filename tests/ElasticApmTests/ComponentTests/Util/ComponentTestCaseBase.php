@@ -30,10 +30,10 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
@@ -55,7 +55,7 @@ class ComponentTestCaseBase extends TestCaseBase
             return $this->testCaseHandle;
         }
         ComponentTestsPhpUnitExtension::initSingletons();
-        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode);
+        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode, $this->isSpanCompressionCompatible());
         return $this->testCaseHandle;
     }
 
@@ -73,6 +73,17 @@ class ComponentTestCaseBase extends TestCaseBase
         }
 
         parent::tearDown();
+    }
+
+    /**
+     * Sub-classes should override this method to return false
+     * in order to disable Span Compression feature and have all the expected spans individually.
+     *
+     * @return bool
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return true;
     }
 
     public static function appCodeEmpty(): void
@@ -114,103 +125,6 @@ class ComponentTestCaseBase extends TestCaseBase
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
         return $this->waitForOneEmptyTransaction($testCaseHandle);
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return mixed
-     */
-    protected static function getFromMap(string $argKey, array $argsMap)
-    {
-        self::assertArrayHasKey($argKey, $argsMap);
-        return $argsMap[$argKey];
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return bool
-     */
-    protected static function getBoolFromMap(string $argKey, array $argsMap): bool
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return int
-     */
-    protected static function getIntFromMap(string $argKey, array $argsMap): int
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsInt($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return ?string
-     */
-    protected static function getNullableStringFromMap(string $argKey, array $argsMap): ?string
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        if ($val !== null) {
-            self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        }
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return string
-     */
-    protected static function getStringFromMap(string $argKey, array $argsMap): string
-    {
-        $val = self::getNullableStringFromMap($argKey, $argsMap);
-        self::assertNotNull($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return ?float
-     */
-    protected static function getNullableFloatFromMap(string $argKey, array $argsMap): ?float
-    {
-        $value = self::getFromMap($argKey, $argsMap);
-        if ($value === null || is_float($value)) {
-            return $value;
-        }
-        if (is_int($value)) {
-            return floatval($value);
-        }
-        self::fail('Value is not a float' . LoggableToString::convert(['value type' => DbgUtil::getType($value), 'value' => $value, 'argKey' => $argKey, 'argsMap' => $argsMap]));
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return array<mixed, mixed>
-     */
-    protected static function getArrayFromMap(string $argKey, array $argsMap): array
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsArray($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
     }
 
     public static function isSmoke(): bool
@@ -447,16 +361,15 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param class-string         $testClass
-     * @param string               $testFunc
-     * @param array<string, mixed> $testArgs
+     * @param class-string $testClass
+     * @param string       $testFunc
+     * @param MixedMap     $testArgs
      *
      * @return string
      */
-    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, array $testArgs): string
+    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, MixedMap $testArgs): string
     {
-        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc
-               . '(' . LoggableToString::convert($testArgs) . ')';
+        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc . '(' . LoggableToString::convert($testArgs) . ')';
     }
 
     /**

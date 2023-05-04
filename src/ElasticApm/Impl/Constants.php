@@ -19,8 +19,6 @@
  * under the License.
  */
 
-/** @noinspection RequiredAttributes */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;

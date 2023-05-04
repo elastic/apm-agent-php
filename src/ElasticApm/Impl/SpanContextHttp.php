@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\SpanContextHttpInterface;
 
 /**
@@ -80,9 +81,9 @@ final class SpanContextHttp extends ContextPartWrapper implements SpanContextHtt
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return ($this->url !== null) || ($this->statusCode !== null) || ($this->method !== null);
+        return BoolUtil::toInt(($this->url !== null) || ($this->statusCode !== null) || ($this->method !== null));
     }
 
     /** @inheritDoc */

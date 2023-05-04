@@ -34,7 +34,7 @@ use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\CharSetForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 {
@@ -67,7 +67,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 
     private static function generateVendorKeyEx(int $length, CharSetForTests $firstCharSet): string
     {
-        TestCase::assertGreaterThanOrEqual(0, $length);
+        Assert::assertGreaterThan(0, $length);
         if ($length === 0) {
             return '';
         }
@@ -183,7 +183,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     {
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $isTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $isTraceStateValid */
         $isTraceStateValid = null;
         $actualData = $httpDistributedTracing->parseHeadersImpl(
             [$headerValue] /* /* <- traceParentHeaders */,
@@ -251,7 +251,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
 
         $actualIsTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $actualIsTraceStateValid */
         $actualIsTraceStateValid = null;
         $distTracingData = $httpDistributedTracing->parseHeadersImpl(
             $traceParentHeaderValues,
@@ -362,7 +362,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     {
         $dbgMsg = LoggableToString::convert(['vendorKey' => $vendorKey, 'expectedIsValid' => $expectedIsValid]);
         $actualIsTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $actualIsTraceStateValid */
         $actualIsTraceStateValid = null;
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $distTracingData = $httpDistributedTracing->parseHeadersImpl(

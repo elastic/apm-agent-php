@@ -53,9 +53,7 @@ final class AllComponentTestsOptionsMetadata
     private static $vaLue = null;
 
     /**
-     * @return array<string, OptionMetadata> Option name to metadata
-     *
-     * @phpstan-return array<string, OptionMetadata<mixed>> Option name to metadata
+     * @return array<string, OptionMetadata<mixed>> Option name to metadata
      */
     public static function get(): array
     {

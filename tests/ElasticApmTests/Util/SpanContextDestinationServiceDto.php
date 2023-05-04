@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class SpanContextDestinationServiceDto
 {
@@ -82,12 +81,10 @@ final class SpanContextDestinationServiceDto
         self::assertSameKeywordStringExpectedOptional($expectations->type, $this->type);
     }
 
-    public static function assertNullableMatches(
-        SpanContextDestinationServiceExpectations $expectations,
-        ?self $actual
-    ): void {
+    public static function assertNullableMatches(SpanContextDestinationServiceExpectations $expectations, ?self $actual): void
+    {
         if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
+            TestCaseBase::assertTrue($expectations->isEmpty());
             return;
         }
 
