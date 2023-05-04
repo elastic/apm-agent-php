@@ -91,6 +91,7 @@ final class AssertMessageStack implements LoggableInterface
             return $val;
         }
 
+        /** @phpstan-ignore-next-line */
         Assert::fail(LoggableToString::convert($dbgCtx));
     }
 
