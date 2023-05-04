@@ -419,7 +419,7 @@ class StackTraceUtilTest extends TestCaseBase
                     }
                     break;
                 case 2:
-                    self::assertNotEquals(__FILE__, $frame->file, $dbgCtxPerItStr);
+                    self::assertNotEqualsEx(__FILE__, $frame->file, $dbgCtxPerItStr);
                     self::assertNotNull($frame->line, $dbgCtxPerItStr);
                     self::assertSame(__FUNCTION__, $frame->function, $dbgCtxPerItStr);
                     self::assertSame(__CLASS__, $frame->class, $dbgCtxPerItStr);

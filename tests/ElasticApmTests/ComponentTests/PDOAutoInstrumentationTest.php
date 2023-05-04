@@ -222,7 +222,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
             $msgText = $row['text'];
             self::assertIsString($msgText);
             self::assertArrayHasKey($msgText, self::MESSAGES, $dbgCtx);
-            self::assertEquals(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
+            self::assertEqualsEx(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
 
         if ($wrapInTx) {

@@ -106,7 +106,7 @@ final class MockEventSink implements EventSinkInterface
         $deserialized = $this->validateAndDeserializeMetadata($serialized);
 
         self::assertValidMetadata($deserialized);
-        TestCaseBase::assertEquals($original, $deserialized);
+        TestCaseBase::assertEqualsEx($original, $deserialized);
     }
 
     private function consumeTransaction(Transaction $original): void
@@ -170,7 +170,7 @@ final class MockEventSink implements EventSinkInterface
 
         $deserialized = $this->validateAndDeserializeMetricSet($serialized);
         MetricSetValidator::assertValid($deserialized);
-        TestCaseBase::assertEquals($original, $deserialized);
+        TestCaseBase::assertEqualsEx($original, $deserialized);
 
         $this->dataFromAgent->metricSets[] = $deserialized;
     }

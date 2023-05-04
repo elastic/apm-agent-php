@@ -133,7 +133,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     public function testBuildTraceParentHeader(string $expectedHeaderValue, DistributedTracingDataInternal $data): void
     {
         $builtHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
-        self::assertEquals(strtolower($expectedHeaderValue), $builtHeaderValue);
+        self::assertSame(strtolower($expectedHeaderValue), $builtHeaderValue);
     }
 
     /**
@@ -191,8 +191,8 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
             $isTraceParentValid /* <- ref */,
             $isTraceStateValid /* <- ref */
         );
-        self::assertEquals($expectedData, $actualData);
-        self::assertEquals($isTraceParentValid, $actualData !== null);
+        self::assertEqualsEx($expectedData, $actualData);
+        self::assertEqualsEx($isTraceParentValid, $actualData !== null);
         self::assertNull($isTraceStateValid);
     }
 

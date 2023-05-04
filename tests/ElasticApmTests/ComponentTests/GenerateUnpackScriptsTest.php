@@ -198,15 +198,15 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
         $result = [];
 
         $phpVersion = $matrixRowParts[0];
-        self::assertContains($phpVersion, self::SUPPORTED_PHP_VERSIONS);
+        self::assertContainsEx($phpVersion, self::SUPPORTED_PHP_VERSIONS);
         ArrayUtilForTests::addUnique(self::PHP_VERSION_KEY, $phpVersion, /* ref */ $result);
 
         $linuxPackageType = $matrixRowParts[1];
-        self::assertContains($linuxPackageType, self::LINUX_PACKAGE_TYPES);
+        self::assertContainsEx($linuxPackageType, self::LINUX_PACKAGE_TYPES);
         ArrayUtilForTests::addUnique(self::LINUX_PACKAGE_TYPE_KEY, $linuxPackageType, /* ref */ $result);
 
         $testingType = $matrixRowParts[2];
-        self::assertContains($testingType, self::SUPPORTED_TESTING_TYPES);
+        self::assertContainsEx($testingType, self::SUPPORTED_TESTING_TYPES);
         ArrayUtilForTests::addUnique(self::TESTING_TYPE_KEY, $testingType, /* ref */ $result);
 
         if (count($matrixRowParts) === 3) {
@@ -408,8 +408,8 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
                     'this'         => $this,
                 ]
             );
-            self::assertContains($variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME], self::APP_CODE_HOST_LEAF_KINDS);
-            self::assertContains($variant[self::TESTS_GROUP_ENV_VAR_NAME], self::TESTS_LEAF_GROUPS);
+            self::assertContainsEx($variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME], self::APP_CODE_HOST_LEAF_KINDS);
+            self::assertContainsEx($variant[self::TESTS_GROUP_ENV_VAR_NAME], self::TESTS_LEAF_GROUPS);
             AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
     }

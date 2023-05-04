@@ -37,6 +37,7 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use Exception;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Constraint\Constraint;
@@ -45,9 +46,10 @@ use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\Constraint\LessThan;
 use PHPUnit\Framework\ExpectationFailedException;
+use PHPUnit\Framework\TestCase;
 use Throwable;
 
-class TestCaseBase extends TestCaseBaseShim
+class TestCaseBase extends TestCase
 {
     /**
      * 10 milliseconds (10000 microseconds) precision
@@ -61,12 +63,12 @@ class TestCaseBase extends TestCaseBaseShim
 
     public static function assertTransactionEquals(TransactionDto $expected, TransactionDto $actual): void
     {
-        self::assertEquals($expected, $actual);
+        self::assertEqualsEx($expected, $actual);
     }
 
     public static function assertSpanEquals(SpanDto $expected, SpanDto $actual): void
     {
-        self::assertEquals($expected, $actual);
+        self::assertEqualsEx($expected, $actual);
     }
 
     /**
@@ -308,7 +310,7 @@ class TestCaseBase extends TestCaseBaseShim
             AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
             $dbgCtx->add(['subsetMapKey' => $subsetMapKey, 'subsetMapVal' => $subsetMapVal]);
             self::assertArrayHasKey($subsetMapKey, $containingMap);
-            self::assertEquals($subsetMapVal, $containingMap[$subsetMapKey]);
+            self::assertEqualsEx($subsetMapVal, $containingMap[$subsetMapKey]);
             AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
     }
@@ -436,6 +438,11 @@ class TestCaseBase extends TestCaseBaseShim
         self::assertTrue(true);
     }
 
+    protected static function addMessageStackToException(Exception $ex): void
+    {
+        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . AssertMessageStack::formatScopesStackAsString());
+    }
+
     /**
      * @param mixed  $expected
      * @param mixed  $actual
@@ -538,7 +545,7 @@ class TestCaseBase extends TestCaseBaseShim
     public static function assertEqualValueInArray(string $expectedKey, $expectedVal, array $actualArray): void
     {
         self::assertArrayHasKey($expectedKey, $actualArray);
-        self::assertEquals($expectedVal, $actualArray[$expectedKey]);
+        self::assertEqualsEx($expectedVal, $actualArray[$expectedKey]);
     }
 
     /**
@@ -999,6 +1006,48 @@ class TestCaseBase extends TestCaseBaseShim
     {
         try {
             Assert::assertInstanceOf($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertNotEqualsEx($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertNotEquals($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualsEx($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertEquals($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed           $needle
+     * @param iterable<mixed> $haystack
+     */
+    public static function assertContainsEx($needle, iterable $haystack, string $message = ''): void
+    {
+        try {
+            Assert::assertContains($needle, $haystack, $message);
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;

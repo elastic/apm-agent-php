@@ -34,9 +34,7 @@ namespace Elastic\Apm\Impl\Config;
  */
 abstract class NullableOptionMetadata extends OptionMetadata
 {
-    /**
-     * @var OptionParser<TParsedValue>
-     */
+    /** @var OptionParser<TParsedValue> */
     private $parser;
 
     /**

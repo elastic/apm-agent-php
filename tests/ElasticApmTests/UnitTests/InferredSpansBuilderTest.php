@@ -186,8 +186,8 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             self::assertSame(__FILE__, $expectedStackTrace[$i]->file);
             self::assertSame(__CLASS__, $expectedStackTrace[$i]->class);
         }
-        self::assertNotEquals(__FILE__, $expectedStackTrace[4]->file);
-        self::assertNotEquals(__CLASS__, $expectedStackTrace[4]->class);
+        self::assertNotEqualsEx(__FILE__, $expectedStackTrace[4]->file);
+        self::assertNotEqualsEx(__CLASS__, $expectedStackTrace[4]->class);
 
         self::assertSame('InferredSpansBuilderTest', ClassNameUtil::fqToShort(__CLASS__));
         self::assertSame('helperForTestOneStackTrace', $expectedStackTrace[0]->function);
