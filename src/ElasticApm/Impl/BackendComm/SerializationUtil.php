@@ -126,9 +126,9 @@ final class SerializationUtil
     }
 
     /**
-     * @param string                       $name
-     * @param array<mixed>|stdClass $value
-     * @param array<string, mixed>         $nameToValue
+     * @param string                           $name
+     * @param array<array-key, mixed>|stdClass $value
+     * @param array<string, mixed>             $nameToValue
      *
      * @return void
      */

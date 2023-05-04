@@ -57,7 +57,7 @@
     },
     "scripts": {
         "parallel-lint": [
-            "parallel-lint ./src/ElasticApm/ ./tests/"
+            "parallel-lint ./src/ElasticApm/ ./tests/ --exclude ./tests/polyfills/"
         ],
         "php_codesniffer_check": [
             "phpcs -s ./src/ElasticApm/",
