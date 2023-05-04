@@ -697,16 +697,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
             return;
         }
 
-        /**
-         * @return array<?string>
-         */
-        $genDifferentProp = function (bool $stoppingSpanHasServiceTarget, ?string $compressibleSpanProp, string $differentValue): array {
-            if (!$stoppingSpanHasServiceTarget) {
-                return [null];
-            }
-            return $compressibleSpanProp === null ? [$differentValue] : [$differentValue, null];
-        };
-
         $serviceTargetRelatedDimensions = (new DataProviderForTestBuilder())
             ->addKeyedDimensionAllValuesCombinable(self::COMPRESSIBLE_SPAN_HAS_SERVICE_TARGET_KEY, [false, true])
             ->addConditionalKeyedDimensionAllValueCombinable(
@@ -723,41 +713,67 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                 ['test_span_service_target_name', null] /* <- new dimension variants for true case */,
                 [null] /* <- new dimension variants for false case */
             )
-            ->addConditionalKeyedDimensionAllValueCombinable(
-                self::STOPPING_SPAN_HAS_SERVICE_TARGET_KEY /* <- new dimension key */,
-                self::COMPRESSIBLE_SPAN_HAS_SERVICE_TARGET_KEY /* <- depends on dimension key */,
-                true /* <- depends on dimension true value */,
-                // If compressible spans have service target then stopping span can be different either by having service target with different type/name
-                // or by not having service target
-                [false, true] /* <- new dimension variants for true case */,
-                // If compressible spans do not have service target then the only way for stopping span to be different is to have service target
-                [true] /* <- new dimension variants for false case */
-            )
             ->addGeneratorAllValuesCombinable(
-            /**
-             * @param array<mixed> $resultSoFar
-             *
-             * @return iterable<array<mixed>>
-             */
-                function (array $resultSoFar) use ($genDifferentProp): iterable {
-                    $stoppingSpanHasServiceTarget = MixedMap::getBoolFrom(self::STOPPING_SPAN_HAS_SERVICE_TARGET_KEY, $resultSoFar);
-                    $compressibleSpanProp = MixedMap::getNullableStringFrom(self::COMPRESSIBLE_SPAN_SERVICE_TARGET_TYPE_KEY, $resultSoFar);
-                    foreach ($genDifferentProp($stoppingSpanHasServiceTarget, $compressibleSpanProp, 'test_span_service_DIFFERENT_target_type') as $stoppingSpanProp) {
-                        yield array_merge([self::STOPPING_SPAN_SERVICE_TARGET_TYPE_KEY => $stoppingSpanProp], $resultSoFar);
+                /**
+                 * @param array<mixed> $resultSoFar
+                 *
+                 * @return iterable<array<mixed>>
+                 */
+                function (array $resultSoFar): iterable {
+                    $compressibleSpanHasServiceTarget = MixedMap::getBoolFrom(self::COMPRESSIBLE_SPAN_HAS_SERVICE_TARGET_KEY, $resultSoFar);
+                    $compressibleSpanServiceTargetType = MixedMap::getNullableStringFrom(self::COMPRESSIBLE_SPAN_SERVICE_TARGET_TYPE_KEY, $resultSoFar);
+                    $compressibleSpanServiceTargetName = MixedMap::getNullableStringFrom(self::COMPRESSIBLE_SPAN_SERVICE_TARGET_NAME_KEY, $resultSoFar);
+
+                    // If all service target properties are null that effectively means that there is no service target
+                    if ($compressibleSpanServiceTargetType === null && $compressibleSpanServiceTargetName === null) {
+                        $compressibleSpanHasServiceTarget = false;
                     }
-                }
-            )
-            ->addGeneratorAllValuesCombinable(
-            /**
-             * @param array<mixed> $resultSoFar
-             *
-             * @return iterable<array<mixed>>
-             */
-                function (array $resultSoFar) use ($genDifferentProp): iterable {
-                    $stoppingSpanHasServiceTarget = MixedMap::getBoolFrom(self::STOPPING_SPAN_HAS_SERVICE_TARGET_KEY, $resultSoFar);
-                    $compressibleSpanProp = MixedMap::getNullableStringFrom(self::COMPRESSIBLE_SPAN_SERVICE_TARGET_NAME_KEY, $resultSoFar);
-                    foreach ($genDifferentProp($stoppingSpanHasServiceTarget, $compressibleSpanProp, 'test_span_service_DIFFERENT_target_name') as $stoppingSpanProp) {
-                        yield array_merge([self::STOPPING_SPAN_SERVICE_TARGET_NAME_KEY => $stoppingSpanProp], $resultSoFar);
+
+                    if ($compressibleSpanHasServiceTarget) {
+                        // If compressible spans have service target then stopping span can be different either by having service target with different type/name
+                        // or by not having service target
+                        $stoppingSpanHasServiceTargetVariants = [true, false];
+                        $canBothPropsBeNull = true;
+                    } else {
+                        // If compressible spans do not have service target then the only way for stopping span to be different is to have service target
+                        $stoppingSpanHasServiceTargetVariants = [true];
+                        // If all service target properties are null that effectively means that there is no service target
+                        $canBothPropsBeNull = false;
+                    }
+
+                    /**
+                     * @return array<?string>
+                     */
+                    $genTypeVariants = function (bool $hasServiceTarget): array {
+                        if (!$hasServiceTarget) {
+                            return [null];
+                        }
+                        return ['test_span_service_DIFFERENT_target_type', null];
+                    };
+
+                    /**
+                     * @return array<?string>
+                     */
+                    $genNameVariants = function (bool $hasServiceTarget, ?string $serviceTargetType) use ($canBothPropsBeNull): array {
+                        if (!$hasServiceTarget) {
+                            return [null];
+                        }
+                        $variants = ['test_span_service_DIFFERENT_target_name'];
+                        if ($serviceTargetType !== null || $canBothPropsBeNull) {
+                            $variants[] = null;
+                        }
+                        return $variants;
+                    };
+
+                    $result = $resultSoFar;
+                    foreach ($stoppingSpanHasServiceTargetVariants as $stoppingSpanHasServiceTarget) {
+                        $result = array_merge([self::STOPPING_SPAN_HAS_SERVICE_TARGET_KEY => $stoppingSpanHasServiceTarget], $result);
+                        foreach ($genTypeVariants($stoppingSpanHasServiceTarget) as $stoppingSpanServiceTargetType) {
+                            $result = array_merge([self::STOPPING_SPAN_SERVICE_TARGET_TYPE_KEY => $stoppingSpanServiceTargetType], $result);
+                            foreach ($genNameVariants($stoppingSpanHasServiceTarget, $stoppingSpanServiceTargetType) as $stoppingSpanServiceTargetName) {
+                                yield array_merge([self::STOPPING_SPAN_SERVICE_TARGET_NAME_KEY => $stoppingSpanServiceTargetName], $result);
+                            }
+                        }
                     }
                 }
             )
@@ -841,7 +857,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                 }
             )
             // Uncomment to limit generated data to the data set with the index below
-            // ->emitOnlyDataSetWithIndex(26)
+            // ->emitOnlyDataSetWithIndex(???)
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap($result);
