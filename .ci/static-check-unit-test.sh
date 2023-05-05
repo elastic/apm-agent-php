@@ -101,10 +101,7 @@ composer run-script static_check
 
 # Run unit tests
 phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=unit)
-# TODO: Sergey Kleyman: UNCOMMENT
-# composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
-# TODO: Sergey Kleyman: REMOVE
-composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}" --filter BreakdownMetricsTest
+composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
 ls -l ./build/unit-tests-phpunit-junit.xml
 
 # Generate junit output for phpstan
