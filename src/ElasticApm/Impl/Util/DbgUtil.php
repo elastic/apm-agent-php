@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -34,7 +36,7 @@ final class DbgUtil
 
     public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
     {
-        $stackFrames = StackTraceUtil::captureInClassicFormat(/* loggerFactory */ null, /* offset */ $numberOfStackFramesToSkip + 1);
+        $stackFrames = StackTraceUtil::captureInClassicFormat(/* loggerFactory */ NoopLoggerFactory::singletonInstance(), /* offset */ $numberOfStackFramesToSkip + 1, /* framesCountLimit */ 1);
 
         if (ArrayUtil::isEmpty($stackFrames)) {
             return new CallerInfo(null, null, null, null);

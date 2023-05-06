@@ -26,19 +26,31 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
-use Elastic\Apm\Impl\Util\DbgUtil;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
+use Elastic\Apm\Impl\Util\RangeUtil;
+use Elastic\Apm\Impl\Util\StackTraceFrameBase;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use PHPUnit\Framework\Assert;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionFunction;
+use ReflectionParameter;
 
 final class AssertMessageStack implements LoggableInterface
 {
     /** @var bool */
-    public static $isEnabled = true;
+    private static $isEnabled = true;
 
     /** @var ?AssertMessageStack */
     private static $singleton = null;
 
     /** @var AssertMessageStackScopeData[] */
     private $scopesStack = [];
+
+    public static function setEnabled(bool $isEnabled): void
+    {
+        self::$isEnabled = $isEnabled;
+    }
 
     private static function ensureSingleton(): self
     {
@@ -49,182 +61,133 @@ final class AssertMessageStack implements LoggableInterface
     }
 
     /**
-     * We do not use ArrayUtilForTests because it uses TestCaseBase and TestCaseBase uses this class
+     * @param int                         $numberOfStackFramesToSkip
+     * @param array<string, mixed>        $initialCtx
      *
-     * @template TKey of array-key
+     * @return AssertMessageStackScopeAutoRef
      *
-     * @param array<TKey, mixed> $array
-     *
-     * @return array-key
-     *
-     * @phpstan-return TKey
+     * @noinspection PhpSameParameterValueInspection
      */
-    private static function getLastKeyInArray(array $array)
+    private function newScopeImpl(int $numberOfStackFramesToSkip, array $initialCtx): AssertMessageStackScopeAutoRef
     {
-        // We use Assert::assert* and not TestCaseBase::assert* because TestCaseBase uses this class
-
-        $dbgCtx = ['array' => $array];
-        Assert::assertNotEmpty($array);
-
-        $lastKey = array_key_last($array);
-        $dbgCtx['lastKey'] = $lastKey;
-        Assert::assertNotNull($lastKey, LoggableToString::convert($dbgCtx));
-        Assert::assertArrayHasKey($lastKey, $array, LoggableToString::convert($dbgCtx));
-
-        return $lastKey;
-    }
-
-    /**
-     * We do not use ArrayUtilForTests::getLastValue because it uses TestCaseBase and TestCaseBase uses this class
-     *
-     * @template T
-     *
-     * @param array<array-key, T> $array
-     *
-     * @return  T
-     */
-    private static function getLastValueInArray(array $array)
-    {
-        // We use Assert::assert* and not TestCaseBase::assert* because TestCaseBase uses this class
-
-        $dbgCtx = ['array' => $array];
-        Assert::assertNotEmpty($array);
-
-        foreach (array_reverse($array) as $val) {
-            return $val;
-        }
-
-        /** @phpstan-ignore-next-line */
-        Assert::fail(LoggableToString::convert($dbgCtx));
-    }
-
-    /** @noinspection PhpSameParameterValueInspection */
-    private function newScopeImpl(int $numberOfStackFramesToSkip): AssertMessageStackScope
-    {
-        $newScopeData = new AssertMessageStackScopeData(self::buildContextName($numberOfStackFramesToSkip + 1));
-        $newScope = new AssertMessageStackScope($this, $newScopeData);
+        $newScopeData = new AssertMessageStackScopeData(AssertMessageStackScopeData::buildContextName($numberOfStackFramesToSkip + 1), $initialCtx);
+        $newScope = new AssertMessageStackScopeAutoRef($this, $newScopeData);
         $this->scopesStack[] = $newScopeData;
         return $newScope;
     }
 
     /**
-     * @param ?AssertMessageStackScope   &$scopeVar
+     * @param ?AssertMessageStackScopeAutoRef   &$scopeVar
+     * @param array<string, mixed>               $initialCtx
      *
      * @return void
      *
-     * @param-out AssertMessageStackScope $scopeVar
+     * @param-out AssertMessageStackScopeAutoRef $scopeVar
      */
-    public static function newScope(/* out */ ?AssertMessageStackScope &$scopeVar): void
+    public static function newScope(/* out */ ?AssertMessageStackScopeAutoRef &$scopeVar, array $initialCtx = []): void
     {
+        Assert::assertNull($scopeVar);
+
         if (!self::$isEnabled) {
-            $scopeVar = new AssertMessageStackScope(self::ensureSingleton(), null);
+            $scopeVar = new AssertMessageStackScopeAutoRef(self::ensureSingleton(), null);
             return;
         }
 
-        $scopeVar = self::ensureSingleton()->newScopeImpl(/* numberOfStackFramesToSkip */ 1);
-    }
-
-    public static function newSubScope(/* ref */ AssertMessageStackScope &$scopeVar): void
-    {
-        if (!self::$isEnabled) {
-            return;
-        }
-
-        Assert::assertNotNull($scopeVar);
-        $singleton = self::ensureSingleton();
-        /** @var AssertMessageStackScopeData $topScope */
-        $topScope = self::getLastValueInArray($singleton->scopesStack);
-        Assert::assertSame(1, $topScope->refsFromStackCount);
-        ++$topScope->refsFromStackCount;
-        $scopeVar = self::ensureSingleton()->newScopeImpl(/* numberOfStackFramesToSkip */ 1);
-    }
-
-    public static function popSubScope(AssertMessageStackScope &$scopeVar): void
-    {
-        if (!self::$isEnabled) {
-            return;
-        }
-
-        Assert::assertNotNull($scopeVar);
-        $singleton = self::ensureSingleton();
-        $scopeToPopKey = self::getLastKeyInArray($singleton->scopesStack);
-        $scopeToPop = $singleton->scopesStack[$scopeToPopKey];
-        Assert::assertSame(1, $scopeToPop->refsFromStackCount);
-        --$scopeToPop->refsFromStackCount;
-        unset($singleton->scopesStack[$scopeToPopKey]);
-        $scopeVar = new AssertMessageStackScope($singleton, self::getLastValueInArray($singleton->scopesStack));
-    }
-
-    public function removeScope(AssertMessageStackScopeData $scopeDataToRemove): void
-    {
-        $dbgCtx = ['temp dummy'];
-        // TODO: Sergey Kleyman: UNCOMMENT
-        // $dbgCtx = ['this' => $this, '$scopeDataToRemove' => $scopeDataToRemove];
-        Assert::assertNotEmpty($this->scopesStack, LoggableToString::convert($dbgCtx));
-        Assert::assertGreaterThan(0, $scopeDataToRemove->refsFromStackCount, LoggableToString::convert($dbgCtx));
-        --$scopeDataToRemove->refsFromStackCount;
-        if ($scopeDataToRemove->refsFromStackCount !== 0) {
-            return;
-        }
-
-        foreach ($this->scopesStack as $key => $scopeData) {
-            if ($scopeData === $scopeDataToRemove) {
-                unset($this->scopesStack[$key]);
-                return;
-            }
-        }
-        TestCaseBase::fail('Scope data to remove was not found; ' . LoggableToString::convert($dbgCtx));
+        $scopeVar = self::ensureSingleton()->newScopeImpl(/* numberOfStackFramesToSkip */ 1, $initialCtx);
     }
 
     /**
-     * @return AssertMessageStackScopeData[]
+     * @return null|ReflectionParameter[]
      */
-    public static function getScopeDataStack(): array
+    private static function getReflectionParametersForStackFrame(StackTraceFrameBase $frame): ?array
     {
-        return array_reverse(self::ensureSingleton()->scopesStack);
+        if ($frame->function === null) {
+            return null;
+        }
+
+        try {
+            if ($frame->class === null) {
+                $reflFuc = new ReflectionFunction($frame->function);
+                return $reflFuc->getParameters();
+            }
+            /** @var class-string $className */
+            $className = $frame->class;
+            $reflClass = new ReflectionClass($className);
+            $reflMethod = $reflClass->getMethod($frame->function);
+            return $reflMethod->getParameters();
+        } catch (ReflectionException $ex) {
+            return null;
+        }
     }
 
-    private function formatScopesStackAsStringImpl(): string
+    /**
+     * @return array<string, mixed>
+     */
+    public static function funcArgs(): array
     {
         $result = [];
-        foreach (array_reverse($this->scopesStack) as $scopeData) {
-            $result[$scopeData->name] = $scopeData->ctx;
+        $frames = StackTraceUtil::captureInClassicFormat(
+            NoopLoggerFactory::singletonInstance(),
+            1 /* <- offset */,
+            1 /* <- maxNumberOfFrames */,
+            true /* <- includeElasticApmFrames */,
+            true /* <- includeArgs */
+        );
+        Assert::assertCount(1, $frames);
+        $frame = $frames[0];
+        Assert::assertNotNull($frame->args);
+        $reflParams = self::getReflectionParametersForStackFrame($frame);
+        foreach (RangeUtil::generateUpTo(count($frame->args)) as $argIndex) {
+            $argName = $reflParams === null || count($reflParams) <= $argIndex ? ('arg #' . ($argIndex + 1)) : $reflParams[$argIndex]->getName();
+            $result[$argName] = $frame->args[$argIndex];
         }
-        return LoggableToString::convert($result, /* prettyPrint */ true);
+        return $result;
     }
 
-    public static function formatScopesStackAsString(): string
+    public function autoPopScope(AssertMessageStackScopeData $expectedTopData): void
     {
-        return self::ensureSingleton()->formatScopesStackAsStringImpl();
+        $dbgCtx = ['this' => $this, 'expectedTopData' => $expectedTopData];
+        Assert::assertNotEmpty($this->scopesStack, LoggableToString::convert($dbgCtx));
+        $actualTopData = $this->scopesStack[count($this->scopesStack) - 1];
+        Assert::assertSame($expectedTopData, $actualTopData, LoggableToString::convert($dbgCtx));
+        array_pop(/* ref */ $this->scopesStack);
     }
 
     /**
-     * @noinspection PhpSameParameterValueInspection
+     * @return iterable<Pair<string, array<string, mixed>>>
      */
-    private static function buildContextName(int $numberOfStackFramesToSkip): string
+    private function getContextsStackAsNameCtxPairs(): iterable
     {
-        $callerInfo = DbgUtil::getCallerInfoFromStacktrace($numberOfStackFramesToSkip + 1);
-
-        $classMethodPart = '';
-        if ($callerInfo->class !== null) {
-            $classMethodPart .= $callerInfo->class . '::';
+        $result = [];
+        foreach (RangeUtil::generateDownFrom(count($this->scopesStack)) as $scopeIndex) {
+            $scopeData = $this->scopesStack[$scopeIndex];
+            foreach (RangeUtil::generateDownFrom(count($scopeData->subScopesStack)) as $subScopeIndex) {
+                $result[] = $scopeData->subScopesStack[$subScopeIndex];
+            }
         }
-        Assert::assertNotNull($callerInfo->function);
-        $classMethodPart .= $callerInfo->function;
+        return $result;
+    }
 
-        $fileLinePart = '';
-        if ($callerInfo->file !== null) {
-            $fileLinePart .= '[';
-            $fileLinePart .= $callerInfo->file;
-            $fileLinePart .= TextUtilForTests::combineWithSeparatorIfNotEmpty(':', TextUtilForTests::emptyIfNull($callerInfo->line));
-            $fileLinePart .= ']';
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function getContextsStack(): array
+    {
+        if (!self::$isEnabled) {
+            return [];
         }
 
-        return $classMethodPart . TextUtilForTests::combineWithSeparatorIfNotEmpty(' ', $fileLinePart);
+        $totalCount =  IterableUtilForTests::count(self::ensureSingleton()->getContextsStackAsNameCtxPairs());
+        $result = [];
+        $totalIndex = 1;
+        foreach (self::ensureSingleton()->getContextsStackAsNameCtxPairs() as $nameCtxPair) {
+            $result[($totalIndex++) . ' out of ' . $totalCount . ': ' . $nameCtxPair->first] = $nameCtxPair->second;
+        }
+        return $result;
     }
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs($this->scopesStack);
+        $stream->toLogAs(['scopesStack count' => count($this->scopesStack), 'isEnabled' => self::$isEnabled]);
     }
 }

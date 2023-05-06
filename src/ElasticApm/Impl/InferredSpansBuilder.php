@@ -92,11 +92,7 @@ final class InferredSpansBuilder implements LoggableInterface
      */
     public static function captureStackTrace(int $offset, LoggerFactory $loggerFactory): array
     {
-        return StackTraceUtil::captureInClassicFormatExcludeElasticApm(
-            $loggerFactory,
-            $offset + 1,
-            DEBUG_BACKTRACE_IGNORE_ARGS /* <- options */
-        );
+        return StackTraceUtil::captureInClassicFormatExcludeElasticApm($loggerFactory, $offset + 1);
     }
 
     /**

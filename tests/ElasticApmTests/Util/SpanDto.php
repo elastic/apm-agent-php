@@ -106,8 +106,8 @@ class SpanDto extends ExecutionSegmentDto
 
     public function assertMatches(SpanExpectations $expectations): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectations' => $expectations, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
         parent::assertMatchesExecutionSegment($expectations);
 
         self::assertValidId($this->parentId);
@@ -141,8 +141,7 @@ class SpanDto extends ExecutionSegmentDto
      */
     public static function assertStackTraceMatches(array $expectedStackTrace, bool $allowExpectedStackTraceToBePrefix, array $actualStackTrace): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectedStackTrace' => $expectedStackTrace, 'allowExpectedStackTraceToBePrefix' => $allowExpectedStackTraceToBePrefix, 'actualStackTrace' => $actualStackTrace]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         if ($allowExpectedStackTraceToBePrefix) {
             TestCaseBase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace));
         } else {
@@ -150,24 +149,19 @@ class SpanDto extends ExecutionSegmentDto
         }
         $expectedStackTraceCount = count($expectedStackTrace);
         $actualStackTraceCount = count($actualStackTrace);
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
             $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
+            $dbgCtx->add(['$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1, 'expectedApmFrame' => $expectedApmFrame]);
             $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
-            $dbgCtx->add(
-                [
-                    'expectedApmFrame'                  => $expectedApmFrame,
-                    'actualApmFrame'                    => $actualApmFrame,
-                    '$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1,
-                    '$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1,
-                ]
-            );
+            $dbgCtx->add(['$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1, 'actualApmFrame' => $actualApmFrame]);
             TestCaseBase::assertSame(count($expectedApmFrame), count($actualApmFrame));
             foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
                 TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame);
             }
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     public function assertEquals(SpanToSendInterface $original): void

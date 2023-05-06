@@ -191,8 +191,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testTwoSpansSequenceDifferentServiceTarget(string $span2ServiceTargetType, string $span2ServiceTargetName, bool $expectedToBeCompressed): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['span2ServiceTargetType' => $span2ServiceTargetType, 'span2ServiceTargetName' => $span2ServiceTargetName, 'expectedToBeCompressed' => $expectedToBeCompressed]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $this->rebuildTracerWithMockClock([OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION => '1s', OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION => '1s']);
 
@@ -288,8 +287,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testCompressibleChildSpanEndsAfterParent(int $childrenCoundThatEndsAfterParent, bool $expectedToBeCompressed): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['childrenCoundThatEndsAfterParent' => $childrenCoundThatEndsAfterParent, 'expectedToBeCompressed' => $expectedToBeCompressed]);
+        AssertMessageStack::newScope($dbgCtx, AssertMessageStack::funcArgs());
         self::assertLessThanOrEqual(2, $childrenCoundThatEndsAfterParent);
         $this->rebuildTracerWithMockClock([OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION => '1s', OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION => '1s']);
 
@@ -360,8 +358,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testNotCompressedBecauseOfDuration(string $compressionStrategy, ?int $longerSpanIndex, bool $expectedAllToBeCompressed): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['compressionStrategy' => $compressionStrategy, 'longerSpanIndex' => $longerSpanIndex, 'expectedAllToBeCompressed' => $expectedAllToBeCompressed]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $maxDuration = 1;
         $mockClock = $this->rebuildTracerWithMockClock([SpanCompressionSharedCode::COMPRESSION_STRATEGY_TO_MAX_DURATION_OPTION_NAME[$compressionStrategy] => $maxDuration . 'ms']);
 
@@ -433,14 +430,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testNoFallbackToLessStrictStrategyBecauseOfDuration(bool $shouldSpandDurationBeAboveExactMatchMax, bool $shouldSpansHaveSameName, ?string $expectedCompressionStrategy): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(
-            [
-                'shouldSpandDurationBeAboveExactMatchMax' => $shouldSpandDurationBeAboveExactMatchMax,
-                'shouldSpansHaveSameName'                 => $shouldSpansHaveSameName,
-                'expectedCompressionStrategy'             => $expectedCompressionStrategy,
-            ]
-        );
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $mockClock = $this->rebuildTracerWithMockClock([OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION => '1s', OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION => '10s']);
 
         /** @var Tracer $tracer */
@@ -506,8 +496,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testZeroMaxDurationDisablesStrategy(bool $isExactMatchStrategy, float $configMaxSpanDuration, bool $expectedToBeCompressed): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['isExactMatchStrategy' => $isExactMatchStrategy, 'configMaxSpanDuration' => $configMaxSpanDuration, 'expectedToBeCompressed' => $expectedToBeCompressed]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $otherConfigMaxSpanDurationInSeconds = 10;
         $otherConfigMaxSpanDurationInMilliseconds = $otherConfigMaxSpanDurationInSeconds * TimeUtil::NUMBER_OF_MILLISECONDS_IN_SECOND;
         $options = $isExactMatchStrategy
@@ -567,8 +556,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testSameKindCompositeSpanName(?string $serviceTargetType, ?string $serviceTargetName, string $expectedSuffix): void
     {
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['serviceTargetType' => $serviceTargetType, 'serviceTargetName' => $serviceTargetName, 'expectedSuffix' => $expectedSuffix]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $this->rebuildTracerWithMockClock([OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION => '1s']);
 
         $tx = $this->tracer->beginCurrentTransaction('test_TX_name', 'test_TX_type');
@@ -613,10 +601,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function dataProviderForTestOneCompressedSequence(): iterable
     {
-        if (!DataProviderForTestBuilder::isLongRunMode()) {
-            return ['dummy data set' => [new MixedMap([])]];
-        }
-
         return SpanCompressionSharedCode::dataProviderForTestOneCompressedSequence();
     }
 
@@ -625,11 +609,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testOneCompressedSequence(MixedMap $testArgs): void
     {
-        if (!DataProviderForTestBuilder::isLongRunMode()) {
-            self::dummyAssert();
-            return;
-        }
-
         $sharedCode = new SpanCompressionSharedCode($testArgs);
         $this->rebuildTracer($sharedCode->mockClock, $sharedCode->agentConfigOptions);
 
@@ -798,10 +777,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public static function dataProviderForTestReasonsCompressionStops(): iterable
     {
-        if (!DataProviderForTestBuilder::isLongRunMode()) {
-            return ['dummy data set' => [new MixedMap([])]];
-        }
-
         $compressionStrategies = array_keys(SpanCompressionSharedCode::COMPRESSION_STRATEGY_TO_MAX_DURATION_OPTION_NAME);
 
         $reasonsForSameKindStrategy = [
@@ -815,11 +790,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         ];
         $reasonsForExactMatchStrategy = array_merge([self::REASON_COMPRESSION_STOPS_DIFFERENT_NAME], $reasonsForSameKindStrategy);
 
-        /**
-         * Negated boolean expression is always false.
-         *
-         * @phpstan-ignore-next-line
-         */
         $onlyFirstValueCombinable = !DataProviderForTestBuilder::isLongRunMode();
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimension(self::WRAP_IN_PARENT_SPAN_KEY, $onlyFirstValueCombinable)
@@ -896,8 +866,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
             return;
         }
 
-        AssertMessageStack::newScope($dbgCtx);
-        $dbgCtx->add(['testArgs' => $testArgs]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $reason = $testArgs->getString(self::REASON_COMPRESSION_STOPS_KEY);
         $compressionStrategy = $testArgs->getString(self::COMPRESSION_STRATEGY_KEY);
         $stoppingSpanIndex = $testArgs->getInt(self::STOPPING_SPAN_INDEX_KEY);
@@ -1059,9 +1028,9 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
 
         $nextReportedSequenceSpanToCheckIndex = 0;
         $dbgCtx->add(['nextReportedSequenceSpanToCheckIndex' => &$nextReportedSequenceSpanToCheckIndex]);
+        $dbgCtx->pushSubScope();
         foreach ($indexRangesToCheck as [$beginIndex, $endIndex]) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['beginIndex' => $beginIndex, 'endIndex' => $endIndex]);
+            $dbgCtx->clearCurrentSubScope(['beginIndex' => $beginIndex, 'endIndex' => $endIndex]);
 
             self::assertLessThan($endIndex, $beginIndex);
             $reportedSpan = $reportedSequenceSpans[$nextReportedSequenceSpanToCheckIndex];
@@ -1100,7 +1069,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                         self::assertSame(floatval($compressibleSpanDuration), $reportedSpan->duration);
                     }
                 }
-                AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
                 continue;
             }
 
@@ -1121,8 +1089,8 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
                 self::assertSame(floatval($reportedSpan->composite->count * $compressibleSpanDuration), $reportedSpan->composite->durationsSum);
                 self::assertSame($reportedSpan->composite->durationsSum, $reportedSpan->duration);
             }
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
         self::assertSame($nextReportedSequenceSpanToCheckIndex, count($reportedSequenceSpans));
     }
 }

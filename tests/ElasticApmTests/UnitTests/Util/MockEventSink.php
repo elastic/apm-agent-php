@@ -97,8 +97,8 @@ final class MockEventSink implements EventSinkInterface
 
     private function consumeMetadata(Metadata $original): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this, 'original' => $original]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
         self::assertValidMetadata($original);
 
         $serialized = SerializationUtil::serializeAsJson($original);
@@ -111,8 +111,8 @@ final class MockEventSink implements EventSinkInterface
 
     private function consumeTransaction(Transaction $original): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this, 'original' => $original]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
         TestCaseBase::assertTrue($original->hasEnded());
 
         $serialized = SerializationUtil::serializeAsJson($original);
@@ -127,8 +127,8 @@ final class MockEventSink implements EventSinkInterface
 
     private function consumeSpan(SpanToSendInterface $original): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this, 'original' => $original]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
 
         if ($original instanceof Span) {
             TestCaseBase::assertTrue($original->hasEnded());
@@ -147,8 +147,8 @@ final class MockEventSink implements EventSinkInterface
 
     private function consumeError(Error $original): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this, 'original' => $original]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
 
         $serialized = SerializationUtil::serializeAsJson($original);
 
@@ -161,8 +161,8 @@ final class MockEventSink implements EventSinkInterface
 
     private function consumeMetricSet(MetricSet $original): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this, 'original' => $original]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
 
         MetricSetValidator::assertValid($original);
 

@@ -73,8 +73,7 @@ final class SpanCompressionComponentTest extends ComponentTestCaseBase
      */
     public function testOneCompressedSequence(MixedMap $testArgs): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['testArgs' => $testArgs]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $sharedCode = new SpanCompressionSharedCode($testArgs);
         $testCaseHandle = $this->getTestCaseHandle();

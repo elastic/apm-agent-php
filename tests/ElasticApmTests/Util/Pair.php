@@ -23,43 +23,25 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-final class AssertMessageStackScope
+/**
+ * @template TFirst
+ * @template TSecond
+ */
+final class Pair
 {
-    /** @var AssertMessageStack */
-    private $stack;
+    /** @var TFirst */
+    public $first;
 
-    /** @var ?AssertMessageStackScopeData */
-    private $data;
-
-    public function __construct(AssertMessageStack $stack, ?AssertMessageStackScopeData $data)
-    {
-        if ($data !== null) {
-            TestCaseBase::assertSame(1, $data->refsFromStackCount);
-        }
-        $this->stack = $stack;
-        $this->data = $data;
-    }
-
-    public function __destruct()
-    {
-        if ($this->data === null) {
-            return;
-        }
-
-        if ($this->data->refsFromStackCount !== 0) {
-            $this->stack->removeScope($this->data);
-        }
-    }
+    /** @var TSecond */
+    public $second;
 
     /**
-     * @param array<string, mixed> $ctx
+     * @param TFirst $first
+     * @param TSecond $second
      */
-    public function add(array $ctx): void
+    public function __construct($first, $second)
     {
-        if ($this->data === null) {
-            return;
-        }
-
-        ArrayUtilForTests::append(/* from */ $ctx, /* to */ $this->data->ctx);
+        $this->first = $first;
+        $this->second = $second;
     }
 }
