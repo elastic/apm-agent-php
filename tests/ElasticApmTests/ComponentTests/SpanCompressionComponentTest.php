@@ -32,7 +32,6 @@ use ElasticApmTests\TestsSharedCode\SpanCompressionSharedCode;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
-use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\MixedMap;
 
 /**
@@ -60,7 +59,7 @@ final class SpanCompressionComponentTest extends ComponentTestCaseBase
             }
         };
 
-        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($removeMockClock(), IterableUtilForTests::count($removeMockClock())));
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($removeMockClock));
     }
 
     public static function appCodeForTestOneCompressedSequence(MixedMap $appCodeArgs): void

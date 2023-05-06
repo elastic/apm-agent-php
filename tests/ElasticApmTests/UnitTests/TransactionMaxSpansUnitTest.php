@@ -92,7 +92,7 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
             }
         };
 
-        return DataProviderForTestBuilder::keyEachGeneratedDataSetWithDbgDesc($generator);
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
     }
 
     /**

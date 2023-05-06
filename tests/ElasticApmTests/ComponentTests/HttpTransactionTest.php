@@ -33,6 +33,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\MixedMap;
 
 /**
@@ -150,20 +151,29 @@ final class HttpTransactionTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array{?int, string, string}>
+     * @return iterable<string, array{?int, string, string}>
      */
     public function dataProviderForHttpStatus(): iterable
     {
-        return self::adaptToSmoke(
-            [
-                [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-                [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-                [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
-                [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
-                [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-                [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-            ]
-        );
+        /**
+         * @return iterable<array{?int, string, string}>
+         */
+        $generateDataSets = function (): iterable {
+            return self::adaptToSmoke(
+                [
+                    [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+                    [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
+                    [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
+                    [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
+                    [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
+                    [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
+                ]
+            );
+        };
+
+        /** @var iterable<string, array{?int, string, string}> $result */
+        $result = DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generateDataSets);
+        return $result;
     }
 
     /**

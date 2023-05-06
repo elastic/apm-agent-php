@@ -299,7 +299,7 @@ class StackTraceUtilTest extends TestCaseBase
                 }
             }
         };
-        return DataProviderForTestBuilder::keyEachGeneratedDataSetWithDbgDesc($generator);
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
     }
 
     /**
@@ -779,7 +779,7 @@ class StackTraceUtilTest extends TestCaseBase
                 }
             }
         };
-        return DataProviderForTestBuilder::eachDataSetToMixedMapAndAddDesc($generator);
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($generator);
     }
 
     /**

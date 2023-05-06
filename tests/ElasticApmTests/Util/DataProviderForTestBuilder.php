@@ -481,33 +481,22 @@ final class DataProviderForTestBuilder
      * @template TKey of array-key
      * @template TValue
      *
-     * @param iterable<array<TKey, TValue>> $dataSets
+     * @param callable(): iterable<array<TKey, TValue>> $generateDataSets
+     * @param ?int                                      $emitOnlyDataSetWithIndex
      *
      * @return iterable<string, array<TKey, TValue>>
      */
-    public static function keyEachDataSetWithDbgDesc(iterable $dataSets, int $dataSetsCount, ?int $emitOnlyDataSetWithIndex = null): iterable
+    public static function keyEachDataSetWithDbgDesc(callable $generateDataSets, ?int $emitOnlyDataSetWithIndex = null): iterable
     {
+        $dataSetsCount = IterableUtilForTests::count($generateDataSets());
         $dataSetIndex = 0;
-        foreach ($dataSets as $dataSet) {
+        foreach ($generateDataSets() as $dataSet) {
             ++$dataSetIndex;
             if ($emitOnlyDataSetWithIndex !== null && $dataSetIndex !== $emitOnlyDataSetWithIndex) {
                 continue;
             }
             yield ('#' . $dataSetIndex . ' out of ' . $dataSetsCount . ': ' . LoggableToString::convert($dataSet)) => $dataSet;
         }
-    }
-
-    /**
-     * @template TKey of array-key
-     * @template TValue
-     *
-     * @param callable(): iterable<array<TKey, TValue>> $generator
-     *
-     * @return iterable<string, array<TKey, TValue>>
-     */
-    public static function keyEachGeneratedDataSetWithDbgDesc(callable $generator, ?int $emitOnlyDataSetWithIndex = null): iterable
-    {
-        return self::keyEachDataSetWithDbgDesc($generator(), IterableUtilForTests::count($generator()), $emitOnlyDataSetWithIndex);
     }
 
     /**
@@ -528,7 +517,15 @@ final class DataProviderForTestBuilder
      */
     public function build(): iterable
     {
-        return self::keyEachDataSetWithDbgDesc($this->buildWithoutDataSetName(), IterableUtilForTests::count($this->buildWithoutDataSetName()), $this->emitOnlyDataSetWithIndex);
+        return self::keyEachDataSetWithDbgDesc(
+            /**
+             * @return iterable<array<mixed>>
+             */
+            function (): iterable {
+                return $this->buildWithoutDataSetName();
+            },
+            $this->emitOnlyDataSetWithIndex
+        );
     }
 
     /**
@@ -561,9 +558,9 @@ final class DataProviderForTestBuilder
      *
      * @return iterable<string, array{MixedMap}>
      */
-    public static function eachDataSetToMixedMapAndAddDesc(callable $dataSetsGenerator): iterable
+    public static function convertEachDataSetToMixedMapAndAddDesc(callable $dataSetsGenerator): iterable
     {
-        return self::convertEachDataSetToMixedMap(self::keyEachDataSetWithDbgDesc($dataSetsGenerator(), IterableUtilForTests::count($dataSetsGenerator())));
+        return self::convertEachDataSetToMixedMap(self::keyEachDataSetWithDbgDesc($dataSetsGenerator));
     }
 
     /**
