@@ -52,8 +52,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
      */
     public static function assertValidMixedMapArray(array $array): array
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['array' => $array]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         foreach ($array as $key => $ignored) {
             TestCaseBase::assertIsString($key);
@@ -106,8 +105,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
      */
     public static function getBoolFrom(string $key, array $from): bool
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'from' => $from]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $value = self::getFrom($key, $from);
         TestCaseBase::assertIsBool($value);
         return $value;
@@ -126,8 +124,8 @@ class MixedMap implements LoggableInterface, ArrayAccess
      */
     public static function getNullableStringFrom(string $key, array $from): ?string
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'from' => $from]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['from' => $from]);
         $value = self::getFrom($key, $from);
         if ($value !== null) {
             TestCaseBase::assertIsString($value);
@@ -142,8 +140,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
 
     public function getString(string $key): string
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->getNullableString($key);
         TestCaseBase::assertNotNull($value);
         return $value;
@@ -151,8 +148,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
 
     public function getNullableFloat(string $key): ?float
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->get($key);
         if ($value === null || is_float($value)) {
             return $value;
@@ -167,8 +163,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
     /** @noinspection PhpUnused */
     public function getFloat(string $key): float
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->getNullableFloat($key);
         TestCaseBase::assertNotNull($value);
         return $value;
@@ -176,8 +171,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
 
     public function getNullableInt(string $key): ?int
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->get($key);
         if ($value === null || is_int($value)) {
             return $value;
@@ -190,8 +184,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
     /** @noinspection PhpUnused */
     public function getInt(string $key): int
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->getNullableInt($key);
         TestCaseBase::assertNotNull($value);
         return $value;
@@ -204,8 +197,7 @@ class MixedMap implements LoggableInterface, ArrayAccess
      */
     public function getArray(string $key): array
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['key' => $key, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->get($key);
         TestCaseBase::assertIsArray($value);
         return $value;

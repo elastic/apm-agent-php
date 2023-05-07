@@ -76,10 +76,7 @@ trait LoggableTrait
             return;
         }
 
-        $propertiesExcludedFromLog = array_merge(
-            static::propertiesExcludedFromLog(),
-            static::defaultPropertiesExcludedFromLog()
-        );
+        $propertiesExcludedFromLog = array_merge(static::propertiesExcludedFromLog(), static::defaultPropertiesExcludedFromLog());
         while (true) {
             foreach ($currentClass->getProperties() as $reflectionProperty) {
                 if ($reflectionProperty->isStatic()) {

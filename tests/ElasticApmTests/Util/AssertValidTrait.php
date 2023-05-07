@@ -39,8 +39,7 @@ trait AssertValidTrait
      */
     protected static function assertValidIdEx($id, int $expectedSizeInBytes): string
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['$id' => $id, '$expectedSizeInBytes' => $expectedSizeInBytes]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         TestCaseBase::assertIsString($id);
         /** @var string $id */
         TestCaseBase::assertTrue(IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes));
@@ -301,21 +300,16 @@ trait AssertValidTrait
      */
     public static function assertEqualOriginalAndDto($original, $dto): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['original type' => DbgUtil::getType($original), 'dto type' => DbgUtil::getType($dto)]);
+
         if (is_object($dto)) {
             TestCaseBase::assertIsObject($original);
             $originalPropNameToVal = get_object_vars($original);
+            $dbgCtx->add(['originalPropNameToVal' => $originalPropNameToVal]);
+            $dbgCtx->pushSubScope();
             foreach (get_object_vars($dto) as $dtoPropName => $dtoPropVal) {
-                AssertMessageStack::newScope(/* out */ $dbgCtx);
-                $dbgCtx->add(
-                    [
-                        'dtoPropName'           => $dtoPropName,
-                        'originalPropNameToVal' => $originalPropNameToVal,
-                        'original'              => $original,
-                        'original type'         => DbgUtil::getType($original),
-                        'dto'                   => $dto,
-                        'dto type'              => DbgUtil::getType($dto),
-                    ]
-                );
+                $dbgCtx->clearCurrentSubScope(['dtoPropName' => $dtoPropName, 'dtoPropVal' => $dtoPropVal]);
                 if ($dtoPropVal !== null) {
                     TestCaseBase::assertArrayHasKey($dtoPropName, $originalPropNameToVal);
                 }
@@ -323,18 +317,20 @@ trait AssertValidTrait
                     self::assertEqualOriginalAndDto($originalPropNameToVal[$dtoPropName], $dtoPropVal);
                 }
             }
+            $dbgCtx->popSubScope();
             return;
         }
 
         if (is_array($dto)) {
             TestCaseBase::assertIsArray($original);
             TestCaseBase::assertSameCount($original, $dto);
+            $dbgCtx->pushSubScope();
             foreach ($dto as $dtoArrayKey => $dtoArrayVal) {
-                AssertMessageStack::newScope(/* out */ $dbgCtx);
-                $dbgCtx->add(['dtoArrayKey' => $dtoArrayKey, 'dtoArrayVal' => $dtoArrayVal]);
+                $dbgCtx->clearCurrentSubScope(['dtoArrayKey' => $dtoArrayKey, 'dtoArrayVal' => $dtoArrayVal]);
                 TestCaseBase::assertArrayHasKey($dtoArrayKey, $original);
                 self::assertEqualOriginalAndDto($original[$dtoArrayKey], $dtoArrayVal);
             }
+            $dbgCtx->popSubScope();
             return;
         }
 

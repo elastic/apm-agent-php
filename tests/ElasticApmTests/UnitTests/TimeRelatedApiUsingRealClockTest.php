@@ -32,13 +32,13 @@ class TimeRelatedApiUsingRealClockTest extends TracerUnitTestCaseBase
     public function setUp(): void
     {
         parent::setUp();
-        AssertMessageStack::$isEnabled = false;
+        AssertMessageStack::setEnabled(false);
     }
 
     /** @inheritDoc */
     public function tearDown(): void
     {
-        AssertMessageStack::$isEnabled = true;
+        AssertMessageStack::setEnabled(true);
         parent::tearDown();
     }
 

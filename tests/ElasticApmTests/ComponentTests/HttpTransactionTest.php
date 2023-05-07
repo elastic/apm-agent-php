@@ -33,6 +33,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\MixedMap;
 
 /**
@@ -149,32 +150,39 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @return iterable<array{?int, string, string}>
-     */
-    public function dataProviderForHttpStatus(): iterable
-    {
-        return self::adaptToSmoke(
-            [
-                [null, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-                [200, 'HTTP 2xx', Constants::OUTCOME_SUCCESS],
-                [302, 'HTTP 3xx', Constants::OUTCOME_SUCCESS],
-                [404, 'HTTP 4xx', Constants::OUTCOME_SUCCESS],
-                [500, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-                [599, 'HTTP 5xx', Constants::OUTCOME_FAILURE],
-            ]
-        );
-    }
+    private const CUSTOM_HTTP_STATUS_KEY = 'custom_http_status';
+    private const EXPECTED_TX_RESULT_KEY = 'expected_tx_result';
+    private const EXPECTED_TX_OUTCOME_KEY = 'expected_tx_outcome';
 
     /**
-     * @dataProvider dataProviderForHttpStatus
-     *
-     * @param int|null $customHttpStatus
-     * @param string   $expectedTxResult
-     * @param string   $expectedTxOutcome
+     * @return iterable<string, array{MixedMap}>
      */
-    public function testHttpStatus(?int $customHttpStatus, string $expectedTxResult, string $expectedTxOutcome): void
+    public function dataProviderForTestHttpStatus(): iterable
     {
+        /**
+         * @return iterable<array<string, mixed>>
+         */
+        $generateDataSets = function (): iterable {
+            return self::adaptToSmoke(
+                [
+                    [self::CUSTOM_HTTP_STATUS_KEY => null, self::EXPECTED_TX_RESULT_KEY => 'HTTP 2xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_SUCCESS],
+                    [self::CUSTOM_HTTP_STATUS_KEY => 200, self::EXPECTED_TX_RESULT_KEY => 'HTTP 2xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_SUCCESS],
+                    [self::CUSTOM_HTTP_STATUS_KEY => 302, self::EXPECTED_TX_RESULT_KEY => 'HTTP 3xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_SUCCESS],
+                    [self::CUSTOM_HTTP_STATUS_KEY => 404, self::EXPECTED_TX_RESULT_KEY => 'HTTP 4xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_SUCCESS],
+                    [self::CUSTOM_HTTP_STATUS_KEY => 500, self::EXPECTED_TX_RESULT_KEY => 'HTTP 5xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_FAILURE],
+                    [self::CUSTOM_HTTP_STATUS_KEY => 599, self::EXPECTED_TX_RESULT_KEY => 'HTTP 5xx', self::EXPECTED_TX_OUTCOME_KEY => Constants::OUTCOME_FAILURE],
+                ]
+            );
+        };
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($generateDataSets);
+    }
+
+    private function implTestHttpStatus(MixedMap $testArgs): void
+    {
+        $customHttpStatus = $testArgs->getNullableInt(self::CUSTOM_HTTP_STATUS_KEY);
+        $expectedTxResult = $testArgs->getString(self::EXPECTED_TX_RESULT_KEY);
+        $expectedTxOutcome = $testArgs->getString(self::EXPECTED_TX_OUTCOME_KEY);
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
         $appCodeHost->sendRequest(
@@ -190,6 +198,20 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         $tx = $dataFromAgent->singleTransaction();
         self::assertSame(self::isMainAppCodeHostHttp() ? $expectedTxResult : null, $tx->result);
         self::assertSame(self::isMainAppCodeHostHttp() ? $expectedTxOutcome : null, $tx->outcome);
+    }
+
+
+    /**
+     * @dataProvider dataProviderForTestHttpStatus
+     */
+    public function testHttpStatus(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestHttpStatus($testArgs);
+            }
+        );
     }
 
     public static function appCodeForSetResultManually(): void

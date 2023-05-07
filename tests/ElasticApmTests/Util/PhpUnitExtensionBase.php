@@ -37,6 +37,8 @@ use PHPUnit\Runner\BeforeTestHook;
  */
 abstract class PhpUnitExtensionBase implements BeforeTestHook
 {
+    public const LOG_COMPOSITE_DATA_MAX_DEPTH_IN_TEST_MODE = 15;
+
     /** @var float */
     public static $timestampBeforeTest;
 
@@ -50,7 +52,7 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
     {
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
-        LoggableToJsonEncodable::$maxDepth = 10;
+        LoggableToJsonEncodable::$maxDepth = self::LOG_COMPOSITE_DATA_MAX_DEPTH_IN_TEST_MODE;
 
         AmbientContextForTests::init($dbgProcessName);
 

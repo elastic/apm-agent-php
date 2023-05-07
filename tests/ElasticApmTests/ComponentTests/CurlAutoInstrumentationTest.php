@@ -53,6 +53,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public static function appCodeClient(MixedMap $appCodeArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertCurlExtensionIsLoaded();
         $serverPort = $appCodeArgs->getInt(self::SERVER_PORT_KEY);
 
@@ -69,7 +70,6 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
                 self::buildResourcesClientForAppCode()
             );
             $curlExecRetVal = $curlHandle->exec();
-            AssertMessageStack::newScope(/* out */ $dbgCtx);
             $dbgCtx->add(
                 [
                     '$curlHandle->errno()'         => $curlHandle->errno(),

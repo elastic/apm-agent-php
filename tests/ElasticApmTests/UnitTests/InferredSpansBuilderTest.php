@@ -177,8 +177,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         self::assertCount(1, $this->mockEventSink->idToTransaction());
         $span = $this->mockEventSink->singleSpan();
 
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectedStackTrace' => $expectedStackTrace, 'span' => $span]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['expectedStackTrace' => $expectedStackTrace, 'span' => $span]);
         self::assertNotNull($expectedStackTrace);
         // Top 3 frames are from this class:
         //      testOneStackTrace >>> withBuilderDuringTransaction >>> {closure} >>> helperForTestOneStackTrace
@@ -337,6 +336,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
      */
     private function charDiagramTestImpl(array $args): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         /** @var array<string, mixed> $inputOptions */
         $inputOptions = ArrayUtil::getValueIfKeyExistsElse(self::INPUT_OPTIONS_KEY, $args, []);
         $this->setUpTestEnv(
@@ -369,7 +369,6 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
 
         $expectedSpans = self::charDiagramProcessExpectedSpans($expectedSpansLines);
         self::assertCount(1, $this->mockEventSink->idToTransaction());
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
         $dbgCtx->add(['expectedSpans' => $expectedSpans, 'actualIdToSpan' => $actualIdToSpan]);
         self::assertSame(count($expectedSpans), count($actualIdToSpan));
 
@@ -393,9 +392,9 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         );
         $dbgCtx->add(['actualSpansSortedAsExpected' => $actualSpansSortedAsExpected]);
 
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($expectedSpans)) as $i) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['i' => $i]);
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
             /** @var array<string, mixed> $expectedSpan */
             $expectedSpan = $expectedSpans[$i];
             $dbgCtx->add(['expectedSpan' => $expectedSpan]);
@@ -429,8 +428,8 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             }
             self::assertNotNull($actualSpan->stackTrace);
             StackTraceUtilTest::assertEqualApmStackTraces(StackTraceUtil::convertClassicToApmFormat($expectedStackTraceClassicFormat), $actualSpan->stackTrace);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /** @noinspection SpellCheckingInspection, RedundantSuppression */

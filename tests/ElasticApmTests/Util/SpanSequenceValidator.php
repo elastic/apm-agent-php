@@ -64,19 +64,17 @@ final class SpanSequenceValidator
      */
     public static function assertSequenceAsExpected(array $expected, array $actual): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['$expected' => $expected, '$actual' => $actual]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         TestCaseBase::assertSameCount($expected, $actual);
-
         $actualSortedByStartTime = self::sortByStartTime($actual);
         $index = 0;
         /** @var ?SpanDto $prevActualSpan */
         $prevActualSpan = null;
+        $dbgCtx->pushSubScope();
         foreach (IterableUtilForTests::zip($expected, $actualSortedByStartTime) as [$expectedSpan, $actualSpan]) {
             /** @var SpanExpectations $expectedSpan */
             /** @var SpanDto $actualSpan */
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['index' => $index, 'expectedSpan' => $expectedSpan, 'actualSpan' => $actualSpan]);
+            $dbgCtx->clearCurrentSubScope(['index' => $index, 'expectedSpan' => $expectedSpan, 'actualSpan' => $actualSpan]);
             if ($index != 0) {
                 TestCaseBase::assertNotNull($prevActualSpan);
                 TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpan->timestamp, $actualSpan->timestamp);
@@ -86,7 +84,7 @@ final class SpanSequenceValidator
             $actualSpan->assertMatches($expectedSpan);
             $prevActualSpan = $actualSpan;
             ++$index;
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 }

@@ -490,7 +490,7 @@ final class ServerApiSchemaValidator
                     'relativePathToSchema' => $relativePathToSchema,
                     'errors'               => $allErrorsToLoggable(),
                     'serializedData'       => $serializedData,
-                    'AssertMessageStack'   => AssertMessageStack::getScopeDataStack(),
+                    'AssertMessageStack'   => AssertMessageStack::getContextsStack(),
                 ]
             )
         );

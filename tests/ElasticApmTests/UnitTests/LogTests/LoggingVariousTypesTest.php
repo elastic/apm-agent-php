@@ -27,12 +27,17 @@ use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogConsts;
 use Elastic\Apm\Impl\Log\LoggableToEncodedJson;
+use Elastic\Apm\Impl\Log\LoggableToJsonEncodable;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FloatLimits;
+use ElasticApmTests\Util\MixedMap;
+use ElasticApmTests\Util\PhpUnitExtensionBase;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
 
@@ -120,23 +125,21 @@ class LoggingVariousTypesTest extends TestCaseBase
     // }
 
     /**
-     * @param string|null $className
-     * @param bool        $isPropExcluded
-     * @param string|null $lateInitPropVal
+     * @param ?string $className
+     * @param bool    $isPropExcluded
+     * @param ?string $lateInitPropVal
      *
      * @return array<string, mixed>
      */
-    private static function expectedSimpleObject(
-        ?string $className = null,
-        bool $isPropExcluded = true,
-        ?string $lateInitPropVal = null
-    ): array {
+    private static function expectedSimpleObject(?string $className = null, bool $isPropExcluded = true, ?string $lateInitPropVal = null): array
+    {
         return ($className === null ? [] : [LogConsts::TYPE_KEY => $className])
                + [
                    'intProp'            => 123,
                    'stringProp'         => 'Abc',
                    'nullableStringProp' => null,
                    'lateInitProp'       => $lateInitPropVal,
+                   'recursiveProp'      => null,
                ]
                + ($isPropExcluded ? [] : ['excludedProp' => 'excludedProp value']);
     }
@@ -260,18 +263,13 @@ class LoggingVariousTypesTest extends TestCaseBase
         self::logValueAndVerify(
             $loggerFactory->loggerForClass($category, $namespace, $fqClassName, $srcCodeFile),
             [
-                'data' => [
-                    'backend' => [
-                        'maxEnabledLevel' => 'DEBUG',
-                        'logSink'         => NoopLogSink::class,
-                    ],
-                    'category' => $category,
-                    'context' => [],
-                    'fqClassName' => $fqClassName,
-                    'inheritedData' => null,
-                    'namespace' => $namespace,
-                    'srcCodeFile' => $srcCodeFile,
-                ]
+                'category'       => $category,
+                'count(context)' => 0,
+                'fqClassName'    => $fqClassName,
+                'inheritedData'  => null,
+                'namespace'      => $namespace,
+                'srcCodeFile'    => $srcCodeFile,
+                'backend'        => ['maxEnabledLevel' => 'DEBUG', 'logSink' => NoopLogSink::class],
             ]
         );
     }
@@ -280,11 +278,152 @@ class LoggingVariousTypesTest extends TestCaseBase
     {
         $obj = new ObjectForLoggableTraitTests();
         self::logValueAndVerify($obj, self::expectedSimpleObject());
-        $lateInitPropVal = 'inited';
+        $lateInitPropVal = 'late inited value';
         $obj->lateInitProp = $lateInitPropVal;
-        self::logValueAndVerify(
-            $obj,
-            self::expectedSimpleObject(/* className */ null, /* isPropExcluded */ true, $lateInitPropVal)
-        );
+        self::logValueAndVerify($obj, self::expectedSimpleObject(/* className */ null, /* isPropExcluded */ true, 'late inited value'));
+    }
+
+    private const MAX_DEPTH_KEY = 'max_depth';
+
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public function dataProviderForTestMaxDepth(): iterable
+    {
+        /**
+         * @return iterable<array<string, mixed>>
+         */
+        $generateDataSets = function (): iterable {
+            $maxDepthVariants = [0, 1, 2, 3, 10, 15, 20];
+            $maxDepthVariants[] = LoggableToJsonEncodable::MAX_DEPTH_IN_PROD_MODE;
+            $maxDepthVariants[] = PhpUnitExtensionBase::LOG_COMPOSITE_DATA_MAX_DEPTH_IN_TEST_MODE;
+            $maxDepthVariants = array_unique($maxDepthVariants, SORT_NUMERIC);
+            asort(/* ref */ $maxDepthVariants, SORT_NUMERIC);
+            foreach ($maxDepthVariants as $maxDepth) {
+                yield [self::MAX_DEPTH_KEY => $maxDepth];
+            }
+        };
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($generateDataSets);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestMaxDepth
+     */
+    public function testMaxDepthForScalar(MixedMap $testArgs): void
+    {
+        $maxDepth = $testArgs->getInt(self::MAX_DEPTH_KEY);
+        $savedMaxDepth = LoggableToJsonEncodable::$maxDepth;
+        try {
+            LoggableToJsonEncodable::$maxDepth = $maxDepth;
+            self::assertSame(null, LoggableToJsonEncodable::convert(null, 0));
+            self::assertSame(123, LoggableToJsonEncodable::convert(123, 0));
+            self::assertSame(654.5, LoggableToJsonEncodable::convert(654.5, 0));
+            self::assertSame('my string', LoggableToJsonEncodable::convert('my string', 0));
+        } finally {
+            LoggableToJsonEncodable::$maxDepth = $savedMaxDepth;
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForTestMaxDepth
+     */
+    public function testMaxDepthForArray(MixedMap $testArgs): void
+    {
+        $maxDepth = $testArgs->getInt(self::MAX_DEPTH_KEY);
+        $savedMaxDepth = LoggableToJsonEncodable::$maxDepth;
+        try {
+            LoggableToJsonEncodable::$maxDepth = $maxDepth;
+            self::implTestMaxDepthForArray(LoggableToJsonEncodable::$maxDepth);
+        } finally {
+            LoggableToJsonEncodable::$maxDepth = $savedMaxDepth;
+        }
+    }
+
+    private static function implTestMaxDepthForArray(int $maxDepth): void
+    {
+        /**
+         * @param array<string, mixed> $currentArray
+         * @param int                  $depth
+         *
+         * @return array<string, mixed>
+         */
+        $buildParentArray = function (array $currentArray, int $depth): array {
+            $parentArray = [];
+            $parentArray['depth ' . $depth . ' int'] = $depth * 10;
+            $parentArray['depth ' . $depth . ' string'] = strval($depth * 10);
+            $parentArray['depth ' . $depth . ' array'] = $currentArray;
+            return $parentArray;
+        };
+
+        $arrayToLog = [];
+        foreach (RangeUtil::generateDownFrom($maxDepth + 2) as $depth) {
+            $arrayToLog = $buildParentArray($arrayToLog, $depth);
+        }
+
+        $decodedLoggedArray = self::logValueAndDecodeToJson($arrayToLog);
+        $currentLoggedArray = $decodedLoggedArray;
+        foreach (RangeUtil::generateUpTo($maxDepth + 2) as $depth) {
+            self::assertIsArray($currentLoggedArray);
+            self::assertLessThanOrEqual($maxDepth, $depth);
+
+            if ($depth === $maxDepth) {
+                self::assertEqualMaps(LoggableToJsonEncodable::convertArrayForMaxDepth($buildParentArray([], $maxDepth), $maxDepth), $currentLoggedArray);
+                break;
+            }
+
+            self::assertSameValueInArray('depth ' . $depth . ' int', $depth * 10, $currentLoggedArray);
+            self::assertSameValueInArray('depth ' . $depth . ' string', strval($depth * 10), $currentLoggedArray);
+
+            $key = 'depth ' . $depth . ' array';
+            self::assertArrayHasKey($key, $currentLoggedArray);
+            $currentLoggedArray = $currentLoggedArray[$key];
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForTestMaxDepth
+     */
+    public function testMaxDepthForObject(MixedMap $testArgs): void
+    {
+        $maxDepth = $testArgs->getInt(self::MAX_DEPTH_KEY);
+        $savedMaxDepth = LoggableToJsonEncodable::$maxDepth;
+        try {
+            LoggableToJsonEncodable::$maxDepth = $maxDepth;
+            self::implTestMaxDepthForObject($maxDepth);
+        } finally {
+            LoggableToJsonEncodable::$maxDepth = $savedMaxDepth;
+        }
+    }
+
+    private static function implTestMaxDepthForObject(int $maxDepth): void
+    {
+        $buildParentObject = function (ObjectForLoggableTraitTests $currentObject, int $depth) use ($maxDepth): ObjectForLoggableTraitTests {
+            return new ObjectForLoggableTraitTests($depth, 'depth: ' . $depth . ', maxDepth: ' . $maxDepth, $currentObject);
+        };
+
+        $objectToLog = new ObjectForLoggableTraitTests();
+        foreach (RangeUtil::generateDownFrom($maxDepth + 2) as $depth) {
+            $objectToLog = $buildParentObject($objectToLog, $depth);
+        }
+
+        $decodedLoggedObject = self::logValueAndDecodeToJson($objectToLog);
+        $currentLoggedObject = $decodedLoggedObject;
+        foreach (RangeUtil::generateUpTo($maxDepth + 2) as $depth) {
+            self::assertIsArray($currentLoggedObject);
+            self::assertLessThanOrEqual($maxDepth, $depth);
+
+            if ($depth === $maxDepth) {
+                self::assertEqualMaps(LoggableToJsonEncodable::convertObjectForMaxDepth($buildParentObject(new ObjectForLoggableTraitTests(), $maxDepth), $maxDepth), $currentLoggedObject);
+                break;
+            }
+
+            self::assertSameValueInArray('intProp', $depth, $currentLoggedObject);
+            self::assertSameValueInArray('stringProp', 'depth: ' . $depth . ', maxDepth: ' . $maxDepth, $currentLoggedObject);
+
+            $key = 'recursiveProp';
+            self::assertArrayHasKey($key, $currentLoggedObject);
+            $currentLoggedObject = $currentLoggedObject[$key];
+        }
     }
 }

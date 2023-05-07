@@ -462,8 +462,7 @@ final class SpanCompressionSharedCode implements LoggableInterface
 
     public function implTestOneCompressedSequenceAssert(DataFromAgent $dataFromAgent): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
 
         $expectedTx = new TransactionExpectations();
 

@@ -36,17 +36,17 @@ trait JsonDeserializableTrait
      */
     public function deserializeFromDecodedJson(array $decodedJson): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $thisClassName = ClassNameUtil::fqToShort(get_called_class());
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['decodedJson' => $decodedJson, 'this class' => $thisClassName]);
+        $dbgCtx->add(['thisClassName' => $thisClassName]);
+        $dbgCtx->pushSubScope();
         foreach ($decodedJson as $jsonKey => $jsonVal) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['jsonKey' => $jsonKey, 'jsonVal' => $jsonVal]);
+            $dbgCtx->clearCurrentSubScope(['jsonKey' => $jsonKey, 'jsonVal' => $jsonVal]);
             TestCaseBase::assertIsString($jsonKey);
             TestCaseBase::assertTrue(property_exists($this, $jsonKey));
             $this->$jsonKey = $this->deserializePropertyValue($jsonKey, $jsonVal);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**

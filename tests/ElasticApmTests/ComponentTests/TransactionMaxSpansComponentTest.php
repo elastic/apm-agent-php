@@ -47,8 +47,7 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
     public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_0;
 
     /**
-     * @return iterable<array<mixed>>
-     * @phpstan-return iterable<array{Args}>
+     * @return iterable<array{Args}>
      */
     public function dataProviderForTestVariousCombinations(): iterable
     {
@@ -72,18 +71,11 @@ final class TransactionMaxSpansComponentTest extends ComponentTestCaseBase
 
     /**
      * @dataProvider dataProviderForTestVariousCombinations
-     *
-     * @param Args $testArgs
      */
     public function testVariousCombinations(Args $testArgs): void
     {
         TransactionExpectations::$defaultDroppedSpansCount = null;
         TransactionExpectations::$defaultIsSampled = null;
-
-        if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
-            self::dummyAssert();
-            return;
-        }
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
