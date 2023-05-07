@@ -293,8 +293,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private function assertSufficientCoverageLifecycleWithIncreasedLogLevel(): void
     {
         $assertForPhpVersionAndLogLevel = function (string $phpVersion, int $logLevel): void {
-            AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-            $dbgCtx->add(['this' => $this]);
+            AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
             foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
                 $dbgCtx->pushSubScope();
                 foreach (self::TESTS_LEAF_GROUPS as $testsGroup) {
@@ -361,9 +360,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function assertAllTestsAreSmoke(array $whereEnvVars): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
-        $dbgCtx->add(['variants' => $variants, 'this' => $this]);
+        $dbgCtx->add(['variants' => $variants]);
         self::assertNotEmpty($variants);
         $dbgCtx->pushSubScope();
         foreach ($variants as $variant) {
@@ -379,8 +378,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function assertAllTestsAreLeaf(array $whereEnvVars): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
         $dbgCtx->add(['variants' => $variants]);
         self::assertNotEmpty($variants);

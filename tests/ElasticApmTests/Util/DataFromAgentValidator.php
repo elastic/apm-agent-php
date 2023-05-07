@@ -114,7 +114,7 @@ class DataFromAgentValidator
     private function validateTraces(array $tracesInOrderReceived): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['expectations->traces' => $this->expectations->traces]);
+        $dbgCtx->add(['this->expectations->traces' => $this->expectations->traces]);
         TestCaseBase::assertSame(count($this->expectations->traces), count($tracesInOrderReceived));
         foreach (RangeUtil::generateUpTo(count($tracesInOrderReceived)) as $indexOrderReceived) {
             $traceExpectations = $this->expectations->traces[$indexOrderReceived];
@@ -161,7 +161,7 @@ class DataFromAgentValidator
             $errors[] = $error;
         }
 
-        $dbgCtx->add(['expectations->errors' => $this->expectations->errors, 'orderTraceReceivedIndexToErrors' => $orderTraceReceivedIndexToErrors]);
+        $dbgCtx->add(['this->expectations->errors' => $this->expectations->errors, 'orderTraceReceivedIndexToErrors' => $orderTraceReceivedIndexToErrors]);
         TestCaseBase::assertSame(count($orderTraceReceivedIndexToErrors), count($this->expectations->errors));
         foreach (RangeUtil::generateUpTo(count($orderTraceReceivedIndexToErrors)) as $indexOrderReceived) {
             $errorExpectations = $this->expectations->errors[$indexOrderReceived];

@@ -106,8 +106,7 @@ class SpanDto extends ExecutionSegmentDto
 
     public function assertMatches(SpanExpectations $expectations): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         parent::assertMatchesExecutionSegment($expectations);
 
         self::assertValidId($this->parentId);
