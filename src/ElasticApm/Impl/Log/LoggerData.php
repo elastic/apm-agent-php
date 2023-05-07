@@ -28,7 +28,7 @@ namespace Elastic\Apm\Impl\Log;
  *
  * @internal
  */
-final class LoggerData
+final class LoggerData implements LoggableInterface
 {
     /** @var string */
     public $category;
@@ -117,6 +117,21 @@ final class LoggerData
             [] /* <- context */,
             $this->backend,
             $this
+        );
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs(
+            [
+                'category'       => $this->category,
+                'namespace'      => $this->namespace,
+                'fqClassName'    => $this->fqClassName,
+                'srcCodeFile'    => $this->srcCodeFile,
+                'inheritedData'  => $this->inheritedData,
+                'count(context)' => count($this->context),
+                'backend'        => $this->backend,
+            ]
         );
     }
 }

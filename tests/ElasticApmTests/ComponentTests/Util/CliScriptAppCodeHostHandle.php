@@ -60,12 +60,7 @@ final class CliScriptAppCodeHostHandle extends AppCodeHostHandle
 
         $this->resourcesCleaner = $resourcesCleaner;
 
-        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(LogCategoryForTests::TEST_UTIL, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
     }
 
     /** @inheritDoc */

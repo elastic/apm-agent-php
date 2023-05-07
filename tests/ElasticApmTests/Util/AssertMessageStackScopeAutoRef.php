@@ -69,7 +69,9 @@ final class AssertMessageStackScopeAutoRef
             return;
         }
 
+        Assert::assertGreaterThanOrEqual(1, count($this->data->subScopesStack));
         $this->data->subScopesStack[] = new Pair(AssertMessageStackScopeData::buildContextName(/* numberOfStackFramesToSkip */ 1), $initialCtx);
+        Assert::assertGreaterThanOrEqual(2, count($this->data->subScopesStack));
     }
 
     /**
@@ -81,7 +83,7 @@ final class AssertMessageStackScopeAutoRef
             return;
         }
 
-        Assert::assertGreaterThanOrEqual(2, $this->data->subScopesStack);
+        Assert::assertGreaterThanOrEqual(2, count($this->data->subScopesStack));
         $this->data->subScopesStack[count($this->data->subScopesStack) - 1]->second = $initialCtx;
     }
 
@@ -91,7 +93,8 @@ final class AssertMessageStackScopeAutoRef
             return;
         }
 
-        Assert::assertGreaterThanOrEqual(2, $this->data->subScopesStack);
+        Assert::assertGreaterThanOrEqual(2, count($this->data->subScopesStack));
         array_pop(/* ref */ $this->data->subScopesStack);
+        Assert::assertGreaterThanOrEqual(1, count($this->data->subScopesStack));
     }
 }

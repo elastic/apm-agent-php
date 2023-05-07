@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
 
 final class ExpectedEventCounts implements LoggableInterface
 {
@@ -97,7 +96,7 @@ final class ExpectedEventCounts implements LoggableInterface
         }
 
         if ($apmDataKind === ApmDataKind::span() && $this->maxSpanCount !== null) {
-            TestCase::assertLessThanOrEqual($this->maxSpanCount, $actualCount, $dbgCtxStr);
+            TestCaseBase::assertLessThanOrEqual($this->maxSpanCount, $actualCount, $dbgCtxStr);
             return $expectedCount <= $actualCount;
         }
 
@@ -105,7 +104,7 @@ final class ExpectedEventCounts implements LoggableInterface
             return $expectedCount <= $actualCount;
         }
 
-        TestCase::assertLessThanOrEqual($expectedCount, $actualCount, $dbgCtxStr);
+        TestCaseBase::assertLessThanOrEqual($expectedCount, $actualCount, $dbgCtxStr);
         return $expectedCount === $actualCount;
     }
 }

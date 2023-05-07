@@ -263,18 +263,13 @@ class LoggingVariousTypesTest extends TestCaseBase
         self::logValueAndVerify(
             $loggerFactory->loggerForClass($category, $namespace, $fqClassName, $srcCodeFile),
             [
-                'data' => [
-                    'backend' => [
-                        'maxEnabledLevel' => 'DEBUG',
-                        'logSink'         => NoopLogSink::class,
-                    ],
-                    'category' => $category,
-                    'context' => [],
-                    'fqClassName' => $fqClassName,
-                    'inheritedData' => null,
-                    'namespace' => $namespace,
-                    'srcCodeFile' => $srcCodeFile,
-                ]
+                'category'       => $category,
+                'count(context)' => 0,
+                'fqClassName'    => $fqClassName,
+                'inheritedData'  => null,
+                'namespace'      => $namespace,
+                'srcCodeFile'    => $srcCodeFile,
+                'backend'        => ['maxEnabledLevel' => 'DEBUG', 'logSink' => NoopLogSink::class],
             ]
         );
     }
