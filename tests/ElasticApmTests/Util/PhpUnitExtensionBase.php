@@ -50,7 +50,7 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
     {
         LoggingSubsystem::$isInTestingContext = true;
         SerializationUtil::$isInTestingContext = true;
-        LoggableToJsonEncodable::$maxDepth = 10;
+        LoggableToJsonEncodable::$maxDepth = 15;
 
         AmbientContextForTests::init($dbgProcessName);
 

@@ -481,16 +481,23 @@ final class DataProviderForTestBuilder
      * @template TKey of array-key
      * @template TValue
      *
-     * @param callable(): iterable<array<TKey, TValue>> $generateDataSets
-     * @param ?int                                      $emitOnlyDataSetWithIndex
+     * @param array<array<TKey, TValue>>|callable(): iterable<array<TKey, TValue>> $dataSetsSource
+     * @param ?int                                                                 $emitOnlyDataSetWithIndex
      *
      * @return iterable<string, array<TKey, TValue>>
      */
-    public static function keyEachDataSetWithDbgDesc(callable $generateDataSets, ?int $emitOnlyDataSetWithIndex = null): iterable
+    public static function keyEachDataSetWithDbgDesc($dataSetsSource, ?int $emitOnlyDataSetWithIndex = null): iterable
     {
-        $dataSetsCount = IterableUtilForTests::count($generateDataSets());
+        if (is_array($dataSetsSource)) {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource);
+            $dataSets = $dataSetsSource;
+        } else {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource());
+            $dataSets = $dataSetsSource();
+        }
+
         $dataSetIndex = 0;
-        foreach ($generateDataSets() as $dataSet) {
+        foreach ($dataSets as $dataSet) {
             ++$dataSetIndex;
             if ($emitOnlyDataSetWithIndex !== null && $dataSetIndex !== $emitOnlyDataSetWithIndex) {
                 continue;

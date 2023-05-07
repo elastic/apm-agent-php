@@ -55,25 +55,25 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
     public const MEMORY_DB_NAME = 'memory';
     public const FILE_DB_NAME = '<file DB>';
 
-    private const MESSAGES
+    public const MESSAGES
         = [
             'Just testing...'    => 1,
             'More testing...'    => 22,
             'SQLite3 is cool...' => 333,
         ];
 
-    private const CREATE_TABLE_SQL
+    public const CREATE_TABLE_SQL
         = /** @lang text */
         'CREATE TABLE messages (
             id INTEGER PRIMARY KEY,
             text TEXT,
             time INTEGER)';
 
-    private const INSERT_SQL
+    public const INSERT_SQL
         = /** @lang text */
         'INSERT INTO messages (text, time) VALUES (:text, :time)';
 
-    private const SELECT_SQL
+    public const SELECT_SQL
         = /** @lang text */
         'SELECT * FROM messages';
 
@@ -267,8 +267,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
             $appCodeArgs[DbAutoInstrumentationUtilForTests::DB_NAME_KEY] = $dbName;
         }
 
-        $sharedExpectations = DbSpanExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
-        $expectationsBuilder = new DbSpanExpectationsBuilder($sharedExpectations);
+        $expectationsBuilder = new DbSpanExpectationsBuilder(/* dbType: */ 'sqlite', $dbName);
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
