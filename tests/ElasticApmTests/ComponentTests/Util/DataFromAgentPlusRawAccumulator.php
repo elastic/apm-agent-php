@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
@@ -136,25 +137,22 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
 
     public function hasReachedEventCounts(ExpectedEventCounts $expectedEventCounts): bool
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $dbgCtx->pushSubScope();
         foreach (ApmDataKind::all() as $apmDataKind) {
+            $dbgCtx->clearCurrentSubScope(['apmDataKind' => $apmDataKind]);
             $actualCount = $this->dataParsed->getApmDataCountForKind($apmDataKind);
-            $ctx = [
-                '$apmDataKind'                      => $apmDataKind,
-                '$expectedEventCounts'              => $expectedEventCounts,
-                '$actualCount'                      => $actualCount
-            ];
+            $logCtx = ['$apmDataKind' => $apmDataKind, '$expectedEventCounts' => $expectedEventCounts, '$actualCount' => $actualCount];
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Checking if has reached expected event count...', $ctx);
+            && $loggerProxy->log('Checking if has reached expected event count...', $logCtx);
             $hasReachedEventCounts = $expectedEventCounts->hasReachedCountForKind($apmDataKind, $actualCount);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Checked if has reached expected event count',
-                array_merge(['$hasReachedEventCounts' => $hasReachedEventCounts], $ctx)
-            );
+            && $loggerProxy->log('Checked if has reached expected event count', array_merge(['$hasReachedEventCounts' => $hasReachedEventCounts], $logCtx));
             if (!$hasReachedEventCounts) {
                 return false;
             }
         }
+        $dbgCtx->popSubScope();
         return true;
     }
 

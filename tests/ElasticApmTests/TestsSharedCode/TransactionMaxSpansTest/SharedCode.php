@@ -25,7 +25,6 @@ namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\Util\AssertMessageStack;
@@ -36,12 +35,6 @@ use ElasticApmTests\Util\TestCaseBase;
 final class SharedCode
 {
     use StaticClassTrait;
-
-    /** @var ?int */
-    private const LIMIT_TO_VARIANT_INDEX = null;
-
-    /** @var bool */
-    private const SHOULD_PRINT_PROGRESS = true;
 
     public const TESTING_DEPTH_0 = 0;
     public const TESTING_DEPTH_1 = 1;
@@ -197,40 +190,6 @@ final class SharedCode
         }
     }
 
-    public static function testEachArgsVariantProlog(int $testingDepth, Args $testArgs): bool
-    {
-        $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($testingDepth));
-        if ($testArgs->variantIndex === 1) {
-            /** @phpstan-ignore-next-line */
-            if (self::LIMIT_TO_VARIANT_INDEX !== null && self::SHOULD_PRINT_PROGRESS) {
-                $msg = 'LIMITED to variant #'
-                       . self::LIMIT_TO_VARIANT_INDEX . ' out of '
-                       . $testArgsVariantsCount;
-                $logger = TestCaseBase::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
-                ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log($msg);
-            }
-        }
-
-        /** @phpstan-ignore-next-line */
-        $isThisVariantEnabled = self::LIMIT_TO_VARIANT_INDEX === null
-                                || ($testArgs->variantIndex === self::LIMIT_TO_VARIANT_INDEX);
-
-        $shouldPrintProgress = self::LIMIT_TO_VARIANT_INDEX === null
-            ? self::SHOULD_PRINT_PROGRESS
-            : $isThisVariantEnabled; // @phpstan-ignore-line
-
-        /** @phpstan-ignore-next-line */
-        if ($shouldPrintProgress) {
-            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . $testArgsVariantsCount . ': ' . LoggableToString::convert($testArgs);
-            $logger = TestCaseBase::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
-            ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log($msg);
-        }
-
-        return $isThisVariantEnabled;
-    }
-
     public static function appCode(Args $testArgs, TransactionInterface $tx): void
     {
         AppCode::run($testArgs, $tx);
@@ -238,6 +197,8 @@ final class SharedCode
 
     public static function assertResults(Args $testArgs, DataFromAgent $dataFromAgent): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $tx = $dataFromAgent->singleTransaction();
         TestCaseBase::assertSame($testArgs->isSampled, $tx->isSampled);
 
@@ -246,8 +207,6 @@ final class SharedCode
             $transactionMaxSpans = OptionDefaultValues::TRANSACTION_MAX_SPANS;
         }
 
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['testArgs' => $testArgs, 'dataFromAgent' => $dataFromAgent]);
         if (!$tx->isSampled) {
             TestCaseBase::assertSame(0, $tx->startedSpansCount);
             TestCaseBase::assertSame(0, $tx->droppedSpansCount);
@@ -261,9 +220,9 @@ final class SharedCode
         TestCaseBase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount);
         TestCaseBase::assertCount($expectedStartedSpansCount, $dataFromAgent->idToSpan);
 
+        $dbgCtx->pushSubScope();
         foreach ($dataFromAgent->idToSpan as $span) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['spanId' => $span->id]);
+            $dbgCtx->clearCurrentSubScope(['span' => $span]);
             TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
             $createdChildCount = TestCaseBase::getLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
             TestCaseBase::assertIsInt($createdChildCount);
@@ -273,7 +232,7 @@ final class SharedCode
             } else {
                 TestCaseBase::assertLessThanOrEqual($createdChildCount, $sentChildCount);
             }
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 }

@@ -48,8 +48,7 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
                     $builder->withConfig(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
                 }
                 if ($testArgs->configTransactionMaxSpans !== null) {
-                    $builder
-                        ->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
+                    $builder->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
                 }
                 $this->mockEventSink->shouldValidateAgainstSchema = false;
             }
@@ -79,24 +78,32 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         return false;
     }
 
-    public function testVariousCombinations(): void
+    /**
+     * @return iterable<string, array{Args}>
+     */
+    public function dataProviderForTestVariousCombinations(): iterable
     {
-        if (!DataProviderForTestBuilder::isLongRunMode()) {
-            self::dummyAssert();
-            return;
-        }
+        /**
+         * @return iterable<array{Args}>
+         */
+        $generator = function (): iterable {
+            foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+                yield [$testArgs];
+            }
+        };
 
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestVariousCombinations
+     */
+    public function testVariousCombinations(Args $testArgs): void
+    {
         TransactionExpectations::$defaultDroppedSpansCount = null;
         TransactionExpectations::$defaultIsSampled = null;
-        /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
-            if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
-                continue;
-            }
-
-            GlobalTracerHolder::unsetValue();
-            $this->mockEventSink->clear();
-            $this->variousCombinationsTestImpl($testArgs);
-        }
+        GlobalTracerHolder::unsetValue();
+        $this->mockEventSink->clear();
+        $this->variousCombinationsTestImpl($testArgs);
     }
 }

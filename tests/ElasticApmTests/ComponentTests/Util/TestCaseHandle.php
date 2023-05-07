@@ -33,7 +33,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\SpanExpectations;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -220,7 +219,6 @@ final class TestCaseHandle implements LoggableInterface
 
         if (!$this->isTestSpanCompressionCompatible) {
             $params->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
-            SpanExpectations::$assumeSpanCompressionDisabled = true;
         }
     }
 

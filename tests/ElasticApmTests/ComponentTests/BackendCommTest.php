@@ -64,8 +64,7 @@ final class BackendCommTest extends ComponentTestCaseBase
         }
         $txCount = count($txNames);
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions($txCount));
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
         self::assertCount(1, $dataFromAgent->getRaw()->getIntakeApiConnections());
         $txIndex = 0;
         foreach ($dataFromAgent->idToTransaction as $tx) {

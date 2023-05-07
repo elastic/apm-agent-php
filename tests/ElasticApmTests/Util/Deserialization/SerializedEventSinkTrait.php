@@ -51,8 +51,7 @@ trait SerializedEventSinkTrait
      */
     private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['serializedData' => $serializedData]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
         /** @var array<string, mixed> $decodedJson */
         $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);

@@ -57,8 +57,7 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
     private static function getCurrentPhpUnitMajorVersion(): int
     {
         $asDotSeparatedString = Version::id();
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['asDotSeparatedString' => $asDotSeparatedString]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['asDotSeparatedString' => $asDotSeparatedString]);
         // Limit to 2 parts since we are only interested in MAJOR part of the version
         $partsAsStrings = explode(/* separator */ '.', $asDotSeparatedString, /* limit */ 2);
         $dbgCtx->add(['partsAsStrings' => $partsAsStrings]);
@@ -76,15 +75,11 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
 
     private static function getExpectedPhpUnitConfigFile(string $testsType): string
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $phpUnitMajorVerion = self::getCurrentPhpUnitMajorVersion();
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
         $dbgCtx->add(['phpUnitMajorVerion' => $phpUnitMajorVerion]);
 
-        $phpUnitMajorVerionToFileName = ArrayUtil::getValueIfKeyExistsElse(
-            $testsType,
-            self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION,
-            null /* <- fallbackValue */
-        );
+        $phpUnitMajorVerionToFileName = ArrayUtil::getValueIfKeyExistsElse($testsType, self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION, /* fallbackValue */ null);
         $dbgCtx->add(['phpUnitMajorVerionToFileName' => $phpUnitMajorVerionToFileName]);
         self::assertNotNull($phpUnitMajorVerionToFileName);
 
@@ -137,8 +132,8 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
      */
     public static function testSelectPhpUnitConfigFile(string $testsType): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $expectedPhpUnitConfigFileName = self::getExpectedPhpUnitConfigFile($testsType);
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
         $dbgCtx->add(['expectedPhpUnitConfigFileName' => $expectedPhpUnitConfigFileName]);
 
         $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';

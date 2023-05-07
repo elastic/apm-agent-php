@@ -25,25 +25,47 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
+use Elastic\Apm\Impl\Util\DbgUtil;
+use PHPUnit\Framework\Assert;
 
 final class AssertMessageStackScopeData implements LoggableInterface
 {
-    /** @var string */
-    public $name;
+    /** @var Pair<string, array<string, mixed>>[] */
+    public $subScopesStack;
 
-    /** @var array<string, mixed> */
-    public $ctx = [];
-
-    /** @var int */
-    public $refsFromStackCount = 1;
-
-    public function __construct(string $name)
+    /**
+     * @param string               $name
+     * @param array<string, mixed> $initialCtx
+     */
+    public function __construct(string $name, array $initialCtx)
     {
-        $this->name = $name;
+        $this->subScopesStack = [new Pair($name, $initialCtx)];
+    }
+
+    public static function buildContextName(int $numberOfStackFramesToSkip): string
+    {
+        $callerInfo = DbgUtil::getCallerInfoFromStacktrace($numberOfStackFramesToSkip + 1);
+
+        $classMethodPart = '';
+        if ($callerInfo->class !== null) {
+            $classMethodPart .= $callerInfo->class . '::';
+        }
+        Assert::assertNotNull($callerInfo->function);
+        $classMethodPart .= $callerInfo->function;
+
+        $fileLinePart = '';
+        if ($callerInfo->file !== null) {
+            $fileLinePart .= '[';
+            $fileLinePart .= $callerInfo->file;
+            $fileLinePart .= TextUtilForTests::combineWithSeparatorIfNotEmpty(':', TextUtilForTests::emptyIfNull($callerInfo->line));
+            $fileLinePart .= ']';
+        }
+
+        return $classMethodPart . TextUtilForTests::combineWithSeparatorIfNotEmpty(' ', $fileLinePart);
     }
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs([$this->name => $this->ctx]);
+        $stream->toLogAs(['subScopesStack count' => count($this->subScopesStack)]);
     }
 }

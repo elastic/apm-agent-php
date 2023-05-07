@@ -158,11 +158,8 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function interceptPDOMethodToSpan(
-        RegistrationContextInterface $ctx,
-        string $methodName,
-        bool $isFirstArgStatement
-    ): void {
+    private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $methodName, bool $isFirstArgStatement): void
+    {
         $ctx->interceptCallsToInternalMethod(
             self::PDO_CLASS_NAME,
             $methodName,
@@ -172,13 +169,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
              *
              * @return callable
              */
-            function (
-                ?object $interceptedCallThis,
-                array $interceptedCallArgs
-            ) use (
-                $methodName,
-                $isFirstArgStatement
-            ): ?callable {
+            function (?object $interceptedCallThis, array $interceptedCallArgs) use ($methodName, $isFirstArgStatement): ?callable {
                 if (!$this->util->verifyInstanceOf(PDO::class, $interceptedCallThis)) {
                     return null;
                 }
@@ -186,36 +177,17 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
                 $statement = null;
                 if ($isFirstArgStatement) {
-                    if (
-                        $this->util->verifyMinArgsCount(1, $interceptedCallArgs)
-                        && $this->util->verifyIsString($interceptedCallArgs[0])
-                    ) {
+                    if ($this->util->verifyMinArgsCount(1, $interceptedCallArgs) && $this->util->verifyIsString($interceptedCallArgs[0])) {
                         $statement = $interceptedCallArgs[0];
                     }
                 }
                 /** @var ?string $statement */
 
                 /** @var string $dbType */
-                $dbType = $this->mapPerObject->getOr(
-                    $interceptedCallThis,
-                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE,
-                    Constants::SPAN_SUBTYPE_UNKNOWN /* <- defaultValue */
-                );
+                $dbType = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE, /* defaultValue */ Constants::SPAN_SUBTYPE_UNKNOWN);
                 /** @var ?string $dbName */
-                $dbName = $this->mapPerObject->getOr(
-                    $interceptedCallThis,
-                    DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
-                    null /* <- defaultValue */
-                );
-                return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
-                    DbAutoInstrumentationUtil::beginDbSpan(
-                        self::PDO_CLASS_NAME,
-                        $methodName,
-                        $dbType,
-                        $dbName,
-                        $statement
-                    )
-                );
+                $dbName = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME, /* defaultValue */ null);
+                return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(DbAutoInstrumentationUtil::beginDbSpan(self::PDO_CLASS_NAME, $methodName, $dbType, $dbName, $statement));
             }
         );
     }

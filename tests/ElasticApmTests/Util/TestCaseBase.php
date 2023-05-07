@@ -110,8 +110,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertListArrayIsSubsetOf(array $subSet, array $largerSet): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(
+        AssertMessageStack::newScope(
+            $dbgCtx,
             [
                 'array_diff'             => array_diff($subSet, $largerSet),
                 'count(array_intersect)' => count(array_intersect($subSet, $largerSet)),
@@ -152,19 +152,15 @@ class TestCaseBase extends TestCase
      */
     public static function assertMapArrayIsSubsetOf(array $subSet, array $largerSet): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $dbgCtx->pushSubScope();
         foreach ($subSet as $key => $value) {
-            AssertMessageStack::newScope(/* out */ $dbgCtx);
-            $dbgCtx->add(
-                [
-                    '$key'       => $key,
-                    '$value'     => $value,
-                    '$subSet'    => $subSet,
-                    '$largerSet' => $largerSet,
-                ]
-            );
+            $dbgCtx->clearCurrentSubScope(['$key' => $key, '$value' => $value]);
             self::assertArrayHasKey($key, $largerSet);
             self::assertSameEx($value, $largerSet[$key]);
         }
+        $dbgCtx->popSubScope();
     }
 
     public static function getExecutionSegmentContext(ExecutionSegmentDto $execSegData): ?ExecutionSegmentContextDto
@@ -200,8 +196,7 @@ class TestCaseBase extends TestCase
      */
     public static function assertLabelsCount(int $expectedCount, ExecutionSegmentDto $execSegData): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectedCount' => $expectedCount, 'execSegData' => $execSegData]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null || $context->labels === null) {
             self::assertSame(0, $expectedCount);
@@ -241,8 +236,7 @@ class TestCaseBase extends TestCase
 
     public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['execSegData' => $execSegData, 'key' => $key]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $context = self::getExecutionSegmentContext($execSegData);
         self::assertNotNull($context);
@@ -264,8 +258,7 @@ class TestCaseBase extends TestCase
      */
     public static function assertArrayIsList(array $actual): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['$actual' => $actual]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertTrue(ArrayUtil::isList($actual));
     }
 
@@ -275,15 +268,14 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualLists(array $expected, array $actual): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expected' => $expected, 'actual' => $actual]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertSame(count($expected), count($actual));
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($expected)) as $i) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['i' => $i]);
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
             self::assertSame($expected[$i], $actual[$i]);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -298,26 +290,31 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<mixed> $subsetMap
-     * @param array<mixed> $containingMap
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $subsetMap
+     * @param array<TKey, TValue> $containingMap
      */
     public static function assertMapIsSubsetOf(array $subsetMap, array $containingMap): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['subsetMap' => $subsetMap, 'containingMap' => $containingMap]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual(count($subsetMap), count($containingMap));
+        $dbgCtx->pushSubScope();
         foreach ($subsetMap as $subsetMapKey => $subsetMapVal) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['subsetMapKey' => $subsetMapKey, 'subsetMapVal' => $subsetMapVal]);
+            $dbgCtx->clearCurrentSubScope(['subsetMapKey' => $subsetMapKey, 'subsetMapVal' => $subsetMapVal]);
             self::assertArrayHasKey($subsetMapKey, $containingMap);
             self::assertEqualsEx($subsetMapVal, $containingMap[$subsetMapKey]);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
-     * @param array<mixed> $expected
-     * @param array<mixed> $actual
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $expected
+     * @param array<TKey, TValue> $actual
      */
     public static function assertEqualMaps(array $expected, array $actual): void
     {
@@ -388,7 +385,7 @@ class TestCaseBase extends TestCase
     /**
      * @return iterable<array{bool}>
      */
-    public function boolDataProvider(): iterable
+    public static function boolDataProvider(): iterable
     {
         yield [true];
         yield [false];
@@ -440,7 +437,8 @@ class TestCaseBase extends TestCase
 
     protected static function addMessageStackToException(Exception $ex): void
     {
-        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . AssertMessageStack::formatScopesStackAsString());
+        $formattedContextsStack = LoggableToString::convert(AssertMessageStack::getContextsStack(), /* prettyPrint */ true);
+        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . $formattedContextsStack);
     }
 
     /**
@@ -449,8 +447,7 @@ class TestCaseBase extends TestCase
      */
     public static function assertSameNullness($expected, $actual): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['$expected' => $expected, '$actual' => $actual]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertSame($expected === null, $actual === null);
     }
 
@@ -471,16 +468,15 @@ class TestCaseBase extends TestCase
      */
     public static function assertInClosedRange($rangeBegin, $actual, $rangeEnd): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['rangeBegin' => $rangeBegin, 'actual' => $actual, 'rangeEnd' => $rangeEnd]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual($rangeBegin, $actual);
         self::assertLessThanOrEqual($rangeEnd, $actual);
     }
 
     public static function assertLessThanOrEqualTimestamp(float $before, float $after): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(
+        AssertMessageStack::newScope(
+            $dbgCtx,
             [
                 'before'         => TimeUtilForTests::timestampToLoggable($before),
                 'after'          => TimeUtilForTests::timestampToLoggable($after),
@@ -525,14 +521,16 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param string|int           $expectedKey
-     * @param mixed                $expectedVal
-     * @param array<string, mixed> $actualArray
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param TKey                $expectedKey
+     * @param TValue              $expectedVal
+     * @param array<TKey, TValue> $actualArray
      */
     public static function assertSameValueInArray($expectedKey, $expectedVal, array $actualArray): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectedKey' => $expectedKey, 'expectedVal' => $expectedVal, 'actualArray' => $actualArray]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertArrayHasKey($expectedKey, $actualArray);
         self::assertSame($expectedVal, $actualArray[$expectedKey]);
     }
@@ -600,8 +598,7 @@ class TestCaseBase extends TestCase
      */
     public static function assertSameCount($expected, $actual): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expected' => $expected, 'actual' => $actual]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertSame(count($expected), count($actual));
     }
 
@@ -674,8 +671,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertCount(int $expectedCount, $haystack, string $message = ''): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['expectedCount' => $expectedCount, 'count($haystack)' => count($haystack), 'haystack' => $haystack]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['count($haystack)' => count($haystack)]);
         try {
             Assert::assertCount($expectedCount, $haystack, $message);
         } catch (AssertionFailedError $ex) {

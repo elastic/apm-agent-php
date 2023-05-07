@@ -442,8 +442,7 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         $appCodeArgs[DbAutoInstrumentationUtilForTests::PASSWORD_KEY]
             = AmbientContextForTests::testConfig()->mysqlPassword;
 
-        $sharedExpectations = MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $connectDbName);
-        $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder($isOOPApi, $sharedExpectations);
+        $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder(self::DB_TYPE, $connectDbName, $isOOPApi);
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
@@ -452,7 +451,7 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
 
             if ($connectDbName !== $workDbName) {
                 $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName);
-                $expectationsBuilder->setPrototype(MySQLiDbSpanDataExpectationsBuilder::default(self::DB_TYPE, $workDbName));
+                $expectationsBuilder = new MySQLiDbSpanDataExpectationsBuilder(self::DB_TYPE, $workDbName, $isOOPApi);
                 $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'select_db');
             }
 

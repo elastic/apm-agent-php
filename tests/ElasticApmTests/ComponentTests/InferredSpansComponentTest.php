@@ -218,7 +218,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         /** @var array<string, StackTraceFrame[]> $stackTraces */
         $stackTraces = unserialize(base64_decode($stackTracesSerialized));
 
-        $expectationsBuilder = new InferredSpanExpectationsBuilder(InferredSpanExpectationsBuilder::default());
+        $expectationsBuilder = new InferredSpanExpectationsBuilder();
 
         $appCodeSpanExpectations = $expectationsBuilder->fromClassMethodNamesAndStackTrace(
             ClassNameUtil::fqToShort(__CLASS__),

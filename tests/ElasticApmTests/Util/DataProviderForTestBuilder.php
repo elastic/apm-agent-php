@@ -478,12 +478,24 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param iterable<array<mixed>> $dataSets
+     * @template TKey of array-key
+     * @template TValue
      *
-     * @return iterable<string, array<mixed>>
+     * @param array<array<TKey, TValue>>|callable(): iterable<array<TKey, TValue>> $dataSetsSource
+     * @param ?int                                                                 $emitOnlyDataSetWithIndex
+     *
+     * @return iterable<string, array<TKey, TValue>>
      */
-    public static function keyEachDataSetWithDbgDesc(iterable $dataSets, int $dataSetsCount, ?int $emitOnlyDataSetWithIndex = null): iterable
+    public static function keyEachDataSetWithDbgDesc($dataSetsSource, ?int $emitOnlyDataSetWithIndex = null): iterable
     {
+        if (is_array($dataSetsSource)) {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource);
+            $dataSets = $dataSetsSource;
+        } else {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource());
+            $dataSets = $dataSetsSource();
+        }
+
         $dataSetIndex = 0;
         foreach ($dataSets as $dataSet) {
             ++$dataSetIndex;
@@ -512,7 +524,15 @@ final class DataProviderForTestBuilder
      */
     public function build(): iterable
     {
-        return self::keyEachDataSetWithDbgDesc($this->buildWithoutDataSetName(), IterableUtilForTests::count($this->buildWithoutDataSetName()), $this->emitOnlyDataSetWithIndex);
+        return self::keyEachDataSetWithDbgDesc(
+            /**
+             * @return iterable<array<mixed>>
+             */
+            function (): iterable {
+                return $this->buildWithoutDataSetName();
+            },
+            $this->emitOnlyDataSetWithIndex
+        );
     }
 
     /**
@@ -541,6 +561,16 @@ final class DataProviderForTestBuilder
     }
 
     /**
+     * @param callable(): iterable<array<string, mixed>> $dataSetsGenerator
+     *
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function convertEachDataSetToMixedMapAndAddDesc(callable $dataSetsGenerator): iterable
+    {
+        return self::convertEachDataSetToMixedMap(self::keyEachDataSetWithDbgDesc($dataSetsGenerator));
+    }
+
+    /**
      * @param int $count
      *
      * @return callable(): iterable<int>
@@ -552,6 +582,24 @@ final class DataProviderForTestBuilder
          */
         return function () use ($count): iterable {
             return RangeUtil::generateUpTo($count);
+        };
+    }
+
+    /**
+     * @param int $first
+     * @param int $last
+     *
+     * @return callable(): iterable<int>
+     *
+     * @noinspection PhpUnused
+     */
+    public static function rangeFromToIncluding(int $first, int $last): callable
+    {
+        /**
+         * @return iterable<array<string|int, mixed>>
+         */
+        return function () use ($first, $last): iterable {
+            return RangeUtil::generateFromToIncluding($first, $last);
         };
     }
 }

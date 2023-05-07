@@ -30,6 +30,7 @@ use ElasticApmTests\Util\ErrorExpectations;
 use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetExpectations;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\TraceExpectations;
 use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\Assert;
@@ -73,6 +74,8 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
             $transactionExpectations->droppedSpansCount->reset();
         }
 
+        SpanExpectations::$assumeSpanCompressionDisabled = self::canAssumeSpanCompressionDisabled($appCodeInvocation);
+
         self::addErrorExpectations($transactionExpectations);
         self::addMetadataExpectations($appCodeInvocation, $transactionExpectations);
         self::addMetricSetExpectations($transactionExpectations);
@@ -101,6 +104,16 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
         $sampleRate = $agentConfig->transactionSampleRate();
         return $sampleRate === 0.0 ? false : ($sampleRate === 1.0 ? true : null);
+    }
+
+    private static function canAssumeSpanCompressionDisabled(AppCodeInvocation $appCodeInvocation): bool
+    {
+        foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
+            if ($appCodeHostParams->getEffectiveAgentConfig()->spanCompressionEnabled()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private function addErrorExpectations(TransactionExpectations $transactionExpectations): void

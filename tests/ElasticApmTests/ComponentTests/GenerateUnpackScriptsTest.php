@@ -96,16 +96,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private static function execCommand(string $command): array
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $outputLastLine = exec($command, /* out */ $outputLinesAsArray, /* out */ $exitCode);
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(
-            [
-                'command'            => $command,
-                'exitCode'           => $exitCode,
-                'outputLinesAsArray' => $outputLinesAsArray,
-                'outputLastLine'     => $outputLastLine,
-            ]
-        );
+        $dbgCtx->add(['exitCode' => $exitCode, 'outputLinesAsArray' => $outputLinesAsArray, 'outputLastLine' => $outputLastLine]);
         self::assertSame(0, $exitCode);
         self::assertIsString($outputLastLine);
         self::assertIsArray($outputLinesAsArray);
@@ -146,6 +139,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function execUnpackAndAssert(string $matrixRow, array $expectedEnvVars): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $cmd = $this->unpackAndPrintEnvVarsScriptFullPath . ' ' . $matrixRow;
         $actualEnvVarNameValueLines = self::execCommand($cmd);
         self::assertNotEmpty($actualEnvVarNameValueLines);
@@ -154,15 +148,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
             $actualEnvVarNameValue = explode('=', $actualEnvVarNameValueLine, /* limit */ 2);
             $actualEnvVars[$actualEnvVarNameValue[0]] = $actualEnvVarNameValue[1];
         }
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(
-            [
-                'matrixRow'                  => $matrixRow,
-                'expectedEnvVars'            => $expectedEnvVars,
-                'actualEnvVarNameValueLines' => $actualEnvVarNameValueLines,
-                'actualEnvVars'              => $actualEnvVars,
-            ]
-        );
+        $dbgCtx->add(['actualEnvVarNameValueLines' => $actualEnvVarNameValueLines, 'actualEnvVars' => $actualEnvVars]);
 
         $elasticExpectedEnvVars = array_filter(
             $expectedEnvVars,
@@ -188,8 +174,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
          *      [0]        [1]              [2]         [3]                  [4]                  [5], [6] ...
          */
 
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['matrixRow' => $matrixRow]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $matrixRowParts = explode(',', $matrixRow);
         $dbgCtx->add(['matrixRowParts' => $matrixRowParts]);
@@ -235,12 +220,12 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private static function unpackRowOptionalPartsToEnvVars(string $key, string $value, array &$result): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         switch ($key) {
             case 'agent_syslog_level':
                 ArrayUtilForTests::addUnique(self::agentSyslogLevelEnvVarName(), $value, /* ref */ $result);
                 break;
             default:
-                AssertMessageStack::newScope(/* out */ $dbgCtx);
                 $dbgCtx->add(['key' => $key, 'value' => $value]);
                 self::fail('Unexpected key');
         }
@@ -308,7 +293,9 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private function assertSufficientCoverageLifecycleWithIncreasedLogLevel(): void
     {
         $assertForPhpVersionAndLogLevel = function (string $phpVersion, int $logLevel): void {
+            AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
             foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
+                $dbgCtx->pushSubScope();
                 foreach (self::TESTS_LEAF_GROUPS as $testsGroup) {
                     $whereEnvVars = [
                         self::PHP_VERSION_KEY                 => $phpVersion,
@@ -317,11 +304,11 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
                         self::TESTS_GROUP_ENV_VAR_NAME        => $testsGroup,
                         self::agentSyslogLevelEnvVarName()    => LogLevel::intToName($logLevel),
                     ];
+                    $dbgCtx->clearCurrentSubScope(['whereEnvVars' => $whereEnvVars]);
                     $selectedMatrixRowToExpectedEnvVars = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
-                    AssertMessageStack::newScope(/* out */ $dbgCtx);
-                    $dbgCtx->add(['whereEnvVars' => $whereEnvVars, 'this' => $this]);
                     self::assertNotEmpty($selectedMatrixRowToExpectedEnvVars);
                 }
+                $dbgCtx->popSubScope();
             }
         };
 
@@ -344,16 +331,20 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private function assertSufficientCoverageLifecycle(): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['this' => $this]);
         foreach (self::SUPPORTED_PHP_VERSIONS as $phpVersion) {
+            $dbgCtx->add(['phpVersion' => $phpVersion]);
             foreach (self::LINUX_NATIVE_PACKAGE_TYPES as $linuxPackageType) {
+                $dbgCtx->add(['linuxPackageType' => $linuxPackageType]);
                 $whereEnvVarsLifecycle = [self::PHP_VERSION_KEY => $phpVersion, self::LINUX_PACKAGE_TYPE_KEY => $linuxPackageType, self::TESTING_TYPE_KEY => self::LIFECYCLE_TESTING_TYPE];
                 $this->assertAllTestsAreLeaf($whereEnvVarsLifecycle);
                 foreach (self::APP_CODE_HOST_LEAF_KINDS as $appHostKind) {
+                    $dbgCtx->add(['appHostKind' => $appHostKind]);
                     foreach (self::TESTS_LEAF_GROUPS as $testsGroup) {
+                        $dbgCtx->add(['testsGroup' => $testsGroup]);
                         $whereEnvVars = array_merge($whereEnvVarsLifecycle, [self::APP_CODE_HOST_KIND_ENV_VAR_NAME => $appHostKind, self::TESTS_GROUP_ENV_VAR_NAME => $testsGroup]);
+                        $dbgCtx->add(['whereEnvVars' => $whereEnvVars]);
                         $selectedMatrixRowToExpectedEnvVars = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
-                        AssertMessageStack::newScope(/* out */ $dbgCtx);
-                        $dbgCtx->add(['whereEnvVars' => $whereEnvVars, 'this' => $this]);
                         self::assertNotEmpty($selectedMatrixRowToExpectedEnvVars);
                     }
                 }
@@ -369,24 +360,17 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function assertAllTestsAreSmoke(array $whereEnvVars): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['whereEnvVars' => $whereEnvVars, 'this' => $this]);
+        $dbgCtx->add(['variants' => $variants]);
         self::assertNotEmpty($variants);
+        $dbgCtx->pushSubScope();
         foreach ($variants as $variant) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(
-                [
-                    'variant'      => $variant,
-                    'variants'     => $variants,
-                    'whereEnvVars' => $whereEnvVars,
-                    'this'         => $this,
-                ]
-            );
+            $dbgCtx->clearCurrentSubScope(['variant' => $variant]);
             self::assertSame(self::APP_CODE_HOST_KIND_ALL, $variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME]);
             self::assertSame(self::TESTS_GROUP_SMOKE, $variant[self::TESTS_GROUP_ENV_VAR_NAME]);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -394,24 +378,17 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
      */
     private function assertAllTestsAreLeaf(array $whereEnvVars): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['whereEnvVars' => $whereEnvVars, 'this' => $this]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $variants = self::select($whereEnvVars, $this->matrixRowToExpectedEnvVars);
+        $dbgCtx->add(['variants' => $variants]);
         self::assertNotEmpty($variants);
+        $dbgCtx->pushSubScope();
         foreach ($variants as $variant) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(
-                [
-                    'variant'      => $variant,
-                    'variants'     => $variants,
-                    'whereEnvVars' => $whereEnvVars,
-                    'this'         => $this,
-                ]
-            );
+            $dbgCtx->clearCurrentSubScope(['variant' => $variant]);
             self::assertContainsEx($variant[self::APP_CODE_HOST_KIND_ENV_VAR_NAME], self::APP_CODE_HOST_LEAF_KINDS);
             self::assertContainsEx($variant[self::TESTS_GROUP_ENV_VAR_NAME], self::TESTS_LEAF_GROUPS);
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     private function assertSufficientCoverageAgentUpgrade(): void
