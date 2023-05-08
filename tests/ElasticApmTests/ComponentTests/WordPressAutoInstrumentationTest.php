@@ -226,25 +226,23 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         $loggerProxyDebug = $logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
 
         self::assertNotFalse($fromDirEntries = scandir($fromDir));
+        $dbgCtx->pushSubScope();
         foreach ($fromDirEntries as $entryName) {
-            AssertMessageStack::newSubScope(/* out */ $dbgCtx);
             if ($entryName == '.' || $entryName == '..') {
-                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
+            $dbgCtx->clearCurrentSubScope(['entryName' => $entryName]);
             $fromDirEntryFullPath = $fromDir . DIRECTORY_SEPARATOR . $entryName;
             if (is_dir($fromDirEntryFullPath)) {
                 $toSubDirFullPath = $toDir . DIRECTORY_SEPARATOR . $entryName;
                 $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Creating directory...', ['toSubDirFullPath' => $toSubDirFullPath]);
                 self::assertTrue(mkdir($toSubDirFullPath));
                 self::adaptSourceTree($isExpectedVariant, $fromDirEntryFullPath, $toSubDirFullPath);
-                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
 
             $srcFileInfo = new SplFileInfo($fromDirEntryFullPath);
             if (!($srcFileInfo->isFile() && ($srcFileInfo->getExtension() === 'php'))) {
-                AssertMessageStack::popSubScope(/* out */ $dbgCtx);
                 continue;
             }
             $srcFileRelPath = FileUtilForTests::convertPathRelativeTo($fromDirEntryFullPath, $fromDir);
@@ -262,6 +260,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertFileExists($adaptedSrcFileFullPath);
             $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Created file', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -538,7 +537,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             }
         );
 
-        $expectationsBuilder = new WordPressSpanExpectationsBuilder(new SpanExpectations());
+        $expectationsBuilder = new WordPressSpanExpectationsBuilder();
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isWordPressDataToBeExpected) {

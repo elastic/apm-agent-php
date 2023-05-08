@@ -37,11 +37,6 @@ final class WordPressSpanExpectationsBuilder extends SpanExpectationsBuilder
     private const EXPECTED_SPAN_TYPE_FOR_PLUGIN = 'wordpress_plugin';
     private const EXPECTED_SPAN_TYPE_FOR_THEME = 'wordpress_theme';
 
-    public function __construct(SpanExpectations $shared)
-    {
-        parent::__construct($shared);
-    }
-
     private function forAddonFilterCallback(string $hookName, string $addonGroup, string $addonName): SpanExpectations
     {
         /**

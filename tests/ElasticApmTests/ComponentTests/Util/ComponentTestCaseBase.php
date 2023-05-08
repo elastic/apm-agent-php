@@ -213,14 +213,14 @@ class ComponentTestCaseBase extends TestCaseBase
         };
 
         foreach ($expectedNames as $name) {
+            $dbgCtx->pushSubScope();
             foreach ($genDisabledVariants($name) as $disableInstrumentationsOptVal) {
-                AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-                $dbgCtx->add(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+                $dbgCtx->clearCurrentSubScope(['name' => $name, 'disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
                 $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
                 $instr = new $instrClassName($tracer);
                 self::assertFalse($instr->isEnabled());
-                AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
             }
+            $dbgCtx->popSubScope();
         }
 
         /**
@@ -231,24 +231,24 @@ class ComponentTestCaseBase extends TestCaseBase
             yield '*someOtherDummyInstrumentationA*,  *someOtherDummyInstrumentationB*';
         };
 
+        $dbgCtx->pushSubScope();
         foreach ($genEnabledVariants() as $disableInstrumentationsOptVal) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+            $dbgCtx->clearCurrentSubScope(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
             $instr = new $instrClassName($tracer);
             self::assertTrue($instr->isEnabled());
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
 
+        $dbgCtx->pushSubScope();
         foreach ([true, false] as $astProcessEnabled) {
-            AssertMessageStack::newSubScope(/* ref */ $dbgCtx);
-            $dbgCtx->add(['astProcessEnabled' => $astProcessEnabled]);
+            $dbgCtx->clearCurrentSubScope(['astProcessEnabled' => $astProcessEnabled]);
             $expectedIsEnabled = $astProcessEnabled || (!$instr->requiresUserlandCodeInstrumentation());
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
             $instr = new $instrClassName($tracer);
             self::assertSame($expectedIsEnabled, $instr->isEnabled());
-            AssertMessageStack::popSubScope(/* ref */ $dbgCtx);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
