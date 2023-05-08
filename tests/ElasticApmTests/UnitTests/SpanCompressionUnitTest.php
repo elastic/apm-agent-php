@@ -619,7 +619,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         $sharedCode->implTestOneCompressedSequenceAssert($this->mockEventSink->dataFromAgent);
     }
 
-    private const REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH = 4;
     private const WRAP_IN_PARENT_SPAN_KEY = 'wrap_in_parent_span';
     private const STOPPING_SPAN_INDEX_KEY = 'stopping_span_index';
     private const REASON_COMPRESSION_STOPS_KEY = 'reason_compression_stops';
@@ -661,6 +660,11 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
         return ($serviceTarget = $span->getServiceTarget()) === null
             ? Span::buildSameKindCompressedCompositeName(null, null)
             : Span::buildSameKindCompressedCompositeName($serviceTarget->type, $serviceTarget->name);
+    }
+
+    private static function sequenceLengthForTestReasonsCompressionStops(): int
+    {
+        return DataProviderForTestBuilder::isLongRunMode() ? 4 : 3;
     }
 
     /**
@@ -781,23 +785,23 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
 
         $reasonsForSameKindStrategy = [
             self::REASON_COMPRESSION_STOPS_MAX_DURATION,
-            self::REASON_COMPRESSION_STOPS_DIFFERENT_TYPE,
             self::REASON_COMPRESSION_STOPS_DIFFERENT_SUBTYPE,
-            self::REASON_COMPRESSION_STOPS_NOT_COMPRESSIBLE,
             self::REASON_COMPRESSION_STOPS_OUTCOME,
             self::REASON_COMPRESSION_STOPS_DISTRIBUTED_TRACING_CONTEXT,
             self::REASON_COMPRESSION_STOPS_DIFFERENT_SERVICE_TARGET
         ];
+        if (DataProviderForTestBuilder::isLongRunMode()) {
+            $reasonsForSameKindStrategy = array_merge($reasonsForSameKindStrategy, [self::REASON_COMPRESSION_STOPS_NOT_COMPRESSIBLE, self::REASON_COMPRESSION_STOPS_DIFFERENT_TYPE]);
+        }
         $reasonsForExactMatchStrategy = array_merge([self::REASON_COMPRESSION_STOPS_DIFFERENT_NAME], $reasonsForSameKindStrategy);
 
         $onlyFirstValueCombinable = !DataProviderForTestBuilder::isLongRunMode();
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimension(self::WRAP_IN_PARENT_SPAN_KEY, $onlyFirstValueCombinable)
-            ->addKeyedDimension(self::STOPPING_SPAN_INDEX_KEY, $onlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH + 1))
-            ->addKeyedDimension(self::COMPRESSION_STRATEGY_KEY, $onlyFirstValueCombinable, $compressionStrategies)
-            ->addConditionalKeyedDimension(
+            ->addKeyedDimensionAllValuesCombinable(self::STOPPING_SPAN_INDEX_KEY, DataProviderForTestBuilder::rangeUpTo(self::sequenceLengthForTestReasonsCompressionStops() + 1))
+            ->addKeyedDimensionAllValuesCombinable(self::COMPRESSION_STRATEGY_KEY, $compressionStrategies)
+            ->addConditionalKeyedDimensionAllValueCombinable(
                 self::REASON_COMPRESSION_STOPS_KEY /* <- new dimension key */,
-                $onlyFirstValueCombinable,
                 self::COMPRESSION_STRATEGY_KEY /* <- depends on dimension key */,
                 Constants::COMPRESSION_STRATEGY_EXACT_MATCH /* <- depends on dimension true value */,
                 $reasonsForExactMatchStrategy /* <- new dimension variants for true case */,
@@ -861,11 +865,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
      */
     public function testReasonsCompressionStops(MixedMap $testArgs): void
     {
-        if (!DataProviderForTestBuilder::isLongRunMode()) {
-            self::dummyAssert();
-            return;
-        }
-
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $reason = $testArgs->getString(self::REASON_COMPRESSION_STOPS_KEY);
         $compressionStrategy = $testArgs->getString(self::COMPRESSION_STRATEGY_KEY);
@@ -911,7 +910,7 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
             $parentSpan = ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_parent_span_name', 'test_parent_span_type');
         }
 
-        foreach (RangeUtil::generateUpTo(self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH) as $currentSpanIndex) {
+        foreach (RangeUtil::generateUpTo(self::sequenceLengthForTestReasonsCompressionStops()) as $currentSpanIndex) {
             if ($currentSpanIndex === $stoppingSpanIndex) {
                 $spanName = $stoppingSpanName;
                 $spanType = $stoppingSpanType;
@@ -1003,13 +1002,13 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
             }
             $indexRangesToCheck[] = [$beginIndex, $endIndex];
         };
-        if ($stoppingSpanIndex === self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH) {
+        if ($stoppingSpanIndex === self::sequenceLengthForTestReasonsCompressionStops()) {
             self::assertCount(1, $reportedSequenceSpans);
-            $addIndexRangeToCheck(0, self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH);
+            $addIndexRangeToCheck(0, self::sequenceLengthForTestReasonsCompressionStops());
         } else {
             $addIndexRangeToCheck(0, $stoppingSpanIndex);
             $addIndexRangeToCheck($stoppingSpanIndex, $stoppingSpanIndex + 1);
-            $addIndexRangeToCheck($stoppingSpanIndex + 1, self::REASONS_COMPRESSION_STOPS_SEQUENCE_LENGTH);
+            $addIndexRangeToCheck($stoppingSpanIndex + 1, self::sequenceLengthForTestReasonsCompressionStops());
         }
         $dbgCtx->add(['indexRangesToCheck' => $indexRangesToCheck]);
 
