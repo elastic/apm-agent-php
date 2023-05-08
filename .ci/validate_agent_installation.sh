@@ -26,10 +26,9 @@ function runComponentTests () {
         composerCommand=("${composerCommand[@]}" --group "${ELASTIC_APM_PHP_TESTS_GROUP}")
     fi
 
-#    if [ -n "${ELASTIC_APM_PHP_TESTS_FILTER}" ] ; then
-#        composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
-#    fi
-    composerCommand=("${composerCommand[@]}" --filter "PDOAutoInstrumentationTest")
+    if [ -n "${ELASTIC_APM_PHP_TESTS_FILTER}" ] ; then
+        composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
+    fi
 
     local initialTimeoutInMinutes=30
     local initialTimeoutInSeconds=$((initialTimeoutInMinutes*60))
