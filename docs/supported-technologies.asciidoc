@@ -38,7 +38,7 @@ We support automatic instrumentation for the following web frameworks.
 |
 
 |Laravel
-|6, 7, 8, 9
+|6, 7, 8, 9, 10
 
 |===
 
