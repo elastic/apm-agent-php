@@ -70,7 +70,10 @@ final class TestCaseHandle implements LoggableInterface
     /** @var ?int */
     private $escalatedLogLevelForProdCode;
 
-    public function __construct(?int $escalatedLogLevelForProdCode)
+    /** @var bool */
+    private $isTestSpanCompressionCompatible;
+
+    public function __construct(?int $escalatedLogLevelForProdCode, bool $isTestSpanCompressionCompatible)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -86,6 +89,7 @@ final class TestCaseHandle implements LoggableInterface
         $this->portsInUse = $globalTestInfra->getPortsInUse();
 
         $this->escalatedLogLevelForProdCode = $escalatedLogLevelForProdCode;
+        $this->isTestSpanCompressionCompatible = $isTestSpanCompressionCompatible;
     }
 
     /**
@@ -212,6 +216,10 @@ final class TestCaseHandle implements LoggableInterface
             $params->setAgentOption(OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
         }
         $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPortForAgent());
+
+        if (!$this->isTestSpanCompressionCompatible) {
+            $params->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+        }
     }
 
     public function addAppCodeInvocation(AppCodeInvocation $appCodeInvocation): void

@@ -24,14 +24,13 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class SpanContextServiceDto
 {
     use AssertValidTrait;
 
     /** @var ?SpanContextServiceTargetDto */
-    private $target = null;
+    public $target = null;
 
     /**
      * @param mixed $value
@@ -66,17 +65,5 @@ final class SpanContextServiceDto
     public function assertMatches(SpanContextServiceExpectations $expectations): void
     {
         SpanContextServiceTargetDto::assertNullableMatches($expectations->target, $this->target);
-    }
-
-    public static function assertNullableMatches(
-        SpanContextServiceExpectations $expectations,
-        ?self $actual
-    ): void {
-        if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
-            return;
-        }
-
-        $actual->assertMatches($expectations);
     }
 }

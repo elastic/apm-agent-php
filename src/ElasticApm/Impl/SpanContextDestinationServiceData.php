@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -46,9 +47,9 @@ final class SpanContextDestinationServiceData implements OptionalSerializableDat
     public $type;
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return true;
+        return BoolUtil::INT_FOR_TRUE;
     }
 
     /** @inheritDoc */

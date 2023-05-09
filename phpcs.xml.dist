@@ -14,6 +14,18 @@
         </properties>
     </rule>
 
+    <config name="installed_paths" value="../../slevomat/coding-standard"/>
+
+	<!-- https://github.com/slevomat/coding-standard/blob/master/doc/namespaces.md#slevomatcodingstandardnamespacesunuseduses- -->
+	<rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
+        <properties>
+            <!-- searchAnnotations (defaults to false): enables searching for class names in annotations. -->
+            <property name="searchAnnotations" value="true"/>
+        </properties>
+    </rule>
+
+	<!-- other sniffs to include -->
+
     <exclude-pattern>*/polyfills/Stringable.php</exclude-pattern>
     <exclude-pattern>*/polyfills/WeakMap.php</exclude-pattern>
 </ruleset>

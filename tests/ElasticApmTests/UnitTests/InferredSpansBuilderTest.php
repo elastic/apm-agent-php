@@ -25,7 +25,6 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\InferredSpansBuilder;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TracerInterface;
@@ -40,6 +39,7 @@ use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockClockTracerUnitTestCaseBase;
 use ElasticApmTests\UnitTests\UtilTests\StackTraceUtilTest;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TimeUtilForTests;
 use ElasticApmTests\Util\TraceActual;
@@ -64,6 +64,17 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
     private const EXPECTED_SPANS_KEY = 'EXPECTED_SPANS';
     private const EXPECTED_STACK_TRACES_KEY = 'EXPECTED_STACK_TRACES';
     private const INPUT_OPTIONS_KEY = 'INPUT_OPTIONS';
+
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
 
     private static function newInferredSpansBuilder(TracerInterface $tracer): InferredSpansBuilder
     {
@@ -166,34 +177,27 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         self::assertCount(1, $this->mockEventSink->idToTransaction());
         $span = $this->mockEventSink->singleSpan();
 
-        $ctx = LoggableToString::convert(
-            [
-                'expectedStackTrace' => $expectedStackTrace,
-                'span'               => $span,
-            ]
-        );
-        self::assertNotNull($expectedStackTrace, $ctx);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['expectedStackTrace' => $expectedStackTrace, 'span' => $span]);
+        self::assertNotNull($expectedStackTrace);
         // Top 3 frames are from this class:
         //      testOneStackTrace >>> withBuilderDuringTransaction >>> {closure} >>> helperForTestOneStackTrace
         foreach (RangeUtil::generateUpTo(4) as $i) {
-            self::assertSame(__FILE__, $expectedStackTrace[$i]->file, $ctx);
-            self::assertSame(__CLASS__, $expectedStackTrace[$i]->class, $ctx);
+            self::assertSame(__FILE__, $expectedStackTrace[$i]->file);
+            self::assertSame(__CLASS__, $expectedStackTrace[$i]->class);
         }
-        self::assertNotEquals(__FILE__, $expectedStackTrace[4]->file, $ctx);
-        self::assertNotEquals(__CLASS__, $expectedStackTrace[4]->class, $ctx);
+        self::assertNotEqualsEx(__FILE__, $expectedStackTrace[4]->file);
+        self::assertNotEqualsEx(__CLASS__, $expectedStackTrace[4]->class);
 
-        self::assertSame('InferredSpansBuilderTest', ClassNameUtil::fqToShort(__CLASS__), $ctx);
-        self::assertSame('helperForTestOneStackTrace', $expectedStackTrace[0]->function, $ctx);
-        self::assertSame('InferredSpansBuilderTest->helperForTestOneStackTrace', $span->name, $ctx);
-        self::assertSame(self::EXPECTED_SPAN_TYPE, $span->type, $ctx);
-        self::assertSame($expectedTimestampMicroseconds, $span->timestamp, $ctx);
-        self::assertSame($expectedDurationMilliseconds, $span->duration, $ctx);
-        TraceValidator::validate(
-            new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan())
-        );
+        self::assertSame('InferredSpansBuilderTest', ClassNameUtil::fqToShort(__CLASS__));
+        self::assertSame('helperForTestOneStackTrace', $expectedStackTrace[0]->function);
+        self::assertSame('InferredSpansBuilderTest->helperForTestOneStackTrace', $span->name);
+        self::assertSame(self::EXPECTED_SPAN_TYPE, $span->type);
+        self::assertSame($expectedTimestampMicroseconds, $span->timestamp);
+        self::assertSame($expectedDurationMilliseconds, $span->duration);
+        TraceValidator::validate(new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan()));
 
         $expectedStackTraceConvertedToApm = StackTraceUtil::convertClassicToApmFormat($expectedStackTrace);
-        self::assertNotNull($span->stackTrace, $ctx);
+        self::assertNotNull($span->stackTrace);
         StackTraceUtilTest::assertEqualApmStackTraces($expectedStackTraceConvertedToApm, $span->stackTrace);
     }
 
@@ -332,6 +336,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
      */
     private function charDiagramTestImpl(array $args): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         /** @var array<string, mixed> $inputOptions */
         $inputOptions = ArrayUtil::getValueIfKeyExistsElse(self::INPUT_OPTIONS_KEY, $args, []);
         $this->setUpTestEnv(
@@ -358,27 +363,24 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $inferredSpansBuilder->close();
         $tx->end();
 
-        TraceValidator::validate(
-            new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan())
-        );
+        TraceValidator::validate(new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan()));
         $actualTx = $this->mockEventSink->singleTransaction();
         $actualIdToSpan = $this->mockEventSink->idToSpan();
 
         $expectedSpans = self::charDiagramProcessExpectedSpans($expectedSpansLines);
         self::assertCount(1, $this->mockEventSink->idToTransaction());
-        $dbgCtxTop = ['expectedSpans' => $expectedSpans, 'actualIdToSpan' => $actualIdToSpan];
-        self::assertSame(count($expectedSpans), count($actualIdToSpan), LoggableToString::convert($dbgCtxTop));
+        $dbgCtx->add(['expectedSpans' => $expectedSpans, 'actualIdToSpan' => $actualIdToSpan]);
+        self::assertSame(count($expectedSpans), count($actualIdToSpan));
 
         /** @var array<string, int> $actualSpanIdToDistanceToTransaction */
         $actualSpanIdToDistanceToTransaction = [];
         foreach ($actualIdToSpan as $id => $span) {
-            $actualSpanIdToDistanceToTransaction[$id]
-                = self::calcSpanDistanceToTransaction($span, $actualTx, $actualIdToSpan);
+            $actualSpanIdToDistanceToTransaction[$id] = self::calcSpanDistanceToTransaction($span, $actualTx, $actualIdToSpan);
         }
 
         $actualSpansSortedAsExpected = array_values($actualIdToSpan);
         usort(
-            $actualSpansSortedAsExpected,
+            $actualSpansSortedAsExpected /* <- ref */,
             function (SpanDto $spanA, SpanDto $spanB) use ($actualSpanIdToDistanceToTransaction): int {
                 $startTimeCmp = TimeUtilForTests::compareTimestamps($spanA->timestamp, $spanB->timestamp);
                 if ($startTimeCmp !== 0) {
@@ -388,36 +390,28 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
                        - $actualSpanIdToDistanceToTransaction[$spanB->id];
             }
         );
+        $dbgCtx->add(['actualSpansSortedAsExpected' => $actualSpansSortedAsExpected]);
 
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($expectedSpans)) as $i) {
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
             /** @var array<string, mixed> $expectedSpan */
             $expectedSpan = $expectedSpans[$i];
+            $dbgCtx->add(['expectedSpan' => $expectedSpan]);
             /** @var SpanDto $actualSpan */
             $actualSpan = $actualSpansSortedAsExpected[$i];
-            $dbgCtxPerIt = [
-                'expectedSpan'                => $expectedSpan,
-                'actualSpan'                  => $actualSpan,
-                'actualSpansSortedAsExpected' => $actualSpansSortedAsExpected,
-            ];
-            self::assertSame($expectedSpan[self::NAME_KEY], $actualSpan->name, LoggableToString::convert($dbgCtxPerIt));
-            self::assertSame(self::EXPECTED_SPAN_TYPE, $actualSpan->type, LoggableToString::convert($dbgCtxPerIt));
+            $dbgCtx->add(['actualSpan' => $actualSpan]);
+            self::assertSame($expectedSpan[self::NAME_KEY], $actualSpan->name);
+            self::assertSame(self::EXPECTED_SPAN_TYPE, $actualSpan->type);
             if (array_key_exists(self::PARENT_INDEX_KEY, $expectedSpan)) {
                 $expectedParentSpanId = $actualSpansSortedAsExpected[$expectedSpan[self::PARENT_INDEX_KEY]]->id;
-                self::assertSame($expectedParentSpanId, $actualSpan->parentId, LoggableToString::convert($dbgCtxPerIt));
+                self::assertSame($expectedParentSpanId, $actualSpan->parentId);
             } else {
-                self::assertSame($actualTx->id, $actualSpan->parentId, LoggableToString::convert($dbgCtxPerIt));
+                self::assertSame($actualTx->id, $actualSpan->parentId);
             }
-            self::assertSame(
-                $expectedSpan[self::START_TIME_KEY],
-                $actualSpan->timestamp,
-                LoggableToString::convert($dbgCtxPerIt)
-            );
+            self::assertSame($expectedSpan[self::START_TIME_KEY], $actualSpan->timestamp);
             $durationInMicroSeconds = $expectedSpan[self::END_TIME_KEY] - $expectedSpan[self::START_TIME_KEY];
-            self::assertSame(
-                TimeUtil::microsecondsToMilliseconds($durationInMicroSeconds),
-                $actualSpan->duration,
-                LoggableToString::convert($dbgCtxPerIt)
-            );
+            self::assertSame(TimeUtil::microsecondsToMilliseconds($durationInMicroSeconds), $actualSpan->duration);
 
             /** @var string[] $expectedStackTraceAsLetterList */
             $expectedStackTraceAsLetterList = $expectedSpan[self::STACK_TRACE_KEY];
@@ -432,13 +426,10 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             foreach ($expectedStackTraceAsLetterList as $funcName) {
                 $expectedStackTraceClassicFormat[] = self::charDiagramFuncNameToStackTraceFrame($funcName);
             }
-            self::assertNotNull($actualSpan->stackTrace, LoggableToString::convert($dbgCtxPerIt));
-            StackTraceUtilTest::assertEqualApmStackTraces(
-                StackTraceUtil::convertClassicToApmFormat($expectedStackTraceClassicFormat),
-                $actualSpan->stackTrace,
-                $dbgCtxPerIt
-            );
+            self::assertNotNull($actualSpan->stackTrace);
+            StackTraceUtilTest::assertEqualApmStackTraces(StackTraceUtil::convertClassicToApmFormat($expectedStackTraceClassicFormat), $actualSpan->stackTrace);
         }
+        $dbgCtx->popSubScope();
     }
 
     /** @noinspection SpellCheckingInspection, RedundantSuppression */

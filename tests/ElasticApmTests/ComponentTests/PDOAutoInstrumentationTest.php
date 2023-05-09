@@ -38,6 +38,7 @@ use ElasticApmTests\ComponentTests\Util\DbAutoInstrumentationUtilForTests;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\DbSpanExpectationsBuilder;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use PDO;
@@ -46,7 +47,7 @@ use PDO;
  * @group smoke
  * @group does_not_require_external_services
  */
-final class PDOTest extends ComponentTestCaseBase
+final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
 {
     private const CONNECTION_STRING_PREFIX = 'sqlite:';
 
@@ -54,27 +55,38 @@ final class PDOTest extends ComponentTestCaseBase
     public const MEMORY_DB_NAME = 'memory';
     public const FILE_DB_NAME = '<file DB>';
 
-    private const MESSAGES
+    public const MESSAGES
         = [
             'Just testing...'    => 1,
             'More testing...'    => 22,
             'SQLite3 is cool...' => 333,
         ];
 
-    private const CREATE_TABLE_SQL
+    public const CREATE_TABLE_SQL
         = /** @lang text */
         'CREATE TABLE messages (
             id INTEGER PRIMARY KEY,
             text TEXT,
             time INTEGER)';
 
-    private const INSERT_SQL
+    public const INSERT_SQL
         = /** @lang text */
         'INSERT INTO messages (text, time) VALUES (:text, :time)';
 
-    private const SELECT_SQL
+    public const SELECT_SQL
         = /** @lang text */
         'SELECT * FROM messages';
+
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
 
     private static function buildConnectionString(string $dbName): string
     {
@@ -140,7 +152,7 @@ final class PDOTest extends ComponentTestCaseBase
     }
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<array{MixedMap}>
      */
     public function dataProviderForTestAutoInstrumentation(): iterable
     {
@@ -155,51 +167,35 @@ final class PDOTest extends ComponentTestCaseBase
         $dbNames[] = self::TEMP_DB_NAME;
         $dbNames[] = self::FILE_DB_NAME;
 
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
-            ->addGeneratorOnlyFirstValueCombinable(
-                AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator(
-                    $disableInstrumentationsVariants
-                )
-            )
+            ->addGeneratorOnlyFirstValueCombinable(AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator($disableInstrumentationsVariants))
             ->addKeyedDimensionOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $dbNames)
-            ->addGeneratorOnlyFirstValueCombinable(
-                DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator()
-            )
-            ->wrapResultIntoArray()
+            ->addGeneratorOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator())
             ->build();
 
-        return self::adaptToSmoke($result);
+        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
     }
 
     /**
-     * @param array<string, mixed> $args
-     * @param ?string             &$dbName
-     * @param ?bool               &$wrapInTx
-     * @param ?bool               &$rollback
+     * @param MixedMap  $args
+     * @param ?string  &$dbName
+     * @param ?bool    &$wrapInTx
+     * @param ?bool    &$rollback
+     *
+     * @param-out string $dbName
+     * @param-out bool   $wrapInTx
+     * @param-out bool   $rollback
      */
-    public static function extractSharedArgs(
-        array $args,
-        /* out */ ?string &$dbName,
-        /* out */ ?bool &$wrapInTx,
-        /* out */ ?bool &$rollback
-    ): void {
-        $dbName = self::getStringFromMap(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $args);
-        $wrapInTx = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY, $args);
-        $rollback = self::getBoolFromMap(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY, $args);
-    }
-
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestAutoInstrumentation(array $appCodeArgs): void
+    public static function extractSharedArgs(MixedMap $args, /* out */ ?string &$dbName, /* out */ ?bool &$wrapInTx, /* out */ ?bool &$rollback): void
     {
-        self::extractSharedArgs(
-            $appCodeArgs,
-            /* out */ $dbName,
-            /* out */ $wrapInTx,
-            /* out */ $rollback
-        );
+        $dbName = $args->getString(DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
+        $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
+        $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+    }
+
+    public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
+    {
+        self::extractSharedArgs($appCodeArgs, /* out */ $dbName, /* out */ $wrapInTx, /* out */ $rollback);
 
         $pdo = new PDO(self::buildConnectionString($dbName));
         self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
@@ -226,7 +222,7 @@ final class PDOTest extends ComponentTestCaseBase
             $msgText = $row['text'];
             self::assertIsString($msgText);
             self::assertArrayHasKey($msgText, self::MESSAGES, $dbgCtx);
-            self::assertEquals(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
+            self::assertEqualsEx(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
 
         if ($wrapInTx) {
@@ -236,10 +232,8 @@ final class PDOTest extends ComponentTestCaseBase
 
     /**
      * @dataProvider dataProviderForTestAutoInstrumentation
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testAutoInstrumentation(array $testArgs): void
+    public function testAutoInstrumentation(MixedMap $testArgs): void
     {
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
@@ -249,13 +243,10 @@ final class PDOTest extends ComponentTestCaseBase
         );
     }
 
-    /**
-     * @param array<string, mixed> $testArgs
-     */
-    private function implTestAutoInstrumentation(array $testArgs): void
+    private function implTestAutoInstrumentation(MixedMap $testArgs): void
     {
-        $disableInstrumentationsOptVal = self::getStringFromMap(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY, $testArgs);
-        $isInstrumentationEnabled = self::getBoolFromMap(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY, $testArgs);
+        $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
+        $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
 
         self::extractSharedArgs(
             $testArgs,
@@ -266,7 +257,7 @@ final class PDOTest extends ComponentTestCaseBase
 
         $testCaseHandle = $this->getTestCaseHandle();
 
-        $appCodeArgs = $testArgs;
+        $appCodeArgs = $testArgs->clone();
 
         $dbName = $dbNameArg;
         if ($dbNameArg === self::FILE_DB_NAME) {
@@ -276,8 +267,7 @@ final class PDOTest extends ComponentTestCaseBase
             $appCodeArgs[DbAutoInstrumentationUtilForTests::DB_NAME_KEY] = $dbName;
         }
 
-        $sharedExpectations = DbSpanExpectationsBuilder::default(/* dbType: */ 'sqlite', $dbName);
-        $expectationsBuilder = new DbSpanExpectationsBuilder($sharedExpectations);
+        $expectationsBuilder = new DbSpanExpectationsBuilder(/* dbType: */ 'sqlite', $dbName);
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {

@@ -140,7 +140,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
         $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
 
-        /** @var array<mixed, mixed> $parentJsonNode */
+        /** @var array<mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
         ArrayUtilForTests::addUnique($unknownPropertyName, $unknownPropertyValue, /* ref */ $parentJsonNode);
 

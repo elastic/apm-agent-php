@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class SpanContextDbDto
 {
@@ -46,7 +45,7 @@ final class SpanContextDbDto
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'statement':
-                        $result->statement = self::assertValidNullableNonKeywordString($value);
+                        $result->statement = self::assertValidNullableString($value);
                         return true;
                     default:
                         return false;
@@ -65,16 +64,6 @@ final class SpanContextDbDto
 
     public function assertMatches(SpanContextDbExpectations $expectations): void
     {
-        self::assertSameNullableNonKeywordStringExpectedOptional($expectations->statement, $this->statement);
-    }
-
-    public static function assertNullableMatches(SpanContextDbExpectations $expectations, ?self $actual): void
-    {
-        if ($actual === null) {
-            TestCase::assertTrue($expectations->isEmpty());
-            return;
-        }
-
-        $actual->assertMatches($expectations);
+        self::assertSameNullableStringExpectedOptional($expectations->statement, $this->statement);
     }
 }

@@ -29,17 +29,11 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
 {
     public const DEFAULT_SPAN_TYPE = 'inferred';
 
-    public function __construct(SpanExpectations $prototype)
-    {
-        parent::__construct($prototype);
-    }
-
-    public static function default(): SpanExpectations
+    /** @inheritDoc */
+    public function startNew(): SpanExpectations
     {
         $result = new SpanExpectations();
-
         $result->type->setValue(self::DEFAULT_SPAN_TYPE);
-
         return $result;
     }
 

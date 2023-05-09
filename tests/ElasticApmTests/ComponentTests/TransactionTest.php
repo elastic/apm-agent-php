@@ -87,6 +87,6 @@ final class TransactionTest extends ComponentTestCaseBase
         self::assertSame(1234.56789, self::getLabel($tx, 'float_label_key'));
         self::assertNull(self::getLabel($tx, 'null_label_key'));
         self::assertSame('custom TX result', $tx->result);
-        self::assertEquals(100, $tx->duration);
+        self::assertSame(floatval(100), $tx->duration);
     }
 }

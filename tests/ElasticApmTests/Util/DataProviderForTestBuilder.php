@@ -24,27 +24,56 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use PHPUnit\Framework\TestCase;
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
+use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\ComponentTests\Util\ConfigUtilForTests;
 
 final class DataProviderForTestBuilder
 {
     /** @var bool[] */
     private $onlyFirstValueCombinable = [];
 
-    /** @var array<callable(array<mixed, mixed>): iterable<array<mixed, mixed>>> */
+    /** @var array<callable(array<mixed>): iterable<array<mixed>>> */
     private $generators = [];
 
-    /** @var bool */
-    private $shouldWrapResultIntoArray = false;
+    /** @var ?int */
+    private $emitOnlyDataSetWithIndex = null;
 
     private function assertValid(): void
     {
-        TestCase::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
+        TestCaseBase::assertSameSize($this->generators, $this->onlyFirstValueCombinable);
+    }
+
+    public static function isLongRunMode(): bool
+    {
+        $configForTests = ConfigUtilForTests::read(/* additionalConfigSource */ null, NoopLoggerFactory::singletonInstance());
+        return $configForTests->isLongRunMode;
+    }
+
+    /**
+     * @template T
+     *
+     * @param array<T>|callable(): iterable<T> $values
+     *
+     * @return callable(): iterable<T>
+     */
+    private static function adaptArrayToMultiUseIterable($values): callable
+    {
+        if (!is_array($values)) {
+            return $values;
+        }
+
+        /**
+         * @return iterable<T>
+         */
+        return function () use ($values): iterable {
+            return $values;
+        };
     }
 
     /**
      * @param bool $onlyFirstValueCombinable
-     * @param callable(array<mixed, mixed>): iterable<array<mixed, mixed>> $generator
+     * @param callable(array<mixed>): iterable<array<mixed>> $generator
      *
      * @return $this
      */
@@ -53,7 +82,6 @@ final class DataProviderForTestBuilder
         $this->assertValid();
 
         $this->onlyFirstValueCombinable[] = $onlyFirstValueCombinable;
-        TestCase::assertFalse(IterableUtilForTests::isEmpty($generator([])));
         $this->generators[] = $generator;
 
         $this->assertValid();
@@ -61,7 +89,7 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param callable(array<mixed, mixed> $resultSoFar): iterable<array<mixed, mixed>> $generator
+     * @param callable(array<mixed> $resultSoFar): iterable<array<mixed>> $generator
      *
      * @return $this
      */
@@ -71,7 +99,7 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param callable(array<mixed, mixed>): iterable<array<mixed, mixed>> $generator
+     * @param callable(array<mixed>): iterable<array<mixed>> $generator
      *
      * @return $this
      *
@@ -83,22 +111,22 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param bool                   $onlyFirstValueCombinable
-     * @param iterable<mixed, mixed> $iterable
+     * @param bool                                     $onlyFirstValueCombinable
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      */
-    public function addDimension(bool $onlyFirstValueCombinable, iterable $iterable): self
+    public function addDimension(bool $onlyFirstValueCombinable, $values): self
     {
         $this->addGenerator(
             $onlyFirstValueCombinable,
             /**
-             * @param array<mixed, mixed> $resultSoFar
-             * @return iterable<array<mixed, mixed>>
+             * @param array<mixed> $resultSoFar
+             * @return iterable<array<mixed>>
              */
-            function (array $resultSoFar) use ($iterable): iterable {
+            function (array $resultSoFar) use ($values): iterable {
                 $expectedKeyForList = 0;
-                foreach ($iterable as $key => $val) {
+                foreach (self::adaptArrayToMultiUseIterable($values)() as $key => $val) {
                     yield array_merge($resultSoFar, ($key === $expectedKeyForList) ? [$val] : [$key => $val]);
                     ++$expectedKeyForList;
                 }
@@ -108,44 +136,44 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param iterable<mixed, mixed> $iterable
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      */
-    public function addDimensionOnlyFirstValueCombinable(iterable $iterable): self
+    public function addDimensionOnlyFirstValueCombinable($values): self
     {
-        return $this->addDimension(/* onlyFirstValueCombinable: */ true, $iterable);
+        return $this->addDimension(/* onlyFirstValueCombinable: */ true, $values);
     }
 
     /**
-     * @param iterable<mixed, mixed> $iterable
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      */
-    public function addDimensionAllValuesCombinable(iterable $iterable): self
+    public function addDimensionAllValuesCombinable($values): self
     {
-        return $this->addDimension(/* onlyFirstValueCombinable: */ false, $iterable);
+        return $this->addDimension(/* onlyFirstValueCombinable: */ false, $values);
     }
 
     /**
-     * @param string                 $dimensionKey
-     * @param bool                   $onlyFirstValueCombinable
-     * @param iterable<mixed, mixed> $iterable
+     * @param string                                   $dimensionKey
+     * @param bool                                     $onlyFirstValueCombinable
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      */
-    public function addKeyedDimension(string $dimensionKey, bool $onlyFirstValueCombinable, iterable $iterable): self
+    public function addKeyedDimension(string $dimensionKey, bool $onlyFirstValueCombinable, $values): self
     {
         $this->addGenerator(
             $onlyFirstValueCombinable,
             /**
-             * @param array<mixed, mixed> $resultSoFar
-             * @return iterable<array<mixed, mixed>>
+             * @param array<mixed> $resultSoFar
+             * @return iterable<array<mixed>>
              */
-            function (array $resultSoFar) use ($dimensionKey, $iterable): iterable {
+            function (array $resultSoFar) use ($dimensionKey, $values): iterable {
                 $expectedKeyForList = 0;
-                foreach ($iterable as $key => $val) {
-                    TestCase::assertSame($expectedKeyForList, $key);
+                foreach (self::adaptArrayToMultiUseIterable($values)() as $key => $val) {
+                    TestCaseBase::assertSame($expectedKeyForList, $key);
                     yield array_merge($resultSoFar, [$dimensionKey => $val]);
                     ++$expectedKeyForList;
                 }
@@ -155,27 +183,27 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param string                 $dimensionKey
-     * @param iterable<mixed, mixed> $iterable
+     * @param string                                   $dimensionKey
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      */
-    public function addKeyedDimensionOnlyFirstValueCombinable(string $dimensionKey, iterable $iterable): self
+    public function addKeyedDimensionOnlyFirstValueCombinable(string $dimensionKey, $values): self
     {
-        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true, $iterable);
+        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true, $values);
     }
 
     /**
-     * @param string                      $dimensionKey
-     * @param iterable<mixed, mixed> $iterable
+     * @param string                                   $dimensionKey
+     * @param array<mixed>|callable(): iterable<mixed> $values
      *
      * @return $this
      *
      * @noinspection PhpUnused
      */
-    public function addKeyedDimensionAllValuesCombinable(string $dimensionKey, iterable $iterable): self
+    public function addKeyedDimensionAllValuesCombinable(string $dimensionKey, $values): self
     {
-        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false, $iterable);
+        return $this->addKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false, $values);
     }
 
     /**
@@ -250,47 +278,45 @@ final class DataProviderForTestBuilder
      */
     private static function getIterableFirstValue(iterable $iterable)
     {
-        TestCase::assertTrue(IterableUtilForTests::getFirstValue($iterable, /* out */ $value));
+        TestCaseBase::assertTrue(IterableUtilForTests::getFirstValue($iterable, /* out */ $value));
         return $value;
     }
 
     /**
-     * @param int                 $genIndexForAllValues
-     * @param array<mixed, mixed> $resultSoFar
-     * @param int                 $currentGenIndex
+     * @param int          $genIndexForAllValues
+     * @param array<mixed> $resultSoFar
+     * @param int          $currentGenIndex
      *
-     * @return iterable<array<mixed, mixed>>
+     * @return iterable<array<mixed>>
      */
-    private function buildImpl(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex, int &$dataSetIndex): iterable
+    private function buildForGenIndex(int $genIndexForAllValues, array $resultSoFar, int $currentGenIndex): iterable
     {
-        TestCase::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
+        TestCaseBase::assertLessThanOrEqual(count($this->generators), $currentGenIndex);
         if ($currentGenIndex === count($this->generators)) {
-            $dataSetName = '#' . $dataSetIndex;
-            $dataSetName .= ' ' . LoggableToString::convert($resultSoFar);
-            yield $dataSetName => ($this->shouldWrapResultIntoArray ? [$resultSoFar] : $resultSoFar);
-            ++$dataSetIndex;
+            yield $resultSoFar;
             return;
         }
 
-        $iterable = $this->generators[$currentGenIndex]($resultSoFar);
-        $shouldGenAfterFirst
-            = ($currentGenIndex === $genIndexForAllValues) || (!$this->onlyFirstValueCombinable[$currentGenIndex]);
+        $currentGen = $this->generators[$currentGenIndex];
+        TestCaseBase::assertFalse(IterableUtilForTests::isEmpty($currentGen($resultSoFar)));
+        $iterable = $currentGen($resultSoFar);
+        $shouldGenAfterFirst = ($currentGenIndex === $genIndexForAllValues) || (!$this->onlyFirstValueCombinable[$currentGenIndex]);
         $resultsToGen = $shouldGenAfterFirst ? $iterable : [self::getIterableFirstValue($iterable)];
         $shouldGenFirst = ($genIndexForAllValues === 0) || ($currentGenIndex !== $genIndexForAllValues);
         $resultsToGen = $shouldGenFirst ? $resultsToGen : IterableUtilForTests::skipFirst($resultsToGen);
 
         foreach ($resultsToGen as $resultSoFarPlusCurrent) {
-            /** @var array<mixed, mixed> $resultSoFarPlusCurrent */
-            yield from $this->buildImpl($genIndexForAllValues, $resultSoFarPlusCurrent, $currentGenIndex + 1, $dataSetIndex);
+            /** @var array<mixed> $resultSoFarPlusCurrent */
+            yield from $this->buildForGenIndex($genIndexForAllValues, $resultSoFarPlusCurrent, $currentGenIndex + 1);
         }
     }
 
     /**
-     * @param array<mixed, iterable<mixed>> $iterables
+     * @param array<mixed, array<mixed>> $iterables
      *
-     * @return callable(array<mixed, mixed> $resultSoFar): iterable<array<mixed, mixed>> $generator
+     * @return callable(array<mixed> $resultSoFar): iterable<array<mixed>> $generator
      */
-    public static function cartesianProductGenerator(array $iterables): callable
+    private static function cartesianProduct(array $iterables): callable
     {
         /**
          * @param array<string|int, mixed> $resultSoFar
@@ -306,17 +332,17 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param array<mixed, iterable<mixed>> $iterables
+     * @param array<mixed, array<mixed>> $iterables
      *
      * @return $this
      */
     public function addCartesianProduct(bool $onlyFirstValueCombinable, array $iterables): self
     {
-        return $this->addGenerator($onlyFirstValueCombinable, self::cartesianProductGenerator($iterables));
+        return $this->addGenerator($onlyFirstValueCombinable, self::cartesianProduct($iterables));
     }
 
     /**
-     * @param array<mixed, iterable<mixed>> $iterables
+     * @param array<mixed, array<mixed>> $iterables
      *
      * @return $this
      */
@@ -326,7 +352,7 @@ final class DataProviderForTestBuilder
     }
 
     /**
-     * @param array<mixed, iterable<mixed>> $iterables
+     * @param array<mixed, array<mixed>> $iterables
      *
      * @return $this
      *
@@ -337,27 +363,243 @@ final class DataProviderForTestBuilder
         return $this->addCartesianProduct(/* onlyFirstValueCombinable: */ false, $iterables);
     }
 
-    public function wrapResultIntoArray(): self
+    /**
+     * @param string                                                 $masterSwitchKey
+     * @param array<array<mixed>>|callable(): iterable<array<mixed>> $combinationsForEnabled
+     * @param array<array<mixed>>|callable(): iterable<array<mixed>> $combinationsForDisabled
+     *
+     * @return callable(array<mixed>): iterable<array<mixed>>
+     */
+    public static function masterSwitchCombinationsGenerator(string $masterSwitchKey, $combinationsForEnabled, $combinationsForDisabled): callable
     {
-        $this->assertValid();
-        $this->shouldWrapResultIntoArray = true;
-        return $this;
+        /**
+         * @param array<mixed> $resultSoFar
+         *
+         * @return iterable<array<mixed>>
+         */
+        return function (array $resultSoFar) use ($masterSwitchKey, $combinationsForEnabled, $combinationsForDisabled): iterable {
+            foreach (self::adaptArrayToMultiUseIterable($combinationsForEnabled)() as $combination) {
+                yield array_merge([$masterSwitchKey => true], array_merge($combination, $resultSoFar));
+            }
+            foreach (self::adaptArrayToMultiUseIterable($combinationsForDisabled)() as $combination) {
+                yield array_merge([$masterSwitchKey => false], array_merge($combination, $resultSoFar));
+            }
+        };
     }
 
     /**
-     * @return iterable<array<mixed, mixed>>
+     * @param string                 $dimensionKey
+     * @param bool                   $onlyFirstValueCombinable
+     * @param string                 $prevDimensionKey
+     * @param mixed                  $prevDimensionTrueValue
+     * @param iterable<mixed, mixed> $iterableForTrue
+     * @param iterable<mixed, mixed> $iterableForFalse
+     *
+     * @return $this
      */
-    public function build(): iterable
+    public function addConditionalKeyedDimension(
+        string $dimensionKey,
+        bool $onlyFirstValueCombinable,
+        string $prevDimensionKey,
+        $prevDimensionTrueValue,
+        iterable $iterableForTrue,
+        iterable $iterableForFalse
+    ): self {
+        return $this->addGenerator(
+            $onlyFirstValueCombinable,
+            /**
+             * @param array<mixed> $resultSoFar
+             *
+             * @return iterable<array<mixed>>
+             */
+            function (array $resultSoFar) use ($dimensionKey, $prevDimensionKey, $prevDimensionTrueValue, $iterableForTrue, $iterableForFalse): iterable {
+                $iterable = $resultSoFar[$prevDimensionKey] === $prevDimensionTrueValue ? $iterableForTrue : $iterableForFalse;
+                foreach ($iterable as $value) {
+                    yield array_merge([$dimensionKey => $value], $resultSoFar);
+                }
+            }
+        );
+    }
+
+    /**
+     * @param string                 $dimensionKey
+     * @param string                 $prevDimensionKey
+     * @param mixed                  $prevDimensionTrueValue
+     * @param iterable<mixed, mixed> $iterableForTrue
+     * @param iterable<mixed, mixed> $iterableForFalse
+     *
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addConditionalKeyedDimensionOnlyFirstValueCombinable(
+        string $dimensionKey,
+        string $prevDimensionKey,
+        $prevDimensionTrueValue,
+        iterable $iterableForTrue,
+        iterable $iterableForFalse
+    ): self {
+        return $this->addConditionalKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ true, $prevDimensionKey, $prevDimensionTrueValue, $iterableForTrue, $iterableForFalse);
+    }
+
+    /**
+     * @param string                 $dimensionKey
+     * @param string                 $prevDimensionKey
+     * @param mixed                  $prevDimensionTrueValue
+     * @param iterable<mixed, mixed> $iterableForTrue
+     * @param iterable<mixed, mixed> $iterableForFalse
+     *
+     * @return $this
+     */
+    public function addConditionalKeyedDimensionAllValueCombinable(
+        string $dimensionKey,
+        string $prevDimensionKey,
+        $prevDimensionTrueValue,
+        iterable $iterableForTrue,
+        iterable $iterableForFalse
+    ): self {
+        return $this->addConditionalKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false, $prevDimensionKey, $prevDimensionTrueValue, $iterableForTrue, $iterableForFalse);
+    }
+
+    /**
+     * @return iterable<array<mixed>>
+     */
+    public function buildWithoutDataSetName(): iterable
     {
         $this->assertValid();
-        TestCase::assertNotCount(0, $this->generators);
+        TestCaseBase::assertNotEmpty($this->generators);
 
-        $dataSetIndex = 0;
         for ($genIndexForAllValues = 0; $genIndexForAllValues < count($this->generators); ++$genIndexForAllValues) {
             if ($genIndexForAllValues !== 0 && !$this->onlyFirstValueCombinable[$genIndexForAllValues]) {
                 continue;
             }
-            yield from $this->buildImpl($genIndexForAllValues, /* resultSoFar: */ [], 0 /* currentGenIndex */, /* ref */ $dataSetIndex);
+            yield from $this->buildForGenIndex($genIndexForAllValues, /* resultSoFar: */ [], /* currentGenIndex */ 0);
         }
+    }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<array<TKey, TValue>>|callable(): iterable<array<TKey, TValue>> $dataSetsSource
+     * @param ?int                                                                 $emitOnlyDataSetWithIndex
+     *
+     * @return iterable<string, array<TKey, TValue>>
+     */
+    public static function keyEachDataSetWithDbgDesc($dataSetsSource, ?int $emitOnlyDataSetWithIndex = null): iterable
+    {
+        if (is_array($dataSetsSource)) {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource);
+            $dataSets = $dataSetsSource;
+        } else {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource());
+            $dataSets = $dataSetsSource();
+        }
+
+        $dataSetIndex = 0;
+        foreach ($dataSets as $dataSet) {
+            ++$dataSetIndex;
+            if ($emitOnlyDataSetWithIndex !== null && $dataSetIndex !== $emitOnlyDataSetWithIndex) {
+                continue;
+            }
+            yield ('#' . $dataSetIndex . ' out of ' . $dataSetsCount . ': ' . LoggableToString::convert($dataSet)) => $dataSet;
+        }
+    }
+
+    /**
+     * @param int $emitOnlyDataSetWithIndex
+     *
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function emitOnlyDataSetWithIndex(int $emitOnlyDataSetWithIndex): self
+    {
+        $this->emitOnlyDataSetWithIndex = $emitOnlyDataSetWithIndex;
+        return $this;
+    }
+
+    /**
+     * @return iterable<string, array<mixed>>
+     */
+    public function build(): iterable
+    {
+        return self::keyEachDataSetWithDbgDesc(
+            /**
+             * @return iterable<array<mixed>>
+             */
+            function (): iterable {
+                return $this->buildWithoutDataSetName();
+            },
+            $this->emitOnlyDataSetWithIndex
+        );
+    }
+
+    /**
+     * @return callable(): iterable<string, array<mixed>>
+     */
+    public function buildAsMultiUse(): callable
+    {
+        /**
+         * @return iterable<string, array<mixed>>
+         */
+        return function (): iterable {
+            return $this->build();
+        };
+    }
+
+    /**
+     * @param iterable<string, array<mixed>> $dataSets
+     *
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function convertEachDataSetToMixedMap(iterable $dataSets): iterable
+    {
+        foreach ($dataSets as $dbgDataSetName => $dataSet) {
+            yield $dbgDataSetName => [new MixedMap(MixedMap::assertValidMixedMapArray($dataSet))];
+        }
+    }
+
+    /**
+     * @param callable(): iterable<array<string, mixed>> $dataSetsGenerator
+     *
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function convertEachDataSetToMixedMapAndAddDesc(callable $dataSetsGenerator): iterable
+    {
+        return self::convertEachDataSetToMixedMap(self::keyEachDataSetWithDbgDesc($dataSetsGenerator));
+    }
+
+    /**
+     * @param int $count
+     *
+     * @return callable(): iterable<int>
+     */
+    public static function rangeUpTo(int $count): callable
+    {
+        /**
+         * @return iterable<array<string|int, mixed>>
+         */
+        return function () use ($count): iterable {
+            return RangeUtil::generateUpTo($count);
+        };
+    }
+
+    /**
+     * @param int $first
+     * @param int $last
+     *
+     * @return callable(): iterable<int>
+     *
+     * @noinspection PhpUnused
+     */
+    public static function rangeFromToIncluding(int $first, int $last): callable
+    {
+        /**
+         * @return iterable<array<string|int, mixed>>
+         */
+        return function () use ($first, $last): iterable {
+            return RangeUtil::generateFromToIncluding($first, $last);
+        };
     }
 }

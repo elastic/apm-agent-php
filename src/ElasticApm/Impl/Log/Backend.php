@@ -128,13 +128,13 @@ final class Backend implements LoggableInterface
         );
     }
 
+    public function getSink(): SinkInterface
+    {
+        return $this->logSink;
+    }
+
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs(
-            [
-                'maxEnabledLevel' => Level::intToName($this->maxEnabledLevel),
-                'logSink'         => DbgUtil::getType($this->logSink),
-            ]
-        );
+        $stream->toLogAs(['maxEnabledLevel' => Level::intToName($this->maxEnabledLevel), 'logSink' => DbgUtil::getType($this->logSink)]);
     }
 }

@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Elastic\Apm\Impl\Log\NoopLoggerFactory;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -34,20 +36,14 @@ final class DbgUtil
 
     public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
     {
-        $callerStackFrameIndex = $numberOfStackFramesToSkip + 1;
-        $stackFrames = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, /* limit: */ $callerStackFrameIndex + 1);
+        $stackFrames = StackTraceUtil::captureInClassicFormat(/* loggerFactory */ NoopLoggerFactory::singletonInstance(), /* offset */ $numberOfStackFramesToSkip + 1, /* framesCountLimit */ 1);
 
-        ($assertProxy = Assert::ifEnabled())
-        && $assertProxy->that(count($stackFrames) >= $callerStackFrameIndex + 1)
-        && $assertProxy->withContext('count($stackFrames) >= $callerStackFrameIndex + 1', []);
+        if (ArrayUtil::isEmpty($stackFrames)) {
+            return new CallerInfo(null, null, null, null);
+        }
 
-        $stackFrame = $stackFrames[$callerStackFrameIndex];
-        return new CallerInfo(
-            ArrayUtil::getNullableStringValueIfKeyExistsElse(StackTraceUtil::FILE_KEY, $stackFrame, null),
-            ArrayUtil::getNullableIntValueIfKeyExistsElse(StackTraceUtil::LINE_KEY, $stackFrame, null),
-            ArrayUtil::getNullableStringValueIfKeyExistsElse(StackTraceUtil::CLASS_KEY, $stackFrame, null),
-            ArrayUtil::getNullableStringValueIfKeyExistsElse(StackTraceUtil::FUNCTION_KEY, $stackFrame, null)
-        );
+        $stackFrame = $stackFrames[0];
+        return new CallerInfo($stackFrame->file, $stackFrame->line, $stackFrame->class, $stackFrame->function);
     }
 
     /**

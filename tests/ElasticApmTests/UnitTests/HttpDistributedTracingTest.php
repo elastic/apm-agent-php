@@ -34,7 +34,7 @@ use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\CharSetForTests;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 {
@@ -67,7 +67,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
 
     private static function generateVendorKeyEx(int $length, CharSetForTests $firstCharSet): string
     {
-        TestCase::assertGreaterThanOrEqual(0, $length);
+        Assert::assertGreaterThan(0, $length);
         if ($length === 0) {
             return '';
         }
@@ -133,7 +133,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     public function testBuildTraceParentHeader(string $expectedHeaderValue, DistributedTracingDataInternal $data): void
     {
         $builtHeaderValue = HttpDistributedTracing::buildTraceParentHeader($data);
-        self::assertEquals(strtolower($expectedHeaderValue), $builtHeaderValue);
+        self::assertSame(strtolower($expectedHeaderValue), $builtHeaderValue);
     }
 
     /**
@@ -183,7 +183,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     {
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $isTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $isTraceStateValid */
         $isTraceStateValid = null;
         $actualData = $httpDistributedTracing->parseHeadersImpl(
             [$headerValue] /* /* <- traceParentHeaders */,
@@ -191,8 +191,8 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
             $isTraceParentValid /* <- ref */,
             $isTraceStateValid /* <- ref */
         );
-        self::assertEquals($expectedData, $actualData);
-        self::assertEquals($isTraceParentValid, $actualData !== null);
+        self::assertEqualsEx($expectedData, $actualData);
+        self::assertEqualsEx($isTraceParentValid, $actualData !== null);
         self::assertNull($isTraceStateValid);
     }
 
@@ -251,7 +251,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
 
         $actualIsTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $actualIsTraceStateValid */
         $actualIsTraceStateValid = null;
         $distTracingData = $httpDistributedTracing->parseHeadersImpl(
             $traceParentHeaderValues,
@@ -362,7 +362,7 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     {
         $dbgMsg = LoggableToString::convert(['vendorKey' => $vendorKey, 'expectedIsValid' => $expectedIsValid]);
         $actualIsTraceParentValid = true;
-        /** @var ?bool */
+        /** @var ?bool $actualIsTraceStateValid */
         $actualIsTraceStateValid = null;
         $httpDistributedTracing = new HttpDistributedTracing(NoopLoggerFactory::singletonInstance());
         $distTracingData = $httpDistributedTracing->parseHeadersImpl(

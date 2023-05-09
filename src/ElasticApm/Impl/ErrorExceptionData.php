@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
@@ -160,13 +161,15 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return $this->code !== null
-               || $this->message !== null
-               || $this->module !== null
-               || $this->stacktrace !== null
-               || $this->type !== null;
+        return BoolUtil::toInt(
+            $this->code !== null
+            || $this->message !== null
+            || $this->module !== null
+            || $this->stacktrace !== null
+            || $this->type !== null
+        );
     }
 
     /** @inheritDoc */

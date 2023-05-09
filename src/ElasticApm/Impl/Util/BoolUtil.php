@@ -32,6 +32,9 @@ final class BoolUtil
 {
     use StaticClassTrait;
 
+    public const INT_FOR_FALSE = 0;
+    public const INT_FOR_TRUE = 1;
+
     public static function ifThen(bool $ifCond, bool $thenCond): bool
     {
         return $ifCond ? $thenCond : true;
@@ -40,5 +43,10 @@ final class BoolUtil
     public static function toString(bool $val): string
     {
         return $val ? 'true' : 'false';
+    }
+
+    public static function toInt(bool $val): int
+    {
+        return $val ? self::INT_FOR_TRUE : self::INT_FOR_FALSE;
     }
 }

@@ -34,12 +34,13 @@ use Elastic\Apm\Impl\Util\WildcardListMatcher;
  */
 final class WildcardListOptionParser extends OptionParser
 {
+    /** @inheritDoc */
     public function parse(string $rawValue): WildcardListMatcher
     {
-        return self::parseImpl($rawValue);
+        return self::staticParse($rawValue);
     }
 
-    public static function parseImpl(string $rawValue): WildcardListMatcher
+    public static function staticParse(string $rawValue): WildcardListMatcher
     {
         /**
          * @return iterable<string>
