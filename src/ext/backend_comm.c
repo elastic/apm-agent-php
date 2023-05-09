@@ -337,7 +337,7 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
         {
             ELASTIC_APM_LOG_INFO( "Simulating server latency by sleeping %u seconds...; simulateMinServerLatencyInMilliseconds: %"PRId64", timeSendTookInMilliseconds: %"PRId64
                                   , timeToSleepInSeconds, simulateMinServerLatencyInMilliseconds, timeSendTookInMilliseconds );
-            sleep(timeToSleepInSeconds);
+            sleep( timeToSleepInSeconds );
         }
     }
 
