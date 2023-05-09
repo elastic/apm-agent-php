@@ -55,7 +55,7 @@ static inline UInt64 getCurrentTimeEpochMicroseconds()
 }
 
 static inline
-Int64 durationMicroseconds( const TimePoint* start, const TimePoint* end )
+Int64 durationBetweenTimePointsInMicroseconds( const TimePoint* start, const TimePoint* end )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( start );
     ELASTIC_APM_ASSERT_VALID_PTR( end );

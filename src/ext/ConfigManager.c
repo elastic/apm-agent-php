@@ -769,6 +769,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, devInternalSimulateMinServerLatency )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
@@ -947,6 +948,13 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             devInternal,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
             /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_DURATION_METADATA(
+            devInternalSimulateMinServerLatency
+            , ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_SIMULATE_MIN_SERVER_LATENCY
+            , /* defaultValue */ makeDuration( 0, durationUnits_second )
+            , /* defaultUnits: */ durationUnits_second
+            , /* isNegativeValid */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

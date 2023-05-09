@@ -46,6 +46,7 @@ struct ConfigSnapshot
     bool breakdownMetrics;
     bool captureErrors;
     String devInternal;
+    Duration devInternalSimulateMinServerLatency;
     String disableInstrumentations;
     bool disableSend;
     bool enabled;

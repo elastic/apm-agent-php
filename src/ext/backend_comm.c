@@ -22,6 +22,7 @@
 #if defined(PHP_WIN32) && ! defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
 #endif
+#include <unistd.h>
 #include <curl/curl.h>
 #include "platform.h"
 #include "elastic_apm_alloc.h"
@@ -288,17 +289,20 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     ResultCode resultCode;
     ConnectionData* connectionData = &g_connectionData;
+    TimePoint timeBeforeSyncSend, timeAfterSyncSend;
+    Int64 simulateMinServerLatencyInMilliseconds = 0;
 
     ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "Sending events to APM Server..."
-            "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
+            "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s, devInternalSimulateMinServerLatency: %s }"
             "; userAgentHttpHeader: `%s'"
             "; serializedEvents [length: %"PRIu64"]:\n%.*s"
             , config->serverUrl
             , boolToString( config->disableSend )
             , streamDuration( config->serverTimeout, &txtOutStream )
+            , streamDuration( config->devInternalSimulateMinServerLatency, &txtOutStream )
             , streamStringView( userAgentHttpHeader, &txtOutStream )
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
     textOutputStreamRewind( &txtOutStream );
@@ -314,7 +318,28 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
         ELASTIC_APM_CALL_IF_FAILED_GOTO( initConnectionData( config, connectionData, userAgentHttpHeader ) );
     }
 
+    simulateMinServerLatencyInMilliseconds = durationToMilliseconds( config->devInternalSimulateMinServerLatency );
+    if ( simulateMinServerLatencyInMilliseconds > 0 )
+    {
+        getCurrentTime( &timeBeforeSyncSend );
+    }
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServerWithConn( config, connectionData, serializedEvents ) );
+
+    if ( simulateMinServerLatencyInMilliseconds > 0 )
+    {
+        getCurrentTime( &timeAfterSyncSend );
+        Int64 timeSendTookInMilliseconds = durationBetweenTimePointsInMicroseconds( &timeBeforeSyncSend, &timeAfterSyncSend ) / ELASTIC_APM_NUMBER_OF_MICROSECONDS_IN_MILLISECOND;
+        unsigned int timeToSleepInSeconds = simulateMinServerLatencyInMilliseconds > timeSendTookInMilliseconds
+            ? ( ( simulateMinServerLatencyInMilliseconds - timeSendTookInMilliseconds ) / ELASTIC_APM_NUMBER_OF_MILLISECONDS_IN_SECOND )
+            : 0;
+        if ( timeToSleepInSeconds > 0 )
+        {
+            ELASTIC_APM_LOG_INFO( "Simulating server latency by sleeping %u seconds...; simulateMinServerLatencyInMilliseconds: %"PRId64", timeSendTookInMilliseconds: %"PRId64
+                                  , timeToSleepInSeconds, simulateMinServerLatencyInMilliseconds, timeSendTookInMilliseconds );
+            sleep(timeToSleepInSeconds);
+        }
+    }
 
     resultCode = resultSuccess;
     finally:
