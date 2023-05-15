@@ -34,5 +34,6 @@ final class OptionDefaultValues
 {
     use StaticClassTrait;
 
+    public const STACK_TRACE_LIMIT = 50;
     public const TRANSACTION_MAX_SPANS = 500;
 }
