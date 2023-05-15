@@ -187,7 +187,7 @@ class ComponentTestCaseBase extends TestCaseBase
     {
         /** @var AutoInstrumentationBase $instr */
         $instr = new $instrClassName(self::buildTracerForTests()->build());
-        $actualNames = $instr->otherNames();
+        $actualNames = $instr->keywords();
         $actualNames[] = $instr->name();
         self::assertEqualAsSets($expectedNames, $actualNames);
         self::assertTrue($instr->isEnabled());

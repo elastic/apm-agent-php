@@ -80,9 +80,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function isEnabled(): bool
+    public function requiresAttachContextToExternalObjects(): bool
     {
-        return MapPerWeakObject::isSupported() && parent::isEnabled();
+        return true;
     }
 
     /** @inheritDoc */
@@ -92,9 +92,9 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function otherNames(): array
+    public function keywords(): array
     {
-        return [InstrumentationNames::DB];
+        return [InstrumentationKeywords::DB];
     }
 
     /** @inheritDoc */
@@ -117,7 +117,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptPDOConstruct(RegistrationContextInterface $ctx): void
     {
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             self::PDO_CLASS_NAME,
             '__construct',
             /**
@@ -160,7 +160,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $methodName, bool $isFirstArgStatement): void
     {
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             self::PDO_CLASS_NAME,
             $methodName,
             /**
@@ -187,7 +187,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 $dbType = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE, /* defaultValue */ Constants::SPAN_SUBTYPE_UNKNOWN);
                 /** @var ?string $dbName */
                 $dbName = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME, /* defaultValue */ null);
-                return AutoInstrumentationUtil::createPostHookFromEndSpan(DbAutoInstrumentationUtil::beginDbSpan(self::PDO_CLASS_NAME, $methodName, $dbType, $dbName, $statement));
+                return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(DbAutoInstrumentationUtil::beginDbSpan(self::PDO_CLASS_NAME, $methodName, $dbType, $dbName, $statement));
             }
         );
     }
@@ -209,7 +209,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
 
     private function interceptPDOPrepare(RegistrationContextInterface $ctx): void
     {
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             self::PDO_CLASS_NAME,
             'prepare',
             /**
@@ -271,7 +271,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     {
         $className = self::PDO_STATEMENT_CLASS_NAME;
         $methodName = 'execute';
-        $ctx->interceptCallsToMethod(
+        $ctx->interceptCallsToInternalMethod(
             $className,
             $methodName,
             /**
@@ -312,7 +312,7 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                     DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
                     null /* <- defaultValue */
                 );
-                return AutoInstrumentationUtil::createPostHookFromEndSpan(
+                return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(
                     DbAutoInstrumentationUtil::beginDbSpan(
                         $className,
                         $methodName,

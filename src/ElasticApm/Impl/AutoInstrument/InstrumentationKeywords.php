@@ -23,25 +23,17 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
-interface RegistrationContextInterface
-{
-    /**
-     * @param string                                $className
-     * @param string                                $methodName
-     * @param callable(?object, mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToInternalMethod(
-        string $className,
-        string $methodName,
-        callable $preHook
-    ): void;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-    /**
-     * @param string                       $functionName
-     * @param callable(mixed[]): ?callable $preHook
-     */
-    public function interceptCallsToInternalFunction(
-        string $functionName,
-        callable $preHook
-    ): void;
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class InstrumentationKeywords
+{
+    use StaticClassTrait;
+
+    public const DB = 'db';
+    public const HTTP_CLIENT = 'http-client';
 }
