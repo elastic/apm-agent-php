@@ -108,6 +108,7 @@ enum OptionId
     optionId_spanCompressionEnabled,
     optionId_spanCompressionExactMatchMaxDuration,
     optionId_spanCompressionSameKindMaxDuration,
+    optionId_stackTraceLimit,
     optionId_transactionIgnoreUrls,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -314,6 +315,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED "span_compression_enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION "span_compression_exact_match_max_duration"
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION "span_compression_same_kind_max_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_STACK_TRACE_LIMIT "stack_trace_limit"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS "transaction_ignore_urls"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"

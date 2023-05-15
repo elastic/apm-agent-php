@@ -95,6 +95,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ?bool */
     private $cachedIsSpanCompressionEnabled = null;
 
+    /** @var ?int */
+    private $cachedStackTraceLimitConfig = null;
+
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
@@ -565,6 +568,28 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             );
         }
         return $this->cachedIsSpanCompressionEnabled;
+    }
+
+    public function getStackTraceLimitConfig(): int
+    {
+        if ($this->cachedStackTraceLimitConfig === null) {
+            $this->cachedStackTraceLimitConfig = $this->getConfig()->stackTraceLimit();
+
+            /**
+             * stack_trace_limit
+             *      0 - stack trace collection should be disabled
+             *      any positive integer value - the value is the maximum number of frames to collect
+             *      -1  - all frames should be collected
+             */
+            $msgPrefix = $this->cachedStackTraceLimitConfig === 0
+                ? 'Span stack trace collection is DISABLED'
+                : ($this->cachedStackTraceLimitConfig < 0
+                    ? 'Span stack trace collection will include all the frames'
+                    : 'Span stack trace collection will include up to ' . $this->cachedStackTraceLimitConfig . ' frames');
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::STACK_TRACE_LIMIT . '\')');
+        }
+        return $this->cachedStackTraceLimitConfig;
     }
 
     private function prepareForSerialization(): void
