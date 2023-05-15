@@ -23,9 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
@@ -82,7 +84,12 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $createSpanApis = $sharedCodeResult['createSpanApis'];
 
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams): void {
+                // Disable Span Compression feature to have all the expected spans individually
+                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+            }
+        );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllSpanCreatingApis']));
         $expectedMinSpansCount = count($createSpanApis);
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
@@ -94,7 +101,12 @@ class StackTraceComponentTest extends ComponentTestCaseBase
     public function testTopLevelTransactionBeginCurrentSpanApi(): void
     {
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams): void {
+                // Disable Span Compression feature to have all the expected spans individually
+                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+            }
+        );
         $appCodeHost->sendRequest(AppCodeTarget::asTopLevel(TopLevelCodeId::SPAN_BEGIN_END));
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans(1)

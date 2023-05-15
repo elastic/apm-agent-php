@@ -104,7 +104,6 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
-static pid_t g_pidOnModuleInit = -1;
 static pid_t g_pidOnRequestInit = -1;
 
 bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
@@ -503,8 +502,6 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
 
-    g_pidOnModuleInit = getCurrentProcessId();
-
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
@@ -564,14 +561,6 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     ResultCode resultCode;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "moduleType: %d, moduleNumber: %d", moduleType, moduleNumber );
-
-    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnModuleInit, "module" ) )
-    {
-        resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
-        ELASTIC_APM_UNUSED( resultCode );
-        return;
-    }
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );

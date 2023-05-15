@@ -120,10 +120,10 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
 
     g_interceptedCallInProgressRegistrationId = interceptRegistrationId;
 
-    shouldCallPostHook = tracerPhpPartInterceptedCallPreHook( interceptRegistrationId, execute_data );
+    shouldCallPostHook = tracerPhpPartInternalFuncCallPreHook( interceptRegistrationId, execute_data );
     g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
     if ( shouldCallPostHook ) {
-        tracerPhpPartInterceptedCallPostHook( interceptRegistrationId, return_value );
+        tracerPhpPartInternalFuncCallPostHook( interceptRegistrationId, return_value );
     }
 
     g_interceptedCallInProgressRegistrationId = 0;

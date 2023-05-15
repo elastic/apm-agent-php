@@ -21,20 +21,42 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\AutoInstrument;
+namespace Elastic\Apm\Impl;
 
-use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class InstrumentationNames
+final class SpanCompositeData implements SerializableDataInterface
 {
-    use StaticClassTrait;
+    /** @var string */
+    public $compressionStrategy;
 
-    public const CURL = 'curl';
-    public const PDO = 'pdo';
-    public const MYSQLI = 'mysqli';
+    /** @var int */
+    public $count;
+
+    /** @var float */
+    public $durationsSum;
+
+    public function __construct(string $compressionStrategy, float $durationsSum)
+    {
+        $this->compressionStrategy = $compressionStrategy;
+        $this->count = 1;
+        $this->durationsSum = $durationsSum;
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        SerializationUtil::addNameValue('compression_strategy', $this->compressionStrategy, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('count', $this->count, /* ref */ $result);
+        SerializationUtil::addNameValue('sum', $this->durationsSum, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
+    }
 }

@@ -148,7 +148,7 @@ final class PhpPartFacade
      *
      * @return bool
      */
-    public static function interceptedCallPreHook(
+    public static function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         ...$interceptedCallArgs
@@ -160,7 +160,7 @@ final class PhpPartFacade
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        return $interceptionManager->interceptedCallPreHook(
+        return $interceptionManager->internalFuncCallPreHook(
             $interceptRegistrationId,
             $thisObj,
             $interceptedCallArgs
@@ -175,14 +175,14 @@ final class PhpPartFacade
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
      */
-    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    public static function internalFuncCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        $interceptionManager->interceptedCallPostHook(
+        $interceptionManager->internalFuncCallPostHook(
             1 /* <- $numberOfStackFramesToSkip */,
             $hasExitedByException,
             $returnValueOrThrown
@@ -197,7 +197,7 @@ final class PhpPartFacade
      *
      * @phpstan-param Closure(self): void $implFunc
      */
-    private static function callFromExtension(string $dbgCallDesc, Closure $implFunc): void
+    private static function callAndSwallowThrowable(string $dbgCallDesc, Closure $implFunc): void
     {
         BootstrapStageLogger::logDebug(
             'Starting to handle ' . $dbgCallDesc . ' call...',
@@ -245,7 +245,7 @@ final class PhpPartFacade
      */
     private static function callWithTransactionForExtensionRequest(string $dbgCallDesc, Closure $implFunc): void
     {
-        self::callFromExtension(
+        self::callAndSwallowThrowable(
             $dbgCallDesc,
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {

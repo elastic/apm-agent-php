@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -17,19 +19,21 @@
  * under the License.
  */
 
-#pragma once
+declare(strict_types=1);
 
-#include <zend_types.h>
-#include "ResultCode.h"
-#include "ConfigSnapshot_forward_decl.h"
-#include "time_util.h"
+namespace Elastic\Apm\Impl\AutoInstrument;
 
-ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-void shutdownTracerPhpPart( const ConfigSnapshot* config );
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class InstrumentationKeywords
+{
+    use StaticClassTrait;
 
-bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
-
-void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
-
-void tracerPhpPartInterceptedCallEmptyMethod();
+    public const DB = 'db';
+    public const HTTP_CLIENT = 'http-client';
+}
