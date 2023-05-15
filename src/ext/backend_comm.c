@@ -932,17 +932,14 @@ ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
 void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config )
 {
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
-
-    if ( backgroundBackendComm == NULL )
-    {
-        return;
-    }
-
     ResultCode resultCode;
-    TimeSpec shouldExitBy;
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( config, backgroundBackendComm, /* out */ &shouldExitBy ) );
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
+    if ( backgroundBackendComm != NULL )
+    {
+        TimeSpec shouldExitBy;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( config, backgroundBackendComm, /* out */ &shouldExitBy ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
+    }
 
     resultCode = resultSuccess;
     finally:
