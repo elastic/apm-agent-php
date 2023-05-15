@@ -516,8 +516,8 @@ void handleOsSignalLinux_writeStackTraceToSyslog()
 }
 
 typedef void (* OsSignalHandler )( int );
-bool isOldSignalHandlerSet = false;
-OsSignalHandler oldSignalHandler = NULL;
+bool g_isOldSignalHandlerSet = false;
+OsSignalHandler g_oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
@@ -525,11 +525,11 @@ void handleOsSignalLinux( int signalId )
     handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
-    if ( isOldSignalHandlerSet )
+    if ( g_isOldSignalHandlerSet )
     {
-        signal( signalId, oldSignalHandler );
-        isOldSignalHandlerSet = false;
-        oldSignalHandler = NULL;
+        signal( signalId, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
     }
     else
     {
@@ -553,9 +553,22 @@ void registerOsSignalHandler()
     }
     else
     {
-        isOldSignalHandlerSet = true;
-        oldSignalHandler = signal_retVal;
+        g_isOldSignalHandlerSet = true;
+        g_oldSignalHandler = signal_retVal;
         ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully registered signal handler" );
+    }
+#endif
+}
+
+void unregisterOsSignalHandler()
+{
+#ifndef PHP_WIN32
+    if ( g_isOldSignalHandlerSet )
+    {
+        signal( SIGSEGV, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
+        ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully unregistered signal handler" );
     }
 #endif
 }
