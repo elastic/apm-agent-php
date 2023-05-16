@@ -63,6 +63,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var int */
     public $escalatedRerunsMaxCount;
 
+    /** @var int */
+    public $escalatedRerunsProdCodeLogLevelOptionName;
+
     /** @var ?string */
     public $group;
 

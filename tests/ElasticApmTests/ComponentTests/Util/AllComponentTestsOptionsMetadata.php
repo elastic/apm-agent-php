@@ -63,36 +63,38 @@ final class AllComponentTestsOptionsMetadata
 
         /** @var array<string, OptionMetadata<mixed>> $optNameToMeta */
         $optNameToMeta = [
-            self::APP_CODE_HOST_KIND_OPTION_NAME   => new NullableAppCodeHostKindOptionMetadata(),
-            'app_code_php_exe'                     => new NullableStringOptionMetadata(),
-            self::APP_CODE_PHP_INI_OPTION_NAME     => new NullableStringOptionMetadata(),
-            self::DATA_PER_PROCESS_OPTION_NAME     => new NullableCustomOptionMetadata(
+            self::APP_CODE_HOST_KIND_OPTION_NAME => new NullableAppCodeHostKindOptionMetadata(),
+            'app_code_php_exe'                   => new NullableStringOptionMetadata(),
+            self::APP_CODE_PHP_INI_OPTION_NAME   => new NullableStringOptionMetadata(),
+            self::DATA_PER_PROCESS_OPTION_NAME   => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
                     $deserializedObj = new TestInfraDataPerProcess();
                     $deserializedObj->deserializeFromString($rawValue);
                     return $deserializedObj;
                 }
             ),
-            self::DATA_PER_REQUEST_OPTION_NAME     => new NullableCustomOptionMetadata(
+            self::DATA_PER_REQUEST_OPTION_NAME   => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerRequest {
                     $deserializedObj = new TestInfraDataPerRequest();
                     $deserializedObj->deserializeFromString($rawValue);
                     return $deserializedObj;
                 }
             ),
-            'delete_temp_php_ini'                  => new BoolOptionMetadata(true),
-            'env_vars_to_pass_through'             => new NullableWildcardListOptionMetadata(),
+            'delete_temp_php_ini'                => new BoolOptionMetadata(true),
+            'env_vars_to_pass_through'           => new NullableWildcardListOptionMetadata(),
             self::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME
-                                                   => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
-            'group'                                => new NullableStringOptionMetadata(),
-            'is_long_run_mode'                     => new BoolOptionMetadata(false),
-            self::LOG_LEVEL_OPTION_NAME            => new LogLevelOptionMetadata(LogLevel::INFO),
-            'mysql_host'                           => new NullableStringOptionMetadata(),
-            'mysql_port'                           => new NullableIntOptionMetadata(1, 65535),
-            'mysql_user'                           => new NullableStringOptionMetadata(),
-            'mysql_password'                       => new NullableStringOptionMetadata(),
-            'mysql_db'                             => new NullableStringOptionMetadata(),
-            'run_before_each_test'                 => new NullableStringOptionMetadata(),
+                                                 => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
+            'ESCALATED_RERUNS_PROD_CODE_LOG_LEVEL_OPTION_NAME'
+                                                 => new NullableStringOptionMetadata(),
+            'group'                              => new NullableStringOptionMetadata(),
+            'is_long_run_mode'                   => new BoolOptionMetadata(false),
+            self::LOG_LEVEL_OPTION_NAME          => new LogLevelOptionMetadata(LogLevel::INFO),
+            'mysql_host'                         => new NullableStringOptionMetadata(),
+            'mysql_port'                         => new NullableIntOptionMetadata(1, 65535),
+            'mysql_user'                         => new NullableStringOptionMetadata(),
+            'mysql_password'                     => new NullableStringOptionMetadata(),
+            'mysql_db'                           => new NullableStringOptionMetadata(),
+            'run_before_each_test'               => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;
