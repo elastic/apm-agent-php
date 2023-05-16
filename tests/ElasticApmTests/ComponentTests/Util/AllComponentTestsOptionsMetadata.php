@@ -84,7 +84,7 @@ final class AllComponentTestsOptionsMetadata
             'env_vars_to_pass_through'           => new NullableWildcardListOptionMetadata(),
             self::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME
                                                  => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
-            'ESCALATED_RERUNS_PROD_CODE_LOG_LEVEL_OPTION_NAME'
+            'escalated_reruns_prod_code_log_level_option_name'
                                                  => new NullableStringOptionMetadata(),
             'group'                              => new NullableStringOptionMetadata(),
             'is_long_run_mode'                   => new BoolOptionMetadata(false),
