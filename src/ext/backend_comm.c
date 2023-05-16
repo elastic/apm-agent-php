@@ -157,7 +157,7 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
         CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curlHandle, curlOptionId, __VA_ARGS__ ); \
         if ( curl_easy_setopt_ret_val != CURLE_OK ) \
         { \
-            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option; curlOptionId: %d; curl info: %s", curlOptionId, streamLibCurlInfo( &txtOutStream ) ); \
+            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option; curlOptionId: %d (used constant: %s); curl info: %s", curlOptionId, #curlOptionId, streamLibCurlInfo( &txtOutStream ) ); \
             textOutputStreamRewind( &txtOutStream ); \
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultCurlFailure ); \
         } \
