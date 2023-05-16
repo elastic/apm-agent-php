@@ -32,14 +32,16 @@ class LoggingVariousEventTypesTest extends TracerUnitTestCaseBase
     public function testTransaction(): void
     {
         $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type', /* timestamp */ 12345654321);
+        /** @var array<string, mixed> */
         $loggedTx = LoggingVariousTypesTest::logValueAndDecodeToJson($tx);
+
         self::assertMapArrayIsSubsetOf(
             [
                 'name'      => 'test_TX_name',
                 'type'      => 'test_TX_type',
                 'timestamp' => 12345654321,
             ],
-            $loggedTx['data']
+            $loggedTx
         );
     }
 }

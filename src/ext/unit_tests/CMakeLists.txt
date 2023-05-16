@@ -20,9 +20,9 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 
 PROJECT( unit_tests C )
 
-INCLUDE( CTest )
-
 SET( CMAKE_C_STANDARD 99 )
+
+SET( CMAKE_COMPILE_WARNING_AS_ERROR ON )
 
 # Always include srcdir and builddir in include path
 # This saves typing ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY} in
@@ -70,24 +70,24 @@ IF ( $ENV{CLION_IDE} )
     ADD_COMPILE_DEFINITIONS( ELASTIC_APM_UNDER_IDE )
 ENDIF()
 
+IF ( "$ENV{ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE}" STREQUAL "true" )
+    ADD_COMPILE_DEFINITIONS( ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE )
+ENDIF()
+
 IF ( WIN32 )
     ADD_COMPILE_DEFINITIONS( PHP_WIN32 )
     ADD_COMPILE_DEFINITIONS( _CRT_SECURE_NO_WARNINGS )
 ENDIF()
 
-#FIND_PACKAGE( cmocka REQUIRED )
-FIND_LIBRARY( cmocka_static_lib cmocka )
-IF ( NOT cmocka_static_lib )
-    IF ( WIN32 )
-        IF ( DEFINED ENV{cmocka_installed_dir} )
-            SET( cmocka_installed_dir $ENV{cmocka_installed_dir} )
-        ELSE()
-            MESSAGE( FATAL_ERROR "cmocka_installed_dir environment variable is not defined" )
-        ENDIF()
-        SET( cmocka_include_dir ${cmocka_installed_dir}/include )
-        SET( cmocka_lib_dir ${cmocka_installed_dir}/lib/x64_Debug )
-        SET( cmocka_static_lib ${cmocka_lib_dir}/cmocka-static.lib )
-    ELSE()
+IF ( DEFINED ENV{cmocka_installed_dir} )
+    SET( cmocka_installed_dir $ENV{cmocka_installed_dir} )
+    SET( cmocka_include_dir ${cmocka_installed_dir}/include )
+    SET( cmocka_lib_dir ${cmocka_installed_dir}/lib )
+    SET( cmocka_static_lib ${cmocka_lib_dir}/cmocka.lib )
+ELSE()
+    #FIND_PACKAGE( cmocka REQUIRED )
+    FIND_LIBRARY( cmocka_static_lib cmocka )
+    IF ( NOT cmocka_static_lib )
         MESSAGE( FATAL_ERROR "cmocka library not found" )
     ENDIF()
 ENDIF()
@@ -107,8 +107,12 @@ LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/intern
 LIST( APPEND source_files ${src_ext_dir}/log.h ${src_ext_dir}/log.c )
 LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTracker.c )
 LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.c )
+LIST( APPEND source_files ${src_ext_dir}/platform_threads.h ${src_ext_dir}/platform_threads_linux.c )
+LIST( APPEND source_files ${src_ext_dir}/ResultCode.h ${src_ext_dir}/ResultCode.c )
+LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h ${src_ext_dir}/TextOutputStream.c )
 LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
+LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.c )
 
 IF ( NOT WIN32 )
     ADD_LINK_OPTIONS( -rdynamic )
@@ -116,11 +120,17 @@ ENDIF()
 
 ADD_EXECUTABLE( unit_tests ${source_files} )
 
+SET( link_with_libraries ${cmocka_static_lib} )
 IF ( NOT WIN32 )
-    # Link to library required by math.h
-    TARGET_LINK_LIBRARIES( unit_tests m )
+    # Link to library required by math.h and pthread.h
+    SET( link_with_libraries ${link_with_libraries} m pthread )
 ENDIF()
 
-TARGET_LINK_LIBRARIES( unit_tests ${cmocka_static_lib} )
+FIND_LIBRARY( unwind_lib unwind )
+IF ( unwind_lib )
+    SET( link_with_libraries ${link_with_libraries} unwind )
+ENDIF()
+
+TARGET_LINK_LIBRARIES( unit_tests ${link_with_libraries} )
 
 ADD_TEST( NAME Unit_tests COMMAND unit_tests )

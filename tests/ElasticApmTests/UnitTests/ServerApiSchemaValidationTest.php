@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
 use ElasticApmTests\Util\TestCaseBase;
@@ -40,7 +41,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $tx = $tracer->beginTransaction('test_TX_name', 'test_TX_type');
         $tx->context()->setLabel('test_label_key', 'test_label_value');
         $tx->end();
-        return SerializationUtil::serializeAsJson($mockEventSink->singleTransaction());
+        return SerializationUtil::serializeAsJson($tx);
     }
 
     private function createSerializedSpan(): string
@@ -52,13 +53,13 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $span->context()->setLabel('test_label_key', 'test_label_value');
         $span->end();
         $tx->end();
-        return SerializationUtil::serializeAsJson($mockEventSink->singleSpan());
+        return SerializationUtil::serializeAsJson($span);
     }
 
     /**
      * @param Closure(string, Closure(string): void): void $testImpl
-     * @param string $serializedEvent
-     * @param Closure(string): void $validateSerializedEvent
+     * @param string                                       $serializedEvent
+     * @param Closure(string): void                        $validateSerializedEvent
      */
     public function callTestOnOneCreateValidateCombination(
         Closure $testImpl,
@@ -80,7 +81,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
             $testImpl,
             self::createSerializedTransaction(),
             function (string $serializedTransaction): void {
-                ServerApiSchemaValidator::validateTransactionData($serializedTransaction);
+                ServerApiSchemaValidator::validateTransaction($serializedTransaction);
             }
         );
     }
@@ -94,7 +95,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
             $testImpl,
             self::createSerializedSpan(),
             function (string $serializedSpan): void {
-                ServerApiSchemaValidator::validateSpanData($serializedSpan);
+                ServerApiSchemaValidator::validateSpan($serializedSpan);
             }
         );
     }
@@ -110,7 +111,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
 
     /**
      * @param array<string, mixed> $deserializedJson
-     * @param array<mixed>         $pathToElement
+     * @param array<string>        $pathToElement
      *
      * @return mixed
      */
@@ -118,7 +119,8 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     {
         $currentJsonElement = &$deserializedJson;
         foreach ($pathToElement as $currentPathPart) {
-            $this->assertArrayHasKey($currentPathPart, $currentJsonElement);
+            self::assertIsArray($currentJsonElement);
+            self::assertArrayHasKey($currentPathPart, $currentJsonElement);
             $currentJsonElement = &$currentJsonElement[$currentPathPart];
         }
         return $currentJsonElement;
@@ -127,7 +129,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     /**
      * @param string       $serializedEvent
      * @param Closure(string): void $validateSerializedEvent
-     * @param array<mixed> $pathToParentElement
+     * @param array<string> $pathToParentElement
      */
     private function unknownPropertyTestImpl(
         string $serializedEvent,
@@ -138,9 +140,9 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
         $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
 
+        /** @var array<mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
-        $this->assertArrayNotHasKey($unknownPropertyName, $parentJsonNode);
-        $parentJsonNode[$unknownPropertyName] = $unknownPropertyValue;
+        ArrayUtilForTests::addUnique($unknownPropertyName, $unknownPropertyValue, /* ref */ $parentJsonNode);
 
         $this->assertThrows(
             ServerApiSchemaValidationException::class,
@@ -156,7 +158,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     }
 
     /**
-     * @param array<mixed> $pathToParentElement
+     * @param array<string> $pathToParentElement
      *
      * @return Closure(string, Closure(string): void): void
      */
@@ -191,7 +193,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     /**
      * @param string       $serializedEvent
      * @param Closure(string): void $validateSerializedEvent
-     * @param array<mixed> $pathToElement
+     * @param array<string> $pathToElement
      * @param mixed        $wrongTypeValue
      */
     private function wrongPropertyValueTypeTestImpl(
@@ -221,10 +223,11 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     }
 
     /**
-     * @param array<mixed> $pathToElement
-     * @param mixed        $wrongTypeValue
+     * @param array<string> $pathToElement
+     * @param mixed         $wrongTypeValue
      *
      * @return Closure(string, Closure(string): void): void
+     * @noinspection PhpSameParameterValueInspection
      */
     private function createWrongPropertyValueTypeTestImpl(array $pathToElement, $wrongTypeValue): Closure
     {

@@ -42,6 +42,8 @@ trait SnapshotTrait
      */
     protected function setPropertiesToValuesFrom(array $optNameToParsedValue): void
     {
+        $this->optNameToParsedValue = $optNameToParsedValue;
+
         foreach ($optNameToParsedValue as $optName => $parsedValue) {
             $propertyName = TextUtil::snakeToCamelCase($optName);
             $actualClass = get_called_class();
@@ -62,5 +64,13 @@ trait SnapshotTrait
     public function getOptionValueByName(string $optName)
     {
         return ArrayUtil::getValueIfKeyExistsElse($optName, $this->optNameToParsedValue, null);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getOptionNameToParsedValueMap(): array
+    {
+        return $this->optNameToParsedValue;
     }
 }

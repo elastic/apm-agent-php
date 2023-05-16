@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -31,15 +33,17 @@ namespace Elastic\Apm\Impl;
 interface EventSinkInterface
 {
     /**
-     * @param Metadata             $metadata
-     * @param SpanData[]           $spansData
-     * @param ErrorData[]          $errorsData
-     * @param TransactionData|null $transactionData
+     * @param Metadata                        $metadata
+     * @param SpanToSendInterface[]           $spans
+     * @param Error[]                         $errors
+     * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
+     * @param ?Transaction                    $transaction
      */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
-        ?TransactionData $transactionData
+        array $spans,
+        array $errors,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        ?Transaction $transaction
     ): void;
 }

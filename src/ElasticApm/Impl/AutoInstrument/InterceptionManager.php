@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Throwable;
 
 /**
@@ -43,22 +44,15 @@ final class InterceptionManager
     private $logger;
 
     /** @var int|null */
-    private $interceptedCallInProgressRegistrationId;
+    private $interceptedCallInProgressRegistrationId = null;
 
     /** @var Registration|null */
-    private $interceptedCallInProgressRegistration;
-
-    /** @var object|null */
-    private $interceptedCallInProgressThisObj;
-
-    /** @var mixed[]|null */
-    private $interceptedCallInProgressArgs;
+    private $interceptedCallInProgressRegistration = null;
 
     /**
-     * @var null|callable
-     * @phpstan-var null|callable(int, bool, mixed): void
+     * @var null|callable(int, bool, mixed): void
      */
-    private $interceptedCallInProgressPreHookRetVal;
+    private $interceptedCallInProgressPreHookRetVal = null;
 
     public function __construct(Tracer $tracer)
     {
@@ -87,34 +81,42 @@ final class InterceptionManager
     }
 
     /**
-     * @param int         $interceptRegistrationId
-     * @param object|null $thisObj
-     * @param mixed[]     $interceptedCallArgs
+     * @param int     $interceptRegistrationId
+     * @param ?object $thisObj
+     * @param mixed[] $interceptedCallArgs
      *
      * @return bool
      */
-    public function interceptedCallPreHook(
+    public function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         array $interceptedCallArgs
     ): bool {
-        $localLogger = $this->logger->inherit()->addContext('interceptRegistrationId', $interceptRegistrationId);
-
+        $localLogger = $this->logger->inherit()->addAllContext(
+            [
+                'interceptRegistrationId' => $interceptRegistrationId,
+                'thisObj type' => DbgUtil::getType($thisObj),
+                'interceptedCallArgs count' => count($interceptedCallArgs),
+                'thisObj' => $this->logger->possiblySecuritySensitive($thisObj),
+                'interceptedCallArgs' => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+            ]
+        );
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
 
-        $registration
+        $interceptRegistration
             = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
-        if ($registration === null) {
+        if ($interceptRegistration === null) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('There is no registration with the given interceptRegistrationId');
             return false;
         }
+        $localLogger->addContext('interceptRegistration', $interceptRegistration);
 
-        $localLogger->addContext('interceptRegistration', $registration);
-
+        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Calling preHook...');
         try {
-            $preHookRetVal = ($registration->preHook)($thisObj, $interceptedCallArgs);
+            $preHookRetVal = ($interceptRegistration->preHook)($thisObj, $interceptedCallArgs);
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->logThrowable(
@@ -127,14 +129,12 @@ final class InterceptionManager
         $shouldCallPostHook = ($preHookRetVal !== null);
         if ($shouldCallPostHook) {
             $this->interceptedCallInProgressRegistrationId = $interceptRegistrationId;
-            $this->interceptedCallInProgressRegistration = $registration;
-            $this->interceptedCallInProgressThisObj = $thisObj;
-            $this->interceptedCallInProgressArgs = $interceptedCallArgs;
+            $this->interceptedCallInProgressRegistration = $interceptRegistration;
             $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
         }
 
         ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
+        && $loggerProxy->log('preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
         return $shouldCallPostHook;
     }
 
@@ -143,10 +143,8 @@ final class InterceptionManager
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
-     *
-     * @noinspection PhpMissingParamTypeInspection
      */
-    public function interceptedCallPostHook(
+    public function internalFuncCallPostHook(
         int $numberOfStackFramesToSkip,
         bool $hasExitedByException,
         $returnValueOrThrown
@@ -159,7 +157,6 @@ final class InterceptionManager
             && $loggerProxy->log('There is no intercepted call in progress');
             return;
         }
-        assert($this->interceptedCallInProgressArgs !== null);
         assert($this->interceptedCallInProgressRegistration !== null);
         assert($this->interceptedCallInProgressPreHookRetVal !== null);
 
@@ -185,8 +182,6 @@ final class InterceptionManager
         }
 
         $this->interceptedCallInProgressRegistrationId = null;
-        $this->interceptedCallInProgressThisObj = null;
-        $this->interceptedCallInProgressArgs = null;
         $this->interceptedCallInProgressPreHookRetVal = null;
     }
 }

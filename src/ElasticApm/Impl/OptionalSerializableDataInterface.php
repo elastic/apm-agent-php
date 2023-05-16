@@ -23,9 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
-use JsonSerializable;
-use stdClass;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
@@ -34,7 +31,10 @@ use stdClass;
 interface OptionalSerializableDataInterface extends SerializableDataInterface
 {
     /**
-     * @return bool
+     * We use int with bitwise operations on purpose to prevent short-circuit
+     * because we need all the sub-components to prepare for serialization
+     *
+     * @return int
      */
-    public function prepareForSerialization(): bool;
+    public function prepareForSerialization(): int;
 }

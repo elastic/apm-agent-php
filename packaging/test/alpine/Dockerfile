@@ -3,22 +3,35 @@ FROM php:${PHP_VERSION}-fpm-alpine
 
 RUN apk update \
   && apk add \
-    bash \
-    curl \
-    git \
-    perl-utils \
-    procps \
-    rsyslog \
-    unzip \
-    wget
+        bash \
+        curl \
+        git \
+        logrotate \
+        perl-utils \
+        procps \
+        rsyslog \
+        sqlite-dev \
+        unzip \
+        wget
 
-COPY --from=composer:1.10.10 /usr/bin/composer /usr/bin/composer
+ARG ADD_LIBUNWIND_DEPENDENCY=false
+RUN if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then apk add libunwind; fi
 
-RUN php -v
+RUN docker-php-ext-install \
+        mysqli \
+        pcntl \
+        pdo_mysql \
+        pdo_sqlite \
+        posix
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Disable agent for auxiliary PHP processes to reduce noise in logs
+ENV ELASTIC_APM_ENABLED=false
 
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
-WORKDIR /src
+WORKDIR /app
 
 ENTRYPOINT ["/bin/entrypoint.sh"]

@@ -24,10 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class SamplingTestSharedCode
 {
@@ -45,12 +46,11 @@ final class SamplingTestSharedCode
     {
         $tx = ElasticApm::getCurrentTransaction();
         $expectedIsSampled = $transactionSampleRate === 1.0 ? true : ($transactionSampleRate === 0.0 ? false : null);
-        if (!is_null($expectedIsSampled) && $tx->isSampled() !== $expectedIsSampled) {
-            $tx->discard();
-            throw new RuntimeException(
-                "transactionSampleRate: $transactionSampleRate" .
-                " expectedIsSampled: $expectedIsSampled" .
-                " tx->isSampled: " . ($tx->isSampled() ? 'true' : 'false')
+        if ($expectedIsSampled !== null) {
+            TestCase::assertSame(
+                $expectedIsSampled,
+                $tx->isSampled(),
+                LoggableToString::convert(['transactionSampleRate' => $transactionSampleRate])
             );
         }
 
@@ -70,11 +70,12 @@ final class SamplingTestSharedCode
     }
 
     public static function assertResultsForTwoNestedSpansTest(
-        ?float $transactionSampleRate,
-        EventsFromAgent $eventsFromAgent
+        ?float $inputTransactionSampleRate,
+        DataFromAgent $eventsFromAgent
     ): void {
         $tx = $eventsFromAgent->singleTransaction();
-        if (is_null($transactionSampleRate) || $transactionSampleRate === 1.0) {
+        $transactionSampleRate = $inputTransactionSampleRate ?? 1.0;
+        if ($transactionSampleRate === 1.0) {
             TestCase::assertTrue($tx->isSampled);
         } elseif ($transactionSampleRate === 0.0) {
             TestCase::assertFalse($tx->isSampled);
@@ -87,12 +88,26 @@ final class SamplingTestSharedCode
 
             TestCaseBase::assertLabelsCount(1, $tx);
             TestCase::assertSame(123, TestCaseBase::getLabel($tx, 'TX_label_key'));
+
+            TestCaseBase::assertSame($transactionSampleRate, $tx->sampleRate);
+            foreach ($eventsFromAgent->idToSpan as $span) {
+                TestCaseBase::assertSame($transactionSampleRate, $span->sampleRate);
+            }
         } else {
+            /**
+             * @link https://github.com/elastic/apm/blob/master/specs/agents/tracing-sampling.md#non-sampled-transactions
+             * For non-sampled transactions set the transaction attributes sampled: false and sample_rate: 0,
+             * and omit context.
+             * No spans should be captured.
+             */
+
             TestCase::assertEmpty($eventsFromAgent->idToSpan);
             // Started and dropped spans should be counted only for sampled transactions
             TestCase::assertSame(0, $tx->startedSpansCount);
 
             TestCase::assertNull($tx->context);
+
+            TestCaseBase::assertSame(0.0, $tx->sampleRate);
         }
         TestCase::assertSame(0, $tx->droppedSpansCount);
     }

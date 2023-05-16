@@ -32,16 +32,19 @@ namespace Elastic\Apm\Impl\Config;
  */
 final class FloatOptionParser extends NumericOptionParser
 {
+    /** @inheritDoc */
     protected function dbgValueTypeDesc(): string
     {
         return 'float';
     }
 
+    /** @inheritDoc */
     public static function isValidFormat(string $rawValue): bool
     {
         return filter_var($rawValue, FILTER_VALIDATE_FLOAT) !== false;
     }
 
+    /** @inheritDoc */
     protected function stringToNumber(string $rawValue)
     {
         return floatval($rawValue);

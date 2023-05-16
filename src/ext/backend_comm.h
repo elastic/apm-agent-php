@@ -20,7 +20,14 @@
 #pragma once
 
 #include "StringView.h"
-#include "ConfigManager.h"
+#include "ConfigSnapshot_forward_decl.h"
 #include "ResultCode.h"
 
-ResultCode sendEventsToApmServer( double serverTimeoutMilliseconds, const ConfigSnapshot* config, StringView serializedEvents );
+ResultCode sendEventsToApmServer(
+        const ConfigSnapshot* config
+        , StringView userAgentHttpHeader
+        , StringView serializedEvents );
+
+void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config );
+
+ResultCode resetBackgroundBackendCommStateInForkedChild();

@@ -28,22 +28,26 @@ use Elastic\Apm\Impl\Util\TimeUtil;
 
 final class Stopwatch
 {
+    /** @var Clock */
+    private $clock;
+
     /** @var float */
     private $timeStarted;
 
     public function __construct()
     {
-        $this->timeStarted = Clock::singletonInstance()->getMonotonicClockCurrentTime();
+        $this->clock = AmbientContextForTests::clock();
+        $this->timeStarted = $this->clock->getMonotonicClockCurrentTime();
     }
 
     public function elapsedInMicroseconds(): float
     {
-        $now = Clock::singletonInstance()->getMonotonicClockCurrentTime();
-        return TimeUtil::calcDurationInMicroseconds($this->timeStarted, $now);
+        $now = $this->clock->getMonotonicClockCurrentTime();
+        return TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timeStarted, $now);
     }
 
     public function restart(): void
     {
-        $this->timeStarted = Clock::singletonInstance()->getMonotonicClockCurrentTime();
+        $this->timeStarted = $this->clock->getMonotonicClockCurrentTime();
     }
 }

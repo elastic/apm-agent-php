@@ -24,7 +24,7 @@
 void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink )
 {
     LoggerConfig newConfig = { 0 };
-    reconfigureLogger( getGlobalLogger(), &newConfig, /* generalLevel: */ logLevel_off );
+    ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( reconfigureLogger( getGlobalLogger(), &newConfig, /* generalLevel: */ logLevel_off ) );
     getGlobalLogger()->maxEnabledLevel = levelForCustomSink;
 }
 
@@ -121,7 +121,7 @@ void clearMockLogCustomSink( MockLogCustomSink* mockLogCustomSink )
     ELASTIC_APM_CMOCKA_ASSERT( mockLogCustomSink->isEnabled );
 
     ELASTIC_APM_FOR_EACH_DYNAMIC_ARRAY_ELEMENT( MockLogCustomSinkStatement, statement, &mockLogCustomSink->statements )
-        ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( strlen( statement->text ) + 1, statement->text );
+        ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( statement->text );
 
     ELASTIC_APM_REMOVE_ALL_DYNAMIC_ARRAY_ELEMENTS( MockLogCustomSinkStatement, &mockLogCustomSink->statements );
 
@@ -164,7 +164,7 @@ void writeToMockLogCustomSink( String text )
     return;
 
     failure:
-    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( strlen( textDup ) + 1, textDup );
+    ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( textDup );
     goto finally;
 
 }

@@ -1,11 +1,10 @@
 --TEST--
 Boolean configuration option value 'yEs' (in this case using ini file) should be interpreted as true and it should be case insensitive
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
 elastic_apm.enabled=yEs
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

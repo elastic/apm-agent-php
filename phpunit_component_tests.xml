@@ -1,38 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <phpunit
-    beStrictAboutTestsThatDoNotTestAnything="true"
-    beStrictAboutOutputDuringTests= "false"
-    bootstrap="tests/bootstrap.php"
-    colors="true"
-    failOnRisky="true"
-    stopOnDefect="true"
-    stopOnError="true"
-    stopOnFailure="true"
-    stopOnIncomplete="true"
-    stopOnRisky="true"
-    stopOnWarning="true"
-    verbose= "true"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	beStrictAboutOutputDuringTests="false"
+	bootstrap="tests/bootstrap.php"
+	colors="true"
+	failOnRisky="true"
+	stopOnDefect="true"
+	stopOnError="true"
+	stopOnFailure="true"
+	stopOnIncomplete="true"
+	stopOnRisky="true"
+	stopOnWarning="true"
+	verbose="true"
+	testdox="true"
+	noInteraction="true"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
 >
+    <coverage>
+        <include>
+            <directory suffix=".php">./src/ElasticApm/</directory>
+        </include>
+    </coverage>
     <php>
-        <ini name="memory_limit" value="2G" />
+        <ini name="memory_limit" value="2G"/>
     </php>
-
     <logging>
-        <log type="junit" target="build/phpunit-component-junit.xml"/>
+        <junit outputFile="./build/component-tests-phpunit-junit.xml"/>
     </logging>
-
     <testsuites>
         <testsuite name="Tests">
             <directory>./tests/ElasticApmTests/ComponentTests</directory>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist>
-            <directory suffix=".php">./src/ElasticApm/</directory>
-        </whitelist>
-    </filter>
     <extensions>
-        <extension class="\ElasticApmTests\ComponentTests\Util\PhpUnitExtension" />
+        <extension class="\ElasticApmTests\ComponentTests\Util\ComponentTestsPhpUnitExtension"/>
     </extensions>
 </phpunit>

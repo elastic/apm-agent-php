@@ -34,8 +34,6 @@ final class LogCategoryForTests
 {
     use StaticClassTrait;
 
-    public const MOCK = 'mock';
-
     public const TEST_UTIL = 'test-util';
 
     public const TEST = 'test';

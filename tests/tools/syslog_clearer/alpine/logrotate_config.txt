@@ -1,0 +1,12 @@
+# Use the adm group by default, since this is the owning group of /var/log/messages
+su root adm
+
+/var/log/messages
+{
+	rotate 0
+	missingok
+	notifempty
+	postrotate
+		/bin/kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
+	endscript
+}

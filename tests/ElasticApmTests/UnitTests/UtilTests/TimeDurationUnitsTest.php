@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Config\DurationUnits;
-use Elastic\Apm\Impl\Util\TextUtil;
 use PHPUnit\Framework\TestCase;
 
 class TimeDurationUnitsTest extends TestCase
@@ -36,7 +35,7 @@ class TimeDurationUnitsTest extends TestCase
         foreach (DurationUnits::$suffixAndIdPairs as $suffixAndIdPair) {
             $suffix = $suffixAndIdPair[0];
             $suffixLength = strlen($suffix);
-            if (!is_null($prevSuffixLength)) {
+            if ($prevSuffixLength !== null) {
                 self::assertLessThanOrEqual($prevSuffixLength, $suffixLength);
             }
             $prevSuffixLength = $suffixLength;

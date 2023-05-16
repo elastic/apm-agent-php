@@ -23,9 +23,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use DateTime;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\SinkBase;
-use ElasticApmTests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -37,9 +38,17 @@ final class LogSinkForTests extends SinkBase
     /** @var string */
     private $dbgProcessName;
 
+    /** @var bool */
+    private $isStderrDefined;
+
     public function __construct(string $dbgProcessName)
     {
         $this->dbgProcessName = $dbgProcessName;
+
+        if (!defined('STDERR')) {
+            define('STDERR', fopen('php://stderr', 'w'));
+        }
+        $this->isStderrDefined = defined('STDERR');
     }
 
     protected function consumePreformatted(
@@ -50,35 +59,33 @@ final class LogSinkForTests extends SinkBase
         string $srcCodeFunc,
         string $messageWithContext
     ): void {
-        $formattedRecord = '[' . self::levelToString($statementLevel) . ']';
-        $formattedRecord .= ' [' . $category . ']';
+        $formattedRecord = '[Elastic APM PHP tests]';
+        $formattedRecord .= ' ' . (new DateTime())->format('Y-m-d H:i:s.v P');
+        $formattedRecord .= ' [' . self::levelToString($statementLevel) . ']';
+        $formattedRecord .= ' [PID: ' . getmypid() . ']';
+        $formattedRecord .= ' [' . $this->dbgProcessName . ']';
         $formattedRecord .= ' [' . basename($srcCodeFile) . ':' . $srcCodeLine . ']';
         $formattedRecord .= ' [' . $srcCodeFunc . ']';
-        $formattedRecord .= ' ' . $messageWithContext;
+        $formattedRecord .= TextUtilForTests::combineWithSeparatorIfNotEmpty(' ', $messageWithContext);
         $this->consumeFormatted($statementLevel, $formattedRecord);
     }
 
-    private function consumeFormatted(int $statementLevel, string $formattedRecord): void
+    private function consumeFormatted(int $statementLevel, string $statementText): void
     {
-        if ($statementLevel <= Level::INFO) {
-            print($formattedRecord . PHP_EOL);
-        }
-
-        $recordText = TextUtilForTests::prefixEachLine(
-            $formattedRecord,
-            'Elastic APM PHP tests  [PID: ' . getmypid() . '] ' . $this->dbgProcessName . ' | '
-        );
-
-        if (TestOsUtil::isWindows()) {
+        if (OsUtilForTests::isWindows()) {
             if (OutputDebugString::isEnabled()) {
-                OutputDebugString::write($recordText . PHP_EOL);
+                OutputDebugString::write($statementText . PHP_EOL);
             }
         } else {
-            syslog(self::levelToSyslog($statementLevel), $recordText);
+            syslog(self::levelToSyslog($statementLevel), $statementText);
+        }
+
+        if ($this->isStderrDefined) {
+            fwrite(STDERR, $statementText . PHP_EOL);
         }
     }
 
-    private static function levelToString(int $level): string
+    public static function levelToString(int $level): string
     {
         switch ($level) {
             case Level::OFF:

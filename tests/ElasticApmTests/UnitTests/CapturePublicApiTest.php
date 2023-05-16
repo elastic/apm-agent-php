@@ -24,15 +24,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Log\Level as LogLevel;
-use Elastic\Apm\Impl\TracerBuilder;
+use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DummyExceptionForTests;
-use ElasticApmTests\Util\LogSinkForTests;
 
 class CapturePublicApiTest extends TracerUnitTestCaseBase
 {
@@ -42,7 +39,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
     // public function setUp(): void
     // {
     //     $this->setUpTestEnv(
-    //         function (TracerBuilder $builder): void {
+    //         function (TracerBuilderForTests $builder): void {
     //             $mockConfig = new MockConfigRawSnapshotSource();
     //             $mockConfig->set(OptionNames::LOG_LEVEL, LogLevel::intToName(LogLevel::TRACE));
     //             $builder->withLogSink(new LogSinkForTests(__CLASS__))
@@ -180,7 +177,7 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             'test_TX_name',
             'test_TX_type',
             function (): TestDummyObject {
-                return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+                return ElasticApm::getCurrentTransaction()->captureCurrentSpan( // @phpstan-ignore-line
                     'initial_test_span_name',
                     'initial_test_span_type',
                     function (SpanInterface $capturedSpan): TestDummyObject {
@@ -230,13 +227,13 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
         $throwingRunData = [];
         $captureTx = function (bool $shouldThrow) use ($throwingFunc, &$throwingRunData): bool {
             return ElasticApm::captureCurrentTransaction(
-                'test_TX_name',
+                $shouldThrow ? 'test_throwing_TX_name' : 'test_TX_name',
                 $shouldThrow ? 'test_throwing_TX_type' : 'test_TX_type',
                 function (TransactionInterface $tx) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {
                     $throwingRunData['traceId'] = $tx->getTraceId();
                     $throwingRunData['transactionId'] = $tx->getId();
                     $tx->context()->setLabel('TX_label_key', 'TX_label_value');
-                    return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+                    return ElasticApm::getCurrentTransaction()->captureCurrentSpan( // @phpstan-ignore-line
                         'test_span_name',
                         'test_span_type',
                         function (SpanInterface $span) use ($throwingFunc, $shouldThrow, &$throwingRunData): bool {
@@ -261,38 +258,60 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
         // Assert
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToTransaction);
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToSpan);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToTransaction);
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToSpan);
 
-        $this->assertCount(2, $this->mockEventSink->eventsFromAgent->idToError);
-        foreach ($this->mockEventSink->eventsFromAgent->idToError as $_ => $error) {
+        $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToError);
+        foreach ($this->mockEventSink->dataFromAgent->idToError as $error) {
             self::assertSame($throwingRunData['traceId'], $error->traceId);
             self::assertSame($throwingRunData['transactionId'], $error->transactionId);
-            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->eventsFromAgent->idToTransaction);
-            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->eventsFromAgent->idToSpan);
-            self::assertArrayHasKey($error->id, $this->mockEventSink->eventsFromAgent->idToError);
+            self::assertArrayHasKey($error->transactionId, $this->mockEventSink->dataFromAgent->idToTransaction);
+            self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->dataFromAgent->idToSpan);
+            self::assertArrayHasKey($error->id, $this->mockEventSink->dataFromAgent->idToError);
             self::assertTrue(
                 $error->parentId === $throwingRunData['spanId']
                 || $error->parentId === $throwingRunData['transactionId']
             );
 
             self::assertNotNull($error->transaction);
+            self::assertSame('test_throwing_TX_name', $error->transaction->name);
             self::assertSame('test_throwing_TX_type', $error->transaction->type);
             self::assertTrue($error->transaction->isSampled);
 
             // Only transaction's context is copied to an error and thus only transaction's labels
             self::assertNotNull($error->context);
+            self::assertNotNull($error->context->labels);
             self::assertCount(1, $error->context->labels);
             self::assertSame('TX_label_value', $error->context->labels['TX_label_key']);
 
             self::assertNotNull($error->exception);
             self::assertSame(DummyExceptionForTests::NAMESPACE, $error->exception->module);
-            self::assertSame(DummyExceptionForTests::CLASS_NAME, $error->exception->type);
+            self::assertSame(ClassNameUtil::fqToShort(DummyExceptionForTests::FQ_CLASS_NAME), $error->exception->type);
             self::assertNotNull($error->exception->stacktrace);
             $topFrame = $error->exception->stacktrace[0];
             self::assertSame(__CLASS__ . '::methodThrowingDummyExceptionForTests()', $topFrame->function);
             self::assertSame(__FILE__, $topFrame->filename);
             self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
         }
+    }
+
+    public function testDefaultExecutionSegmentType(): void
+    {
+        // Act
+        ElasticApm::newTransaction('test_TX_name', '')->asCurrent()->begin();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_1_name', '');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_2_name', 'test_span_2_type');
+        ElasticApm::getCurrentExecutionSegment()->end();
+        ElasticApm::getCurrentExecutionSegment()->end();
+
+        // Assert
+        $tx = $this->mockEventSink->singleTransaction();
+        $this->assertSame('test_TX_name', $tx->name);
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $tx->type);
+        $span1 = $this->mockEventSink->singleSpanByName('test_span_1_name');
+        $this->assertSame(Constants::EXECUTION_SEGMENT_TYPE_DEFAULT, $span1->type);
+        $span2 = $this->mockEventSink->singleSpanByName('test_span_2_name');
+        $this->assertSame('test_span_2_type', $span2->type);
     }
 }

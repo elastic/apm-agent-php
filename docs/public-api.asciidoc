@@ -11,6 +11,7 @@ customize and manually create spans and transactions.
 * <<api-elasticapm-class>> - Public API entry point
 * <<api-transaction-interface>>
 * <<api-span-interface>>
+* <<api-manual-distributed-tracing>>
 
 [float]
 [[api-elasticapm-class]]
@@ -104,7 +105,7 @@ A transaction describes an event captured by an Elastic APM agent monitoring a s
 Transactions help combine multiple <<api-span-interface,Spans>> into logical groups,
 and they are the first <<api-span-interface,Span>> of a service.
 More information on Transactions and Spans is available
-in the {apm-overview-ref-v}/apm-data-model.html[APM data model] documentation.
+in the {apm-guide-ref}/data-model.html[APM data model] documentation.
 
 See <<api-elasticapm-class-get-current-transaction>> on how to get a reference to the current transaction.
 
@@ -561,4 +562,44 @@ Example:
 [source,php]
 ----
 $span->end();
+----
+
+[float]
+[[api-manual-distributed-tracing]]
+=== Manual distributed tracing
+Elastic APM PHP agent automatically propagates distributed tracing context for <<supported-technologies,supported technologies>>.
+If your service communicates over a different, unsupported protocol,
+you can manually propagate distributed tracing context from a sending service
+to a receiving service using the agent's API.
+
+Distributed tracing data consists of multiple key-value pairs.
+For example for HTTP protocol these pairs are passed as request headers.
+
+At the sending service you must add key-value pairs to the outgoing request.
+Use `injectDistributedTracingHeaders()` API to get the distributed tracing data
+from the corresponding instance of <<api-span-interface>> or <<api-transaction-interface>>
+
+For example assuming the outgoing request is associated with `$span`  :
+[source,php]
+----
+$span->injectDistributedTracingHeaders(
+    function (string $headerName, string $headerValue) use ($myRequest): void {
+        $myRequest->addHeader($headerName, $headerValue);
+    }
+);
+----
+
+At the receiving service you must pass key-value pairs from the sending side to `ElasticApm::newTransaction` API.
+
+Example:
+[source,php]
+----
+$myTransaction = ElasticApm::newTransaction('my TX name', 'my TX type')
+    ->distributedTracingHeaderExtractor(
+        function (string $headerName) use ($myRequest): ?string {
+            return $myRequest->hasHeader($headerName)
+                ? $myRequest->getHeader($headerName)
+                : null;
+        }
+    )->begin();
 ----

@@ -95,4 +95,10 @@ final class NoopTransaction extends NoopExecutionSegment implements TransactionI
     {
         return NoopTransactionContext::singletonInstance();
     }
+
+    /** @inheritDoc */
+    public function ensureParentId(): string
+    {
+        return NoopExecutionSegment::ID;
+    }
 }

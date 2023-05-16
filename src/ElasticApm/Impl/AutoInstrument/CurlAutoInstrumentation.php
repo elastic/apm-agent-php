@@ -25,8 +25,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
-use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\DbgUtil;
@@ -36,10 +36,8 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  *
  * @internal
  */
-final class CurlAutoInstrumentation implements LoggableInterface
+final class CurlAutoInstrumentation extends AutoInstrumentationBase
 {
-    use AutoInstrumentationTrait;
-
     private const HANDLE_TRACKER_MAX_COUNT_HIGH_WATER_MARK = 2000;
     private const HANDLE_TRACKER_MAX_COUNT_LOW_WATER_MARK = 1000;
 
@@ -50,9 +48,6 @@ final class CurlAutoInstrumentation implements LoggableInterface
     public const CURL_EXEC_ID = 5;
     private const CURL_CLOSE_ID = 6;
 
-    /** @var Tracer */
-    private $tracer;
-
     /** @var Logger */
     private $logger;
 
@@ -61,7 +56,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     public function __construct(Tracer $tracer)
     {
-        $this->tracer = $tracer;
+        parent::__construct($tracer);
 
         $this->logger = $tracer->loggerFactory()->loggerForClass(
             LogCategory::AUTO_INSTRUMENTATION,
@@ -71,6 +66,19 @@ final class CurlAutoInstrumentation implements LoggableInterface
         )->addContext('this', $this);
     }
 
+    /** @inheritDoc */
+    public function name(): string
+    {
+        return InstrumentationNames::CURL;
+    }
+
+    /** @inheritDoc */
+    public function keywords(): array
+    {
+        return [InstrumentationKeywords::HTTP_CLIENT];
+    }
+
+    /** @inheritDoc */
     public function register(RegistrationContextInterface $ctx): void
     {
         if (!extension_loaded('curl')) {
@@ -90,14 +98,12 @@ final class CurlAutoInstrumentation implements LoggableInterface
         string $funcName,
         int $funcId
     ): void {
-        $ctx->interceptCallsToFunction(
+        $ctx->interceptCallsToInternalFunction(
             $funcName,
             /**
-             * @param mixed[] $interceptedCallArgs Intercepted call arguments
+             * @param mixed[] $interceptedCallArgs
              *
-             * @return callable
-             *
-             * @phpstan-return callable(int, bool, mixed): mixed
+             * @return null|callable(int, bool, mixed): void
              */
             function (array $interceptedCallArgs) use ($funcName, $funcId): ?callable {
                 return $this->preHook($funcName, $funcId, $interceptedCallArgs);
@@ -110,8 +116,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
      * @param int     $funcId
      * @param mixed[] $interceptedCallArgs Intercepted call arguments
      *
-     * @return callable
-     * @phpstan-return callable(int, bool, mixed): mixed
+     * @return null|callable(int, bool, mixed): void
      */
     private function preHook(string $funcName, int $funcId, array $interceptedCallArgs): ?callable
     {
@@ -165,7 +170,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        self::assertInterceptedCallNotExitedByException(
+        AutoInstrumentationUtil::assertInterceptedCallNotExitedByException(
             $hasExitedByException,
             ['functionName' => $dbgFuncName]
         );
@@ -216,15 +221,19 @@ final class CurlAutoInstrumentation implements LoggableInterface
      * @param string  $dbgFuncName
      * @param mixed[] $interceptedCallArgs
      *
-     * @return resource|null
+     * @return ?CurlHandleWrapped
      */
     public static function extractCurlHandleFromArgs(
         Logger $logger,
         string $dbgFuncName,
         array $interceptedCallArgs
-    ) {
-        if (count($interceptedCallArgs) !== 0 && is_resource($interceptedCallArgs[0])) {
-            return $interceptedCallArgs[0];
+    ): ?CurlHandleWrapped {
+        if (count($interceptedCallArgs) !== 0) {
+            $curlHandle = $interceptedCallArgs[0];
+            if (CurlHandleWrapped::isValidValue($curlHandle)) {
+                /** @var resource|object $curlHandle */
+                return new CurlHandleWrapped($curlHandle);
+            }
         }
 
         $ctxToLog = [
@@ -236,7 +245,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
             $ctxToLog['interceptedCallArgs'] = $logger->possiblySecuritySensitive($interceptedCallArgs);
         }
         ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Expected curl handle to be the first argument but it not', $ctxToLog);
+        && $loggerProxy->log('Expected curl handle to be the first argument but it is not', $ctxToLog);
         return null;
     }
 
@@ -250,11 +259,11 @@ final class CurlAutoInstrumentation implements LoggableInterface
     private function findHandleId(string $dbgFuncName, array $interceptedCallArgs): ?int
     {
         $curlHandle = self::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
-        if (is_null($curlHandle)) {
+        if ($curlHandle === null) {
             return null;
         }
 
-        $handleId = intval($curlHandle);
+        $handleId = $curlHandle->asInt();
 
         if (!array_key_exists($handleId, $this->handleIdToTracker)) {
             ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
@@ -275,7 +284,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
     {
         $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
 
-        return is_null($handleId) ? null : $this->handleIdToTracker[$handleId];
+        return $handleId === null ? null : $this->handleIdToTracker[$handleId];
     }
 
     /**
@@ -303,7 +312,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
             default:
                 $curlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
-                if (!is_null($curlHandleTracker)) {
+                if ($curlHandleTracker !== null) {
                     $curlHandleTracker->preHook($dbgFuncName, $funcId, $interceptedCallArgs);
                 }
                 return $curlHandleTracker;
@@ -324,12 +333,12 @@ final class CurlAutoInstrumentation implements LoggableInterface
 
     /**
      * @param CurlHandleTracker $curlHandleTracker
-     * @param mixed             $returnValueOrThrown
+     * @param mixed             $curlHandle
      */
-    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $returnValueOrThrown): void
+    public function setTrackerHandle(CurlHandleTracker $curlHandleTracker, $curlHandle): void
     {
-        $handleId = $curlHandleTracker->setHandle($returnValueOrThrown);
-        if (!is_null($handleId)) {
+        $handleId = $curlHandleTracker->setHandle($curlHandle);
+        if ($handleId !== null) {
             $this->addToHandleIdToTracker($handleId, $curlHandleTracker);
         }
     }
@@ -343,7 +352,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
     public function curlCopyHandlePreHook(string $dbgFuncName, array $interceptedCallArgs): ?CurlHandleTracker
     {
         $srcCurlHandleTracker = $this->findHandleTracker($dbgFuncName, $interceptedCallArgs);
-        if (is_null($srcCurlHandleTracker)) {
+        if ($srcCurlHandleTracker === null) {
             return null;
         }
 
@@ -357,7 +366,7 @@ final class CurlAutoInstrumentation implements LoggableInterface
     public function curlClosePreHook(string $dbgFuncName, array $interceptedCallArgs): void
     {
         $handleId = $this->findHandleId($dbgFuncName, $interceptedCallArgs);
-        if (is_null($handleId)) {
+        if ($handleId === null) {
             return;
         }
 
@@ -365,13 +374,5 @@ final class CurlAutoInstrumentation implements LoggableInterface
         && $loggerProxy->log('Removing from curl handle ID to CurlHandleTracker map...', ['handleId' => $handleId]);
 
         unset($this->handleIdToTracker[$handleId]);
-    }
-
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
-    {
-        return ['logger', 'tracer'];
     }
 }

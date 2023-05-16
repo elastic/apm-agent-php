@@ -37,6 +37,11 @@ interface SerializableDataInterface extends JsonSerializable
      * @inheritDoc
      *
      * @return array<string, mixed>|stdClass
+     *
+     * @noinspection PhpFullyQualifiedNameUsageInspection
+     * @noinspection PhpLanguageLevelInspection
+     * @noinspection PhpUndefinedClassInspection
      */
+    #[\ReturnTypeWillChange]
     public function jsonSerialize();
 }

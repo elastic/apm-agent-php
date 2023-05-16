@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\BackendComm;
 
 use Elastic\Apm\Impl\OptionalSerializableDataInterface;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -54,11 +56,30 @@ final class SerializationUtil
             $serializedData = JsonUtil::encode($data);
         } catch (Exception $ex) {
             throw new SerializationException(
-                ExceptionUtil::buildMessage('Serialization failed', ['data' => $data]),
+                ExceptionUtil::buildMessage('Serialization failed', ['data' => $data, 'original exception' => $ex]),
                 $ex
             );
         }
         return $serializedData;
+    }
+
+    /**
+     * @param string                                                            $name
+     * @param null|bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                              $nameToValue
+     *
+     * @return void
+     */
+    private static function assertNotExists(string $name, $value, array $nameToValue): void
+    {
+        if (self::$isInTestingContext && array_key_exists($name, $nameToValue)) {
+            throw new SerializationException(
+                ExceptionUtil::buildMessage(
+                    'Given key already exists in given array',
+                    ['name' => $name, 'value' => $value, 'nameToValue' => $nameToValue]
+                )
+            );
+        }
     }
 
     /**
@@ -70,14 +91,7 @@ final class SerializationUtil
      */
     public static function addNameValue(string $name, $value, array &$nameToValue): void
     {
-        if (self::$isInTestingContext && array_key_exists($name, $nameToValue)) {
-            throw new SerializationException(
-                ExceptionUtil::buildMessage(
-                    'Given key already exists in given array',
-                    ['name' => $name, 'value' => $value, 'nameToValue' => $nameToValue]
-                )
-            );
-        }
+        self::assertNotExists($name, $value, $nameToValue);
 
         $nameToValue[$name] = $value;
     }
@@ -89,41 +103,56 @@ final class SerializationUtil
      *
      * @return void
      */
-    public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
+    public static function addNameValueAssumeNotNull(string $name, $value, array &$nameToValue): void
     {
-        if ($value !== null) {
-            self::addNameValue($name, $value, /* ref */ $nameToValue);
-        }
-    }
-
-    public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): bool
-    {
-        if ($value === null) {
-            return false;
-        }
-
-        if ($value->prepareForSerialization()) {
-            return true;
-        }
-
-        $value = null;
-        return false;
+        /** @var bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value */
+        self::addNameValue($name, $value, /* ref */ $nameToValue);
     }
 
     /**
-     * @param string                       $name
-     * @param array<mixed, mixed>|stdClass $value
-     * @param array<string, mixed>         $nameToValue
+     * @param string                                                            $name
+     * @param null|bool|int|float|string|JsonSerializable|stdClass|array<mixed> $value
+     * @param array<string, mixed>                                              $nameToValue
+     *
+     * @return void
+     */
+    public static function addNameValueIfNotNull(string $name, $value, array &$nameToValue): void
+    {
+        self::assertNotExists($name, $value, $nameToValue);
+
+        if ($value !== null) {
+            $nameToValue[$name] = $value;
+        }
+    }
+
+    /**
+     * @param string                           $name
+     * @param array<array-key, mixed>|stdClass $value
+     * @param array<string, mixed>             $nameToValue
      *
      * @return void
      */
     public static function addNameValueIfNotEmpty(string $name, $value, array &$nameToValue): void
     {
-        if (empty($value)) {
-            return;
+        self::assertNotExists($name, $value, $nameToValue);
+
+        if (!empty($value)) {
+            $nameToValue[$name] = $value;
+        }
+    }
+
+    public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): int
+    {
+        if ($value === null) {
+            return BoolUtil::INT_FOR_FALSE;
         }
 
-        self::addNameValue($name, $value, /* ref */ $nameToValue);
+        if ($value->prepareForSerialization()) {
+            return BoolUtil::INT_FOR_TRUE;
+        }
+
+        $value = null;
+        return BoolUtil::INT_FOR_FALSE;
     }
 
     /**
@@ -152,8 +181,18 @@ final class SerializationUtil
      *
      * @return array<string, mixed>|stdClass
      */
+    public static function ensureObject(array $nameToValue)
+    {
+        return ArrayUtil::isEmpty($nameToValue) ? (new stdClass()) : $nameToValue;
+    }
+
+    /**
+     * @param array<string, mixed> $nameToValue
+     *
+     * @return array<string, mixed>|stdClass
+     */
     public static function postProcessResult(array $nameToValue)
     {
-        return empty($nameToValue) ? (new stdClass()) : $nameToValue;
+        return self::ensureObject($nameToValue);
     }
 }

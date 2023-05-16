@@ -23,10 +23,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
-use ElasticApmTests\UnitTests\Util\ArrayTestUtil;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\TransactionDto;
 
 class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
 {
@@ -40,17 +40,17 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
         // Assert
         // 2 calls to processCheckoutRequest == 2 transactions
         $this->assertCount(2, $this->mockEventSink->idToTransaction());
-        /** @var TransactionData */
-        $tx1 = ArrayTestUtil::findByPredicate(
+        /** @var TransactionDto $tx1 */
+        $tx1 = ArrayUtilForTests::findByPredicate(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionData $tx): bool {
+            function (TransactionDto $tx): bool {
                 return self::getLabel($tx, 'shop-id') === 'Shop #1';
             }
         );
-        /** @var TransactionData */
-        $tx2 = ArrayTestUtil::findByPredicate(
+        /** @var TransactionDto $tx2 */
+        $tx2 = ArrayUtilForTests::findByPredicate(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionData $tx): bool {
+            function (TransactionDto $tx): bool {
                 return self::getLabel($tx, 'shop-id') === 'Shop #2';
             }
         );
@@ -75,7 +75,7 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
 
         $spansWithLostLabel = array_filter(
             $this->mockEventSink->idToSpan(),
-            function (SpanData $span): bool {
+            function (SpanDto $span): bool {
                 return self::hasLabel($span, ExamplePublicApiElasticApm::LOST_LABEL);
             }
         );
@@ -83,7 +83,7 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
 
         $transactionsWithLostLabel = array_filter(
             $this->mockEventSink->idToTransaction(),
-            function (TransactionData $transaction): bool {
+            function (TransactionDto $transaction): bool {
                 return self::hasLabel($transaction, ExamplePublicApiElasticApm::LOST_LABEL);
             }
         );
@@ -91,18 +91,18 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
     }
 
     /**
-     * @param TransactionData         $transaction
-     * @param array<string, SpanData> $idToSpan
-     * @param bool                    $isFirstTx
+     * @param TransactionDto         $transaction
+     * @param array<string, SpanDto> $idToSpan
+     * @param bool                   $isFirstTx
      */
     private function verifyTransactionAndSpans(
-        TransactionData $transaction,
+        TransactionDto $transaction,
         array $idToSpan,
         bool $isFirstTx
     ): void {
         $this->assertCount(4, $idToSpan);
 
-        $this->assertValidTransactionAndItsSpans($transaction, $idToSpan);
+        $this->assertValidTransactionAndSpans($transaction, $idToSpan);
 
         $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_NAME, $transaction->name);
         $this->assertSame(ExamplePublicApiElasticApm::TRANSACTION_TYPE, $transaction->type);
@@ -116,16 +116,15 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
             }
         }
 
-        /** @var array<SpanData> */
         $businessSpans = array_filter(
             $idToSpan,
-            function (SpanData $span): bool {
+            function (SpanDto $span): bool {
                 return $span->type === 'business';
             }
         );
 
         $this->assertCount(2, $businessSpans);
-        /** @var SpanData $businessSpan */
+        /** @var SpanDto $businessSpan */
         foreach ($businessSpans as $businessSpan) {
             $this->assertSame($transaction->id, $businessSpan->parentId);
             $this->assertHasLabel($businessSpan, 'is-data-in-cache');
@@ -136,34 +135,33 @@ class ExamplePublicApiElasticApmTest extends TracerUnitTestCaseBase
             }
         }
 
-        /** @var SpanData $getShoppingCartItemsSpan */
-        $getShoppingCartItemsSpan = ArrayTestUtil::findByPredicate(
+        /** @var SpanDto $getShoppingCartItemsSpan */
+        $getShoppingCartItemsSpan = ArrayUtilForTests::findByPredicate(
             $businessSpans,
-            function (SpanData $span): bool {
+            function (SpanDto $span): bool {
                 return $span->name === 'Get shopping cart items';
             }
         );
         $this->assertNotNull($getShoppingCartItemsSpan);
 
-        /** @var SpanData $chargePaymentSpan */
-        $chargePaymentSpan = ArrayTestUtil::findByPredicate(
+        /** @var SpanDto $chargePaymentSpan */
+        $chargePaymentSpan = ArrayUtilForTests::findByPredicate(
             $businessSpans,
-            function (SpanData $span): bool {
+            function (SpanDto $span): bool {
                 return $span->name === 'Charge payment';
             }
         );
         $this->assertNotNull($chargePaymentSpan);
 
-        /** @var array<SpanData> */
         $dbSpans = array_filter(
             $idToSpan,
-            function (SpanData $span): bool {
+            function (SpanDto $span): bool {
                 return $span->type === 'db';
             }
         );
 
         $this->assertCount(2, $dbSpans);
-        /** @var SpanData $dbSpan */
+        /** @var SpanDto $dbSpan */
         foreach ($dbSpans as $dbSpan) {
             $dataId = self::getLabel($dbSpan, 'data-id');
             if ($dataId === 'shopping-cart-items') {

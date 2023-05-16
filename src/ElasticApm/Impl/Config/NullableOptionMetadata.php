@@ -28,34 +28,32 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template   T
+ * @template TParsedValue
  *
- * @extends    OptionMetadata<T>
+ * @extends OptionMetadata<TParsedValue>
  */
 abstract class NullableOptionMetadata extends OptionMetadata
 {
-    /**
-     * @var OptionParser
-     * @phpstan-var OptionParser<T>
-     */
+    /** @var OptionParser<TParsedValue> */
     private $parser;
 
     /**
-     * @param OptionParser $parser
-     *
-     * @phpstan-param OptionParser<T> $parser
+     * @param OptionParser<TParsedValue> $parser
      */
     public function __construct(OptionParser $parser)
     {
         $this->parser = $parser;
     }
 
+    /** @inheritDoc */
     public function parser(): OptionParser
     {
         return $this->parser;
     }
 
     /**
+     * @inheritDoc
+     *
      * @return null
      */
     public function defaultValue()

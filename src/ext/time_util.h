@@ -28,10 +28,12 @@
 
 struct TimePoint
 {
-    struct timeval systemClockTime;
+    TimeVal systemClockTime;
 };
 
 typedef struct TimePoint TimePoint;
+
+typedef struct timespec TimeSpec;
 
 static inline void getCurrentTime( TimePoint* result )
 {
@@ -70,22 +72,61 @@ double durationMicrosecondsToMilliseconds( Int64 durationMicros )
 
 enum DurationUnits
 {
-    durationUnits_milliseconds,
-    durationUnits_seconds,
-    durationUnits_minutes
+    durationUnits_millisecond,
+    durationUnits_second,
+    durationUnits_minute,
+
+    numberOfDurationUnits
 };
 typedef enum DurationUnits DurationUnits;
+extern StringView durationUnitsNames[ numberOfDurationUnits ];
 
 struct Duration
 {
-    Int64 valueInMilliseconds;
+    Int64 valueInUnits;
+    DurationUnits units;
 };
 typedef struct Duration Duration;
 
-Duration makeDuration( Int64 value, DurationUnits units );
+static inline
+bool isValidDurationUnits( DurationUnits units )
+{
+    return ( durationUnits_millisecond <= units ) && ( units < numberOfDurationUnits );
+}
 
-ResultCode parseDuration( StringView valueAsString, DurationUnits defaultUnits, /* out */ Duration* result );
+#define ELASTIC_APM_UNKNOWN_DURATION_UNITS_AS_STRING "<UNKNOWN DurationUnits>"
+
+static inline
+String durationUnitsToString( DurationUnits durationUnits )
+{
+    if ( isValidDurationUnits( durationUnits ) )
+    {
+        return durationUnitsNames[ durationUnits ].begin;
+    }
+    return ELASTIC_APM_UNKNOWN_DURATION_UNITS_AS_STRING;
+}
+
+static inline
+Duration makeDuration( Int64 valueInUnits, DurationUnits units )
+{
+    return (Duration){ .valueInUnits = valueInUnits, .units = units };
+}
+
+ResultCode parseDuration( StringView inputString, DurationUnits defaultUnits, /* out */ Duration* result );
 
 String streamDuration( Duration duration, TextOutputStream* txtOutStream );
 
-double durationToMilliseconds( Duration duration );
+Int64 durationToMilliseconds( Duration duration );
+
+ResultCode getCurrentAbsTimeSpec( /* out */ TimeSpec* currentAbsTimeSpec );
+
+void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNanoseconds );
+
+String streamCurrentLocalTime( TextOutputStream* txtOutStream );
+
+String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* txtOutStream );
+
+int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b );
+
+TimeVal calcEndTimeVal( TimeVal beginTime, long seconds, long nanoSeconds );
+TimeVal calcTimeValDiff( TimeVal beginTime, TimeVal endTime );

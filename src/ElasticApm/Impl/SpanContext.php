@@ -23,9 +23,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\SpanContextDbInterface;
 use Elastic\Apm\SpanContextDestinationInterface;
 use Elastic\Apm\SpanContextHttpInterface;
+use Elastic\Apm\SpanContextServiceInterface;
 use Elastic\Apm\SpanContextInterface;
 
 /**
@@ -33,35 +35,58 @@ use Elastic\Apm\SpanContextInterface;
  *
  * @internal
  *
- * @extends         ExecutionSegmentContext<Span>
+ * @extends ExecutionSegmentContext<Span>
  */
 final class SpanContext extends ExecutionSegmentContext implements SpanContextInterface
 {
-    /** @var SpanContextData */
-    private $data;
+    /**
+     * @var ?SpanContextDb
+     *
+     * An object containing contextual data for database spans
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L47
+     */
+    public $db = null;
 
-    /** @var SpanContextDb|null */
-    private $db = null;
+    /**
+     * @var ?SpanContextDestination
+     *
+     * An object containing contextual data about the destination for spans
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.6/docs/spec/spans/span.json#L44
+     */
+    public $destination = null;
 
-    /** @var SpanContextDestination|null */
-    private $destination = null;
+    /**
+     * @var ?SpanContextHttp
+     *
+     * An object containing contextual data of the related http request
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L69
+     */
+    public $http = null;
 
-    /** @var SpanContextHttp|null */
-    private $http = null;
+    /**
+     * @var ?SpanContextService
+     *
+     * Service related information can be sent per event.
+     * Provided information will override the more generic information from metadata,
+     * non provided fields will be set according to the metadata information.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.6.0/docs/spec/spans/span.json#L134
+     */
+    public $service = null;
 
-    public function __construct(Span $owner, SpanContextData $data)
+    public function __construct(Span $owner)
     {
-        parent::__construct($owner, $data);
-        $this->owner = $owner;
-        $this->data = $data;
+        parent::__construct($owner);
     }
 
     /** @inheritDoc */
     public function db(): SpanContextDbInterface
     {
         if ($this->db === null) {
-            $this->data->db = new SpanContextDbData();
-            $this->db = new SpanContextDb($this->owner, $this->data->db);
+            $this->db = new SpanContextDb($this->owner);
         }
 
         return $this->db;
@@ -71,8 +96,7 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
     public function destination(): SpanContextDestinationInterface
     {
         if ($this->destination === null) {
-            $this->data->destination = new SpanContextDestinationData();
-            $this->destination = new SpanContextDestination($this->owner, $this->data->destination);
+            $this->destination = new SpanContextDestination($this->owner);
         }
 
         return $this->destination;
@@ -82,18 +106,42 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
     public function http(): SpanContextHttpInterface
     {
         if ($this->http === null) {
-            $this->data->http = new SpanContextHttpData();
-            $this->http = new SpanContextHttp($this->owner, $this->data->http);
+            $this->http = new SpanContextHttp($this->owner);
         }
 
         return $this->http;
     }
 
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
+    /** @inheritDoc */
+    public function service(): SpanContextServiceInterface
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['db', 'destination', 'http']);
+        if ($this->service === null) {
+            $this->service = new SpanContextService($this->owner);
+        }
+
+        return $this->service;
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): int
+    {
+        return parent::prepareForSerialization()
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->db)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->destination)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->http)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->service);
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
+
+        SerializationUtil::addNameValueIfNotNull('db', $this->db, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('destination', $this->destination, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('http', $this->http, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('service', $this->service, /* ref */ $result);
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

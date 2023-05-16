@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use InvalidArgumentException;
 
@@ -63,7 +64,7 @@ final class CombinatorialUtilForTests
             return;
         }
 
-        foreach (RangeUtilForTests::generateUpTo(count($totalSet)) as $firstIndex) {
+        foreach (RangeUtil::generateUpTo(count($totalSet)) as $firstIndex) {
             $newTotalSet = $totalSet;
             // remove the first element from $newTotalSet
             array_splice(/* ref */ $newTotalSet, $firstIndex, 1);
@@ -75,10 +76,10 @@ final class CombinatorialUtilForTests
     }
 
     /**
-     * @param array<string, mixed>           $values
-     * @param array<string, iterable<mixed>> $restOfIterables
+     * @param array<mixed>           $values
+     * @param array<mixed, iterable<mixed>> $restOfIterables
      *
-     * @return iterable<array<string, mixed>>
+     * @return iterable<array<mixed>>
      */
     private static function cartesianProductImpl(array $values, array $restOfIterables): iterable
     {
@@ -92,7 +93,7 @@ final class CombinatorialUtilForTests
         foreach ($currentIterableAsArray as $currentIterableKey => $currentIterable) {
             foreach ($currentIterable as $value) {
                 yield from self::cartesianProductImpl(
-                    $values + [$currentIterableKey => $value],
+                    array_merge($values, [$currentIterableKey => $value]),
                     $restOfIterablesForChildCalls
                 );
             }
@@ -100,9 +101,9 @@ final class CombinatorialUtilForTests
     }
 
     /**
-     * @param array<string, iterable<mixed>> $iterables
+     * @param array<mixed, iterable<mixed>> $iterables
      *
-     * @return iterable<array<string, mixed>>
+     * @return iterable<array<mixed>>
      */
     public static function cartesianProduct(array $iterables): iterable
     {

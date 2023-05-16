@@ -56,12 +56,10 @@ class EnumOptionParser extends OptionParser
     private $isUnambiguousPrefixAllowed;
 
     /**
-     * @param string                     $dbgEnumDesc
-     * @param array<array<string|mixed>> $nameValuePairs
-     * @param bool                       $isCaseSensitive
-     * @param bool                       $isUnambiguousPrefixAllowed
-     *
-     * @phpstan-param array<array{string, T}> $nameValuePairs
+     * @param string                  $dbgEnumDesc
+     * @param array<array{string, T}> $nameValuePairs
+     * @param bool                    $isCaseSensitive
+     * @param bool                    $isUnambiguousPrefixAllowed
      */
     public function __construct(
         string $dbgEnumDesc,

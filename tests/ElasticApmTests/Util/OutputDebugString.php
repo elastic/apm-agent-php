@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use ElasticApmTests\ComponentTests\Util\TestOsUtil;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 use Throwable;
 
 /**
@@ -36,8 +36,8 @@ final class OutputDebugString
 {
     use StaticClassTrait;
 
-    /** @var bool */
-    private static $isEnabled;
+    /** @var ?bool */
+    private static $isEnabled = null;
 
     /**
      * @noinspection RedundantSuppression, PhpFullyQualifiedNameUsageInspection, PhpUndefinedClassInspection
@@ -52,7 +52,7 @@ final class OutputDebugString
 
     public static function isEnabled(): bool
     {
-        if (!isset(self::$isEnabled)) {
+        if (self::$isEnabled === null) {
             self::$isEnabled = self::calcIsEnabled();
         }
 
@@ -62,7 +62,7 @@ final class OutputDebugString
     private static function calcIsEnabled(): bool
     {
         // FFI was introduced in PHP 7.4
-        if (!TestOsUtil::isWindows() || (PHP_VERSION_ID < 70400)) {
+        if (!OsUtilForTests::isWindows() || (PHP_VERSION_ID < 70400)) {
             return false;
         }
 

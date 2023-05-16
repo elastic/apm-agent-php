@@ -23,9 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests\Util;
 
-use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\ClockInterface;
 use Elastic\Apm\Impl\Util\TimeUtil;
+use ElasticApmTests\Util\PhpUnitExtensionBase;
 
 class MockClock implements ClockInterface
 {
@@ -35,10 +35,11 @@ class MockClock implements ClockInterface
     /** @var float */
     private $monotonicClockCurrentTime;
 
-    public function __construct()
+    public function __construct(float $initial = 0)
     {
-        $this->systemClockCurrentTime = Clock::singletonInstance()->getSystemClockCurrentTime();
-        $this->monotonicClockCurrentTime = 1000000000;
+        $this->systemClockCurrentTime = $initial;
+        $this->monotonicClockCurrentTime = 10 * $initial;
+        PhpUnitExtensionBase::$timestampBeforeTest = $initial;
     }
 
     public function getTimestamp(): float
@@ -50,6 +51,7 @@ class MockClock implements ClockInterface
     {
         $this->systemClockCurrentTime += $numberOfMicroseconds;
         $this->monotonicClockCurrentTime += $numberOfMicroseconds;
+        PhpUnitExtensionBase::$timestampAfterTest = $this->systemClockCurrentTime;
     }
 
     public function fastForwardMilliseconds(float $durationInMilliseconds): void
@@ -57,11 +59,13 @@ class MockClock implements ClockInterface
         $this->fastForwardMicroseconds(TimeUtil::millisecondsToMicroseconds($durationInMilliseconds));
     }
 
+    /** @inheritDoc */
     public function getSystemClockCurrentTime(): float
     {
         return $this->systemClockCurrentTime;
     }
 
+    /** @inheritDoc */
     public function getMonotonicClockCurrentTime(): float
     {
         return $this->monotonicClockCurrentTime;

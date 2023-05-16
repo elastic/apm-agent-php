@@ -24,11 +24,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\Util;
 
 use Closure;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
-use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\TestCaseBase;
-use RuntimeException;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class TracerUnitTestCaseBase extends TestCaseBase
 {
@@ -38,28 +39,31 @@ class TracerUnitTestCaseBase extends TestCaseBase
     /** @var TracerInterface */
     protected $tracer;
 
-    /**
-     * @param mixed        $name
-     * @param array<mixed> $data
-     * @param mixed        $dataName
-     */
-    public function __construct($name = null, array $data = [], $dataName = '')
-    {
-        if (ElasticApmExtensionUtil::isLoaded()) {
-            throw new RuntimeException(
-                ElasticApmExtensionUtil::EXTENSION_NAME . ' should NOT be loaded when running unit tests'
-                . ' because it will cause a clash.'
-            );
-        }
-
-        parent::__construct($name, $data, $dataName);
-    }
-
+    /** @inheritDoc */
     public function setUp(): void
     {
+        parent::setUp();
+
         $this->setUpTestEnv();
     }
 
+    /**
+     * Sub-classes should override this method to return false
+     * in order to disable Span Compression feature and have all the expected spans individually.
+     *
+     * @return bool
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @param null|Closure(TracerBuilderForTests): void $tracerBuildCallback
+     * @param bool                                      $shouldCreateMockEventSink
+     *
+     * @return void
+     */
     protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
         if ($shouldCreateMockEventSink) {
@@ -68,16 +72,24 @@ class TracerUnitTestCaseBase extends TestCaseBase
 
         $builder = self::buildTracerForTests($shouldCreateMockEventSink ? $this->mockEventSink : null);
 
-        if (!is_null($tracerBuildCallback)) {
+        if (!$this->isSpanCompressionCompatible()) {
+            $builder->withBoolConfig(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+            SpanExpectations::$assumeSpanCompressionDisabled = true;
+        }
+
+        if ($tracerBuildCallback !== null) {
             $tracerBuildCallback($builder);
         }
 
         $this->tracer = $builder->build();
-        GlobalTracerHolder::set($this->tracer);
+        GlobalTracerHolder::setValue($this->tracer);
     }
 
+    /** @inheritDoc */
     public function tearDown(): void
     {
-        GlobalTracerHolder::unset();
+        GlobalTracerHolder::unsetValue();
+
+        parent::tearDown();
     }
 }

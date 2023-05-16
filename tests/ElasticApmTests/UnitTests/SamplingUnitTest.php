@@ -25,10 +25,10 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
+use ElasticApmTests\Util\TransactionExpectations;
 
 class SamplingUnitTest extends TracerUnitTestCaseBase
 {
@@ -51,13 +51,12 @@ class SamplingUnitTest extends TracerUnitTestCaseBase
     {
         // Arrange
 
+        TransactionExpectations::$defaultIsSampled = null;
         $this->setUpTestEnv(
-            function (TracerBuilder $builder) use ($transactionSampleRate): void {
-                $mockConfig = new MockConfigRawSnapshotSource();
-                if (!is_null($transactionSampleRate)) {
-                    $mockConfig->set(OptionNames::TRANSACTION_SAMPLE_RATE, strval($transactionSampleRate));
+            function (TracerBuilderForTests $builder) use ($transactionSampleRate): void {
+                if ($transactionSampleRate !== null) {
+                    $builder->withConfig(OptionNames::TRANSACTION_SAMPLE_RATE, strval($transactionSampleRate));
                 }
-                $builder->withConfigRawSnapshotSource($mockConfig);
             }
         );
 
@@ -71,7 +70,7 @@ class SamplingUnitTest extends TracerUnitTestCaseBase
 
         SamplingTestSharedCode::assertResultsForTwoNestedSpansTest(
             $transactionSampleRate,
-            $this->mockEventSink->eventsFromAgent
+            $this->mockEventSink->dataFromAgent
         );
     }
 }

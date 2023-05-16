@@ -26,9 +26,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\TransactionContextRequestData;
-use ElasticApmTests\UnitTests\Util\NotFoundException;
+use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\TransactionContextRequest;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 
 class PublicApiTest extends TracerUnitTestCaseBase
 {
@@ -82,32 +83,27 @@ class PublicApiTest extends TracerUnitTestCaseBase
 
         $this->assertCount(4, $this->mockEventSink->idToSpan());
 
-        $reportedSpan_1 = $this->mockEventSink->spanByName('test_span_1_name');
+        $reportedSpan_1 = $this->mockEventSink->singleSpanByName('test_span_1_name');
         $this->assertSame('test_span_1_type', $reportedSpan_1->type);
         $this->assertNull($reportedSpan_1->subtype);
         $this->assertNull($reportedSpan_1->action);
 
-        $reportedSpan_2 = $this->mockEventSink->spanByName('test_span_2_name');
+        $reportedSpan_2 = $this->mockEventSink->singleSpanByName('test_span_2_name');
         $this->assertSame('test_span_2_type', $reportedSpan_2->type);
         $this->assertSame('test_span_2_subtype', $reportedSpan_2->subtype);
         $this->assertSame('test_span_2_action', $reportedSpan_2->action);
 
-        $reportedSpan_2_1 = $this->mockEventSink->spanByName('test_span_2_1_name');
+        $reportedSpan_2_1 = $this->mockEventSink->singleSpanByName('test_span_2_1_name');
         $this->assertSame('test_span_2_1_type', $reportedSpan_2_1->type);
         $this->assertSame('test_span_2_1_subtype', $reportedSpan_2_1->subtype);
         $this->assertNull($reportedSpan_2_1->action);
 
-        $reportedSpan_2_2 = $this->mockEventSink->spanByName('test_span_2_2_name');
+        $reportedSpan_2_2 = $this->mockEventSink->singleSpanByName('test_span_2_2_name');
         $this->assertSame('test_span_2_2_type', $reportedSpan_2_2->type);
         $this->assertNull($reportedSpan_2_2->subtype);
         $this->assertSame('test_span_2_2_action', $reportedSpan_2_2->action);
 
-        $this->assertThrows(
-            NotFoundException::class,
-            function () {
-                $this->mockEventSink->spanByName('nonexistent_test_span_name');
-            }
-        );
+        $this->assertCount(0, $this->mockEventSink->findSpansByName('nonexistent_test_span_name'));
     }
 
     public function testTransactionSetName(): void
@@ -229,7 +225,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
         $tx->end();
 
         // Assert
-        $this->assertValidTransactionAndItsSpans(
+        $this->assertValidTransactionAndSpans(
             $this->mockEventSink->singleTransaction(),
             $this->mockEventSink->idToSpan()
         );
@@ -434,7 +430,7 @@ class PublicApiTest extends TracerUnitTestCaseBase
         if ($shouldSetMethod) {
             self::assertSame($method, $txData->context->request->method);
         } else {
-            self::assertSame(TransactionContextRequestData::UNKNOWN_METHOD, $txData->context->request->method);
+            self::assertSame(TransactionContextRequest::UNKNOWN_METHOD, $txData->context->request->method);
         }
 
         if ($shouldSetUrlDomain) {
@@ -478,5 +474,100 @@ class PublicApiTest extends TracerUnitTestCaseBase
         } else {
             self::assertNull($txData->context->request->url->query);
         }
+    }
+
+    /**
+     * @return iterable<array<?string>>
+     */
+    public function dataProviderForSetOutcome(): iterable
+    {
+        $validValues = [null, Constants::OUTCOME_SUCCESS, Constants::OUTCOME_FAILURE, Constants::OUTCOME_UNKNOWN];
+        foreach ($validValues as $validValue) {
+            yield [$validValue, $validValue];
+        }
+
+        $invalidValues = ['', 'dummy', Constants::OUTCOME_SUCCESS . '1', '2' . Constants::OUTCOME_FAILURE];
+        foreach ($invalidValues as $invalidValue) {
+            yield [$invalidValue, null];
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForSetOutcome
+     *
+     * @param ?string $valueToSet
+     * @param ?string $expected
+     */
+    public function testTransactionSetOutcome(?string $valueToSet, ?string $expected): void
+    {
+        // Act
+
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->setOutcome($valueToSet);
+        $tx->end();
+
+        // Assert
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertSame($expected, $reportedTx->outcome);
+    }
+
+    /**
+     * @dataProvider dataProviderForSetOutcome
+     *
+     * @param ?string $valueToSet
+     * @param ?string $expected
+     */
+    public function testSpanSetOutcome(?string $valueToSet, ?string $expected): void
+    {
+        // Act
+
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $span = $tx->beginChildSpan('test_span_name', 'test_span_type');
+        $span->setOutcome($valueToSet);
+        $span->end();
+        $tx->end();
+
+        // Assert
+
+        $reportedSpan = $this->mockEventSink->singleSpan();
+        $this->assertSame($expected, $reportedSpan->outcome);
+    }
+
+    /**
+     * @return iterable<array{null|int|string, ?string, ?string}>
+     */
+    public function dataProviderForTestTransactionSetUserContext(): iterable
+    {
+        /** @var iterable<array{null|int|string, ?string, ?string}> $result */
+        $result = (new DataProviderForTestBuilder())
+            ->addDimensionOnlyFirstValueCombinable([123, 'test_user_id', null, '', 0])
+            ->addDimensionOnlyFirstValueCombinable(['test_user_email', null, ''])
+            ->addDimensionOnlyFirstValueCombinable(['test_user_username', null, ''])
+            ->build();
+        return $result;
+    }
+
+    /**
+     * @dataProvider dataProviderForTestTransactionSetUserContext
+     *
+     * @param null|int|string $id
+     * @param ?string         $email
+     * @param ?string         $username
+     */
+    public function testTransactionSetUserContext($id, ?string $email, ?string $username): void
+    {
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->context()->user()->setId($id);
+        $tx->context()->user()->setEmail($email);
+        $tx->context()->user()->setUsername($username);
+        $tx->end();
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertNotNull($reportedTx->context);
+        $this->assertNotNull($reportedTx->context->user);
+        $this->assertSame($id, $reportedTx->context->user->id);
+        $this->assertSame($email, $reportedTx->context->user->email);
+        $this->assertSame($username, $reportedTx->context->user->username);
     }
 }

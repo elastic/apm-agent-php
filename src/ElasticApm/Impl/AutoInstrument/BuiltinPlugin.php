@@ -30,24 +30,18 @@ use Elastic\Apm\Impl\Tracer;
  *
  * @internal
  */
-final class BuiltinPlugin implements PluginInterface
+final class BuiltinPlugin extends PluginBase
 {
-    /** @var PdoAutoInstrumentation */
-    private $pdoAutoInstrumentation;
-
-    /** @var CurlAutoInstrumentation */
-    private $curlAutoInstrumentation;
-
     public function __construct(Tracer $tracer)
     {
-        $this->pdoAutoInstrumentation = new PdoAutoInstrumentation($tracer);
-        $this->curlAutoInstrumentation = new CurlAutoInstrumentation($tracer);
-    }
-
-    public function register(RegistrationContextInterface $ctx): void
-    {
-        $this->pdoAutoInstrumentation->register($ctx);
-        $this->curlAutoInstrumentation->register($ctx);
+        parent::__construct(
+            $tracer,
+            [
+                new CurlAutoInstrumentation($tracer),
+                new PDOAutoInstrumentation($tracer),
+                new MySQLiAutoInstrumentation($tracer),
+            ]
+        );
     }
 
     public function getDescription(): string

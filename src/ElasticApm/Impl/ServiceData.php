@@ -37,27 +37,16 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
     use LoggableTrait;
 
     /**
-     * @var string|null
+     * @var ServiceAgentData|null
      *
-     * Immutable name of the service emitting this event.
-     * Valid characters are: 'a'-'z', 'A'-'Z', '0'-'9', '_' and '-'.
+     * Name and version of the Elastic APM agent.
+     * Name of the Elastic APM agent, e.g. "php".
+     * Version of the Elastic APM agent, e.g."1.0.0".
      *
-     * The length of this string is limited to 1024.
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L50
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L10
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L15
      */
-    public $name = null;
-
-    /**
-     * @var string|null
-     *
-     * Version of the service emitting this event.
-     *
-     * The length of this string is limited to 1024.
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L75
-     */
-    public $version = null;
+    public $agent = null;
 
     /**
      * @var string|null
@@ -69,18 +58,6 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L56
      */
     public $environment = null;
-
-    /**
-     * @var ServiceAgentData|null
-     *
-     * Name and version of the Elastic APM agent.
-     * Name of the Elastic APM agent, e.g. "php".
-     * Version of the Elastic APM agent, e.g."1.0.0".
-     *
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L10
-     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L15
-     */
-    public $agent = null;
 
     /**
      * @var NameVersionData|null
@@ -103,6 +80,29 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
     public $language = null;
 
     /**
+     * @var string
+     *
+     * Immutable name of the service emitting this event.
+     * Valid characters are: 'a'-'z', 'A'-'Z', '0'-'9', '_' and '-'.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L50
+     */
+    public $name;
+
+    /**
+     * @var string|null
+     *
+     * Unique meaningful name of the service node.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.5.0/docs/spec/service.json#L85
+     */
+    public $nodeConfiguredName = null;
+
+    /**
      * @var NameVersionData|null
      *
      * Name and version of the language runtime running this service.
@@ -112,18 +112,35 @@ class ServiceData implements SerializableDataInterface, LoggableInterface
      */
     public $runtime = null;
 
+    /**
+     * @var string|null
+     *
+     * Version of the service emitting this event.
+     *
+     * The length of this string is limited to 1024.
+     *
+     * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/service.json#L75
+     */
+    public $version = null;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
         $result = [];
 
-        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('version', $this->version, /* ref */ $result);
-        SerializationUtil::addNameValueIfNotNull('environment', $this->environment, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('agent', $this->agent, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('environment', $this->environment, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('framework', $this->framework, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('language', $this->language, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('name', $this->name, /* ref */ $result);
+
+        if ($this->nodeConfiguredName !== null) {
+            $nodeSubObject = ['configured_name' => $this->nodeConfiguredName];
+            SerializationUtil::addNameValue('node', $nodeSubObject, /* ref */ $result);
+        }
+
         SerializationUtil::addNameValueIfNotNull('runtime', $this->runtime, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('version', $this->version, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }

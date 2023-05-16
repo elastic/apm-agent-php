@@ -28,32 +28,24 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template   T
+ * @template TParsedValue
  *
- * @extends    OptionParser<T>
+ * @extends  OptionParser<TParsedValue>
  */
 abstract class NumericOptionParser extends OptionParser
 {
-    /**
-     * @var int|float|null
-     * @phpstan-var T|null
-     */
+    /** @var ?TParsedValue */
     private $minValidValue;
 
     /**
-     * @var int|float|null
-     * @phpstan-var T|null
-     */
+     * @var ?TParsedValue */
     private $maxValidValue;
 
     /**
      * NumericOptionMetadata constructor.
      *
-     * @param int|float|null $minValidValue
-     * @param int|float|null $maxValidValue
-     *
-     * @phpstan-param T|null $minValidValue
-     * @phpstan-param T|null $maxValidValue
+     * @param ?TParsedValue $minValidValue
+     * @param ?TParsedValue $maxValidValue
      */
     public function __construct($minValidValue, $maxValidValue)
     {
@@ -61,25 +53,29 @@ abstract class NumericOptionParser extends OptionParser
         $this->maxValidValue = $maxValidValue;
     }
 
+    /**
+     * @return string
+     */
     abstract protected function dbgValueTypeDesc(): string;
 
+    /**
+     * @param string $rawValue
+     *
+     * @return bool
+     */
     abstract public static function isValidFormat(string $rawValue): bool;
 
     /**
      * @param string $rawValue
      *
-     * @return mixed
-     *
-     * @phpstan-return T
+     * @return TParsedValue
      */
     abstract protected function stringToNumber(string $rawValue);
 
     /**
      * @param string $rawValue
      *
-     * @return mixed
-     *
-     * @phpstan-return T
+     * @return TParsedValue
      */
     public function parse(string $rawValue)
     {
@@ -92,8 +88,8 @@ abstract class NumericOptionParser extends OptionParser
         $parsedValue = $this->stringToNumber($rawValue);
 
         if (
-            (!is_null($this->minValidValue) && ($parsedValue < $this->minValidValue))
-            || (!is_null($this->maxValidValue) && ($this->maxValidValue < $parsedValue))
+            (($this->minValidValue !== null) && ($parsedValue < $this->minValidValue))
+            || (($this->maxValidValue !== null) && ($parsedValue > $this->maxValidValue))
         ) {
             throw new ParseException(
                 'Value is not in range between the valid minimum and maximum values.'
@@ -108,9 +104,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return float|int|null
-     *
-     * @phpstan-return T|null
+     * @return ?TParsedValue
      */
     public function minValidValue()
     {
@@ -118,9 +112,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return float|int|null
-     *
-     * @phpstan-return T|null
+     * @return ?TParsedValue
      */
     public function maxValidValue()
     {

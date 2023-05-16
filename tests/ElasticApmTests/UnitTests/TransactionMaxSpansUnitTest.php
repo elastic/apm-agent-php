@@ -26,15 +26,16 @@ namespace ElasticApmTests\UnitTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
-use Elastic\Apm\Impl\TracerBuilder;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
-use ElasticApmTests\UnitTests\Util\MockConfigRawSnapshotSource;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
+use ElasticApmTests\Util\TracerBuilderForTests;
+use ElasticApmTests\Util\TransactionExpectations;
 
 class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
 {
-    private const IS_FULL_TESTING_MODE = false;
+    public const TESTING_DEPTH = SharedCode::TESTING_DEPTH_1;
 
     private function variousCombinationsTestImpl(Args $testArgs): void
     {
@@ -42,15 +43,13 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         // Arrange
 
         $this->setUpTestEnv(
-            function (TracerBuilder $builder) use ($testArgs): void {
-                $mockConfig = new MockConfigRawSnapshotSource();
+            function (TracerBuilderForTests $builder) use ($testArgs): void {
                 if (!$testArgs->isSampled) {
-                    $mockConfig->set(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
+                    $builder->withConfig(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
                 }
-                if (!is_null($testArgs->configTransactionMaxSpans)) {
-                    $mockConfig->set(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
+                if ($testArgs->configTransactionMaxSpans !== null) {
+                    $builder->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
                 }
-                $builder->withConfigRawSnapshotSource($mockConfig);
                 $this->mockEventSink->shouldValidateAgainstSchema = false;
             }
         );
@@ -65,20 +64,46 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         ///////////////////////////////
         // Assert
 
-        SharedCode::assertResults($testArgs, $this->mockEventSink->eventsFromAgent);
+        SharedCode::assertResults($testArgs, $this->mockEventSink->dataFromAgent);
     }
 
-    public function testVariousCombinations(): void
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
     {
-        /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::IS_FULL_TESTING_MODE) as $testArgs) {
-            if (!SharedCode::testEachArgsVariantProlog(self::IS_FULL_TESTING_MODE, $testArgs)) {
-                continue;
-            }
+        return false;
+    }
 
-            GlobalTracerHolder::unset();
-            $this->mockEventSink->clear();
-            $this->variousCombinationsTestImpl($testArgs);
-        }
+    /**
+     * @return iterable<string, array{Args}>
+     */
+    public function dataProviderForTestVariousCombinations(): iterable
+    {
+        /**
+         * @return iterable<array{Args}>
+         */
+        $generator = function (): iterable {
+            foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+                yield [$testArgs];
+            }
+        };
+
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestVariousCombinations
+     */
+    public function testVariousCombinations(Args $testArgs): void
+    {
+        TransactionExpectations::$defaultDroppedSpansCount = null;
+        TransactionExpectations::$defaultIsSampled = null;
+        GlobalTracerHolder::unsetValue();
+        $this->mockEventSink->clear();
+        $this->variousCombinationsTestImpl($testArgs);
     }
 }

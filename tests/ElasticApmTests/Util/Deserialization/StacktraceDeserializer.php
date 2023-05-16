@@ -23,79 +23,79 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
-use Elastic\Apm\Impl\StacktraceFrame;
-use ElasticApmTests\Util\ValidationUtil;
+use Elastic\Apm\Impl\StackTraceFrame;
+use ElasticApmTests\Util\AssertValidTrait;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
 final class StacktraceDeserializer
 {
+    use AssertValidTrait;
+
     /**
+     * @param mixed $value
      *
-     * @param array<mixed, mixed> $deserializedRawData
-     *
-     * @return StacktraceFrame[]
+     * @return StackTraceFrame[]
      */
-    public static function deserialize(array $deserializedRawData): array
+    public static function deserialize($value): array
     {
-        /** @var StacktraceFrame[] */
+        $deserializedRawData = DeserializationUtil::assertDecodedJsonMap($value);
+        /** @var StackTraceFrame[] */
         $frames = [];
         /** @var int */
         $nextExpectedIndex = 0;
 
+        TestCase::assertIsArray($deserializedRawData);
+        /** @var array<mixed> $deserializedRawData */
+
         foreach ($deserializedRawData as $key => $value) {
-            ValidationUtil::assertThat($key === $nextExpectedIndex);
+            TestCase::assertSame($nextExpectedIndex, $key);
+            /** @var array<string, mixed> $value */
             $frames[] = self::deserializeFrame($value);
             ++$nextExpectedIndex;
         }
 
-        ValidationUtil::assertValidStacktrace($frames);
-
+        self::assertValidStacktrace($frames);
         return $frames;
     }
 
     /**
-     * @param array<string, mixed> $deserializedRawData
+     * @param mixed $deserializedRawData
      *
-     * @return StacktraceFrame
+     * @return StackTraceFrame
      */
-    private static function deserializeFrame(array $deserializedRawData): StacktraceFrame
+    private static function deserializeFrame($deserializedRawData): StackTraceFrame
     {
-        /** @var string|null */
+        /** @var ?string */
         $filename = null;
         /** @var int */
         $lineNumber = -1;
         /** @var string|null */
         $function = null;
 
+        TestCase::assertIsArray($deserializedRawData);
+        /** @var array<mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':
-                    $filename = ValidationUtil::assertValidStacktraceFrameFilename($value);
+                    $filename = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'function':
-                    $function = ValidationUtil::assertValidStacktraceFrameFilename($value);
+                    $function = self::assertValidStacktraceFrameFilename($value);
                     break;
 
                 case 'lineno':
-                    $lineNumber = ValidationUtil::assertValidStacktraceFrameLineNumber($value);
+                    $lineNumber = self::assertValidStacktraceFrameLineNumber($value);
                     break;
 
                 default:
-                    throw DataDeserializer::buildException("Unknown key: span_count->`$key'");
+                    throw DeserializationUtil::buildException("Unknown key: span_count->`$key'");
             }
         }
-
-        ValidationUtil::assertThat(!is_null($filename));
         TestCase::assertNotNull($filename);
-        ValidationUtil::assertThat($lineNumber !== -1);
+        TestCase::assertNotSame(-1, $lineNumber);
 
-        $result = new StacktraceFrame($filename, $lineNumber);
+        $result = new StackTraceFrame($filename, $lineNumber);
         $result->function = $function;
 
         return $result;

@@ -7,12 +7,27 @@ parameters:
 
     reportUnmatchedIgnoredErrors: false
 
-    excludes_analyse:
-        # Temporarily disabling as it uses ...
-        # - src/ElasticApm/???.php
+    excludePaths:
+        - tests/polyfills/Stringable.php
+        - tests/polyfills/WeakMap.php
 
     ignoreErrors:
         #
         # elastic_apm_* functions are provided by the extension
         #
         - '#^Function elastic_apm_[a-z_]* not found\.$#'
+
+        #
+        # Property PDOStatement::$queryString (string) in isset() is not nullable.
+        #
+        - '#^Property .* in isset\(\) is not nullable\.$#'
+
+        #
+        # Parameter #4 $database of class mysqli constructor expects string, string|null given.
+        #
+        - '#^Parameter \#4 \$database of class mysqli constructor expects string,.* string\|null given\.$#'
+
+        #
+        # Parameter #4 $dbname of function mysqli_connect expects string, string|null given.
+        #
+        - '#^Parameter \#4 \$dbname of function mysqli_connect expects string,.* string\|null given\.$#'

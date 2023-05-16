@@ -23,23 +23,28 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
+use Closure;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\ExecutionSegmentInterface;
 use Elastic\Apm\Impl\NoopExecutionSegment;
-use Elastic\Apm\Impl\NoopTransaction;
-use Elastic\Apm\Impl\TracerBuilder;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class NoopEventsTest extends TracerUnitTestCaseBase
 {
-    public function setUp(): void
+    /** @inheritDoc */
+    protected function setUpTestEnv(?Closure $tracerBuildCallback = null, bool $shouldCreateMockEventSink = true): void
     {
-        $this->setUpTestEnv(
-            function (TracerBuilder $builder): void {
-                $builder->withEnabled(false);
-            }
+        parent::setUpTestEnv(
+            function (TracerBuilderForTests $tracerBuilder) use ($tracerBuildCallback): void {
+                if ($tracerBuildCallback !== null) {
+                    $tracerBuildCallback($tracerBuilder);
+                }
+                $tracerBuilder->withEnabled(false);
+            },
+            $shouldCreateMockEventSink
         );
     }
 
@@ -173,6 +178,6 @@ class NoopEventsTest extends TracerUnitTestCaseBase
         $span->setName('test_span_name');
         $span->setSubtype('test_span_subtype');
         $span->setAction('test_span_action');
-        $this->assertSame(NoopTransaction::ID, $span->getParentId());
+        $this->assertSame(NoopExecutionSegment::ID, $span->getParentId());
     }
 }

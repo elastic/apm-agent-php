@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-set -xe
+set -xe -o pipefail
+
+# Disable Elastic APM for any process outside the component tests to prevent noise in the logs
+export ELASTIC_APM_ENABLED=false
 
 PHP_INI=/usr/local/etc/php/php.ini
 make install
@@ -24,19 +27,6 @@ else
 fi
 
 # Run component tests
-if ! composer run-script run_component_tests ; then
-    echo 'Something bad happened when running the tests, see the output from the syslog'
+mkdir -p ./build/
+composer run-script run_component_tests 2>&1 | tee /app/build/run_component_tests_output.txt
 
-    if [ -f "/var/log/syslog" ]; then
-        cat "/var/log/syslog"
-    else
-        if [ -f "/var/log/messages" ]; then
-        cat "/var/log/messages"
-        else
-            echo 'syslog log file not found'
-            exit 1
-        fi
-    fi
-
-    exit 1
-fi

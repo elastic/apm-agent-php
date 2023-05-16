@@ -148,9 +148,25 @@ interface ExecutionSegmentInterface
     public function setType(string $type): void;
 
     /**
+     * @deprecated      Deprecated since version 1.3 - use injectDistributedTracingHeaders() instead
+     * @see             injectDistributedTracingHeaders() Use it instead of this method
+     *
      * Returns distributed tracing data
      */
     public function getDistributedTracingData(): ?DistributedTracingData;
+
+    /**
+     * Returns distributed tracing data for the current span/transaction
+     *
+     * $headerInjector is callback to inject headers with signature
+     *
+     *      (string $headerName, string $headerValue): void
+     *
+     * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
+     *
+     * @phpstan-param Closure(string, string): void $headerInjector
+     */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void;
 
     /**
      * Sets the end timestamp and finalizes this object's state.
@@ -191,6 +207,27 @@ interface ExecutionSegmentInterface
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json
      */
     public function createCustomError(CustomErrorData $customErrorData): ?string;
+
+    /**
+     * The outcome of the transaction/span: success, failure, or unknown.
+     * Outcome may be one of a limited set of permitted values
+     * describing the success or failure of the transaction/span.
+     * This field can be used for calculating error rates for incoming/outgoing requests.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/transactions/transaction.json#L59
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/spans/span.json#L54
+     * @link https://github.com/elastic/apm-server/blob/v7.10.0/docs/spec/outcome.json
+     *
+     * @param string|null $outcome
+     *
+     * @return void
+     */
+    public function setOutcome(?string $outcome): void;
+
+    /**
+     * @see setOutcome() For the description
+     */
+    public function getOutcome(): ?string;
 
     /**
      * Returns true if this execution segment is a no-op (for example when recording is disabled).

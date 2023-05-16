@@ -1,0 +1,14 @@
+agents:
+  provider: "gcp"
+
+steps:
+  - label: "Run the release"
+    key: "release"
+    commands: .ci/release.sh
+    artifact_paths: "release.txt"
+
+notify:
+  - slack:
+      channels:
+        #- "#apm-agent-php"
+        - "#on-week-oblt-productivity"

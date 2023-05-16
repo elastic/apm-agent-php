@@ -25,57 +25,60 @@ namespace ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest;
 
 use Ds\Set;
 use Elastic\Apm\Impl\Config\OptionDefaultValues;
-use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\SpanData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\TransactionInterface;
-use ElasticApmTests\TestsSharedCode\EventsFromAgent;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
 
 final class SharedCode
 {
     use StaticClassTrait;
 
-    /** @var ?int */
-    private const LIMIT_TO_VARIANT_INDEX = null;
-
-    /** @var bool */
-    private const SHOULD_PRINT_PROGRESS = true;
+    public const TESTING_DEPTH_0 = 0;
+    public const TESTING_DEPTH_1 = 1;
+    public const TESTING_DEPTH_MAX = 2;
 
     /**
-     * @param bool $isFullTestingMode
+     * @param int $testingDepth
      *
      * @return iterable<int|null>
      */
-    public static function configTransactionMaxSpansVariants(bool $isFullTestingMode): iterable
+    public static function configTransactionMaxSpansVariants(int $testingDepth): iterable
     {
-        yield from [null, 0];
+        // OLD TODO: Sergey Kleyman: UNCOMMENT and remove the "if" block below
+        // yield null;
+        if ($testingDepth >= self::TESTING_DEPTH_1) {
+            yield null;
+        }
 
-        if ($isFullTestingMode) {
-            yield from [10, 1000];
+        yield 0;
+
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
+            yield from [10, 100, OptionDefaultValues::TRANSACTION_MAX_SPANS * 2];
         }
     }
 
     /**
      * @param ?int $configTransactionMaxSpans
-     * @param bool $isFullTestingMode
+     * @param int  $testingDepth
      *
      * @return iterable<int>
      */
-    public static function numberOfSpansToCreateVariants(
-        ?int $configTransactionMaxSpans,
-        bool $isFullTestingMode
-    ): iterable {
-        /** @var Set<int> */
+    public static function numberOfSpansToCreateVariants(?int $configTransactionMaxSpans, int $testingDepth): iterable
+    {
+        /**
+         * @var Set<int>
+         * @noinspection PhpVarTagWithoutVariableNameInspection
+         */
         $result = new Set();
 
-        $addInterestingValues = function (int $maxSpans) use ($result, $isFullTestingMode) {
+        $addInterestingValues = function (int $maxSpans) use ($result, $testingDepth) {
             $result->add($maxSpans);
             $result->add($maxSpans + 1);
 
-            if ($isFullTestingMode) {
+            if ($testingDepth >= self::TESTING_DEPTH_MAX) {
                 $result->add($maxSpans - 1);
                 $result->add(2 * $maxSpans);
             }
@@ -83,7 +86,7 @@ final class SharedCode
 
         $addInterestingValues($configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(0);
         }
 
@@ -95,19 +98,22 @@ final class SharedCode
     }
 
     /**
-     * @param int  $numberOfSpansToCreateValues
-     * @param bool $isFullTestingMode
+     * @param int $numberOfSpansToCreateValues
+     * @param int $testingDepth
      *
      * @return iterable<int>
      */
-    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
+    public static function maxFanOutVariants(int $numberOfSpansToCreateValues, int $testingDepth): iterable
     {
-        /** @var Set<int> */
+        /**
+         * @var Set<int>
+         * @noinspection PhpVarTagWithoutVariableNameInspection
+         */
         $result = new Set();
 
         $result->add(3);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(1);
             $result->add($numberOfSpansToCreateValues);
         }
@@ -120,19 +126,22 @@ final class SharedCode
     }
 
     /**
-     * @param int  $numberOfSpansToCreateValues
-     * @param bool $isFullTestingMode
+     * @param int $numberOfSpansToCreateValues
+     * @param int $testingDepth
      *
      * @return iterable<int>
      */
-    public static function maxDepthVariants(int $numberOfSpansToCreateValues, bool $isFullTestingMode): iterable
+    public static function maxDepthVariants(int $numberOfSpansToCreateValues, int $testingDepth): iterable
     {
-        /** @var Set<int> */
+        /**
+         * @var Set<int>
+         * @noinspection PhpVarTagWithoutVariableNameInspection
+         */
         $result = new Set();
 
         $result->add(3);
 
-        if ($isFullTestingMode) {
+        if ($testingDepth >= self::TESTING_DEPTH_MAX) {
             $result->add(1);
             $result->add(2);
             $result->add($numberOfSpansToCreateValues);
@@ -147,22 +156,22 @@ final class SharedCode
     }
 
     /**
-     * @param bool $isFullTestingMode
+     * @param int $testingDepth
      *
      * @return iterable<Args>
      */
-    public static function testArgsVariants(bool $isFullTestingMode): iterable
+    public static function testArgsVariants(int $testingDepth): iterable
     {
-        /** @var ?int */
-        $limitVariousCombinationsToVariantIndex = null;
+        // /** @var ?int */
+        // $limitVariousCombinationsToVariantIndex = null;
 
         $variantIndex = 1;
         foreach ([true, false] as $isSampled) {
-            foreach (self::configTransactionMaxSpansVariants($isFullTestingMode) as $configTransactionMaxSpans) {
-                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $isFullTestingMode);
+            foreach (self::configTransactionMaxSpansVariants($testingDepth) as $configTransactionMaxSpans) {
+                $numSpansVars = self::numberOfSpansToCreateVariants($configTransactionMaxSpans, $testingDepth);
                 foreach ($numSpansVars as $numberOfSpansToCreate) {
-                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxFanOut) {
-                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $isFullTestingMode) as $maxDepth) {
+                    foreach (self::maxFanOutVariants($numberOfSpansToCreate, $testingDepth) as $maxFanOut) {
+                        foreach (self::maxDepthVariants($numberOfSpansToCreate, $testingDepth) as $maxDepth) {
                             foreach ([true, false] as $shouldUseOnlyCurrentCreateSpanApis) {
                                 $result = new Args();
                                 $result->variantIndex = $variantIndex++;
@@ -181,80 +190,49 @@ final class SharedCode
         }
     }
 
-    public static function testEachArgsVariantProlog(bool $isFullTestingMode, Args $testArgs): bool
-    {
-        $testArgsVariantsCount = IterableUtilForTests::count(SharedCode::testArgsVariants($isFullTestingMode));
-        if ($testArgs->variantIndex === 1) {
-            /** @phpstan-ignore-next-line */
-            if (!is_null(self::LIMIT_TO_VARIANT_INDEX) && self::SHOULD_PRINT_PROGRESS) {
-                $msg = 'LIMITED to variant #'
-                       . self::LIMIT_TO_VARIANT_INDEX . ' out of '
-                       . $testArgsVariantsCount;
-                fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
-            }
-        }
-
-        /** @phpstan-ignore-next-line */
-        $isThisVariantEnabled = is_null(self::LIMIT_TO_VARIANT_INDEX)
-                                || ($testArgs->variantIndex === self::LIMIT_TO_VARIANT_INDEX);
-
-        $shouldPrintProgress = is_null(self::LIMIT_TO_VARIANT_INDEX)
-            ? self::SHOULD_PRINT_PROGRESS
-            : $isThisVariantEnabled; // @phpstan-ignore-line
-
-        /** @phpstan-ignore-next-line */
-        if ($shouldPrintProgress) {
-            $msg = 'variant #' . $testArgs->variantIndex . ' out of ' . $testArgsVariantsCount
-                   . ': ' . LoggableToString::convert($testArgs);
-            fwrite(STDERR, PHP_EOL . __METHOD__ . ': ' . $msg . PHP_EOL);
-        }
-
-        return $isThisVariantEnabled;
-    }
-
     public static function appCode(Args $testArgs, TransactionInterface $tx): void
     {
         AppCode::run($testArgs, $tx);
     }
 
-    public static function assertResults(Args $testArgs, EventsFromAgent $eventsFromAgent): void
+    public static function assertResults(Args $testArgs, DataFromAgent $dataFromAgent): void
     {
-        $tx = $eventsFromAgent->singleTransaction();
-        TestCase::assertSame($testArgs->isSampled, $tx->isSampled);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $tx = $dataFromAgent->singleTransaction();
+        TestCaseBase::assertSame($testArgs->isSampled, $tx->isSampled);
 
         $transactionMaxSpans = $testArgs->configTransactionMaxSpans ?? OptionDefaultValues::TRANSACTION_MAX_SPANS;
         if ($transactionMaxSpans < 0) {
             $transactionMaxSpans = OptionDefaultValues::TRANSACTION_MAX_SPANS;
         }
 
-        $msg = LoggableToString::convert(['testArgs' => $testArgs, 'eventsFromAgent' => $eventsFromAgent]);
         if (!$tx->isSampled) {
-            TestCase::assertSame(0, $tx->startedSpansCount, $msg);
-            TestCase::assertSame(0, $tx->droppedSpansCount, $msg);
-            TestCase::assertEmpty($eventsFromAgent->idToSpan, $msg);
+            TestCaseBase::assertSame(0, $tx->startedSpansCount);
+            TestCaseBase::assertSame(0, $tx->droppedSpansCount);
+            TestCaseBase::assertEmpty($dataFromAgent->idToSpan);
             return;
         }
 
         $expectedStartedSpansCount = min($testArgs->numberOfSpansToCreate, $transactionMaxSpans);
-        TestCase::assertSame($expectedStartedSpansCount, $tx->startedSpansCount, $msg);
+        TestCaseBase::assertSame($expectedStartedSpansCount, $tx->startedSpansCount);
         $expectedDroppedSpansCount = $testArgs->numberOfSpansToCreate - $expectedStartedSpansCount;
-        TestCase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount, $msg);
-        TestCase::assertCount($expectedStartedSpansCount, $eventsFromAgent->idToSpan, $msg);
+        TestCaseBase::assertSame($expectedDroppedSpansCount, $tx->droppedSpansCount);
+        TestCaseBase::assertCount($expectedStartedSpansCount, $dataFromAgent->idToSpan);
 
-        /** @var ?SpanData $spanMissingChildren */
-        $spanMissingChildren = null;
-
-        /** @var SpanData $span */
-        foreach ($eventsFromAgent->idToSpan as $span) {
-            $msg2 = $msg . ' spanId: ' . $span->id . '.';
-            TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $msg2);
+        $dbgCtx->pushSubScope();
+        foreach ($dataFromAgent->idToSpan as $span) {
+            $dbgCtx->clearCurrentSubScope(['span' => $span]);
+            TestCaseBase::assertHasLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
             $createdChildCount = TestCaseBase::getLabel($span, AppCode::NUMBER_OF_CHILD_SPANS_LABEL_KEY);
-            $sentChildCount = IterableUtilForTests::count($eventsFromAgent->findChildSpans($span->id));
+            TestCaseBase::assertIsInt($createdChildCount);
+            $sentChildCount = IterableUtilForTests::count($dataFromAgent->findChildSpans($span->id));
             if ($tx->droppedSpansCount === 0) {
-                TestCase::assertSame($createdChildCount, $sentChildCount, $msg2);
+                TestCaseBase::assertSame($createdChildCount, $sentChildCount);
             } else {
-                TestCase::assertLessThanOrEqual($createdChildCount, $sentChildCount, $msg2);
+                TestCaseBase::assertLessThanOrEqual($createdChildCount, $sentChildCount);
             }
         }
+        $dbgCtx->popSubScope();
     }
 }

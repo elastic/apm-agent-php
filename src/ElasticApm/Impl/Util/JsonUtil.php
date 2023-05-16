@@ -64,11 +64,11 @@ final class JsonUtil
     public static function decode(string $encodedData, bool $asAssocArray)
     {
         $decodedData = json_decode($encodedData, /* assoc: */ $asAssocArray);
-        if (is_null($decodedData) && ($encodedData !== 'null')) {
+        if ($decodedData === null && ($encodedData !== 'null')) {
             throw new JsonException(
                 'json_decode() failed.'
                 . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
-                . ' encodedData: ' . $encodedData . '.'
+                . ' encodedData: `' . $encodedData . '\''
             );
         }
         return $decodedData;

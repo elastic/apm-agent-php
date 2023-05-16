@@ -25,7 +25,8 @@ if (PHP_ELASTIC_APM != 'no') {
             "MemoryTracker.c" + " " +
             "php_error.c" + " " +
             "platform.c" + " " +
-            "RequestScoped.c" + " " +
+            "platform_threads_windows.c" + " " +
+            "ResultCode.c" + " " +
             "supportability.c" + " " +
             "SystemMetrics.c" + " " +
             "time_util.c" + " " +

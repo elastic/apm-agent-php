@@ -24,13 +24,16 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use ElasticApmTests\TestsRootDir;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\ExternalTestData;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
+use PHPUnit\Framework\TestCase;
 
 final class ServerApiSchemaValidator
 {
@@ -38,6 +41,7 @@ final class ServerApiSchemaValidator
     private const METADATA_SCHEMA_INDEX = 1;
     private const SPAN_SCHEMA_INDEX = 2;
     private const TRANSACTION_SCHEMA_INDEX = 3;
+    private const METRIC_SET_SCHEMA_INDEX = 4;
 
     private const EARLIEST_SUPPORTED_SPEC_DIR = 'earliest_supported/docs/spec';
     private const EARLIEST_SUPPORTED_SCHEMAS_REL_PATHS
@@ -46,6 +50,7 @@ final class ServerApiSchemaValidator
             self::METADATA_SCHEMA_INDEX    => 'metadata.json',
             self::SPAN_SCHEMA_INDEX        => 'spans/span.json',
             self::TRANSACTION_SCHEMA_INDEX => 'transactions/transaction.json',
+            self::METRIC_SET_SCHEMA_INDEX  => 'metricsets/metricset.json',
         ];
 
     private const LATEST_USED_SPEC_DIR = 'latest_used';
@@ -55,22 +60,18 @@ final class ServerApiSchemaValidator
             self::METADATA_SCHEMA_INDEX    => 'metadata.json',
             self::SPAN_SCHEMA_INDEX        => 'span.json',
             self::TRANSACTION_SCHEMA_INDEX => 'transaction.json',
+            self::METRIC_SET_SCHEMA_INDEX  => 'metricset.json',
         ];
 
-    /** @var array<string, null> */
-    private static $additionalPropertiesCandidateNodesKeys;
+    /** @var ?array<string, null> */
+    private static $additionalPropertiesCandidateNodesKeys = null;
 
     /** @var array<string> */
     private $tempFilePaths = [];
 
-    private static function pathToSpecsRootDir(): string
-    {
-        return TestsRootDir::$fullPath . '/APM_Server_intake_API_schema';
-    }
-
     private static function isAdditionalPropertiesCandidate(string $key): bool
     {
-        if (!isset(self::$additionalPropertiesCandidateNodesKeys)) {
+        if (self::$additionalPropertiesCandidateNodesKeys === null) {
             self::$additionalPropertiesCandidateNodesKeys = ['properties' => null, 'patternProperties' => null];
         }
 
@@ -93,25 +94,30 @@ final class ServerApiSchemaValidator
 
     public static function validateMetadata(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::METADATA_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::METADATA_SCHEMA_INDEX));
     }
 
-    public static function validateTransactionData(string $serializedData): void
+    public static function validateTransaction(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::TRANSACTION_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::TRANSACTION_SCHEMA_INDEX));
     }
 
-    public static function validateSpanData(string $serializedData): void
+    public static function validateSpan(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::SPAN_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::SPAN_SCHEMA_INDEX));
     }
 
-    public static function validateErrorData(string $serializedData): void
+    public static function validateError(string $serializedData): void
     {
-        self::validateEventData($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::ERROR_SCHEMA_INDEX));
     }
 
-    private static function validateEventData(string $serializedData, Closure $pathToSchemaSupplier): void
+    public static function validateMetricSet(string $serializedData): void
+    {
+        self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::METRIC_SET_SCHEMA_INDEX));
+    }
+
+    private static function validateEvent(string $serializedData, Closure $pathToSchemaSupplier): void
     {
         foreach ([true, false] as $isEarliestVariant) {
             $allowAdditionalPropertiesVariants = [true];
@@ -119,7 +125,7 @@ final class ServerApiSchemaValidator
                 $allowAdditionalPropertiesVariants[] = false;
             }
             foreach ($allowAdditionalPropertiesVariants as $allowAdditionalProperties) {
-                (new self())->validateEventDataAgainstSchemaVariant(
+                (new self())->validateEventAgainstSchemaVariant(
                     $serializedData,
                     $pathToSchemaSupplier($isEarliestVariant),
                     $allowAdditionalProperties
@@ -128,13 +134,13 @@ final class ServerApiSchemaValidator
         }
     }
 
-    private function validateEventDataAgainstSchemaVariant(
+    private function validateEventAgainstSchemaVariant(
         string $serializedData,
         string $relativePathToSchema,
         bool $allowAdditionalProperties
     ): void {
         try {
-            $this->validateEventDataAgainstSchemaVariantImpl(
+            $this->validateEventAgainstSchemaVariantImpl(
                 $serializedData,
                 $relativePathToSchema,
                 $allowAdditionalProperties
@@ -148,7 +154,7 @@ final class ServerApiSchemaValidator
         }
     }
 
-    private function validateEventDataAgainstSchemaVariantImpl(
+    private function validateEventAgainstSchemaVariantImpl(
         string $serializedData,
         string $relativePathToSchema,
         bool $allowAdditionalProperties
@@ -158,7 +164,7 @@ final class ServerApiSchemaValidator
         $validator->validate(
             $deserializedRawData,
             (object)($this->loadSchema(
-                self::normalizePath(self::pathToSpecsRootDir() . '/' . $relativePathToSchema),
+                ExternalTestData::fullPathForFileInApmServerIntakeApiSchemaDir($relativePathToSchema),
                 $allowAdditionalProperties
             )),
             Constraint::CHECK_MODE_VALIDATE_SCHEMA
@@ -166,15 +172,6 @@ final class ServerApiSchemaValidator
         if (!$validator->isValid()) {
             throw self::buildException($relativePathToSchema, $validator, $serializedData);
         }
-    }
-
-    private static function normalizePath(string $absolutePath): string
-    {
-        $result = realpath($absolutePath);
-        if ($result === false) {
-            throw ValidationUtil::buildException("realpath failed. absolutePath: `$absolutePath'");
-        }
-        return $result;
     }
 
     /**
@@ -185,10 +182,6 @@ final class ServerApiSchemaValidator
      */
     private function loadSchema(string $absolutePath, bool $allowAdditionalProperties): array
     {
-        if ($allowAdditionalProperties) {
-            return ['$ref' => self::convertPathToFileUrl($absolutePath)];
-        }
-
         $decodedSchema = self::loadSchemaAndResolveRefs($absolutePath);
         self::processSchema(/* ref */ $decodedSchema, $allowAdditionalProperties);
         $pathToTempFileWithProcessedSchema = $this->writeProcessedSchemaToTempFile($decodedSchema);
@@ -211,17 +204,14 @@ final class ServerApiSchemaValidator
      */
     private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $pathToTempFile = tempnam(sys_get_temp_dir(), '');
-        $pathToTempFile .= '_' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $pathToTempFile = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'processed Intake API schema');
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,
             JsonUtil::encode($schema, /* prettyPrint: */ true),
             /* flags */ LOCK_EX
         );
-        if ($numberOfBytesWritten === false) {
-            throw ValidationUtil::buildException("Failed to write to temp file `$pathToTempFile'");
-        }
+        TestCase::assertNotFalse($numberOfBytesWritten, "Failed to write to temp file `$pathToTempFile'");
         return $pathToTempFile;
     }
 
@@ -233,9 +223,7 @@ final class ServerApiSchemaValidator
     private static function loadSchemaAndResolveRefs(string $absolutePath): array
     {
         $fileContents = file_get_contents($absolutePath);
-        if ($fileContents === false) {
-            throw ValidationUtil::buildException("Failed to load schema from `$absolutePath'");
-        }
+        TestCase::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
         $decodedSchema = JsonUtil::decode($fileContents, /* asAssocArray */ true);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
@@ -257,6 +245,7 @@ final class ServerApiSchemaValidator
             return;
         }
 
+        /** @var string $refValue */
         $refValue = $decodedSchemaNode['$ref'];
         self::loadRefAndMerge($absolutePath, /* ref */ $decodedSchemaNode, $refValue);
     }
@@ -268,7 +257,9 @@ final class ServerApiSchemaValidator
      */
     private static function loadRefAndMerge(string $absolutePath, array &$refParentNode, string $refValue): void
     {
-        $schemaFromRef = self::loadSchemaAndResolveRefs(self::normalizePath(dirname($absolutePath) . '/' . $refValue));
+        $schemaFromRef = self::loadSchemaAndResolveRefs(
+            FileUtilForTests::normalizePath(dirname($absolutePath) . '/' . $refValue)
+        );
         foreach ($schemaFromRef as $key => $value) {
             if (!array_key_exists($key, $refParentNode)) {
                 $refParentNode[$key] = $value;
@@ -286,7 +277,10 @@ final class ServerApiSchemaValidator
         if (!$allowAdditionalProperties) {
             self::disableAdditionalProperties(/* ref */ $decodedSchema);
         }
+
         self::removeRedundantKeysFromRef(/* ref */ $decodedSchema);
+
+        self::adjustTimestampType(/* ref */ $decodedSchema);
     }
 
     /**
@@ -300,12 +294,13 @@ final class ServerApiSchemaValidator
             }
         }
 
-        if (
-            array_key_exists('allOf', $decodedSchemaNode)
-            && self::atLeastOneChildFromRef($decodedSchemaNode['allOf'])
-        ) {
-            self::doMergeAllOfFromRef(/* ref */ $decodedSchemaNode);
-            unset($decodedSchemaNode['allOf']);
+        if (array_key_exists('allOf', $decodedSchemaNode)) {
+            /** @var array<mixed> $decodedSchemaNodeAllOf */
+            $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
+            if (self::atLeastOneChildFromRef($decodedSchemaNodeAllOf)) {
+                self::doMergeAllOfFromRef(/* ref */ $decodedSchemaNode);
+                unset($decodedSchemaNode['allOf']);
+            }
         }
     }
 
@@ -314,7 +309,10 @@ final class ServerApiSchemaValidator
      */
     private static function doMergeAllOfFromRef(array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode['allOf'] as $childNode) {
+        /** @var array<mixed> $decodedSchemaNodeAllOf */
+        $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
+        foreach ($decodedSchemaNodeAllOf as $childNode) {
+            /** @var array<mixed> $childNode */
             /** @var string $key */
             foreach ($childNode as $key => $value) {
                 if ($key === '$ref' || $key === '$id' || $key === 'title') {
@@ -330,14 +328,16 @@ final class ServerApiSchemaValidator
                     continue;
                 }
 
+                /** @var array<mixed> $dstArray */
                 $dstArray = &$decodedSchemaNode[$key];
+                /** @var array<mixed> $value */
                 foreach ($value as $subKey => $subValue) {
-                    if (array_key_exists($key, $dstArray)) {
-                        throw ValidationUtil::buildException(
-                            'Failed to merge because key already exists.'
-                            . "subKey: `$subKey'" . "; key: `$key'" . "; subValue: `$subValue'"
-                        );
-                    }
+                    TestCase::assertArrayNotHasKey(
+                        $key,
+                        $dstArray,
+                        'Failed to merge because key already exists.'
+                        . LoggableToString::convert(['subKey' => $subKey, 'key' => $key, 'subValue' => $subValue])
+                    );
                     $dstArray[$subKey] = $subValue;
                 }
             }
@@ -351,7 +351,8 @@ final class ServerApiSchemaValidator
      */
     private static function atLeastOneChildFromRef(array $allOfArray): bool
     {
-        foreach ($allOfArray as $key => $value) {
+        foreach ($allOfArray as $value) {
+            /** @var array<mixed> $value */
             if (array_key_exists('$ref', $value)) {
                 return true;
             }
@@ -390,6 +391,57 @@ final class ServerApiSchemaValidator
         }
 
         unset($decodedSchemaNode['$ref']);
+    }
+
+    /**
+     * @param array<string, mixed> $decodedSchemaNode
+     */
+    private static function adjustTimestampType(array &$decodedSchemaNode): void
+    {
+        foreach ($decodedSchemaNode as $key => $value) {
+            if (is_array($value)) {
+                self::adjustTimestampType(/* ref */ $decodedSchemaNode[$key]);
+            }
+        }
+
+        if (!array_key_exists('timestamp', $decodedSchemaNode)) {
+            return;
+        }
+
+        // from earliest_supported/docs/spec/timestamp_epoch.json
+        //      "timestamp": {
+        //          "type": ["integer", "null"]
+        //      }
+
+        // from earliest_supported/docs/spec/metricsets/metricset.json
+        //      "timestamp": {
+        //          "type": "integer"
+        //      }
+
+        $timestampVal = &$decodedSchemaNode['timestamp'];
+        if (!is_array($timestampVal)) {
+            return;
+        }
+        /** @var array<mixed> $timestampVal */
+        $typeVal = &$timestampVal['type'];
+        if (is_array($typeVal)) {
+            if (count($typeVal) !== 2) {
+                return;
+            }
+            /** @var array<mixed> $typeVal */
+            if (
+                !(in_array('null', $typeVal, /* $strict: */ true)
+                  && in_array('integer', $typeVal, /* $strict: */ true))
+            ) {
+                return;
+            }
+            $typeVal = ['number' , 'null'];
+        } else {
+            if ($typeVal !== 'integer') {
+                return;
+            }
+            $typeVal = 'number';
+        }
     }
 
     private static function buildException(
@@ -438,6 +490,7 @@ final class ServerApiSchemaValidator
                     'relativePathToSchema' => $relativePathToSchema,
                     'errors'               => $allErrorsToLoggable(),
                     'serializedData'       => $serializedData,
+                    'AssertMessageStack'   => AssertMessageStack::getContextsStack(),
                 ]
             )
         );

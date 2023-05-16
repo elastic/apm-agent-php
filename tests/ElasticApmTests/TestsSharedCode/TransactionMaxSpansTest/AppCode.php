@@ -32,7 +32,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TestCaseBase;
 
 final class AppCode implements LoggableInterface
 {
@@ -72,9 +72,9 @@ final class AppCode implements LoggableInterface
 
     public static function run(Args $testArgs, TransactionInterface $tx): void
     {
-        TestCase::assertGreaterThanOrEqual(0, $testArgs->numberOfSpansToCreate);
-        TestCase::assertGreaterThan(0, $testArgs->maxFanOut);
-        TestCase::assertGreaterThan(0, $testArgs->maxDepth);
+        TestCaseBase::assertGreaterThanOrEqual(0, $testArgs->numberOfSpansToCreate);
+        TestCaseBase::assertGreaterThan(0, $testArgs->maxFanOut);
+        TestCaseBase::assertGreaterThan(0, $testArgs->maxDepth);
         (new self($testArgs, $tx))->runLoop();
     }
 
@@ -83,11 +83,11 @@ final class AppCode implements LoggableInterface
         $depthOnEntry = $this->actualSpansDepth();
         $isTraversingDown = true;
         while (true) {
-            TestCase::assertLessThanOrEqual($this->testArgs->numberOfSpansToCreate, $this->numberOfSpansCreated);
-            TestCase::assertLessThanOrEqual($this->testArgs->maxDepth, $this->actualSpansDepth());
-            TestCase::assertGreaterThanOrEqual($depthOnEntry, $this->actualSpansDepth());
+            TestCaseBase::assertLessThanOrEqual($this->testArgs->numberOfSpansToCreate, $this->numberOfSpansCreated);
+            TestCaseBase::assertLessThanOrEqual($this->testArgs->maxDepth, $this->actualSpansDepth());
+            TestCaseBase::assertGreaterThanOrEqual($depthOnEntry, $this->actualSpansDepth());
             if ($this->actualSpansDepth() > 0) {
-                TestCase::assertLessThanOrEqual($this->testArgs->maxFanOut, $this->topSpanInfo()->childCount);
+                TestCaseBase::assertLessThanOrEqual($this->testArgs->maxFanOut, $this->topSpanInfo()->childCount);
             }
 
             if ($isTraversingDown) {
@@ -122,13 +122,13 @@ final class AppCode implements LoggableInterface
     {
         // actualSpansDepth is spanInfoStack->count() - 1 because the bottom entry in spanInfoStack
         // represents the transaction itself
-        TestCase::assertGreaterThanOrEqual(1, $this->spanInfoStack->count());
+        TestCaseBase::assertGreaterThanOrEqual(1, $this->spanInfoStack->count());
         return $this->spanInfoStack->count() - 1;
     }
 
     private function topSpanInfo(): SpanInfo
     {
-        TestCase::assertFalse($this->spanInfoStack->isEmpty());
+        TestCaseBase::assertFalse($this->spanInfoStack->isEmpty());
         return $this->spanInfoStack->peek();
     }
 
@@ -154,12 +154,12 @@ final class AppCode implements LoggableInterface
     {
         ++$this->numberOfSpansCreated;
         ++$this->topSpanInfo()->childCount;
-        /** @var ExecutionSegmentInterface */
+        /** @var ExecutionSegmentInterface $topExecSegment */
         $topExecSegment = ($this->actualSpansDepth() === 0) ? $this->tx : $this->topSpanInfo()->span;
-        /** @var ExecutionSegmentContextInterface */
+        /** @var ExecutionSegmentContextInterface $context */
         $context = $topExecSegment->context(); // @phpstan-ignore-line
         $context->setLabel(self::NUMBER_OF_CHILD_SPANS_LABEL_KEY, $this->topSpanInfo()->childCount);
-        $spanName = $this->topSpanInfo()->name . '_' . strval($this->topSpanInfo()->childCount);
+        $spanName = $this->topSpanInfo()->name . '_' . $this->topSpanInfo()->childCount;
 
         $recursiveCallback = function (SpanInterface $span) use ($spanName) {
             ++$this->currentRecursionDepth;
@@ -177,7 +177,7 @@ final class AppCode implements LoggableInterface
         }
 
         if ($this->testArgs->shouldUseOnlyCurrentCreateSpanApis) {
-            TestCase::assertTrue($isTxCurrentSpanTopSpanInfo);
+            TestCaseBase::assertTrue($isTxCurrentSpanTopSpanInfo);
         } else {
             $createSpanApis += [self::BEGIN_CHILD_SPAN_API_ID];
             $this->addRecursionApi(self::CAPTURE_CHILD_SPAN_API_ID, /* ref */ $createSpanApis);
@@ -204,7 +204,7 @@ final class AppCode implements LoggableInterface
                 break;
 
             default:
-                TestCase::fail('This point should never be reached. ' . LoggableToString::convert(['this' => $this]));
+                TestCaseBase::fail('This point should never be reached. ' . LoggableToString::convert(['this' => $this]));
         }
     }
 }

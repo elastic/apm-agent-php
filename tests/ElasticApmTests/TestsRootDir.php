@@ -23,8 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests;
 
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
 final class TestsRootDir
 {
+    use StaticClassTrait;
+
     /** @var string */
     public static $fullPath;
 }

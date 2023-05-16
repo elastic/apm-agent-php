@@ -25,22 +25,25 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Psr\Http\Message\ResponseInterface;
-use React\Http\Response;
+use React\Http\Message\Response;
 
 trait HttpServerProcessTrait
 {
-    protected static function verifyServerId(string $receivedServerId): ResponseInterface
-    {
-        if ($receivedServerId !== AmbientContext::testConfig()->sharedDataPerProcess->thisServerId) {
+    protected static function verifySpawnedProcessInternalId(
+        string $receivedSpawnedProcessInternalId
+    ): ?ResponseInterface {
+        $expectedSpawnedProcessInternalId
+            = AmbientContextForTests::testConfig()->dataPerProcess->thisSpawnedProcessInternalId;
+        if ($expectedSpawnedProcessInternalId !== $receivedSpawnedProcessInternalId) {
             return self::buildErrorResponse(
-                400,
+                HttpConstantsForTests::STATUS_BAD_REQUEST,
                 'Received server ID does not match the expected one.'
-                . ' Expected: ' . AmbientContext::testConfig()->sharedDataPerProcess->thisServerId
-                . ', received: ' . $receivedServerId
+                . ' Expected: ' . $expectedSpawnedProcessInternalId
+                . ', received: ' . $receivedSpawnedProcessInternalId
             );
         }
 
-        return new Response(HttpConsts::STATUS_OK);
+        return null;
     }
 
     protected static function buildErrorResponse(int $status, string $message): ResponseInterface
@@ -54,5 +57,15 @@ trait HttpServerProcessTrait
             // body:
             JsonUtil::encode(['message' => $message], /* prettyPrint: */ true)
         );
+    }
+
+    protected static function buildDefaultResponse(): ResponseInterface
+    {
+        return new Response();
+    }
+
+    protected static function buildResponseWithPid(): ResponseInterface
+    {
+        return Response::json([HttpServerHandle::PID_KEY => getmypid()]);
     }
 }

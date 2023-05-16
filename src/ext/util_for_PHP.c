@@ -18,85 +18,151 @@
  */
 
 #include "util_for_PHP.h"
+#include <stdio.h>
 #include <php_main.h>
+#include <zend_hash.h>
+#include <zend_compile.h>
 #include "util.h"
+#include "platform.h"
 #include "time_util.h"
-#include "ConfigManager.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_UTIL
 
-ResultCode loadPhpFile( const char* filename TSRMLS_DC )
+void logDiagnostics_for_failed_php_stream_open_for_zend_ex( const char* phpFilePath )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "filename: `%s'", filename );
+    FILE* fopen_ret_val = fopen( phpFilePath, "r" );
+    int fopen_errno = errno;
+    const char* prefix = "Diagnostics for failed php_stream_open_for_zend_ex()";
+    if ( fopen_ret_val == NULL )
+    {
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "%s: fopen(\"%s\", \"r\") returned NULL value, errno: %d (%s)", prefix, phpFilePath, fopen_errno, streamErrNo( fopen_errno, &txtOutStream ) );
+    }
+    else
+    {
+        ELASTIC_APM_LOG_ERROR( "%s: fopen(\"%s\", \"r\") returned non-NULL value", prefix, phpFilePath );
+        fclose( fopen_ret_val );
+    }
+}
+
+ResultCode loadPhpFile( const char* phpFilePath )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "phpFilePath: `%s'", phpFilePath );
 
     ResultCode resultCode;
-    size_t filename_len = strlen( filename );
     zval dummy;
     zend_file_handle file_handle;
-    zend_op_array * new_op_array = NULL;
-    zval result;
-    int ret;
+    bool should_destroy_file_handle = false;
     zend_string* opened_path = NULL;
+    zend_op_array* new_op_array = NULL;
+    zval result;
+    bool should_dtor_result = false;
 
-    if ( filename_len == 0 )
+    size_t phpFilePathLen = strlen( phpFilePath );
+    if ( phpFilePathLen == 0 )
     {
-        ELASTIC_APM_LOG_ERROR( "filename_len == 0" );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_LOG_ERROR( "phpFilePathLen == 0" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ret = php_stream_open_for_zend_ex( filename, &file_handle, USE_PATH | STREAM_OPEN_FOR_INCLUDE );
-    if ( ret != SUCCESS )
-    {
-        ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex failed. Return value: %d. filename: %s", ret, filename );
-        resultCode = resultFailure;
-        goto failure;
-    }
+    // Copied from
+    //      https://github.com/php/php-src/blob/php-8.0.0/ext/spl/php_spl.c
+    //      https://github.com/php/php-src/blob/php-8.1.0/ext/spl/php_spl.c
+    // the second half of spl_autoload()
 
-    if ( ! file_handle.opened_path )
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
+    zend_string* phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
+    zend_stream_init_filename_ex( &file_handle, phpFilePathAsZendString );
+    should_destroy_file_handle = true;
+#       endif
+
+    int php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
+            phpFilePath,
+#               endif
+            &file_handle
+            , USE_PATH|STREAM_OPEN_FOR_INCLUDE );
+    if ( php_stream_open_for_zend_ex_retVal != SUCCESS )
     {
-        file_handle.opened_path = zend_string_init( filename, filename_len, 0 );
+        ELASTIC_APM_LOG_ERROR( "php_stream_open_for_zend_ex() failed. Return value: %d. phpFilePath: `%s'", php_stream_open_for_zend_ex_retVal, phpFilePath );
+        logDiagnostics_for_failed_php_stream_open_for_zend_ex( phpFilePath );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+    should_destroy_file_handle = true;
+
+    if ( ! file_handle.opened_path ) {
+        file_handle.opened_path =
+#               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
+            zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
+#               else
+            zend_string_copy( phpFilePathAsZendString );
+#               endif
     }
     opened_path = zend_string_copy( file_handle.opened_path );
+
     ZVAL_NULL( &dummy );
-    if ( ! zend_hash_add( &EG( included_files ), opened_path, &dummy ) )
+    if ( ! zend_hash_add( &EG(included_files), opened_path, &dummy ) )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. filename: %s", filename );
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
         zend_file_handle_dtor( &file_handle );
-        resultCode = resultFailure;
-        goto failure;
+        should_destroy_file_handle = false;
+#           endif
+
+        ELASTIC_APM_LOG_ERROR( "zend_hash_add failed. phpFilePath: `%s'", phpFilePath );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     new_op_array = zend_compile_file( &file_handle, ZEND_REQUIRE );
-    zend_destroy_file_handle( &file_handle );
-    if ( ! new_op_array )
+    if ( new_op_array == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. filename: %s", filename );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_LOG_ERROR( "zend_compile_file failed. phpFilePath: `%s'", phpFilePath );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     ZVAL_UNDEF( &result );
     zend_execute( new_op_array, &result );
-    zval_ptr_dtor( &result );
+    should_dtor_result = true;
+    bool hasThrownException = ( EG( exception ) != NULL );
+    destroy_op_array( new_op_array );
+    efree( new_op_array );
+    if ( hasThrownException )
+    {
+        should_dtor_result = false;
+        ELASTIC_APM_LOG_ERROR( "Exception was thrown during zend_execute(). phpFilePath: `%s'", phpFilePath );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
 
     resultCode = resultSuccess;
 
     finally:
-    if ( new_op_array )
+
+    if ( should_dtor_result )
     {
-        destroy_op_array( new_op_array );
-        efree( new_op_array );
-        new_op_array = NULL;
+        zval_ptr_dtor( &result );
     }
 
-    if ( opened_path )
+    if ( opened_path != NULL )
     {
+#           if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 7, 3, 0 ) /* if PHP version before 7.3.0 */
         zend_string_release( opened_path );
+#else
+        zend_string_release_ex( opened_path, /* persistent: */ 0 );
+#           endif
         opened_path = NULL;
     }
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    if ( should_destroy_file_handle )
+    {
+        zend_destroy_file_handle( &file_handle );
+        should_destroy_file_handle = false;
+    }
+
+#       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
+    zend_string_release( phpFilePathAsZendString );
+#       endif
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
@@ -120,10 +186,10 @@ void getArgsFromZendExecuteData( zend_execute_data* execute_data, size_t dstArra
 typedef void (* ConsumeZvalFunc)( void* ctx, const zval* pZval );
 
 static
-ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], ConsumeZvalFunc consumeRetVal, void* consumeRetValCtx )
+ResultCode callPhpFunction( StringView phpFunctionName, uint32_t argsCount, zval args[], ConsumeZvalFunc consumeRetVal, void* consumeRetValCtx )
 {
-    ELASTIC_APM_LOG_FUNCTION_ENTRY_MSG_WITH_LEVEL( logLevel, "phpFunctionName: `%.*s', argsCount: %u"
-                                                  , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "phpFunctionName: `%.*s', argsCount: %u"
+                                              , (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
 
     ResultCode resultCode;
     zval phpFunctionNameAsZval;
@@ -139,13 +205,12 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
             , /* function_name: */ &phpFunctionNameAsZval
             , /* retval_ptr: */ &phpFunctionRetVal
             , argsCount
-            , args TSRMLS_CC );
+            , args );
     if ( callUserFunctionRetVal != SUCCESS )
     {
         ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."
                 , callUserFunctionRetVal, (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
-        resultCode = resultFailure;
-        goto failure;
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     if ( consumeRetVal != NULL ) consumeRetVal( consumeRetValCtx, &phpFunctionRetVal );
@@ -156,7 +221,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, LogLevel logLevel, uint3
     zval_dtor( &phpFunctionNameAsZval );
     zval_dtor( &phpFunctionRetVal );
 
-    ELASTIC_APM_LOG_FUNCTION_EXIT_MSG_WITH_LEVEL( logLevel, "resultCode: %s (%d)", resultCodeToString( resultCode ), resultCode );
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
@@ -180,14 +245,14 @@ void consumeBoolRetVal( void* ctx, const zval* pZval )
     }
 }
 
-ResultCode callPhpFunctionRetBool( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], bool* retVal )
+ResultCode callPhpFunctionRetBool( StringView phpFunctionName, uint32_t argsCount, zval args[], bool* retVal )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, consumeBoolRetVal, /* consumeRetValCtx: */ retVal );
+    return callPhpFunction( phpFunctionName, argsCount, args, consumeBoolRetVal, /* consumeRetValCtx: */ retVal );
 }
 
-ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[] )
+ResultCode callPhpFunctionRetVoid( StringView phpFunctionName, uint32_t argsCount, zval args[] )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, /* consumeRetValCtx: */ NULL, /* consumeRetValCtx: */ NULL );
+    return callPhpFunction( phpFunctionName, argsCount, args, /* consumeRetValCtx: */ NULL, /* consumeRetValCtx: */ NULL );
 }
 
 static
@@ -199,7 +264,49 @@ void consumeZvalRetVal( void* ctx, const zval* pZval )
     ZVAL_COPY( ((zval*)ctx), pZval );
 }
 
-ResultCode callPhpFunctionRetZval( StringView phpFunctionName, LogLevel logLevel, uint32_t argsCount, zval args[], zval* retVal )
+ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCount, zval args[], zval* retVal )
 {
-    return callPhpFunction( phpFunctionName, logLevel, argsCount, args, consumeZvalRetVal, retVal );
+    return callPhpFunction( phpFunctionName, argsCount, args, consumeZvalRetVal, retVal );
+}
+
+bool isPhpRunningAsCliScript()
+{
+    return strcmp( sapi_module.name, "cli" ) == 0;
+}
+
+bool detectOpcachePreload() {
+    if (PHP_VERSION_ID < 70400) {
+        return false;
+    }
+
+    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
+    if (!opcacheEnabled) {
+        return false;
+    }
+
+    const char *preloadValue = INI_STR("opcache.preload");
+    if (!preloadValue || strlen(preloadValue) == 0) {
+        return false;
+    }
+
+    // lookup for opcache_get_status
+    if (EG(function_table) && !zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("opcache_get_status"))) {
+        return false;
+    }
+
+    zval *server = zend_hash_str_find(&EG(symbol_table), ZEND_STRL("_SERVER"));
+    if (!server || Z_TYPE_P(server) != IS_ARRAY) {
+        return true; // actually should be available in preload
+    }
+
+    // not available in preload request
+    zval *script = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SCRIPT_NAME"));
+    if (!script) {
+        return true;
+    }
+    return false;
+}
+
+void enableAccessToServerGlobal() {
+    zend_is_auto_global_str(ZEND_STRL("_SERVER"));
 }

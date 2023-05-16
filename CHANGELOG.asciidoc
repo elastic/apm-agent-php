@@ -5,32 +5,152 @@ endif::[]
 
 ////
 [[release-notes-x.x.x]]
-==== x.x.x - YYYY/MM/DD
+=== x.x.x - YYYY/MM/DD
 
 [float]
-===== Breaking changes
+==== Breaking changes
 
 [float]
-===== Features
+==== Features
 * Cool new feature: {pull}2526[#2526]
 
 [float]
-===== Bug fixes
+==== Bug fixes
 ////
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.8.3]]
+=== v1.8.3 - 2023/04/21
+[float]
+==== Bug fixes
+* Fixed issue with missing transaction details on some setups {pull}916[#916]
+
+[[release-notes-v1.8.2]]
+=== v1.8.2 - 2023/04/12
+[float]
+==== Bug fixes
+* Fixed agent issue causing PHP to crash when opcache preload feature was enabled {pull}913[#913]
+
+[[release-notes-v1.8.1]]
+=== v1.8.1 - 2023/03/09
+[float]
+==== Bug fixes
+* Fix for the agent causing very high CPU usage because it's creating frequent connections to Elastic APM Server {pull}877[#877]
+
+[[release-notes-v1.8.0]]
+=== v1.8.0 - 2023/02/27
+[float]
+==== Features
+* Added support for PHP 8.2 {pull}868[#868]
+
+[[release-notes-v1.7.2]]
+=== v1.7.2 - 2023/02/24
+[float]
+==== Bug fixes
+* Fixed: case when process fork happens during request processing {pull}857[#857]
+
+[[release-notes-v1.7.1]]
+=== v1.7.1 - 2023/01/16
+* Fixed: php apm segfaults on a zend error/php warning {pull}834[#834]
+
+[[release-notes-v1.7.0]]
+=== v1.7.0 - 2022/10/13
+* Added support for automatically capturing MySQLi: {pull}688[#688]
+* Fixed: Inferred spans when used with Laravel: {pull}796[#796]
+* Fixed: CustomErrorData not found issue: {pull}797[#797]
+
+[[release-notes-v1.6.2]]
+=== v1.6.2 - 2022/11/17
+* Backported support for automatically capturing MySQLi: {pull}688[#688]
+
+[[release-notes-v1.6.1]]
+=== v1.6.1 - 2022/09/12
+* Fixed: Current implementation for Improved Granularity for SQL Databases doesn't account for SQL USE statement: {pull}759[#759]
+
+[[release-notes-v1.6]]
+=== v1.6 - 2022/08/22
+* Added inferred spans to automatically detect slow functions (as an experimental feature disabled by default): {pull}731[#731]
+* Improved granularity for SQL databases: {pull}732[#732]
+* Implemented default type for transactions and spans: {pull}733[#733]
+* Implemented support for Dependencies table: {pull}748[#748]
+* Improved transaction name for Laravel's `artisan` command - now includes the first argument: {pull}714[#714]
+
+[[release-notes-v1.5.2]]
+=== v1.5.2 - 2022/06/20
+* Fixed bug: Agent destroys error code for curl calls: {pull}707[#707]
+
+[[release-notes-v1.5.1]]
+=== v1.5.1 - 2022/05/30
+* Fixed bug: Forked process runs indefinitely: {pull}691[#691]
+
+[[release-notes-v1.5]]
+=== v1.5 - 2022/03/29
+* Added support for PHP 8.1: {pull}604[#604]
+
+[[release-notes-v1.4.2]]
+=== v1.4.2 - 2022/02/17
+* Create error events only for PHP error types included in https://www.php.net/manual/en/function.error-reporting.php[`error_reporting()`]: {pull}625[#625]
+
+[[release-notes-v1.4.1]]
+=== v1.4.1 - 2022/02/14
+* Fixed error events not being created for PHP errors: {pull}619[#619]
+
+[[release-notes-v1.4]]
+=== v1.4 - 2022/01/10
+
+[float]
+==== Features
+* Background (non-blocking) communication with APM Server: {pull}584[#584]
+
+[[release-notes-v1.3.1]]
+=== v1.3.1 - 2021/10/18
+
+[float]
+==== Features
+* DISABLE_SEND configuration option: {pull}559[#559]
+* DISABLE_INSTRUMENTATIONS configuration option: {pull}565[#565]
+* DEV_INTERNAL configuration option: {pull}566[#566]
+
+[[release-notes-v1.3]]
+=== v1.3 - 2021/09/01
+
+[float]
+==== Features
+* SERVICE_NODE_NAME configuration option: {pull}458[#458]
+* URL_GROUPS configuration option: {pull}537[#537]
+
+[[release-notes-v1.2]]
+=== v1.2 - 2021/06/29
+
+[float]
+==== Features
+* Collecting data for `Error rate` chart: {pull}441[#441]
+* HOSTNAME configuration option: {pull}440[#440]
+* Collecting data for `Time spent by span type` chart: {pull}436[#436]
+* `ensureParentId()` API: {pull}431[#431]
+
+==== Bug fixes
+* Fixed missing subtype and action for DB spans and DB not showing on `Service Map`: {pull}443[#443]
+
+[[release-notes-v1.1]]
+=== v1.1 - 2021/06/01
+
+[float]
+==== Features
+* Support for PHP 8.0: {pull}365[#365]
+* Support for Central (AKA Remote) Agents Configuration {pull}134[#134]
 
 [[release-notes-v1.0.1]]
-=== v1.0.1
+=== v1.0.1 - 2021/04/01
 
 [float]
 ==== Bug fixes
 * Fixed missing query string: {pull}390[#390]
 * Fixed $_SERVER not set when auto_globals_jit = On: {pull}392[#392]
 
-[[release-notes-v1.0.0]]
-=== v1.0.0
+[[release-notes-v1.0]]
+=== v1.0 - 2021/03/23
 
 [float]
 ==== Breaking changes

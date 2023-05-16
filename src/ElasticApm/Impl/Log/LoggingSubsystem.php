@@ -46,6 +46,8 @@ final class LoggingSubsystem
      * @param string               $message
      * @param array<string, mixed> $context
      * @param Throwable            $causedBy
+     *
+     * @return string
      */
     public static function onInternalFailure(string $message, array $context, Throwable $causedBy): string
     {

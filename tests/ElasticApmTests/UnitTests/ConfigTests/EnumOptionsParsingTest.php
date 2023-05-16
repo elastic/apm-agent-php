@@ -73,7 +73,9 @@ class EnumOptionsParsingTest extends TestCaseBase
             ]
         );
 
+        /** @phpstan-ignore-next-line */
         VariousOptionsParsingTest::parseValidValueTestImpl($testValuesGenerator, $optionParser);
+        /** @phpstan-ignore-next-line */
         VariousOptionsParsingTest::parseInvalidValueTestImpl($testValuesGenerator, $optionParser);
     }
 }

@@ -1,9 +1,7 @@
 --TEST--
 Setting configuration options to non-default value (in this case using environment variables)
---SKIPIF--
-<?php if ( ! extension_loaded( 'elastic_apm' ) ) die( 'skip'.'Extension elastic_apm must be installed' ); ?>
 --ENV--
-ELASTIC_APM_LOG_LEVEL_STDERR=OFF
+ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=0
 ELASTIC_APM_LOG_FILE=non-default_log_file_value.txt
 ELASTIC_APM_LOG_LEVEL=CRITICAL
@@ -13,6 +11,8 @@ ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=CRITICAL
 ELASTIC_APM_SECRET_TOKEN=non-default_secret_token_123
 ELASTIC_APM_SERVER_URL=https://non-default_server_url:4321/some/path
 ELASTIC_APM_SERVICE_NAME=Non-default Service Name
+--INI--
+elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

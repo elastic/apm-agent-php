@@ -24,8 +24,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\ExecutionSegmentContextInterface;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 
 /**
@@ -33,30 +36,42 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  *
  * @internal
  *
- * @template        T of ExecutionSegment
+ * @template T of ExecutionSegment
  *
- * @extends         ContextDataWrapper<T>
+ * @extends ContextPartWrapper<T>
  */
-abstract class ExecutionSegmentContext extends ContextDataWrapper implements ExecutionSegmentContextInterface
+abstract class ExecutionSegmentContext extends ContextPartWrapper implements ExecutionSegmentContextInterface
 {
-    /** @var ExecutionSegmentContextData */
-    private $data;
+    /** @var ?array<string, string|bool|int|float|null> */
+    public $labels = null;
 
     /** @var Logger */
     private $logger;
 
-    protected function __construct(ExecutionSegment $owner, ExecutionSegmentContextData $data)
+    protected function __construct(ExecutionSegment $owner)
     {
         parent::__construct($owner);
-        $this->data = $data;
-        $this->logger = $this->getTracer()->loggerFactory()
+        $this->logger = $this->tracer()->loggerFactory()
                              ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)
                              ->addContext('this', $this);
     }
 
-    /** @inheritDoc */
-    public function setLabel(string $key, $value): void
-    {
+    /**
+     * @param string                                     $key
+     * @param string|bool|int|float|null                 $value
+     * @param bool                                       $enforceKeywordString
+     * @param ?array<string, string|bool|int|float|null> $map
+     * @param string                                     $dbgMapName
+     *
+     * @return void
+     */
+    protected function setInKeyValueMap(
+        string $key,
+        $value,
+        bool $enforceKeywordString,
+        ?array &$map,
+        string $dbgMapName
+    ): void {
         if ($this->beforeMutating()) {
             return;
         }
@@ -64,15 +79,25 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
         if (!self::doesValueHaveSupportedLabelType($value)) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
-                'Value for label is of unsupported type - it will be discarded',
+                'Value for ' . $dbgMapName . ' is of unsupported type - it will be discarded',
                 ['value type' => DbgUtil::getType($value), 'key' => $key, 'value' => $value]
             );
             return;
         }
 
-        $this->data->labels[Tracer::limitKeywordString($key)] = is_string($value)
-            ? Tracer::limitKeywordString($value)
+        if ($map === null) {
+            $map = [];
+        }
+
+        $map[$this->tracer()->limitString($key, $enforceKeywordString)] = is_string($value)
+            ? $this->tracer()->limitString($value, $enforceKeywordString)
             : $value;
+    }
+
+    /** @inheritDoc */
+    public function setLabel(string $key, $value): void
+    {
+        $this->setInKeyValueMap($key, $value, /* enforceKeywordString */ true, /* ref */ $this->labels, 'label');
     }
 
     /**
@@ -82,14 +107,27 @@ abstract class ExecutionSegmentContext extends ContextDataWrapper implements Exe
      */
     public static function doesValueHaveSupportedLabelType($value): bool
     {
-        return is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
+        return $value === null || is_string($value) || is_bool($value) || is_int($value) || is_float($value);
     }
 
-    /**
-     * @return string[]
-     */
-    protected static function propertiesExcludedFromLog(): array
+    /** @inheritDoc */
+    public function prepareForSerialization(): int
     {
-        return array_merge(parent::propertiesExcludedFromLog(), ['logger']);
+        return BoolUtil::toInt($this->labels !== null && !ArrayUtil::isEmpty($this->labels));
+    }
+
+    /** @inheritDoc */
+    public function jsonSerialize()
+    {
+        $result = [];
+
+        // APM Server Intake API expects 'tags' key for labels
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
+        // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
+        if ($this->labels !== null) {
+            SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
+        }
+
+        return SerializationUtil::postProcessResult($result);
     }
 }

@@ -64,17 +64,16 @@ final class Parser
 
     /**
      * @param array<string, OptionMetadata<mixed>> $optNameToMeta
-     * @param RawSnapshotInterface                          $rawSnapshot
+     * @param RawSnapshotInterface                 $rawSnapshot
      *
      * @return array<string, mixed> Option name to parsed value
      */
     public function parse(array $optNameToMeta, RawSnapshotInterface $rawSnapshot): array
     {
         $optNameToParsedValue = [];
-        /** @var OptionMetadata<mixed> $optMeta */
         foreach ($optNameToMeta as $optName => $optMeta) {
             $rawValue = $rawSnapshot->valueFor($optName);
-            if (is_null($rawValue)) {
+            if ($rawValue === null) {
                 $parsedValue = $optMeta->defaultValue();
 
                 ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

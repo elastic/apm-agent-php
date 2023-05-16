@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Util;
 
 use Elastic\Apm\Impl\Log\AdhocLoggableObject;
-use Elastic\Apm\Impl\Log\LoggablePhpStacktrace;
+use Elastic\Apm\Impl\Log\LoggableStackTrace;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\PropertyLogPriority;
 
@@ -46,14 +46,14 @@ final class ExceptionUtil
      */
     public static function buildMessage(
         string $messagePrefix,
-        array $context,
+        array $context = [],
         int $numberOfStackTraceFramesToSkip = PHP_INT_MAX
     ): string {
         $messageSuffixObj = new AdhocLoggableObject($context);
         if ($numberOfStackTraceFramesToSkip !== PHP_INT_MAX) {
-            $stacktrace = LoggablePhpStacktrace::buildForCurrent($numberOfStackTraceFramesToSkip + 1);
+            $stacktrace = LoggableStackTrace::buildForCurrent($numberOfStackTraceFramesToSkip + 1);
             $messageSuffixObj->addProperties(
-                [LoggablePhpStacktrace::STACK_TRACE_KEY => $stacktrace],
+                [LoggableStackTrace::STACK_TRACE_KEY => $stacktrace],
                 PropertyLogPriority::MUST_BE_INCLUDED
             );
         }

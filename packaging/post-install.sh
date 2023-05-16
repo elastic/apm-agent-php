@@ -165,7 +165,7 @@ EOF
 #### Function manual_extension_agent_setup #####################################
 function manual_extension_agent_setup() {
     echo 'Set up the Agent manually as explained in:'
-    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    echo 'https://github.com/elastic/apm-agent-php/blob/main/docs/setup.asciidoc'
     if [ -e "${EXTENSION_FILE_PATH}" ] ; then
         echo 'Enable the extension by adding the following to your php.ini file:'
         echo "extension=${EXTENSION_FILE_PATH}"
@@ -197,10 +197,18 @@ function get_extension_file() {
 function is_php_supported() {
     PHP_MAJOR_MINOR=$(php_command -r 'echo PHP_MAJOR_VERSION;').$(php_command -r 'echo PHP_MINOR_VERSION;')
     echo "Detected PHP version '${PHP_MAJOR_MINOR}'"
-    if  [ "${PHP_MAJOR_MINOR}" == "7.2" ] || [ "${PHP_MAJOR_MINOR}" == "7.3" ] || [ "${PHP_MAJOR_MINOR}" == "7.4" ] ; then
+    # Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
+    # See the comment in .ci/shared.sh
+    if  [ "${PHP_MAJOR_MINOR}" == "7.2" ] || \
+        [ "${PHP_MAJOR_MINOR}" == "7.3" ] || \
+        [ "${PHP_MAJOR_MINOR}" == "7.4" ] || \
+        [ "${PHP_MAJOR_MINOR}" == "8.0" ] || \
+        [ "${PHP_MAJOR_MINOR}" == "8.1" ] || \
+        [ "${PHP_MAJOR_MINOR}" == "8.2" ]
+    then
         return 0
     else
-        echo 'Failed. The supported PHP versions are 7.2, 7.3 and 7.4.'
+        echo 'Failed. The supported PHP versions are 7.2-8.2.'
         return 1
     fi
 }
@@ -212,6 +220,8 @@ echo 'Installing Elastic PHP agent'
 EXTENSION_FILE_PATH=$(get_extension_file)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 PHP_CONFIG_D_PATH="$(php_config_d_path)"
+
+echo "DEBUG: after-install parameter is '$1'"
 
 if ! is_php_supported ; then
     echo 'Failed. Elastic PHP agent extension is not supported for the existing PHP installation.'

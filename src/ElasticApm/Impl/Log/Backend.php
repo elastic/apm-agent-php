@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Log;
 
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 
 /**
@@ -31,8 +32,11 @@ use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
  *
  * @internal
  */
-final class Backend
+final class Backend implements LoggableInterface
 {
+    public const NAMESPACE_KEY = 'namespace';
+    public const CLASS_KEY = 'class';
+
     /** @var int */
     private $maxEnabledLevel;
 
@@ -44,13 +48,23 @@ final class Backend
         $this->maxEnabledLevel = $maxEnabledLevel;
         $this->logSink = $logSink ??
                          (ElasticApmExtensionUtil::isLoaded()
-                             ? new DefaultSink()
+                             ? new SinkToCExt()
                              : NoopLogSink::singletonInstance());
     }
 
-    public function maxEnabledLevel(): int
+    public function isEnabledForLevel(int $level): bool
     {
-        return $this->maxEnabledLevel;
+        return $this->maxEnabledLevel >= $level;
+    }
+
+    public function clone(): self
+    {
+        return new self($this->maxEnabledLevel, $this->logSink);
+    }
+
+    public function setMaxEnabledLevel(int $maxEnabledLevel): void
+    {
+        $this->maxEnabledLevel = $maxEnabledLevel;
     }
 
     /**
@@ -65,15 +79,15 @@ final class Backend
 
         for (
             $currentLoggerData = $loggerData;
-            !is_null($currentLoggerData);
+            $currentLoggerData !== null;
             $currentLoggerData = $currentLoggerData->inheritedData
         ) {
             $result[] = $currentLoggerData->context;
         }
 
         $result[] = [
-            'namespace' => $loggerData->namespace,
-            'class'     => ClassNameUtil::fqToShort($loggerData->fqClassName),
+            self::NAMESPACE_KEY => $loggerData->namespace,
+            self::CLASS_KEY     => ClassNameUtil::fqToShort($loggerData->fqClassName),
         ];
 
         $result[] = $statementCtx;
@@ -112,5 +126,15 @@ final class Backend
             $includeStacktrace,
             $numberOfStackFramesToSkip + 1
         );
+    }
+
+    public function getSink(): SinkInterface
+    {
+        return $this->logSink;
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs(['maxEnabledLevel' => Level::intToName($this->maxEnabledLevel), 'logSink' => DbgUtil::getType($this->logSink)]);
     }
 }

@@ -55,15 +55,19 @@ class ClassNameUtilTest extends TestCase
     /**
      * @dataProvider dataProviderForSplitFqClassName
      *
-     * @param string $fqName
+     * @param string $fqClassName
      * @param string $expectedNamespace
      * @param string $expectedShortName
      */
-    public function testSplitFqClassName(string $fqName, string $expectedNamespace, string $expectedShortName): void
-    {
+    public function testSplitFqClassName(
+        string $fqClassName,
+        string $expectedNamespace,
+        string $expectedShortName
+    ): void {
+        /** @var class-string $fqClassName */
         $actualNamespace = '';
         $actualShortName = '';
-        ClassNameUtil::splitFqClassName($fqName, /* ref */ $actualNamespace, /* ref */ $actualShortName);
+        ClassNameUtil::splitFqClassName($fqClassName, /* ref */ $actualNamespace, /* ref */ $actualShortName);
         self::assertSame($expectedNamespace, $actualNamespace);
         self::assertSame($expectedShortName, $actualShortName);
     }

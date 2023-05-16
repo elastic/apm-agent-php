@@ -30,6 +30,8 @@ struct StringView
 };
 typedef struct StringView StringView;
 
+#define ELASTIC_APM_EMPTY_STRING_VIEW ((StringView){.begin = NULL , .length = 0})
+
 static inline
 bool isValidStringView( StringView strView )
 {
@@ -65,12 +67,6 @@ StringView makeStringViewFromBeginEnd( const char* begin, const char* end )
 }
 
 static inline
-StringView makeEmptyStringView()
-{
-    return makeStringView( NULL, 0 );
-}
-
-static inline
 bool isEmptyStringView( StringView strView )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
@@ -86,17 +82,7 @@ const char* stringViewEnd( StringView strView )
     return strView.begin + strView.length;
 }
 
-static inline
-StringView makeStringViewFromLiteralHelper( const char* begin, size_t size )
-{
-    ELASTIC_APM_ASSERT_VALID_PTR( begin );
-    ELASTIC_APM_ASSERT_GE_UINT64( size, 1 );
-    ELASTIC_APM_ASSERT_EQ_CHAR( begin[ size - 1 ], '\0' );
-
-    return makeStringView( begin, /* length: */ size - 1 );
-}
-
-#define ELASTIC_APM_STRING_LITERAL_TO_VIEW( stringLiteral ) ( makeStringViewFromLiteralHelper( (stringLiteral), sizeof( (stringLiteral) ) ) )
+#define ELASTIC_APM_STRING_LITERAL_TO_VIEW( stringLiteral ) ((StringView){ .begin = (stringLiteral), .length = (sizeof(stringLiteral) - 1) })
 
 static inline
 StringView makeStringViewFromString( String zeroTermStr )
@@ -104,4 +90,12 @@ StringView makeStringViewFromString( String zeroTermStr )
     ELASTIC_APM_ASSERT_VALID_PTR( zeroTermStr );
 
     return makeStringView( zeroTermStr, /* length: */ strlen( zeroTermStr ) );
+}
+
+static inline
+StringView subStringView( StringView inStrVw, size_t offset )
+{
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( inStrVw );
+
+    return inStrVw.length >= offset ? makeStringView( inStrVw.begin + offset, inStrVw.length - offset ) : ELASTIC_APM_EMPTY_STRING_VIEW;
 }

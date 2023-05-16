@@ -39,5 +39,5 @@ ZEND_END_MODULE_GLOBALS(elastic_apm)
 
 ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)
 
-ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );
-void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );
+ResultCode registerElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );
+void unregisterElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState );

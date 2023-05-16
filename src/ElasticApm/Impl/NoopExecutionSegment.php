@@ -81,6 +81,17 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     }
 
     /** @inheritDoc */
+    public function setOutcome(?string $outcome): void
+    {
+    }
+
+    /** @inheritDoc */
+    public function getOutcome(): ?string
+    {
+        return null;
+    }
+
+    /** @inheritDoc */
     public function beginChildSpan(
         string $name,
         string $type,
@@ -107,6 +118,11 @@ abstract class NoopExecutionSegment implements ExecutionSegmentInterface, Loggab
     public function getDistributedTracingData(): ?DistributedTracingData
     {
         return null;
+    }
+
+    /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
     }
 
     /** @inheritDoc */

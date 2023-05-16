@@ -28,6 +28,7 @@ use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Util\TextUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -38,7 +39,9 @@ final class MetadataDiscoverer
 {
     public const AGENT_NAME = 'php';
     public const LANGUAGE_NAME = 'PHP';
-    public const DEFAULT_SERVICE_NAME = 'Unnamed PHP service';
+    // https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#zero-configuration-support
+    // ... the default value: unknown-${service.agent.name}-service ...
+    public const DEFAULT_SERVICE_NAME = 'unknown-php-service';
 
     /** @var ConfigSnapshot */
     private $config;
@@ -57,43 +60,48 @@ final class MetadataDiscoverer
         return (new MetadataDiscoverer($config, $loggerFactory))->doDiscoverMetadata();
     }
 
-    public function doDiscoverMetadata(): Metadata
+    private function doDiscoverMetadata(): Metadata
     {
         $result = new Metadata();
 
         $result->process = MetadataDiscoverer::discoverProcessData();
         $result->service = MetadataDiscoverer::discoverServiceData($this->config);
+        $result->system = MetadataDiscoverer::discoverSystemData($this->config);
 
         return $result;
     }
 
     public static function adaptServiceName(string $configuredName): string
     {
-        if (empty($configuredName)) {
+        if (TextUtil::isEmptyString($configuredName)) {
             return self::DEFAULT_SERVICE_NAME;
         }
 
         $charsAdaptedName = preg_replace('/[^a-zA-Z0-9 _\-]/', '_', $configuredName);
-        return is_null($charsAdaptedName)
+        return $charsAdaptedName === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : Tracer::limitKeywordString($charsAdaptedName);
+    }
+
+    private static function setKeywordStringIfNotNull(?string $srcCfgVal, ?string &$dstProp): void
+    {
+        if ($srcCfgVal !== null) {
+            $dstProp = Tracer::limitKeywordString($srcCfgVal);
+        }
     }
 
     public function discoverServiceData(ConfigSnapshot $config): ServiceData
     {
         $result = new ServiceData();
 
-        if (!is_null($config->environment())) {
-            $result->environment = Tracer::limitKeywordString($config->environment());
-        }
+        self::setKeywordStringIfNotNull($config->environment(), /* ref */ $result->environment);
 
-        $result->name = is_null($config->serviceName())
+        $result->name = $config->serviceName() === null
             ? MetadataDiscoverer::DEFAULT_SERVICE_NAME
             : MetadataDiscoverer::adaptServiceName($config->serviceName());
 
-        if (!is_null($config->serviceVersion())) {
-            $result->version = Tracer::limitKeywordString($config->serviceVersion());
-        }
+        self::setKeywordStringIfNotNull($config->serviceNodeName(), /* ref */ $result->nodeConfiguredName);
+        self::setKeywordStringIfNotNull($config->serviceVersion(), /* ref */ $result->version);
 
         $result->agent = new ServiceAgentData();
         $result->agent->name = self::AGENT_NAME;
@@ -104,6 +112,35 @@ final class MetadataDiscoverer
         $result->runtime = $result->language;
 
         return $result;
+    }
+
+    public function discoverSystemData(ConfigSnapshot $config): SystemData
+    {
+        $result = new SystemData();
+
+        $configuredHostname = $config->hostname();
+        if ($configuredHostname !== null) {
+            $result->configuredHostname = Tracer::limitKeywordString($configuredHostname);
+            $result->hostname = $result->configuredHostname;
+        } else {
+            $detectedHostname = self::detectHostname();
+            if ($detectedHostname !== null) {
+                $result->detectedHostname = $detectedHostname;
+                $result->hostname = $detectedHostname;
+            }
+        }
+
+        return $result;
+    }
+
+    public static function detectHostname(): ?string
+    {
+        $detected = gethostname();
+        if ($detected === false) {
+            return null;
+        }
+
+        return Tracer::limitKeywordString($detected);
     }
 
     public function buildNameVersionData(?string $name, ?string $version): NameVersionData

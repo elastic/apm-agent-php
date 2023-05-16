@@ -32,12 +32,7 @@ namespace Elastic\Apm\Impl\Config;
  */
 final class StringOptionParser extends OptionParser
 {
-    /**
-     * @param string $rawValue
-     *
-     * @return string
-     */
-    public function parse(string $rawValue)
+    public function parse(string $rawValue): string
     {
         return $rawValue;
     }

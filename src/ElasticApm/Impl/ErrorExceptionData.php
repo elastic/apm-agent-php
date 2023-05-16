@@ -24,10 +24,14 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\CustomErrorData;
+use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
 /**
@@ -39,12 +43,12 @@ use Throwable;
  *
  * @internal
  */
-class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
+class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
 
     /**
-     * @var int|string|null
+     * @var null|int|string
      *
      * The error code set when the error happened, e.g. database error code
      *
@@ -55,7 +59,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $code = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The original error message
      *
@@ -64,7 +68,7 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $message = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * Describes the exception type's module namespace
      *
@@ -75,14 +79,14 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
     public $module = null;
 
     /**
-     * @var StacktraceFrame[]|null
+     * @var null|StackTraceFrame[]
      *
      * @link https://github.com/elastic/apm-server/blob/7.0/docs/spec/errors/error.json#L73
      */
     public $stacktrace = null;
 
     /**
-     * @var string|null
+     * @var ?string
      *
      * The length of a value is limited to 1024.
      *
@@ -90,46 +94,82 @@ class ErrorExceptionData implements SerializableDataInterface, LoggableInterface
      */
     public $type = null;
 
-    public static function buildFromCustomData(Tracer $tracer, CustomErrorData $customErrorData): ErrorExceptionData
-    {
+    public static function build(
+        Tracer $tracer,
+        ?CustomErrorData $customErrorData,
+        ?PhpErrorData $phpErrorData,
+        ?Throwable $throwable
+    ): ErrorExceptionData {
         $result = new ErrorExceptionData();
 
-        $result->code = is_string($customErrorData->code)
-            ? Tracer::limitKeywordString($customErrorData->code)
-            : $customErrorData->code;
+        if ($throwable !== null) {
+            $code = $throwable->getCode();
+            if (is_int($code)) {
+                $result->code = $code;
+            } elseif (is_string($code)) {
+                $result->code = Tracer::limitKeywordString($code);
+            }
 
-        $result->message = $tracer->limitNullableNonKeywordString($customErrorData->message);
-        $result->module = Tracer::limitNullableKeywordString($customErrorData->module);
-        $result->type = Tracer::limitNullableKeywordString($customErrorData->type);
+            $message = $throwable->getMessage();
+            if (is_string($message)) {
+                $result->message = $tracer->limitNullableNonKeywordString($message);
+            }
+
+            $namespace = '';
+            $shortName = '';
+            ClassNameUtil::splitFqClassName(get_class($throwable), /* ref */ $namespace, /* ref */ $shortName);
+            $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
+            $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
+
+            $result->stacktrace = StackTraceUtil::convertFromPhp($throwable->getTrace());
+        }
+
+        if ($customErrorData !== null) {
+            if ($result->code === null) {
+                $result->code = is_string($customErrorData->code)
+                    ? Tracer::limitKeywordString($customErrorData->code)
+                    : $customErrorData->code;
+            }
+
+            if ($result->message === null) {
+                $result->message = $tracer->limitNullableNonKeywordString($customErrorData->message);
+            }
+
+            if ($result->module === null) {
+                $result->module = Tracer::limitNullableKeywordString($customErrorData->module);
+            }
+
+            if ($result->type === null) {
+                $result->type = Tracer::limitNullableKeywordString($customErrorData->type);
+            }
+        }
+
+        if ($result->stacktrace === null) {
+            if ($phpErrorData === null) {
+                $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
+                $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+            } elseif ($phpErrorData->stackTrace !== null) {
+                $result->stacktrace = StackTraceUtil::convertFromPhp(
+                    $phpErrorData->stackTrace,
+                    0 /* <- numberOfStackFramesToSkip */,
+                    true /* <- hideElasticApmImpl */
+                );
+            }
+        }
 
         return $result;
     }
 
-    public static function buildFromThrowable(Tracer $tracer, Throwable $throwable): ErrorExceptionData
+    /** @inheritDoc */
+    public function prepareForSerialization(): int
     {
-        $customErrorData = new CustomErrorData();
-
-        $code = $throwable->getCode();
-        if (is_int($code) || is_string($code)) {
-            $customErrorData->code = $code;
-        }
-
-        $message = $throwable->getMessage();
-        if (is_string($message)) {
-            $customErrorData->message = $message;
-        }
-
-        $namespace = '';
-        $shortName = '';
-        ClassNameUtil::splitFqClassName(get_class($throwable), /* ref */ $namespace, /* ref */ $shortName);
-        $customErrorData->module = empty($namespace) ? null : $namespace;
-        $customErrorData->type = empty($shortName) ? null : $shortName;
-
-        $result = self::buildFromCustomData($tracer, $customErrorData);
-
-        $result->stacktrace = StacktraceUtil::convertFromPhp($throwable->getTrace());
-
-        return $result;
+        return BoolUtil::toInt(
+            $this->code !== null
+            || $this->message !== null
+            || $this->module !== null
+            || $this->stacktrace !== null
+            || $this->type !== null
+        );
     }
 
     /** @inheritDoc */

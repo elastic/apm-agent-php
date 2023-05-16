@@ -23,9 +23,13 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument;
 
+use Closure;
 use Elastic\Apm\Impl\GlobalTracerHolder;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
+use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
 use RuntimeException;
@@ -63,7 +67,7 @@ final class PhpPartFacade
         }
 
         $tracer = self::buildTracer();
-        if (is_null($tracer)) {
+        if ($tracer === null) {
             BootstrapStageLogger::logDebug(
                 'Cutting bootstrap sequence short - tracing is disabled',
                 __LINE__,
@@ -95,7 +99,7 @@ final class PhpPartFacade
             __FUNCTION__
         );
 
-        if (!is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance !== null) {
             BootstrapStageLogger::logCritical(
                 'bootstrap() is called even though singleton instance is already created'
                 . ' (probably bootstrap() is called more than once)',
@@ -123,7 +127,7 @@ final class PhpPartFacade
 
     private static function singletonInstance(): self
     {
-        if (is_null(self::$singletonInstance)) {
+        if (self::$singletonInstance === null) {
             throw new RuntimeException(
                 'Trying to use singleton instance that is not set'
                 . ' (probably either before call to bootstrap() or after failed call to bootstrap())'
@@ -144,7 +148,7 @@ final class PhpPartFacade
      *
      * @return bool
      */
-    public static function interceptedCallPreHook(
+    public static function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         ...$interceptedCallArgs
@@ -154,7 +158,9 @@ final class PhpPartFacade
             return false;
         }
 
-        return $interceptionManager->interceptedCallPreHook(
+        self::ensureHaveLatestDataDeferredByExtension();
+
+        return $interceptionManager->internalFuncCallPreHook(
             $interceptRegistrationId,
             $thisObj,
             $interceptedCallArgs
@@ -169,16 +175,294 @@ final class PhpPartFacade
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
      */
-    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    public static function internalFuncCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
 
-        $interceptionManager->interceptedCallPostHook(
+        self::ensureHaveLatestDataDeferredByExtension();
+
+        $interceptionManager->internalFuncCallPostHook(
             1 /* <- $numberOfStackFramesToSkip */,
             $hasExitedByException,
             $returnValueOrThrown
         );
+    }
+
+    /**
+     * @param string  $dbgCallDesc
+     * @param Closure $implFunc
+     *
+     * @return void
+     *
+     * @phpstan-param Closure(self): void $implFunc
+     */
+    private static function callAndSwallowThrowable(string $dbgCallDesc, Closure $implFunc): void
+    {
+        BootstrapStageLogger::logDebug(
+            'Starting to handle ' . $dbgCallDesc . ' call...',
+            __LINE__,
+            __FUNCTION__
+        );
+
+        if (self::$singletonInstance === null) {
+            BootstrapStageLogger::logWarning(
+                'Received ' . $dbgCallDesc . ' call but singleton instance is not created'
+                . ' (probably because bootstrap sequence failed)',
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+
+        try {
+            $implFunc(self::singletonInstance());
+        } catch (Throwable $throwable) {
+            BootstrapStageLogger::logCriticalThrowable(
+                $throwable,
+                'Handling ' . $dbgCallDesc
+                . ' call let a throwable escape - skipping the rest of the steps',
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+
+        BootstrapStageLogger::logDebug(
+            'Successfully finished handling ' . $dbgCallDesc . ' call...',
+            __LINE__,
+            __FUNCTION__
+        );
+    }
+
+    /**
+     * @param string  $dbgCallDesc
+     * @param Closure $implFunc
+     *
+     * @return void
+     *
+     * @phpstan-param Closure(TransactionForExtensionRequest): void $implFunc
+     */
+    private static function callWithTransactionForExtensionRequest(string $dbgCallDesc, Closure $implFunc): void
+    {
+        self::callAndSwallowThrowable(
+            $dbgCallDesc,
+            function (PhpPartFacade $singletonInstance) use ($implFunc): void {
+                if ($singletonInstance->transactionForExtensionRequest === null) {
+                    BootstrapStageLogger::logDebug(
+                        'Received call but transactionForExtensionRequest is null'
+                        . ' - just returning...',
+                        __LINE__,
+                        __FUNCTION__
+                    );
+                    return;
+                }
+
+                $implFunc($singletonInstance->transactionForExtensionRequest);
+            }
+        );
+    }
+
+    public static function ensureHaveLatestDataDeferredByExtension(): void
+    {
+        self::callWithTransactionForExtensionRequest(
+            __FUNCTION__,
+            function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
+                self::ensureHaveLastErrorData($transactionForExtensionRequest);
+            }
+        );
+    }
+
+    private static function ensureHaveLastErrorData(
+        TransactionForExtensionRequest $transactionForExtensionRequest
+    ): void {
+        if (!$transactionForExtensionRequest->getConfig()->captureErrors()) {
+            return;
+        }
+
+        /**
+         * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+         * agent will use the last thrown exception
+         */
+        self::ensureHaveLastThrown($transactionForExtensionRequest);
+        self::ensureHaveLastPhpError($transactionForExtensionRequest);
+    }
+
+    private static function ensureHaveLastThrown(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @var mixed $lastThrown
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        $lastThrown = \elastic_apm_get_last_thrown();
+        if ($lastThrown === null) {
+            return;
+        }
+
+        $transactionForExtensionRequest->setLastThrown($lastThrown);
+    }
+
+    /**
+     * @param string $expectedType
+     * @param mixed  $actualValue
+     *
+     * @return void
+     */
+    private static function logUnexpectedType(string $expectedType, $actualValue): void
+    {
+        BootstrapStageLogger::logCritical(
+            'Actual type does not match the expected type'
+            . '; ' . 'expected type: ' . $expectedType
+            . ', ' . 'actual type: ' . DbgUtil::getType($actualValue)
+            . ', ' . 'actual value: ' . LoggableToString::convert($actualValue),
+            __LINE__,
+            __FUNCTION__
+        );
+    }
+
+    /**
+     * @param string                  $expectedKey
+     * @param array<array-key, mixed> $actualArray
+     *
+     * @return bool
+     */
+    private static function verifyKeyExists(string $expectedKey, array $actualArray): bool
+    {
+        if (array_key_exists($expectedKey, $actualArray)) {
+            return true;
+        }
+
+        BootstrapStageLogger::logCritical(
+            'Expected key does not exist'
+            . '; ' . 'expected key: ' . $expectedKey
+            . ', ' . 'actual array keys: ' . json_encode(array_keys($actualArray)),
+            __LINE__,
+            __FUNCTION__
+        );
+        return false;
+    }
+
+    /**
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
+     *
+     * @return ?int
+     */
+    private static function getIntFromPhpErrorData(array $dataFromExt, string $key): ?int
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $value = $dataFromExt[$key];
+        if (!is_int($value)) {
+            self::logUnexpectedType('int', $value);
+            return null;
+        }
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
+     *
+     * @return ?string
+     */
+    private static function getNullableStringFromPhpErrorData(array $dataFromExt, string $key): ?string
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $value = $dataFromExt[$key];
+        if (!($value === null || is_string($value))) {
+            self::logUnexpectedType('string|null', $value);
+            return null;
+        }
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
+     *
+     * @return null|array<string, mixed>[]
+     */
+    private static function getStackTraceFromPhpErrorData(array $dataFromExt, string $key): ?array
+    {
+        if (!self::verifyKeyExists($key, $dataFromExt)) {
+            return null;
+        }
+        $stackTrace = $dataFromExt[$key];
+        if (!is_array($stackTrace)) {
+            self::logUnexpectedType('array', $stackTrace);
+            return null;
+        }
+        if (!ArrayUtil::isList($stackTrace)) {
+            BootstrapStageLogger::logCritical(
+                'Stack trace array should be a list but it is not'
+                . '; ' . 'stackTrace keys: ' . json_encode(array_keys($stackTrace))
+                . ', ' . 'stackTrace: ' . LoggableToString::convert($stackTrace),
+                __LINE__,
+                __FUNCTION__
+            );
+            return null;
+        }
+
+        /** @var array<string, mixed>[] $stackTrace */
+        return $stackTrace;
+    }
+
+    /**
+     * @param array<array-key, mixed> $dataFromExt
+     *
+     * @return PhpErrorData
+     */
+    private static function buildPhpErrorData(array $dataFromExt): PhpErrorData
+    {
+        $result = new PhpErrorData();
+        $result->type = self::getIntFromPhpErrorData($dataFromExt, 'type');
+        $result->fileName = self::getNullableStringFromPhpErrorData($dataFromExt, 'fileName');
+        $result->lineNumber = self::getIntFromPhpErrorData($dataFromExt, 'lineNumber');
+        $result->message = self::getNullableStringFromPhpErrorData($dataFromExt, 'message');
+        $result->stackTrace = self::getStackTraceFromPhpErrorData($dataFromExt, 'stackTrace');
+        return $result;
+    }
+
+    private static function ensureHaveLastPhpError(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        $lastPhpErrorData = \elastic_apm_get_last_php_error();
+        if ($lastPhpErrorData === null) {
+            return;
+        }
+
+        if (is_array($lastPhpErrorData)) {
+            BootstrapStageLogger::logDebug(
+                'Type of value returned by elastic_apm_get_last_php_error(): ' . DbgUtil::getType($lastPhpErrorData),
+                __LINE__,
+                __FUNCTION__
+            );
+        } else {
+            BootstrapStageLogger::logCritical(
+                'Value returned by elastic_apm_get_last_php_error() is not an array'
+                . ', ' . 'returned value type: ' . DbgUtil::getType($lastPhpErrorData)
+                . ', ' . 'returned value: ' . $lastPhpErrorData,
+                __LINE__,
+                __FUNCTION__
+            );
+            return;
+        }
+        /** @var array<array-key, mixed> $lastPhpErrorData */
+
+        $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
     }
 
     /**
@@ -188,38 +472,14 @@ final class PhpPartFacade
      */
     public static function shutdown(): void
     {
-        BootstrapStageLogger::logDebug('Starting shutdown sequence...', __LINE__, __FUNCTION__);
-
-        if (is_null(self::$singletonInstance)) {
-            BootstrapStageLogger::logWarning(
-                'Shutdown sequence is invoked even though singleton instance is not created'
-                . ' (probably because bootstrap sequence failed)',
-                __LINE__,
-                __FUNCTION__
-            );
-            return;
-        }
-
-        try {
-            self::singletonInstance()->shutdownImpl();
-        } catch (Throwable $throwable) {
-            BootstrapStageLogger::logCriticalThrowable(
-                $throwable,
-                'One of the steps in shutdown sequence let a throwable escape - skipping the rest of the steps',
-                __LINE__,
-                __FUNCTION__
-            );
-        }
+        self::callWithTransactionForExtensionRequest(
+            __FUNCTION__,
+            function (TransactionForExtensionRequest $transactionForExtensionRequest): void {
+                $transactionForExtensionRequest->onShutdown();
+            }
+        );
 
         self::$singletonInstance = null;
-        BootstrapStageLogger::logDebug('Successfully completed shutdown sequence', __LINE__, __FUNCTION__);
-    }
-
-    private function shutdownImpl(): void
-    {
-        if (!is_null($this->transactionForExtensionRequest)) {
-            $this->transactionForExtensionRequest->onShutdown();
-        }
     }
 
     /**
@@ -228,13 +488,13 @@ final class PhpPartFacade
     private static function buildTracer(): ?Tracer
     {
         ($assertProxy = Assert::ifEnabled())
-        && $assertProxy->that(!GlobalTracerHolder::isSet())
+        && $assertProxy->that(!GlobalTracerHolder::isValueSet())
         && $assertProxy->withContext(
             '!GlobalTracerHolder::isSet()',
-            ['GlobalTracerHolder::get()' => GlobalTracerHolder::get()]
+            ['GlobalTracerHolder::get()' => GlobalTracerHolder::getValue()]
         );
 
-        $tracer = GlobalTracerHolder::get();
+        $tracer = GlobalTracerHolder::getValue();
         if ($tracer->isNoop()) {
             return null;
         }
@@ -245,5 +505,14 @@ final class PhpPartFacade
         assert($tracer instanceof Tracer);
 
         return $tracer;
+    }
+
+    /**
+     * Called by elastic_apm extension
+     *
+     * @noinspection PhpUnused
+     */
+    public static function emptyMethod(): void
+    {
     }
 }

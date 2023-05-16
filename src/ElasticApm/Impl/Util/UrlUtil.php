@@ -116,6 +116,7 @@ final class UrlUtil
 
     public static function isHttp(string $url): bool
     {
+        /** @noinspection HttpUrlsUsage */
         return TextUtil::isPrefixOf('http://', $url, /* isCaseSensitive */ false)
                || TextUtil::isPrefixOf('https://', $url, /* isCaseSensitive */ false);
     }
@@ -142,9 +143,16 @@ final class UrlUtil
         return $result;
     }
 
+    public static function normalizeUrlPath(string $urlPath): string
+    {
+         return TextUtil::isPrefixOf('/', $urlPath) ? $urlPath : ('/' . $urlPath);
+    }
+
     public static function buildRequestMethodArg(UrlParts $urlParts): string
     {
-        $result = $urlParts->path ?? '/';
+        $result = $urlParts->path === null
+            ? '/'
+            : self::normalizeUrlPath($urlParts->path);
 
         if ($urlParts->query !== null) {
             $result .= '?' . $urlParts->query;

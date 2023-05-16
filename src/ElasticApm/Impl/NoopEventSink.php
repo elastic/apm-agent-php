@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
 
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
 use Elastic\Apm\Impl\Util\NoopObjectTrait;
 
 /**
@@ -37,9 +38,10 @@ final class NoopEventSink implements EventSinkInterface
     /** @inheritDoc */
     public function consume(
         Metadata $metadata,
-        array $spansData,
-        array $errorsData,
-        ?TransactionData $transactionData
+        array $spans,
+        array $errors,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        ?Transaction $transaction
     ): void {
     }
 }

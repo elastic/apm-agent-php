@@ -25,14 +25,13 @@ namespace Elastic\Apm\Impl;
 
 use Closure;
 use Elastic\Apm\CustomErrorData;
-use Elastic\Apm\DistributedTracingData;
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\ExecutionSegmentInterface;
+use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\EventSender;
-use Elastic\Apm\Impl\Config\AllOptionsMetadata;
-use Elastic\Apm\Impl\Config\CompositeRawSnapshotSource;
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
-use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
-use Elastic\Apm\Impl\Config\Parser as ConfigParser;
+use Elastic\Apm\Impl\BreakdownMetrics\PerTransaction as BreakdownMetricsPerTransaction;
+use Elastic\Apm\Impl\Config\DevInternalSubOptionNames;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Log\Backend as LogBackend;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
@@ -42,7 +41,10 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
+use Elastic\Apm\Impl\Util\ObserverSet;
+use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
 
@@ -74,7 +76,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var Logger */
     private $logger;
 
-    /** @var Transaction|null */
+    /** @var ?Transaction */
     private $currentTransaction = null;
 
     /** @var bool */
@@ -86,11 +88,13 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var HttpDistributedTracing */
     private $httpDistributedTracing;
 
-    public function __construct(TracerDependencies $providedDependencies)
+    /** @var ObserverSet<Transaction> */
+    public $onNewCurrentTransactionHasBegun;
+
+    public function __construct(TracerDependencies $providedDependencies, ConfigSnapshot $config)
     {
         $this->providedDependencies = $providedDependencies;
-
-        $this->config = $this->buildConfig();
+        $this->config = $config;
 
         $this->logBackend = new LogBackend($this->config->effectiveLogLevel(), $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
@@ -108,7 +112,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             ]
         );
 
-        $this->clock = $providedDependencies->clock ?? Clock::singletonInstance();
+        $this->clock = $providedDependencies->clock ?? new Clock($this->loggerFactory);
 
         $this->eventSink = $providedDependencies->eventSink ??
                            (ElasticApmExtensionUtil::isLoaded()
@@ -119,26 +123,10 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
 
+        $this->onNewCurrentTransactionHasBegun = new ObserverSet();
+
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Constructed Tracer successfully');
-    }
-
-    private function buildConfig(): ConfigSnapshot
-    {
-        $rawSnapshotSource
-            = $this->providedDependencies->configRawSnapshotSource
-              ?? new CompositeRawSnapshotSource(
-                  [
-                      new IniRawSnapshotSource(IniRawSnapshotSource::DEFAULT_PREFIX),
-                      new EnvVarsRawSnapshotSource(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX),
-                  ]
-              );
-
-        $parsingLoggerFactory
-            = new LoggerFactory(new LogBackend(LogLevel::TRACE, $this->providedDependencies->logSink));
-        $parser = new ConfigParser($parsingLoggerFactory);
-        $allOptsMeta = AllOptionsMetadata::build();
-        return new ConfigSnapshot($parser->parse($allOptsMeta, $rawSnapshotSource->currentSnapshot($allOptsMeta)));
     }
 
     public function getConfig(): ConfigSnapshot
@@ -146,27 +134,16 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->config;
     }
 
-    private function beginTransactionImpl(
+    private function newTransactionBuilder(
         string $name,
         string $type,
-        ?float $timestamp,
-        ?string $serializedDistTracingData
-    ): ?Transaction {
-        if (!$this->isRecording) {
-            return null;
-        }
-
-        $distributedTracingData = $serializedDistTracingData !== null
-            ? $this->unserializeDistributedTracingDataFromString($serializedDistTracingData)
-            : null;
-
-        return new Transaction($this, $name, $type, $timestamp, $distributedTracingData);
-    }
-
-    public function unserializeDistributedTracingDataFromString(
-        string $serializedDistTracingData
-    ): ?DistributedTracingData {
-        return $this->httpDistributedTracing->parseTraceParentHeader($serializedDistTracingData);
+        ?float $timestamp = null,
+        ?string $serializedDistTracingData = null
+    ): TransactionBuilder {
+        $builder = new TransactionBuilder($this, $name, $type);
+        $builder->timestamp = $timestamp;
+        $builder->serializedDistTracingData = $serializedDistTracingData;
+        return $builder;
     }
 
     /** @inheritDoc */
@@ -176,21 +153,9 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        if (!is_null($this->currentTransaction)) {
-            ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Received request to begin a new current transaction'
-                . ' even though there is a current transaction that is still not ended',
-                ['this' => $this]
-            );
-        }
-
-        $this->currentTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
-        if (is_null($this->currentTransaction)) {
-            return NoopTransaction::singletonInstance();
-        }
-
-        return $this->currentTransaction;
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        $builder->asCurrent();
+        return $this->beginTransactionWithBuilder($builder);
     }
 
     /** @inheritDoc */
@@ -201,20 +166,25 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginCurrentTransaction($name, $type, $timestamp, $serializedDistTracingData);
-        try {
-            return $callback($newTransaction);
-        } catch (Throwable $throwable) {
-            $newTransaction->createErrorFromThrowable($throwable);
-            throw $throwable;
-        } finally {
-            $newTransaction->end();
-        }
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        $builder->asCurrent();
+        return $this->captureTransactionWithBuilder($builder, $callback);
     }
 
+    /** @inheritDoc */
     public function getCurrentTransaction(): TransactionInterface
     {
         return $this->currentTransaction ?? NoopTransaction::singletonInstance();
+    }
+
+    /** @inheritDoc */
+    public function getCurrentExecutionSegment(): ExecutionSegmentInterface
+    {
+        if ($this->currentTransaction === null) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        return $this->currentTransaction->getCurrentExecutionSegment();
     }
 
     public function resetCurrentTransaction(): void
@@ -229,13 +199,8 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ): TransactionInterface {
-        $newTransaction = $this->beginTransactionImpl($name, $type, $timestamp, $serializedDistTracingData);
-
-        if (is_null($newTransaction)) {
-            return NoopTransaction::singletonInstance();
-        }
-
-        return $newTransaction;
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        return $this->beginTransactionWithBuilder($builder);
     }
 
     /** @inheritDoc */
@@ -246,33 +211,142 @@ final class Tracer implements TracerInterface, LoggableInterface
         ?float $timestamp = null,
         ?string $serializedDistTracingData = null
     ) {
-        $newTransaction = $this->beginTransaction($name, $type, $timestamp, $serializedDistTracingData);
+        $builder = $this->newTransactionBuilder($name, $type, $timestamp, $serializedDistTracingData);
+        return $this->captureTransactionWithBuilder($builder, $callback);
+    }
+
+    /** @inheritDoc */
+    public function newTransaction(string $name, string $type): TransactionBuilderInterface
+    {
+        return new TransactionBuilder($this, $name, $type);
+    }
+
+    public function beginTransactionWithBuilder(TransactionBuilder $builder): TransactionInterface
+    {
+        if (!$this->isRecording) {
+            return NoopTransaction::singletonInstance();
+        }
+
+        $newTransaction = new Transaction($builder);
+
+        if ($builder->asCurrent) {
+            if ($this->currentTransaction !== null) {
+                ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log(
+                    'Received request to begin a new current transaction'
+                    . ' even though there is a current transaction that is still not ended',
+                    ['this' => $this]
+                );
+            }
+
+            $this->currentTransaction = $newTransaction;
+            $this->onNewCurrentTransactionHasBegun->callCallbacks($this->currentTransaction);
+        }
+
+        return $newTransaction;
+    }
+
+    /**
+     * @param TransactionBuilder                       $builder
+     * @param Closure                                  $callback
+     *
+     * @return mixed The return value of $callback
+     *
+     * @template T
+     * @phpstan-param Closure(TransactionInterface): T $callback Callback to execute as the new transaction
+     * @phpstan-return T The return value of $callback
+     */
+    public function captureTransactionWithBuilder(TransactionBuilder $builder, Closure $callback)
+    {
+        $newTransaction = $this->beginTransactionWithBuilder($builder);
         try {
             return $callback($newTransaction);
         } catch (Throwable $throwable) {
             $newTransaction->createErrorFromThrowable($throwable);
-            /** @noinspection PhpUnhandledExceptionInspection */
             throw $throwable;
         } finally {
             $newTransaction->end();
         }
     }
 
+    public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Entered',
+            [
+                'phpErrorData'     => $phpErrorData,
+                'relatedThrowable' => $relatedThrowable,
+            ]
+        );
+
+        if ((error_reporting() & $phpErrorData->type) === 0) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Not creating error event because error_reporting() does not include its type',
+                ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
+            );
+            return;
+        }
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Creating error event because error_reporting() includes its type...',
+            ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
+        );
+
+        $customErrorData = new CustomErrorData();
+        $customErrorData->code = $phpErrorData->type;
+        if (
+            ($phpErrorData->message === null)
+            || ($phpErrorData->fileName === null)
+            || TextUtil::contains($phpErrorData->message, $phpErrorData->fileName)
+        ) {
+            $customErrorData->message = $phpErrorData->message;
+        } else {
+            $messageSuffix = ' in ' . $phpErrorData->fileName;
+            if ($phpErrorData->lineNumber !== null) {
+                $messageSuffix .= ':' . $phpErrorData->lineNumber;
+            }
+            $customErrorData->message = $phpErrorData->message . $messageSuffix;
+        }
+
+        if ($phpErrorData->type !== null) {
+            $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
+        }
+
+        $this->createError($customErrorData, $phpErrorData, $relatedThrowable);
+    }
+
+    private function createError(
+        ?CustomErrorData $customErrorData,
+        ?PhpErrorData $phpErrorData,
+        ?Throwable $throwable
+    ): ?string {
+        return $this->dispatchCreateError(
+            ErrorExceptionData::build(
+                $this,
+                $customErrorData,
+                $phpErrorData,
+                $throwable
+            )
+        );
+    }
+
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromThrowable($this, $throwable));
+        return $this->createError(/* customErrorData: */ null, /* phpErrorData: */ null, $throwable);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->dispatchCreateError(ErrorExceptionData::buildFromCustomData($this, $customErrorData));
+        return $this->createError($customErrorData, /* phpErrorData: */ null, /* throwable: */ null);
     }
 
-    private function dispatchCreateError(?ErrorExceptionData $errorExceptionData): ?string
+    private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
-        if (is_null($this->currentTransaction)) {
+        if ($this->currentTransaction === null) {
             return $this->doCreateError($errorExceptionData, /* transaction */ null, /* span */ null);
         }
 
@@ -280,7 +354,7 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     public function doCreateError(
-        ?ErrorExceptionData $errorExceptionData,
+        ErrorExceptionData $errorExceptionData,
         ?Transaction $transaction,
         ?Span $span
     ): ?string {
@@ -288,25 +362,30 @@ final class Tracer implements TracerInterface, LoggableInterface
             return null;
         }
 
-        $isGoingToBeSentWithTransaction = !is_null($transaction) && !$transaction->hasEnded();
-
-        // PHPStan cannot deduce that $transaction is not null
-        // if $isGoingToBeSentWithTransaction is true
-        // @phpstan-ignore-next-line
-        if ($isGoingToBeSentWithTransaction && !$transaction->reserveSpaceInErrorToSendQueue()) {
+        if ($transaction !== null && ($transaction->numberOfErrorsSent >= $this->config->transactionMaxSpans())) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Starting to drop errors because of ' . OptionNames::TRANSACTION_MAX_SPANS . ' config',
+                [
+                    '$transaction->numberOfErrorsSent'             => $transaction->numberOfErrorsSent,
+                    OptionNames::TRANSACTION_MAX_SPANS . ' config' => $this->config->transactionMaxSpans(),
+                ]
+            );
             return null;
         }
 
-        $newError = ErrorData::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
+        $newError = Error::build(/* tracer: */ $this, $errorExceptionData, $transaction, $span);
+        $this->sendErrorToApmServer($newError);
 
-        if ($isGoingToBeSentWithTransaction) {
-            // PHPStan cannot deduce that $transaction is not null
-            // if $isGoingToBeSentWithTransaction is true
-            assert(!is_null($transaction));
-            $transaction->queueErrorDataToSend($newError);
-        } else {
-            $this->sendEventsToApmServer(/* spansData */ [], [$newError], /* transaction: */ null);
+        if ($transaction !== null) {
+            ++$transaction->numberOfErrorsSent;
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Error event has been sent',
+                ['$transaction->numberOfErrorsSent' => $transaction->numberOfErrorsSent]
+            );
         }
+
         return $newError->id;
     }
 
@@ -320,6 +399,11 @@ final class Tracer implements TracerInterface, LoggableInterface
         return false;
     }
 
+    public function limitString(string $val, bool $enforceKeywordString): string
+    {
+        return $enforceKeywordString ? self::limitKeywordString($val) : $this->limitNonKeywordString($val);
+    }
+
     public static function limitKeywordString(string $keywordString): string
     {
         return TextUtil::ensureMaxLength($keywordString, Constants::KEYWORD_STRING_MAX_LENGTH);
@@ -327,7 +411,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public static function limitNullableKeywordString(?string $keywordString): ?string
     {
-        if (is_null($keywordString)) {
+        if ($keywordString === null) {
             return null;
         }
 
@@ -336,12 +420,12 @@ final class Tracer implements TracerInterface, LoggableInterface
 
     public function limitNonKeywordString(string $nonKeywordString): string
     {
-        return TextUtil::ensureMaxLength($nonKeywordString, Constants::NON_KEYWORD_STRING_MAX_LENGTH);
+        return TextUtil::ensureMaxLength($nonKeywordString, $this->config->nonKeywordStringMaxLength());
     }
 
     public function limitNullableNonKeywordString(?string $nonKeywordString): ?string
     {
-        if (is_null($nonKeywordString)) {
+        if ($nonKeywordString === null) {
             return null;
         }
 
@@ -377,13 +461,66 @@ final class Tracer implements TracerInterface, LoggableInterface
     }
 
     /**
-     * @param SpanData[]           $spansData
-     * @param ErrorData[]          $errorsData
-     * @param TransactionData|null $transactionData
+     * @param SpanToSendInterface[]           $spans
+     * @param Error[]                         $errors
+     * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
+     * @param ?Transaction                    $transaction
      */
-    public function sendEventsToApmServer(array $spansData, array $errorsData, ?TransactionData $transactionData): void
+    private function sendEventsToApmServer(
+        array $spans,
+        array $errors,
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        ?Transaction $transaction
+    ): void {
+        if ($this->config->devInternal()->dropEventAfterEnd()) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Dropping span because '
+                . OptionNames::DEV_INTERNAL . ' sub-option ' . DevInternalSubOptionNames::DROP_EVENT_AFTER_END
+                . ' is set'
+            );
+            return;
+        }
+
+        $this->eventSink->consume(
+            $this->currentMetadata,
+            $spans,
+            $errors,
+            $breakdownMetricsPerTransaction,
+            $transaction
+        );
+    }
+
+    public function sendSpanToApmServer(SpanToSendInterface $span): void
     {
-        $this->eventSink->consume($this->currentMetadata, $spansData, $errorsData, $transactionData);
+        self::sendEventsToApmServer(
+            [$span] /* <- spans */,
+            [] /* <- errors */,
+            null /* <- breakdownMetricsPerTransaction */,
+            null /* <- transaction */
+        );
+    }
+
+    public function sendErrorToApmServer(Error $error): void
+    {
+        self::sendEventsToApmServer(
+            [] /* <- spans */,
+            [$error],
+            null /* <- breakdownMetricsPerTransaction */,
+            null /* <- transaction */
+        );
+    }
+
+    public function sendTransactionToApmServer(
+        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
+        Transaction $transaction
+    ): void {
+        self::sendEventsToApmServer(
+            [] /* <- spans */,
+            [] /* <- errors */,
+            $breakdownMetricsPerTransaction,
+            $transaction
+        );
     }
 
     /** @inheritDoc */
@@ -396,13 +533,29 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @inheritDoc */
     public function getSerializedCurrentDistributedTracingData(): string
     {
+        /** @noinspection PhpDeprecationInspection */
         $distTracingData = $this->currentTransaction !== null
             ? $this->currentTransaction->getDistributedTracingData()
             : null;
 
+        /** @noinspection PhpDeprecationInspection */
         return $distTracingData !== null
             ? $distTracingData->serializeToString()
             : NoopDistributedTracingData::serializedToString();
+    }
+
+    /** @inheritDoc */
+    public function injectDistributedTracingHeaders(Closure $headerInjector): void
+    {
+        if ($this->currentTransaction === null) {
+            return;
+        }
+
+        /** @noinspection PhpDeprecationInspection */
+        $distTracingData = $this->currentTransaction->getDistributedTracingData();
+        if ($distTracingData !== null) {
+            $distTracingData->injectHeaders($headerInjector);
+        }
     }
 
     public function toLog(LogStreamInterface $stream): void
@@ -413,7 +566,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             'config'               => $this->config,
         ];
 
-        if (!is_null($this->currentTransaction)) {
+        if ($this->currentTransaction !== null) {
             $result['currentTransactionId'] = $this->currentTransaction->getId();
         }
 

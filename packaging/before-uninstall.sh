@@ -113,7 +113,7 @@ function get_extension_filename() {
 #### Function manual_extension_agent_uninstallation ############################
 function manual_extension_agent_uninstallation() {
     echo 'Uninstall the Agent manually as explained in:'
-    echo 'https://github.com/elastic/apm-agent-php/blob/master/docs/setup.asciidoc'
+    echo 'https://github.com/elastic/apm-agent-php/blob/main/docs/setup.asciidoc'
 }
 
 ################################################################################
@@ -169,6 +169,12 @@ echo 'Uninstalling Elastic PHP agent'
 EXTENSION_FILENAME=$(get_extension_filename)
 PHP_INI_FILE_PATH="$(php_ini_file_path)/php.ini"
 PHP_CONFIG_D_PATH="$(php_config_d_path)"
+
+echo "DEBUG: before-remove parameter is '$1'"
+if [ "$1" = "1" ]; then
+    echo "The action is an upgrade in RPM, therefore this is not required"
+    exit 0
+fi
 
 if [ -e "${PHP_CONFIG_D_PATH}" ]; then
     uninstall_conf_d_files "${PHP_CONFIG_D_PATH}"

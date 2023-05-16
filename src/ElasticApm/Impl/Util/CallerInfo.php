@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggablePhpStacktrace;
+use Elastic\Apm\Impl\Log\LoggableStackTrace;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
@@ -50,7 +50,7 @@ final class CallerInfo implements LoggableInterface
 
     public function __construct(?string $file, ?int $line, ?string $class, ?string $function)
     {
-        $this->file = is_null($file) ? null : LoggablePhpStacktrace::adaptSourceCodeFilePath($file);
+        $this->file =  LoggableStackTrace::adaptSourceCodeFilePath($file);
         $this->line = $line;
         $this->class = $class;
         $this->function = $function;

@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Util\TextUtil;
  */
 abstract class SinkBase implements SinkInterface
 {
+    /** @inheritDoc */
     public function consume(
         int $statementLevel,
         string $message,
@@ -47,20 +48,21 @@ abstract class SinkBase implements SinkInterface
 
         // Traverse $contextsStack in reverse order since the data most specific to the log statement is on top
         for (end($contextsStack); key($contextsStack) !== null; prev($contextsStack)) {
-            /** @var array<string, mixed> */
+            /** @var array<string, mixed> $currentContext */
             $currentContext = current($contextsStack);
             foreach ($currentContext as $key => $value) {
                 $combinedContext[$key] = $value;
             }
         }
 
-        if (is_null($includeStacktrace) ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
-            $combinedContext[LoggablePhpStacktrace::STACK_TRACE_KEY]
-                = LoggablePhpStacktrace::buildForCurrent($numberOfStackFramesToSkip + 1);
+        if ($includeStacktrace === null ? ($statementLevel <= Level::ERROR) : $includeStacktrace) {
+            $combinedContext[LoggableStackTrace::STACK_TRACE_KEY]
+                = LoggableStackTrace::buildForCurrent($numberOfStackFramesToSkip + 1);
         }
 
-        $afterMessageDelimiter = TextUtil::isSuffixOf('.', $message) ? '' : '.';
-        $messageWithContext = $message . $afterMessageDelimiter . ' ' . LoggableToString::convert($combinedContext);
+        $ctxAsStr = LoggableToString::convert($combinedContext);
+        $msgCtxSeparator = (TextUtil::isEmptyString($message) || TextUtil::isEmptyString($ctxAsStr)) ? '' : ' ';
+        $messageWithContext = $message . $msgCtxSeparator . $ctxAsStr;
 
         $this->consumePreformatted(
             $statementLevel,

@@ -40,7 +40,7 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 
 #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 
-#define ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_BEFORE( requestedSize ) \
+#define ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_BEFORE( requestedSize, /* out */ actuallyRequestedSizeVar ) \
     MemoryTracker* const memTracker = getGlobalMemoryTracker(); \
     void* stackTraceAddressesBuffer[ maxCaptureStackTraceDepth ]; \
     size_t stackTraceAddressesCount = 0; \
@@ -53,11 +53,11 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
                     &(stackTraceAddressesBuffer[ 0 ]), \
                     ELASTIC_APM_STATIC_ARRAY_SIZE( stackTraceAddressesBuffer ) ); \
         } \
-        actuallyRequestedSize = \
+        (actuallyRequestedSizeVar) = \
                 memoryTrackerCalcSizeToAlloc( memTracker, (requestedSize), stackTraceAddressesCount ); \
     }
 
-#define ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_AFTER( isString, requestedSize, isPersistent ) \
+#define ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_AFTER( isString, requestedSize, actuallyRequestedSize, isPersistent ) \
     if ( isMemoryTrackingEnabledCached ) \
     { \
         memoryTrackerAfterAlloc( \
@@ -65,7 +65,7 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
             (phpAllocIfFailedGotoTmpPtr), \
             (requestedSize), \
             (isPersistent), \
-            actuallyRequestedSize, \
+            (actuallyRequestedSize), \
             ELASTIC_APM_STRING_LITERAL_TO_VIEW( __FILE__ ), \
             __LINE__, \
             isString, \
@@ -82,9 +82,9 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 
 #define ELASTIC_APM_PHP_ALLOC_IF_FAILED_DO_EX( type, isString, requestedSize, isPersistent, outPtr, doOnFailure ) \
     do { \
-        size_t actuallyRequestedSize = requestedSize; \
+        size_t actuallyRequestedSize = (requestedSize); \
         \
-        ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_BEFORE( requestedSize ) \
+        ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_BEFORE( requestedSize, /* out */ actuallyRequestedSize ) \
         \
         void* phpAllocIfFailedGotoTmpPtr = ELASTIC_APM_PEMALLOC_FUNC( actuallyRequestedSize, (isPersistent) ); \
         if ( phpAllocIfFailedGotoTmpPtr == NULL ) \
@@ -94,15 +94,15 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
         } \
         (outPtr) = (type*)(phpAllocIfFailedGotoTmpPtr); \
         \
-        ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_AFTER( isString, requestedSize, isPersistent ) \
+        ELASTIC_APM_PHP_ALLOC_MEMORY_TRACKING_AFTER( isString, requestedSize, actuallyRequestedSize, isPersistent ) \
     } while ( 0 )
 
 #define ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, isString, requestedSize, isPersistent, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_IF_FAILED_DO_EX( type, isString, requestedSize, isPersistent, outPtr, /* doOnFailure: */ goto failure )
 
 
-#define ELASTIC_APM_EMALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
-    ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, /* isString: */ false, sizeof( type ), /* isPersistent: */ false, outPtr )
+//#define ELASTIC_APM_EMALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
+//    ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, /* isString: */ false, sizeof( type ), /* isPersistent: */ false, outPtr )
 
 #define ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, /* isString: */ false, sizeof( type ), /* isPersistent: */ true,  outPtr )
@@ -125,7 +125,6 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 
 #define ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( stringBufferSizeInclTermZero, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_ARRAY_IF_FAILED_GOTO( char, /* isString: */ true, stringBufferSizeInclTermZero, /* isPersistent */ true, outPtr )
-
 
 #define ELASTIC_APM_PHP_ALLOC_DUP_STRING_IF_FAILED_DO( srcStr, isPersistent, outPtr, doOnFailure ) \
     do { \
@@ -151,6 +150,24 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
 #define ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( srcStr, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_DUP_STRING_IF_FAILED_GOTO( srcStr, /* isPersistent */ true,  outPtr )
 
+#define ELASTIC_APM_PHP_ALLOC_DUP_STRING_VIEW_IF_FAILED_DO( srcStrBegin, srcStrLen, isPersistent, outPtr, doOnFailure ) \
+    do { \
+        ELASTIC_APM_ASSERT( (srcStrBegin) != NULL, "" ); \
+        char* elasticApmPemallocDupStringTempPtr = NULL; \
+        ELASTIC_APM_PHP_ALLOC_ARRAY_IF_FAILED_DO( \
+            char, \
+            /* isString: */ true, \
+            (srcStrLen) + 1, \
+            isPersistent, \
+            elasticApmPemallocDupStringTempPtr, \
+            doOnFailure ); \
+        strncpy( elasticApmPemallocDupStringTempPtr, (srcStrBegin), (srcStrLen) ); \
+        elasticApmPemallocDupStringTempPtr[ (srcStrLen) ] = '\0'; \
+        (outPtr) = elasticApmPemallocDupStringTempPtr; \
+    } while ( 0 )
+
+#define ELASTIC_APM_PEMALLOC_DUP_STRING_VIEW_IF_FAILED_GOTO( srcStrBegin, srcStrLen, outPtr ) \
+    ELASTIC_APM_PHP_ALLOC_DUP_STRING_VIEW_IF_FAILED_DO( srcStrBegin, srcStrLen, /* isPersistent */ true,  outPtr, /* doOnFailure: */ goto failure )
 
 static const UInt32 poisonPattern = 0xDEADBEEF;
 
@@ -204,8 +221,8 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
     } while ( 0 )
 
 
-#define ELASTIC_APM_EFREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
-    ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ), /* isPersistent */ false, ptr )
+//#define ELASTIC_APM_EFREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
+//    ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ), /* isPersistent */ false, ptr )
 
 #define ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
     ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ), /* isPersistent */ true, ptr )
@@ -218,8 +235,65 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
     ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ) * (arrayNumberOfElements), /* isPersistent */ true, ptr )
 
 
-#define ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( stringBufferSizeInclTermZero, ptr ) \
+#define ELASTIC_APM_EFREE_STRING_SIZE_AND_SET_TO_NULL( stringBufferSizeInclTermZero, ptr ) \
     ELASTIC_APM_EFREE_ARRAY_AND_SET_TO_NULL( char, stringBufferSizeInclTermZero, ptr )
 
-#define ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( stringBufferSizeInclTermZero, ptr ) \
+#define ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( stringBufferSizeInclTermZero, ptr ) \
     ELASTIC_APM_PEFREE_ARRAY_AND_SET_TO_NULL( char, stringBufferSizeInclTermZero, ptr )
+
+#define ELASTIC_APM_EFREE_STRING_AND_SET_TO_NULL( ptr ) \
+    ELASTIC_APM_EFREE_STRING_SIZE_AND_SET_TO_NULL( ( (ptr) == NULL ) ? 0 : ( strlen( ptr ) + 1 ), ptr )
+
+#define ELASTIC_APM_PEFREE_STRING_AND_SET_TO_NULL( ptr ) \
+    ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( ( (ptr) == NULL ) ? 0 : ( strlen( ptr ) + 1 ), ptr )
+
+
+#define ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSizeInBytes, outPtr, doOnFailure ) \
+    do { \
+        void* mallocIfFailedDoExPtr = malloc( (requestedSizeInBytes) ); \
+        if ( mallocIfFailedDoExPtr == NULL ) \
+        { \
+            resultCode = resultOutOfMemory; \
+            doOnFailure; \
+        } \
+        (outPtr) = (type*)(mallocIfFailedDoExPtr); \
+    } while ( 0 )
+
+#define ELASTIC_APM_MALLOC_IF_FAILED_GOTO( type, requestedSizeInBytes, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_DO_EX( type, requestedSizeInBytes, outPtr, /* doOnFailure: */ goto failure )
+
+#define ELASTIC_APM_MALLOC_STRING_IF_FAILED_GOTO( maxLength, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_GOTO( char, sizeof( char ) * ((maxLength) + 1) /* <- +1 for terminating '\0' */, outPtr )
+
+#define ELASTIC_APM_MALLOC_STRING_BUFFER_IF_FAILED_GOTO( maxLength, strBuf ) \
+    do { \
+        ELASTIC_APM_MALLOC_STRING_IF_FAILED_GOTO( (maxLength), /* outPtr */ (strBuf).begin ); \
+        (strBuf).size = (maxLength) + 1; \
+    } while ( 0 )
+
+#define ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
+    ELASTIC_APM_MALLOC_IF_FAILED_GOTO( type, sizeof( type ), outPtr )
+
+#define ELASTIC_APM_FREE_AND_SET_TO_NULL( type, requestedSizeInBytes, ptr ) \
+    do { \
+        if ( (ptr) != NULL ) \
+        { \
+            free( (void*)(ptr) ); \
+            (ptr) = (type*)(NULL); \
+        } \
+    } while ( 0 )
+
+#define ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
+    ELASTIC_APM_FREE_AND_SET_TO_NULL( type, sizeof( type ), ptr )
+
+#define ELASTIC_APM_FREE_STRING_AND_SET_TO_NULL( maxLength, ptr ) \
+    ELASTIC_APM_FREE_AND_SET_TO_NULL( char, sizeof( char ) * ((maxLength) + 1) /* <- +1 for terminating '\0' */, ptr )
+
+#define ELASTIC_APM_FREE_STRING_BUFFER_AND_SET_TO_NULL( strBuf ) \
+    do { \
+        if ( (strBuf).size != 0 ) \
+        { \
+            ELASTIC_APM_FREE_STRING_AND_SET_TO_NULL( /* maxLength */ (strBuf).size - 1, /* ptr */ (strBuf).begin ); \
+            (strBuf) = ELASTIC_APM_EMPTY_STRING_BUFFER; \
+        } \
+    } while ( 0 )

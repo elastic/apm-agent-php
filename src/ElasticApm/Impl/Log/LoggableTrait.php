@@ -39,7 +39,15 @@ trait LoggableTrait
     }
 
     /**
-     * @return array<string>
+     * @return string[]
+     */
+    protected static function defaultPropertiesExcludedFromLog(): array
+    {
+        return ['logger'];
+    }
+
+    /**
+     * @return string[]
      */
     protected static function propertiesExcludedFromLog(): array
     {
@@ -55,20 +63,20 @@ trait LoggableTrait
         $nameToValue = $customPropValues;
 
         $classNameToLog = static::classNameToLog();
-        if (!is_null($classNameToLog)) {
+        if ($classNameToLog !== null) {
             $nameToValue[LogConsts::TYPE_KEY] = $classNameToLog;
         }
 
         try {
             $currentClass = new ReflectionClass(get_class($this));
-        } catch (ReflectionException $ex) {
+        } /** @noinspection PhpRedundantCatchClauseInspection */ catch (ReflectionException $ex) {
             $stream->toLogAs(
                 LoggingSubsystem::onInternalFailure('Failed to reflect', ['class' => get_class($this)], $ex)
             );
             return;
         }
 
-        $propertiesExcludedFromLog = static::propertiesExcludedFromLog();
+        $propertiesExcludedFromLog = array_merge(static::propertiesExcludedFromLog(), static::defaultPropertiesExcludedFromLog());
         while (true) {
             foreach ($currentClass->getProperties() as $reflectionProperty) {
                 if ($reflectionProperty->isStatic()) {

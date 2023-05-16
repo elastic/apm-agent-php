@@ -25,64 +25,65 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\ComponentTests\Util\AgentConfigSetter;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\DataFromAgent;
-use ElasticApmTests\ComponentTests\Util\TestProperties;
+use ElasticApmTests\Util\MixedMap;
 
+/**
+ * @group smoke
+ * @group does_not_require_external_services
+ */
 final class VerifyServerCertTest extends ComponentTestCaseBase
 {
     /**
-     * @return iterable<array<AgentConfigSetter|bool|null>>
+     * @return iterable<array{?bool}>
      */
-    public function configTestDataProvider(): iterable
+    public function dataProviderForTestConfig(): iterable
     {
-        yield [null, null];
+        yield [null];
 
-        foreach ($this->configSetterTestDataProvider() as $configSetter) {
-            self::assertCount(1, $configSetter);
-            foreach ([false, true] as $verifyServerCert) {
-                yield [$configSetter[0], $verifyServerCert];
-            }
+        foreach ([false, true] as $verifyServerCertConfigVal) {
+            yield [$verifyServerCertConfigVal];
         }
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForConfigTest(array $args): void
+    public static function appCodeForConfigTest(MixedMap $appCodeArgs): void
     {
         $tx = ElasticApm::getCurrentTransaction();
-        $verifyServerCert = ArrayUtil::getValueIfKeyExistsElse('verifyServerCert', $args, null);
-        $tx->context()->setLabel('verifyServerCert', $verifyServerCert);
+        $verifyServerCertConfigVal = $appCodeArgs->getIfKeyExistsElse('verifyServerCertConfigVal', null);
+        /** @var ?bool $verifyServerCertConfigVal */
+        $tx->context()->setLabel('verifyServerCertConfigVal', $verifyServerCertConfigVal);
     }
 
     /**
-     * @dataProvider configTestDataProvider
+     * @dataProvider dataProviderForTestConfig
      *
-     * @param AgentConfigSetter|null $configSetter
-     * @param bool|null              $verifyServerCert
+     * @param ?bool $verifyServerCertConfigVal
      */
-    public function testConfig(?AgentConfigSetter $configSetter, ?bool $verifyServerCert): void
+    public function testConfig(?bool $verifyServerCertConfigVal): void
     {
-        $testProperties = (new TestProperties())
-            ->withRoutedAppCode([__CLASS__, 'appCodeForConfigTest'])
-            ->withAppArgs(['verifyServerCert' => $verifyServerCert]);
-        if (is_null($verifyServerCert)) {
-            self::assertNull($configSetter);
-        } else {
-            self::assertNotNull($configSetter);
-            $configSetter->set(OptionNames::VERIFY_SERVER_CERT, $verifyServerCert ? 'true' : 'false');
-            $testProperties->withAgentConfig($configSetter);
-        }
-        $this->sendRequestToInstrumentedAppAndVerifyDataFromAgent(
-            $testProperties,
-            function (DataFromAgent $dataFromAgent) use ($verifyServerCert): void {
-                $tx = $dataFromAgent->singleTransaction();
-                self::assertLabelsCount(1, $tx);
-                self::assertSame($verifyServerCert, self::getLabel($tx, 'verifyServerCert'));
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($verifyServerCertConfigVal): void {
+                if ($verifyServerCertConfigVal !== null) {
+                    $appCodeParams->setAgentOption(
+                        OptionNames::VERIFY_SERVER_CERT,
+                        $verifyServerCertConfigVal ? 'true' : 'false'
+                    );
+                }
             }
         );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForConfigTest']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($verifyServerCertConfigVal): void {
+                $appCodeRequestParams->setAppCodeArgs(['verifyServerCertConfigVal' => $verifyServerCertConfigVal]);
+            }
+        );
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $tx = $dataFromAgent->singleTransaction();
+        self::assertLabelsCount(1, $tx);
+        self::assertSame($verifyServerCertConfigVal, self::getLabel($tx, 'verifyServerCertConfigVal'));
     }
 }

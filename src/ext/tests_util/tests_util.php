@@ -25,7 +25,9 @@ error_reporting(E_ALL | E_STRICT);
 
 function elasticApmOnAssertFailure(string $condDesc, string $expr, $actual, $expected)
 {
-    if ( $expected === $actual ) return;
+    if ($expected === $actual) {
+        return;
+    }
 
     $indent = "\t\t\t\t\t\t";
     echo "========================================\n";
@@ -40,11 +42,11 @@ function elasticApmOnAssertFailure(string $condDesc, string $expr, $actual, $exp
     echo "\n";
     echo "Expected value:\n";
     echo "\n$indent";
-    var_dump( $expected );
+    var_dump($expected);
     echo "\n";
     echo "Actual value:\n";
     echo "\n$indent";
-    var_dump( $actual );
+    var_dump($actual);
     echo "\n";
     echo "===\n";
     echo "====================\n";
@@ -54,19 +56,55 @@ function elasticApmOnAssertFailure(string $condDesc, string $expr, $actual, $exp
 
 function elasticApmAssertSame(string $expr, $actual, $expected)
 {
-    if ( $expected === $actual ) return;
+    if ($expected === $actual) {
+        return;
+    }
 
     elasticApmOnAssertFailure("the same", $expr, $actual, $expected);
 }
 
+/** @noinspection PhpUnused */
 function elasticApmAssertEqual(string $expr, $actual, $expected)
 {
-    if ( $expected == $actual ) return;
+    if ($expected == $actual) {
+        return;
+    }
 
     elasticApmOnAssertFailure("equal", $expr, $actual, $expected);
 }
 
+/** @noinspection PhpUnused */
 function elasticApmIsOsWindows(): bool
 {
     return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 }
+
+function sharedChecks(): void
+{
+    if (! extension_loaded('elastic_apm')) {
+        die('Extension elastic_apm must be installed');
+    }
+
+    elasticApmAssertSame("getenv('ELASTIC_APM_LOG_LEVEL_STDERR')", getenv('ELASTIC_APM_LOG_LEVEL_STDERR'), 'CRITICAL');
+    /** @noinspection PhpUndefinedFunctionInspection, PhpUndefinedConstantInspection */
+    elasticApmAssertSame(
+        "elastic_apm_get_config_option_by_name('log_level_stderr')",
+        elastic_apm_get_config_option_by_name('log_level_stderr'),
+        ELASTIC_APM_LOG_LEVEL_CRITICAL
+    );
+
+    $expected_bootstrap_php_part_file = '../bootstrap_php_part.php';
+    elasticApmAssertSame(
+        "ini_get('elastic_apm.bootstrap_php_part_file')",
+        ini_get('elastic_apm.bootstrap_php_part_file'),
+        $expected_bootstrap_php_part_file
+    );
+    /** @noinspection PhpUndefinedFunctionInspection, PhpUndefinedConstantInspection */
+    elasticApmAssertSame(
+        "elastic_apm_get_config_option_by_name('bootstrap_php_part_file')",
+        elastic_apm_get_config_option_by_name('bootstrap_php_part_file'),
+        $expected_bootstrap_php_part_file
+    );
+}
+
+sharedChecks();

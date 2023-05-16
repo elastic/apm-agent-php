@@ -23,9 +23,10 @@ declare(strict_types=1);
 
 namespace Elastic\Apm;
 
+use Closure;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 
-final class DistributedTracingData
+class DistributedTracingData
 {
     /** @var string */
     public $traceId;
@@ -36,8 +37,30 @@ final class DistributedTracingData
     /** @var bool */
     public $isSampled;
 
+    /**
+     * @deprecated Deprecated since version 1.3 - use injectHeaders() instead
+     * @see             injectHeaders() Use it instead of this method
+     *
+     * Returns distributed tracing data for the current span/transaction
+     */
     public function serializeToString(): string
     {
         return HttpDistributedTracing::buildTraceParentHeader($this);
+    }
+
+    /**
+     * Gets distributed tracing data for the current span/transaction
+     *
+     * $headerInjector is callback to inject headers with signature
+     *
+     *      (string $headerName, string $headerValue): void
+     *
+     * @param Closure $headerInjector Callback that actually injects header(s) for the underlying transport
+     *
+     * @phpstan-param Closure(string, string): void $headerInjector
+     */
+    public function injectHeaders(Closure $headerInjector): void
+    {
+        $headerInjector(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME, HttpDistributedTracing::buildTraceParentHeader($this));
     }
 }

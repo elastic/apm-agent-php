@@ -39,6 +39,8 @@ final class LogCategory
     public const CONFIGURATION = 'Configuration';
     public const DISCOVERY = 'Discovery';
     public const DISTRIBUTED_TRACING = 'Distributed-Tracing';
+    public const INFERRED_SPANS = 'Inferred-Spans';
+    public const INFRASTRUCTURE = 'Infrastructure';
     public const INTERCEPTION = 'Interception';
     public const PUBLIC_API = 'Public-API';
 }

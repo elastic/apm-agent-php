@@ -47,6 +47,10 @@ int run_MemoryTracker_tests();
 #endif
 int run_Logger_tests();
 int run_config_tests();
+int run_time_util_tests();
+int run_iterateOverCStackTrace_tests();
+int run_ResultCode_tests();
+int run_parse_value_with_units_tests();
 
 int main( int argc, char* argv[] )
 {
@@ -59,7 +63,7 @@ int main( int argc, char* argv[] )
     failedTestsCount += run_util_tests();
     failedTestsCount += run_IntrusiveDoublyLinkedList_tests();
     failedTestsCount += run_TextOutputStream_tests();
-    failedTestsCount += run_platform_tests();
+    failedTestsCount += run_platform_tests( argc, argv );
     failedTestsCount += run_DynamicArray_tests();
     failedTestsCount += run_StringToStringMap_tests();
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
@@ -67,6 +71,10 @@ int main( int argc, char* argv[] )
         #endif
     failedTestsCount += run_Logger_tests();
     failedTestsCount += run_config_tests();
+    failedTestsCount += run_time_util_tests();
+    failedTestsCount += run_iterateOverCStackTrace_tests();
+    failedTestsCount += run_ResultCode_tests();
+    failedTestsCount += run_parse_value_with_units_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
 
@@ -75,13 +83,19 @@ int main( int argc, char* argv[] )
 
 static const String cmockaAbortOnFailEnvVarName = "CMOCKA_TEST_ABORT";
 
-void printInfo()
+void printInfo( int argc, char* argv[] )
 {
     puts( "#####################################################################" );
     puts( "##################################" );
     puts( "################" );
     puts( "####" );
     puts( "" );
+
+    printf( "argc: %d\n", argc );
+    for ( int i = 0 ; i < argc ; ++i)
+    {
+        printf( "argv[%d]: %s\n", i, argv[i] );
+    }
 
     String NDEBUG_defined =
     #ifdef NDEBUG

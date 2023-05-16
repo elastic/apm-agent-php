@@ -34,15 +34,26 @@ final class ElasticApmExtensionUtil
 
     public const EXTENSION_NAME = 'elastic_apm';
 
-    /** @var bool */
-    private static $isLoaded;
+    /** @var ?bool */
+    private static $isLoaded = null;
 
     public static function isLoaded(): bool
     {
-        if (!isset(self::$isLoaded)) {
+        if (self::$isLoaded === null) {
             self::$isLoaded = extension_loaded(self::EXTENSION_NAME);
         }
 
         return self::$isLoaded;
+    }
+
+    public static function getEnabledConfig(): bool
+    {
+        /**
+         * elastic_apm_* functions are provided by the elastic_apm extension
+         *
+         * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+         * @phpstan-ignore-next-line
+         */
+        return \elastic_apm_is_enabled();
     }
 }

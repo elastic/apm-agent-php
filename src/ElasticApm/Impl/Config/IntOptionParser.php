@@ -32,16 +32,19 @@ namespace Elastic\Apm\Impl\Config;
  */
 final class IntOptionParser extends NumericOptionParser
 {
+    /** @inheritDoc */
     protected function dbgValueTypeDesc(): string
     {
         return 'int';
     }
 
+    /** @inheritDoc */
     public static function isValidFormat(string $rawValue): bool
     {
         return filter_var($rawValue, FILTER_VALIDATE_INT) !== false;
     }
 
+    /** @inheritDoc */
     protected function stringToNumber(string $rawValue)
     {
         return intval($rawValue);

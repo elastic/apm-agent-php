@@ -24,12 +24,15 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util\Deserialization;
 
 use Closure;
-use Elastic\Apm\Impl\ErrorData;
 use Elastic\Apm\Impl\Metadata;
-use Elastic\Apm\Impl\SpanData;
-use Elastic\Apm\Impl\TransactionData;
+use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use ElasticApmTests\Util\ValidationUtil;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\ErrorDto;
+use ElasticApmTests\Util\MetadataValidator;
+use ElasticApmTests\Util\MetricSetValidator;
+use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\TransactionDto;
 
 trait SerializedEventSinkTrait
 {
@@ -37,28 +40,26 @@ trait SerializedEventSinkTrait
     public $shouldValidateAgainstSchema = true;
 
     /**
-     * @param string  $serializedData
-     * @param Closure $validateAgainstSchema
-     * @param Closure $deserialize
-     * @param Closure $assertValid
+     * @template T of object
      *
-     * @return  mixed
+     * @param string                          $serializedData
+     * @param Closure(string): void           $validateAgainstSchema
+     * @param Closure(array<mixed>): T $deserialize
+     * @param Closure(T): void                $assertValid
      *
-     * @template        T of object
-     * @phpstan-param   Closure(string): void $validateAgainstSchema
-     * @phpstan-param   Closure(array<string, mixed>): T $deserialize
-     * @phpstan-param   Closure(T): void $assertValid
-     * @phpstan-return  T
+     * @return T
      */
-    private static function validateAndDeserialize(
-        string $serializedData,
-        Closure $validateAgainstSchema,
-        Closure $deserialize,
-        Closure $assertValid
-    ) {
+    private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
+
+        /** @var array<string, mixed> $decodedJson */
+        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
+        $dbgCtx->add(['decodedJson' => $decodedJson]);
+
         $validateAgainstSchema($serializedData);
-        $deserializedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
-        $deserializedData = $deserialize($deserializedJson);
+        $deserializedData = $deserialize($decodedJson);
+        $dbgCtx->add(['deserializedData' => $deserializedData]);
         $assertValid($deserializedData);
         return $deserializedData;
     }
@@ -76,62 +77,79 @@ trait SerializedEventSinkTrait
                 return MetadataDeserializer::deserialize($deserializedRawData);
             },
             function (Metadata $data): void {
-                ValidationUtil::assertValidMetadata($data);
+                MetadataValidator::assertValid($data);
             }
         );
     }
 
-    protected function validateAndDeserializeTransactionData(
-        string $serializedTransactionData
-    ): TransactionData {
+    protected function validateAndDeserializeTransaction(string $serializedTransactionData): TransactionDto
+    {
         return self::validateAndDeserialize(
             $serializedTransactionData,
             function (string $serializedData): void {
                 if ($this->shouldValidateAgainstSchema) {
-                    ServerApiSchemaValidator::validateTransactionData($serializedData);
+                    ServerApiSchemaValidator::validateTransaction($serializedData);
                 }
             },
-            function ($deserializedRawData): TransactionData {
-                return TransactionDataDeserializer::deserialize($deserializedRawData);
+            function ($deserializedRawData): TransactionDto {
+                return TransactionDto::deserialize($deserializedRawData);
             },
-            function (TransactionData $data): void {
-                ValidationUtil::assertValidTransactionData($data);
+            function (TransactionDto $data): void {
+                $data->assertValid();
             }
         );
     }
 
-    protected function validateAndDeserializeSpanData(string $serializedSpanData): SpanData
+    protected function validateAndDeserializeSpan(string $serializedSpanData): SpanDto
     {
         return self::validateAndDeserialize(
             $serializedSpanData,
             function (string $serializedSpanData): void {
                 if ($this->shouldValidateAgainstSchema) {
-                    ServerApiSchemaValidator::validateSpanData($serializedSpanData);
+                    ServerApiSchemaValidator::validateSpan($serializedSpanData);
                 }
             },
-            function ($deserializedRawData): SpanData {
-                return SpanDataDeserializer::deserialize($deserializedRawData);
+            function ($deserializedRawData): SpanDto {
+                return SpanDto::deserialize($deserializedRawData);
             },
-            function (SpanData $data): void {
-                ValidationUtil::assertValidSpanData($data);
+            function (SpanDto $data): void {
+                $data->assertValid();
             }
         );
     }
 
-    protected function validateAndDeserializeErrorData(string $serializedErrorData): ErrorData
+    protected function validateAndDeserializeError(string $serializedErrorData): ErrorDto
     {
         return self::validateAndDeserialize(
             $serializedErrorData,
-            function (string $serializedSpanData): void {
+            function (string $serializedData): void {
                 if ($this->shouldValidateAgainstSchema) {
-                    ServerApiSchemaValidator::validateErrorData($serializedSpanData);
+                    ServerApiSchemaValidator::validateError($serializedData);
                 }
             },
-            function ($deserializedRawData): ErrorData {
-                return ErrorDataDeserializer::deserialize($deserializedRawData);
+            function ($deserializedRawData): ErrorDto {
+                return ErrorDto::deserialize($deserializedRawData);
             },
-            function (ErrorData $data): void {
-                ValidationUtil::assertValidErrorData($data);
+            function (ErrorDto $data): void {
+                $data->assertValid();
+            }
+        );
+    }
+
+    protected function validateAndDeserializeMetricSet(string $serializedMetricSet): MetricSet
+    {
+        return self::validateAndDeserialize(
+            $serializedMetricSet,
+            function (string $serializedSpanData): void {
+                if ($this->shouldValidateAgainstSchema) {
+                    ServerApiSchemaValidator::validateMetricSet($serializedSpanData);
+                }
+            },
+            function ($deserializedRawData): MetricSet {
+                return MetricSetDeserializer::deserialize($deserializedRawData);
+            },
+            function (MetricSet $data): void {
+                MetricSetValidator::assertValid($data);
             }
         );
     }

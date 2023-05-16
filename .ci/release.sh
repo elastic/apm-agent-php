@@ -1,26 +1,17 @@
 #!/usr/bin/env bash
-set -exo pipefail
+##  This script runs the release given the different environment variables
+##    dry_run
+##
+##  It relies on the .buildkite/hooks/pre-command so the Vault and other tooling
+##  are prepared automatically by buildkite.
+##
+set -eo pipefail
 
-USER=elastic
-REPO=apm-agent-php
+set +x
+echo "--- Sign the binaries"
+if [[ "$dry_run" == "true" ]] ; then
+  echo "run the signing job 'elastic+unified-release+master+sign-artifacts-with-gpg'" | tee -a release.txt
+else
+  echo 'TBD' | tee release.txt
+fi
 
-## Install tooling
-go get github.com/github-release/github-release
-
-## Create a formal release
-github-release release \
-    --user ${USER} \
-    --repo ${REPO} \
-    --tag "${TAG_NAME}" \
-    --description "For more information, please see the [changelog](https://www.elastic.co/guide/en/apm/agent/php/current/release-notes.html)."
-
-## Upload the distribution files
-for package in build/packages/* ; do
-  name=$(basename "${package}")
-  github-release upload \
-      --user ${USER} \
-      --repo ${REPO} \
-      --tag "${TAG_NAME}" \
-      --name "${name}" \
-      --file "${package}" 
-done

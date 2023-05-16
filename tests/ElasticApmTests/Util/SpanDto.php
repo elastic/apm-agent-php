@@ -1,0 +1,194 @@
+<?php
+
+/*
+ * Licensed to Elasticsearch B.V. under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch B.V. licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+declare(strict_types=1);
+
+namespace ElasticApmTests\Util;
+
+use Elastic\Apm\Impl\SpanToSendInterface;
+use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\Util\Deserialization\DeserializationUtil;
+use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
+
+class SpanDto extends ExecutionSegmentDto
+{
+    /** @var string */
+    public $parentId;
+
+    /** @var string */
+    public $transactionId;
+
+    /** @var ?string */
+    public $action = null;
+
+    /** @var ?string */
+    public $subtype = null;
+
+    /** @var null|StackTraceFrame[] */
+    public $stackTrace = null;
+
+    /** @var ?SpanContextDto */
+    public $context = null;
+
+    /** @var ?SpanCompositeDto */
+    public $composite = null;
+
+    /**
+     * @param mixed $value
+     *
+     * @return self
+     */
+    public static function deserialize($value): self
+    {
+        $result = new self();
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                if (parent::deserializeKeyValue($key, $value, $result)) {
+                    return true;
+                }
+
+                switch ($key) {
+                    case 'action':
+                        $result->action = self::assertValidKeywordString($value);
+                        return true;
+                    case 'composite':
+                        $result->composite = SpanCompositeDto::deserialize($value);
+                        return true;
+                    case 'context':
+                        $result->context = SpanContextDto::deserialize($value);
+                        return true;
+                    case 'parent_id':
+                        $result->parentId = self::assertValidId($value);
+                        return true;
+                    case 'stacktrace':
+                        $result->stackTrace = StacktraceDeserializer::deserialize($value);
+                        return true;
+                    case 'subtype':
+                        $result->subtype = self::assertValidKeywordString($value);
+                        return true;
+                    case 'transaction_id':
+                        $result->transactionId = self::assertValidId($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+
+        $result->assertValid();
+        return $result;
+    }
+
+    public function assertValid(): void
+    {
+        $this->assertMatches(new SpanExpectations());
+    }
+
+    public function assertMatches(SpanExpectations $expectations): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        parent::assertMatchesExecutionSegment($expectations);
+
+        self::assertValidId($this->parentId);
+        TestCaseBase::assertSameExpectedOptional($expectations->parentId, $this->parentId);
+        self::assertValidId($this->transactionId);
+        TestCaseBase::assertSameExpectedOptional($expectations->transactionId, $this->transactionId);
+
+        self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
+        self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
+        if ($this->stackTrace === null) {
+            TestCaseBase::assertNull($expectations->stackTrace);
+            TestCaseBase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+        } else {
+            self::assertValidStacktrace($this->stackTrace);
+            if ($expectations->stackTrace !== null) {
+                TestCaseBase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
+                self::assertStackTraceMatches($expectations->stackTrace, $expectations->allowExpectedStackTraceToBePrefix, $this->stackTrace);
+            }
+        }
+
+        SpanCompositeExpectations::assertNullableMatches($expectations->composite, $this->composite);
+        SpanContextExpectations::assertNullableMatches($expectations->context, $this->context);
+    }
+
+    /**
+     * @param StackTraceFrame[] $expectedStackTrace
+     * @param bool              $allowExpectedStackTraceToBePrefix
+     * @param StackTraceFrame[] $actualStackTrace
+     *
+     * @return void
+     */
+    public static function assertStackTraceMatches(array $expectedStackTrace, bool $allowExpectedStackTraceToBePrefix, array $actualStackTrace): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        if ($allowExpectedStackTraceToBePrefix) {
+            TestCaseBase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace));
+        } else {
+            TestCaseBase::assertSame(count($expectedStackTrace), count($actualStackTrace));
+        }
+        $expectedStackTraceCount = count($expectedStackTrace);
+        $actualStackTraceCount = count($actualStackTrace);
+        $dbgCtx->pushSubScope();
+        foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
+            $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
+            $dbgCtx->add(['$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1, 'expectedApmFrame' => $expectedApmFrame]);
+            $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
+            $dbgCtx->add(['$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1, 'actualApmFrame' => $actualApmFrame]);
+            TestCaseBase::assertSame(count($expectedApmFrame), count($actualApmFrame));
+            foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
+                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame);
+            }
+        }
+        $dbgCtx->popSubScope();
+    }
+
+    public function assertEquals(SpanToSendInterface $original): void
+    {
+        self::assertEqualOriginalAndDto($original, $this);
+    }
+
+    public function assertService(?string $targetType, ?string $targetName, string $destinationName, string $destinationResource, string $destinationType): void
+    {
+        TestCaseBase::assertNotNull($this->context);
+        if ($targetType === null && $targetName === null) {
+            TestCaseBase::assertNull($this->context->service);
+        } else {
+            TestCaseBase::assertNotNull($this->context->service);
+            TestCaseBase::assertNotNull($this->context->service->target);
+            TestCaseBase::assertSame($this->context->service->target->type, $targetType);
+            TestCaseBase::assertSame($this->context->service->target->name, $targetName);
+        }
+
+        TestCaseBase::assertNotNull($this->context->destination);
+        TestCaseBase::assertNotNull($this->context->destination->service);
+        TestCaseBase::assertSame($this->context->destination->service->name, $destinationName);
+        TestCaseBase::assertSame($this->context->destination->service->resource, $destinationResource);
+        TestCaseBase::assertSame($this->context->destination->service->type, $destinationType);
+    }
+
+    public function getServiceTarget(): ?SpanContextServiceTargetDto
+    {
+        return ($this->context === null || $this->context->service === null) ? null : $this->context->service->target;
+    }
+}
