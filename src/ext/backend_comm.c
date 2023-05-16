@@ -70,10 +70,11 @@ String streamLibCurlInfo( TextOutputStream* txtOutStream )
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
         return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
 
+    streamPrintf( txtOutStream, "{" );
     streamPrintf( txtOutStream, "version: %s", g_cachedLibCurlInfo.version );
-    streamPrintf( txtOutStream, "; ssl_version: %s", g_cachedLibCurlInfo.ssl_version );
-    streamPrintf( txtOutStream, "; libz_version: %s", g_cachedLibCurlInfo.libz_version );
-    streamPrintf( txtOutStream, "; host: %s", g_cachedLibCurlInfo.host );
+    streamPrintf( txtOutStream, ", ssl_version: %s", g_cachedLibCurlInfo.ssl_version );
+    streamPrintf( txtOutStream, ", libz_version: %s", g_cachedLibCurlInfo.libz_version );
+    streamPrintf( txtOutStream, ", host: %s", g_cachedLibCurlInfo.host );
 
     /**
      * protocols is a pointer to an array of char * pointers, containing the names protocols that libcurl supports (using lowercase letters).
@@ -81,7 +82,7 @@ String streamLibCurlInfo( TextOutputStream* txtOutStream )
      *
      * @link https://curl.se/libcurl/c/curl_version_info.html
      */
-    streamPrintf( txtOutStream, "; protocols: [" );
+    streamPrintf( txtOutStream, ", protocols: [" );
     for ( size_t index = 0 ; ; ++index )
     {
         if ( g_cachedLibCurlInfo.protocols[ index ] == NULL )
@@ -95,6 +96,8 @@ String streamLibCurlInfo( TextOutputStream* txtOutStream )
         streamPrintf( txtOutStream, "%s", g_cachedLibCurlInfo.protocols[ index ] );
     }
     streamPrintf( txtOutStream, "]" );
+
+    streamPrintf( txtOutStream, "}" );
 
     return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
 }
