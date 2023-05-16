@@ -206,14 +206,6 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
          * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html
          */
         ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYPEER, 0L );
-
-        /**
-         * This option determines whether libcurl verifies the status of the server cert using the "Certificate Status Request" TLS extension (aka. OCSP stapling).
-         * Note that if this option is enabled but the server does not support the TLS extension, the verification will fail.
-         *
-         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYSTATUS.html
-         */
-        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYSTATUS, 0L );
     }
 
     // Authorization with API key or secret token if present
