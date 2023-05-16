@@ -18,10 +18,10 @@
  */
 
 #include "backend_comm.h"
+#include "elastic_apm_version.h"
 #if defined(PHP_WIN32) && ! defined(CURL_STATICLIB)
 #   define CURL_STATICLIB
 #endif
-#include <stdio.h>
 #include <curl/curl.h>
 #include "platform.h"
 #include "elastic_apm_alloc.h"

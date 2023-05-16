@@ -31,10 +31,6 @@
 #           define ELASTIC_APM_PLATFORM_HAS_BACKTRACE
 #       endif
 #   endif
-
-#   ifdef __GLIBC__
-#       define ELASTIC_APM_PLATFORM_HAS_GETLINE
-#   endif
 #endif
 
 #include <stdbool.h>
