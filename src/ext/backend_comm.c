@@ -228,10 +228,10 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
             "; userAgentHttpHeader: `%s'"
-            , config->serverUrl
-            , boolToString( config->disableSend )
-            , streamDuration( config->serverTimeout, &txtOutStream )
-            , streamStringView( userAgentHttpHeader, &txtOutStream ) );
+            "; curl info: %s"
+            , config->serverUrl, boolToString( config->disableSend ), streamDuration( config->serverTimeout, &txtOutStream )
+            , streamStringView( userAgentHttpHeader, &txtOutStream )
+            , streamLibCurlInfo( &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
 
     connectionData->curlHandle = curl_easy_init();
