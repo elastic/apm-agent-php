@@ -185,9 +185,35 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
 
     if ( ! config->verifyServerCert )
     {
-        ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false"
-                               " - disabling SSL/TLS certificate verification for communication with APM Server..." );
+        ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false - disabling SSL/TLS certificate verification for communication with APM Server..." );
+        /**
+         * This option determines whether libcurl verifies that the server cert is for the server it is known as.
+         * When negotiating TLS and SSL connections, the server sends a certificate indicating its identity.
+         * When CURLOPT_SSL_VERIFYHOST is 2, that certificate must indicate that the server is the server to which you meant to connect, or the connection fails.
+         * Simply put, it means it has to have the same name in the certificate as is in the URL you operate against.
+         * When the verify value is 0, the connection succeeds regardless of the names in the certificate.
+         *
+         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
+         */
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYHOST, 0L );
+
+        /**
+         * This option determines whether curl verifies the authenticity of the peer's certificate. A value of 1 means curl verifies; 0 (zero) means it does not.
+         * Authenticating the certificate is not enough to be sure about the server. You typically also want to ensure that the server is the server you mean to be talking to.
+         * Use CURLOPT_SSL_VERIFYHOST for that.
+         * The check that the host name in the certificate is valid for the host name you are connecting to is done independently of the CURLOPT_SSL_VERIFYPEER option.
+         *
+         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html
+         */
         ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYPEER, 0L );
+
+        /**
+         * This option determines whether libcurl verifies the status of the server cert using the "Certificate Status Request" TLS extension (aka. OCSP stapling).
+         * Note that if this option is enabled but the server does not support the TLS extension, the verification will fail.
+         *
+         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYSTATUS.html
+         */
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYSTATUS, 0L );
     }
 
     // Authorization with API key or secret token if present
