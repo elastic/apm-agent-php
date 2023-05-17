@@ -19,7 +19,7 @@ if(NOT EXISTS ${VENV_PATH})
         COMMAND ${python} -m venv ${VENV_PATH}
         COMMAND_ERROR_IS_FATAL ANY
         )
-    file(COPY cmake/test_venv.py DESTINATION ${CMAKE_BINARY_DIR}/)
+    file(COPY ${CMAKE_SOURCE_DIR}/building/cmake/test_venv.py DESTINATION ${CMAKE_BINARY_DIR}/)
     set(_VENV_CREATED TRUE)
 endif()
 
@@ -70,7 +70,7 @@ list(GET _PRV_COMPILER_VERSION_TOKENIZED 1 _PRV_COMPILER_VERSION_MINOR)
 set(_PRV_COMPILER_VERSION_SHORT "${_PRV_COMPILER_VERSION_MAJOR}.${_PRV_COMPILER_VERSION_MINOR}")
 set(_CONAN_PROFILE "${CMAKE_BINARY_DIR}/conan_compiler")
 
-configure_file("${CMAKE_SOURCE_DIR}/conan/conan_profile.in" "${_CONAN_PROFILE}" @ONLY)
+configure_file("${CMAKE_SOURCE_DIR}/building/conan/conan_profile.in" "${_CONAN_PROFILE}" @ONLY)
 
 
 if(_VENV_CREATED)
@@ -92,9 +92,9 @@ if(_VENV_CREATED)
 
 endif()
 
-message(STATUS "Installing conan configuration from ${CMAKE_SOURCE_DIR}/conan/settings.yml")
+message(STATUS "Installing conan configuration from ${CMAKE_SOURCE_DIR}/building/conan/settings.yml")
 execute_process(
-    COMMAND conan config install ${CMAKE_SOURCE_DIR}/conan/settings.yml
+    COMMAND conan config install ${CMAKE_SOURCE_DIR}/building/conan/settings.yml
     COMMAND_ERROR_IS_FATAL ANY
 )
 

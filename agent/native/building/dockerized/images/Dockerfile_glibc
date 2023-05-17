@@ -98,7 +98,7 @@ RUN adduser -p password ${USER_NAME} \
 
 USER ${USER_NAME}
 
-WORKDIR /source/modernbuild
+WORKDIR /source/agent/native
 
 ENV PATH="/opt/binutils-${BINUTILS_VERSION}/bin:/opt/cmake-${CMAKE_VERSION}/bin:/opt/python-${PYTHON_VERSION}/bin:${PATH}"
 ENV CMAKE_INSTALL_PREFIX=/opt/cmake-${CMAKE_VERSION}

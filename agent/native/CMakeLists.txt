@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.26.0)
 
 # set path for our local includes
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/building/cmake")
 
 include(elastic_get_git_version)
 elastic_get_git_version(_ELASTIC_PROJECT_VERSION _ELASTIC_SIMPLE_VERSION _ELASTIC_PROJECT_REVISION)
@@ -62,7 +62,7 @@ endfunction()
 message(STATUS "Creating dependencies from local directories")
 foreach(_php_version ${_supported_php_versions})
     elastic_conan_create(
-        PATH ${CMAKE_SOURCE_DIR}/dependencies/php${_php_version}
+        PATH ${CMAKE_SOURCE_DIR}/building/dependencies/php${_php_version}
         REFERENCE php-headers-${_php_version}/1.0@elastic/local
         PROFILE ${_CONAN_PROFILE}
         )
@@ -96,4 +96,4 @@ conan_cmake_run(REQUIRES ${dependencies}
                 BASIC_SETUP CMAKE_TARGETS UPDATE NO_OUTPUT_DIRS
                 )
 
-add_subdirectory(agent)
+add_subdirectory(ext)
