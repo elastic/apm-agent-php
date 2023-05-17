@@ -18,6 +18,8 @@
  */
 
 #include "unit_test_util.h"
+#include "basic_macros.h"
+#include "elastic_apm_assert.h"
 
 static
 void variadic_args_count( void** testFixtureState )
@@ -66,6 +68,15 @@ void printf_format_args( void** testFixtureState )
     ELASTIC_APM_ASSERT( strcmp( buffer, "-1 22 -333 4444 -55555 666666 7777777 8 -999999999" ) == 0, "buffer: %s", buffer );
 }
 
+static
+void build_php_version_id( void** testFixtureState )
+{
+    ELASTIC_APM_STATIC_ASSERT( ELASTIC_APM_BUILD_PHP_VERSION_ID( 1, 2, 3 ) == 10203 );
+    ELASTIC_APM_STATIC_ASSERT( ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 2 ) == 80102 );
+    ELASTIC_APM_ASSERT_EQ_UINT64( ELASTIC_APM_BUILD_PHP_VERSION_ID( 1, 2, 3 ), 10203 );
+    ELASTIC_APM_ASSERT_EQ_UINT64( ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 2 ), 80102 );
+}
+
 int run_basic_macros_tests()
 {
     const struct CMUnitTest tests [] =
@@ -73,6 +84,7 @@ int run_basic_macros_tests()
         ELASTIC_APM_CMOCKA_UNIT_TEST( variadic_args_count ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( if_va_args_empty_else ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( printf_format_args ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( build_php_version_id ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

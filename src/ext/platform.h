@@ -34,9 +34,10 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 #include "basic_types.h"
 #include "basic_macros.h"
-#include "TextOutputStream.h"
+#include "TextOutputStream_forward_decl.h"
 #include "ResultCode.h"
 #include "platform_threads.h"
 
@@ -94,3 +95,5 @@ typedef void (* IterateOverCStackTraceCallback )( String frameDesc, void* ctx );
 typedef void (* IterateOverCStackTraceLogErrorCallback )( String errorDesc, void* ctx );
 void iterateOverCStackTrace( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx );
 #endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+
+int openFile( String fileName, String mode, /* out */ FILE** pFile );

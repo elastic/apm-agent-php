@@ -92,6 +92,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ObserverSet<?Span> */
     public $onCurrentSpanChanged;
 
+    /** @var ?bool */
+    private $cachedIsSpanCompressionEnabled = null;
+
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
@@ -471,7 +474,13 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
         $result = new DistributedTracingDataInternal();
         $result->traceId = $this->traceId;
-        $result->parentId = $span === null ? $this->id : $span->getId();
+        if ($span === null) {
+            $result->parentId = $this->id;
+            $this->wasPropogatedViaDistributedTracing = true;
+        } else {
+            $result->parentId = $span->getId();
+            $span->wasPropogatedViaDistributedTracing = true;
+        }
         $result->isSampled = $this->isSampled;
         $result->outgoingTraceState = $this->outgoingTraceState;
         return $result;
@@ -544,6 +553,18 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             BreakdownMetricsPerTransaction::TRANSACTION_SPAN_TYPE,
             /* subtype: */ null
         );
+    }
+
+    public function isSpanCompressionEnabled(): bool
+    {
+        if ($this->cachedIsSpanCompressionEnabled === null) {
+            $this->cachedIsSpanCompressionEnabled = $this->getConfig()->spanCompressionEnabled();
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Span compression is ' . ($this->cachedIsSpanCompressionEnabled ? 'enabled' : 'DISABLED') . ' via configuration option `' . OptionNames::SPAN_COMPRESSION_ENABLED . '\''
+            );
+        }
+        return $this->cachedIsSpanCompressionEnabled;
     }
 
     private function prepareForSerialization(): void

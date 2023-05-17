@@ -54,16 +54,14 @@ final class ArrayUtil
     }
 
     /**
-     * @param string|int               $key
-     * @param array<string|int, mixed> $array
-     * @param mixed                    $fallbackValue
+     * @template TKey of string|int
+     * @template TValue
      *
-     * @return mixed
+     * @param TKey                $key
+     * @param array<TKey, TValue> $array
+     * @param TValue              $fallbackValue
      *
-     * @template        T
-     * @phpstan-param   T[] $array
-     * @phpstan-param   T   $fallbackValue
-     * @phpstan-return  T
+     * @return TValue
      */
     public static function getValueIfKeyExistsElse($key, array $array, $fallbackValue)
     {
@@ -178,7 +176,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */
@@ -188,7 +186,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */
@@ -225,5 +223,17 @@ final class ArrayUtil
         if (array_key_exists($key, $array)) {
             unset($array[$key]);
         }
+    }
+
+    /**
+     * @template TKey of string|int
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $from
+     * @param array<TKey, TValue> $to
+     */
+    public static function append(array $from, /* in,out */ array &$to): void
+    {
+        $to = array_merge($to, $from);
     }
 }

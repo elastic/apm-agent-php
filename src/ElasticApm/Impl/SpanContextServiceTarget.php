@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\SpanContextServiceTargetInterface;
 
 /**
@@ -66,10 +67,40 @@ final class SpanContextServiceTarget extends ContextPartWrapper implements SpanC
         $this->type = Tracer::limitNullableKeywordString($type);
     }
 
-    /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    /**
+     * @param self $other
+     *
+     * @return bool
+     */
+    public function isEqualTo(SpanContextServiceTarget $other): bool
     {
-        return ($this->name !== null) || ($this->type !== null);
+        return $this->name === $other->name && $this->type === $other->type;
+    }
+
+    /**
+     * @param ?self $lhs
+     * @param ?self $rhs
+     *
+     * @return bool
+     */
+    public static function areNullableEqual(?SpanContextServiceTarget $lhs, ?SpanContextServiceTarget $rhs): bool
+    {
+        if (($lhs === null) !== ($rhs === null)) {
+            return false;
+        }
+
+        if ($lhs === null) {
+            return true;
+        }
+
+        /** @var SpanContextServiceTarget $rhs */
+        return $lhs->isEqualTo($rhs);
+    }
+
+    /** @inheritDoc */
+    public function prepareForSerialization(): int
+    {
+        return BoolUtil::toInt(($this->name !== null) || ($this->type !== null));
     }
 
     /** @inheritDoc */

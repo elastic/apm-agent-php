@@ -37,6 +37,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\InferredSpanExpectationsBuilder;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -66,22 +67,20 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
     private const NON_KEYWORD_STRING_MAX_LENGTH = 100 * 1024;
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<array{MixedMap}>
      */
     public function dataProviderForTestInferredSpans(): iterable
     {
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
-            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             // ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
-            // TODO: Sergey Kleyman: Remove addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
+            // OLD TODO: Sergey Kleyman: Remove addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
             ->addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_TRANSACTION_SAMPLED_KEY)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::CAPTURE_SLEEPS_KEY)
-            ->wrapResultIntoArray()
             ->build();
 
-        return self::adaptToSmoke($result);
+        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
     }
 
     private static function usleep(int $secondsToSleep): void
@@ -151,18 +150,16 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
 
     /**
      * @dataProvider dataProviderForTestInferredSpans
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testInferredSpans(array $testArgs): void
+    public function testInferredSpans(MixedMap $testArgs): void
     {
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
 
-        $isInferredSpansEnabled = self::getBoolFromMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
-        $isTransactionSampled = self::getBoolFromMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
-        $shouldCaptureSleeps = self::getBoolFromMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
+        $isInferredSpansEnabled = $testArgs->getBool(self::IS_INFERRED_SPANS_ENABLED_KEY);
+        $isTransactionSampled = $testArgs->getBool(self::IS_TRANSACTION_SAMPLED_KEY);
+        $shouldCaptureSleeps = $testArgs->getBool(self::CAPTURE_SLEEPS_KEY);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
@@ -221,7 +218,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         /** @var array<string, StackTraceFrame[]> $stackTraces */
         $stackTraces = unserialize(base64_decode($stackTracesSerialized));
 
-        $expectationsBuilder = new InferredSpanExpectationsBuilder(InferredSpanExpectationsBuilder::default());
+        $expectationsBuilder = new InferredSpanExpectationsBuilder();
 
         $appCodeSpanExpectations = $expectationsBuilder->fromClassMethodNamesAndStackTrace(
             ClassNameUtil::fqToShort(__CLASS__),

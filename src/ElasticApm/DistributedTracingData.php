@@ -61,9 +61,6 @@ class DistributedTracingData
      */
     public function injectHeaders(Closure $headerInjector): void
     {
-        $headerInjector(
-            HttpDistributedTracing::TRACE_PARENT_HEADER_NAME,
-            HttpDistributedTracing::buildTraceParentHeader($this)
-        );
+        $headerInjector(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME, HttpDistributedTracing::buildTraceParentHeader($this));
     }
 }

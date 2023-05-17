@@ -91,9 +91,7 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @return array<string, OptionMetadata>
-     *
-     * @phpstan-return array<string, OptionMetadata<mixed>>
+     * @return array<string, OptionMetadata<mixed>>
      */
     private function additionalOptionMetas(): array
     {
@@ -147,9 +145,7 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @return iterable<array{string, OptionMetadata}>
-     *
-     * @phpstan-return iterable<array{string, OptionMetadata<mixed>}>
+     * @return iterable<array{string, OptionMetadata<mixed>}>
      */
     public function allOptionsMetadataProvider(): iterable
     {
@@ -163,9 +159,7 @@ class VariousOptionsParsingTest extends TestCaseBase
     }
 
     /**
-     * @return iterable<array{string, OptionMetadata}>
-     *
-     * @phpstan-return iterable<array{string, OptionMetadata<mixed>}>
+     * @return iterable<array{string, OptionMetadata<mixed>}>
      */
     public function allOptionsMetadataWithPossibleInvalidRawValuesProvider(): iterable
     {

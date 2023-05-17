@@ -26,7 +26,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;

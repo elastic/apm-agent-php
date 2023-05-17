@@ -59,26 +59,19 @@ abstract class StackTraceFrameBase
     /**
      * @param array<string, mixed> $debugBacktraceFormatFrame
      */
-    public function copyDataFromFromDebugBacktraceFrame(
-        array $debugBacktraceFormatFrame,
-        ?LoggerFactory $loggerFactory = null
-    ): void {
+    public function copyDataFromFromDebugBacktraceFrame(array $debugBacktraceFormatFrame, ?LoggerFactory $loggerFactory = null): void
+    {
         /** @var ?Logger $logger */
         $logger = null;
         if ($loggerFactory !== null && $loggerFactory->isEnabledForLevel(LogLevel::ERROR)) {
-            $logger = $loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__)
-                                    ->addContext('debugBacktraceFormatFrame', $debugBacktraceFormatFrame);
+            $logger = $loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__) ->addContext('debugBacktraceFormatFrame', $debugBacktraceFormatFrame);
         }
 
         $this->file = self::getNullableStringValue(StackTraceUtil::FILE_KEY, $debugBacktraceFormatFrame, $logger);
         $this->line = self::getNullableIntValue(StackTraceUtil::LINE_KEY, $debugBacktraceFormatFrame, $logger);
-        $this->class
-            = self::getNullableStringValue(StackTraceUtil::CLASS_KEY, $debugBacktraceFormatFrame, $logger);
-        $this->function
-            = self::getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $debugBacktraceFormatFrame, $logger);
-
-        $this->thisObj
-            = self::getNullableObjectValue(StackTraceUtil::THIS_OBJECT_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->class = self::getNullableStringValue(StackTraceUtil::CLASS_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->function = self::getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->thisObj = self::getNullableObjectValue(StackTraceUtil::THIS_OBJECT_KEY, $debugBacktraceFormatFrame, $logger);
         $this->args = self::getNullableArrayValue(StackTraceUtil::ARGS_KEY, $debugBacktraceFormatFrame, $logger);
 
         $type = self::getNullableStringValue(StackTraceUtil::TYPE_KEY, $debugBacktraceFormatFrame, $logger);
@@ -105,11 +98,8 @@ abstract class StackTraceFrameBase
      *
      * @return ?string
      */
-    private static function getNullableStringValue(
-        string $key,
-        array $debugBacktraceFormatFrame,
-        ?Logger $logger
-    ): ?string {
+    private static function getNullableStringValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?string
+    {
         /** @var ?string $value */
         $value = self::getNullableValue($key, 'is_string', 'string', $debugBacktraceFormatFrame, $logger);
         return $value;

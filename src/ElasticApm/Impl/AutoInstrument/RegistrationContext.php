@@ -39,7 +39,7 @@ final class RegistrationContext implements RegistrationContextInterface
     /** @var string */
     public $dbgCurrentPluginDesc;
 
-    public function interceptCallsToMethod(
+    public function interceptCallsToInternalMethod(
         string $className,
         string $methodName,
         callable $preHook
@@ -66,7 +66,7 @@ final class RegistrationContext implements RegistrationContextInterface
         }
     }
 
-    public function interceptCallsToFunction(
+    public function interceptCallsToInternalFunction(
         string $functionName,
         callable $preHook
     ): void {

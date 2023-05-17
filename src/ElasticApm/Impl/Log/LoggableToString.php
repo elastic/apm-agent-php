@@ -43,11 +43,8 @@ final class LoggableToString
      *
      * @return string
      */
-    public static function convert(
-        $value,
-        bool $prettyPrint = false,
-        int $lengthLimit = self::DEFAULT_LENGTH_LIMIT
-    ): string {
+    public static function convert($value, bool $prettyPrint = false, int $lengthLimit = self::DEFAULT_LENGTH_LIMIT): string
+    {
         return LoggableToEncodedJson::convert($value, $prettyPrint, $lengthLimit);
     }
 }

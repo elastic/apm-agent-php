@@ -27,5 +27,6 @@ StringView resultCodeNames[ numberOfResultCodes ] =
     ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultParsingFailed ),
     ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultCurlFailure ),
     ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultSyncObjUseAfterFork ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultBufferIsTooSmall ),
     ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( resultFailure ),
 };

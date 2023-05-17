@@ -30,6 +30,8 @@ struct StringView
 };
 typedef struct StringView StringView;
 
+#define ELASTIC_APM_EMPTY_STRING_VIEW ((StringView){.begin = NULL , .length = 0})
+
 static inline
 bool isValidStringView( StringView strView )
 {
@@ -65,12 +67,6 @@ StringView makeStringViewFromBeginEnd( const char* begin, const char* end )
 }
 
 static inline
-StringView makeEmptyStringView()
-{
-    return makeStringView( NULL, 0 );
-}
-
-static inline
 bool isEmptyStringView( StringView strView )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
@@ -101,7 +97,5 @@ StringView subStringView( StringView inStrVw, size_t offset )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( inStrVw );
 
-    return inStrVw.length >= offset
-        ? makeStringView( inStrVw.begin + offset, inStrVw.length - offset )
-        : makeEmptyStringView();
+    return inStrVw.length >= offset ? makeStringView( inStrVw.begin + offset, inStrVw.length - offset ) : ELASTIC_APM_EMPTY_STRING_VIEW;
 }

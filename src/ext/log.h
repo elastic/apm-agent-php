@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "LogLevel.h"
 #include <stdbool.h>
 #include <stdarg.h>
 #ifndef PHP_WIN32
@@ -29,33 +30,6 @@
 #include "basic_macros.h" // ELASTIC_APM_PRINTF_ATTRIBUTE
 #include "TextOutputStream.h"
 #include "platform.h"
-
-/**
- * The order is important because lower numeric values are considered contained in higher ones
- * for example logLevel_error means that both logLevel_error and logLevel_critical is enabled.
- */
-enum LogLevel
-{
-    /**
-     * logLevel_not_set should not be used by logging statements - it is used only in configuration.
-     */
-    logLevel_not_set = -1,
-
-    /**
-     * logLevel_off should not be used by logging statements - it is used only in configuration.
-     */
-    logLevel_off = 0,
-
-    logLevel_critical,
-    logLevel_error,
-    logLevel_warning,
-    logLevel_info,
-    logLevel_debug,
-    logLevel_trace,
-
-    numberOfLogLevels
-};
-typedef enum LogLevel LogLevel;
 
 extern String logLevelNames[ numberOfLogLevels ];
 
@@ -291,9 +265,15 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
 }
 
 static inline
+LogLevel maxEnabledLogLevel()
+{
+    return getGlobalLogger()->maxEnabledLevel;
+}
+
+static inline
 bool canLogSecuritySensitive()
 {
-    return getGlobalLogger()->maxEnabledLevel >= logLevel_debug;
+    return maxEnabledLogLevel() >= logLevel_debug;
 }
 
 static inline
@@ -326,6 +306,7 @@ ResultCode resetLoggingStateInForkedChild();
 #define ELASTIC_APM_LOG_CATEGORY_UTIL "Util"
 
 #define ELASTIC_APM_LOG_DIRECT_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DIRECT_INFO( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_info, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_DIRECT_DEBUG( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_debug, fmt, ##__VA_ARGS__ )
 
 #ifdef PHP_WIN32
@@ -336,8 +317,8 @@ ResultCode resetLoggingStateInForkedChild();
 
 #else // #ifdef PHP_WIN32
 
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_critical, fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_warning, fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_WRITE_TO_SYSLOG( logLevel_debug, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_warning, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_debug, fmt, ##__VA_ARGS__ )
 
 #endif // #ifdef PHP_WIN32
