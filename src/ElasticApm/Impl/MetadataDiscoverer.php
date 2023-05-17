@@ -151,10 +151,16 @@ final class MetadataDiscoverer
     public static function detectContainerId(): ?string
     {
         $containerId = null;
-        if (file_exists("/proc/self/cgroup") && preg_match("/\\/docker\\/([0-9a-f]+)$/m", file_get_contents("/proc/self/cgroup"), $m)) {
-            $containerId = $m[1];
-        } elseif (file_exists("/proc/self/mountinfo") && preg_match("/\\/var\\/lib\\/docker\\/containers\\/([0-9a-f]+)\\/hostname/m", file_get_contents("/proc/self/mountinfo"), $m)) {
-            $containerId = $m[1];
+        if (file_exists("/proc/self/cgroup")) {
+            $fileContents = file_get_contents("/proc/self/cgroup");
+            if ($fileContents !== false && preg_match("/\\/docker\\/([0-9a-f]+)$/m", $fileContents, $m)) {
+                    $containerId = $m[1];
+            }
+        } elseif (file_exists("/proc/self/mountinfo")) {
+            $fileContents = file_get_contents("/proc/self/mountinfo");
+            if ($fileContents !== false && preg_match("/\\/var\\/lib\\/docker\\/containers\\/([0-9a-f]+)\\/hostname/m", $fileContents, $m)) {
+                    $containerId = $m[1];
+            }
         }
         return $containerId;
     }
