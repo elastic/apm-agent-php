@@ -48,6 +48,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var ?string */
     public $appCodePhpIni;
 
+    /** @var bool */
+    public $compareAstConvertedBackToSource;
+
     /** @var TestInfraDataPerProcess */
     public $dataPerProcess;
 

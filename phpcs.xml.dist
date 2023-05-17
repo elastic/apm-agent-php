@@ -28,4 +28,7 @@
 
     <exclude-pattern>*/polyfills/Stringable.php</exclude-pattern>
     <exclude-pattern>*/polyfills/WeakMap.php</exclude-pattern>
+
+    <exclude-pattern>*/tests/ElasticApmTests/ComponentTests/WordPress/mock_src/*.php</exclude-pattern>
+    <exclude-pattern>*/tests/ElasticApmTests/ComponentTests/WordPress/expected_process_AST_output/*.php</exclude-pattern>
 </ruleset>

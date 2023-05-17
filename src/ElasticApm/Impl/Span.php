@@ -479,16 +479,21 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
             return;
         }
 
-        // This method is part of public API so it should be kept in the stack trace
-        // if $numberOfStackFramesToSkip is 0
-        $this->stackTrace = StackTraceUtil::captureCurrent(
-            $numberOfStackFramesToSkip,
-            true /* <- hideElasticApmImpl */
-        );
-
         $this->onAboutToEnd->callCallbacks($this);
 
         if ($this->shouldBeSentToApmServer()) {
+            /**
+             * stack_trace_limit
+             *      0 - stack trace collection should be disabled
+             *      any positive integer value - the value is the maximum number of frames to collect
+             *      -1  - all frames should be collected
+             */
+            $stackTraceLimit = $this->containingTransaction->getStackTraceLimitConfig();
+            if ($stackTraceLimit !== 0) {
+                // This method is part of public API so it should be kept in the stack trace
+                // if $numberOfStackFramesToSkip is 0
+                $this->stackTrace = StackTraceUtil::captureCurrent($numberOfStackFramesToSkip, /* hideElasticApmImpl */ true);
+            }
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);
         }

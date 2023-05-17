@@ -29,8 +29,10 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\MixedMap;
@@ -185,6 +187,9 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     protected static function implTestIsAutoInstrumentationEnabled(string $instrClassName, array $expectedNames): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['instrClassName' => $instrClassName, 'expectedNames' => $expectedNames]);
+
         /** @var AutoInstrumentationBase $instr */
         $instr = new $instrClassName(self::buildTracerForTests()->build());
         $actualNames = $instr->keywords();
@@ -208,13 +213,14 @@ class ComponentTestCaseBase extends TestCaseBase
         };
 
         foreach ($expectedNames as $name) {
+            $dbgCtx->pushSubScope();
             foreach ($genDisabledVariants($name) as $disableInstrumentationsOptVal) {
-                $tracer = self::buildTracerForTests()
-                              ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
-                              ->build();
+                $dbgCtx->clearCurrentSubScope(['name' => $name, 'disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+                $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
                 $instr = new $instrClassName($tracer);
-                self::assertFalse($instr->isEnabled(), $disableInstrumentationsOptVal);
+                self::assertFalse($instr->isEnabled());
             }
+            $dbgCtx->popSubScope();
         }
 
         /**
@@ -225,13 +231,24 @@ class ComponentTestCaseBase extends TestCaseBase
             yield '*someOtherDummyInstrumentationA*,  *someOtherDummyInstrumentationB*';
         };
 
+        $dbgCtx->pushSubScope();
         foreach ($genEnabledVariants() as $disableInstrumentationsOptVal) {
-            $tracer = self::buildTracerForTests()
-                          ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
-                          ->build();
+            $dbgCtx->clearCurrentSubScope(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+            $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
             $instr = new $instrClassName($tracer);
-            self::assertTrue($instr->isEnabled(), $disableInstrumentationsOptVal);
+            self::assertTrue($instr->isEnabled());
         }
+        $dbgCtx->popSubScope();
+
+        $dbgCtx->pushSubScope();
+        foreach ([true, false] as $astProcessEnabled) {
+            $dbgCtx->clearCurrentSubScope(['astProcessEnabled' => $astProcessEnabled]);
+            $expectedIsEnabled = $astProcessEnabled || (!$instr->requiresUserlandCodeInstrumentation());
+            $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
+            $instr = new $instrClassName($tracer);
+            self::assertSame($expectedIsEnabled, $instr->isEnabled());
+        }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -242,6 +259,25 @@ class ComponentTestCaseBase extends TestCaseBase
      * @return iterable<T>
      */
     public function adaptToSmoke(iterable $variants): iterable
+    {
+        if (!self::isSmoke()) {
+            return $variants;
+        }
+        foreach ($variants as $key => $value) {
+            return [$key => $value];
+        }
+        return [];
+    }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param iterable<TKey, TValue> $variants
+     *
+     * @return iterable<TKey, TValue>
+     */
+    public function adaptKeyValueToSmoke(iterable $variants): iterable
     {
         if (!self::isSmoke()) {
             return $variants;

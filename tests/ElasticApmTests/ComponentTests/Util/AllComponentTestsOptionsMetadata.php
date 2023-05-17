@@ -66,6 +66,7 @@ final class AllComponentTestsOptionsMetadata
             self::APP_CODE_HOST_KIND_OPTION_NAME   => new NullableAppCodeHostKindOptionMetadata(),
             'app_code_php_exe'                     => new NullableStringOptionMetadata(),
             self::APP_CODE_PHP_INI_OPTION_NAME     => new NullableStringOptionMetadata(),
+            'compare_ast_converted_back_to_source' => new BoolOptionMetadata(true),
             self::DATA_PER_PROCESS_OPTION_NAME     => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
                     $deserializedObj = new TestInfraDataPerProcess();

@@ -74,4 +74,60 @@ final class ArrayUtilTest extends TestCaseBase
             self::assertSame($expectedVal, $actualVal);
         }
     }
+
+    /**
+     * @param mixed[] $args
+     *
+     * @return void
+     */
+    private static function verifyArgs(array $args): void
+    {
+        self::assertCount(1, $args);
+        $arg0 = $args[0];
+        self::assertIsString($arg0);
+    }
+
+    /**
+     * @param mixed[] $args
+     *
+     * @return void
+     */
+    private static function instrumentationFunc(array $args): void
+    {
+        self::assertCount(1, $args);
+        self::verifyArgs($args);
+        $someParam =& $args[0];
+        self::assertSame('value set by instrumentedFunc caller', $someParam);
+        self::assertIsString($someParam);
+        $someParam = 'value set by instrumentationFunc';
+    }
+
+    /** @noinspection PhpSameParameterValueInspection */
+    private static function instrumentedFunc(string $someParam): string
+    {
+        self::instrumentationFunc([&$someParam]);
+        return $someParam;
+    }
+
+    public static function testReferencesInArray(): void
+    {
+        $instrumentedFuncRetVal = self::instrumentedFunc('value set by instrumentedFunc caller');
+        self::assertSame('value set by instrumentationFunc', $instrumentedFuncRetVal);
+    }
+
+    public static function testRemoveElementFromTwoLevelArrayViaReferenceToFirstLevel(): void
+    {
+        $myArr = [
+            'level 1 - a' => [
+                'level 2 - a' => 'value for level 2 - a',
+                'level 2 - b' => 'value for level 2 - b',
+            ]
+        ];
+        $level1ValRef =& $myArr['level 1 - a'];
+        self::assertArrayHasKey('level 2 - a', $level1ValRef);
+        self::assertSame('value for level 2 - a', $level1ValRef['level 2 - a']);
+        unset($level1ValRef['level 2 - a']);
+        self::assertArrayNotHasKey('level 2 - a', $myArr['level 1 - a']);
+        self::assertArrayHasKey('level 2 - b', $myArr['level 1 - a']);
+    }
 }
