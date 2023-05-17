@@ -208,6 +208,9 @@ final class MetadataDeserializer
                     case 'configured_hostname':
                         $result->configuredHostname = self::assertValidKeywordString($value);
                         return true;
+                    case 'container':
+                        $result->containerId = self::assertValidKeywordString($value['id']);
+                        return true;
                     default:
                         return false;
                 }
