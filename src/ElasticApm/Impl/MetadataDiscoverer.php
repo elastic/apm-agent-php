@@ -130,6 +130,11 @@ final class MetadataDiscoverer
             }
         }
 
+        $containerId = self::detectContainerId();
+        if ($containerId !== null) {
+            $result->containerId = $containerId;
+        }
+
         return $result;
     }
 
@@ -141,6 +146,17 @@ final class MetadataDiscoverer
         }
 
         return Tracer::limitKeywordString($detected);
+    }
+
+    public static function detectContainerId(): ?string
+    {
+        $containerId = null;
+        if (file_exists("/proc/self/cgroup") && preg_match("/\\/docker\\/([0-9a-f]+)$/m", file_get_contents("/proc/self/cgroup"), $m)) {
+            $containerId = $m[1];
+        } elseif (file_exists("/proc/self/mountinfo") && preg_match("/\\/var\\/lib\\/docker\\/containers\\/([0-9a-f]+)\\/hostname/m", file_get_contents("/proc/self/mountinfo"), $m)) {
+            $containerId = $m[1];
+        }
+        return $containerId;
     }
 
     public function buildNameVersionData(?string $name, ?string $version): NameVersionData
