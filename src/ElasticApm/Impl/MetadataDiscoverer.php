@@ -49,7 +49,7 @@ final class MetadataDiscoverer
     /** @var Logger */
     private $logger;
 
-    private function __construct(ConfigSnapshot $config, LoggerFactory $loggerFactory)
+    public function __construct(ConfigSnapshot $config, LoggerFactory $loggerFactory)
     {
         $this->config = $config;
         $this->logger = $loggerFactory->loggerForClass(LogCategory::BACKEND_COMM, __NAMESPACE__, __CLASS__, __FILE__);
@@ -130,10 +130,7 @@ final class MetadataDiscoverer
             }
         }
 
-        $containerId = self::detectContainerId();
-        if ($containerId !== null) {
-            $result->containerId = $containerId;
-        }
+        $containerId = $this->detectContainerId();
 
         return $result;
     }
@@ -148,22 +145,52 @@ final class MetadataDiscoverer
         return Tracer::limitKeywordString($detected);
     }
 
-    public static function detectContainerId(): ?string
+    private const DETECT_CONTAINER_ID_FILENAME_TI_REGEX = [
+        '/proc/self/mountinfo' => '/\/var\/lib\/docker\/containers\/([0-9a-f]+)\/hostname/m',
+        '/proc/self/cgroup' => '/\/docker\/([0-9a-f]+)$/m',
+    ];
+
+    /**
+     * @param callable(string $fileName): ?string $getFileContents
+     *
+     * @return ?string
+     */
+    public function detectContainerIdImpl(callable $getFileContents): ?string
     {
-        $containerId = null;
-        if ($containerId === null && file_exists("/proc/self/mountinfo")) {
-            $fileContents = file_get_contents("/proc/self/mountinfo");
-            if ($fileContents !== false && preg_match("/\\/var\\/lib\\/docker\\/containers\\/([0-9a-f]+)\\/hostname/m", $fileContents, $m)) {
-                    $containerId = $m[1];
+        foreach (self::DETECT_CONTAINER_ID_FILENAME_TI_REGEX as $fileName => $regex) {
+            if (($fileContents = $getFileContents($fileName)) !== null) {
+                if (preg_match($regex, $fileContents, $matches)) {
+                    return $matches[1];
+                }
+                ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Could not find container ID in ' . $fileName, ['fileContents' => $fileContents, 'regex' => $regex]);
             }
         }
-        if ($containerId === null && file_exists("/proc/self/cgroup")) {
-            $fileContents = file_get_contents("/proc/self/cgroup");
-            if ($fileContents !== false && preg_match("/\\/docker\\/([0-9a-f]+)$/m", $fileContents, $m)) {
-                    $containerId = $m[1];
-            }
+
+        return null;
+    }
+
+    private function detectContainerIdGetFileContents(string $fileName): ?string
+    {
+        if (!file_exists($fileName)) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('File ' . $fileName . ' does not exit');
+            return null;
         }
-        return $containerId;
+        $contents = file_get_contents($fileName);
+        if ($contents === false) {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Failed to get ' . $fileName . ' contents');
+            return null;
+        }
+        return $contents;
+    }
+
+    private function detectContainerId(): ?string
+    {
+        return self::detectContainerIdImpl(
+            function (string $fileName): ?string {
+                return $this->detectContainerIdGetFileContents($fileName);
+            }
+        );
     }
 
     public function buildNameVersionData(?string $name, ?string $version): NameVersionData
