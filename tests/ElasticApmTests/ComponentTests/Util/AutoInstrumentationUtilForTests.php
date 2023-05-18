@@ -35,15 +35,15 @@ final class AutoInstrumentationUtilForTests
     /**
      * @param array<string, bool> $disableInstrumentationsVariants
      *
-     * @return callable(array<mixed, mixed>): iterable<array<mixed, mixed>>
+     * @return callable(array<mixed>): iterable<array<mixed>>
      */
     public static function disableInstrumentationsDataProviderGenerator(
         array $disableInstrumentationsVariants
     ): callable {
         /**
-         * @param array<mixed, mixed> $resultSoFar
+         * @param array<mixed> $resultSoFar
          *
-         * @return iterable<array<mixed, mixed>>
+         * @return iterable<array<mixed>>
          */
         return function (array $resultSoFar) use ($disableInstrumentationsVariants): iterable {
             foreach ($disableInstrumentationsVariants as $optVal => $isInstrumentationEnabled) {

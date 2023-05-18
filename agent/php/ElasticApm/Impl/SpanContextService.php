@@ -54,7 +54,7 @@ final class SpanContextService extends ContextPartWrapper implements SpanContext
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
         return SerializationUtil::prepareForSerialization(/* ref */ $this->target);
     }

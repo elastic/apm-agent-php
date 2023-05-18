@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <string.h> // memset
+
 #define ELASTIC_APM_UNUSED( var ) (void)(var)
 
 #define ELASTIC_APM_PP_STRINGIZE_IMPL( token ) #token
@@ -32,7 +34,7 @@
 #define ELASTIC_APM_STATIC_ARRAY_SIZE( array ) ( ( sizeof( (array) ) ) / sizeof( (array)[ 0 ] ) )
 
 #define ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, rangeStart, rangeExcludedEnd ) \
-    for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; ++indexVar )
+    for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; ++indexVar ) // NOLINT(bugprone-macro-parentheses)
 
 #define ELASTIC_APM_FOR_EACH_INDEX_EX( indexVarType, indexVar, rangeSize ) \
     ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, 0, rangeSize )
@@ -138,3 +140,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( enumElement ) [enumElement] = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PP_STRINGIZE( enumElement ) )
+
+#define ELASTIC_APM_BUILD_PHP_VERSION_ID( major, minor, patch ) ( ((major)*100 + (minor))*100 + (patch) )

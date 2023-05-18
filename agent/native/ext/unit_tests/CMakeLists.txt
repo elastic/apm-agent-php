@@ -28,6 +28,7 @@ add_compile_options("-Wno-unused-function")
 add_compile_options("-Wno-sign-compare")
 add_compile_options("-Wno-type-limits")
 add_compile_options("-Wno-unused-variable")
+add_compile_options("-Wno-unknown-pragmas")
 
 
 SET( CMAKE_C_STANDARD 99 )

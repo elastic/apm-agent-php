@@ -21,6 +21,7 @@
 
 #include "elastic_apm_is_debug_build.h"
 #include "basic_types.h" // String
+#include "TextOutputStream_forward_decl.h"
 
 enum InternalChecksLevel
 {
@@ -46,8 +47,6 @@ extern const char* internalChecksLevelNames[ numberOfInternalChecksLevels ];
 #   endif
 #endif
 
-struct TextOutputStream;
-typedef struct TextOutputStream TextOutputStream;
 String streamInternalChecksLevel( InternalChecksLevel level, TextOutputStream* txtOutStream );
 
 InternalChecksLevel getGlobalInternalChecksLevel();

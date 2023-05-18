@@ -24,6 +24,7 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER
 
 #include <stddef.h>
+#include <string.h> // memcpy
 #include "util.h"
 #include "TextOutputStream.h"
 #include "elastic_apm_assert.h"
@@ -63,13 +64,20 @@ struct EmbeddedTrackingDataHeader
 };
 typedef struct EmbeddedTrackingDataHeader EmbeddedTrackingDataHeader;
 
-struct DeserializedTrackingData
+/**
+ * EmbeddedTrackingDataHeaderVariadicSuffix is used only to calculate sizes of its fields.
+ * It symbolizes a trailing part of the EmbeddedTrackingDataHeader with variadic data (stackTraceAddresses).
+ */
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#pragma ide diagnostic ignored "UnusedLocalVariable"
+struct EmbeddedTrackingDataHeaderVariadicSuffix
 {
-    EmbeddedTrackingDataHeader* embedded;
-    void* stackTraceAddresses[ maxCaptureStackTraceDepth ];
+    void* stackTraceAddresses[ 1 ]; // EmbeddedTrackingDataHeader::stackTraceAddressesCount is the actual number of elements in stackTraceAddresses
     UInt32 suffixMagic;
 };
-typedef struct DeserializedTrackingData DeserializedTrackingData;
+#pragma clang diagnostic pop
+typedef struct EmbeddedTrackingDataHeaderVariadicSuffix EmbeddedTrackingDataHeaderVariadicSuffix;
 
 void constructMemoryTracker( MemoryTracker* memTracker )
 {
@@ -104,7 +112,7 @@ size_t calcSizeBeforeTrackingData( size_t originallyRequestedSize )
 static
 size_t calcStackTraceAddressesSize( size_t stackTraceAddressesCount )
 {
-    return stackTraceAddressesCount * ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, stackTraceAddresses[ 0 ] );
+    return stackTraceAddressesCount * ELASTIC_APM_FIELD_SIZEOF( EmbeddedTrackingDataHeaderVariadicSuffix, stackTraceAddresses[ 0 ] );
 }
 
 size_t memoryTrackerCalcSizeToAlloc(
@@ -117,7 +125,7 @@ size_t memoryTrackerCalcSizeToAlloc(
     return calcSizeBeforeTrackingData( originallyRequestedSize ) +
            sizeof( EmbeddedTrackingDataHeader ) +
            calcStackTraceAddressesSize( stackTraceAddressesCount ) +
-           ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic );
+           ELASTIC_APM_FIELD_SIZEOF( EmbeddedTrackingDataHeaderVariadicSuffix, suffixMagic );
 }
 
 static
@@ -166,7 +174,7 @@ void addToTrackedAllocatedBlocks(
         postHeader += calcStackTraceAddressesSize( stackTraceAddressesCount );
     }
 
-    memcpy( postHeader, &suffixMagicExpectedValue, ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
+    memcpy( postHeader, &suffixMagicExpectedValue, ELASTIC_APM_FIELD_SIZEOF( EmbeddedTrackingDataHeaderVariadicSuffix, suffixMagic ) );
 }
 
 void memoryTrackerAfterAlloc(
@@ -249,7 +257,7 @@ void removeFromTrackedAllocatedBlocks(
             nodeToIntrusiveDoublyLinkedListIterator( allocatedBlocks, &trackingDataHeader->intrusiveNode ) );
 
     trackingDataHeader->prefixMagic = invalidMagicValue;
-    memcpy( postHeader, &invalidMagicValue, ELASTIC_APM_FIELD_SIZEOF( DeserializedTrackingData, suffixMagic ) );
+    memcpy( postHeader, &invalidMagicValue, ELASTIC_APM_FIELD_SIZEOF( EmbeddedTrackingDataHeaderVariadicSuffix, suffixMagic ) );
 }
 
 void memoryTrackerBeforeFree(

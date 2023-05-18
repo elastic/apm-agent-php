@@ -46,7 +46,7 @@ final class BootstrapStageLogger
         string $srcCodeFunc
     ): void {
         /** @noinspection PhpUndefinedConstantInspection */
-        self::logLevel(
+        self::logWithLevel(
         /**
          * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
@@ -65,7 +65,7 @@ final class BootstrapStageLogger
         string $srcCodeFunc
     ): void {
         /** @noinspection PhpUndefinedConstantInspection */
-        self::logLevel(
+        self::logWithLevel(
         /**
          * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
@@ -84,7 +84,7 @@ final class BootstrapStageLogger
         string $srcCodeFunc
     ): void {
         /** @noinspection PhpUndefinedConstantInspection */
-        self::logLevel(
+        self::logWithLevel(
         /**
          * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
@@ -103,7 +103,7 @@ final class BootstrapStageLogger
         string $srcCodeFunc
     ): void {
         /** @noinspection PhpUndefinedConstantInspection */
-        self::logLevel(
+        self::logWithLevel(
         /**
          * ELASTIC_APM_* constants are provided by the elastic_apm extension
          *
@@ -131,7 +131,7 @@ final class BootstrapStageLogger
         );
     }
 
-    private static function logLevel(
+    private static function logWithLevel(
         int $statementLevel,
         string $message,
         int $srcCodeLine,

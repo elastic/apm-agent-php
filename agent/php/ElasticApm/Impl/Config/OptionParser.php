@@ -31,7 +31,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  *
  * @internal
  *
- * @template   T
+ * @template TParsedValue
  */
 abstract class OptionParser implements LoggableInterface
 {
@@ -40,10 +40,8 @@ abstract class OptionParser implements LoggableInterface
     /**
      * @param string $rawValue
      *
-     * @return mixed
+     * @return TParsedValue
      * @throws ParseException
-     *
-     * @phpstan-return T
      */
     abstract public function parse(string $rawValue);
 }

@@ -70,17 +70,20 @@ trait CurlHandleWrappedTrait
      */
     public function getResponseStatusCode()
     {
-        return curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE); // @phpstan-ignore-line
+        /** @phpstan-ignore-next-line */
+        return curl_getinfo($this->curlHandle, CURLINFO_RESPONSE_CODE);
     }
 
     public function errno(): int
     {
-        return curl_errno($this->curlHandle); // @phpstan-ignore-line
+        /** @phpstan-ignore-next-line */
+        return curl_errno($this->curlHandle);
     }
 
     public function error(): string
     {
-        return curl_error($this->curlHandle); // @phpstan-ignore-line
+        /** @phpstan-ignore-next-line */
+        return curl_error($this->curlHandle);
     }
 
     /**
@@ -91,7 +94,8 @@ trait CurlHandleWrappedTrait
      */
     public function setOpt(int $option, $value): bool
     {
-        return curl_setopt($this->curlHandle, $option, $value); // @phpstan-ignore-line
+        /** @phpstan-ignore-next-line */
+        return curl_setopt($this->curlHandle, $option, $value);
     }
 
     public function asInt(): int

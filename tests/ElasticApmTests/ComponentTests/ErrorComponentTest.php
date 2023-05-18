@@ -46,6 +46,7 @@ use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\DummyExceptionForTests;
 use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\FileUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use Exception;
 
 /**
@@ -141,13 +142,9 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         self::assertSame(123, $err->exception->code);
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(array $appCodeArgs): void
+    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(MixedMap $appCodeArgs): void
     {
-        /** @var bool $includeInErrorReporting */
-        $includeInErrorReporting = self::getMandatoryAppCodeArg($appCodeArgs, self::INCLUDE_IN_ERROR_REPORTING);
+        $includeInErrorReporting = $appCodeArgs->getBool(self::INCLUDE_IN_ERROR_REPORTING);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

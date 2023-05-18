@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
@@ -42,14 +42,9 @@ final class DbAutoInstrumentationUtil
     public const PER_OBJECT_KEY_DB_NAME = 'DB_name';
     public const PER_OBJECT_KEY_DB_QUERY = 'DB_query';
 
-    public static function beginDbSpan(
-        ?string $className,
-        string $funcName,
-        string $dbType,
-        ?string $dbName,
-        ?string $statement
-    ): SpanInterface {
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+    public static function beginDbSpan(?string $className, string $funcName, string $dbType, ?string $dbName, ?string $statement): SpanInterface
+    {
+        $span = AutoInstrumentationUtil::beginCurrentSpan(
             $statement ?? AutoInstrumentationUtil::buildSpanNameFromCall($className, $funcName),
             Constants::SPAN_TYPE_DB,
             $dbType /* <- subtype */,
@@ -69,8 +64,7 @@ final class DbAutoInstrumentationUtil
         if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {
             $destinationServiceResource .= '/' . $dbName;
         }
-        $span->context()->destination()->setService($destinationServiceResource, $destinationServiceResource, $dbType);
-        $span->context()->service()->target()->setName($dbName);
-        $span->context()->service()->target()->setType($dbType);
+
+        Span::setServiceFor($span, $dbType, $dbName, /* destinationName: */ $destinationServiceResource, $destinationServiceResource, /* destinationType: */ $dbType);
     }
 }

@@ -25,7 +25,7 @@ namespace ElasticApmTests\ComponentTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use ElasticApmTests\Util\AssertMessageBuilder;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\SelectPhpUnitConfigFile;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Runner\Version;
@@ -57,14 +57,14 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
     private static function getCurrentPhpUnitMajorVersion(): int
     {
         $asDotSeparatedString = Version::id();
-        $dbgMsg = new AssertMessageBuilder(['asDotSeparatedString' => $asDotSeparatedString]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['asDotSeparatedString' => $asDotSeparatedString]);
         // Limit to 2 parts since we are only interested in MAJOR part of the version
         $partsAsStrings = explode(/* separator */ '.', $asDotSeparatedString, /* limit */ 2);
-        $dbgMsg->add('partsAsStrings', $partsAsStrings);
-        self::assertGreaterThanOrEqual(1, count($partsAsStrings), $dbgMsg->s());
+        $dbgCtx->add(['partsAsStrings' => $partsAsStrings]);
+        self::assertGreaterThanOrEqual(1, count($partsAsStrings));
         $majorPartAsString = $partsAsStrings[0];
-        $dbgMsg->add('majorPartAsString', $majorPartAsString);
-        self::assertNotFalse(filter_var($majorPartAsString, FILTER_VALIDATE_INT), $dbgMsg->s());
+        $dbgCtx->add(['majorPartAsString' => $majorPartAsString]);
+        self::assertNotFalse(filter_var($majorPartAsString, FILTER_VALIDATE_INT));
         return intval($majorPartAsString);
     }
 
@@ -75,16 +75,13 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
 
     private static function getExpectedPhpUnitConfigFile(string $testsType): string
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $phpUnitMajorVerion = self::getCurrentPhpUnitMajorVersion();
-        $dbgMsg = new AssertMessageBuilder(['phpUnitMajorVerion' => $phpUnitMajorVerion]);
+        $dbgCtx->add(['phpUnitMajorVerion' => $phpUnitMajorVerion]);
 
-        $phpUnitMajorVerionToFileName = ArrayUtil::getValueIfKeyExistsElse(
-            $testsType,
-            self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION,
-            null /* <- fallbackValue */
-        );
-        $dbgMsg->add('phpUnitMajorVerionToFileName', $phpUnitMajorVerionToFileName);
-        self::assertNotNull($phpUnitMajorVerionToFileName, $dbgMsg->s());
+        $phpUnitMajorVerionToFileName = ArrayUtil::getValueIfKeyExistsElse($testsType, self::EXPECTED_CONFIG_FILES_PER_PHP_UNIT_MAJOR_VERSION, /* fallbackValue */ null);
+        $dbgCtx->add(['phpUnitMajorVerionToFileName' => $phpUnitMajorVerionToFileName]);
+        self::assertNotNull($phpUnitMajorVerionToFileName);
 
         $fileName = ArrayUtil::getValueIfKeyExistsElse($phpUnitMajorVerion, $phpUnitMajorVerionToFileName, null);
         return $fileName === null ? self::EXPECTED_DEFAULT_CONFIG_FILES[$testsType] : $fileName;
@@ -135,16 +132,17 @@ final class SelectPhpUnitConfigFileComponentTest extends TestCaseBase
      */
     public static function testSelectPhpUnitConfigFile(string $testsType): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $expectedPhpUnitConfigFileName = self::getExpectedPhpUnitConfigFile($testsType);
-        $dbgMsg = new AssertMessageBuilder(['expectedPhpUnitConfigFileName' => $expectedPhpUnitConfigFileName]);
+        $dbgCtx->add(['expectedPhpUnitConfigFileName' => $expectedPhpUnitConfigFileName]);
 
         $command = 'php ' . '"' . SelectPhpUnitConfigFile::getFullPathToRunScript() . '"';
         $command .= ' ' . '--' . SelectPhpUnitConfigFile::TESTS_TYPE_CMD_LINE_OPT_NAME . '=' . $testsType;
-        $dbgMsg->add('command', $command);
+        $dbgCtx->add(['command' => $command]);
         $outputLines = SelectPhpUnitConfigFile::execExternalCommand($command);
         self::assertCount(1, $outputLines);
         $actualPhpUnitConfigFileName = $outputLines[0];
-        $dbgMsg->add('actualPhpUnitConfigFileName', $actualPhpUnitConfigFileName);
-        self::assertSame($expectedPhpUnitConfigFileName, $actualPhpUnitConfigFileName, $dbgMsg->s());
+        $dbgCtx->add(['actualPhpUnitConfigFileName' => $actualPhpUnitConfigFileName]);
+        self::assertSame($expectedPhpUnitConfigFileName, $actualPhpUnitConfigFileName);
     }
 }

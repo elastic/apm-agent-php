@@ -30,6 +30,7 @@
 #include <zend_builtin_functions.h>
 #include "php_elastic_apm.h"
 #include "log.h"
+#include "ConfigSnapshot.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "util_for_PHP.h"
@@ -103,7 +104,6 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
-static pid_t g_pidOnModuleInit = -1;
 static pid_t g_pidOnRequestInit = -1;
 
 bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
@@ -125,8 +125,6 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     registerOsSignalHandler();
 
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
-
-    g_pidOnModuleInit = getCurrentProcessId();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -186,14 +184,6 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     ResultCode resultCode;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "moduleType: %d, moduleNumber: %d", moduleType, moduleNumber );
-
-    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnModuleInit, "module" ) )
-    {
-        resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
-        ELASTIC_APM_UNUSED( resultCode );
-        return;
-    }
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
@@ -302,7 +292,7 @@ void elasticApmZendThrowExceptionHook(
     }
 }
 // In PHP 8.1 filename parameter of zend_error_cb() was changed from "const char*" to "zend_string*"
-#if PHP_VERSION_ID < 80100
+#if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 1
 #else
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 0

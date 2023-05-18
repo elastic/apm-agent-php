@@ -33,11 +33,11 @@ final class LoggableArray implements LoggableInterface
     private const COUNT_KEY = 'count';
     private const ARRAY_TYPE = 'array';
 
-    /** @var array<mixed, mixed> */
+    /** @var array<mixed> */
     private $wrappedArray;
 
     /**
-     * @param array<mixed, mixed> $wrappedArray
+     * @param array<mixed> $wrappedArray
      */
     public function __construct(array $wrappedArray)
     {

@@ -117,7 +117,6 @@ final class TextUtil
     {
         $inputLen = strlen($input);
         $result = '';
-        /** @var int */
         $inputRemainderPos = 0;
         while (true) {
             $underscorePos = strpos($input, '_', $inputRemainderPos);

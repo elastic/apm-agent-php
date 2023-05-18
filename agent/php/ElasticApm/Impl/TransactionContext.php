@@ -84,12 +84,12 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
         return parent::prepareForSerialization()
-               || ($this->custom !== null && !ArrayUtil::isEmpty($this->custom))
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->request)
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->user);
+               | ($this->custom !== null && !ArrayUtil::isEmpty($this->custom))
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->request)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->user);
     }
 
     /** @inheritDoc */

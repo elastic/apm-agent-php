@@ -28,6 +28,7 @@
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
 #include "lifecycle.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
 
@@ -119,10 +120,10 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
 
     g_interceptedCallInProgressRegistrationId = interceptRegistrationId;
 
-    shouldCallPostHook = tracerPhpPartInterceptedCallPreHook( interceptRegistrationId, execute_data );
+    shouldCallPostHook = tracerPhpPartInternalFuncCallPreHook( interceptRegistrationId, execute_data );
     g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
     if ( shouldCallPostHook ) {
-        tracerPhpPartInterceptedCallPostHook( interceptRegistrationId, return_value );
+        tracerPhpPartInternalFuncCallPostHook( interceptRegistrationId, return_value );
     }
 
     g_interceptedCallInProgressRegistrationId = 0;
@@ -346,7 +347,7 @@ typedef enum SleepFuncRetVal SleepFuncRetVal;
 SleepFuncRetVal sleep_parseRetVal( const zval* return_value )
 {
 
-#   if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 ) /* if PHP version from 8.0.0 */ || defined( PHP_SLEEP_NON_VOID )
 
     if ( Z_TYPE_P( return_value ) != IS_LONG )
     {
@@ -356,24 +357,24 @@ SleepFuncRetVal sleep_parseRetVal( const zval* return_value )
     zend_long retValAsLong = Z_LVAL_P( return_value );
     return retValAsLong == 0 ? sleepFuncRetVal_success : sleepFuncRetVal_interrupted;
 
-#   else // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   else
 
     return sleepFuncRetVal_void;
 
-#   endif // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   endif
 }
 
 void sleep_setSuccessRetVal( const zval* retValCopyBeforeCallToOriginalFunc, zval* return_value )
 {
-#   if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 ) /* if PHP version from 8.0.0 */ || defined( PHP_SLEEP_NON_VOID )
 
     RETURN_LONG( 0 );
 
-#   else // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   else
 
     *return_value = *retValCopyBeforeCallToOriginalFunc;
 
-#   endif // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   endif
 }
 
 SleepFuncRetVal usleep_parseRetVal( const zval* retVal )

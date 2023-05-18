@@ -30,7 +30,6 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\UrlParts;
 use Elastic\Apm\Impl\Util\UrlUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use ElasticApmTests\Util\SourceClassLogContext;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;

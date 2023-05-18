@@ -152,6 +152,60 @@ void test_durationToMilliseconds( void** testFixtureState )
     }
 }
 
+static
+void impl_test_addDelayToAbsTimeSpec( TimeSpec base, long delayInNanoseconds, TimeSpec expectedResult )
+{
+    TimeSpec actualResult = base;
+    addDelayToAbsTimeSpec( /* in, out */ &actualResult, delayInNanoseconds );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( actualResult.tv_sec, expectedResult.tv_sec );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( actualResult.tv_nsec, expectedResult.tv_nsec );
+}
+
+static
+bool time_t_max()
+{
+    ELASTIC_APM_STATIC_ASSERT( sizeof( time_t ) == 4 || sizeof( time_t ) == 8 );
+    return sizeof( time_t ) == 4 ? INT32_MAX : INT64_MAX;
+}
+
+static
+TimeSpec buildTimeSpec( time_t seconds, long nanoseconds )
+{
+    return (TimeSpec){ .tv_sec = seconds, .tv_nsec = nanoseconds };
+}
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+static
+void test_addDelayToAbsTimeSpec( void** testFixtureState )
+{
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, 0 ), 0, buildTimeSpec( 0, 0 ) );
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+    long nanosecondsInSecond = ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND;
+#pragma clang diagnostic pop
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, nanosecondsInSecond - 1 ), 0, buildTimeSpec( 0, nanosecondsInSecond - 1 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max(), nanosecondsInSecond - 1 ), 0, buildTimeSpec( time_t_max(), nanosecondsInSecond - 1 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, nanosecondsInSecond - 1 ), 1, buildTimeSpec( 1, 0 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 1, nanosecondsInSecond - 1 ), 1, buildTimeSpec( time_t_max(), 0 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, 1 ), nanosecondsInSecond - 1, buildTimeSpec( 1, 0 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 1, 1 ), nanosecondsInSecond - 1, buildTimeSpec( time_t_max(), 0 ) );
+
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, nanosecondsInSecond - 1 ), nanosecondsInSecond - 1, buildTimeSpec( 1, nanosecondsInSecond - 2 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 1, nanosecondsInSecond - 1 ), nanosecondsInSecond - 1, buildTimeSpec( time_t_max(), nanosecondsInSecond - 2 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, nanosecondsInSecond - 1 ), nanosecondsInSecond, buildTimeSpec( 1, nanosecondsInSecond - 1 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 1, nanosecondsInSecond - 1 ), nanosecondsInSecond, buildTimeSpec( time_t_max(), nanosecondsInSecond - 1 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, nanosecondsInSecond/2 ), nanosecondsInSecond/2, buildTimeSpec( 1, 0 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 1, nanosecondsInSecond/2 ), nanosecondsInSecond/2, buildTimeSpec( time_t_max(), 0 ) );
+
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( 0, 123 ), 4*nanosecondsInSecond - 567, buildTimeSpec( 3, 123 + nanosecondsInSecond - 567 ) );
+    impl_test_addDelayToAbsTimeSpec( buildTimeSpec( time_t_max() - 3, 123 ), 4*nanosecondsInSecond - 567, buildTimeSpec( time_t_max(), 123 + nanosecondsInSecond - 567 ) );
+}
+#pragma clang diagnostic pop
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 int run_time_util_tests( int argc, const char* argv[] )
 {
     const struct CMUnitTest tests [] =
@@ -159,7 +213,9 @@ int run_time_util_tests( int argc, const char* argv[] )
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_calcEndTimeVal ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_calcTimeValDiff ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_durationToMilliseconds ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_addDelayToAbsTimeSpec ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );
 }
+#pragma clang diagnostic pop

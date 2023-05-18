@@ -23,9 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
 
 final class SpanSequenceValidator
 {
@@ -63,24 +61,30 @@ final class SpanSequenceValidator
     /**
      * @param SpanExpectations[] $expected
      * @param SpanDto[]          $actual
-     *
-     * @return void
      */
     public static function assertSequenceAsExpected(array $expected, array $actual): void
     {
-        $dbgCtx = LoggableToString::convert(['$expected' => $expected, '$actual' => $actual,]);
-        TestCase::assertSame(count($expected), count($actual), $dbgCtx);
-
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        TestCaseBase::assertSameCount($expected, $actual);
         $actualSortedByStartTime = self::sortByStartTime($actual);
-        for ($i = 0; $i < count($actual); ++$i) {
-            $currentActualSpan = $actualSortedByStartTime[$i];
-            if ($i != 0) {
-                $prevActualSpan = $actualSortedByStartTime[$i - 1];
-                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpan->timestamp, $currentActualSpan->timestamp);
+        $index = 0;
+        /** @var ?SpanDto $prevActualSpan */
+        $prevActualSpan = null;
+        $dbgCtx->pushSubScope();
+        foreach (IterableUtilForTests::zip($expected, $actualSortedByStartTime) as [$expectedSpan, $actualSpan]) {
+            /** @var SpanExpectations $expectedSpan */
+            /** @var SpanDto $actualSpan */
+            $dbgCtx->clearCurrentSubScope(['index' => $index, 'expectedSpan' => $expectedSpan, 'actualSpan' => $actualSpan]);
+            if ($index != 0) {
+                TestCaseBase::assertNotNull($prevActualSpan);
+                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpan->timestamp, $actualSpan->timestamp);
                 $prevActualSpanEnd = TestCaseBase::calcEndTime($prevActualSpan);
-                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpanEnd, $currentActualSpan->timestamp);
+                TestCaseBase::assertLessThanOrEqualTimestamp($prevActualSpanEnd, $actualSpan->timestamp);
             }
-            $currentActualSpan->assertMatches($expected[$i]);
+            $actualSpan->assertMatches($expectedSpan);
+            $prevActualSpan = $actualSpan;
+            ++$index;
         }
+        $dbgCtx->popSubScope();
     }
 }

@@ -59,62 +59,56 @@ final class StackTraceUtil
     private static $cachedElasticApmFilePrefix = null;
 
     /**
-     * @param LoggerFactory $loggerFactory
-     * @param int           $offset
-     * @param int           $options
-     * @param int           $limit
-     *
      * @return ClassicFormatStackTraceFrame[]
      */
-    public static function captureInClassicFormatExcludeElasticApm(
-        LoggerFactory $loggerFactory,
-        int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
-        int $limit = 0
-    ): array {
-        return self::captureInClassicFormat(
-            $loggerFactory,
-            $offset + 1,
-            $options,
-            $limit,
-            false /* <- includeElasticApmFrames */
-        );
+    public static function captureInClassicFormatExcludeElasticApm(LoggerFactory $loggerFactory, int $offset = 0): array
+    {
+        return self::captureInClassicFormat($loggerFactory, $offset + 1, /* framesCountLimit */ null, /* includeElasticApmFrames */ false);
     }
 
     /**
      * @return ClassicFormatStackTraceFrame[]
      */
     public static function captureInClassicFormat(
-        ?LoggerFactory $loggerFactory,
+        LoggerFactory $loggerFactory,
         int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
-        int $limit = 0,
-        bool $includeElasticApmFrames = true
+        ?int $maxNumberOfFrames = null,
+        bool $includeElasticApmFrames = true,
+        bool $includeArgs = false,
+        bool $includeThisObj = false
     ): array {
-        $phpFrames = self::captureInPhpFormat($loggerFactory, $offset + 1, $options, $limit === 0 ? 0 : ($limit + 1));
-        $classicFrames = self::convertPhpToClassicFormatOmitTopFrame($phpFrames);
-        $classicFrames = $limit === 0 ? $classicFrames : array_slice($classicFrames, /* offset */ 0, $limit);
+        if ($maxNumberOfFrames === 0) {
+            return [];
+        }
 
-        return $includeElasticApmFrames ? $classicFrames : self::excludeElasticApmInClassicFormat($classicFrames);
+        // If there is non-null $maxNumberOfFrames we need to capture one more in PHP format
+        $phpFormatFrames = self::captureInPhpFormat($loggerFactory, $offset + 1, $maxNumberOfFrames === null ? null : ($maxNumberOfFrames + 1), $includeArgs, $includeThisObj);
+        $classicFormatFrames = self::convertPhpToClassicFormatOmitTopFrame($phpFormatFrames);
+        $classicFormatFrames = $maxNumberOfFrames === null ? $classicFormatFrames : array_slice($classicFormatFrames, /* offset */ 0, $maxNumberOfFrames);
+
+        return $includeElasticApmFrames ? $classicFormatFrames : self::excludeElasticApmInClassicFormat($classicFormatFrames);
     }
 
     /**
      * @return PhpFormatStackTraceFrame[]
      */
-    public static function captureInPhpFormat(
-        ?LoggerFactory $loggerFactory,
-        int $offset = 0,
-        int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT,
-        int $limit = 0
-    ): array {
-        $srcFrames = array_slice(debug_backtrace($options, $limit === 0 ? 0 : ($offset + $limit)), $offset);
-        if (count($srcFrames) === 0) {
+    public static function captureInPhpFormat(LoggerFactory $loggerFactory, int $offset = 0, ?int $maxNumberOfFrames = null, bool $includeArgs = false, bool $includeThisObj = false): array
+    {
+        if ($maxNumberOfFrames === 0) {
             return [];
         }
 
+        $options = ($includeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) | ($includeThisObj ? DEBUG_BACKTRACE_PROVIDE_OBJECT : 0);
+
+        $srcFrames = debug_backtrace($options, $maxNumberOfFrames === null ? 0 : ($offset + $maxNumberOfFrames));
+        if (count($srcFrames) <= $offset) {
+            return [];
+        }
+        $srcFrames = array_slice($srcFrames, $offset);
+
         // It seems that sometimes the bottom frame include args even when DEBUG_BACKTRACE_IGNORE_ARGS is set
         if (
-            (($options & DEBUG_BACKTRACE_IGNORE_ARGS) !== 0)
+            (!$includeArgs)
             && (($srcFramesCount = count($srcFrames)) !== 0)
             && array_key_exists(self::ARGS_KEY, ($bottomFrameRef = &$srcFrames[$srcFramesCount - 1]))
         ) {
@@ -143,12 +137,11 @@ final class StackTraceUtil
      * @param bool                                  $shiftAwayFromTop
      *
      * @return TStackFrameOutputFormat[]
+     *
+     * @noinspection PhpUndefinedClassInspection
      */
-    private static function shiftLocationData(
-        array $inFormatFrames,
-        string $outFormatClass,
-        bool $shiftAwayFromTop
-    ): array {
+    private static function shiftLocationData(array $inFormatFrames, string $outFormatClass, bool $shiftAwayFromTop): array
+    {
         $inFormatFramesCount = count($inFormatFrames);
         if ($inFormatFramesCount === 0) {
             return [];
@@ -186,11 +179,7 @@ final class StackTraceUtil
      */
     public static function convertPhpToClassicFormatOmitTopFrame(array $phpFormatFrames): array
     {
-        return self::shiftLocationData(
-            $phpFormatFrames,
-            ClassicFormatStackTraceFrame::class,
-            /* shiftAwayFromTop */ true
-        );
+        return self::shiftLocationData($phpFormatFrames, ClassicFormatStackTraceFrame::class, /* shiftAwayFromTop */ true);
     }
 
     /**
@@ -200,11 +189,7 @@ final class StackTraceUtil
      */
     public static function convertClassicToPhpFormat(array $classicFormatFrames): array
     {
-        return self::shiftLocationData(
-            $classicFormatFrames,
-            PhpFormatStackTraceFrame::class,
-            /* shiftAwayFromTop */ false
-        );
+        return self::shiftLocationData($classicFormatFrames, PhpFormatStackTraceFrame::class, /* shiftAwayFromTop */ false);
     }
 
     private static function buildElasticApmFilePrefix(): ?string
@@ -240,8 +225,7 @@ final class StackTraceUtil
             }
         }
         if ($frame->class !== null) {
-            return TextUtil::isPrefixOf('Elastic\\Apm\\', $frame->class)
-                   || TextUtil::isPrefixOf('\\Elastic\\Apm\\', $frame->class);
+            return TextUtil::isPrefixOf('Elastic\\Apm\\', $frame->class) || TextUtil::isPrefixOf('\\Elastic\\Apm\\', $frame->class);
         }
         return false;
     }
@@ -275,9 +259,7 @@ final class StackTraceUtil
             return $methodName;
         }
 
-        $classMethodSep = ($isStaticMethod === null)
-            ? '.'
-            : ($isStaticMethod ? self::FUNCTION_IS_STATIC_METHOD_TYPE_VALUE : self::FUNCTION_IS_METHOD_TYPE_VALUE);
+        $classMethodSep = ($isStaticMethod === null) ? '.' : ($isStaticMethod ? self::FUNCTION_IS_STATIC_METHOD_TYPE_VALUE : self::FUNCTION_IS_METHOD_TYPE_VALUE);
         return $classicName . $classMethodSep . $methodName;
     }
 

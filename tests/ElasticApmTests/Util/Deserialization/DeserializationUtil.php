@@ -26,7 +26,7 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TestCaseBase;
 use Throwable;
 
 final class DeserializationUtil
@@ -43,11 +43,8 @@ final class DeserializationUtil
         return DeserializationUtil::buildException('Unknown key: ' . $key);
     }
 
-    public static function buildException(
-        ?string $msgDetails = null,
-        int $code = 0,
-        Throwable $previous = null
-    ): DeserializationException {
+    public static function buildException(?string $msgDetails = null, int $code = 0, Throwable $previous = null): DeserializationException
+    {
         $msgStart = 'Deserialization failed';
         if ($msgDetails !== null) {
             $msgStart .= ': ';
@@ -68,18 +65,16 @@ final class DeserializationUtil
      */
     public static function assertDecodedJsonMap($value): array
     {
-        TestCase::assertIsArray($value);
+        TestCaseBase::assertIsArray($value);
         return $value;
     }
 
     /**
-     * @param array<mixed, mixed>         $deserializedRawData
+     * @param array<mixed>         $deserializedRawData
      * @param Closure(mixed, mixed): bool $deserializeKeyValuePair
      */
-    public static function deserializeKeyValuePairs(
-        array $deserializedRawData,
-        Closure $deserializeKeyValuePair
-    ): void {
+    public static function deserializeKeyValuePairs(array $deserializedRawData, Closure $deserializeKeyValuePair): void
+    {
         foreach ($deserializedRawData as $key => $value) {
             if (!$deserializeKeyValuePair($key, $value)) {
                 throw DeserializationUtil::buildUnknownKeyException($key);

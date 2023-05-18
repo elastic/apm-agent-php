@@ -26,18 +26,12 @@
 #include "platform.h"
 #include "elastic_apm_alloc.h"
 #include "Tracer.h"
-#include "ConfigManager.h"
+#include "ConfigSnapshot.h"
+#include "util.h"
 #include "util_for_PHP.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
-
-struct StringBuffer
-{
-    char* begin;
-    size_t size;
-};
-typedef struct StringBuffer StringBuffer;
 
 static ResultCode dupMallocStringView( StringView src, StringBuffer* dst )
 {
@@ -48,25 +42,20 @@ static ResultCode dupMallocStringView( StringView src, StringBuffer* dst )
 
     ResultCode resultCode;
     char* memBlockForDup = NULL;
-    const size_t memBlockForDupSize = src.length + 1;
 
-    // +1 for terminating '\0'
-    ELASTIC_APM_MALLOC_IF_FAILED_GOTO( char, memBlockForDupSize, /* out */ memBlockForDup );
-
-    resultCode = resultSuccess;
-
-    memcpy( memBlockForDup, src.begin, src.length );
-    memBlockForDup[ memBlockForDupSize - 1 ] = '\0';
+    ELASTIC_APM_MALLOC_STRING_IF_FAILED_GOTO( /* length */ src.length, /* out */ memBlockForDup );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( safeStringCopy( src, /* dstBuf */ memBlockForDup, /* dstBufCapacity */ src.length + 1 ) );
 
     dst->begin = memBlockForDup;
     memBlockForDup = NULL;
-    dst->size = memBlockForDupSize;
+    dst->size = src.length + 1;
 
+    resultCode = resultSuccess;
     finally:
     return resultCode;
 
     failure:
-    ELASTIC_APM_FREE_AND_SET_TO_NULL( char, memBlockForDupSize, /* out */ memBlockForDup );
+    ELASTIC_APM_FREE_STRING_AND_SET_TO_NULL( /* length */ src.length, /* out */ memBlockForDup );
     goto finally;
 }
 
@@ -82,16 +71,6 @@ static void freeMallocedStringBuffer( /* in,out */ StringBuffer* strBuf )
     {
         ELASTIC_APM_ASSERT( strBuf->size == 0, "" );
     }
-}
-
-StringView viewStringBuffer( StringBuffer strBuf )
-{
-    // -1 since terminating '\0' is counted in buffer's size but not in string's length
-    return (StringView)
-    {
-        .begin = strBuf.begin,
-        .length = (strBuf.begin == NULL) ? 0 : (strBuf.size - 1)
-    };
 }
 
 // Log response
@@ -327,7 +306,7 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
     if ( config->disableSend )
     {
         ELASTIC_APM_LOG_DEBUG( "disable_send (disableSend) configuration option is set to true - discarding events instead of sending" );
-        ELASTIC_APM_CALL_EARLY_GOTO_FINALLY_WITH_SUCCESS();
+        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
     }
 
     if ( connectionData->curlHandle == NULL )
@@ -500,7 +479,7 @@ String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot
     StringView serializedEvents = { 0 };
     if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
     {
-        serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+        serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
     }
 
     streamPrintf(
@@ -678,7 +657,7 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 {
     // This function is called only when data-queue-to-send is not empty
     // so firstDataToSendNode is not NULL
-    StringView serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+    StringView serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
 
     ELASTIC_APM_LOG_DEBUG(
             "About to send batch of events"
@@ -692,7 +671,7 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
     ResultCode resultCode;
 
     resultCode = syncSendEventsToApmServer( config
-                                            , viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader )
+                                            , stringBufferToView( sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader )
                                             , serializedEvents );
     // If we failed to send the currently first batch we return success nevertheless
     // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
@@ -724,7 +703,7 @@ void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBac
 
     if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
     {
-        serializedEvents = viewStringBuffer( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+        serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
     }
 
     ELASTIC_APM_ASSERT( (sharedStateSnapshot->dataToSendTotalSize == 0) == ( sharedStateSnapshot->firstDataToSendNode == NULL )
@@ -953,17 +932,14 @@ ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
 void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config )
 {
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
-
-    if ( backgroundBackendComm == NULL )
-    {
-        return;
-    }
-
     ResultCode resultCode;
-    TimeSpec shouldExitBy;
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( config, backgroundBackendComm, /* out */ &shouldExitBy ) );
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
+    if ( backgroundBackendComm != NULL )
+    {
+        TimeSpec shouldExitBy;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( signalBackgroundBackendCommThreadToExit( config, backgroundBackendComm, /* out */ &shouldExitBy ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &backgroundBackendComm, &shouldExitBy, /* isCreatedByThisProcess */ true ) );
+    }
 
     resultCode = resultSuccess;
     finally:
