@@ -1,0 +1,17 @@
+version: "2.1"
+services:
+    build_apm_php:
+        build:
+            context: .
+            dockerfile: images/Dockerfile_glibc
+        volumes:
+          - ../../../../:/source
+        command: sh -c "cd /source/agent/native && cmake --preset linux-x86-64-release && cmake --build --preset linux-x86-64-release"
+
+    build_apm_php_musl:
+        build:
+            context: .
+            dockerfile: images/Dockerfile_musl
+        volumes:
+          - ../../../../:/source
+        command: sh -c "cd /source/agent/native && cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"
