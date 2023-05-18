@@ -20,6 +20,17 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 
 PROJECT( unit_tests C )
 
+# disable warnings - fix tests and remove
+add_compile_options("-Wno-comment")
+add_compile_options("-Wno-enum-compare")
+add_compile_options("-Wno-unused-local-typedefs")
+add_compile_options("-Wno-unused-function")
+add_compile_options("-Wno-sign-compare")
+add_compile_options("-Wno-type-limits")
+add_compile_options("-Wno-unused-variable")
+add_compile_options("-Wno-unknown-pragmas")
+
+
 SET( CMAKE_C_STANDARD 99 )
 
 SET( CMAKE_COMPILE_WARNING_AS_ERROR ON )
@@ -79,22 +90,9 @@ IF ( WIN32 )
     ADD_COMPILE_DEFINITIONS( _CRT_SECURE_NO_WARNINGS )
 ENDIF()
 
-IF ( DEFINED ENV{cmocka_installed_dir} )
-    SET( cmocka_installed_dir $ENV{cmocka_installed_dir} )
-    SET( cmocka_include_dir ${cmocka_installed_dir}/include )
-    SET( cmocka_lib_dir ${cmocka_installed_dir}/lib )
-    SET( cmocka_static_lib ${cmocka_lib_dir}/cmocka.lib )
-ELSE()
-    #FIND_PACKAGE( cmocka REQUIRED )
-    FIND_LIBRARY( cmocka_static_lib cmocka )
-    IF ( NOT cmocka_static_lib )
-        MESSAGE( FATAL_ERROR "cmocka library not found" )
-    ENDIF()
-ENDIF()
-
 INCLUDE_DIRECTORIES( . )
 INCLUDE_DIRECTORIES( ${src_ext_dir} )
-INCLUDE_DIRECTORIES( ${cmocka_include_dir} )
+INCLUDE_DIRECTORIES( ${CMOCKA_INCLUDE_DIR} )
 
 FILE( GLOB unit_tests_source_files *.c *.h )
 LIST( APPEND source_files ${unit_tests_source_files} )
@@ -120,17 +118,15 @@ ENDIF()
 
 ADD_EXECUTABLE( unit_tests ${source_files} )
 
-SET( link_with_libraries ${cmocka_static_lib} )
 IF ( NOT WIN32 )
-    # Link to library required by math.h and pthread.h
-    SET( link_with_libraries ${link_with_libraries} m pthread )
+    # Link to library required by math.h 
+    SET( link_with_libraries ${link_with_libraries} m )
 ENDIF()
 
-FIND_LIBRARY( unwind_lib unwind )
-IF ( unwind_lib )
-    SET( link_with_libraries ${link_with_libraries} unwind )
-ENDIF()
-
-TARGET_LINK_LIBRARIES( unit_tests ${link_with_libraries} )
+target_link_libraries( unit_tests PRIVATE CONAN_PKG::cmocka
+                                PRIVATE CONAN_PKG::libunwind
+                                Threads::Threads
+                                m
+                                )
 
 ADD_TEST( NAME Unit_tests COMMAND unit_tests )

@@ -1,0 +1,17 @@
+
+[settings]
+os=@_PRV_CONAN_PROFILE_OS@
+@_PRV_CONAN_PROFILE_OS_DISTRO@
+arch=x86_64
+arch_build=x86_64
+build_type=Release
+compiler=@_PRV_COMPILER_NAME@
+compiler.version=@_PRV_COMPILER_VERSION_SHORT@
+compiler.libcxx=libstdc++11
+@_PRV_COMPILER_LIBC_IMPLEMENTATION@
+
+
+[env]
+CC=@_PRV_CONAN_PROFILE_CC@
+CXX=@_PRV_CONAN_PROFILE_CXX@
+LDFLAGS="-static-libgcc -static-libstdc++"
