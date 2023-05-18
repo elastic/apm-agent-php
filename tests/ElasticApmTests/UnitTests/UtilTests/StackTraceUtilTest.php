@@ -32,21 +32,15 @@ use Elastic\Apm\Impl\Util\StackTraceFrameBase;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\TestCaseBase;
 
 class StackTraceUtilTest extends TestCaseBase
 {
-    private const EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY = 'EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP';
-    private const EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY = 'EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP';
-    private const ACTUAL_CAPTURED_PHP_STACK_TRACE_KEY = 'ACTUAL_CAPTURED_PHP_STACK_TRACE';
-    private const ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY = 'ACTUAL_CAPTURED_CLASSIC_STACK_TRACE';
-
-    private const MAX_FUNC_DEPTH_KEY = 'MAX_FUNC_DEPTH';
-    private const DEBUG_BACKTRACE_OPTIONS_KEY = 'DEBUG_BACKTRACE_OPTIONS';
-    private const STACK_TRACE_SIZE_LIMIT_KEY = 'STACK_TRACE_SIZE_LIMIT';
-
     private const VERY_LARGE_STACK_TRACE_SIZE_LIMIT = 1000;
 
     /**
@@ -75,24 +69,14 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @dataProvider dataProviderForTestConvertClassAndMethodToFunctionName
      */
-    public function testConvertClassAndMethodToFunctionName(
-        ?string $classicName,
-        ?bool $isStaticMethod,
-        ?string $methodName,
-        ?string $expectedFuncName
-    ): void {
-        $actualFuncName
-            = StackTraceUtil::convertClassAndMethodToFunctionName($classicName, $isStaticMethod, $methodName);
-        $ctx = LoggableToString::convert(
-            [
-                'expectedFuncName' => $expectedFuncName,
-                'actualFuncName'   => $actualFuncName,
-                'classicName'      => $classicName,
-                'isStaticMethod'   => $isStaticMethod,
-                'methodName'       => $methodName,
-            ]
-        );
-        self::assertSame($expectedFuncName, $actualFuncName, $ctx);
+    public function testConvertClassAndMethodToFunctionName(?string $classicName, ?bool $isStaticMethod, ?string $methodName, ?string $expectedFuncName): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $actualFuncName = StackTraceUtil::convertClassAndMethodToFunctionName($classicName, $isStaticMethod, $methodName);
+        $dbgCtx->add(['actualFuncName' => $actualFuncName]);
+
+        self::assertSame($expectedFuncName, $actualFuncName);
     }
 
     /**
@@ -169,8 +153,7 @@ class StackTraceUtilTest extends TestCaseBase
                 ]
             ),
         ];
-        $actualPhpFormatConvertedToClassic
-            = StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($phpFormatStackTrace);
+        $actualPhpFormatConvertedToClassic = StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($phpFormatStackTrace);
         self::assertStackTraceMatchesExpected($expectedPhpFormatConvertedToClassic, $actualPhpFormatConvertedToClassic);
 
         $expectedConvertedBackToPhpFormat = [
@@ -198,8 +181,7 @@ class StackTraceUtilTest extends TestCaseBase
                 ]
             ),
         ];
-        $actualConvertedBackToPhpFormat
-            = StackTraceUtil::convertClassicToPhpFormat($actualPhpFormatConvertedToClassic);
+        $actualConvertedBackToPhpFormat = StackTraceUtil::convertClassicToPhpFormat($actualPhpFormatConvertedToClassic);
         self::assertStackTraceMatchesExpected($expectedConvertedBackToPhpFormat, $actualConvertedBackToPhpFormat);
     }
 
@@ -211,23 +193,14 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @param StackTraceFrame[]    $expectedStackTrace
-     * @param StackTraceFrame[]    $actualStackTrace
-     * @param array<string, mixed> $ctxOuter
+     * @param StackTraceFrame[] $expectedStackTrace
+     * @param StackTraceFrame[] $actualStackTrace
      *
      * @return void
      */
-    public static function assertEqualApmStackTraces(
-        array $expectedStackTrace,
-        array $actualStackTrace,
-        array $ctxOuter = []
-    ): void {
-        SpanDto::assertStackTraceMatches(
-            $expectedStackTrace,
-            false /* <- allowExpectedStackTraceToBePrefix */,
-            $actualStackTrace,
-            $ctxOuter
-        );
+    public static function assertEqualApmStackTraces(array $expectedStackTrace, array $actualStackTrace): void
+    {
+        SpanDto::assertStackTraceMatches($expectedStackTrace, false /* <- allowExpectedStackTraceToBePrefix */, $actualStackTrace);
     }
 
     public function testSimpleConvertClassicToApmFormat(): void
@@ -277,375 +250,223 @@ class StackTraceUtilTest extends TestCaseBase
         self::assertEqualApmStackTraces($expectedApmFormatStackTrace, $actualApmFormatStackTrace);
     }
 
-    /**
-     * @param ?int $debugBacktraceOptions
-     *
-     * @return bool
-     */
-    private static function expectedToCaptureThisObject(?int $debugBacktraceOptions): bool
+    private static function assertOptionalPartsAsExpected(bool $includeArgs, bool $includeThisObj, StackTraceFrameBase $actualCaptureStackFrame): void
     {
-        return ($debugBacktraceOptions === null)
-               || (($debugBacktraceOptions & DEBUG_BACKTRACE_PROVIDE_OBJECT) !== 0);
-    }
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-    /**
-     * @param ?int $debugBacktraceOptions
-     *
-     * @return bool
-     */
-    private static function expectedToCaptureArgs(?int $debugBacktraceOptions): bool
-    {
-        return ($debugBacktraceOptions === null)
-               || (($debugBacktraceOptions & DEBUG_BACKTRACE_IGNORE_ARGS) === 0);
-    }
-
-    /**
-     * @return iterable<array{?int, ?int, bool}>
-     */
-    public function dataProviderForTestSimpleCapture(): iterable
-    {
-        $debugBacktraceOptionsVariants = [null, DEBUG_BACKTRACE_IGNORE_ARGS];
-
-        foreach ($debugBacktraceOptionsVariants as $debugBacktraceOptions) {
-            foreach ([null, 0, 1, 2, 3, self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT] as $stackTraceSizeLimit) {
-                foreach (IterableUtilForTests::ALL_BOOL_VALUES as $withOffset) {
-                    yield [$debugBacktraceOptions, $stackTraceSizeLimit, $withOffset];
-                }
-            }
-        }
-    }
-
-    private static function assertArgsPresentAsExpected(
-        ?int $debugBacktraceOptions,
-        StackTraceFrameBase $frame,
-        string $message = ''
-    ): void {
-        if (self::expectedToCaptureArgs($debugBacktraceOptions)) {
-            self::assertNotNull($frame->args, $message);
+        if ($includeArgs) {
+            // If requested args is always returned even for functions with no parameters in which case args will the empty array
+            self::assertNotNull($actualCaptureStackFrame->args);
         } else {
-            self::assertNull($frame->args, $message);
-        }
-    }
-
-    /**
-     * @dataProvider dataProviderForTestSimpleCapture
-     *
-     * @param ?int $debugBacktraceOptions
-     * @param ?int $stackTraceSizeLimit
-     * @param bool $withOffset
-     */
-    public function testSimpleCapturePhpFormat(
-        ?int $debugBacktraceOptions,
-        ?int $stackTraceSizeLimit,
-        bool $withOffset
-    ): void {
-        /** @var null|PhpFormatStackTraceFrame[] $actualStackTrace */
-        $actualStackTrace = null;
-        /** @var array<string, mixed>[] $actualDebugBackTrace */
-        $actualDebugBackTrace = null;
-        /** @var ?int $expectedLine */
-        $expectedLine = null;
-        $callCaptureInPhpFormat = function () use (
-            &$actualStackTrace,
-            &$actualDebugBackTrace,
-            &$expectedLine,
-            $debugBacktraceOptions,
-            $stackTraceSizeLimit,
-            $withOffset
-        ): void {
-            $actualDebugBackTrace = debug_backtrace(
-                $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                $stackTraceSizeLimit ?? 0
-            );
-            if ($withOffset) {
-                $actualStackTrace = self::captureInPhpFormat($debugBacktraceOptions, $stackTraceSizeLimit);
-                $expectedLine = __LINE__ - 1;
-            } else {
-                $args = [
-                    NoopLoggerFactory::singletonInstance(),
-                    /* offset */
-                    0,
-                    $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                    $stackTraceSizeLimit ?? 0,
-                ];
-                $actualStackTrace = StackTraceUtil::captureInPhpFormat(...$args);
-                $expectedLine = __LINE__ - 1;
-            }
-        };
-        $callCaptureInPhpFormat();
-        $expectedLineNextFrame = __LINE__ - 1;
-
-        $expectedArgs = func_get_args();
-        $dbgCtxTop = [
-            'debugBacktraceOptions'       => $debugBacktraceOptions,
-            'expectedToCaptureThisObject' => self::expectedToCaptureThisObject($debugBacktraceOptions),
-            'expectedToCaptureArgs'       => self::expectedToCaptureArgs($debugBacktraceOptions),
-            'stackTraceSizeLimit'         => $stackTraceSizeLimit,
-            'actualStackTrace'            => $actualStackTrace,
-            'expectedLine'                => $expectedLine,
-            'expectedLineNextFrame'       => $expectedLineNextFrame,
-            'expectedArgs'                => $expectedArgs,
-            'actualDebugBackTrace'        => $actualDebugBackTrace,
-        ];
-        $dbgCtxTopStr = LoggableToString::convert($dbgCtxTop);
-
-        self::assertNotNull($actualStackTrace, $dbgCtxTopStr);
-        self::assertGreaterThanOrEqual(1, count($actualStackTrace), $dbgCtxTopStr);
-        if ($stackTraceSizeLimit !== null && $stackTraceSizeLimit !== 0) {
-            self::assertLessThanOrEqual($stackTraceSizeLimit, count($actualStackTrace), $dbgCtxTopStr);
-            if ($stackTraceSizeLimit < 3) {
-                self::assertCount($stackTraceSizeLimit, $actualStackTrace, $dbgCtxTopStr);
-            }
+            self::assertNull($actualCaptureStackFrame->args);
         }
 
-        for ($i = 0; $i < count($actualStackTrace); ++$i) {
-            $frame = $actualStackTrace[$i];
-            $dbgCtxPerIt = array_merge(['frame' => $frame, 'i' => $i], $dbgCtxTop);
-            $dbgCtxPerItStr = LoggableToString::convert($dbgCtxPerIt);
-            if ($i !== 0) {
-                self::assertArgsPresentAsExpected($debugBacktraceOptions, $frame, $dbgCtxPerItStr);
-            }
-            switch ($i) {
-                case 0:
-                    self::assertSame(__FILE__, $frame->file, $dbgCtxPerItStr);
-                    self::assertSame($expectedLine, $frame->line, $dbgCtxPerItStr);
-                    self::assertNull($frame->function, $dbgCtxPerItStr);
-                    self::assertNull($frame->class, $dbgCtxPerItStr);
-                    self::assertNull($frame->isStaticMethod, $dbgCtxPerItStr);
-                    self::assertNull($frame->thisObj, $dbgCtxPerItStr);
-                    self::assertNull($frame->args, $dbgCtxPerItStr);
-                    break;
-                case 1:
-                    self::assertSame(__FILE__, $frame->file, $dbgCtxPerItStr);
-                    self::assertSame($expectedLineNextFrame, $frame->line, $dbgCtxPerItStr);
-                    self::assertNotNull($frame->function, $dbgCtxPerItStr);
-                    self::assertTrue(TextUtil::contains($frame->function, 'closure'), $dbgCtxPerItStr);
-                    self::assertSame(__CLASS__, $frame->class, $dbgCtxPerItStr);
-                    self::assertFalse($frame->isStaticMethod, $dbgCtxPerItStr);
-                    if (self::expectedToCaptureArgs($debugBacktraceOptions)) {
-                        self::assertNotNull($frame->args, $dbgCtxPerItStr);
-                        self::assertCount(0, $frame->args, $dbgCtxPerItStr);
-                    }
-                    break;
-                case 2:
-                    self::assertNotEquals(__FILE__, $frame->file, $dbgCtxPerItStr);
-                    self::assertNotNull($frame->line, $dbgCtxPerItStr);
-                    self::assertSame(__FUNCTION__, $frame->function, $dbgCtxPerItStr);
-                    self::assertSame(__CLASS__, $frame->class, $dbgCtxPerItStr);
-                    if (self::expectedToCaptureArgs($debugBacktraceOptions)) {
-                        self::assertNotNull($frame->args, $dbgCtxPerItStr);
-                        self::assertEqualAsSets($expectedArgs, $frame->args, $dbgCtxPerItStr);
-                    }
-                    self::assertNotNull($frame->isStaticMethod, $dbgCtxPerItStr);
-                    break;
-            }
+        if (!$includeThisObj) {
+            self::assertNull($actualCaptureStackFrame->thisObj);
         }
-    }
-
-    /**
-     * @dataProvider dataProviderForTestSimpleCapture
-     *
-     * @param ?int $debugBacktraceOptions
-     * @param ?int $stackTraceSizeLimit
-     * @param bool $withOffset
-     */
-    public function testSimpleCaptureClassicFormat(
-        ?int $debugBacktraceOptions,
-        ?int $stackTraceSizeLimit,
-        bool $withOffset
-    ): void {
-        if ($withOffset) {
-            $frames = self::captureInClassicFormat($debugBacktraceOptions, $stackTraceSizeLimit);
-            $expectedLine = __LINE__ - 1;
-        } else {
-            $args = [
-                NoopLoggerFactory::singletonInstance(),
-                /* offset */ 0,
-                $debugBacktraceOptions ?? DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                $stackTraceSizeLimit ?? 0
-            ];
-            $frames = StackTraceUtil::captureInClassicFormat(...$args);
-            $expectedLine = __LINE__ - 1;
-        }
-        $expectedArgs = func_get_args();
-        $ctx = LoggableToString::convert(
-            [
-                'debugBacktraceOptions'       => $debugBacktraceOptions,
-                'expectedToCaptureThisObject' => self::expectedToCaptureThisObject($debugBacktraceOptions),
-                'expectedToCaptureArgs'       => self::expectedToCaptureArgs($debugBacktraceOptions),
-                'stackTraceSizeLimit'         => $stackTraceSizeLimit,
-                'frames'                      => $frames,
-                'expectedLine'                => $expectedLine,
-                'expectedArgs'                => $expectedArgs,
-            ]
-        );
-
-        self::assertGreaterThanOrEqual(1, count($frames), $ctx);
-        if ($stackTraceSizeLimit !== null && $stackTraceSizeLimit !== 0) {
-            self::assertLessThanOrEqual($stackTraceSizeLimit, count($frames), $ctx);
-            if ($stackTraceSizeLimit < 3) {
-                self::assertCount($stackTraceSizeLimit, $frames, $ctx);
-            }
-        }
-        $topFrame = $frames[0];
-        self::assertSame(__FILE__, $topFrame->file, $ctx);
-        self::assertSame($expectedLine, $topFrame->line, $ctx);
-        self::assertSame(__FUNCTION__, $topFrame->function, $ctx);
-        self::assertSame(__CLASS__, $topFrame->class, $ctx);
-        self::assertFalse($topFrame->isStaticMethod, $ctx);
-
-        if (self::expectedToCaptureThisObject($debugBacktraceOptions)) {
-            self::assertNotNull($topFrame->thisObj, $ctx);
-            self::assertSame($this, $topFrame->thisObj, $ctx);
-        } else {
-            self::assertNull($topFrame->thisObj, $ctx);
-        }
-
-        if (self::expectedToCaptureArgs($debugBacktraceOptions)) {
-            self::assertNotNull($topFrame->args, $ctx);
-            self::assertEqualAsSets($expectedArgs, $topFrame->args, $ctx);
-        } else {
-            self::assertNull($topFrame->args, $ctx);
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $testArgs
-     *
-     * @return int
-     */
-    private static function getMaxDepth(array $testArgs): int
-    {
-        $result = $testArgs[self::MAX_FUNC_DEPTH_KEY];
-        self::assertIsInt($result);
-        return $result;
-    }
-
-    /**
-     * @param array<string, mixed> $testArgs
-     *
-     * @return ?int
-     */
-    private static function getDebugBacktraceOptions(array $testArgs): ?int
-    {
-        $result = $testArgs[self::DEBUG_BACKTRACE_OPTIONS_KEY];
-        if ($result !== null) {
-            self::assertIsInt($result);
-        }
-        return $result;
-    }
-
-    /**
-     * @param array<string, mixed> $testArgs
-     *
-     * @return ?int
-     */
-    private static function getStackTraceSizeLimit(array $testArgs): ?int
-    {
-        $result = $testArgs[self::STACK_TRACE_SIZE_LIMIT_KEY];
-        if ($result !== null) {
-            self::assertIsInt($result);
-        }
-        return $result;
     }
 
     /**
      * @return PhpFormatStackTraceFrame[]
      */
-    private static function captureInPhpFormat(?int $debugBacktraceOptions, ?int $stackTraceSizeLimit): array
+    private static function captureInPhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        if ($debugBacktraceOptions === null) {
-            if ($stackTraceSizeLimit === null) {
-                $result = StackTraceUtil::captureInPhpFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */
-                );
-            } else {
-                $result = StackTraceUtil::captureInPhpFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                    $stackTraceSizeLimit
-                );
-            }
-        } else {
-            if ($stackTraceSizeLimit === null) {
-                $result = StackTraceUtil::captureInPhpFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    $debugBacktraceOptions
-                );
-            } else {
-                $result = StackTraceUtil::captureInPhpFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    $debugBacktraceOptions,
-                    $stackTraceSizeLimit
-                );
-            }
-        }
-
-        return $result;
+        return StackTraceUtil::captureInPhpFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, $includeArgs, $includeThisObj);
     }
 
     /**
      * @return ClassicFormatStackTraceFrame[]
      */
-    private static function captureInClassicFormat(?int $debugBacktraceOptions, ?int $stackTraceSizeLimit): array
+    private static function captureInClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        if ($debugBacktraceOptions === null) {
-            if ($stackTraceSizeLimit === null) {
-                $result = StackTraceUtil::captureInClassicFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */
-                );
-            } else {
-                $result = StackTraceUtil::captureInClassicFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                    $stackTraceSizeLimit
-                );
-            }
-        } else {
-            if ($stackTraceSizeLimit === null) {
-                $result = StackTraceUtil::captureInClassicFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    $debugBacktraceOptions
-                );
-            } else {
-                $result = StackTraceUtil::captureInClassicFormat(
-                    NoopLoggerFactory::singletonInstance(),
-                    1 /* <- offset */,
-                    $debugBacktraceOptions,
-                    $stackTraceSizeLimit
-                );
-            }
-        }
-        return $result;
+        return StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, /* includeElasticApmFrames */ true, $includeArgs, $includeThisObj);
     }
 
     /**
-     * @param ?self                $thisObj
-     * @param int                  $funcDepth
-     * @param array<string, mixed> $testArgs
-     * @param string               $funcNameCalledFrom
-     * @param bool                 $isFuncCalledFromStatic
-     * @param int                  $lineNumberWithCallToFuncImpl
-     *
+     * @return iterable<string, array{bool, bool, ?int}>
+     */
+    public function dataProviderForTestSimpleCapture(): iterable
+    {
+        /**
+         * @return iterable<array<string, mixed>>
+         */
+        $generator = function (): iterable {
+            foreach ([null, 0, 1, 2, 3, self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT] as $maxNumberOfFrames) {
+                foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeArgs) {
+                    foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeThisObj) {
+                        yield [$maxNumberOfFrames, $includeArgs, $includeThisObj];
+                    }
+                }
+            }
+        };
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestSimpleCapture
+     */
+    public function testSimpleCapturePhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        /** @var null|PhpFormatStackTraceFrame[] $actualCapturedStackTrace */
+        $actualCapturedStackTrace = null;
+        /** @var array<string, mixed>[] $dbgDebugBackTrace */
+        $dbgDebugBackTrace = null;
+        /** @var ?int $expectedLine */
+        $expectedLine = null;
+        $callCaptureInPhpFormat = function () use ($includeArgs, $includeThisObj, $maxNumberOfFrames, &$actualCapturedStackTrace, &$dbgDebugBackTrace, &$expectedLine): void {
+            $dbgDebugBackTrace = debug_backtrace(($includeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) | ($includeThisObj ? DEBUG_BACKTRACE_PROVIDE_OBJECT : 0), $maxNumberOfFrames ?? 0);
+            $actualCapturedStackTrace = self::captureInPhpFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
+            $expectedLine = __LINE__ - 1;
+        };
+        $callCaptureInPhpFormat();
+        $expectedLineNextFrame = __LINE__ - 1;
+        $dbgCtx->add(['expectedLineNextFrame' => $expectedLineNextFrame, 'actualCapturedStackTrace' => $actualCapturedStackTrace, 'dbgDebugBackTrace' => $dbgDebugBackTrace]);
+        $dbgCtx->add(['expectedLine' => $expectedLine]);
+
+        $expectedArgs = func_get_args();
+        $dbgCtx->add(['expectedArgs' => $expectedArgs]);
+
+        self::assertNotNull($actualCapturedStackTrace);
+        if ($maxNumberOfFrames !== null) {
+            self::assertLessThanOrEqual($maxNumberOfFrames, count($actualCapturedStackTrace));
+            // There is this function and $callCaptureInPhpFormat closure
+            // so there should be at least two frames before max is applied
+            if ($maxNumberOfFrames <= 2) {
+                self::assertCount($maxNumberOfFrames, $actualCapturedStackTrace);
+            }
+        }
+
+        $dbgCtx->pushSubScope();
+        for ($i = 0; $i < count($actualCapturedStackTrace); ++$i) {
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
+            $frame = $actualCapturedStackTrace[$i];
+            $dbgCtx->add(['frame' => $frame]);
+            if ($i !== 0) {
+                self::assertOptionalPartsAsExpected($includeArgs, $includeThisObj, $frame);
+            }
+            switch ($i) {
+                case 0:
+                    // Top frame in PHP stack trace format should contain only source location data file and line
+                    self::assertSame(__FILE__, $frame->file);
+                    self::assertSame($expectedLine, $frame->line);
+                    self::assertNull($frame->function);
+                    self::assertNull($frame->class);
+                    self::assertNull($frame->isStaticMethod);
+                    self::assertNull($frame->thisObj);
+                    self::assertNull($frame->args);
+                    break;
+                case 1:
+                    // Middle frame is for the body of $callCaptureInPhpFormat closure
+                    self::assertSame(__FILE__, $frame->file);
+                    self::assertSame($expectedLineNextFrame, $frame->line);
+                    self::assertNotNull($frame->function);
+                    self::assertTrue(TextUtil::contains($frame->function, 'closure'));
+                    self::assertSame(__CLASS__, $frame->class);
+                    self::assertFalse($frame->isStaticMethod);
+                    // A closure inherits $this from the surrounding scope
+                    if ($includeThisObj) {
+                        self::assertSame($this, $frame->thisObj);
+                    }
+                    if ($includeArgs) {
+                        self::assertNotNull($frame->args);
+                        self::assertCount(0, $frame->args);
+                    }
+                    break;
+                case 2:
+                    self::assertNotEqualsEx(__FILE__, $frame->file);
+                    self::assertNotNull($frame->line);
+                    self::assertSame(__FUNCTION__, $frame->function);
+                    self::assertSame(__CLASS__, $frame->class);
+                    if ($includeThisObj) {
+                        self::assertSame($this, $frame->thisObj);
+                    }
+                    if ($includeArgs) {
+                        self::assertNotNull($frame->args);
+                        self::assertEqualLists($expectedArgs, $frame->args);
+                    }
+                    self::assertNotNull($frame->isStaticMethod);
+                    break;
+            }
+        }
+        $dbgCtx->popSubScope();
+    }
+
+    /**
+     * @dataProvider dataProviderForTestSimpleCapture
+     */
+    public function testSimpleCaptureClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $dbgDebugBackTrace = debug_backtrace(($includeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) | ($includeThisObj ? DEBUG_BACKTRACE_PROVIDE_OBJECT : 0), $maxNumberOfFrames ?? 0);
+        $dbgCtx->add(['dbgDebugBackTrace' => $dbgDebugBackTrace]);
+        $actualCapturedStackTrace = self::captureInClassicFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
+        $expectedLine = __LINE__ - 1;
+        $expectedArgs = func_get_args();
+        $dbgCtx->add(['actualCapturedStackTrace' => $actualCapturedStackTrace, 'expectedLine' => $expectedLine, 'expectedArgs' => $expectedArgs]);
+
+        self::assertNotNull($actualCapturedStackTrace);
+        if ($maxNumberOfFrames === null) {
+            // There is this function and PHPUnit function that called it
+            // so there should be at least two frames since max is not applied
+            self::assertGreaterThanOrEqual(2, count($actualCapturedStackTrace));
+        } else {
+            self::assertLessThanOrEqual($maxNumberOfFrames, count($actualCapturedStackTrace));
+            // There is this function and PHPUnit function that called it
+            // so there should be at least two frames before max is applied
+            if ($maxNumberOfFrames <= 2) {
+                self::assertCount($maxNumberOfFrames, $actualCapturedStackTrace);
+            }
+        }
+
+        if ($maxNumberOfFrames === 0) {
+            return;
+        }
+
+        $topFrame = $actualCapturedStackTrace[0];
+        self::assertSame(__FILE__, $topFrame->file);
+        self::assertSame($expectedLine, $topFrame->line);
+        self::assertSame(__FUNCTION__, $topFrame->function);
+        self::assertSame(__CLASS__, $topFrame->class);
+        self::assertFalse($topFrame->isStaticMethod);
+
+        if ($includeThisObj) {
+            self::assertNotNull($topFrame->thisObj);
+            self::assertSame($this, $topFrame->thisObj);
+        } else {
+            self::assertNull($topFrame->thisObj);
+        }
+
+        if ($includeArgs) {
+            self::assertNotNull($topFrame->args);
+            self::assertEqualAsSets($expectedArgs, $topFrame->args);
+        } else {
+            self::assertNull($topFrame->args);
+        }
+    }
+
+    private const MAX_FUNC_DEPTH_KEY = 'max_func_depth';
+    private const INCLUDE_ARGS_KEY = 'include_args';
+    private const INCLUDE_THIS_OBJ_KEY = 'include_this_obj';
+    private const MAX_NUMBER_OF_FRAMES_KEY = 'max_number_of_frames';
+    private const EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY = 'expected_captured_classic_stack_trace_top';
+    private const EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY = 'expected_converted_classic_stack_trace_top';
+    private const ACTUAL_CAPTURED_PHP_STACK_TRACE_KEY = 'actual_captured_php_stack_trace';
+    private const ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY = 'actual_captured_classic_stack_trace';
+
+    /**
      * @return array<string, mixed>
      */
-    private static function funcImpl(
-        ?self $thisObj,
-        int $funcDepth,
-        array $testArgs,
-        string $funcNameCalledFrom,
-        bool $isFuncCalledFromStatic,
-        int $lineNumberWithCallToFuncImpl
-    ): array {
-        $maxDepth = self::getMaxDepth($testArgs);
-        $debugBacktraceOptions = self::getDebugBacktraceOptions($testArgs);
+    private static function funcImpl(?self $thisObj, int $funcDepth, MixedMap $testArgs, string $funcNameCalledFrom, bool $isFuncCalledFromStatic, int $lineNumberWithCallToFuncImpl): array
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $maxDepth = $testArgs->getInt(self::MAX_FUNC_DEPTH_KEY);
+        $includeArgs = $testArgs->getBool(self::INCLUDE_ARGS_KEY);
+        $includeThisObj = $testArgs->getBool(self::INCLUDE_THIS_OBJ_KEY);
+        $maxNumberOfFrames = $testArgs->getNullableInt(self::MAX_NUMBER_OF_FRAMES_KEY);
+
         if ($funcDepth < $maxDepth) {
             self::assertNotNull($thisObj);
             switch ($funcDepth) {
@@ -660,16 +481,13 @@ class StackTraceUtilTest extends TestCaseBase
                     $expectedConvertedLine = $expectedCapturedLine;
                     break;
                 default:
-                    self::fail(LoggableToString::convert(['funcDepth' => $funcDepth, 'maxDepth' => $maxDepth]));
+                    self::fail('Unexpected $funcDepth value');
             }
         } else {
             $result = [];
-            $stackTraceSizeLimit = self::getStackTraceSizeLimit($testArgs);
-            $result[self::ACTUAL_CAPTURED_PHP_STACK_TRACE_KEY]
-                = self::captureInPhpFormat($debugBacktraceOptions, $stackTraceSizeLimit);
+            $result[self::ACTUAL_CAPTURED_PHP_STACK_TRACE_KEY] = self::captureInPhpFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
             $expectedConvertedLine = __LINE__ - 1;
-            $result[self::ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY]
-                = self::captureInClassicFormat($debugBacktraceOptions, $stackTraceSizeLimit);
+            $result[self::ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY] = self::captureInClassicFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
             $expectedCapturedLine = __LINE__ - 1;
             $result[self::EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY] = [];
             $result[self::EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY] = [];
@@ -681,7 +499,7 @@ class StackTraceUtilTest extends TestCaseBase
         $currentFrame->function = __FUNCTION__;
         $currentFrame->class = __CLASS__;
         $currentFrame->isStaticMethod = true;
-        if (self::expectedToCaptureArgs($debugBacktraceOptions)) {
+        if ($includeArgs) {
             $currentFrame->args = func_get_args();
         }
 
@@ -709,40 +527,28 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @param array<string, mixed> $testArgs
-     *
      * @return array<string, mixed>
      */
-    private function funcA(array $testArgs): array
+    private function funcA(MixedMap $testArgs): array
     {
         return self::funcImpl($this, /* funcDepth */ 1, $testArgs, __FUNCTION__, /* isStatic */ false, __LINE__);
     }
 
     /**
-     * @param string               $calledFromFunc
-     * @param int                  $funcDepth
-     * @param array<string, mixed> $testArgs
-     *
      * @return array<string, mixed>
-     *
      * @noinspection PhpSameParameterValueInspection
      */
-    private function funcB(string $calledFromFunc, int $funcDepth, array $testArgs): array
+    private function funcB(string $calledFromFunc, int $funcDepth, MixedMap $testArgs): array
     {
         self::assertSame('funcA', $calledFromFunc);
         return self::funcImpl($this, $funcDepth, $testArgs, __FUNCTION__, /* isStatic */ false, __LINE__);
     }
 
     /**
-     * @param string               $calledFromFunc
-     * @param int                  $funcDepth
-     * @param array<string, mixed> $testArgs
-     *
      * @return array<string, mixed>
-     *
      * @noinspection PhpSameParameterValueInspection
      */
-    private static function funcC(string $calledFromFunc, int $funcDepth, array $testArgs): array
+    private static function funcC(string $calledFromFunc, int $funcDepth, MixedMap $testArgs): array
     {
         self::assertSame('funcB', $calledFromFunc);
         return self::funcImpl(/* thisObj */ null, $funcDepth, $testArgs, __FUNCTION__, /* isStatic */ true, __LINE__);
@@ -754,126 +560,102 @@ class StackTraceUtilTest extends TestCaseBase
      *
      * @return void
      */
-    public static function assertPhpFormatMatchesClassic(
-        array $phpFormatStackTrace,
-        array $classicFormatStackTrace
-    ): void {
-        self::assertSame(
-            count($phpFormatStackTrace),
-            count($classicFormatStackTrace),
-            LoggableToString::convert(
-                [
-                    'phpFormatStackTrace' => $phpFormatStackTrace,
-                    'classicFormatStackTrace' => $classicFormatStackTrace
-                ]
-            )
-        );
+    public static function assertPhpFormatMatchesClassic(array $phpFormatStackTrace, array $classicFormatStackTrace): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
+        self::assertSameCount($phpFormatStackTrace, $classicFormatStackTrace);
+
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($classicFormatStackTrace)) as $frameIndex) {
+            $dbgCtx->clearCurrentSubScope(['frameIndex' => $frameIndex]);
             $classicCurrentFrame = $classicFormatStackTrace[$frameIndex];
+            $dbgCtx->add(['classicCurrentFrame' => $classicCurrentFrame]);
             $phpFrameWithLocationData = $phpFormatStackTrace[$frameIndex];
-            $phpFrameWithNonLocationData
-                = $frameIndex + 1 < count($phpFormatStackTrace) ? $phpFormatStackTrace[$frameIndex + 1] : null;
+            $dbgCtx->add(['phpFrameWithLocationData' => $phpFrameWithLocationData]);
+            $phpFrameWithNonLocationData = $frameIndex + 1 < count($phpFormatStackTrace) ? $phpFormatStackTrace[$frameIndex + 1] : null;
+            $dbgCtx->pushSubScope();
             foreach (get_object_vars($classicCurrentFrame) as $propName => $classicVal) {
                 if ($classicVal === null) {
                     continue;
                 }
-                $ctx = LoggableToString::convert(
-                    [
-                        'propName'                    => $propName,
-                        'classicVal'                  => $classicVal,
-                        'phpFrameWithLocationData'    => $phpFrameWithLocationData,
-                        'phpFrameWithNonLocationData' => $phpFrameWithNonLocationData,
-                        'frameIndex'                  => $frameIndex,
-                        'phpFormatStackTrace'         => $phpFormatStackTrace,
-                        'classicFormatStackTrace'     => $classicFormatStackTrace,
-                    ]
-                );
+                $dbgCtx->clearCurrentSubScope(['propName' => $propName, 'classicVal' => $classicVal]);
                 if (StackTraceFrameBase::isLocationProperty($propName)) {
-                    self::assertSame($classicVal, $phpFrameWithLocationData->{$propName}, $ctx);
+                    self::assertSame($classicVal, $phpFrameWithLocationData->{$propName});
                 } else {
                     if ($phpFrameWithNonLocationData !== null) {
-                        self::assertSame($classicVal, $phpFrameWithNonLocationData->{$propName}, $ctx);
+                        self::assertSame($classicVal, $phpFrameWithNonLocationData->{$propName});
                     }
                 }
             }
+            $dbgCtx->popSubScope();
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
      * @template TStackFrameFormat of StackTraceFrameBase
      *
-     * @param TStackFrameFormat[] $expected
-     * @param TStackFrameFormat[] $actual
+     * @param StackTraceFrameBase[] $expected
+     * @param StackTraceFrameBase[] $actual
      *
      * @return void
+     *
+     * @phpstan-param TStackFrameFormat[] $expected
+     * @phpstan-param TStackFrameFormat[] $actual
+     *
+     * @noinspection PhpUndefinedClassInspection
      */
     private static function assertStackTraceMatchesExpected(array $expected, array $actual): void
     {
-        self::assertSame(
-            count($expected),
-            count($actual),
-            LoggableToString::convert(['expected' => $expected, 'actual' => $actual])
-        );
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSameCount($expected, $actual);
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($expected)) as $frameIndex) {
+            $dbgCtx->clearCurrentSubScope(['frameIndex' => $frameIndex]);
             $expectedStackFrame = $expected[$frameIndex];
             $actualStackFrame = $actual[$frameIndex];
+            $dbgCtx->add(['expectedStackFrame' => $expectedStackFrame, 'actualStackFrame' => $actualStackFrame]);
+            $dbgCtx->pushSubScope();
             foreach (get_object_vars($expectedStackFrame) as $expectedKey => $expectedVal) {
                 if ($expectedVal === null) {
                     continue;
                 }
-                self::assertSame(
-                    $expectedVal,
-                    $actualStackFrame->{$expectedKey},
-                    LoggableToString::convert(
-                        [
-                            'expectedKey'        => $expectedKey,
-                            'expectedVal'        => $expectedVal,
-                            'actualStackFrame'   => $actualStackFrame,
-                            'expectedStackFrame' => $expectedStackFrame,
-                            'frameIndex'         => $frameIndex,
-                            'expected'           => $expected,
-                            'actual'             => $actual,
-                        ]
-                    )
-                );
+                $dbgCtx->clearCurrentSubScope(['expectedKey' => $expectedKey, 'expectedVal' => $expectedVal]);
+                self::assertSame($expectedVal, $actualStackFrame->{$expectedKey});
             }
+            $dbgCtx->popSubScope();
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
-     * @template TStackFrameFormat of StackTraceFrameBase
+     * @template     TStackFrameFormat of StackTraceFrameBase
      *
-     * @param string               $dbgStackTraceDesc
-     * @param TStackFrameFormat[]  $stackTrace
-     * @param bool                 $isActual
-     * @param array<string, mixed> $testArgs
+     * @param string              $dbgStackTraceDesc
+     * @param TStackFrameFormat[] $stackTrace
+     * @param bool                $isActual
+     * @param MixedMap            $testArgs
+     *
+     * @noinspection PhpUndefinedClassInspection
+     * @noinspection PhpUnusedParameterInspection
      */
-    private static function assertValidStackTrace(
-        string $dbgStackTraceDesc,
-        array $stackTrace,
-        bool $isActual,
-        array $testArgs
-    ): void {
-        $debugBacktraceOptions = self::getDebugBacktraceOptions($testArgs);
+    private static function assertValidStackTrace(string $dbgStackTraceDesc, array $stackTrace, bool $isActual, MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $includeArgs  = $testArgs->getBool(self::INCLUDE_ARGS_KEY);
+        $includeThisObj = $testArgs->getBool(self::INCLUDE_THIS_OBJ_KEY);
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($stackTrace)) as $i) {
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
             $frame = $stackTrace[$i];
-            $ctx = LoggableToString::convert(
-                [
-                    'i'                 => $i,
-                    'frame'             => $frame,
-                    'dbgStackTraceDesc' => $dbgStackTraceDesc,
-                    'stackTrace'        => $stackTrace,
-                    'testArgs'          => $testArgs,
-                ]
-            );
-            $maybeLocationDataOnlyFrame = ($stackTrace[0] instanceof PhpFormatStackTraceFrame)
-                ? $i === 0
-                : $i === (count($stackTrace) - 1);
+            $dbgCtx->add(['frame' => $frame]);
+            $maybeLocationDataOnlyFrame = ($stackTrace[0] instanceof PhpFormatStackTraceFrame) ? ($i === 0) : ($i === (count($stackTrace) - 1));
             if ($isActual && !$maybeLocationDataOnlyFrame) {
-                self::assertArgsPresentAsExpected($debugBacktraceOptions, $frame, $ctx);
+                self::assertOptionalPartsAsExpected($includeArgs, $includeThisObj, $frame);
             }
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -883,15 +665,16 @@ class StackTraceUtilTest extends TestCaseBase
      * @param string              $dbgStackTraceDesc
      * @param TStackFrameFormat[] $stackTrace
      * @param int                 $maxDepth
+     *
+     * @noinspection PhpUndefinedClassInspection
+     * @noinspection PhpUnusedParameterInspection
      */
-    private static function assertStackTraceTopAsExpected(
-        string $testFuncName,
-        string $dbgStackTraceDesc,
-        array $stackTrace,
-        int $maxDepth
-    ): void {
-        self::assertGreaterThanZero(count($stackTrace));
+    private static function assertStackTraceTopAsExpected(string $testFuncName, string $dbgStackTraceDesc, array $stackTrace, int $maxDepth): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThan(0, count($stackTrace));
         $isPhpFormat = $stackTrace[0] instanceof PhpFormatStackTraceFrame;
+        $dbgCtx->add(['isPhpFormat' => $isPhpFormat]);
 
         /** @var ?int $funcAIndex */
         $funcAIndex = null;
@@ -926,7 +709,10 @@ class StackTraceUtilTest extends TestCaseBase
             [$funcCIndex, 'funcC', /* isStatic */ true, 'funcB', 3],
             [$testFuncIndex, $testFuncName, /* isStatic */ false, null, null],
         ];
+        $dbgCtx->pushSubScope();
         foreach ($expectedFuncNames as [$index, $funcName, $isStatic, $expectedCalledFromFunc, $expectedFuncDepth]) {
+            $dbgCtx->clearCurrentSubScope(['index' => $index, 'funcName' => $funcName, 'isStatic' => $isStatic, 'expectedCalledFromFunc' => $expectedCalledFromFunc]);
+            $dbgCtx->add(['expectedFuncDepth' => $expectedFuncDepth]);
             if ($index === null) {
                 continue;
             }
@@ -938,83 +724,76 @@ class StackTraceUtilTest extends TestCaseBase
             }
             /** @var StackTraceFrameBase $stackTraceFrame */
             $stackTraceFrame = $stackTrace[$index];
-            $ctx = LoggableToString::convert(
-                [
-                    'stackTraceFrame'   => $stackTraceFrame,
-                    'dbgStackTraceDesc' => $dbgStackTraceDesc,
-                    'stackTrace'        => $stackTrace,
-                    'index'             => $index,
-                    'maxDepth'          => $maxDepth,
-                ]
-            );
-            self::assertSame($funcName, $stackTraceFrame->function, $ctx);
-            self::assertSame($isStatic, $stackTraceFrame->isStaticMethod, $ctx);
+            $dbgCtx->add(['stackTraceFrame' => $stackTraceFrame]);
+            self::assertSame($funcName, $stackTraceFrame->function);
+            self::assertSame($isStatic, $stackTraceFrame->isStaticMethod);
             if (($args = $stackTraceFrame->args) !== null) {
                 if ($expectedCalledFromFunc !== null) {
                     $calledFromFuncArgNum = 0;
-                    self::assertSameValueInArray($calledFromFuncArgNum, $expectedCalledFromFunc, $args, $ctx);
+                    self::assertSameValueInArray($calledFromFuncArgNum, $expectedCalledFromFunc, $args);
                 }
                 if ($expectedFuncDepth !== null) {
                     $funcDepthArgNum = 1;
-                    self::assertSameValueInArray($funcDepthArgNum, $expectedFuncDepth, $args, $ctx);
+                    self::assertSameValueInArray($funcDepthArgNum, $expectedFuncDepth, $args);
                 }
             }
         }
+        $dbgCtx->popSubScope();
 
+        $dbgCtx->pushSubScope();
         foreach ([0, 2, 4] as $expectedFuncImplIndex) {
             $funcImplClosestToBottom = $funcAIndex - 1;
+            $dbgCtx->clearCurrentSubScope(['expectedFuncImplIndex' => $expectedFuncImplIndex, 'funcImplClosestToBottom' => $funcImplClosestToBottom]);
             if ($isPhpFormat) {
                 ++$expectedFuncImplIndex;
                 ++$funcImplClosestToBottom;
             }
             if ($expectedFuncImplIndex < count($stackTrace) && $expectedFuncImplIndex <= $funcImplClosestToBottom) {
-                self::assertSame(
-                    'funcImpl',
-                    $stackTrace[$expectedFuncImplIndex]->function,
-                    LoggableToString::convert(
-                        [
-                            'expectedFuncImplIndex'   => $expectedFuncImplIndex,
-                            'funcImplClosestToBottom' => $funcImplClosestToBottom,
-                            'isPhpFormat'             => $isPhpFormat,
-                            'dbgStackTraceDesc'       => $dbgStackTraceDesc,
-                            'stackTrace'              => $stackTrace,
-                            'maxDepth'                => $maxDepth,
-                        ]
-                    )
-                );
+                self::assertSame('funcImpl', $stackTrace[$expectedFuncImplIndex]->function);
             }
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<string, array{MixedMap}>
      */
     public function dataProviderForTestConvertPhpFormatToClassic(): iterable
     {
-        $debugBacktraceOptionsVariants = [null, DEBUG_BACKTRACE_IGNORE_ARGS];
-
-        foreach (RangeUtil::generateFromToIncluding(1, 3) as $maxDepth) {
-            foreach ($debugBacktraceOptionsVariants as $debugBacktraceOptions) {
-                foreach ([null, 1, $maxDepth * 2, self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT, 0] as $stackTraceSizeLimit) {
-                    yield [
-                        [
-                            self::MAX_FUNC_DEPTH_KEY          => $maxDepth,
-                            self::DEBUG_BACKTRACE_OPTIONS_KEY => $debugBacktraceOptions,
-                            self::STACK_TRACE_SIZE_LIMIT_KEY  => $stackTraceSizeLimit,
-                        ],
-                    ];
+        /**
+         * @return iterable<array<string, mixed>>
+         */
+        $generator = function (): iterable {
+            foreach (RangeUtil::generateFromToIncluding(1, 3) as $maxDepth) {
+                foreach ([null, 1, $maxDepth * 2, self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT] as $maxNumberOfFrames) {
+                    foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeArgs) {
+                        foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeThisObj) {
+                            yield [
+                                self::MAX_FUNC_DEPTH_KEY       => $maxDepth,
+                                self::MAX_NUMBER_OF_FRAMES_KEY => $maxNumberOfFrames,
+                                self::INCLUDE_ARGS_KEY         => $includeArgs,
+                                self::INCLUDE_THIS_OBJ_KEY     => $includeThisObj,
+                            ];
+                        }
+                    }
                 }
             }
-        }
+        };
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($generator);
     }
 
     /**
      * @dataProvider dataProviderForTestConvertPhpFormatToClassic
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testPhpVsClassicFormats(array $testArgs): void
+    public function testPhpVsClassicFormats(MixedMap $testArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $maxDepth = $testArgs->getInt(self::MAX_FUNC_DEPTH_KEY);
+        $maxNumberOfFrames = $testArgs->getNullableInt(self::MAX_NUMBER_OF_FRAMES_KEY);
+        $includeArgs = $testArgs->getBool(self::INCLUDE_ARGS_KEY);
+        $includeThisObj = $testArgs->getBool(self::INCLUDE_THIS_OBJ_KEY);
+
         $result = $this->funcA($testArgs);
         $funcACallLineNumber = __LINE__ - 1;
 
@@ -1023,23 +802,21 @@ class StackTraceUtilTest extends TestCaseBase
         /** @var ClassicFormatStackTraceFrame[] $actualCapturedClassic */
         $actualCapturedClassic = $result[self::ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY];
 
-        $debugBacktraceOptions = self::getDebugBacktraceOptions($testArgs);
-        $stackTraceSizeLimit = self::getStackTraceSizeLimit($testArgs);
-        $isLimitEffective = $stackTraceSizeLimit !== null
-                            && $stackTraceSizeLimit !== 0
-                            && $stackTraceSizeLimit !== self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT;
+        $isLimitEffective = $maxNumberOfFrames !== null && $maxNumberOfFrames !== self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT;
 
-        $phpStackTraceToHere = self::captureInPhpFormat($debugBacktraceOptions, $stackTraceSizeLimit);
+        $phpStackTraceToHere = self::captureInPhpFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
+        self::assertArrayHasKey(0, $phpStackTraceToHere);
         $phpStackTraceToHere[0]->line = $funcACallLineNumber;
-        $classicStackTraceToHere = self::captureInClassicFormat($debugBacktraceOptions, $stackTraceSizeLimit);
+        $classicStackTraceToHere = self::captureInClassicFormat($maxNumberOfFrames, $includeArgs, $includeThisObj);
         $classicStackTraceToHere[0]->line = $funcACallLineNumber;
+        $dbgCtx->add(['classicStackTraceToHere' => $classicStackTraceToHere]);
 
         /** @var PhpFormatStackTraceFrame[] $expectedConvertedClassicTop */
         $expectedConvertedClassicTop = $result[self::EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY];
         /** @var ClassicFormatStackTraceFrame[] $expectedConvertedClassic */
         $expectedConvertedClassic = array_merge($expectedConvertedClassicTop, $classicStackTraceToHere);
         if ($isLimitEffective) {
-            $expectedConvertedClassic = array_slice($expectedConvertedClassic, 0, $stackTraceSizeLimit);
+            $expectedConvertedClassic = array_slice($expectedConvertedClassic, 0, $maxNumberOfFrames);
         }
 
         /** @var ClassicFormatStackTraceFrame[] $expectedCapturedClassicTop */
@@ -1047,69 +824,43 @@ class StackTraceUtilTest extends TestCaseBase
         /** @var ClassicFormatStackTraceFrame[] $expectedCapturedClassic */
         $expectedCapturedClassic = array_merge($expectedCapturedClassicTop, $classicStackTraceToHere);
         if ($isLimitEffective) {
-            $expectedCapturedClassic = array_slice($expectedCapturedClassic, 0, $stackTraceSizeLimit);
+            $expectedCapturedClassic = array_slice($expectedCapturedClassic, 0, $maxNumberOfFrames);
         }
 
-        $maxDepth = self::getMaxDepth($testArgs);
-
         $allStackTraces = [
-            'actualCapturedPhp'        => [
-                $actualCapturedPhp,
-                true /* <- isActual */,
-            ],
-            'actualCapturedClassic'    => [
-                $actualCapturedClassic,
-                true /* <- isActual */,
-            ],
-            'expectedCapturedClassic'  => [
-                $expectedCapturedClassic,
-                false /* <- isActual */,
-            ],
-            'expectedConvertedClassic' => [
-                $expectedConvertedClassic,
-                false /* <- isActual */,
-            ],
+            'actualCapturedPhp'        => [$actualCapturedPhp, /* isActual */ true],
+            'actualCapturedClassic'    => [$actualCapturedClassic, /* isActual */ true],
+            'expectedCapturedClassic'  => [$expectedCapturedClassic, /* isActual */ false],
+            'expectedConvertedClassic' => [$expectedConvertedClassic, /* isActual */ false],
         ];
+        $dbgCtx->add(['allStackTraces' => $allStackTraces]);
+        $dbgCtx->pushSubScope();
         foreach ($allStackTraces as $dbgStackTraceDesc => [$stackTrace, $isActual]) {
+            $dbgCtx->clearCurrentSubScope(['dbgStackTraceDesc' => $dbgStackTraceDesc, 'stackTrace' => $stackTrace, 'isActual' => $isActual]);
             $isPhpFormat = $stackTrace[0] instanceof PhpFormatStackTraceFrame;
             $expectedStackTraceCount = $isLimitEffective
-                ? $stackTraceSizeLimit
+                ? $maxNumberOfFrames
                 : (count($isPhpFormat ? $phpStackTraceToHere : $classicStackTraceToHere) + $maxDepth * 2);
-            $ctx = LoggableToString::convert(
-                [
-                    'expectedStackTraceCount' => $expectedStackTraceCount,
-                    'classicStackTraceToHere' => $classicStackTraceToHere,
-                    'dbgStackTraceDesc'       => $dbgStackTraceDesc,
-                    'stackTrace'              => $stackTrace,
-                    'maxDepth'                => $maxDepth,
-                    'testArgs'                => $testArgs,
-                ]
-            );
-            self::assertCount($expectedStackTraceCount, $stackTrace, $ctx);
+            $dbgCtx->add(['expectedStackTraceCount' => $expectedStackTraceCount]);
+            self::assertCount($expectedStackTraceCount, $stackTrace);
             self::assertValidStackTrace($dbgStackTraceDesc, $stackTrace, $isActual, $testArgs);
             self::assertStackTraceTopAsExpected(__FUNCTION__, $dbgStackTraceDesc, $stackTrace, $maxDepth);
         }
+        $dbgCtx->popSubScope();
 
         self::assertStackTraceMatchesExpected($expectedCapturedClassic, $actualCapturedClassic);
         $expectedConvertedClassicAdapted = $expectedConvertedClassic;
         if ($isLimitEffective) {
-            $bottomFrame
-                = $expectedConvertedClassicAdapted[count($expectedConvertedClassicAdapted) - 1];
+            $bottomFrame = $expectedConvertedClassicAdapted[count($expectedConvertedClassicAdapted) - 1];
             $bottomFrame->resetNonLocationProperties();
         }
-        self::assertStackTraceMatchesExpected(
-            $expectedConvertedClassicAdapted,
-            StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($actualCapturedPhp)
-        );
+        self::assertStackTraceMatchesExpected($expectedConvertedClassicAdapted, StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($actualCapturedPhp));
 
         $actualCapturedPhpAdapted = $actualCapturedPhp;
         $actualCapturedPhpAdapted[0] = clone $actualCapturedPhpAdapted[0];
         $actualCapturedPhpAdapted[0]->line = $expectedCapturedClassic[0]->line;
         self::assertPhpFormatMatchesClassic($actualCapturedPhpAdapted, $expectedCapturedClassic);
         self::assertPhpFormatMatchesClassic($actualCapturedPhpAdapted, $actualCapturedClassic);
-        self::assertStackTraceMatchesExpected(
-            $actualCapturedPhpAdapted,
-            StackTraceUtil::convertClassicToPhpFormat($actualCapturedClassic)
-        );
+        self::assertStackTraceMatchesExpected($actualCapturedPhpAdapted, StackTraceUtil::convertClassicToPhpFormat($actualCapturedClassic));
     }
 }

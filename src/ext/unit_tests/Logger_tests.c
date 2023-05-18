@@ -60,7 +60,10 @@ StringView getLogLinePart( size_t partIndex, StringView logLine )
 
         if ( ! isInsideDelimitedPart && ! hasNonWhiteSpace( makeStringView( logLineRemainder.begin, nextDelimiterPos ) ) )
         {
-            if( nextDelimiterPos >= logLineRemainder.length - 1 ) return makeEmptyStringView();
+            if( nextDelimiterPos >= logLineRemainder.length - 1 )
+            {
+                return ELASTIC_APM_EMPTY_STRING_VIEW;
+            }
             isInsideDelimitedPart = ! isInsideDelimitedPart;
             logLineRemainder = stringViewSkipFirstNChars( logLineRemainder, nextDelimiterPos + 1 );
             continue;
@@ -69,7 +72,10 @@ StringView getLogLinePart( size_t partIndex, StringView logLine )
         if ( currentPartIndex == partIndex )
             return trimStringView( makeStringView( logLineRemainder.begin, nextDelimiterPos ) );
 
-        if( nextDelimiterPos >= logLineRemainder.length - 1 ) return makeEmptyStringView();
+        if( nextDelimiterPos >= logLineRemainder.length - 1 )
+        {
+            return ELASTIC_APM_EMPTY_STRING_VIEW;
+        }
 
         isInsideDelimitedPart = ! isInsideDelimitedPart;
         ++currentPartIndex;

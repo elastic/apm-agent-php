@@ -24,9 +24,24 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\AssertMessageStack;
 
 class TimeRelatedApiUsingRealClockTest extends TracerUnitTestCaseBase
 {
+    /** @inheritDoc */
+    public function setUp(): void
+    {
+        parent::setUp();
+        AssertMessageStack::setEnabled(false);
+    }
+
+    /** @inheritDoc */
+    public function tearDown(): void
+    {
+        AssertMessageStack::setEnabled(true);
+        parent::tearDown();
+    }
+
     public function testTransactionBeginEnd(): void
     {
         // Act

@@ -121,7 +121,16 @@ void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNan
     }
     else
     {
-        absTimeSpec->tv_nsec += delayInNanoseconds;
+        if ( absTimeSpec->tv_nsec + delayInNanoseconds < ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND )
+        {
+            absTimeSpec->tv_nsec += delayInNanoseconds;
+        }
+        else
+        {
+            long nanosecondsSum = absTimeSpec->tv_nsec + delayInNanoseconds;
+            absTimeSpec->tv_sec += nanosecondsSum / ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND;
+            absTimeSpec->tv_nsec = nanosecondsSum % ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND;
+        }
     }
 }
 

@@ -31,23 +31,19 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  *
  * @internal
  *
- * @template   T
+ * @template TParsedValue
  */
 abstract class OptionMetadata implements LoggableInterface
 {
     use LoggableTrait;
 
     /**
-     * @return OptionParser
-     *
-     * @phpstan-return OptionParser<T>
+     * @return OptionParser<TParsedValue>
      */
     abstract public function parser(): OptionParser;
 
     /**
-     * @return mixed
-     *
-     * @phpstan-return T|null
+     * @return TParsedValue|null
      */
     abstract public function defaultValue();
 }

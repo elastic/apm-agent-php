@@ -45,6 +45,7 @@
 
 #include "util.h"
 #include "log.h"
+#include "TextOutputStream.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
@@ -69,7 +70,7 @@ pid_t getCurrentThreadId()
 
     #else
 
-    return syscall( SYS_gettid );
+    return (pid_t) syscall( SYS_gettid );
 
     #endif
 }
@@ -78,7 +79,7 @@ pid_t getParentProcessId()
 {
     #ifdef PHP_WIN32
 
-    return -1;
+    return (pid_t)( -1 );
 
     #else
 
@@ -192,7 +193,7 @@ String streamStackTraceLinux(
 
 #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
 
-    char** addressesAsSymbols = backtrace_symbols( addresses, addressesCount );
+    char** addressesAsSymbols = backtrace_symbols( addresses, (int)addressesCount );
     if ( addressesAsSymbols == NULL )
     {
         streamPrintf( txtOutStream, "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
@@ -302,16 +303,20 @@ String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE
 static
 String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutputStream* txtOutStream )
 {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "ConstantConditionsOC"
+#pragma ide diagnostic ignored "UnreachableCode"
     if ( maxPartsCount == 0 )
     {
         return "";
     }
+#pragma clang diagnostic pop
 
 #ifdef PHP_WIN32
     return "Not implemented on Windows";
 #else
-    FILE* procSelfCmdLineFile = procSelfCmdLineFile = fopen( "/proc/self/cmdline", "rb" );
-    if ( procSelfCmdLineFile == NULL )
+    FILE* procSelfCmdLineFile = NULL;
+    if ( openFile( "/proc/self/cmdline", "rb", /* out */ &procSelfCmdLineFile ) )
     {
         return "Failed to open /proc/self/cmdline";
     }
@@ -530,7 +535,7 @@ void handleOsSignalLinux( int signalId )
     {
         signal( signalId, SIG_DFL );
     }
-    raise ( signalId );
+    raise( signalId );
 }
 #endif // #ifndef PHP_WIN32
 
@@ -575,3 +580,30 @@ void registerAtExitLogging()
     }
 #endif
 }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+int openFile( String fileName, String mode, /* out */ FILE** pFile )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( fileName );
+    ELASTIC_APM_ASSERT_VALID_PTR( mode );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pFile );
+
+#ifdef PHP_WIN32
+
+    return (int)fopen_s( /* out */ pFile, fileName, mode );
+
+#else // #ifdef PHP_WIN32
+
+    FILE* file = fopen( fileName, mode );
+    if ( file == NULL )
+    {
+        return (int)errno;
+    }
+
+    *pFile = file;
+    return 0;
+
+#endif // #ifdef PHP_WIN32
+}
+#pragma clang diagnostic pop

@@ -22,16 +22,15 @@
 #include "Tracer.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
 #define ELASTIC_APM_PHP_PART_FUNC_PREFIX "\\Elastic\\Apm\\Impl\\AutoInstrument\\PhpPartFacade::"
 #define ELASTIC_APM_PHP_PART_BOOTSTRAP_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "bootstrap"
 #define ELASTIC_APM_PHP_PART_SHUTDOWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "shutdown"
-#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPreHook"
-#define ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "interceptedCallPostHook"
-#define ELASTIC_APM_PHP_PART_ON_PHP_ERROR_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "onPhpError"
-#define ELASTIC_APM_PHP_PART_SET_LAST_THROWN_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "setLastThrown"
+#define ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "internalFuncCallPreHook"
+#define ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "internalFuncCallPostHook"
 #define ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "emptyMethod"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
@@ -120,7 +119,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     goto finally;
 }
 
-bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
+bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
@@ -155,7 +154,7 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_PRE_HOOK_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_PRE_HOOK_FUNC )
                     , interceptedCallArgsCount + 2
                     , phpPartArgs
                     , /* out */ &preHookRetVal ) );
@@ -181,7 +180,7 @@ bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend
     goto finally;
 }
 
-void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
+void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown )
 {
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "dbgInterceptRegistrationId: %u; interceptedCallRetValOrThrown type: %u"
                                               , dbgInterceptRegistrationId, Z_TYPE_P( interceptedCallRetValOrThrown ) );
@@ -197,7 +196,7 @@ void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, 
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
-                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERCEPTED_CALL_POST_HOOK_FUNC )
+                    ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_POST_HOOK_FUNC )
                     , ELASTIC_APM_STATIC_ARRAY_SIZE( phpPartArgs )
                     , phpPartArgs ) );
     ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );

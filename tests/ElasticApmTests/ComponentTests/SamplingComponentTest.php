@@ -30,6 +30,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\TestsSharedCode\SamplingTestSharedCode;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
 
 /**
@@ -50,13 +51,9 @@ final class SamplingComponentTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForTwoNestedSpansTest(array $args): void
+    public static function appCodeForTwoNestedSpansTest(MixedMap $appCodeArgs): void
     {
-        $transactionSampleRate = self::getMandatoryAppCodeArg($args, self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY);
-        /** @var ?float $transactionSampleRate */
+        $transactionSampleRate = $appCodeArgs->getNullableFloat(self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY);
         SamplingTestSharedCode::appCodeForTwoNestedSpansTest($transactionSampleRate ?? 1.0);
     }
 
@@ -87,9 +84,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTwoNestedSpansTest']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($transactionSampleRateOptVal): void {
-                $appCodeRequestParams->setAppCodeArgs(
-                    [self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY => $transactionSampleRateOptVal]
-                );
+                $appCodeRequestParams->setAppCodeArgs([self::TRANSACTION_SAMPLE_RATE_OPTION_VALUE_KEY => $transactionSampleRateOptVal]);
             }
         );
         $transactionSampleRate = $transactionSampleRateOptVal ?? 1.0;

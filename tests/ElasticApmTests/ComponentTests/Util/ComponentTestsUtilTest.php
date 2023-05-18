@@ -27,8 +27,10 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use PHPUnit\Framework\AssertionFailedError;
 
 /**
@@ -36,30 +38,28 @@ use PHPUnit\Framework\AssertionFailedError;
  */
 final class ComponentTestsUtilTest extends ComponentTestCaseBase
 {
+    private const INITIAL_LEVELS_KEY = 'INITIAL_LEVELS';
     private const FAIL_ON_RERUN_COUNT_KEY = 'FAIL_ON_RERUN_COUNT';
     private const SHOULD_FAIL_KEY = 'SHOULD_FAIL';
     private const TEST_SUCCEEDED_LABEL_KEY = 'TEST_SUCCEEDED_LABEL';
-    private const ESCALATED_RERUNS_MAX_COUNT_KEY
-        = AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME;
+    private const ESCALATED_RERUNS_MAX_COUNT_KEY = AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME;
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<array{MixedMap}>
      */
     public function dataProviderForTestRunAndEscalateLogLevelOnFailure(): iterable
     {
         $initialLogLevels = [LogLevel::INFO, LogLevel::TRACE, LogLevel::DEBUG];
 
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
             ->addKeyedDimensionOnlyFirstValueCombinable(self::LOG_LEVEL_FOR_PROD_CODE_KEY, $initialLogLevels)
             ->addKeyedDimensionOnlyFirstValueCombinable(self::LOG_LEVEL_FOR_TEST_CODE_KEY, $initialLogLevels)
             ->addKeyedDimensionOnlyFirstValueCombinable(self::FAIL_ON_RERUN_COUNT_KEY, [1, 2, 3])
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::SHOULD_FAIL_KEY)
             ->addKeyedDimensionOnlyFirstValueCombinable(self::ESCALATED_RERUNS_MAX_COUNT_KEY, [2, 0])
-            ->wrapResultIntoArray()
             ->build();
 
-        return self::adaptToSmoke($result);
+        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
     }
 
     private static function buildFailMessage(int $runCount): string
@@ -67,13 +67,10 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         return 'Dummy failed; run count: ' . $runCount;
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestRunAndEscalateLogLevelOnFailure(array $appCodeArgs): void
+    public static function appCodeForTestRunAndEscalateLogLevelOnFailure(MixedMap $appCodeArgs): void
     {
         $dbgCtx['appCodeArgs'] = $appCodeArgs;
-        $expectedLogLevelForProdCode = self::getIntFromMap(self::LOG_LEVEL_FOR_PROD_CODE_KEY, $appCodeArgs);
+        $expectedLogLevelForProdCode = $appCodeArgs->getInt(self::LOG_LEVEL_FOR_PROD_CODE_KEY);
         $tracer = self::getTracerFromAppCode();
         $dbgCtx['optionNameToParsedValueMap'] = $tracer->getConfig()->getOptionNameToParsedValueMap();
         $actualLogLevelForProdCode = $tracer->getConfig()->effectiveLogLevel();
@@ -81,7 +78,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         $dbgCtxAsStr = LoggableToString::convert($dbgCtx);
         self::assertSame($expectedLogLevelForProdCode, $actualLogLevelForProdCode, $dbgCtxAsStr);
 
-        $expectedLogLevelForTestCode = self::getIntFromMap(self::LOG_LEVEL_FOR_TEST_CODE_KEY, $appCodeArgs);
+        $expectedLogLevelForTestCode = $appCodeArgs->getInt(self::LOG_LEVEL_FOR_TEST_CODE_KEY);
         $dbgCtx['actual logLevelForTestCode'] = AmbientContextForTests::testConfig()->logLevel;
         $dbgCtxAsStr = LoggableToString::convert($dbgCtx);
         self::assertSame($expectedLogLevelForTestCode, AmbientContextForTests::testConfig()->logLevel, $dbgCtxAsStr);
@@ -112,41 +109,39 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
 
     /**
      * @dataProvider dataProviderForTestRunAndEscalateLogLevelOnFailure
-     *
-     * @param array<string, mixed> $testArgs
      */
-    public function testRunAndEscalateLogLevelOnFailure(array $testArgs): void
+    public function testRunAndEscalateLogLevelOnFailure(MixedMap $testArgs): void
     {
         $logLevelRelatedEnvVarsToRestore = self::unsetLogLevelRelatedEnvVars();
         $prodCodeSyslogLevelEnvVarName = ConfigUtilForTests::agentOptionNameToEnvVarName(OptionNames::LOG_LEVEL_SYSLOG);
-        $initialLogLevelForProdCode = self::getIntFromMap(self::LOG_LEVEL_FOR_PROD_CODE_KEY, $testArgs);
+        $initialLogLevelForProdCode = $testArgs->getInt(self::LOG_LEVEL_FOR_PROD_CODE_KEY);
         $initialLogLevelForProdCodeAsName = LogLevel::intToName($initialLogLevelForProdCode);
         EnvVarUtilForTests::set($prodCodeSyslogLevelEnvVarName, $initialLogLevelForProdCodeAsName);
 
         $logLevelForTestCodeToRestore = AmbientContextForTests::testConfig()->logLevel;
-        $initialLogLevelForTestCode = self::getIntFromMap(self::LOG_LEVEL_FOR_TEST_CODE_KEY, $testArgs);
+        $initialLogLevelForTestCode = $testArgs->getInt(self::LOG_LEVEL_FOR_TEST_CODE_KEY);
         AmbientContextForTests::resetLogLevel($initialLogLevelForTestCode);
 
         $rerunsMaxCountoRestore = AmbientContextForTests::testConfig()->escalatedRerunsMaxCount;
-        $rerunsMaxCount = self::getIntFromMap(self::ESCALATED_RERUNS_MAX_COUNT_KEY, $testArgs);
+        $rerunsMaxCount = $testArgs->getInt(self::ESCALATED_RERUNS_MAX_COUNT_KEY);
         AmbientContextForTests::resetEscalatedRerunsMaxCount($rerunsMaxCount);
 
         $initialLevels = [];
         foreach (self::LOG_LEVEL_FOR_CODE_KEYS as $levelTypeKey) {
-            $initialLevels[$levelTypeKey] = self::getIntFromMap($levelTypeKey, $testArgs);
+            $initialLevels[$levelTypeKey] = $testArgs->getInt($levelTypeKey);
         }
-        $testArgs['initialLevels'] = $initialLevels;
+        $testArgs[self::INITIAL_LEVELS_KEY] = $initialLevels;
         $expectedEscalatedLevelsSeqCount = IterableUtilForTests::count(
             self::generateLevelsForRunAndEscalateLogLevelOnFailure($initialLevels, $rerunsMaxCount)
         );
         if ($rerunsMaxCount === 0) {
             self::assertSame(0, $expectedEscalatedLevelsSeqCount);
         }
-        $failOnRerunCountArg = self::getIntFromMap(self::FAIL_ON_RERUN_COUNT_KEY, $testArgs);
+        $failOnRerunCountArg = $testArgs->getInt(self::FAIL_ON_RERUN_COUNT_KEY);
         $expectedFailOnRunCount
             = $failOnRerunCountArg <= $expectedEscalatedLevelsSeqCount ? ($failOnRerunCountArg + 1) : 1;
         $expectedMessage = self::buildFailMessage($expectedFailOnRunCount);
-        $shouldFail = self::getBoolFromMap(self::SHOULD_FAIL_KEY, $testArgs);
+        $shouldFail = $testArgs->getBool(self::SHOULD_FAIL_KEY);
 
         $nextRunCount = 1;
         try {
@@ -176,23 +171,20 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $testArgs
-     */
-    private function implTestRunAndEscalateLogLevelOnFailure(array $testArgs): void
+    private function implTestRunAndEscalateLogLevelOnFailure(MixedMap $testArgs): void
     {
-        $currentRunCount = self::getIntFromMap('currentRunCount', $testArgs);
+        $currentRunCount = $testArgs->getInt('currentRunCount');
         self::assertGreaterThanOrEqual(1, $currentRunCount);
         $currentReRunCount = $currentRunCount === 1 ? 0 : ($currentRunCount - 1);
-        $shouldFail = self::getBoolFromMap(self::SHOULD_FAIL_KEY, $testArgs);
-        $failOnRerunCountArg = self::getIntFromMap(self::FAIL_ON_RERUN_COUNT_KEY, $testArgs);
+        $shouldFail = $testArgs->getBool(self::SHOULD_FAIL_KEY);
+        $failOnRerunCountArg = $testArgs->getInt(self::FAIL_ON_RERUN_COUNT_KEY);
         /** @var array<string, int> $initialLevels */
-        $initialLevels = self::getArrayFromMap('initialLevels', $testArgs);
+        $initialLevels = $testArgs->getArray(self::INITIAL_LEVELS_KEY);
         $shouldCurrentRunFail = $shouldFail && ($currentRunCount === 1 || $currentReRunCount === $failOnRerunCountArg);
         if ($currentRunCount === 1) {
             $expectedLevels = $initialLevels;
         } else {
-            $rerunsMaxCount = self::getIntFromMap(self::ESCALATED_RERUNS_MAX_COUNT_KEY, $testArgs);
+            $rerunsMaxCount = $testArgs->getInt(self::ESCALATED_RERUNS_MAX_COUNT_KEY);
             self::assertTrue(
                 IterableUtilForTests::getNthValue(
                     self::generateLevelsForRunAndEscalateLogLevelOnFailure($initialLevels, $rerunsMaxCount),
@@ -217,7 +209,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
 
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
         $tx = $dataFromAgent->singleTransaction();
-        self::assertTrue(self::getBoolFromMap(self::TEST_SUCCEEDED_LABEL_KEY, self::getLabels($tx)));
+        self::assertTrue(ArrayUtilForTests::getBoolFromMap(self::TEST_SUCCEEDED_LABEL_KEY, self::getLabels($tx)));
 
         if ($shouldCurrentRunFail) {
             self::fail(self::buildFailMessage($currentRunCount));

@@ -26,6 +26,9 @@ namespace ElasticApmTests\Util;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
+/**
+ * @template TDto
+ */
 class ExpectationsBase implements LoggableInterface
 {
     use LoggableTrait;
@@ -75,5 +78,31 @@ class ExpectationsBase implements LoggableInterface
             ++$count;
         }
         return $count;
+    }
+
+    /**
+     * @param Optional<?static> $expectationsOpt
+     * @param ?TDto             $actualDto
+     */
+    public static function assertNullableMatches(Optional $expectationsOpt, $actualDto): void
+    {
+        if (!$expectationsOpt->isValueSet()) {
+            if ($actualDto === null) {
+                return;
+            }
+
+            /** @phpstan-ignore-next-line  */
+            $actualDto->assertMatches(new static());
+            return;
+        }
+
+        if (($expectations = $expectationsOpt->getValue()) === null) {
+            TestCaseBase::assertNull($actualDto);
+            return;
+        }
+
+        TestCaseBase::assertNotNull($actualDto);
+        /** @phpstan-ignore-next-line  */
+        $actualDto->assertMatches($expectations);
     }
 }

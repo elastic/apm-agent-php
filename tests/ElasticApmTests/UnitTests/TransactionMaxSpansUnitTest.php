@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\Args;
 use ElasticApmTests\TestsSharedCode\TransactionMaxSpansTest\SharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\TracerBuilderForTests;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -47,8 +48,7 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
                     $builder->withConfig(OptionNames::TRANSACTION_SAMPLE_RATE, '0');
                 }
                 if ($testArgs->configTransactionMaxSpans !== null) {
-                    $builder
-                        ->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
+                    $builder->withConfig(OptionNames::TRANSACTION_MAX_SPANS, strval($testArgs->configTransactionMaxSpans));
                 }
                 $this->mockEventSink->shouldValidateAgainstSchema = false;
             }
@@ -67,19 +67,43 @@ class TransactionMaxSpansUnitTest extends TracerUnitTestCaseBase
         SharedCode::assertResults($testArgs, $this->mockEventSink->dataFromAgent);
     }
 
-    public function testVariousCombinations(): void
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
+
+    /**
+     * @return iterable<string, array{Args}>
+     */
+    public function dataProviderForTestVariousCombinations(): iterable
+    {
+        /**
+         * @return iterable<array{Args}>
+         */
+        $generator = function (): iterable {
+            foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
+                yield [$testArgs];
+            }
+        };
+
+        return DataProviderForTestBuilder::keyEachDataSetWithDbgDesc($generator);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestVariousCombinations
+     */
+    public function testVariousCombinations(Args $testArgs): void
     {
         TransactionExpectations::$defaultDroppedSpansCount = null;
         TransactionExpectations::$defaultIsSampled = null;
-        /** @var Args $testArgs */
-        foreach (SharedCode::testArgsVariants(self::TESTING_DEPTH) as $testArgs) {
-            if (!SharedCode::testEachArgsVariantProlog(self::TESTING_DEPTH, $testArgs)) {
-                continue;
-            }
-
-            GlobalTracerHolder::unsetValue();
-            $this->mockEventSink->clear();
-            $this->variousCombinationsTestImpl($testArgs);
-        }
+        GlobalTracerHolder::unsetValue();
+        $this->mockEventSink->clear();
+        $this->variousCombinationsTestImpl($testArgs);
     }
 }

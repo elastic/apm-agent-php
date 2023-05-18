@@ -19,13 +19,13 @@
 
 #pragma once
 
-#include <stdbool.h>
 #ifdef ELASTIC_APM_MOCK_PHP_DEPS
 #   include "mock_php.h"
 #else
 #   include <php.h>
 #endif
-#include "elastic_apm_assert.h"
+#include "ConfigSnapshot_forward_decl.h"
+#include "elastic_apm_assert_enabled.h"
 #include "StringView.h"
 #include "ResultCode.h"
 #include "util.h"
@@ -35,7 +35,7 @@
 #include "time_util.h"
 
 // Steps to add new configuration option (let's assume new option name is `my_new_option'):
-//      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigManager.h.
+//      1) Add `myNewOption' field to struct ConfigSnapshot in ConfigSnapshot.h.
 //          If the option is used only in PHP part of the agent
 //          then the type of field can be String
 //          which will skip parsing the value by the C part of the agent.
@@ -55,28 +55,6 @@
 //          ELASTIC_APM_INIT_METADATA( build<!!! myNewOption Type !!!>OptionMetadata, myNewOption, ELASTIC_APM_CFG_OPT_NAME_MY_NEW_OPTION, /* defaultValue: */ <!!! myNewOption default value !!!> );
 //
 //      7) Document the new configuration option at docs/configuration.asciidoc
-
-struct OptionalBool
-{
-    bool isSet;
-    bool value;
-};
-typedef struct OptionalBool OptionalBool;
-
-static inline String optionalBoolToString( OptionalBool optionalBoolValue )
-{
-    return optionalBoolValue.isSet ? "not set" : boolToString( optionalBoolValue.value );
-}
-
-static inline OptionalBool makeNotSetOptionalBool()
-{
-    return (OptionalBool){ .isSet = false };
-}
-
-static inline OptionalBool makeSetOptionalBool( bool value )
-{
-    return (OptionalBool){ .isSet = true, .value = value };
-}
 
 enum OptionId
 {
@@ -123,6 +101,9 @@ enum OptionId
     optionId_serviceName,
     optionId_serviceNodeName,
     optionId_serviceVersion,
+    optionId_spanCompressionEnabled,
+    optionId_spanCompressionExactMatchMaxDuration,
+    optionId_spanCompressionSameKindMaxDuration,
     optionId_transactionIgnoreUrls,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -134,59 +115,6 @@ enum OptionId
 typedef enum OptionId OptionId;
 
 #define ELASTIC_APM_FOR_EACH_OPTION_ID( optIdVar ) ELASTIC_APM_FOR_EACH_INDEX_EX( OptionId, optIdVar, numberOfOptions )
-
-struct ConfigSnapshot
-{
-    bool abortOnMemoryLeak;
-        #ifdef PHP_WIN32
-    bool allowAbortDialog;
-        #endif
-        #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
-    AssertLevel assertLevel;
-        #endif
-    String apiKey;
-    OptionalBool asyncBackendComm;
-    String bootstrapPhpPartFile;
-    bool breakdownMetrics;
-    bool captureErrors;
-    String devInternal;
-    String disableInstrumentations;
-    bool disableSend;
-    bool enabled;
-    String environment;
-    String hostname;
-    InternalChecksLevel internalChecksLevel;
-    String logFile;
-    LogLevel logLevel;
-    LogLevel logLevelFile;
-    LogLevel logLevelStderr;
-        #ifndef PHP_WIN32
-    LogLevel logLevelSyslog;
-        #endif
-        #ifdef PHP_WIN32
-    LogLevel logLevelWinSysDebug;
-        #endif
-        #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
-    MemoryTrackingLevel memoryTrackingLevel;
-        #endif
-    String nonKeywordStringMaxLength;
-    bool profilingInferredSpansEnabled;
-    String profilingInferredSpansMinDuration;
-    String profilingInferredSpansSamplingInterval;
-    String sanitizeFieldNames;
-    String secretToken;
-    String serverUrl;
-    Duration serverTimeout;
-    String serviceName;
-    String serviceNodeName;
-    String serviceVersion;
-    String transactionIgnoreUrls;
-    String transactionMaxSpans;
-    String transactionSampleRate;
-    String urlGroups;
-    bool verifyServerCert;
-};
-typedef struct ConfigSnapshot ConfigSnapshot;
 
 struct ConfigManager;
 typedef struct ConfigManager ConfigManager;
@@ -365,6 +293,9 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME "service_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME "service_node_name"
 #define ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION "service_version"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED "span_compression_enabled"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION "span_compression_exact_match_max_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION "span_compression_same_kind_max_duration"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS "transaction_ignore_urls"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"

@@ -35,8 +35,8 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
@@ -121,39 +121,44 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         );
 
         return [
-            OptionNames::API_KEY                  => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
-            OptionNames::ASYNC_BACKEND_COMM       => $asyncBackendCommValues,
-            OptionNames::BREAKDOWN_METRICS        => $boolRawToParsedValues(),
-            OptionNames::CAPTURE_ERRORS           => $boolRawToParsedValues(),
-            OptionNames::ENABLED                  => $boolRawToParsedValues(/* valueToExclude: */ false),
-            OptionNames::DEV_INTERNAL             => $wildcardListRawToParsedValues,
-            OptionNames::DISABLE_INSTRUMENTATIONS => $wildcardListRawToParsedValues,
-            OptionNames::DISABLE_SEND             => $boolRawToParsedValues(/* valueToExclude: */ true),
-            OptionNames::ENVIRONMENT              => $stringRawToParsedValues([" my_environment \t "]),
-            OptionNames::HOSTNAME                 => $stringRawToParsedValues([" \t my_hostname"]),
-            OptionNames::LOG_LEVEL                => $logLevelRawToParsedValues,
-            OptionNames::LOG_LEVEL_STDERR         => $logLevelRawToParsedValues,
-            OptionNames::LOG_LEVEL_SYSLOG         => $logLevelRawToParsedValues,
+            OptionNames::API_KEY                        => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
+            OptionNames::ASYNC_BACKEND_COMM             => $asyncBackendCommValues,
+            OptionNames::BREAKDOWN_METRICS              => $boolRawToParsedValues(),
+            OptionNames::CAPTURE_ERRORS                 => $boolRawToParsedValues(),
+            OptionNames::ENABLED                        => $boolRawToParsedValues(/* valueToExclude: */ false),
+            OptionNames::DEV_INTERNAL                   => $wildcardListRawToParsedValues,
+            OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
+            OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
+            OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),
+            OptionNames::HOSTNAME                       => $stringRawToParsedValues([" \t my_hostname"]),
+            OptionNames::LOG_LEVEL                      => $logLevelRawToParsedValues,
+            OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,
+            OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
-                                                  => $intRawToParsedValues,
-            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+                                                        => $intRawToParsedValues,
+            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
-                                                  => $boolRawToParsedValues(/* valueToExclude: */ true),
+                                                        => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION
-                                                  => $durationRawToParsedValues,
+                                                        => $durationRawToParsedValues,
             OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL
-                                                  => $durationRawToParsedValues,
-            OptionNames::SANITIZE_FIELD_NAMES     => $wildcardListRawToParsedValues,
-            OptionNames::SECRET_TOKEN             => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
-            OptionNames::SERVER_TIMEOUT           => $durationRawToParsedValues,
-            OptionNames::SERVICE_NAME             => $stringRawToParsedValues(['my service \t name']),
-            OptionNames::SERVICE_NODE_NAME        => $stringRawToParsedValues([' my_service_node_name  \t ']),
-            OptionNames::SERVICE_VERSION          => $stringRawToParsedValues(['my service version ! 123']),
-            OptionNames::TRANSACTION_IGNORE_URLS  => $wildcardListRawToParsedValues,
-            OptionNames::TRANSACTION_MAX_SPANS    => $intRawToParsedValues,
-            OptionNames::TRANSACTION_SAMPLE_RATE  => $doubleRawToParsedValues,
-            OptionNames::URL_GROUPS               => $wildcardListRawToParsedValues,
-            OptionNames::VERIFY_SERVER_CERT       => $boolRawToParsedValues(),
+                                                        => $durationRawToParsedValues,
+            OptionNames::SANITIZE_FIELD_NAMES           => $wildcardListRawToParsedValues,
+            OptionNames::SECRET_TOKEN                   => $stringRawToParsedValues(['9my_secret_token0', "secret \t token"]),
+            OptionNames::SERVER_TIMEOUT                 => $durationRawToParsedValues,
+            OptionNames::SERVICE_NAME                   => $stringRawToParsedValues(['my service \t name']),
+            OptionNames::SERVICE_NODE_NAME              => $stringRawToParsedValues([' my_service_node_name  \t ']),
+            OptionNames::SERVICE_VERSION                => $stringRawToParsedValues(['my service version ! 123']),
+            OptionNames::SPAN_COMPRESSION_ENABLED       => $boolRawToParsedValues(),
+            OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION
+                                                        => $durationRawToParsedValues,
+            OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION
+                                                        => $durationRawToParsedValues,
+            OptionNames::TRANSACTION_IGNORE_URLS        => $wildcardListRawToParsedValues,
+            OptionNames::TRANSACTION_MAX_SPANS          => $intRawToParsedValues,
+            OptionNames::TRANSACTION_SAMPLE_RATE        => $doubleRawToParsedValues,
+            OptionNames::URL_GROUPS                     => $wildcardListRawToParsedValues,
+            OptionNames::VERIFY_SERVER_CERT             => $boolRawToParsedValues(),
         ];
     }
 
@@ -214,15 +219,10 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     */
-    public static function appCodeForTestAllWaysToSetConfig(array $appCodeArgs): void
+    public static function appCodeForTestAllWaysToSetConfig(MixedMap $appCodeArgs): void
     {
-        $optName = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_NAME);
-        TestCase::assertIsString($optName);
-        /** @var string $optName */
-        $optExpectedVal = self::getMandatoryAppCodeArg($appCodeArgs, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
+        $optName = $appCodeArgs->getString(self::APP_CODE_ARGS_KEY_OPTION_NAME);
+        $optExpectedVal = $appCodeArgs->get(self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE);
 
         $tracer = self::getTracerFromAppCode();
 
@@ -266,6 +266,27 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         string $optRawVal,
         $optExpectedVal
     ): void {
+        $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, new MixedMap($dbgTestArgs)),
+            function () use ($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal): void {
+                $this->implTestAllWaysToSetConfig($agentConfigSourceKind, $optName, $optRawVal, $optExpectedVal);
+            }
+        );
+    }
+
+    /**
+     * @param AgentConfigSourceKind $agentConfigSourceKind
+     * @param string                $optName
+     * @param string                $optRawVal
+     * @param mixed                 $optExpectedVal
+     */
+    private function implTestAllWaysToSetConfig(
+        AgentConfigSourceKind $agentConfigSourceKind,
+        string $optName,
+        string $optRawVal,
+        $optExpectedVal
+    ): void {
         TransactionExpectations::$defaultIsSampled = null;
         TransactionExpectations::$defaultDroppedSpansCount = null;
         $testCaseHandle = $this->getTestCaseHandle();
@@ -278,12 +299,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllWaysToSetConfig']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($optName, $optExpectedVal): void {
-                $appCodeRequestParams->setAppCodeArgs(
-                    [
-                        self::APP_CODE_ARGS_KEY_OPTION_NAME           => $optName,
-                        self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal,
-                    ]
-                );
+                $appCodeRequestParams->setAppCodeArgs([self::APP_CODE_ARGS_KEY_OPTION_NAME => $optName, self::APP_CODE_ARGS_KEY_OPTION_EXPECTED_VALUE => $optExpectedVal]);
                 if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
                     $appCodeRequestParams->expectedHttpResponseStatusCode = self::APP_CODE_RESPONSE_HTTP_STATUS_CODE;
                 }

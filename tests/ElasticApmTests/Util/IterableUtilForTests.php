@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Countable;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -48,6 +49,10 @@ final class IterableUtilForTests
      */
     public static function count(iterable $iterable): int
     {
+        if ($iterable instanceof Countable) {
+            return count($iterable);
+        }
+
         $result = 0;
         foreach ($iterable as $ignored) {
             ++$result;
@@ -140,9 +145,38 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template TKey of array-key
+     * @template TValue
      *
-     * @return Generator<mixed>
+     * @param iterable<TKey, TValue> $iterable
+     *
+     * @return array<TKey, TValue>
+     *
+     * @noinspection PhpUnused
+     */
+    public static function toMap(iterable $iterable): array
+    {
+        if (is_array($iterable)) {
+            return $iterable;
+        }
+
+        /**
+         * @var array<TKey, TValue> $result
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $result = [];
+        foreach ($iterable as $key => $val) {
+            $result[$key] = $val;
+        }
+        return $result;
+    }
+
+    /**
+     * @template T
+     *
+     * @param iterable<T> $inputIterable
+     *
+     * @return Generator<T>
      */
     public static function iterableToGenerator(iterable $inputIterable): Generator
     {
@@ -152,9 +186,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template T
      *
-     * @return Iterator<mixed>
+     * @param iterable<T> $inputIterable
+     *
+     * @return Iterator<T>
      */
     public static function iterableToIterator(iterable $inputIterable): Iterator
     {

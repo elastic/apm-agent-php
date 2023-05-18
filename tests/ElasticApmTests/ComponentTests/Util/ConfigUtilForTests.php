@@ -56,10 +56,8 @@ final class ConfigUtilForTests
         return EnvVarsRawSnapshotSource::optionNameToEnvVarName(self::ENV_VAR_NAME_PREFIX, $optName);
     }
 
-    public static function read(
-        ?RawSnapshotSourceInterface $additionalConfigSource,
-        LoggerFactory $loggerFactory
-    ): ConfigSnapshotForTests {
+    public static function read(?RawSnapshotSourceInterface $additionalConfigSource, LoggerFactory $loggerFactory): ConfigSnapshotForTests
+    {
         $envVarConfigSource = new EnvVarsRawSnapshotSource(ConfigUtilForTests::ENV_VAR_NAME_PREFIX);
         $configSource =  $additionalConfigSource === null
             ? $envVarConfigSource

@@ -36,12 +36,8 @@ final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
     {
         FlakyAssertions::setEnabled(true);
 
-        $repoRootFullPath = FileUtilForTests::normalizePath(
-            FileUtilForTests::listToPath([TestsRootDir::$fullPath, '..'])
-        );
-        $inputFileFullPath = FileUtilForTests::listToPath(
-            [$repoRootFullPath, 'z_local', 'DataFromAgentPlusRawValidatorDebugTest_input.txt']
-        );
+        $repoRootFullPath = FileUtilForTests::normalizePath(FileUtilForTests::listToPath([TestsRootDir::$fullPath, '..']));
+        $inputFileFullPath = FileUtilForTests::listToPath([$repoRootFullPath, 'z_local', 'DataFromAgentPlusRawValidatorDebugTest_input.txt']);
         if (!file_exists($inputFileFullPath)) {
             self::dummyAssert();
             return;
@@ -57,21 +53,15 @@ final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
         $inputFileContentsDecoded = JsonUtil::decode($inputFileContents, /* asAssocArray */ true);
         self::assertIsArray($inputFileContentsDecoded);
 
-        $expectations = self::unserializeDecodedJsonSubObj(
-            $inputFileContentsDecoded,
-            TestCaseHandle::SERIALIZED_EXPECTATIONS_KEY
-        );
+        $expectations = self::unserializeDecodedJsonSubObj($inputFileContentsDecoded, TestCaseHandle::SERIALIZED_EXPECTATIONS_KEY);
         self::assertInstanceOf(DataFromAgentPlusRawExpectations::class, $expectations);
-        $dataFromAgent = self::unserializeDecodedJsonSubObj(
-            $inputFileContentsDecoded,
-            TestCaseHandle::SERIALIZED_DATA_FROM_AGENT_KEY
-        );
+        $dataFromAgent = self::unserializeDecodedJsonSubObj($inputFileContentsDecoded, TestCaseHandle::SERIALIZED_DATA_FROM_AGENT_KEY);
         self::assertInstanceOf(DataFromAgentPlusRaw::class, $dataFromAgent);
         DataFromAgentPlusRawValidator::validate($dataFromAgent, $expectations);
     }
 
     /**
-     * @param array<mixed, mixed> $decodedJson
+     * @param array<mixed> $decodedJson
      * @param string              $propName
      *
      * @return object

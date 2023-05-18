@@ -25,6 +25,7 @@ namespace Elastic\Apm\Impl\BackendComm;
 
 use Elastic\Apm\Impl\OptionalSerializableDataInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
@@ -125,9 +126,9 @@ final class SerializationUtil
     }
 
     /**
-     * @param string                       $name
-     * @param array<mixed, mixed>|stdClass $value
-     * @param array<string, mixed>         $nameToValue
+     * @param string                           $name
+     * @param array<array-key, mixed>|stdClass $value
+     * @param array<string, mixed>             $nameToValue
      *
      * @return void
      */
@@ -140,18 +141,18 @@ final class SerializationUtil
         }
     }
 
-    public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): bool
+    public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): int
     {
         if ($value === null) {
-            return false;
+            return BoolUtil::INT_FOR_FALSE;
         }
 
         if ($value->prepareForSerialization()) {
-            return true;
+            return BoolUtil::INT_FOR_TRUE;
         }
 
         $value = null;
-        return false;
+        return BoolUtil::INT_FOR_FALSE;
     }
 
     /**

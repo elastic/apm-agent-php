@@ -35,10 +35,10 @@ use Elastic\Apm\Impl\Util\TextUtil;
  */
 final class DurationOptionParser extends OptionParser
 {
-    /** @var float|null */
+    /** @var ?float */
     private $minValidValueInMilliseconds;
 
-    /** @var float|null */
+    /** @var ?float */
     private $maxValidValueInMilliseconds;
 
     /** @var int */
@@ -54,14 +54,8 @@ final class DurationOptionParser extends OptionParser
         $this->defaultUnits = $defaultUnits;
     }
 
-    /**
-     * @param string $rawValue
-     *
-     * @return mixed
-     *
-     * @phpstan-return float
-     */
-    public function parse(string $rawValue)
+    /** @inheritDoc */
+    public function parse(string $rawValue): float
     {
         $partWithoutSuffix = '';
         $units = $this->defaultUnits;

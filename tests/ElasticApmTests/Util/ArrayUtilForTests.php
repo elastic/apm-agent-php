@@ -48,20 +48,21 @@ final class ArrayUtilForTests
      */
     public static function getSingleValue(array $array)
     {
-        Assert::assertCount(1, $array);
+        TestCaseBase::assertCount(1, $array);
         return self::getFirstValue($array);
     }
 
     /**
      * @template T
      *
-     * @param   T[] $array
+     * @param array<array-key, T> $array
      *
      * @return  T
      */
     public static function &getLastValue(array $array)
     {
-        return $array[count($array) - 1];
+        TestCaseBase::assertNotEmpty($array);
+        return $array[array_key_last($array)];
     }
 
     /**
@@ -125,7 +126,7 @@ final class ArrayUtilForTests
      * @param array<TKey, TValue> $from
      * @param array<TKey, TValue> $to
      */
-    public static function append(array $from, array &$to): void
+    public static function append(array $from, /* in,out */ array &$to): void
     {
         $to = array_merge($to, $from);
     }
@@ -149,5 +150,30 @@ final class ArrayUtilForTests
             ++$additionOrderIndex;
         }
         Assert::fail('Not found key in map; ' . LoggableToString::convert(['keyToFind' => $keyToFind, 'map' => $map]));
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return mixed
+     */
+    public static function getFromMap(string $argKey, array $argsMap)
+    {
+        Assert::assertArrayHasKey($argKey, $argsMap);
+        return $argsMap[$argKey];
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return bool
+     */
+    public static function getBoolFromMap(string $argKey, array $argsMap): bool
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        Assert::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
     }
 }

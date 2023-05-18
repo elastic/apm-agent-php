@@ -28,27 +28,44 @@ class DbSpanExpectationsBuilder extends SpanExpectationsBuilder
     public const DEFAULT_SPAN_TYPE = 'db';
     public const DEFAULT_SPAN_ACTION = 'query';
 
-    public function __construct(SpanExpectations $prototype)
+    /** @var string */
+    private $dbType;
+
+    /** @var ?string */
+    private $dbName;
+
+    public function __construct(string $dbType, ?string $dbName)
     {
-        parent::__construct($prototype);
+        $this->dbType = $dbType;
+        $this->dbName = $dbName;
     }
 
-    public static function default(string $dbType, ?string $dbName): SpanExpectations
+    /** @inheritDoc */
+    public function startNew(): SpanExpectations
     {
         $result = new SpanExpectations();
 
         $result->type->setValue(self::DEFAULT_SPAN_TYPE);
-        $result->subtype->setValue($dbType);
+        $result->subtype->setValue($this->dbType);
         $result->action->setValue(self::DEFAULT_SPAN_ACTION);
 
-        $serviceDst = $dbName === null ? $dbType : ($dbType . '/' . $dbName);
-        $result->context->destination->service->name->setValue($serviceDst);
-        $result->context->destination->service->resource->setValue($serviceDst);
-        $result->context->destination->service->type->setValue($dbType);
+        $serviceDst = $this->dbName === null ? $this->dbType : ($this->dbType . '/' . $this->dbName);
+        $result->setService(
+            $this->dbType /* <- targetType */,
+            $this->dbName /* <- targetName */,
+            $serviceDst /* <- destinationName */,
+            $serviceDst /* <- destinationResource */,
+            $this->dbType /* <- destinationType */
+        );
 
-        $result->context->service->target->name->setValue($dbName);
-        $result->context->service->target->type->setValue($dbType);
+        return $result;
+    }
 
+    /** @inheritDoc */
+    public function fromClassMethodNames(string $className, string $methodName, bool $isStatic = false): SpanExpectations
+    {
+        $result = parent::fromClassMethodNames($className, $methodName, $isStatic);
+        $result->assumeNotNullContext()->db->setValue(null);
         return $result;
     }
 
@@ -61,7 +78,7 @@ class DbSpanExpectationsBuilder extends SpanExpectationsBuilder
     {
         $result = $this->startNew();
         $result->name->setValue(self::buildNameFromStatement($statement));
-        $result->context->db->statement->setValue($statement);
+        $result->ensureNotNullContext()->ensureNotNullDb()->statement->setValue($statement);
         return $result;
     }
 }

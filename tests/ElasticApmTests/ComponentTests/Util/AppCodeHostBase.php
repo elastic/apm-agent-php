@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MixedMap;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
@@ -131,7 +132,7 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
                 call_user_func($methodToCall);
             } else {
                 /** @phpstan-ignore-next-line */
-                call_user_func($methodToCall, $appCodeArguments);
+                call_user_func($methodToCall, new MixedMap($appCodeArguments));
             }
         } catch (Throwable $throwable) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

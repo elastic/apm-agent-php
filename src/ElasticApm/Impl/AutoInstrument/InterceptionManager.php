@@ -44,16 +44,15 @@ final class InterceptionManager
     private $logger;
 
     /** @var int|null */
-    private $interceptedCallInProgressRegistrationId;
+    private $interceptedCallInProgressRegistrationId = null;
 
     /** @var Registration|null */
-    private $interceptedCallInProgressRegistration;
+    private $interceptedCallInProgressRegistration = null;
 
     /**
-     * @var null|callable
-     * @phpstan-var null|callable(int, bool, mixed): void
+     * @var null|callable(int, bool, mixed): void
      */
-    private $interceptedCallInProgressPreHookRetVal;
+    private $interceptedCallInProgressPreHookRetVal = null;
 
     public function __construct(Tracer $tracer)
     {
@@ -88,7 +87,7 @@ final class InterceptionManager
      *
      * @return bool
      */
-    public function interceptedCallPreHook(
+    public function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         array $interceptedCallArgs
@@ -145,7 +144,7 @@ final class InterceptionManager
      * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
      */
-    public function interceptedCallPostHook(
+    public function internalFuncCallPostHook(
         int $numberOfStackFramesToSkip,
         bool $hasExitedByException,
         $returnValueOrThrown

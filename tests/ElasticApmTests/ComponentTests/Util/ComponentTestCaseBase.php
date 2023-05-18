@@ -30,16 +30,15 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
@@ -56,7 +55,7 @@ class ComponentTestCaseBase extends TestCaseBase
             return $this->testCaseHandle;
         }
         ComponentTestsPhpUnitExtension::initSingletons();
-        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode);
+        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode, $this->isSpanCompressionCompatible());
         return $this->testCaseHandle;
     }
 
@@ -74,6 +73,17 @@ class ComponentTestCaseBase extends TestCaseBase
         }
 
         parent::tearDown();
+    }
+
+    /**
+     * Sub-classes should override this method to return false
+     * in order to disable Span Compression feature and have all the expected spans individually.
+     *
+     * @return bool
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return true;
     }
 
     public static function appCodeEmpty(): void
@@ -115,89 +125,6 @@ class ComponentTestCaseBase extends TestCaseBase
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
         return $this->waitForOneEmptyTransaction($testCaseHandle);
-    }
-
-    /**
-     * @param array<string, mixed> $appCodeArgs
-     * @param string               $appArgNameKey
-     *
-     * @return mixed
-     */
-    protected static function getMandatoryAppCodeArg(array $appCodeArgs, string $appArgNameKey)
-    {
-        if (!array_key_exists($appArgNameKey, $appCodeArgs)) {
-            throw new RuntimeException(
-                ExceptionUtil::buildMessage(
-                    'Expected key is not found in app code args',
-                    ['appArgNameKey' => $appArgNameKey, 'appCodeArgs' => $appCodeArgs]
-                )
-            );
-        }
-        return $appCodeArgs[$appArgNameKey];
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return mixed
-     */
-    protected static function getFromMap(string $argKey, array $argsMap)
-    {
-        self::assertArrayHasKey($argKey, $argsMap);
-        return $argsMap[$argKey];
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return bool
-     */
-    protected static function getBoolFromMap(string $argKey, array $argsMap): bool
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return int
-     */
-    protected static function getIntFromMap(string $argKey, array $argsMap): int
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsInt($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return string
-     */
-    protected static function getStringFromMap(string $argKey, array $argsMap): string
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return array<mixed, mixed>
-     */
-    protected static function getArrayFromMap(string $argKey, array $argsMap): array
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsArray($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
     }
 
     public static function isSmoke(): bool
@@ -260,7 +187,7 @@ class ComponentTestCaseBase extends TestCaseBase
     {
         /** @var AutoInstrumentationBase $instr */
         $instr = new $instrClassName(self::buildTracerForTests()->build());
-        $actualNames = $instr->otherNames();
+        $actualNames = $instr->keywords();
         $actualNames[] = $instr->name();
         self::assertEqualAsSets($expectedNames, $actualNames);
         self::assertTrue($instr->isEnabled());
@@ -434,16 +361,15 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param class-string         $testClass
-     * @param string               $testFunc
-     * @param array<string, mixed> $testArgs
+     * @param class-string $testClass
+     * @param string       $testFunc
+     * @param MixedMap     $testArgs
      *
      * @return string
      */
-    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, array $testArgs): string
+    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, MixedMap $testArgs): string
     {
-        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc
-               . '(' . LoggableToString::convert($testArgs) . ')';
+        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc . '(' . LoggableToString::convert($testArgs) . ')';
     }
 
     /**

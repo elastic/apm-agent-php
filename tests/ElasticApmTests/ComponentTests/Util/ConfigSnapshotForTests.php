@@ -66,6 +66,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var ?string */
     public $group;
 
+    /** @var bool */
+    public $isLongRunMode;
+
     /** @var int */
     public $logLevel;
 

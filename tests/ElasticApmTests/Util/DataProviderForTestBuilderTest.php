@@ -318,4 +318,63 @@ class DataProviderForTestBuilderTest extends TestCaseBase
             LoggableToString::convert(['$expected' => $expected, 'actual' => $actual])
         );
     }
+
+    public function testConditional(): void
+    {
+        $actual = IterableUtilForTests::toList(
+            (new DataProviderForTestBuilder())
+                ->addKeyedDimensionAllValuesCombinable('1st_dim_key', [1, 2])
+                ->addConditionalKeyedDimensionAllValueCombinable(
+                    '2ns_dim_key' /* <- new dimension key */,
+                    '1st_dim_key' /* <- depends on dimension key */,
+                    1 /* <- depends on dimension true value */,
+                    ['a'] /* <- new dimension variants for true case */,
+                    ['b', 'c'] /* <- new dimension variants for false case */
+                )
+                ->build()
+        );
+        $expected =
+            [
+                ['1st_dim_key' => 1, '2ns_dim_key' => 'a'],
+                ['1st_dim_key' => 2, '2ns_dim_key' => 'b'],
+                ['1st_dim_key' => 2, '2ns_dim_key' => 'c'],
+            ];
+        TestCaseBase::assertEqualAsSets($expected, $actual);
+    }
+
+    /**
+     * @dataProvider boolDataProvider
+     *
+     * @param bool $dimAOnlyFirstValueCombinable
+     */
+    public function testUsingRangeForDimensionValues(bool $dimAOnlyFirstValueCombinable): void
+    {
+        $actual = IterableUtilForTests::toList(
+            (new DataProviderForTestBuilder())
+                ->addKeyedDimension('1st_dim_key', $dimAOnlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(2))
+                ->addKeyedDimension('2nd_dim_key', $dimAOnlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(2))
+                ->addKeyedDimension('3rd_dim_key', $dimAOnlyFirstValueCombinable, DataProviderForTestBuilder::rangeUpTo(2))
+                ->build()
+        );
+        $expected = $dimAOnlyFirstValueCombinable
+            ?
+            [
+                ['1st_dim_key' => 0, '2ns_dim_key' => 0, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 0, '2ns_dim_key' => 0, '3rd_dim_key' => 1],
+                ['1st_dim_key' => 0, '2ns_dim_key' => 1, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 1, '2ns_dim_key' => 0, '3rd_dim_key' => 0],
+            ]
+            :
+            [
+                ['1st_dim_key' => 0, '2ns_dim_key' => 0, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 0, '2ns_dim_key' => 0, '3rd_dim_key' => 1],
+                ['1st_dim_key' => 0, '2ns_dim_key' => 1, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 0, '2ns_dim_key' => 1, '3rd_dim_key' => 1],
+                ['1st_dim_key' => 1, '2ns_dim_key' => 0, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 1, '2ns_dim_key' => 0, '3rd_dim_key' => 1],
+                ['1st_dim_key' => 1, '2ns_dim_key' => 1, '3rd_dim_key' => 0],
+                ['1st_dim_key' => 1, '2ns_dim_key' => 1, '3rd_dim_key' => 1],
+            ];
+        TestCaseBase::assertEqualAsSets($expected, $actual);
+    }
 }

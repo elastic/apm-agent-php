@@ -31,7 +31,10 @@ namespace Elastic\Apm\Impl;
 interface OptionalSerializableDataInterface extends SerializableDataInterface
 {
     /**
-     * @return bool
+     * We use int with bitwise operations on purpose to prevent short-circuit
+     * because we need all the sub-components to prepare for serialization
+     *
+     * @return int
      */
-    public function prepareForSerialization(): bool;
+    public function prepareForSerialization(): int;
 }

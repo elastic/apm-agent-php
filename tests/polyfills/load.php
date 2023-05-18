@@ -27,6 +27,10 @@ if (!function_exists('array_key_first')) {
     require __DIR__ . '/array_key_first.php';
 }
 
+if (!function_exists('array_key_last')) {
+    require __DIR__ . '/array_key_last.php';
+}
+
 if (PHP_MAJOR_VERSION < 8) {
     require __DIR__ . '/Stringable.php';
     require __DIR__ . '/WeakMap.php';

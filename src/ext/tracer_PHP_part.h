@@ -19,15 +19,17 @@
 
 #pragma once
 
+#include <zend_types.h>
 #include "ResultCode.h"
-#include "ConfigManager.h"
+#include "ConfigSnapshot_forward_decl.h"
+#include "time_util.h"
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
 
 void shutdownTracerPhpPart( const ConfigSnapshot* config );
 
-bool tracerPhpPartInterceptedCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
+bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
 
-void tracerPhpPartInterceptedCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
+void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
 
 void tracerPhpPartInterceptedCallEmptyMethod();
