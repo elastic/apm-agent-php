@@ -29,6 +29,7 @@
 #include "ConfigSnapshot.h"
 #include "util.h"
 #include "util_for_PHP.h"
+#include "basic_macros.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -91,7 +92,7 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
         CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curlHandle, curlOptionId, __VA_ARGS__ ); \
         if ( curl_easy_setopt_ret_val != CURLE_OK ) \
         { \
-            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option. curlOptionId: %d.", curlOptionId ); \
+            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option. curlOptionId: %d (as constant: %s).", curlOptionId, #curlOptionId ); \
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultCurlFailure ); \
         } \
     } while ( false ) \
@@ -138,6 +139,102 @@ void cleanupConnectionData( ConnectionData* connectionData )
     }
 }
 
+String streamCurlInfoType( curl_infotype value, TextOutputStream* txtOutStream )
+{
+    switch ( value )
+    {
+        #define ELASTIC_APM_CURL_INFO_SWITCH_CASE( enumItem ) case enumItem: return ELASTIC_APM_PP_STRINGIZE( enumItem )
+
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_TEXT );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_HEADER_IN );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_HEADER_OUT );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_DATA_IN );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_DATA_OUT );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_SSL_DATA_IN );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_SSL_DATA_OUT );
+        ELASTIC_APM_CURL_INFO_SWITCH_CASE( CURLINFO_END );
+
+        #undef ELASTIC_APM_CURL_INFO_SWITCH_CASE
+
+        default:
+            return streamPrintf( txtOutStream, "<UNKNOWN curl_infotype value: %d>", (int)value );
+    }
+}
+
+String streamCurlData( char* dataViewBegin, size_t dataViewLength, TextOutputStream* txtOutStream )
+{
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
+    {
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+    }
+
+    txtOutStream->autoTermZero = false;
+    ELASTIC_APM_FOR_EACH_INDEX( i, dataViewLength )
+    {
+        if ( textOutputStreamIsOverflowed( txtOutStream ) )
+        {
+            break;
+        }
+
+        char currentChar = dataViewBegin[ i ];
+
+        // According to https://en.wikipedia.org/wiki/ASCII#Printable_characters
+        // Codes 20 (hex) to 7E (hex), known as the printable characters
+        if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( '\x20', currentChar, '\x7E' ) )
+        {
+            streamChar( currentChar, txtOutStream );
+        }
+        else
+        {
+            String asSymbol = spacialInvisibleCharToSymbol( currentChar );
+            if ( asSymbol != NULL )
+            {
+                streamString( asSymbol, txtOutStream );
+            }
+            else
+            {
+                streamPrintf( txtOutStream, "\\x%02X", (UInt)((unsigned char)currentChar) );
+            }
+        }
+    }
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
+}
+
+/**
+ * @link https://curl.se/libcurl/c/CURLOPT_DEBUGFUNCTION.html
+ */
+void curlDebugCallback( CURL* curlHandle, curl_infotype type, char* dataViewBegin, size_t dataViewLength, void* ctx )
+{
+    ELASTIC_APM_UNUSED( curlHandle );
+    ELASTIC_APM_UNUSED( ctx );
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_INFO( "type: %s, data [length: %"PRIu64"]: %s", streamCurlInfoType( type, &txtOutStream ), (UInt64)dataViewLength, streamCurlData( dataViewBegin, dataViewLength, &txtOutStream ) );
+}
+
+void enableCurlVerboseMode( CURL* curlHandle )
+{
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    ResultCode resultCode;
+
+    ELASTIC_APM_CURL_EASY_SETOPT( curlHandle, CURLOPT_DEBUGFUNCTION, &curlDebugCallback );
+    ELASTIC_APM_CURL_EASY_SETOPT( curlHandle, CURLOPT_VERBOSE, 1L );
+
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
+
+    failure:
+    goto finally;
+}
+
 ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
 {
     ResultCode resultCode;
@@ -154,11 +251,12 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     ELASTIC_APM_ASSERT( connectionData->requestHeaders == NULL, "" );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
-            "config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
+            "config: {serverUrl: %s, disableSend: %s, serverTimeout: %s, devInternalBackendCommLogVerbose: %s}"
             "; userAgentHttpHeader: `%s'"
             , config->serverUrl
             , boolToString( config->disableSend )
             , streamDuration( config->serverTimeout, &txtOutStream )
+            , boolToString( config->devInternalBackendCommLogVerbose )
             , streamStringView( userAgentHttpHeader, &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
 
@@ -170,6 +268,11 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     }
 
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_WRITEFUNCTION, logResponse );
+
+    if ( config->devInternalBackendCommLogVerbose )
+    {
+        enableCurlVerboseMode( connectionData->curlHandle );
+    }
 
     if ( config->serverTimeout.valueInUnits == 0 )
     {
@@ -185,8 +288,26 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
 
     if ( ! config->verifyServerCert )
     {
-        ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false"
-                               " - disabling SSL/TLS certificate verification for communication with APM Server..." );
+        ELASTIC_APM_LOG_DEBUG( "verify_server_cert configuration option is set to false - disabling SSL/TLS certificate verification for communication with APM Server..." );
+        /**
+         * This option determines whether libcurl verifies that the server cert is for the server it is known as.
+         * When negotiating TLS and SSL connections, the server sends a certificate indicating its identity.
+         * When CURLOPT_SSL_VERIFYHOST is 2, that certificate must indicate that the server is the server to which you meant to connect, or the connection fails.
+         * Simply put, it means it has to have the same name in the certificate as is in the URL you operate against.
+         * When the verify value is 0, the connection succeeds regardless of the names in the certificate.
+         *
+         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
+         */
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYHOST, 0L );
+
+        /**
+         * This option determines whether curl verifies the authenticity of the peer's certificate. A value of 1 means curl verifies; 0 (zero) means it does not.
+         * Authenticating the certificate is not enough to be sure about the server. You typically also want to ensure that the server is the server you mean to be talking to.
+         * Use CURLOPT_SSL_VERIFYHOST for that.
+         * The check that the host name in the certificate is valid for the host name you are connecting to is done independently of the CURLOPT_SSL_VERIFYPEER option.
+         *
+         * @link https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html
+         */
         ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_SSL_VERIFYPEER, 0L );
     }
 

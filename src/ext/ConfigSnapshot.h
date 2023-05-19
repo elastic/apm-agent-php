@@ -46,6 +46,7 @@ struct ConfigSnapshot
     bool breakdownMetrics;
     bool captureErrors;
     String devInternal;
+    bool devInternalBackendCommLogVerbose;
     String disableInstrumentations;
     bool disableSend;
     bool enabled;
