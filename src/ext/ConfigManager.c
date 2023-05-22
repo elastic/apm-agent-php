@@ -769,6 +769,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalBackendCommLogVerbose )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
@@ -950,6 +951,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             devInternal,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
             /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            devInternalBackendCommLogVerbose,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE,
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,

@@ -239,39 +239,45 @@ bool areEqualNullableStrings( String str1, String str2 )
 enum { escapeNonPrintableCharBufferSize = 10 };
 
 static inline
-String escapeNonPrintableChar( char c, char buffer[ escapeNonPrintableCharBufferSize ] )
+String spacialInvisibleCharToSymbol( char c )
 {
     switch ( c )
     {
         case '\0': return "\\0";
-
         case '\a': return "\\a";
-
         case '\b': return "\\b";
-
         case '\f': return "\\f";
-
         case '\n': return "\\n";
-
         case '\r': return "\\r";
-
         case '\t': return "\\t";
-
         case '\v': return "\\v";
 
         default:
-            // According to https://en.wikipedia.org/wiki/ASCII#Printable_characters
-            // Codes 20 (hex) to 7E (hex), known as the printable characters
-            if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( '\x20', c, '\x7E' ) )
-            {
-                buffer[ 0 ] = c;
-                buffer[ 1 ] = '\0';
-            }
-            else
-                snprintf( buffer, escapeNonPrintableCharBufferSize, "\\x%X", (UInt)((unsigned char)c) );
-
-            return buffer;
+            return NULL;
     }
+}
+
+static inline
+String escapeNonPrintableChar( char c, char buffer[ escapeNonPrintableCharBufferSize ] )
+{
+    // According to https://en.wikipedia.org/wiki/ASCII#Printable_characters
+    // Codes 20 (hex) to 7E (hex), known as the printable characters
+    if ( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( '\x20', c, '\x7E' ) )
+    {
+        buffer[ 0 ] = c;
+        buffer[ 1 ] = '\0';
+    }
+    else
+    {
+        String asSymbol = spacialInvisibleCharToSymbol( c );
+        if ( asSymbol != NULL )
+        {
+            return asSymbol;
+        }
+        snprintf( buffer, escapeNonPrintableCharBufferSize, "\\x%X", (UInt)((unsigned char)c) );
+    }
+
+    return buffer;
 }
 
 static inline

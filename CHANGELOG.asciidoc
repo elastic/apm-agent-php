@@ -20,6 +20,14 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.8.4]]
+=== v1.8.4 - 2023/05/17
+[float]
+==== Bug fixes
+* Fixed deadlock caused by use of pthread_atfork {pull}964[#964]
+* Fixed verify_server_cert=false not disabling all the checks related to HTTPS certificate {pull}965[#965]
+* Fixed not joining background sender thread if there was fork after module init {pull}959[#959]
+
 [[release-notes-v1.8.3]]
 === v1.8.3 - 2023/04/21
 [float]
