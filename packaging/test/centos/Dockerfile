@@ -36,6 +36,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 ENV ELASTIC_APM_ENABLED=false
 
+# It seems that even though we install rsyslog and start it (search for ensureSyslogIsRunning in .ci/validate_agent_installation.sh)
+# for some reason on CentOS rsyslog does not receive messages from the agent
+# so in order to work around this issue we escalate all log levels on CentOS
+ENV ELASTIC_APM_PHP_TESTS_ESCALATED_RERUNS_PROD_CODE_LOG_LEVEL_OPTION_NAME=log_level
+
 # To support tar and rpm packages
 ENV TYPE=rpm
 ENV VERSION=

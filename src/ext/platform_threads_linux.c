@@ -524,7 +524,6 @@ static void callbackToLogForkAfterInParent()
 static void callbackToLogForkAfterInChild()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "After process fork (in child context); parent PID: %d", (int)getParentProcessId() );
-    registerCallbacksToLogFork();
 }
 
 void registerCallbacksToLogFork()

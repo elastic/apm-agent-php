@@ -213,7 +213,7 @@ final class TestCaseHandle implements LoggableInterface
     {
         if ($this->escalatedLogLevelForProdCode !== null) {
             $escalatedLogLevelForProdCodeAsString = LogLevel::intToName($this->escalatedLogLevelForProdCode);
-            $params->setAgentOption(OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
+            $params->setAgentOption(AmbientContextForTests::testConfig()->escalatedRerunsProdCodeLogLevelOptionName ?? OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
         }
         $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPortForAgent());
 
