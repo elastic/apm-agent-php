@@ -141,7 +141,10 @@ void current_process_command_line( void** testFixtureState )
     {
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        String discoveredExeName = streamCurrentProcessExeName( &txtOutStream );
+        size_t expectedExeNameLength = strlen( argVC->argv[ 0 ] );
+        String discoveredExeName = streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ expectedExeNameLength );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_GREATER_THAN_OR_EQUAL( strlen( discoveredExeName ), expectedExeNameLength );
+        ((char*)discoveredExeName)[ expectedExeNameLength ] = '\0';
         ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL(
                 argVC->argv[ 0 ], discoveredExeName
                 , "argv[ 0 ]: `%s'. discoveredExeName: `%s'."
@@ -151,14 +154,25 @@ void current_process_command_line( void** testFixtureState )
     char expectedCmdLineOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     String expectedCmdLine = buildExpectedCommandLine( argVC->argc, argVC->argv, expectedCmdLineOutStreamBuf );
 
+    size_t sufficientMaxLengthVariants[] = { strlen( expectedCmdLine ), strlen( expectedCmdLine ) + 1, strlen( expectedCmdLine ) + 10 };
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, ELASTIC_APM_STATIC_ARRAY_SIZE( sufficientMaxLengthVariants ) )
+    {
+        size_t maxLength = sufficientMaxLengthVariants[ i ];
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        String discoveredCmdLine = streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ strlen( expectedCmdLine ) );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL(
+            expectedCmdLine, discoveredCmdLine
+            , "expectedCmdLine: `%s'. discoveredCmdLine: `%s'."
+            , expectedCmdLine, discoveredCmdLine );
+    }
+
     {
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        String discoveredCmdLine = streamCurrentProcessCommandLine( &txtOutStream );
-        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL(
-                expectedCmdLine, discoveredCmdLine
-                , "expectedCmdLine: `%s'. discoveredCmdLine: `%s'."
-                , expectedCmdLine, discoveredCmdLine );
+        String discoveredCmdLine = streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ strlen( expectedCmdLine ) - 1 );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_VIEW_EQUAL( makeStringView( expectedCmdLine, strlen( expectedCmdLine ) - 1 ), makeStringView( discoveredCmdLine, strlen( expectedCmdLine ) - 1 ) );
     }
 }
 
