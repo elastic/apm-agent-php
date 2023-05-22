@@ -71,6 +71,7 @@ enum OptionId
     optionId_breakdownMetrics,
     optionId_captureErrors,
     optionId_devInternal,
+    optionId_devInternalBackendCommLogVerbose,
     optionId_disableInstrumentations,
     optionId_disableSend,
     optionId_enabled,
@@ -235,6 +236,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
  * Internal configuration option (not included in public documentation)
  */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE "dev_internal_backend_comm_log_verbose"
 
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
