@@ -55,8 +55,8 @@ to enable verbose log for the agent's communication with Elastic APM Server.
 
 [options="header"]
 |============
-| Default                          | Type
-| None       | Boolean
+| Default    | Type
+| `false`    | Boolean
 |============
 
 The log is written under `INFO` level - see <<configure-logging>>.
