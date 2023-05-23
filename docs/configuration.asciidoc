@@ -574,8 +574,10 @@ Characters in service name that don't match regular expression will be replaced 
 |============
 
 If it's set, this name is used to distinguish between different nodes of a service.
-If it's not set, data aggregations will be done based on the reported
-hostname (automatically discovered or manually configured using <<config-hostname>>).
+If it's not set, data aggregations will be done based on the container ID
+if the monitored application runs in a container.
+Otherwise data aggregations will be done based on the reported hostname
+(automatically discovered or manually configured using <<config-hostname>>).
 
 [float]
 [[config-service-version]]

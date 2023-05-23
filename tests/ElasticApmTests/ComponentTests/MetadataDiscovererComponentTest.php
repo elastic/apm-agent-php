@@ -27,15 +27,18 @@ use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\DockerUtil;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\MetadataValidator;
-use PHPUnit\Framework\TestCase;
 
 /**
  * @group smoke
  * @group does_not_require_external_services
  */
-final class MetadataTest extends ComponentTestCaseBase
+final class MetadataDiscovererComponentTest extends ComponentTestCaseBase
 {
     /**
      * @return iterable<array{string}>
@@ -62,7 +65,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::ENVIRONMENT, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->environment);
+            self::assertSame($expected, $metadata->service->environment);
         }
     }
 
@@ -91,7 +94,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NAME, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->name);
+            self::assertSame($expected, $metadata->service->name);
         }
     }
 
@@ -137,7 +140,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_VERSION, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->version);
+            self::assertSame($expected, $metadata->service->version);
         }
     }
 
@@ -194,7 +197,7 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $dataFromAgent = $this->configTestImpl(OptionNames::SERVICE_NODE_NAME, $configured);
         foreach ($dataFromAgent->metadatas as $metadata) {
-            TestCase::assertSame($expected, $metadata->service->nodeConfiguredName);
+            self::assertSame($expected, $metadata->service->nodeConfiguredName);
         }
     }
 
@@ -213,5 +216,36 @@ final class MetadataTest extends ComponentTestCaseBase
     {
         $expected = self::generateDummyMaxKeywordString();
         $this->serviceNodeNameConfigTestImpl(/* configured: */ $expected . '_tail', $expected);
+    }
+
+    public function testContainerId(): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTest(__CLASS__, __FUNCTION__),
+            function (): void {
+                $this->implTestContainerId();
+            }
+        );
+    }
+
+    private function implTestContainerId(): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['testConfig' => AmbientContextForTests::testConfig()]);
+
+        if (AmbientContextForTests::testConfig()->isInContainer === null) {
+            self::assertNull(AmbientContextForTests::testConfig()->thisContainerImageName);
+            self::dummyAssert();
+            return;
+        }
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
+        $expectedContainerId = AmbientContextForTests::testConfig()->isInContainer ? DockerUtil::getThisContainerId() : null;
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            self::assertSame($expectedContainerId, $metadata->system->containerId);
+        }
     }
 }

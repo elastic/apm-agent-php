@@ -29,6 +29,8 @@ function shouldPassEnvVarToDocker () {
 }
 
 function buildDockerEnvVarsCommandLinePart () {
+    # $1 should be the name of the environment variable to hold the result
+    # local -n makes `result' reference to the variable named by $1
     local -n result=$1
     result=()
     # Iterate over environment variables
@@ -79,6 +81,8 @@ function onScriptExit () {
 }
 
 function main () {
+    local dockerToRunImageName=${1:?}
+
     if [ -z "${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}" ] ; then
         echo "ELASTIC_APM_PHP_TESTS_MATRIX_ROW environment variable should be set before calling ${BASH_SOURCE[0]}"
         exit 1
@@ -96,12 +100,24 @@ function main () {
 
     repoRootDir="$( realpath "${thisScriptDir}/.." )"
 
-    buildDockerEnvVarsCommandLinePart dockerRunCmdVariablePart
+    buildDockerEnvVarsCommandLinePart dockerRunCmdLineArgs
+
+    # Let the tests know that are being run inside a container
+    dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" -e "ELASTIC_APM_PHP_TESTS_IS_IN_CONTAINER=true")
+
+    # ELASTIC_APM_PHP_TESTS_THIS_CONTAINER_IMAGE_NAME is used by tests to find container ID
+    dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" -e "ELASTIC_APM_PHP_TESTS_THIS_CONTAINER_IMAGE_NAME=${dockerToRunImageName}")
+
     if [ "${shouldStartExternalServices}" == "true" ] ; then
-        dockerRunCmdVariablePart=("${dockerRunCmdVariablePart[@]}" "--network=elastic-apm-php-external-services-for-component-tests-net")
+        dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" "--network=elastic-apm-php-external-services-for-component-tests-net")
     fi
-    # shellcheck disable=SC2154 # dockerRunCmdVariablePart is assigned by buildDockerEnvVarsCommandLinePart
-    docker run --rm -v "${repoRootDir}:/app" -w /app "${dockerRunCmdVariablePart[@]}" "$@"
+
+    dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" -v /var/run/docker.sock:/var/run/docker.sock)
+    dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" -v "${repoRootDir}:/app")
+    dockerRunCmdLineArgs=("${dockerRunCmdLineArgs[@]}" -w /app)
+
+    # shellcheck disable=SC2154 # dockerRunCmdLineArgs is assigned by buildDockerEnvVarsCommandLinePart
+    docker run --rm -w /app "${dockerRunCmdLineArgs[@]}" "$@"
 }
 
 main "$@"

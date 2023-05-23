@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
 use Elastic\Apm\Impl\Config\IntOptionMetadata;
 use Elastic\Apm\Impl\Config\LogLevelOptionMetadata;
+use Elastic\Apm\Impl\Config\NullableBoolOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableIntOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableWildcardListOptionMetadata;
@@ -84,6 +85,7 @@ final class AllComponentTestsOptionsMetadata
             self::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME       => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
             'escalated_reruns_prod_code_log_level_option_name' => new NullableStringOptionMetadata(),
             'group'                                            => new NullableStringOptionMetadata(),
+            'is_in_container'                    => new NullableBoolOptionMetadata(),
             'is_long_run_mode'                                 => new BoolOptionMetadata(false),
             self::LOG_LEVEL_OPTION_NAME                        => new LogLevelOptionMetadata(LogLevel::INFO),
             'mysql_host'                                       => new NullableStringOptionMetadata(),
@@ -92,6 +94,7 @@ final class AllComponentTestsOptionsMetadata
             'mysql_password'                                   => new NullableStringOptionMetadata(),
             'mysql_db'                                         => new NullableStringOptionMetadata(),
             'run_before_each_test'                             => new NullableStringOptionMetadata(),
+            'this_container_image_name'          => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;

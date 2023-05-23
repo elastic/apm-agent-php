@@ -75,6 +75,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var bool */
     public $isLongRunMode;
 
+    /** @var ?bool */
+    public $isInContainer;
+
     /** @var int */
     public $logLevel;
 
@@ -95,6 +98,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
 
     /** @var ?string */
     public $runBeforeEachTest;
+
+    /** @var ?string */
+    public $thisContainerImageName;
 
     /**
      * Snapshot constructor.
