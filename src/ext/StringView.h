@@ -99,3 +99,11 @@ StringView subStringView( StringView inStrVw, size_t offset )
 
     return inStrVw.length >= offset ? makeStringView( inStrVw.begin + offset, inStrVw.length - offset ) : ELASTIC_APM_EMPTY_STRING_VIEW;
 }
+
+static inline
+StringView stringViewPrefix( StringView inStrVw, size_t maxLength )
+{
+    ELASTIC_APM_ASSERT_VALID_STRING_VIEW( inStrVw );
+
+    return makeStringView( inStrVw.begin, ELASTIC_APM_MIN( inStrVw.length, maxLength ) );
+}
