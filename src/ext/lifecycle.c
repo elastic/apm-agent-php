@@ -498,9 +498,9 @@ static void unregisterErrorAndExceptionHooks() {
 
 void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
-    registerOsSignalHandler();
-
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
+
+    registerOsSignalHandler();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -592,6 +592,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
+
+    unregisterOsSignalHandler();
 
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s exiting...", __FUNCTION__ );
 }
