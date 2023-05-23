@@ -63,6 +63,12 @@ final class WordPressMockBridge
     /** @var int */
     public static $mockPartOfCoreCallbackCallsCount = 0;
 
+    /** @var mixed */
+    public const EXPECTED_WORDPRESS_VERSION_DEFAULT = '6.2';
+
+    /** @var mixed */
+    public static $expectedWordPressVersion = self::EXPECTED_WORDPRESS_VERSION_DEFAULT;
+
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
     public const MOCK_PLUGIN_HOOK_NAME = 'media_upload_newtab';
     public const MOCK_THEME_HOOK_NAME = 'set_header_font';
@@ -81,6 +87,8 @@ final class WordPressMockBridge
         if ($isExpectedVariant) {
             return;
         }
+
+        require $wpIncludesDir . DIRECTORY_SEPARATOR . 'version.php';
 
         $wpContentDir = $srcVariantBaseDir . DIRECTORY_SEPARATOR . 'wp-content';
         require FileUtilForTests::listToPath([$wpContentDir, 'mu-plugins', self::MOCK_MU_PLUGIN_NAME . '.php']);

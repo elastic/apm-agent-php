@@ -28,6 +28,7 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -43,6 +44,7 @@ use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
@@ -55,25 +57,27 @@ use SplFileInfo;
  */
 final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 {
+    private const EXPECTED_SERVICE_FRAMEWORK_NAME = 'WordPress';
+
     public const WP_INCLUDES_DIR_NAME = 'wp-includes';
 
     public const EXPECTED_LABEL_KEY_FOR_WORDPRESS_THEME = 'wordpress_theme';
 
     private const SRC_VARIANTS_DIR = __DIR__ . DIRECTORY_SEPARATOR . 'WordPress';
 
-    private const IS_AST_PROCESS_ENABLED_KEY = 'IS_AST_PROCESS_ENABLED';
-    private const IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY = 'IS_AST_PROCESS_DEBUG_DUMP_ENABLED';
-    public const EXPECTED_THEME_KEY = 'EXPECTED_THEME';
-    public const MU_PLUGIN_CALLS_COUNT_KEY = 'MU_PLUGIN_CALLS_COUNT';
-    public const PLUGIN_CALLS_COUNT_KEY = 'PLUGIN_CALLS_COUNT';
-    public const THEME_CALLS_COUNT_KEY = 'THEME_CALLS_COUNT';
-    public const PART_OF_CORE_CALLS_COUNT_KEY = 'PART_OF_CORE_CALLS_COUNT';
+    private const IS_AST_PROCESS_ENABLED_KEY = 'is_ast_process_enabled';
+    private const IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY = 'is_ast_process_debug_dump_enabled';
+    public const EXPECTED_THEME_KEY = 'expected_theme';
+    public const MU_PLUGIN_CALLS_COUNT_KEY = 'mu_plugin_calls_count';
+    public const PLUGIN_CALLS_COUNT_KEY = 'plugin_calls_count';
+    public const THEME_CALLS_COUNT_KEY = 'theme_calls_count';
+    public const PART_OF_CORE_CALLS_COUNT_KEY = 'part_of_core_calls_count';
 
-    public const APPLY_FILTERS_CALLS_COUNT_KEY = 'APPLY_FILTERS_COUNT_CALLS';
-    public const DO_ACTION_CALLS_COUNT_KEY = 'DO_ACTION_COUNT_CALLS';
+    public const APPLY_FILTERS_CALLS_COUNT_KEY = 'apply_filters_count_calls';
+    public const DO_ACTION_CALLS_COUNT_KEY = 'do_action_count_calls';
 
-    private const SRC_VARIANT_DIR_KEY = 'SRC_VARIANT_DIR';
-    private const IS_EXPECTED_VARIANT_KEY = 'IS_EXPECTED_VARIANT';
+    private const SRC_VARIANT_DIR_KEY = 'src_variant_dir';
+    private const IS_EXPECTED_VARIANT_KEY = 'is_expected_variant';
 
     private const ADAPTED_SOURCE_DIR_NAME = 'adapted_source';
     public const FOLD_INTO_ONE_LINE_BEGIN_MARKER = '/* <<< BEGIN Elasitc APM tests marker to fold into one line */';
@@ -90,6 +94,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private const ADAPTED_FILE_NAME_SUFFIX = 'adapted';
     private const SUFFIX_TO_BE_REMOVED_BY_ELASTIC_APM_TESTS = '_suffixToBeRemovedByElasticApmTests';
+
+    private const EXPECTED_WORDPRESS_VERSION_KEY = 'expected_wordpress_version';
 
     /**
      * @return string[]
@@ -430,6 +436,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
         $isAstProcessDebugDumpEnabled = $testArgs->getBool(self::IS_AST_PROCESS_DEBUG_DUMP_ENABLED_KEY);
 
+        if ($isAstProcessEnabled) {
+            MetadataExpectations::$serviceFrameworkDefault->setValue(new NameVersionData(self::EXPECTED_SERVICE_FRAMEWORK_NAME, WordPressMockBridge::EXPECTED_WORDPRESS_VERSION_DEFAULT));
+        }
+
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($adaptedSrcBaseDir, $astProcessDebugDumpOutDir, $isAstProcessEnabled, $isAstProcessDebugDumpEnabled): void {
@@ -475,12 +485,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         ];
 
         $result = (new DataProviderForTestBuilder())
-            ->addBoolKeyedDimensionAllValuesCombinable(self::IS_AST_PROCESS_ENABLED_KEY)
-            ->addGeneratorOnlyFirstValueCombinable(
-                AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator(
-                    $disableInstrumentationsVariants
-                )
-            )
+            ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_AST_PROCESS_ENABLED_KEY)
+            ->addGeneratorOnlyFirstValueCombinable(AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator($disableInstrumentationsVariants))
             ->addKeyedDimensionOnlyFirstValueCombinable(self::EXPECTED_THEME_KEY, ['my_favorite_theme', null, 'some_other_theme'])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::PLUGIN_CALLS_COUNT_KEY, [10, 1, 2, 0])
             ->addKeyedDimensionOnlyFirstValueCombinable(self::MU_PLUGIN_CALLS_COUNT_KEY, [7, 1, 2, 0])
@@ -491,21 +497,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
     }
 
-    /**
-     * @dataProvider dataProviderForTestOnMockSource
-     */
-    public function testOnMockSource(MixedMap $testArgs): void
-    {
-        self::runAndEscalateLogLevelOnFailure(
-            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
-            function () use ($testArgs): void {
-                $this->implTestOnMockSource($testArgs);
-            }
-        );
-    }
-
     public static function appCodeForTestOnMockSource(MixedMap $appCodeArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $srcVariantBaseDir = self::buildInputOrExpectedOutputVariantSubDir(self::SRC_VARIANTS_DIR, /* isExpectedVariant */ false);
         WordPressMockBridge::loadMockSource($srcVariantBaseDir, /* isExpectedVariant */ false);
 
@@ -514,8 +509,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private function implTestOnMockSource(MixedMap $testArgs): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['testArgs' => $testArgs]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
         $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
@@ -541,6 +535,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         /** @var SpanExpectations[] $expectedSpans */
         $expectedSpans = [];
         if ($isWordPressDataToBeExpected) {
+            MetadataExpectations::$serviceFrameworkDefault->setValue(new NameVersionData(self::EXPECTED_SERVICE_FRAMEWORK_NAME, WordPressMockBridge::EXPECTED_WORDPRESS_VERSION_DEFAULT));
+
             /**
              * @see WordPressMockBridge::runMockSource
              */
@@ -599,5 +595,103 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
         SpanSequenceValidator::updateExpectationsEndTime($expectedSpans);
         SpanSequenceValidator::assertSequenceAsExpected($expectedSpans, array_values($dataFromAgent->idToSpan));
+    }
+
+    /**
+     * @dataProvider dataProviderForTestOnMockSource
+     */
+    public function testOnMockSource(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestOnMockSource($testArgs);
+            }
+        );
+    }
+
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public function dataProviderForTestFrameworkDiscovery(): iterable
+    {
+        $disableInstrumentationsVariants = [
+            ''          => true,
+            'WordPress' => false,
+        ];
+
+        $result = (new DataProviderForTestBuilder())
+            ->addBoolKeyedDimensionAllValuesCombinable(self::IS_AST_PROCESS_ENABLED_KEY)
+            ->addGeneratorOnlyFirstValueCombinable(AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator($disableInstrumentationsVariants))
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::EXPECTED_WORDPRESS_VERSION_KEY, ['5.6', '6.2', 6, 6.1, null])
+            ->build();
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
+    }
+
+    public static function appCodeForTestFrameworkDiscovery(MixedMap $appCodeArgs): void
+    {
+        $srcVariantBaseDir = self::buildInputOrExpectedOutputVariantSubDir(self::SRC_VARIANTS_DIR, /* isExpectedVariant */ false);
+        WordPressMockBridge::$expectedWordPressVersion = $appCodeArgs->get(self::EXPECTED_WORDPRESS_VERSION_KEY);
+        WordPressMockBridge::loadMockSource($srcVariantBaseDir, /* isExpectedVariant */ false);
+
+        /**
+         * There should not be any need to actually run any of the loaded code
+         */
+    }
+
+    private function implTestFrameworkDiscovery(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['testArgs' => $testArgs]);
+
+        $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
+        $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
+        $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
+        $expectedWordPressVersion = $testArgs->get(self::EXPECTED_WORDPRESS_VERSION_KEY);
+
+        $expectedServiceFramework = $isAstProcessEnabled && $isInstrumentationEnabled && is_string($expectedWordPressVersion)
+            ? new NameVersionData(self::EXPECTED_SERVICE_FRAMEWORK_NAME, $expectedWordPressVersion)
+            : null;
+        MetadataExpectations::$serviceFrameworkDefault->setValue($expectedServiceFramework);
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($isAstProcessEnabled, $disableInstrumentationsOptVal): void {
+                $appCodeParams->setAgentOptionIfNotDefaultValue(OptionNames::AST_PROCESS_ENABLED, $isAstProcessEnabled);
+                $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
+            }
+        );
+
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestFrameworkDiscovery']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
+                $appCodeRequestParams->setAppCodeArgs($testArgs);
+            }
+        );
+
+        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+        foreach ($dataFromAgent->metadatas as $metadata) {
+            if ($expectedServiceFramework === null) {
+                self::assertNull($metadata->service->framework);
+            } else {
+                self::assertNotNull($metadata->service->framework);
+                self::assertSame($expectedServiceFramework->name, $metadata->service->framework->name);
+                self::assertSame($expectedServiceFramework->version, $metadata->service->framework->version);
+            }
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForTestFrameworkDiscovery
+     */
+    public function testFrameworkDiscovery(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestFrameworkDiscovery($testArgs);
+            }
+        );
     }
 }

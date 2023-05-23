@@ -37,20 +37,18 @@ final class BuiltinPlugin extends PluginBase
 
     public function __construct(Tracer $tracer)
     {
+        $wordPressAutoInstrumentation = new WordPressAutoInstrumentation($tracer);
         parent::__construct(
             $tracer,
             [
                 new CurlAutoInstrumentation($tracer),
                 new PDOAutoInstrumentation($tracer),
                 new MySQLiAutoInstrumentation($tracer),
+                $wordPressAutoInstrumentation
             ]
         );
 
-        $wordPressAutoInstrumentation = new WordPressAutoInstrumentation($tracer);
-        $this->wordPressAutoInstrumentationIfEnabled =
-            $this->checkIfInstrumentationEnabled($wordPressAutoInstrumentation)
-                ? $wordPressAutoInstrumentation
-                : null;
+        $this->wordPressAutoInstrumentationIfEnabled = in_array($wordPressAutoInstrumentation, $this->enabledInstrumentations, /* strict */ true)  ? $wordPressAutoInstrumentation : null;
     }
 
     public function getDescription(): string

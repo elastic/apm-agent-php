@@ -150,7 +150,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 
         $configuredHostname = Tracer::limitNullableKeywordString($agentConfig->hostname());
         $metadata->configuredHostname->setValue($configuredHostname);
-        $metadata->detectedHostname->setValue($configuredHostname === null ? MetadataDiscoverer::detectHostname() : null);
+        $metadata->detectedHostname->setValue($configuredHostname === null ? MetadataDiscoverer::discoverHostname() : null);
 
         if (AmbientContextForTests::testConfig()->isInContainer !== null) {
             $metadata->containerId->setValue(AmbientContextForTests::testConfig()->isInContainer ? DockerUtil::getThisContainerId() : null);

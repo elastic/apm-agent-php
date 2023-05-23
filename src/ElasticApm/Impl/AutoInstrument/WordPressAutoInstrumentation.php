@@ -32,10 +32,14 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\Level;
 use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
+use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use ReflectionClass;
 use ReflectionException;
@@ -49,6 +53,8 @@ use Throwable;
  */
 final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 {
+    private const SERVICE_FRAMEWORK_NAME = 'WordPress';
+
     public const SPAN_NAME_PART_FOR_CORE = 'WordPress core';
 
     public const THEME_KEYWORD = 'wordpress_theme';
@@ -81,9 +87,6 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
      */
     private const DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS = \ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS;
 
-    /** @var LoggerFactory */
-    private $loggerFactory;
-
     /** @var Logger */
     private $logger;
 
@@ -96,12 +99,17 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
     /** @var bool */
     private $isReadyToWrapFilterCallbacks = false;
 
+    /** @var bool */
+    private $isServiceFrameworkSet = false;
+
+    /** @var ?NameVersionData */
+    private $serviceFramework = null;
+
     public function __construct(Tracer $tracer)
     {
         parent::__construct($tracer);
 
-        $this->loggerFactory = $tracer->loggerFactory();
-        $this->logger = $this->loggerFactory->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         $this->util = new AutoInstrumentationUtil($tracer->loggerFactory());
     }
@@ -118,14 +126,21 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         return [];
     }
 
+    /** @inheritDoc */
     public function register(RegistrationContextInterface $ctx): void
     {
+        $this->tracer->getMetadataDiscoverer()->addServiceFrameworkDiscoverer(
+            ClassNameUtil::fqToShort(__CLASS__) /* <- dbgDiscovererName */,
+            function (): ?NameVersionData {
+                return $this->discoverServiceFramework();
+            }
+        );
     }
 
     /** @inheritDoc */
     public function requiresUserlandCodeInstrumentation(): bool
     {
-        return false;
+        return true;
     }
 
     private function switchToFailedMode(): void
@@ -311,13 +326,51 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
      */
     private function findCallbackInfo($callback, /* out */ ?string &$groupKind, /* out */ ?string &$groupName): void
     {
-        if (($srcFilePath = self::getCallbackSourceFilePath($callback, $this->loggerFactory)) === null) {
+        if (($srcFilePath = self::getCallbackSourceFilePath($callback, $this->tracer->loggerFactory())) === null) {
             $groupKind = self::CALLBACK_GROUP_KIND_CORE;
             $groupName = null;
             return;
         }
 
-        self::findAddonInfoFromFilePath($srcFilePath, $this->loggerFactory, /* out */ $groupKind, /* out */ $groupName);
+        self::findAddonInfoFromFilePath($srcFilePath, $this->tracer->loggerFactory(), /* out */ $groupKind, /* out */ $groupName);
+    }
+
+    private function discoverServiceFramework(): ?NameVersionData
+    {
+        if ($this->isServiceFrameworkSet) {
+            return $this->serviceFramework;
+        }
+
+        $loggerProxyDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+
+        if (!$this->isReadyToWrapFilterCallbacks) {
+            $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Did not discover because expected WordPress code (_wp_filter_build_unique_id function) was not loaded');
+            $this->isServiceFrameworkSet = true;
+            return $this->serviceFramework;
+        }
+
+        global $wp_version;
+        /** @var ?string $reasonNotDiscovered */
+        $reasonNotDiscovered = null;
+        if (isset($wp_version)) {
+            if (is_string($wp_version)) {
+                $this->serviceFramework = new NameVersionData(self::SERVICE_FRAMEWORK_NAME, $wp_version);
+            } else {
+                $reasonNotDiscovered = '$wp_version global variable is set but it is not a string; $wp_version: '
+                                       . LoggableToString::convert(['type' => DbgUtil::getType($wp_version), 'value' => $wp_version]);
+            }
+        } else {
+            $reasonNotDiscovered = '$wp_version global variable is not set';
+        }
+
+        if ($reasonNotDiscovered === null) {
+            $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Discovered', ['serviceFramework' => $this->serviceFramework]);
+        } else {
+            $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Did not discover because ' . $reasonNotDiscovered);
+        }
+
+        $this->isServiceFrameworkSet = true;
+        return $this->serviceFramework;
     }
 
     public function directCall(string $method): void
@@ -526,5 +579,17 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Recording WordPress theme as a label on transaction', ['theme' => $returnValue, 'label key' => self::LABEL_KEY_FOR_WORDPRESS_THEME]);
         ElasticApm::getCurrentTransaction()->context()->setLabel(self::LABEL_KEY_FOR_WORDPRESS_THEME, $returnValue);
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs(
+            [
+                'isInFailedMode'               => $this->isInFailedMode,
+                'isReadyToWrapFilterCallbacks' => $this->isReadyToWrapFilterCallbacks,
+                'isServiceFrameworkSet'        => $this->isServiceFrameworkSet,
+                'serviceFramework'             => $this->serviceFramework,
+            ]
+        );
     }
 }

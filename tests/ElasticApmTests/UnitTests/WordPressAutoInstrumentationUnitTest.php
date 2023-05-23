@@ -249,8 +249,7 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
      */
     public static function testRemoveAttributes(string $input, string $expectedOutput): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['input' => $input, 'expectedOutput' => $expectedOutput]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $actualOutput = WordPressAutoInstrumentationTest::removeAttributes($input);
         self::assertSame($expectedOutput, $actualOutput);
