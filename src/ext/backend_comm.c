@@ -33,6 +33,75 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
+struct LibCurlInfo
+{
+    String version;
+    String ssl_version;
+    String libz_version;
+    String host;
+    const String* protocols;
+};
+typedef struct LibCurlInfo LibCurlInfo;
+static LibCurlInfo g_cachedLibCurlInfo;
+static bool g_isCachedLibCurlInfoInited = false;
+
+void ensureCachedLibCurlInfoInited()
+{
+    if ( g_isCachedLibCurlInfoInited )
+    {
+        return;
+    }
+
+    curl_version_info_data* data = curl_version_info( CURLVERSION_NOW );
+
+    g_cachedLibCurlInfo.version = data->version;
+    g_cachedLibCurlInfo.ssl_version = data->ssl_version;
+    g_cachedLibCurlInfo.libz_version = data->libz_version;
+    g_cachedLibCurlInfo.host = data->host;
+    g_cachedLibCurlInfo.protocols = (const String*)( data->protocols );
+
+    g_isCachedLibCurlInfoInited = true;
+}
+
+String streamLibCurlInfo( TextOutputStream* txtOutStream )
+{
+    ensureCachedLibCurlInfoInited();
+
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+
+    streamPrintf( txtOutStream, "{" );
+    streamPrintf( txtOutStream, "version: %s", g_cachedLibCurlInfo.version );
+    streamPrintf( txtOutStream, ", ssl_version: %s", g_cachedLibCurlInfo.ssl_version );
+    streamPrintf( txtOutStream, ", libz_version: %s", g_cachedLibCurlInfo.libz_version );
+    streamPrintf( txtOutStream, ", host: %s", g_cachedLibCurlInfo.host );
+
+    /**
+     * protocols is a pointer to an array of char * pointers, containing the names protocols that libcurl supports (using lowercase letters).
+     * The protocol names are the same as would be used in URLs. The array is terminated by a NULL entry.
+     *
+     * @link https://curl.se/libcurl/c/curl_version_info.html
+     */
+    streamPrintf( txtOutStream, ", protocols: [" );
+    for ( size_t index = 0 ; ; ++index )
+    {
+        if ( g_cachedLibCurlInfo.protocols[ index ] == NULL )
+        {
+            break;
+        }
+        if ( index != 0 )
+        {
+            streamPrintf( txtOutStream, ", " );
+        }
+        streamPrintf( txtOutStream, "%s", g_cachedLibCurlInfo.protocols[ index ] );
+    }
+    streamPrintf( txtOutStream, "]" );
+
+    streamPrintf( txtOutStream, "}" );
+
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
+}
 
 static ResultCode dupMallocStringView( StringView src, StringBuffer* dst )
 {
@@ -92,7 +161,8 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
         CURLcode curl_easy_setopt_ret_val = curl_easy_setopt( curlHandle, curlOptionId, __VA_ARGS__ ); \
         if ( curl_easy_setopt_ret_val != CURLE_OK ) \
         { \
-            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option. curlOptionId: %d (as constant: %s).", curlOptionId, #curlOptionId ); \
+            ELASTIC_APM_LOG_ERROR( "Failed to set cUrl option; curlOptionId: %d (used constant: %s); curl info: %s", curlOptionId, #curlOptionId, streamLibCurlInfo( &txtOutStream ) ); \
+            textOutputStreamRewind( &txtOutStream ); \
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultCurlFailure ); \
         } \
     } while ( false ) \
@@ -106,7 +176,9 @@ ResultCode addToCurlStringList( /* in,out */ struct curl_slist** pList, const ch
     struct curl_slist* newList = curl_slist_append( *pList, strToAdd );
     if ( newList == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "Failed to curl_slist_append(); strToAdd: %s", strToAdd );
+        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+        ELASTIC_APM_LOG_ERROR( "Failed to curl_slist_append(); strToAdd: %s; curl info: %s", strToAdd, streamLibCurlInfo( &txtOutStream ) );
         return resultCurlFailure;
     }
 
@@ -161,7 +233,7 @@ String streamCurlInfoType( curl_infotype value, TextOutputStream* txtOutStream )
     }
 }
 
-String streamCurlData( char* dataViewBegin, size_t dataViewLength, TextOutputStream* txtOutStream )
+String streamCurlData( const char* dataViewBegin, size_t dataViewLength, TextOutputStream* txtOutStream )
 {
     TextOutputStreamState txtOutStreamStateOnEntryStart;
     if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
@@ -221,6 +293,8 @@ void enableCurlVerboseMode( CURL* curlHandle )
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     ELASTIC_APM_CURL_EASY_SETOPT( curlHandle, CURLOPT_DEBUGFUNCTION, &curlDebugCallback );
     ELASTIC_APM_CURL_EASY_SETOPT( curlHandle, CURLOPT_VERBOSE, 1L );
@@ -253,17 +327,16 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG(
             "config: {serverUrl: %s, disableSend: %s, serverTimeout: %s, devInternalBackendCommLogVerbose: %s}"
             "; userAgentHttpHeader: `%s'"
-            , config->serverUrl
-            , boolToString( config->disableSend )
-            , streamDuration( config->serverTimeout, &txtOutStream )
-            , boolToString( config->devInternalBackendCommLogVerbose )
-            , streamStringView( userAgentHttpHeader, &txtOutStream ) );
+            "; curl info: %s"
+            , config->serverUrl, boolToString( config->disableSend ), streamDuration( config->serverTimeout, &txtOutStream ), boolToString( config->devInternalBackendCommLogVerbose )
+            , streamStringView( userAgentHttpHeader, &txtOutStream )
+            , streamLibCurlInfo( &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
 
     connectionData->curlHandle = curl_easy_init();
     if ( connectionData->curlHandle == NULL )
     {
-        ELASTIC_APM_LOG_ERROR( "curl_easy_init() returned NULL" );
+        ELASTIC_APM_LOG_ERROR( "curl_easy_init() returned NULL; curl info: %s", streamLibCurlInfo( &txtOutStream ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultCurlFailure );
     }
 
@@ -356,6 +429,8 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     enum { urlBufferSize = 256 };
     char url[urlBufferSize];
     int snprintfRetVal;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
     ELASTIC_APM_ASSERT( connectionData->curlHandle != NULL, "" );
@@ -377,15 +452,15 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     curlResult = curl_easy_perform( connectionData->curlHandle );
     if ( curlResult != CURLE_OK )
     {
-        char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
-        TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
         ELASTIC_APM_LOG_ERROR(
-                "Sending events to APM Server failed."
-                " URL: `%s'."
-                " Error message: `%s'."
-                " Current process command line: `%s'"
+                "Sending events to APM Server failed"
+                "; URL: `%s'"
+                "; error message: `%s'"
+                "; curl info: %s"
+                "; current process command line: `%s'"
                 , url
                 , curl_easy_strerror( curlResult )
+                , streamLibCurlInfo( &txtOutStream )
                 , streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ 200 ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
