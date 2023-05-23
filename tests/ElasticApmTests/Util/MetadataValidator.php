@@ -162,6 +162,8 @@ final class MetadataValidator
         if ($this->expectations->configuredHostname->isValueSet()) {
             self::verifyHostnames($this->expectations->configuredHostname->getValue(), $this->expectations->detectedHostname->getValue(), $this->actual->system);
         }
+
+        TestCaseBase::assertSameExpectedOptional($this->expectations->containerId, $this->actual->system->containerId);
     }
 
     public static function verifyHostnames(?string $expectedConfiguredHostname, ?string $expectedDetectedHostname, SystemData $systemData): void

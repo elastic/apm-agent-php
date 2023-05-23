@@ -35,7 +35,7 @@ use ElasticApmTests\Util\Pair;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
 
-class MetadataTest extends TestCaseBase
+class MetadataDiscovererUnitTest extends TestCaseBase
 {
     public function testDefaultServiceNameUsesAgentName(): void
     {
