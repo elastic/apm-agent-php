@@ -386,7 +386,7 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
                 " Current process command line: `%s'"
                 , url
                 , curl_easy_strerror( curlResult )
-                , streamCurrentProcessCommandLine( &txtOutStream ) );
+                , streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ 200 ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
