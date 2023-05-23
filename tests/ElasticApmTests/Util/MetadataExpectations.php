@@ -32,6 +32,9 @@ final class MetadataExpectations extends EventExpectations
     public $configuredHostname;
 
     /** @var Optional<?string> */
+    public $containerId;
+
+    /** @var Optional<?string> */
     public $detectedHostname;
 
     /** @var Optional<string> */
@@ -52,6 +55,7 @@ final class MetadataExpectations extends EventExpectations
 
         $this->agentEphemeralId = new Optional();
         $this->configuredHostname = new Optional();
+        $this->containerId = new Optional();
         $this->detectedHostname = new Optional();
         $this->serviceEnvironment = new Optional();
         $this->serviceName = new Optional();

@@ -134,10 +134,8 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         }
     }
 
-    private static function buildMetadataExpectationsForHost(
-        AppCodeHostParams $appCodeHostParams,
-        TransactionExpectations $transactionExpectations
-    ): MetadataExpectations {
+    private static function buildMetadataExpectationsForHost(AppCodeHostParams $appCodeHostParams, TransactionExpectations $transactionExpectations): MetadataExpectations
+    {
         $metadata = new MetadataExpectations();
         Assert::assertGreaterThan(0, self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata));
 
@@ -153,6 +151,10 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         $configuredHostname = Tracer::limitNullableKeywordString($agentConfig->hostname());
         $metadata->configuredHostname->setValue($configuredHostname);
         $metadata->detectedHostname->setValue($configuredHostname === null ? MetadataDiscoverer::detectHostname() : null);
+
+        if (AmbientContextForTests::testConfig()->isInContainer !== null) {
+            $metadata->containerId->setValue(AmbientContextForTests::testConfig()->isInContainer ? DockerUtil::getThisContainerId() : null);
+        }
 
         return $metadata;
     }
