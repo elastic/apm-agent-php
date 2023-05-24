@@ -48,14 +48,14 @@ foreach(_php_version ${_supported_php_versions})
     get_php_api_from_release(${_php_version} _ZEND_API_version)
 
     set_target_properties(${_Target}
-        PROPERTIES OUTPUT_NAME elastic_apm_${_ZEND_API_version}
+        PROPERTIES OUTPUT_NAME elastic_apm-${_ZEND_API_version}
         PREFIX ""
     )
 
     set_target_properties(${_Target}
-        PROPERTIES OUTPUT_NAME elastic_apm_${_ZEND_API_version}
+        PROPERTIES OUTPUT_NAME elastic_apm-${_ZEND_API_version}
         PREFIX ""
-        DEBUG_SYMBOL_FILE "elastic_apm_${_ZEND_API_version}.debug"
+        DEBUG_SYMBOL_FILE "elastic_apm-${_ZEND_API_version}.debug"
     )
 
     if (RELEASE_BUILD)

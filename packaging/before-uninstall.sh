@@ -103,9 +103,9 @@ function remove_extension_configuration_to_file() {
 function get_extension_filename() {
     PHP_API=$(php_api)
     ## If alpine then add another suffix
-    if grep -q -i alpine /etc/os-release; then
-        SUFFIX=-alpine
-    fi
+#     if grep -q -i alpine /etc/os-release; then
+#        SUFFIX=-alpine
+#     fi
     echo "elastic_apm-${PHP_API}${SUFFIX}.so"
 }
 

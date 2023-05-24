@@ -5,36 +5,19 @@ set -x
 ##   - If alpine then use only alpine so files
 ##   - If deb/rpm then skip alpine so files
 ##   - If tar then use all the so files
-BUILD_EXT_DIR=build/ext/modules/
-mkdir -p ${BUILD_EXT_DIR}
-cp -rf src/ext/modules/*.so ${BUILD_EXT_DIR}
-if [ "${TYPE}" = 'apk' ] ; then
-	find ${BUILD_EXT_DIR} -type f -name '*.so' ! -name '*-alpine.so' -delete
-elif [ "${TYPE}" = 'deb' ] || [ "${TYPE}" = 'rpm' ] ; then
-	find ${BUILD_EXT_DIR} -type f -name '*-alpine.so' -delete
-fi
 
-## src/ext files to be archived in the package
-BUILD_SRC_EXT_DIR=build/src
-IGNORE_FILE=${BUILD_SRC_EXT_DIR}/ext/.gitignore
-mkdir -p ${BUILD_SRC_EXT_DIR}
-cp -rf src/ext ${BUILD_SRC_EXT_DIR}
-if [ -e ${IGNORE_FILE} ] ; then
-	while IFS= read -r line
-	do
-		if [ -n "$line" ]; then
-			if case $line in "#"*) false;; *) true;; esac; then
-				# shellcheck disable=SC2086
-				rm -rf ${BUILD_SRC_EXT_DIR}/ext/${line} || true
-			fi
-		fi
-	done < "${IGNORE_FILE}"
-	rm ${IGNORE_FILE} || true
+BUILD_EXT_DIR=""
+
+if [ "${TYPE}" = 'apk' ] ; then
+	BUILD_EXT_DIR=build/ext/linuxmusl-x86-64/
+else
+	BUILD_EXT_DIR=build/ext/linux-x86-64/
 fi
 
 touch build/elastic-apm.ini
 
-## Create package
+function createPackage () {
+
 fpm --input-type dir \
 		--output-type "${TYPE}" \
 		--name "${NAME}" \
@@ -55,15 +38,31 @@ fpm --input-type dir \
 		build/elastic-apm.ini=${PHP_AGENT_DIR}/etc/ \
 		packaging/elastic-apm-custom-template.ini=${PHP_AGENT_DIR}/etc/elastic-apm-custom.ini \
 		packaging/before-uninstall.sh=${PHP_AGENT_DIR}/bin/before-uninstall.sh \
-		${BUILD_SRC_EXT_DIR}=${PHP_AGENT_DIR} \
+		agent/php/=${PHP_AGENT_DIR}/src \
 		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions \
-		README.md=${PHP_AGENT_DIR}/docs/README.md \
-		src/ElasticApm=${PHP_AGENT_DIR}/src \
-		src/bootstrap_php_part.php=${PHP_AGENT_DIR}/src/bootstrap_php_part.php
+		README.md=${PHP_AGENT_DIR}/docs/README.md
 
 ## Create sha512
-BINARY=$(ls -1 "${OUTPUT}"/*."${TYPE}")
+BINARY=$(ls -1 "${OUTPUT}"/${NAME}*."${TYPE}")
 SHA=${BINARY}.sha512
 sha512sum "${BINARY}" > "${SHA}"
 sed -i.bck "s#${OUTPUT}/##g" "${SHA}"
 rm "${OUTPUT}"/*.bck
+
+}
+
+
+
+# create second tar for musl
+if [ "${TYPE}" = 'tar' ] ; then
+	NAME_BACKUP=${NAME}
+	NAME="${NAME_BACKUP}-linux-x86-64"
+	BUILD_EXT_DIR=build/ext/linux-x86-64/
+	createPackage
+
+	NAME="${NAME_BACKUP}-linuxmusl-x86-64"
+	BUILD_EXT_DIR=build/ext/linuxmusl-x86-64/
+	createPackage
+else
+	createPackage
+fi

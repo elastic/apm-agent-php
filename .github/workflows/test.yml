@@ -42,10 +42,43 @@ jobs:
         run: make -f .ci/Makefile modernbuild
       - uses: actions/upload-artifact@v3
         with:
-          name: package-parts
+          name: package-parts-${{ matrix.arch }}
           path: |
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.so
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.debug
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+  phpt-tests:
+    name: phpt-tests
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+          - "8.2"
+        arch:
+          - "linux-x86-64"
+          - "linuxmusl-x86-64"
+    env:
+      PHP_VERSION: ${{ matrix.php-version }}
+      BUILD_ARCHITECTURE: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare
+        run: make -f .ci/Makefile prepare
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-${{ matrix.arch }}
+          path: agent/native/_build/${{ matrix.arch }}-release/ext/
+      - name: phpt-unit-tests
+        run: make -f .ci/Makefile run-phpt-tests
+
   test:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
@@ -72,8 +105,8 @@ jobs:
         run: make -f .ci/Makefile prepare
       - name: Static Check / Unit tests
         run: make -f .ci/Makefile static-check-unit-test
-      - name: Build parts for packages
-        run: make -f .ci/Makefile generate-for-package
+      # - name: Build parts for packages
+      #   run: make -f .ci/Makefile generate-for-package
       - if: success() || failure()
         name: Prepare Upload
         run: >-
@@ -90,14 +123,19 @@ jobs:
   build-packages:
     runs-on: ubuntu-latest
     needs:
+      - build
       - test
+      - phpt-tests
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: package-parts
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.so
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.debug
+          name: package-parts-linux-x86-64
+          path: build/ext/linux-x86-64
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: build/ext/linuxmusl-x86-64
       - name: package
         run: make -C packaging package
       - name: package info
@@ -145,9 +183,13 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: package-parts
-          path: src/ext/modules
-
+          name: package-parts-linux-x86-64
+          path: build/ext/linux-x86-64
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: build/ext/linuxmusl-x86-64
+          
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
         run: |

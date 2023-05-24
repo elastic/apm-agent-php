@@ -7,7 +7,7 @@ ELASTIC_APM_LOG_LEVEL_WIN_SYS_DEBUG=TRa
 --INI--
 elastic_apm.log_level_syslog=Er
 elastic_apm.log_level_file=dEb
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

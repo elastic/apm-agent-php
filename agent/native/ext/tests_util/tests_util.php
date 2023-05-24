@@ -93,7 +93,7 @@ function sharedChecks(): void
         ELASTIC_APM_LOG_LEVEL_CRITICAL
     );
 
-    $expected_bootstrap_php_part_file = '../bootstrap_php_part.php';
+    $expected_bootstrap_php_part_file = '../../php/bootstrap_php_part.php';
     elasticApmAssertSame(
         "ini_get('elastic_apm.bootstrap_php_part_file')",
         ini_get('elastic_apm.bootstrap_php_part_file'),

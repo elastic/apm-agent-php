@@ -4,7 +4,7 @@ Boolean configuration option value 0 (in this case using environment variable) s
 ELASTIC_APM_ENABLED=0
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

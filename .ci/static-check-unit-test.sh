@@ -29,61 +29,64 @@ ensureSyslogIsRunning
 
 ## This make runs PHPT
 # Disable agent for auxiliary PHP processes to reduce noise in logs
-export ELASTIC_APM_ENABLED=false
-for phptFile in ./tests/*.phpt; do
-    msg="Running tests in \`${phptFile}' ..."
-    echo "${msg}"
-    this_script_name="$( basename "${BASH_SOURCE[0]}" )"
-    logger -t "${this_script_name}" "${msg}"
 
-    # Disable exit-on-error
-    set +e
-    make test TESTS="--show-all ${phptFile}"
-    exitCode=$?
+# export ELASTIC_APM_ENABLED=false
+# for phptFile in ./tests/*.phpt; do
+#     msg="Running tests in \`${phptFile}' ..."
+#     echo "${msg}"
+#     this_script_name="$( basename "${BASH_SOURCE[0]}" )"
+#     logger -t "${this_script_name}" "${msg}"
 
-    if [ ${exitCode} -ne 0 ] ; then
-        echo "Tests in \`${phptFile}' failed"
-        phptFileName="${phptFile%.phpt}"
-        cat "${phptFileName}.log"
-        cat "${phptFileName}.out"
-        exit 1
-    fi
+#     # Disable exit-on-error
+#     set +e
+#     make test TESTS="--show-all ${phptFile}"
+#     exitCode=$?
 
-    # Re-enable exit-on-error
-    set -e
-done
+#     if [ ${exitCode} -ne 0 ] ; then
+#         echo "Tests in \`${phptFile}' failed"
+#         phptFileName="${phptFile%.phpt}"
+#         cat "${phptFileName}.log"
+#         cat "${phptFileName}.out"
+#         exit 1
+#     fi
 
+#     # Re-enable exit-on-error
+#     set -e
+# done
+
+# native unit tests will be triggered just after build
 # Disable exit-on-error
-set +e
+#set +e
 ## Run cmocka tests
-function buildAndRunUnitTests () {
-    pushd /app/src/ext/unit_tests
-    for buildType in Debug Release
-    do
-        cmake -DCMAKE_BUILD_TYPE=${buildType} .
-        make
-        ./unit_tests
-        unitTestsExitCode=$?
-        if [ ${unitTestsExitCode} -ne 0 ] ; then
-            popd
-            return ${unitTestsExitCode}
-        fi
-    done
-    popd
-}
-buildAndRunUnitTests
+#function buildAndRunUnitTests () {
+#    pushd /app/src/ext/unit_tests
+#    for buildType in Debug Release
+#    do
+#        cmake -DCMAKE_BUILD_TYPE=${buildType} .
+#        make
+#        ./unit_tests
+#        unitTestsExitCode=$?
+#        if [ ${unitTestsExitCode} -ne 0 ] ; then
+#            popd
+#            return ${unitTestsExitCode}
+#        fi
+#    done
+#    popd
+#}
+#buildAndRunUnitTests
 ## Save errorlevel to be reported later on
-ret=$?
+# ret=$?
 
-## Manipulate JUnit report without multiple testsuites entries.
-for file in "${BUILD_FOLDER}"/*-unit-tests-junit.xml; do
-    sed -i.bck ':begin;$!N;s#</testsuites>\n<testsuites>##;tbegin;P;D' "${file}"
-done
+# TODO pawel - makes no sense to me here, should be located after last call to composer
+# ## Manipulate JUnit report without multiple testsuites entries.
+# for file in "${BUILD_FOLDER}"/*-unit-tests-junit.xml; do
+#     sed -i.bck ':begin;$!N;s#</testsuites>\n<testsuites>##;tbegin;P;D' "${file}"
+# done
 
-## Return the error if any
-if [ $ret -ne 0 ] ; then
-    exit 1
-fi
+# ## Return the error if any
+# if [ $ret -ne 0 ] ; then
+#     exit 1
+# fi
 
 # Re-enable exit-on-error
 set -e

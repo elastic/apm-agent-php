@@ -12,7 +12,7 @@ ELASTIC_APM_SECRET_TOKEN=non-default_secret_token_123
 ELASTIC_APM_SERVER_URL=https://non-default_server_url:4321/some/path
 ELASTIC_APM_SERVICE_NAME=Non-default Service Name
 --INI--
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

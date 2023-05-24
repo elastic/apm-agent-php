@@ -64,7 +64,7 @@ elif [ "${TYPE}" == "release-github" ] ; then
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     rpm -ivh "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
-    PACKAGE=apm-agent-php.tar
+    PACKAGE=apm-agent-php-linux-x86-64.tar
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     ## Install tar package and configure the agent accordingly
     tar -xf ${BUILD_RELEASES_FOLDER}/${PACKAGE} -C /
@@ -79,7 +79,7 @@ elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
     rpm -ivh build/local/*.rpm
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf $BUILD_PACKAGES/*.tar -C /
+    tar -xf $BUILD_PACKAGES/*-linux-x86-64*.tar -C /
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi

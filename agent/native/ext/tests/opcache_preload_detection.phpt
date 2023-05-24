@@ -5,7 +5,7 @@ ELASTIC_APM_LOG_LEVEL_STDERR=DEBUG
 ELASTIC_APM_ENABLED=true
 --INI--
 elastic_apm.enabled = 1
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 zend_extension=/tmp/extensions/opcache.so
 opcache.enable=1
 opcache.enable_cli=1
