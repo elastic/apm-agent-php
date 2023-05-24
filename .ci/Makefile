@@ -41,6 +41,17 @@ build: prepare  ## Build the project
 		$(IMAGE):${PHP_VERSION}$(SUFFIX)
 	@echo "::endgroup::"
 
+.PHONY: modernbuild
+modernbuild:
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
+	# docker as the current user
+	docker run --rm -t \
+		-u $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(PWD):/source \
+		-w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.1 \
+		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release && cmake --build --preset $(BUILD_ARCHITECTURE)-release && /source/agent/native/_build/$(BUILD_ARCHITECTURE)-release/ext/unit_tests/unit_tests"
+	@echo "::endgroup::"
+
 .PHONY: static-check-unit-test
 static-check-unit-test: prepare  ## Test the static check and unit tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions

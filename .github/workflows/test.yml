@@ -24,6 +24,28 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  build:
+    name: build-agent-library
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "linux-x86-64"
+          - "linuxmusl-x86-64"
+    env:
+      BUILD_ARCHITECTURE: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make -f .ci/Makefile modernbuild
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package-parts
+          path: |
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.so
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.debug
   test:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
@@ -48,16 +70,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Prepare
         run: make -f .ci/Makefile prepare
-      - name: Build
-        run: make -f .ci/Makefile build
       - name: Static Check / Unit tests
         run: make -f .ci/Makefile static-check-unit-test
       - name: Build parts for packages
         run: make -f .ci/Makefile generate-for-package
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package-parts
-          path: src/ext/modules/*.so
       - if: success() || failure()
         name: Prepare Upload
         run: >-
@@ -80,7 +96,8 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts
-          path: src/ext/modules
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.so
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm_*.debug
       - name: package
         run: make -C packaging package
       - name: package info
