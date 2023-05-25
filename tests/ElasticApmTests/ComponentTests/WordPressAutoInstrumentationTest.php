@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NameVersionData;
+use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
@@ -48,6 +49,7 @@ use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
+use ElasticApmTests\Util\StackTraceExpectations;
 use ElasticApmTests\Util\TextUtilForTests;
 use SplFileInfo;
 
@@ -96,6 +98,13 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
     private const SUFFIX_TO_BE_REMOVED_BY_ELASTIC_APM_TESTS = '_suffixToBeRemovedByElasticApmTests';
 
     private const EXPECTED_WORDPRESS_VERSION_KEY = 'expected_wordpress_version';
+
+    public const MU_PLUGIN_CALLBACK_STACK_TRACE_KEY = 'mu_plugin_callback_stack_trace';
+    public const PLUGIN_CALLBACK_STACK_TRACE_KEY = 'plugin_callback_stack_trace';
+    public const THEME_CALLBACK_STACK_TRACE_KEY = 'theme_callback_stack_trace';
+    public const PART_OF_CORE_CALLBACK_STACK_TRACE_KEY = 'part_of_core_callback_stack_trace';
+
+    private const NON_KEYWORD_STRING_MAX_LENGTH = 100 * 1024;
 
     /**
      * @return string[]
@@ -528,6 +537,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
                 // Disable span compression to have all the expected spans individually
                 $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                $appCodeParams->setAgentOption(OptionNames::NON_KEYWORD_STRING_MAX_LENGTH, self::NON_KEYWORD_STRING_MAX_LENGTH);
             }
         );
 
@@ -553,6 +563,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 $expectedSpans[] = $expectationsBuilder->forCoreFilterCallback(WordPressMockBridge::MOCK_PART_OF_CORE_HOOK_NAME);
             }
         }
+        $dbgCtx->add(['expectedSpans' => $expectedSpans]);
 
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestOnMockSource']),
@@ -561,9 +572,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             }
         );
 
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
-            (new ExpectedEventCounts())->transactions(1)->spans(count($expectedSpans))
-        );
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->spans(count($expectedSpans)));
+        $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
 
         $tx = $dataFromAgent->singleTransaction();
         $dbgCtx->add(['tx' => $tx]);
@@ -592,6 +602,29 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         if (!$isWordPressDataToBeExpected) {
             return;
         }
+
+        $expectedSpanIndex = 0;
+        $setExpectedSpanStackTrace = function (string $key, int $callsCount) use ($tx, $dbgCtx, $expectedSpans, &$expectedSpanIndex): void {
+            self::assertNotNull($tx->context);
+            if ($callsCount === 0) {
+                if ($tx->context->custom !== null) {
+                    self::assertArrayNotHasKey($key, $tx->context->custom);
+                }
+                return;
+            }
+            $stackTrace = ComponentTestCaseBase::getContextCustom($tx->context, $key);
+            $dbgCtx->add(['stackTrace for ' . $key => $stackTrace]);
+            self::assertIsArray($stackTrace);
+            /** @var StackTraceFrame[] $stackTrace */
+            self::assertFalse($expectedSpans[$expectedSpanIndex]->stackTrace->isValueSet());
+            $expectedSpans[$expectedSpanIndex]->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, /* allowToBePrefixOfActual */ false));
+            $expectedSpanIndex += $callsCount;
+        };
+
+        $setExpectedSpanStackTrace(self::MU_PLUGIN_CALLBACK_STACK_TRACE_KEY, $expectedMuPluginCallsCount);
+        $setExpectedSpanStackTrace(self::PLUGIN_CALLBACK_STACK_TRACE_KEY, $expectedPluginCallsCount);
+        $setExpectedSpanStackTrace(self::THEME_CALLBACK_STACK_TRACE_KEY, $expectedThemeCallsCount);
+        $setExpectedSpanStackTrace(self::PART_OF_CORE_CALLBACK_STACK_TRACE_KEY, $expectedPartOfCoreCallsCount);
 
         SpanSequenceValidator::updateExpectationsEndTime($expectedSpans);
         SpanSequenceValidator::assertSequenceAsExpected($expectedSpans, array_values($dataFromAgent->idToSpan));

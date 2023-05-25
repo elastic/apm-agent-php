@@ -21,20 +21,37 @@
 
 declare(strict_types=1);
 
-use PHPUnit\Framework\TestCase;
+namespace ElasticApmTests\Util;
 
-const DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME = __FILE__;
-const DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER = 39;
+use Elastic\Apm\Impl\StackTraceFrame;
 
 /**
- * @template TReturnValue
- *
- * @param callable(): TReturnValue $callable
- *
- * @return TReturnValue
+ * @extends ExpectationsBase<StackTraceFrame[]>
  */
-function dummyFuncForTestsWithoutNamespace(callable $callable)
+final class StackTraceExpectations extends ExpectationsBase
 {
-    TestCase::assertSame(DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER, __LINE__ + 1);
-    return $callable(); // DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER should be this line number
+    /** @var bool */
+    public $allowToBePrefixOfActual = true;
+
+    /** @var StackTraceFrameExpectations[] */
+    public $frames = [];
+
+    /**
+     * @param StackTraceFrame[] $inputFrames
+     * @param bool              $allowToBePrefixOfActual
+     *
+     * @return self
+     */
+    public static function fromFrames(array $inputFrames, bool $allowToBePrefixOfActual): self
+    {
+        $result = new self();
+
+        foreach ($inputFrames as $inputFrame) {
+            $result->frames[] = StackTraceFrameExpectations::fromFrame($inputFrame);
+        }
+
+        $result->allowToBePrefixOfActual = $allowToBePrefixOfActual;
+
+        return $result;
+    }
 }

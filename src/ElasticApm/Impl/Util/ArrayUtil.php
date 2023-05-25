@@ -157,7 +157,7 @@ final class ArrayUtil
     }
 
     /**
-     * @template TKey of string|int
+     * @template TKey of array-key
      * @template TValue
      *
      * @param TKey                $key

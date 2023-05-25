@@ -38,10 +38,10 @@ use PHPUnit\Framework\AssertionFailedError;
  */
 final class ComponentTestsUtilTest extends ComponentTestCaseBase
 {
-    private const INITIAL_LEVELS_KEY = 'INITIAL_LEVELS';
-    private const FAIL_ON_RERUN_COUNT_KEY = 'FAIL_ON_RERUN_COUNT';
-    private const SHOULD_FAIL_KEY = 'SHOULD_FAIL';
-    private const TEST_SUCCEEDED_LABEL_KEY = 'TEST_SUCCEEDED_LABEL';
+    private const INITIAL_LOG_LEVELS_KEY = 'initial_log_levels';
+    private const FAIL_ON_RERUN_COUNT_KEY = 'fail_on_rerun_count';
+    private const SHOULD_FAIL_KEY = 'should_fail';
+    private const TEST_SUCCEEDED_LABEL_KEY = 'test_succeeded_label';
     private const ESCALATED_RERUNS_MAX_COUNT_KEY = AllComponentTestsOptionsMetadata::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME;
 
     /**
@@ -130,7 +130,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         foreach (self::LOG_LEVEL_FOR_CODE_KEYS as $levelTypeKey) {
             $initialLevels[$levelTypeKey] = $testArgs->getInt($levelTypeKey);
         }
-        $testArgs[self::INITIAL_LEVELS_KEY] = $initialLevels;
+        $testArgs[self::INITIAL_LOG_LEVELS_KEY] = $initialLevels;
         $expectedEscalatedLevelsSeqCount = IterableUtilForTests::count(
             self::generateLevelsForRunAndEscalateLogLevelOnFailure($initialLevels, $rerunsMaxCount)
         );
@@ -179,7 +179,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
         $shouldFail = $testArgs->getBool(self::SHOULD_FAIL_KEY);
         $failOnRerunCountArg = $testArgs->getInt(self::FAIL_ON_RERUN_COUNT_KEY);
         /** @var array<string, int> $initialLevels */
-        $initialLevels = $testArgs->getArray(self::INITIAL_LEVELS_KEY);
+        $initialLevels = $testArgs->getArray(self::INITIAL_LOG_LEVELS_KEY);
         $shouldCurrentRunFail = $shouldFail && ($currentRunCount === 1 || $currentReRunCount === $failOnRerunCountArg);
         if ($currentRunCount === 1) {
             $expectedLevels = $initialLevels;

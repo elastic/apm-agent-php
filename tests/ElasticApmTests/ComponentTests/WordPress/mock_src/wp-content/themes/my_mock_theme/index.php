@@ -10,6 +10,7 @@ class MyMockTheme
     {
         WordPressMockBridge::assertCallbackArgsAsExpected(func_get_args());
         ++WordPressMockBridge::$mockThemeCallbackCallsCount;
+        WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockThemeCallbackStackTrace);
         return WordPressMockBridge::$expectedCallbackReturnValue;
     }
 }

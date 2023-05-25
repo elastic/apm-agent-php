@@ -24,8 +24,13 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\WordPress;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\TransactionContext;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -54,14 +59,26 @@ final class WordPressMockBridge
     /** @var int */
     public static $mockMuPluginCallbackCallsCount = 0;
 
+    /** @var null|StackTraceFrame[] */
+    public static $mockMuPluginCallbackStackTrace = null;
+
     /** @var int */
     public static $mockPluginCallbackCallsCount = 0;
+
+    /** @var null|StackTraceFrame[] */
+    public static $mockPluginCallbackStackTrace = null;
 
     /** @var int */
     public static $mockThemeCallbackCallsCount = 0;
 
+    /** @var null|StackTraceFrame[] */
+    public static $mockThemeCallbackStackTrace = null;
+
     /** @var int */
     public static $mockPartOfCoreCallbackCallsCount = 0;
+
+    /** @var null|StackTraceFrame[] */
+    public static $mockPartOfCoreCallbackStackTrace = null;
 
     /** @var mixed */
     public const EXPECTED_WORDPRESS_VERSION_DEFAULT = '6.2';
@@ -224,6 +241,30 @@ final class WordPressMockBridge
         $txCtx->setLabel(WordPressAutoInstrumentationTest::PLUGIN_CALLS_COUNT_KEY, self::$mockPluginCallbackCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::THEME_CALLS_COUNT_KEY, self::$mockThemeCallbackCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLS_COUNT_KEY, self::$mockPartOfCoreCallbackCallsCount);
+
+        TestCaseBase::assertInstanceOf(TransactionContext::class, $txCtx);
+        /** @var TransactionContext $txCtx */
+
+        /**
+         * @param string                 $key
+         * @param null|StackTraceFrame[] $stackTrace
+         * @param int                    $callsCount
+         *
+         * @return void
+         */
+        $setContextCustomWithStackTrace = function (string $key, ?array $stackTrace, int $callsCount) use ($txCtx): void {
+            if ($callsCount === 0) {
+                TestCaseBase::assertNull($stackTrace);
+                return;
+            }
+            TestCaseBase::assertNotNull($stackTrace);
+            ComponentTestCaseBase::setContextCustom($txCtx, $key, $stackTrace);
+        };
+
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::MU_PLUGIN_CALLBACK_STACK_TRACE_KEY, self::$mockMuPluginCallbackStackTrace, $muPluginCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PLUGIN_CALLBACK_STACK_TRACE_KEY, self::$mockPluginCallbackStackTrace, $pluginCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::THEME_CALLBACK_STACK_TRACE_KEY, self::$mockThemeCallbackStackTrace, $themeCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLBACK_STACK_TRACE_KEY, self::$mockPartOfCoreCallbackStackTrace, $partOfCoreCallsCount);
     }
 
     /**
@@ -327,5 +368,23 @@ final class WordPressMockBridge
         }
 
         $wpFilterGlobal[$hookName]->mockApplyFilters($args);
+    }
+
+    /**
+     * @param null|StackTraceFrame[] &$var
+     *
+     * @return void
+     */
+    public static function setCallbackStackTrace(/* ref */ ?array &$var): void
+    {
+        if ($var === null) {
+            /**
+             * numberOfStackFramesToSkip is 3 to skip
+             *      1) This method
+             *      2) callback
+             *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
+             */
+            $var = StackTraceUtil::captureInApmFormat(/* numberOfStackFramesToSkip */ 3, AmbientContextForTests::loggerFactory());
+        }
     }
 }

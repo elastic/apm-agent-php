@@ -682,6 +682,15 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCountAtLeast(int $expectedMinCount, $haystack): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+    }
+
+    /**
      * @inheritDoc
      *
      * @param int|float  $expected

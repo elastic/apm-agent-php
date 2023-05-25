@@ -59,7 +59,7 @@ abstract class StackTraceFrameBase
     /**
      * @param array<string, mixed> $debugBacktraceFormatFrame
      */
-    public function copyDataFromFromDebugBacktraceFrame(array $debugBacktraceFormatFrame, ?LoggerFactory $loggerFactory = null): void
+    public function copyDataFromFromDebugBacktraceFrame(array $debugBacktraceFormatFrame, bool $includeValuesOnStack = true, ?LoggerFactory $loggerFactory = null): void
     {
         /** @var ?Logger $logger */
         $logger = null;
@@ -71,8 +71,10 @@ abstract class StackTraceFrameBase
         $this->line = self::getNullableIntValue(StackTraceUtil::LINE_KEY, $debugBacktraceFormatFrame, $logger);
         $this->class = self::getNullableStringValue(StackTraceUtil::CLASS_KEY, $debugBacktraceFormatFrame, $logger);
         $this->function = self::getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $debugBacktraceFormatFrame, $logger);
-        $this->thisObj = self::getNullableObjectValue(StackTraceUtil::THIS_OBJECT_KEY, $debugBacktraceFormatFrame, $logger);
-        $this->args = self::getNullableArrayValue(StackTraceUtil::ARGS_KEY, $debugBacktraceFormatFrame, $logger);
+        if ($includeValuesOnStack) {
+            $this->thisObj = self::getNullableObjectValue(StackTraceUtil::THIS_OBJECT_KEY, $debugBacktraceFormatFrame, $logger);
+            $this->args = self::getNullableArrayValue(StackTraceUtil::ARGS_KEY, $debugBacktraceFormatFrame, $logger);
+        }
 
         $type = self::getNullableStringValue(StackTraceUtil::TYPE_KEY, $debugBacktraceFormatFrame, $logger);
         if ($type !== null) {
@@ -114,11 +116,8 @@ abstract class StackTraceFrameBase
      *
      * @noinspection PhpSameParameterValueInspection
      */
-    private static function getNullableIntValue(
-        string $key,
-        array $debugBacktraceFormatFrame,
-        ?Logger $logger
-    ): ?int {
+    private static function getNullableIntValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?int
+    {
         /** @var ?int $value */
         $value = self::getNullableValue($key, 'is_int', 'int', $debugBacktraceFormatFrame, $logger);
         return $value;
@@ -133,11 +132,8 @@ abstract class StackTraceFrameBase
      *
      * @noinspection PhpSameParameterValueInspection
      */
-    private static function getNullableObjectValue(
-        string $key,
-        array $debugBacktraceFormatFrame,
-        ?Logger $logger
-    ): ?object {
+    private static function getNullableObjectValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?object
+    {
         /** @var ?object $value */
         $value = self::getNullableValue($key, 'is_object', 'object', $debugBacktraceFormatFrame, $logger);
         return $value;
@@ -152,11 +148,8 @@ abstract class StackTraceFrameBase
      *
      * @noinspection PhpSameParameterValueInspection
      */
-    private static function getNullableArrayValue(
-        string $key,
-        array $debugBacktraceFormatFrame,
-        ?Logger $logger
-    ): ?array {
+    private static function getNullableArrayValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?array
+    {
         /** @var ?array<mixed> $value */
         $value = self::getNullableValue($key, 'is_array', 'array', $debugBacktraceFormatFrame, $logger);
         return $value;
@@ -171,13 +164,8 @@ abstract class StackTraceFrameBase
      *
      * @return mixed
      */
-    private static function getNullableValue(
-        string $key,
-        callable $isValueTypeFunc,
-        string $dbgExpectedType,
-        array $debugBacktraceFormatFrame,
-        ?Logger $logger
-    ) {
+    private static function getNullableValue(string $key, callable $isValueTypeFunc, string $dbgExpectedType, array $debugBacktraceFormatFrame, ?Logger $logger)
+    {
         if (!array_key_exists($key, $debugBacktraceFormatFrame)) {
             return null;
         }
@@ -199,37 +187,28 @@ abstract class StackTraceFrameBase
         return $value;
     }
 
-    public static function isLocationProperty(string $propName): bool
-    {
-        return $propName === 'file' || $propName === 'line';
-    }
-
-    /** @noinspection PhpUnused */
     public function copyLocationPropertiesFrom(StackTraceFrameBase $src): void
     {
-        foreach (get_object_vars($src) as $propName => $srcPropVal) {
-            if (self::isLocationProperty($propName)) {
-                $this->{$propName} = $srcPropVal;
-            }
-        }
+        $this->file = $src->file;
+        $this->line = $src->line;
     }
 
-    /** @noinspection PhpUnused */
     public function copyNonLocationPropertiesFrom(StackTraceFrameBase $src): void
     {
-        foreach (get_object_vars($src) as $propName => $srcPropVal) {
-            if (!self::isLocationProperty($propName)) {
-                $this->{$propName} = $srcPropVal;
-            }
-        }
+        $this->class = $src->class;
+        $this->function = $src->function;
+        $this->isStaticMethod = $src->isStaticMethod;
+        $this->thisObj = $src->thisObj;
+        $this->args = $src->args;
     }
 
-    public function resetNonLocationProperties(): void
+    public function hasLocationProperties(): bool
     {
-        foreach (get_object_vars($this) as $propName => $srcPropVal) {
-            if (!self::isLocationProperty($propName)) {
-                $this->{$propName} = null;
-            }
-        }
+        return $this->file !== null || $this->line !== null;
+    }
+
+    public function hasNonLocationProperties(): bool
+    {
+        return $this->function !== null;
     }
 }

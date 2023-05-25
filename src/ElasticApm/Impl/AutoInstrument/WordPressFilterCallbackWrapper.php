@@ -28,6 +28,7 @@ namespace Elastic\Apm\Impl\AutoInstrument;
 use Elastic\Apm\Impl\AutoInstrument\Util\AutoInstrumentationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Throwable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -78,17 +79,20 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
     public function __invoke()
     {
         $args = func_get_args();
-        return AutoInstrumentationUtil::captureCurrentSpan(
+        $span = AutoInstrumentationUtil::beginCurrentSpan(
             $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
             $this->callbackGroupKind /* <- type */,
-            /**
-             * @return mixed
-             */
-            function () use ($args) {
-                return call_user_func_array($this->callback, $args); // @phpstan-ignore-line - $this->callback should have type callable
-            },
             $this->callbackGroupName /* <- subtype */,
             $this->hookName /* <- action */
         );
+        try {
+            return call_user_func_array($this->callback, $args); // @phpstan-ignore-line - $this->callback should have type callable
+        } catch (Throwable $throwable) {
+            $span->createErrorFromThrowable($throwable);
+            throw $throwable;
+        } finally {
+            // numberOfStackFramesToSkip is 1 because we don't want the current method (i.e., WordPressFilterCallbackWrapper->__invoke) to be kept
+            $span->endSpanEx(/* numberOfStackFramesToSkip: */ 1);
+        }
     }
 }
