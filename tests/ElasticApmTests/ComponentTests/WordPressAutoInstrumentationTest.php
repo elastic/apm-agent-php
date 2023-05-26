@@ -99,10 +99,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private const EXPECTED_WORDPRESS_VERSION_KEY = 'expected_wordpress_version';
 
-    public const MU_PLUGIN_CALLBACK_STACK_TRACE_KEY = 'mu_plugin_callback_stack_trace';
-    public const PLUGIN_CALLBACK_STACK_TRACE_KEY = 'plugin_callback_stack_trace';
-    public const THEME_CALLBACK_STACK_TRACE_KEY = 'theme_callback_stack_trace';
-    public const PART_OF_CORE_CALLBACK_STACK_TRACE_KEY = 'part_of_core_callback_stack_trace';
+    public const MU_PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY = 'mu_plugin_callback_first_call_stack_trace';
+    public const PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY = 'plugin_callback_first_call_stack_trace';
+    public const THEME_CALLBACK_FIRST_CALL_STACK_TRACE_KEY = 'theme_callback_first_call_stack_trace';
+    public const PART_OF_CORE_CALLBACK_FIRST_CALL_STACK_TRACE_KEY = 'part_of_core_callback_first_call_stack_trace';
 
     private const NON_KEYWORD_STRING_MAX_LENGTH = 100 * 1024;
 
@@ -621,10 +621,10 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $expectedSpanIndex += $callsCount;
         };
 
-        $setExpectedSpanStackTrace(self::MU_PLUGIN_CALLBACK_STACK_TRACE_KEY, $expectedMuPluginCallsCount);
-        $setExpectedSpanStackTrace(self::PLUGIN_CALLBACK_STACK_TRACE_KEY, $expectedPluginCallsCount);
-        $setExpectedSpanStackTrace(self::THEME_CALLBACK_STACK_TRACE_KEY, $expectedThemeCallsCount);
-        $setExpectedSpanStackTrace(self::PART_OF_CORE_CALLBACK_STACK_TRACE_KEY, $expectedPartOfCoreCallsCount);
+        $setExpectedSpanStackTrace(self::MU_PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, $expectedMuPluginCallsCount);
+        $setExpectedSpanStackTrace(self::PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, $expectedPluginCallsCount);
+        $setExpectedSpanStackTrace(self::THEME_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, $expectedThemeCallsCount);
+        $setExpectedSpanStackTrace(self::PART_OF_CORE_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, $expectedPartOfCoreCallsCount);
 
         SpanSequenceValidator::updateExpectationsEndTime($expectedSpans);
         SpanSequenceValidator::assertSequenceAsExpected($expectedSpans, array_values($dataFromAgent->idToSpan));

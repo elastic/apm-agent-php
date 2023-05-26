@@ -14,7 +14,7 @@ Description: This is a mock plugin used for Elastic APM PHP Agent testing.
 $my_mock_mu_plugin_callback = function () {
     WordPressMockBridge::assertCallbackArgsAsExpected(func_get_args());
     ++WordPressMockBridge::$mockMuPluginCallbackCallsCount;
-    WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockMuPluginCallbackStackTrace);
+    WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockMuPluginCallbackFirstCallStackTrace);
     return WordPressMockBridge::$expectedCallbackReturnValue;
 };
 

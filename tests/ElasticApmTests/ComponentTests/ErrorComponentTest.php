@@ -364,15 +364,14 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
     }
 
-    public static function appCodeForTestCaughtExceptionResponded500Wrapper(): void
+    public static function appCodeForTestCaughtExceptionResponded500Wrapper(bool $justReturnLineNumber = false): int
     {
-        appCodeForTestCaughtExceptionResponded500();
+        $callLineNumber = __LINE__ + 1;
+        return $justReturnLineNumber ? $callLineNumber : appCodeForTestCaughtExceptionResponded500();
     }
 
-    private static function ensureMainAppCodeHost(
-        TestCaseHandle $testCaseHandle,
-        bool $captureErrorsConfigOptVal
-    ): AppCodeHostHandle {
+    private static function ensureMainAppCodeHost(TestCaseHandle $testCaseHandle, bool $captureErrorsConfigOptVal): AppCodeHostHandle
+    {
         return $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($captureErrorsConfigOptVal): void {
                 if (!self::equalsConfigDefaultValue(OptionNames::CAPTURE_ERRORS, $captureErrorsConfigOptVal)) {
@@ -412,19 +411,13 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
         $err = $this->verifyError($dataFromAgent);
 
-        $appCodeFile = FileUtilForTests::listToPath(
-            [dirname(__FILE__), 'appCodeForTestCaughtExceptionResponded500.php']
-        );
+        $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestCaughtExceptionResponded500.php']);
         self::assertNotNull($err->exception);
         self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE, $err->exception->code);
 
         $exceptionNamespace = '';
         $exceptionClassName = '';
-        ClassNameUtil::splitFqClassName(
-            DummyExceptionForTests::class, /* <- ref */
-            $exceptionNamespace, /* <- ref */
-            $exceptionClassName
-        );
+        ClassNameUtil::splitFqClassName(DummyExceptionForTests::class, /* out */  $exceptionNamespace, /* out */ $exceptionClassName);
         self::assertSame('ElasticApmTests\\Util', $exceptionNamespace);
         self::assertSame('DummyExceptionForTests', $exceptionClassName);
 
@@ -435,19 +428,21 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $expectedStackTraceTop = [
             [
                 self::STACK_TRACE_FILE_NAME   => $appCodeFile,
-                self::STACK_TRACE_FUNCTION    =>
-                    __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500Impl',
-                self::STACK_TRACE_LINE_NUMBER =>
-                    APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER,
+                self::STACK_TRACE_FUNCTION    => null,
+                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER,
             ],
             [
-                self::STACK_TRACE_FILE_NAME => __FILE__,
-                self::STACK_TRACE_FUNCTION  =>
-                    __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500',
+                self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500Impl',
+                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER,
             ],
             [
-                self::STACK_TRACE_FUNCTION =>
-                    __CLASS__ . '::appCodeForTestCaughtExceptionResponded500Wrapper',
+                self::STACK_TRACE_FILE_NAME   => __FILE__,
+                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500',
+                self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestCaughtExceptionResponded500Wrapper(/* justReturnLineNumber */ true),
+            ],
+            [
+                self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestCaughtExceptionResponded500Wrapper',
             ],
         ];
         self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);

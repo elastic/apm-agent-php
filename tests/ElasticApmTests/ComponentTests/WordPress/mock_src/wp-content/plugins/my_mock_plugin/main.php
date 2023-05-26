@@ -14,7 +14,7 @@ function my_mock_plugin_filter_callback()
 {
     WordPressMockBridge::assertCallbackArgsAsExpected(func_get_args());
     ++WordPressMockBridge::$mockPluginCallbackCallsCount;
-    WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockPluginCallbackStackTrace);
+    WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockPluginCallbackFirstCallStackTrace);
     return WordPressMockBridge::$expectedCallbackReturnValue;
 }
 

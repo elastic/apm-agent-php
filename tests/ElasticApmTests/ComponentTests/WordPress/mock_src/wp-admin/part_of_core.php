@@ -18,7 +18,7 @@ class MyMockPartOfCore
 
         WordPressMockBridge::assertCallbackArgsAsExpected($args);
         ++WordPressMockBridge::$mockPartOfCoreCallbackCallsCount;
-        WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockPartOfCoreCallbackStackTrace);
+        WordPressMockBridge::setCallbackStackTrace(/* ref */ WordPressMockBridge::$mockPartOfCoreCallbackFirstCallStackTrace);
         return WordPressMockBridge::$expectedCallbackReturnValue;
     }
 

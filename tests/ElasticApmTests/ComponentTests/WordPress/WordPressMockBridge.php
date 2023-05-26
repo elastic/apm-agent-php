@@ -60,25 +60,25 @@ final class WordPressMockBridge
     public static $mockMuPluginCallbackCallsCount = 0;
 
     /** @var null|StackTraceFrame[] */
-    public static $mockMuPluginCallbackStackTrace = null;
+    public static $mockMuPluginCallbackFirstCallStackTrace = null;
 
     /** @var int */
     public static $mockPluginCallbackCallsCount = 0;
 
     /** @var null|StackTraceFrame[] */
-    public static $mockPluginCallbackStackTrace = null;
+    public static $mockPluginCallbackFirstCallStackTrace = null;
 
     /** @var int */
     public static $mockThemeCallbackCallsCount = 0;
 
     /** @var null|StackTraceFrame[] */
-    public static $mockThemeCallbackStackTrace = null;
+    public static $mockThemeCallbackFirstCallStackTrace = null;
 
     /** @var int */
     public static $mockPartOfCoreCallbackCallsCount = 0;
 
     /** @var null|StackTraceFrame[] */
-    public static $mockPartOfCoreCallbackStackTrace = null;
+    public static $mockPartOfCoreCallbackFirstCallStackTrace = null;
 
     /** @var mixed */
     public const EXPECTED_WORDPRESS_VERSION_DEFAULT = '6.2';
@@ -261,10 +261,10 @@ final class WordPressMockBridge
             ComponentTestCaseBase::setContextCustom($txCtx, $key, $stackTrace);
         };
 
-        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::MU_PLUGIN_CALLBACK_STACK_TRACE_KEY, self::$mockMuPluginCallbackStackTrace, $muPluginCallsCount);
-        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PLUGIN_CALLBACK_STACK_TRACE_KEY, self::$mockPluginCallbackStackTrace, $pluginCallsCount);
-        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::THEME_CALLBACK_STACK_TRACE_KEY, self::$mockThemeCallbackStackTrace, $themeCallsCount);
-        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLBACK_STACK_TRACE_KEY, self::$mockPartOfCoreCallbackStackTrace, $partOfCoreCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::MU_PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, self::$mockMuPluginCallbackFirstCallStackTrace, $muPluginCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PLUGIN_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, self::$mockPluginCallbackFirstCallStackTrace, $pluginCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::THEME_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, self::$mockThemeCallbackFirstCallStackTrace, $themeCallsCount);
+        $setContextCustomWithStackTrace(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLBACK_FIRST_CALL_STACK_TRACE_KEY, self::$mockPartOfCoreCallbackFirstCallStackTrace, $partOfCoreCallsCount);
     }
 
     /**
