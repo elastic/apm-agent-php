@@ -65,14 +65,9 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 
     public const LABEL_KEY_FOR_WORDPRESS_THEME = self::THEME_KEYWORD;
 
-    private const WORDPRESS_PLUGINS_SUBDIR_SUBPATH
-        = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR;
-
-    private const WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH
-        = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'mu-plugins' . DIRECTORY_SEPARATOR;
-
-    private const WORDPRESS_THEMES_SUBDIR_SUBPATH
-        = DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR;
+    private const WORDPRESS_PLUGINS_SUBDIR_SUBPATH = '/wp-content/plugins/';
+    private const WORDPRESS_MU_PLUGINS_SUBDIR_SUBPATH = '/wp-content/mu-plugins/';
+    private const WORDPRESS_THEMES_SUBDIR_SUBPATH = '/wp-content/themes/';
 
     private const CALLBACK_SUBDIR_SUBPATH_TO_GROUP_KIND = [
         self::WORDPRESS_PLUGINS_SUBDIR_SUBPATH => self::CALLBACK_GROUP_KIND_PLUGIN,
@@ -181,6 +176,9 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
 
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
+        $adaptedFilePath = str_replace('\\', '/', $filePath);
+        $logger && $logger->addContext('adaptedFilePath', $adaptedFilePath);
+
         $groupKind = self::CALLBACK_GROUP_KIND_CORE;
         $groupName = null;
 
@@ -188,7 +186,7 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         /** @var ?int $posAfterAddonsSubDir */
         $posAfterAddonsSubDir = null;
         foreach (self::CALLBACK_SUBDIR_SUBPATH_TO_GROUP_KIND as $subDirSubPath => $currentGroupKind) {
-            $pluginsSubDirPos = strpos($filePath, $subDirSubPath);
+            $pluginsSubDirPos = strpos($adaptedFilePath, $subDirSubPath);
             if ($pluginsSubDirPos !== false) {
                 $posAfterAddonsSubDir = $pluginsSubDirPos + strlen($subDirSubPath);
                 break;
@@ -200,17 +198,17 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
         }
         $logger && $logger->addContext('posAfterAddonsSubDir', $posAfterAddonsSubDir);
 
-        $dirSeparatorAfterPluginPos = strpos($filePath, DIRECTORY_SEPARATOR, $posAfterAddonsSubDir);
+        $dirSeparatorAfterPluginPos = strpos($adaptedFilePath, '/', $posAfterAddonsSubDir);
         if ($dirSeparatorAfterPluginPos !== false && $dirSeparatorAfterPluginPos > $posAfterAddonsSubDir) {
             $groupKind = $currentGroupKind;
-            $groupName = substr($filePath, $posAfterAddonsSubDir, $dirSeparatorAfterPluginPos - $posAfterAddonsSubDir);
+            $groupName = substr($adaptedFilePath, $posAfterAddonsSubDir, $dirSeparatorAfterPluginPos - $posAfterAddonsSubDir);
             return;
         }
 
-        $fileExtAfterPluginPos = strpos($filePath, '.php', $posAfterAddonsSubDir);
+        $fileExtAfterPluginPos = strpos($adaptedFilePath, '.php', $posAfterAddonsSubDir);
         if ($fileExtAfterPluginPos !== false && $fileExtAfterPluginPos > $posAfterAddonsSubDir) {
             $groupKind = $currentGroupKind;
-            $groupName = substr($filePath, $posAfterAddonsSubDir, $fileExtAfterPluginPos - $posAfterAddonsSubDir);
+            $groupName = substr($adaptedFilePath, $posAfterAddonsSubDir, $fileExtAfterPluginPos - $posAfterAddonsSubDir);
             return;
         }
 

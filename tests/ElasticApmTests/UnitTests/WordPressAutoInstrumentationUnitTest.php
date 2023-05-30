@@ -25,6 +25,7 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\TestCaseBase;
@@ -36,25 +37,20 @@ class WordPressAutoInstrumentationUnitTest extends TestCaseBase
 {
     public function testFindAddonNameInFilePath(): void
     {
-        $testImpl = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName): void {
-            AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $testImplFilePathAsIs = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName): void {
+            AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-            $adaptedFilePath = ((DIRECTORY_SEPARATOR === '/') ? $filePath : str_replace('/', DIRECTORY_SEPARATOR, $filePath));
             $actualGroupKind = 'dummy actualGroupKind';
             $actualGroupName = 'dummy actualGroupName';
-            WordPressAutoInstrumentation::findAddonInfoFromFilePath($adaptedFilePath, AmbientContextForTests::loggerFactory(), /* out */ $actualGroupKind, /* out */ $actualGroupName);
-            $dbgCtx->add(
-                [
-                    'filePath'          => $filePath,
-                    'adaptedFilePath'   => $adaptedFilePath,
-                    'expectedGroupKind' => $expectedGroupKind,
-                    'actualGroupKind'   => $actualGroupKind,
-                    'expectedGroupName' => $expectedGroupName,
-                    'actualGroupName'   => $actualGroupName,
-                ]
-            );
+            WordPressAutoInstrumentation::findAddonInfoFromFilePath($filePath, AmbientContextForTests::loggerFactory(), /* out */ $actualGroupKind, /* out */ $actualGroupName);
+            $dbgCtx->add(['actualGroupKind' => $actualGroupKind, 'actualGroupName' => $actualGroupName]);
             self::assertSame($expectedGroupKind, $actualGroupKind);
             self::assertSame($expectedGroupName, $actualGroupName);
+        };
+
+        $testImpl = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName) use ($testImplFilePathAsIs): void {
+            $testImplFilePathAsIs($filePath, $expectedGroupKind, $expectedGroupName);
+            $testImplFilePathAsIs(str_replace('/', '\\', $filePath), $expectedGroupKind, $expectedGroupName);
         };
 
         $pluginFilePathToExpectedName = [
