@@ -775,7 +775,7 @@ ResultCode cloneAstDecl( zend_ast* ast, uint32_t lineNumber, /* out */ zend_ast*
     ResultCode resultCode;
     ZendAstPtrArrayView children = getAstChildren( ast );
     zend_ast_decl* astDecl = (zend_ast_decl*)ast;
-    zend_ast** clonedChildren = NULL;
+    zend_ast* clonedChildren[elasticApmZendAstDeclChildrenCount];
 
     if ( children.count != elasticApmZendAstDeclChildrenCount )
     {
@@ -784,7 +784,6 @@ ResultCode cloneAstDecl( zend_ast* ast, uint32_t lineNumber, /* out */ zend_ast*
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure );
     }
 
-    clonedChildren = emalloc( sizeof( zend_ast* ) * children.count );
     ELASTIC_APM_FOR_EACH_INDEX( i, children.count )
     {
         clonedChildren[ i ] = NULL;
@@ -813,11 +812,6 @@ ResultCode cloneAstDecl( zend_ast* ast, uint32_t lineNumber, /* out */ zend_ast*
 
     resultCode = resultSuccess;
     finally:
-    if ( clonedChildren != NULL )
-    {
-        efree( clonedChildren );
-        clonedChildren = NULL;
-    }
     return resultCode;
 
     failure:
