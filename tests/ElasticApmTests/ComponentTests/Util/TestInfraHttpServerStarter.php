@@ -45,9 +45,13 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
         string $dbgServerDesc,
         string $runScriptName,
         array $portsInUse,
+        int $portsToAllocateCount,
         ?ResourcesCleanerHandle $resourcesCleaner
     ): HttpServerHandle {
-        return (new self($dbgServerDesc, $runScriptName, $resourcesCleaner))->startHttpServer($portsInUse);
+        return (new self($dbgServerDesc, $runScriptName, $resourcesCleaner))->startHttpServer(
+            $portsInUse,
+            $portsToAllocateCount
+        );
     }
 
     /**
@@ -67,18 +71,18 @@ final class TestInfraHttpServerStarter extends HttpServerStarter
     }
 
     /** @inheritDoc */
-    protected function buildCommandLine(int $port): string
+    protected function buildCommandLine(array $ports): string
     {
         return 'php ' . '"' . FileUtilForTests::listToPath([__DIR__, $this->runScriptName]) . '"';
     }
 
     /** @inheritDoc */
-    protected function buildEnvVars(string $spawnedProcessInternalId, int $port): array
+    protected function buildEnvVars(string $spawnedProcessInternalId, array $ports): array
     {
         return InfraUtilForTests::addTestInfraDataPerProcessToEnvVars(
-            getenv(),
+            EnvVarUtilForTests::getAll() /* <- baseEnvVars */,
             $spawnedProcessInternalId,
-            $port,
+            $ports,
             $this->resourcesCleaner,
             $this->dbgServerDesc
         );

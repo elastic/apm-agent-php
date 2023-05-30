@@ -29,6 +29,17 @@ use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
 class StackTraceUnitTest extends TracerUnitTestCaseBase
 {
+    /**
+     * Tests in this class specifiy expected spans individually
+     * so Span Compression feature should be disabled.
+     *
+     * @inheritDoc
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return false;
+    }
+
     public function testAllSpanCreatingApis(): void
     {
         // Act

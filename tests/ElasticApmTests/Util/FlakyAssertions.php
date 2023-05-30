@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util;
 use Closure;
 use Elastic\Apm\Impl\Config\BoolOptionParser;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\ComponentTests\Util\EnvVarUtilForTests;
 use PHPUnit\Framework\ExpectationFailedException;
 
 final class FlakyAssertions
@@ -46,8 +47,8 @@ final class FlakyAssertions
     private static function areEnabled(): bool
     {
         if (self::$areEnabled === null) {
-            $envVarValue = getenv(self::ENABLED_ENV_VAR_NAME);
-            if ($envVarValue === false) {
+            $envVarValue = EnvVarUtilForTests::get(self::ENABLED_ENV_VAR_NAME);
+            if ($envVarValue === null) {
                 self::$areEnabled = self::ENABLED_DEFAULT_VALUE;
             } else {
                 self::$areEnabled = (new BoolOptionParser())->parse($envVarValue);
@@ -58,17 +59,17 @@ final class FlakyAssertions
     }
 
     /**
-     * @param Closure $assertionCall
-     * @param bool    $forceEnableFlakyAssertions
+     * @param Closure                 $assertionCall
+     * @param ?bool                   $flakyAssertionsEnabled
      *
      * @phpstan-param Closure(): void $assertionCall
      */
-    public static function run(Closure $assertionCall, bool $forceEnableFlakyAssertions = false): void
+    public static function run(Closure $assertionCall, ?bool $flakyAssertionsEnabled = null): void
     {
         try {
             $assertionCall();
         } catch (ExpectationFailedException $ex) {
-            if ($forceEnableFlakyAssertions || self::areEnabled()) {
+            if ($flakyAssertionsEnabled === null ? self::areEnabled() : $flakyAssertionsEnabled) {
                 throw $ex;
             }
 

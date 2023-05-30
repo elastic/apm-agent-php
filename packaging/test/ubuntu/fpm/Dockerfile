@@ -16,7 +16,7 @@ RUN apt-get -qq update \
         wget \
         zlib1g-dev
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY entrypoint.sh /bin
 

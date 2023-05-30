@@ -1,0 +1,42 @@
+name: loop
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 5-6'
+
+permissions:
+  contents: read
+
+jobs:
+  loop-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "7.2"
+          - "7.3"
+          - "7.4"
+          - "8.0"
+          - "8.1"
+          - "8.2"
+        dockerfile:
+          - "Dockerfile"
+          - "Dockerfile.alpine"
+    env:
+      PHP_VERSION: ${{ matrix.php-version }}
+      DOCKERFILE: ${{ matrix.dockerfile }}
+      LOOPS: '50'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Prepare
+        run: make -f .ci/Makefile prepare
+
+      - name: Build
+        run: make -f .ci/Makefile build
+
+      - name: Loop
+        run: make -f .ci/Makefile loop

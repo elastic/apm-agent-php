@@ -73,6 +73,17 @@ class SystemData implements SerializableDataInterface, LoggableInterface
      */
     public $configuredHostname = null;
 
+    /**
+     * @var string|null
+     *
+     * The length of this string is limited to 1024.
+     *
+     * Container ID.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.4.0/docs/spec/system.json#L31
+     */
+    public $containerId = null;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
@@ -81,6 +92,11 @@ class SystemData implements SerializableDataInterface, LoggableInterface
         SerializationUtil::addNameValueIfNotNull('hostname', $this->hostname, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('detected_hostname', $this->detectedHostname, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('configured_hostname', $this->configuredHostname, /* ref */ $result);
+
+        if ($this->containerId !== null) {
+            $containerSubObject = ['id' => $this->containerId];
+            SerializationUtil::addNameValue('container', $containerSubObject, /* ref */ $result);
+        }
 
         return SerializationUtil::postProcessResult($result);
     }

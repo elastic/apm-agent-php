@@ -34,6 +34,11 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LOG
 
+#ifndef PHP_WIN32
+LogLevel g_elasticApmDirectLogLevelSyslog = logLevel_info;
+#endif // #ifndef PHP_WIN32
+LogLevel g_elasticApmDirectLogLevelStderr = logLevel_error;
+
 String logLevelNames[numberOfLogLevels] =
         {
                 [logLevel_off] = "OFF", [logLevel_critical] = "CRITICAL", [logLevel_error] = "ERROR", [logLevel_warning] = "WARNING", [logLevel_info] = "INFO", [logLevel_debug] = "DEBUG", [logLevel_trace] = "TRACE"
@@ -256,7 +261,10 @@ StringView insertPrefixAtEachNewLine(
 
     // If we didn't write anything to new message part then it means the old one is just one line
     // so there's no need to insert any prefixes
-    if ( isEmptyStringView( textOutputStreamContentAsStringView( &txtOutStream ) ) ) return makeEmptyStringView();
+    if ( isEmptyStringView( textOutputStreamContentAsStringView( &txtOutStream ) ) )
+    {
+        return ELASTIC_APM_EMPTY_STRING_VIEW;
+    }
 
     streamStringView( oldMessageLeft, &txtOutStream );
 
@@ -602,6 +610,7 @@ void vLogWithLoggerImpl(
 }
 
 
+static String g_logMutexDesc = "global logger";
 static Mutex* g_logMutex = NULL;
 static __thread bool g_isInLogContext = false;
 
@@ -625,7 +634,8 @@ void vLogWithLogger(
     if ( g_logMutex == NULL )
     {
         #ifndef PHP_WIN32
-        syslog( LOG_CRIT, "g_logMutex is NULL" );
+        ELASTIC_APM_LOG_DIRECT_CRITICAL( "g_logMutex is NULL; filePath: %.*s, lineNumber: %d, funcName: %.*s, msgPrintfFmt: %s"
+                                         , (int)filePath.length, filePath.begin, lineNumber, (int)funcName.length, funcName.begin, msgPrintfFmt );
         #endif
         return;
     }
@@ -633,7 +643,8 @@ void vLogWithLogger(
     if ( g_isInLogContext )
     {
         #ifndef PHP_WIN32
-        syslog( LOG_CRIT, "Trying to re-enter logging" );
+        ELASTIC_APM_LOG_DIRECT_CRITICAL( "Trying to re-enter logging; filePath: %.*s, lineNumber: %d, funcName: %.*s, msgPrintfFmt: %s"
+                                         , (int)filePath.length, filePath.begin, lineNumber, (int)funcName.length, funcName.begin, msgPrintfFmt );
         #endif
         return;
     }
@@ -641,8 +652,12 @@ void vLogWithLogger(
     g_isInLogContext = true;
 
     bool shouldUnlockMutex = false;
-    if ( lockMutex( g_logMutex, &shouldUnlockMutex, __FUNCTION__ ) != resultSuccess )
+    // Don't log for logging mutex to avoid spamming the log
+    ResultCode resultCode = lockMutexNoLogging( g_logMutex, &shouldUnlockMutex, __FUNCTION__ );
+    if ( resultCode != resultSuccess )
     {
+        ELASTIC_APM_LOG_DIRECT_CRITICAL( "Failed to lock g_logMutex, resultCode: %s (%d); filePath: %.*s, lineNumber: %d, funcName: %.*s, msgPrintfFmt: %s"
+                                         , resultCodeToString( resultCode ), resultCode, (int)filePath.length, filePath.begin, lineNumber, (int)funcName.length, funcName.begin, msgPrintfFmt );
         goto finally;
     }
 
@@ -657,7 +672,8 @@ void vLogWithLogger(
                         , msgPrintfFmtArgs );
 
     finally:
-    unlockMutex( g_logMutex, &shouldUnlockMutex, __FUNCTION__ );
+    // Don't log for logging mutex to avoid spamming the log
+    unlockMutexNoLogging( g_logMutex, &shouldUnlockMutex, __FUNCTION__ );
     g_isInLogContext = false;
 }
 
@@ -821,9 +837,13 @@ ResultCode reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, Log
     logger->maxEnabledLevel = calcMaxEnabledLogLevel( logger->config.levelPerSinkType );
     logConfigChange( &oldConfig, oldMaxEnabledLevel, &logger->config, logger->maxEnabledLevel );
 
+#   ifndef PHP_WIN32
+    g_elasticApmDirectLogLevelSyslog = logger->config.levelPerSinkType[ logSink_syslog ];
+#   endif // #ifndef PHP_WIN32
+    g_elasticApmDirectLogLevelStderr = logger->config.levelPerSinkType[ logSink_stderr ];
+
     destructLoggerConfig( &oldConfig );
     resultCode = resultSuccess;
-
     finally:
     return resultCode;
 
@@ -840,7 +860,7 @@ ResultCode constructLogger( Logger* logger )
 
     if ( g_logMutex == NULL )
     {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &g_logMutex, "global logger" ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &g_logMutex, g_logMutexDesc ) );
     }
 
     setLoggerConfigToDefaults( &( logger->config ) );
@@ -879,4 +899,29 @@ void destructLogger( Logger* logger )
 Logger* getGlobalLogger()
 {
     return &getGlobalTracer()->logger;
+}
+
+ResultCode resetLoggingStateInForkedChild()
+{
+    // We SHOULD NOT log before resetting state because logging uses thread synchronization
+    // which might deadlock in forked child
+
+    ResultCode resultCode;
+
+    g_isInLogContext = true;
+
+    if ( g_logMutex != NULL )
+    {
+        deleteMutex( &g_logMutex );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &g_logMutex, g_logMutexDesc ) );
+    }
+
+    resultCode = resultSuccess;
+
+    finally:
+    g_isInLogContext = false;
+    return resultCode;
+
+    failure:
+    goto finally;
 }

@@ -123,13 +123,13 @@ final class SpanContext extends ExecutionSegmentContext implements SpanContextIn
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
         return parent::prepareForSerialization()
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->db)
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->destination)
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->http)
-               || SerializationUtil::prepareForSerialization(/* ref */ $this->service);
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->db)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->destination)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->http)
+               | SerializationUtil::prepareForSerialization(/* ref */ $this->service);
     }
 
     /** @inheritDoc */

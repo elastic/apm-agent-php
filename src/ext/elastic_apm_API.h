@@ -25,6 +25,8 @@
 #include "StringView.h"
 #include "ResultCode.h"
 
+ResultCode elasticApmApiEntered( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction );
+
 bool elasticApmIsEnabled();
 
 ResultCode elasticApmGetConfigOption( String optionName, zval* return_value );
@@ -37,10 +39,6 @@ ResultCode elasticApmInterceptCallsToInternalFunction( String functionName, uint
 
 void resetCallInterceptionOnRequestShutdown();
 
-ResultCode elasticApmSendToServer(
-        long disableSend
-        , double serverTimeoutMilliseconds
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents );
+ResultCode elasticApmSendToServer( StringView userAgentHttpHeader, StringView serializedEvents );
 
 ResultCode replaceSleepWithResumingAfterSignalImpl();

@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\JsonUtil;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\ErrorDto;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetValidator;
@@ -39,25 +40,26 @@ trait SerializedEventSinkTrait
     public $shouldValidateAgainstSchema = true;
 
     /**
-     * @template        T of object
+     * @template T of object
      *
      * @param string                          $serializedData
      * @param Closure(string): void           $validateAgainstSchema
-     * @param Closure(array<mixed, mixed>): T $deserialize
+     * @param Closure(array<mixed>): T $deserialize
      * @param Closure(T): void                $assertValid
      *
-     * @return  T
+     * @return T
      */
-    private static function validateAndDeserialize(
-        string $serializedData,
-        Closure $validateAgainstSchema,
-        Closure $deserialize,
-        Closure $assertValid
-    ) {
+    private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
+
+        /** @var array<string, mixed> $decodedJson */
+        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
+        $dbgCtx->add(['decodedJson' => $decodedJson]);
+
         $validateAgainstSchema($serializedData);
-        /** @var array<string, mixed> $deserializedJson */
-        $deserializedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
-        $deserializedData = $deserialize($deserializedJson);
+        $deserializedData = $deserialize($decodedJson);
+        $dbgCtx->add(['deserializedData' => $deserializedData]);
         $assertValid($deserializedData);
         return $deserializedData;
     }

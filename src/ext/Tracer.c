@@ -20,6 +20,7 @@
 #include "Tracer.h"
 #include "elastic_apm_version.h"
 #include "elastic_apm_alloc.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
@@ -69,7 +70,6 @@ ResultCode ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* co
     ELASTIC_APM_CALL_IF_FAILED_GOTO( reconfigureLogger( logger, &loggerConfig, config->logLevel ) );
 
     resultCode = resultSuccess;
-
     finally:
     return resultCode;
 

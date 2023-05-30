@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "LogLevel.h"
 #include <stdbool.h>
 #include <stdarg.h>
 #ifndef PHP_WIN32
@@ -28,33 +29,7 @@
 #include "basic_types.h"
 #include "basic_macros.h" // ELASTIC_APM_PRINTF_ATTRIBUTE
 #include "TextOutputStream.h"
-
-/**
- * The order is important because lower numeric values are considered contained in higher ones
- * for example logLevel_error means that both logLevel_error and logLevel_critical is enabled.
- */
-enum LogLevel
-{
-    /**
-     * logLevel_not_set should not be used by logging statements - it is used only in configuration.
-     */
-    logLevel_not_set = -1,
-
-    /**
-     * logLevel_off should not be used by logging statements - it is used only in configuration.
-     */
-    logLevel_off = 0,
-
-    logLevel_critical,
-    logLevel_error,
-    logLevel_warning,
-    logLevel_info,
-    logLevel_debug,
-    logLevel_trace,
-
-    numberOfLogLevels
-};
-typedef enum LogLevel LogLevel;
+#include "platform.h"
 
 extern String logLevelNames[ numberOfLogLevels ];
 
@@ -137,20 +112,66 @@ bool isInLogContext();
 
 const char* logLevelToName( LogLevel level );
 
+#define ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[Elastic APM PHP Tracer]"
+
 #ifdef PHP_WIN32
-#   define ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ... )
-#else
-int logLevelToSyslog( LogLevel level );
-pid_t getCurrentProcessId();
-pid_t getCurrentThreadId();
-#   define ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ... ) \
-        syslog                                                                   \
-        ( \
+
+#   define ELASTIC_APM_LOG_TO_BACKGROUND_SINK( statementLevel, fmt, ... )
+
+#else // #ifdef PHP_WIN32
+
+    int logLevelToSyslog( LogLevel level );
+
+#   define ELASTIC_APM_LOG_WRITE_TO_SYSLOG( statementLevel, fmt, ... ) \
+        syslog( \
             logLevelToSyslog( statementLevel ) \
-            , ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART " [PID: %d] [TID: %d] [%s] " fmt \
-            , getCurrentProcessId(), getCurrentThreadId(), logLevelToName( statementLevel ), ##__VA_ARGS__ \
-        )
-#endif
+            , ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
+            " [PID: %d]" \
+            " [TID: %d]" \
+            " [%s] " \
+            fmt \
+            , (int)(getCurrentProcessId()) \
+            , (int)(getCurrentThreadId()) \
+            , logLevelToName( statementLevel ) \
+            , ##__VA_ARGS__ )
+
+extern LogLevel g_elasticApmDirectLogLevelSyslog;
+
+#   define ELASTIC_APM_LOG_TO_BACKGROUND_SINK( statementLevel, fmt, ... ) \
+        do { \
+            if ( g_elasticApmDirectLogLevelSyslog >= (statementLevel) ) \
+            { \
+                ELASTIC_APM_LOG_WRITE_TO_SYSLOG( statementLevel, fmt, ##__VA_ARGS__ ); \
+            } \
+        } while ( 0 )
+
+#endif // #ifdef PHP_WIN32
+
+#define ELASTIC_APM_LOG_WRITE_TO_STDERR( statementLevel, fmt, ... ) \
+    do { \
+        fprintf( stderr \
+            , ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
+            " [PID: %d]" \
+            " [TID: %d]" \
+            " [%s] " \
+            fmt "\n" \
+            , (int)(getCurrentProcessId()) \
+            , (int)(getCurrentThreadId()) \
+            , logLevelToName( statementLevel ) \
+            , ##__VA_ARGS__ ); \
+        fflush( stderr ); \
+    } while ( 0 )
+
+extern LogLevel g_elasticApmDirectLogLevelStderr;
+
+#define ELASTIC_APM_LOG_DIRECT( statementLevel, fmt, ... ) \
+    do { \
+        ELASTIC_APM_LOG_TO_BACKGROUND_SINK( (statementLevel), fmt, ##__VA_ARGS__ ); \
+        if ( g_elasticApmDirectLogLevelStderr >= (statementLevel) ) \
+        { \
+            ELASTIC_APM_LOG_WRITE_TO_STDERR( (statementLevel), fmt, ##__VA_ARGS__ ); \
+        } \
+    } while ( 0 )
 
 #define ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, fmt, ... ) \
     do { \
@@ -159,7 +180,7 @@ pid_t getCurrentThreadId();
         { \
             if ( isInLogContext() ) \
             { \
-                ELASTIC_APM_LOG_WITH_LEVEL_IN_LOG_CONTEXT( statementLevel, fmt, ##__VA_ARGS__ ); \
+                ELASTIC_APM_LOG_DIRECT( statementLevel, fmt, ##__VA_ARGS__ ); \
             } \
             else \
             { \
@@ -244,9 +265,15 @@ String streamLogLevel( LogLevel level, TextOutputStream* txtOutStream )
 }
 
 static inline
+LogLevel maxEnabledLogLevel()
+{
+    return getGlobalLogger()->maxEnabledLevel;
+}
+
+static inline
 bool canLogSecuritySensitive()
 {
-    return getGlobalLogger()->maxEnabledLevel >= logLevel_debug;
+    return maxEnabledLogLevel() >= logLevel_debug;
 }
 
 static inline
@@ -260,6 +287,8 @@ String logSecuritySensitive( String securitySensitiveString )
 {
     return logSecuritySensitiveOr( securitySensitiveString, /* notSecuritySensitiveAltString */ "REDACTED" );
 }
+
+ResultCode resetLoggingStateInForkedChild();
 
 #define ELASTIC_APM_LOG_CATEGORY_ASSERT "Assert"
 #define ELASTIC_APM_LOG_CATEGORY_AUTO_INSTRUMENT "Auto-Instrument"
@@ -276,4 +305,20 @@ String logSecuritySensitive( String securitySensitiveString )
 #define ELASTIC_APM_LOG_CATEGORY_SYS_METRICS "System-Metrics"
 #define ELASTIC_APM_LOG_CATEGORY_UTIL "Util"
 
-#define ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART "[Elastic APM PHP Tracer]"
+#define ELASTIC_APM_LOG_DIRECT_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DIRECT_INFO( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_info, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DIRECT_DEBUG( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_debug, fmt, ##__VA_ARGS__ )
+
+#ifdef PHP_WIN32
+
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... )
+
+#else // #ifdef PHP_WIN32
+
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_warning, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( fmt, ... ) ELASTIC_APM_LOG_TO_BACKGROUND_SINK( logLevel_debug, fmt, ##__VA_ARGS__ )
+
+#endif // #ifdef PHP_WIN32

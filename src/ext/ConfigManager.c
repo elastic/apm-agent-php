@@ -18,6 +18,7 @@
  */
 
 #include "ConfigManager.h"
+#include "ConfigSnapshot.h"
 #ifdef ELASTIC_APM_MOCK_STDLIB
 #   include "mock_stdlib.h"
 #else
@@ -45,6 +46,7 @@ enum ParsedOptionValueType
     parsedOptionValueType_string,
     parsedOptionValueType_int,
     parsedOptionValueType_duration,
+    parsedOptionValueType_size,
 
     end_parsedOptionValueType
 };
@@ -64,6 +66,7 @@ struct ParsedOptionValue
         String stringValue;
         int intValue;
         Duration durationValue;
+        Size sizeValue;
     } u;
 };
 typedef struct ParsedOptionValue ParsedOptionValue;
@@ -82,13 +85,21 @@ typedef struct EnumOptionAdditionalMetadata EnumOptionAdditionalMetadata;
 struct DurationOptionAdditionalMetadata
 {
     DurationUnits defaultUnits;
+    bool isNegativeValid;
 };
 typedef struct DurationOptionAdditionalMetadata DurationOptionAdditionalMetadata;
+
+struct SizeOptionAdditionalMetadata
+{
+    SizeUnits defaultUnits;
+};
+typedef struct SizeOptionAdditionalMetadata SizeOptionAdditionalMetadata;
 
 union OptionAdditionalMetadata
 {
     EnumOptionAdditionalMetadata enumData;
     DurationOptionAdditionalMetadata durationData;
+    SizeOptionAdditionalMetadata sizeData;
 };
 typedef union OptionAdditionalMetadata OptionAdditionalMetadata;
 
@@ -343,7 +354,15 @@ static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawV
     ResultCode parseResultCode = parseDuration( stringToView( rawValue )
                                                 , optMeta->additionalData.durationData.defaultUnits
                                                 , /* out */ &parsedValue->u.durationValue );
-    if ( parseResultCode == resultSuccess ) parsedValue->type = parsedOptionValueType_duration;
+    if ( parseResultCode == resultSuccess )
+    {
+        if ( parsedValue->u.durationValue.valueInUnits < 0 && ! optMeta->additionalData.durationData.isNegativeValid )
+        {
+            return resultParsingFailed;
+        }
+        parsedValue->type = parsedOptionValueType_duration;
+    }
+
     return parseResultCode;
 }
 
@@ -366,6 +385,42 @@ static void parsedDurationValueToZval( const OptionMetadata* optMeta, ParsedOpti
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_DOUBLE( durationToMilliseconds( parsedValue.u.durationValue ) );
+}
+
+static ResultCode parseSizeValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_size );
+    ELASTIC_APM_ASSERT_VALID_PTR( rawValue );
+    ELASTIC_APM_ASSERT_VALID_PTR( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue->type, parsedOptionValueType_undefined );
+
+    ResultCode parseResultCode = parseSize( stringToView( rawValue )
+                                                , optMeta->additionalData.sizeData.defaultUnits
+                                                , /* out */ &parsedValue->u.sizeValue );
+    if ( parseResultCode == resultSuccess ) parsedValue->type = parsedOptionValueType_size;
+    return parseResultCode;
+}
+
+static String streamParsedSize( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_size );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+
+    return streamSize( parsedValue.u.sizeValue, txtOutStream );
+}
+
+static void parsedSizeValueToZval( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
+    ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_size );
+    ELASTIC_APM_ASSERT_VALID_PARSED_OPTION_VALUE( parsedValue );
+    ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
+    ELASTIC_APM_ASSERT_VALID_PTR( return_value );
+
+    RETURN_DOUBLE( sizeToBytes( parsedValue.u.sizeValue ) );
 }
 
 static
@@ -559,7 +614,7 @@ static OptionMetadata buildDurationOptionMetadata(
         , SetConfigSnapshotFieldFunc setFieldFunc
         , GetConfigSnapshotFieldFunc getFieldFunc
         , DurationUnits defaultUnits
-)
+        , bool isNegativeValid )
 {
     return (OptionMetadata)
     {
@@ -575,7 +630,36 @@ static OptionMetadata buildDurationOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedDurationValueToZval,
-        .additionalData = (OptionAdditionalMetadata){ .durationData = (DurationOptionAdditionalMetadata){ .defaultUnits = defaultUnits } }
+        .additionalData = (OptionAdditionalMetadata){ .durationData = (DurationOptionAdditionalMetadata){ .defaultUnits = defaultUnits, .isNegativeValid = isNegativeValid } }
+    };
+}
+
+static OptionMetadata buildSizeOptionMetadata(
+        String name
+        , StringView iniName
+        , bool isSecret
+        , bool isDynamic
+        , Size defaultValue
+        , SetConfigSnapshotFieldFunc setFieldFunc
+        , GetConfigSnapshotFieldFunc getFieldFunc
+        , SizeUnits defaultUnits
+)
+{
+    return (OptionMetadata)
+    {
+        .name = name,
+        .iniName = iniName,
+        .isSecret = isSecret,
+        .isDynamic = isDynamic,
+        .isLoggingRelated = false,
+        .defaultValue = { .type = parsedOptionValueType_size, .u.sizeValue = defaultValue },
+        .interpretIniRawValue = &interpretStringIniRawValue,
+        .parseRawValue = &parseSizeValue,
+        .streamParsedValue = &streamParsedSize,
+        .setField = setFieldFunc,
+        .getField = getFieldFunc,
+        .parsedValueToZval = &parsedSizeValueToZval,
+        .additionalData = (OptionAdditionalMetadata){ .sizeData = (SizeOptionAdditionalMetadata){ .defaultUnits = defaultUnits } }
     };
 }
 
@@ -685,8 +769,9 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalBackendCommLogVerbose )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableSend )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, hostname )
@@ -710,11 +795,14 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansMinDur
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, profilingInferredSpansSamplingInterval )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, sanitizeFieldNames )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, secretToken )
-ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverTimeout )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( durationValue, serverTimeout )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, spanCompressionEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionExactMatchMaxDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionSameKindMaxDuration )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionIgnoreUrls )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
@@ -746,8 +834,8 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, verifyServerCert )
 #define ELASTIC_APM_INIT_METADATA( buildFunc, fieldName, optName, defaultValue ) \
     ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue )
 
-#define ELASTIC_APM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits ) \
-    ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue, defaultUnits )
+#define ELASTIC_APM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits, isNegativeValid ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue, defaultUnits, isNegativeValid )
 
 #define ELASTIC_APM_INIT_SECRET_METADATA( buildFunc, fieldName, optName, defaultValue ) \
     ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ true, /* isDynamic */ false, defaultValue )
@@ -865,16 +953,22 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            devInternalBackendCommLogVerbose,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             disableInstrumentations,
             ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
-            buildStringOptionMetadata,
+            buildBoolOptionMetadata,
             disableSend,
             ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND,
-            /* defaultValue: */ NULL );
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
@@ -974,11 +1068,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             ELASTIC_APM_CFG_OPT_NAME_SECRET_TOKEN,
             /* defaultValue: */ NULL );
 
-    ELASTIC_APM_INIT_METADATA(
-            buildStringOptionMetadata,
-            serverTimeout,
-            ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT,
-            /* defaultValue: */ NULL );
+    ELASTIC_APM_INIT_DURATION_METADATA(
+            serverTimeout
+            , ELASTIC_APM_CFG_OPT_NAME_SERVER_TIMEOUT
+            , /* defaultValue */ makeDuration( 30, durationUnits_second )
+            , /* defaultUnits: */ durationUnits_second
+            , /* isNegativeValid */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
@@ -1002,6 +1097,24 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             serviceVersion,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            spanCompressionEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionExactMatchMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionSameKindMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
@@ -1484,7 +1597,6 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
     ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
-static
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );

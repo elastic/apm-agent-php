@@ -32,7 +32,7 @@ declare(strict_types=1);
  */
 function array_key_first(array $arr)
 {
-    foreach ($arr as $key => $unused) {
+    foreach ($arr as $key => $ignored) {
         return $key;
     }
     return null;

@@ -23,7 +23,9 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Countable;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Generator;
 use Iterator;
@@ -47,6 +49,10 @@ final class IterableUtilForTests
      */
     public static function count(iterable $iterable): int
     {
+        if ($iterable instanceof Countable) {
+            return count($iterable);
+        }
+
         $result = 0;
         foreach ($iterable as $ignored) {
             ++$result;
@@ -76,10 +82,27 @@ final class IterableUtilForTests
      */
     public static function getFirstValue(iterable $iterable, /* out */ &$valOut): bool
     {
-        /** @noinspection PhpLoopNeverIteratesInspection */
+        return self::getNthValue($iterable, /* n: */ 0, /* out */ $valOut);
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param iterable<mixed>  $iterable
+     * @param int              $n
+     * @param TValue          &$valOut
+     *
+     * @return bool
+     */
+    public static function getNthValue(iterable $iterable, int $n, /* out */ &$valOut): bool
+    {
+        $i = 0;
         foreach ($iterable as $val) {
-            $valOut = $val;
-            return true;
+            if ($i === $n) {
+                $valOut = $val;
+                return true;
+            }
+            ++$i;
         }
         return false;
     }
@@ -102,9 +125,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $iterable
+     * @template TValue
      *
-     * @return array<mixed>
+     * @param iterable<TValue> $iterable
+     *
+     * @return array<TValue>
      */
     public static function toList(iterable $iterable): array
     {
@@ -120,9 +145,38 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template TKey of array-key
+     * @template TValue
      *
-     * @return Generator<mixed>
+     * @param iterable<TKey, TValue> $iterable
+     *
+     * @return array<TKey, TValue>
+     *
+     * @noinspection PhpUnused
+     */
+    public static function toMap(iterable $iterable): array
+    {
+        if (is_array($iterable)) {
+            return $iterable;
+        }
+
+        /**
+         * @var array<TKey, TValue> $result
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $result = [];
+        foreach ($iterable as $key => $val) {
+            $result[$key] = $val;
+        }
+        return $result;
+    }
+
+    /**
+     * @template T
+     *
+     * @param iterable<T> $inputIterable
+     *
+     * @return Generator<T>
      */
     public static function iterableToGenerator(iterable $inputIterable): Generator
     {
@@ -132,9 +186,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $inputIterable
+     * @template T
      *
-     * @return Iterator<mixed>
+     * @param iterable<T> $inputIterable
+     *
+     * @return Iterator<T>
      */
     public static function iterableToIterator(iterable $inputIterable): Iterator
     {
@@ -181,6 +237,57 @@ final class IterableUtilForTests
 
             TestCase::assertSame(count($iterables), count($tuple));
             yield $tuple;
+        }
+    }
+
+    /**
+     * @template TKey
+     *
+     * @param iterable<TKey, mixed> $inputMap
+     *
+     * @return Generator<TKey>
+     */
+    public static function keys(iterable $inputMap): Generator
+    {
+        foreach ($inputMap as $key => $_) {
+            yield $key;
+        }
+    }
+
+    /**
+     * @template TKey
+     * @template TValue
+     *
+     * @param iterable<TKey, TValue> $inputSeq
+     * @param int                    $dupCount
+     *
+     * @return iterable<TKey, TValue>
+     */
+    public static function duplicateEachElement(iterable $inputSeq, int $dupCount): iterable
+    {
+        foreach ($inputSeq as $key => $value) {
+            foreach (RangeUtil::generateUpTo($dupCount) as $ignored) {
+                yield $key => $value;
+            }
+        }
+    }
+
+    /**
+     * @template TKey
+     * @template TValue
+     *
+     * @param iterable<TKey, TValue> $input1
+     * @param iterable<TKey, TValue> $input2
+     *
+     * @return iterable<TKey, TValue>
+     */
+    public static function concat(iterable $input1, iterable $input2): iterable
+    {
+        foreach ($input1 as $key => $value) {
+            yield $key => $value;
+        }
+        foreach ($input2 as $key => $value) {
+            yield $key => $value;
         }
     }
 }

@@ -31,10 +31,22 @@ class ExecutionSegmentExpectations extends EventExpectations
     /** @var Optional<string> */
     public $type;
 
+    /** @var Optional<string> */
+    public $traceId;
+
+    /** @var Optional<float> */
+    public $timestamp;
+
+    /** @var Optional<float> */
+    public $duration;
+
     public function __construct()
     {
         parent::__construct();
         $this->name = new Optional();
         $this->type = new Optional();
+        $this->traceId = new Optional();
+        $this->timestamp = new Optional();
+        $this->duration = new Optional();
     }
 }

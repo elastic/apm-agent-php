@@ -30,7 +30,6 @@ struct DynamicArray
 };
 typedef struct DynamicArray DynamicArray;
 
-DynamicArray makeDynamicArray();
 void destructDynamicArray( DynamicArray* dynArr, size_t elementTypeSize );
 void assertValidDynamicArray( const DynamicArray* dynArr, size_t elementTypeSize );
 ResultCode addToDynamicArrayBack( DynamicArray* dynArr, void* elementToAdd, size_t elementTypeSize );

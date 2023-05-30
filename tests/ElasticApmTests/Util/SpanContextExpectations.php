@@ -23,25 +23,73 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-class SpanContextExpectations extends ExpectationsBase
+class SpanContextExpectations extends ExecutionSegmentContextExpectations
 {
-    /** @var SpanContextDbExpectations */
+    /** @var Optional<?SpanContextDbExpectations> */
     public $db;
 
-    /** @var SpanContextDestinationExpectations */
+    /** @var Optional<?SpanContextDestinationExpectations> */
     public $destination;
 
-    /** @var SpanContextHttpExpectations */
+    /** @var Optional<?SpanContextHttpExpectations> */
     public $http;
 
-    /** @var SpanContextServiceExpectations */
+    /** @var Optional<?SpanContextServiceExpectations> */
     public $service;
 
     public function __construct()
     {
-        $this->db = new SpanContextDbExpectations();
-        $this->destination = new SpanContextDestinationExpectations();
-        $this->http = new SpanContextHttpExpectations();
-        $this->service = new SpanContextServiceExpectations();
+        parent::__construct();
+        $this->db = new Optional();
+        $this->destination = new Optional();
+        $this->http = new Optional();
+        $this->service = new Optional();
+    }
+
+    public function ensureNotNullDb(): SpanContextDbExpectations
+    {
+        if ($this->db->isValueSet()) {
+            $value = $this->db->getValue();
+            TestCaseBase::assertNotNull($value);
+            return $value;
+        }
+
+        $value = new SpanContextDbExpectations();
+        $this->db->setValue($value);
+        return $value;
+    }
+
+    public function ensureNotNullDestination(): SpanContextDestinationExpectations
+    {
+        if ($this->destination->isValueSet()) {
+            $value = $this->destination->getValue();
+            TestCaseBase::assertNotNull($value);
+            return $value;
+        }
+
+        $value = new SpanContextDestinationExpectations();
+        $this->destination->setValue($value);
+        return $value;
+    }
+
+    public function ensureNotNullService(): SpanContextServiceExpectations
+    {
+        if ($this->service->isValueSet()) {
+            $value = $this->service->getValue();
+            TestCaseBase::assertNotNull($value);
+            return $value;
+        }
+
+        $value = new SpanContextServiceExpectations();
+        $this->service->setValue($value);
+        return $value;
+    }
+
+    public function assumeNotNullService(): SpanContextServiceExpectations
+    {
+        TestCaseBase::assertNotNull($this->service->isValueSet());
+        $value = $this->service->getValue();
+        TestCaseBase::assertNotNull($value);
+        return $value;
     }
 }

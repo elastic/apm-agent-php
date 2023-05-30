@@ -167,6 +167,15 @@ final class Snapshot implements LoggableInterface
     /** @var ?string */
     private $serviceVersion;
 
+    /** @var bool */
+    private $spanCompressionEnabled;
+
+    /** @var float */
+    private $spanCompressionExactMatchMaxDuration;
+
+    /** @var float */
+    private $spanCompressionSameKindMaxDuration;
+
     /** @var ?WildcardListMatcher */
     private $transactionIgnoreUrls;
 
@@ -204,7 +213,8 @@ final class Snapshot implements LoggableInterface
     {
         $this->effectiveLogLevel = max(
             ($this->logLevelStderr ?? $this->logLevel) ?? self::LOG_LEVEL_STDERR_DEFAULT,
-            ($this->logLevelSyslog ?? $this->logLevel) ?? self::LOG_LEVEL_SYSLOG_DEFAULT
+            ($this->logLevelSyslog ?? $this->logLevel) ?? self::LOG_LEVEL_SYSLOG_DEFAULT,
+            $this->logLevel ?? LogLevel::OFF
         );
     }
 
@@ -324,6 +334,21 @@ final class Snapshot implements LoggableInterface
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
+    }
+
+    public function spanCompressionEnabled(): bool
+    {
+        return $this->spanCompressionEnabled;
+    }
+
+    public function spanCompressionExactMatchMaxDuration(): float
+    {
+        return $this->spanCompressionExactMatchMaxDuration;
+    }
+
+    public function spanCompressionSameKindMaxDuration(): float
+    {
+        return $this->spanCompressionSameKindMaxDuration;
     }
 
     public function transactionIgnoreUrls(): ?WildcardListMatcher

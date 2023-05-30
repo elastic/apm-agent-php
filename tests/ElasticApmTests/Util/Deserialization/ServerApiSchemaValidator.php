@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ExternalTestData;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
@@ -203,8 +204,7 @@ final class ServerApiSchemaValidator
      */
     private function writeProcessedSchemaToTempFile(array $schema): string
     {
-        $pathToTempFile = tempnam(sys_get_temp_dir(), '');
-        $pathToTempFile .= '_' . str_replace('\\', '_', __CLASS__) . '_temp_processed_schema.json';
+        $pathToTempFile = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'processed Intake API schema');
         $this->tempFilePaths[] = $pathToTempFile;
         $numberOfBytesWritten = file_put_contents(
             $pathToTempFile,
@@ -245,7 +245,7 @@ final class ServerApiSchemaValidator
             return;
         }
 
-        /** @var string */
+        /** @var string $refValue */
         $refValue = $decodedSchemaNode['$ref'];
         self::loadRefAndMerge($absolutePath, /* ref */ $decodedSchemaNode, $refValue);
     }
@@ -295,7 +295,7 @@ final class ServerApiSchemaValidator
         }
 
         if (array_key_exists('allOf', $decodedSchemaNode)) {
-            /** @var array<mixed> */
+            /** @var array<mixed> $decodedSchemaNodeAllOf */
             $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
             if (self::atLeastOneChildFromRef($decodedSchemaNodeAllOf)) {
                 self::doMergeAllOfFromRef(/* ref */ $decodedSchemaNode);
@@ -309,10 +309,10 @@ final class ServerApiSchemaValidator
      */
     private static function doMergeAllOfFromRef(array &$decodedSchemaNode): void
     {
-        /** @var array<mixed> */
+        /** @var array<mixed> $decodedSchemaNodeAllOf */
         $decodedSchemaNodeAllOf = $decodedSchemaNode['allOf'];
         foreach ($decodedSchemaNodeAllOf as $childNode) {
-            /** @var array<mixed, mixed> $childNode */
+            /** @var array<mixed> $childNode */
             /** @var string $key */
             foreach ($childNode as $key => $value) {
                 if ($key === '$ref' || $key === '$id' || $key === 'title') {
@@ -328,9 +328,9 @@ final class ServerApiSchemaValidator
                     continue;
                 }
 
-                /** @var array<mixed, mixed> */
+                /** @var array<mixed> $dstArray */
                 $dstArray = &$decodedSchemaNode[$key];
-                /** @var array<mixed, mixed> $value */
+                /** @var array<mixed> $value */
                 foreach ($value as $subKey => $subValue) {
                     TestCase::assertArrayNotHasKey(
                         $key,
@@ -352,7 +352,7 @@ final class ServerApiSchemaValidator
     private static function atLeastOneChildFromRef(array $allOfArray): bool
     {
         foreach ($allOfArray as $value) {
-            /** @var array<mixed, mixed> $value */
+            /** @var array<mixed> $value */
             if (array_key_exists('$ref', $value)) {
                 return true;
             }
@@ -422,13 +422,13 @@ final class ServerApiSchemaValidator
         if (!is_array($timestampVal)) {
             return;
         }
-        /** @var array<mixed, mixed> $timestampVal */
+        /** @var array<mixed> $timestampVal */
         $typeVal = &$timestampVal['type'];
         if (is_array($typeVal)) {
             if (count($typeVal) !== 2) {
                 return;
             }
-            /** @var array<mixed, mixed> $typeVal */
+            /** @var array<mixed> $typeVal */
             if (
                 !(in_array('null', $typeVal, /* $strict: */ true)
                   && in_array('integer', $typeVal, /* $strict: */ true))
@@ -490,6 +490,7 @@ final class ServerApiSchemaValidator
                     'relativePathToSchema' => $relativePathToSchema,
                     'errors'               => $allErrorsToLoggable(),
                     'serializedData'       => $serializedData,
+                    'AssertMessageStack'   => AssertMessageStack::getContextsStack(),
                 ]
             )
         );

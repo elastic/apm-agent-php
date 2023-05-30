@@ -3,10 +3,16 @@ set -e
 
 #
 # Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
-# - generate_package_lifecycle_test_matrix.sh
-# - Jenkinsfile (the list appears in Jenkinsfile more than once - search for "list of PHP versions")
+# 1) .ci/shared.sh (this file; update ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS below)
+# 2) .ci/Jenkinsfile (the list of PHP versions might appear more than once - search for "list of PHP versions")
+# 3) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
+# 4) .github/workflows/loop.yml (update jobs -> loop-matrix -> strategy -> matrix -> php-version)
+# 5) .ci/packer_cache.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
+# 6) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
+# 7) composer.json
+# 8) tests/ElasticApmTests/ComponentTests/GenerateUnpackScriptsTest.php (search for "list of PHP versions")
 #
-export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1)
+export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1 8.2)
 
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_NATIVE_PACKAGE_TYPES=(apk deb rpm)
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_PACKAGE_TYPES=("${ELASTIC_APM_PHP_TESTS_SUPPORTED_LINUX_NATIVE_PACKAGE_TYPES[@]}" tar)
@@ -45,7 +51,10 @@ function ensureSyslogIsRunning () {
     ps -ef | grep -v 'grep' | grep 'syslogd'
 }
 
-function copySyslogFileAndPrintTheLastOne () {
+function copySyslogFilesAndPrintTheMostRecentOne () {
+    local shouldPrintTheMostRecentSyslogFile="${1:?}"
+    echo "Content of /var/log/"
+    ls -l /var/log/
     local possibleSyslogFiles=(/var/log/messages /var/log/syslog)
     for syslogFile in "${possibleSyslogFiles[@]}"
     do
@@ -54,14 +63,17 @@ function copySyslogFileAndPrintTheLastOne () {
             mkdir -p "${syslogCopyDir}"
             cp "${syslogFile}"* ${syslogCopyDir}
             echo "syslog files (${syslogFile}*) copied to ${syslogCopyDir}"
+            chmod -R 755 ${syslogCopyDir}
         fi
     done
 
-    for syslogFile in "${possibleSyslogFiles[@]}"
-    do
-        if [[ -f "${syslogFile}" ]]; then
-            echo "Content of the most recent syslog file (${syslogFile}):"
-            cat "${syslogFile}"
-        fi
-    done
+    if [ "${shouldPrintTheMostRecentSyslogFile}" == "true" ] ; then
+        for syslogFile in "${possibleSyslogFiles[@]}"
+        do
+            if [[ -f "${syslogFile}" ]]; then
+                echo "Content of the most recent syslog file (${syslogFile}):"
+                cat "${syslogFile}"
+            fi
+        done
+    fi
 }

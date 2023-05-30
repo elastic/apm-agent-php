@@ -23,7 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use PHPUnit\Framework\TestCase;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\RangeUtil;
 
 class DataFromAgentValidator
 {
@@ -48,30 +49,20 @@ class DataFromAgentValidator
 
     private function validateImpl(): void
     {
-        foreach ($this->actual->idToError as $error) {
-            $error->assertMatches($this->expectations->error);
-        }
+        $tracesInOrderReceived = $this->splitIntoTracesInOrderReceived();
+        $traceIdsInOrderReceived = self::getTraceIdsInOrderReceived($tracesInOrderReceived);
+        $this->validateTraces($tracesInOrderReceived);
 
-        foreach ($this->actual->metadatas as $metadata) {
-            TestCase::assertNotNull($metadata->service->agent);
-            $agentEphemeralId = $metadata->service->agent->ephemeralId;
-            TestCase::assertNotNull($agentEphemeralId);
-            self::assertValidNullableKeywordString($agentEphemeralId);
-            TestCase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
-            MetadataValidator::assertValid(
-                $metadata,
-                $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]
-            );
-        }
+        $this->validateErrors($traceIdsInOrderReceived);
 
-        foreach ($this->actual->metricSets as $metricSet) {
-            MetricSetValidator::assertValid($metricSet, $this->expectations->metricSet);
-        }
+        $this->validateMetadatas();
 
-        $this->validateTraces();
+        $this->validateMetrics();
     }
 
     /**
+     * @noinspection PhpUnnecessaryFullyQualifiedNameInspection
+     *
      * @template T of \ElasticApmTests\Util\ExecutionSegmentDto
      *
      * @param array<string, T> $idToExecSegments
@@ -82,26 +73,126 @@ class DataFromAgentValidator
     {
         $result = [];
         foreach ($idToExecSegments as $execSegment) {
-            if (!array_key_exists($execSegment->traceId, $result)) {
-                $result[$execSegment->traceId] = [];
-            }
-            $result[$execSegment->traceId][$execSegment->id] = $execSegment;
+            $idToExecSegmentsForTraceId =& ArrayUtil::getOrAdd($execSegment->traceId, /* defaultValue */ [], $result);
+            ArrayUtilForTests::addUnique($execSegment->id, $execSegment, /* ref */ $idToExecSegmentsForTraceId);
         }
         return $result;
     }
 
-    private function validateTraces(): void
+    /**
+     * @return TraceActual[]
+     */
+    private function splitIntoTracesInOrderReceived(): array
     {
+        $orderReceivedIndexToTrace = [];
+        $transactionsInOrderReceived = array_values($this->actual->idToTransaction);
         $transactionsByTraceId = self::groupByTraceId($this->actual->idToTransaction);
         $spansByTraceId = self::groupByTraceId($this->actual->idToSpan);
         TestCaseBase::assertListArrayIsSubsetOf(array_keys($spansByTraceId), array_keys($transactionsByTraceId));
         foreach ($transactionsByTraceId as $traceId => $idToTransaction) {
-            TestCase::assertIsArray($idToTransaction);
+            TestCaseBase::assertIsArray($idToTransaction);
             /** @var array<string, TransactionDto> $idToTransaction */
             $idToSpan = array_key_exists($traceId, $spansByTraceId) ? $spansByTraceId[$traceId] : [];
-            TestCase::assertIsArray($idToSpan);
+            TestCaseBase::assertIsArray($idToSpan);
             /** @var array<string, SpanDto> $idToSpan */
-            TraceValidator::validate(new TraceActual($idToTransaction, $idToSpan), $this->expectations->trace);
+
+            $trace = new TraceActual($idToTransaction, $idToSpan);
+            $orderReceivedIndex
+                = array_search($trace->rootTransaction, $transactionsInOrderReceived, /* strict */ true);
+            TestCaseBase::assertIsInt($orderReceivedIndex);
+            ArrayUtilForTests::addUnique($orderReceivedIndex, $trace, /* ref */ $orderReceivedIndexToTrace);
+        }
+        ksort(/* ref*/ $orderReceivedIndexToTrace);
+        return array_values($orderReceivedIndexToTrace);
+    }
+
+    /**
+     * @param TraceActual[] $tracesInOrderReceived
+     *
+     * @return void
+     */
+    private function validateTraces(array $tracesInOrderReceived): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this->expectations->traces' => $this->expectations->traces]);
+        TestCaseBase::assertSame(count($this->expectations->traces), count($tracesInOrderReceived));
+        foreach (RangeUtil::generateUpTo(count($tracesInOrderReceived)) as $indexOrderReceived) {
+            $traceExpectations = $this->expectations->traces[$indexOrderReceived];
+            TraceValidator::validate($tracesInOrderReceived[$indexOrderReceived], $traceExpectations);
+        }
+    }
+
+    /**
+     * @param TraceActual[] $tracesInOrderReceived
+     *
+     * @return string[]
+     */
+    private static function getTraceIdsInOrderReceived(array $tracesInOrderReceived): array
+    {
+        $result = [];
+        foreach ($tracesInOrderReceived as $trace) {
+            $result[] = $trace->rootTransaction->traceId;
+        }
+        return $result;
+    }
+
+    /**
+     * @param string[] $traceIdsInOrderReceived
+     *
+     * @return void
+     */
+    private function validateErrors(array $traceIdsInOrderReceived): void
+    {
+        if (ArrayUtil::isEmpty($this->actual->idToError)) {
+            return;
+        }
+
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $orderTraceReceivedIndexToErrors = [];
+        foreach ($this->actual->idToError as $error) {
+            $orderTraceReceivedIndex = array_search($error->traceId, $traceIdsInOrderReceived, /* strict */ true);
+            TestCaseBase::assertIsInt($orderTraceReceivedIndex);
+            $errors =& ArrayUtil::getOrAdd(
+                $orderTraceReceivedIndex,
+                [] /* <- defaultValue */,
+                $orderTraceReceivedIndexToErrors /* <- ref */
+            );
+            $errors[] = $error;
+        }
+
+        $dbgCtx->add(['this->expectations->errors' => $this->expectations->errors, 'orderTraceReceivedIndexToErrors' => $orderTraceReceivedIndexToErrors]);
+        TestCaseBase::assertSame(count($orderTraceReceivedIndexToErrors), count($this->expectations->errors));
+        foreach (RangeUtil::generateUpTo(count($orderTraceReceivedIndexToErrors)) as $indexOrderReceived) {
+            $errorExpectations = $this->expectations->errors[$indexOrderReceived];
+            $errors = $orderTraceReceivedIndexToErrors[$indexOrderReceived];
+            foreach ($errors as $error) {
+                $error->assertMatches($errorExpectations);
+            }
+        }
+    }
+
+    private function validateMetadatas(): void
+    {
+        foreach ($this->actual->metadatas as $metadata) {
+            TestCaseBase::assertNotNull($metadata->service->agent);
+            $agentEphemeralId = $metadata->service->agent->ephemeralId;
+            TestCaseBase::assertNotNull($agentEphemeralId);
+            self::assertValidNullableKeywordString($agentEphemeralId);
+            TestCaseBase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
+            MetadataValidator::assertMatches($this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId], $metadata);
+        }
+    }
+
+    private function validateMetrics(): void
+    {
+        $firstExpectations = ArrayUtilForTests::getFirstValue($this->expectations->metricSets);
+        $lastExpectations = ArrayUtilForTests::getLastValue($this->expectations->metricSets);
+        $combinedExpectations = new MetricSetExpectations();
+        $combinedExpectations->timestampBefore = $firstExpectations->timestampBefore;
+        $combinedExpectations->timestampAfter = $lastExpectations->timestampAfter;
+        foreach ($this->actual->metricSets as $metricSet) {
+            MetricSetValidator::assertValid($metricSet, $combinedExpectations);
         }
     }
 }

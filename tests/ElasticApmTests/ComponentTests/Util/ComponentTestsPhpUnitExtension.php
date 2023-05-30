@@ -44,6 +44,7 @@ use PHPUnit\Runner\AfterTestErrorHook;
 use PHPUnit\Runner\AfterTestFailureHook;
 use PHPUnit\Runner\AfterTestWarningHook;
 use PHPUnit\Runner\BeforeTestHook;
+use Throwable;
 
 /**
  * Referenced in PHPUnit's configuration file - phpunit_component_tests.xml
@@ -63,6 +64,9 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     /** @var Logger */
     private $logger;
 
+    /** @var GlobalTestInfra */
+    private static $globalTestInfra = null;
+
     public function __construct()
     {
         parent::__construct(self::DBG_PROCESS_NAME);
@@ -75,6 +79,30 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
             __CLASS__,
             __FILE__
         )->addContext('appCodeHostKind', AmbientContextForTests::testConfig()->appCodeHostKind());
+
+        try {
+            // We spin off test infrastructure servers here and not on demand
+            // in self::getGlobalTestInfra() because PHPUnit might fork to run individual tests
+            // and ResourcesCleaner would track the PHPUnit child process as its master which would be wrong
+            self::$globalTestInfra = new GlobalTestInfra();
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $this->logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->logThrowable($throwable, 'Throwable escaped from GlobalTestInfra contructor');
+            throw $throwable;
+        }
+    }
+
+    public function __destruct()
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('Destroying...');
+
+        self::$globalTestInfra->getResourcesCleaner()->signalAndWaitForItToExit();
+    }
+
+    public static function getGlobalTestInfra(): GlobalTestInfra
+    {
+        return self::$globalTestInfra;
     }
 
     public static function initSingletons(): void
@@ -89,7 +117,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         if (($runBeforeEachTest = AmbientContextForTests::testConfig()->runBeforeEachTest) !== null) {
             $exitCode = ProcessUtilForTests::startProcessAndWaitUntilExit(
                 $runBeforeEachTest,
-                getenv() /* <- envVars */,
+                EnvVarUtilForTests::getAll() /* <- envVars */,
                 true /* <- shouldCaptureStdOutErr */,
                 0 /* <- expectedExitCode */
             );
@@ -97,12 +125,15 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => getenv()]);
+        && $loggerProxy->log(
+            'Test starting...',
+            ['test' => $test, 'Environment variables' => EnvVarUtilForTests::getAll()]
+        );
 
         ConfigUtilForTests::assertAgentDisabled();
     }
 
-    public static function formatTime(float $durationInSeconds): string
+    private static function formatTime(float $durationInSeconds): string
     {
         // Round to milliseconds
         $roundedDurationInSeconds = round($durationInSeconds, /* precision */ 3);
@@ -118,14 +149,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
     private function testFailed(string $issue, string $test, string $message, float $time): void
     {
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            "Test finished $issue",
-            [
-                'test'              => $test,
-                'message'           => $message,
-                'duration'          => self::formatTime($time),
-            ]
-        );
+        && $loggerProxy->log("Test finished $issue", ['test' => $test, 'message' => $message, 'duration' => self::formatTime($time)]);
     }
 
     public function executeAfterTestFailure(string $test, string $message, float $time): void

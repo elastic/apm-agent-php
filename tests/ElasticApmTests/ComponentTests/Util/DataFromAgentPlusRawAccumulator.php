@@ -27,98 +27,143 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Util\ArrayUtil;
+use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
-final class DataFromAgentPlusRawAccumulator implements LoggableInterface
+final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverEventVisitorInterface, LoggableInterface
 {
     use LoggableTrait;
     use SerializedEventSinkTrait;
 
-    /** @var DataFromAgentPlusRaw */
-    private $result;
+    /** @var IntakeApiConnection[] */
+    private $closedIntakeApiConnections = [];
+
+    /** @var bool */
+    private $isOpenIntakeApiConnection = false;
+
+    /** @var IntakeApiRequest[] */
+    private $openIntakeApiConnectionRequests = [];
+
+    /** @var DataFromAgent */
+    private $dataParsed;
 
     /** @var Logger */
     private $logger;
 
     public function __construct()
     {
-        $this->result = new DataFromAgentPlusRaw();
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
             __NAMESPACE__,
             __CLASS__,
             __FILE__
         )->addContext('this', $this);
+
+        $this->dataParsed = new DataFromAgent();
     }
 
     public function dbgCounts(): ExpectedEventCounts
     {
         return (new ExpectedEventCounts())
-            ->errors(count($this->result->idToError))
-            ->metricSets(count($this->result->metricSets))
-            ->spans(count($this->result->idToSpan))
-            ->transactions(count($this->result->idToTransaction));
+            ->errors(count($this->dataParsed->idToError))
+            ->metricSets(count($this->dataParsed->metricSets))
+            ->spans(count($this->dataParsed->idToSpan))
+            ->transactions(count($this->dataParsed->idToTransaction));
     }
 
     /**
-     * @param IntakeApiRequest[] $intakeApiRequests
+     * @param RawDataFromAgentReceiverEvent[] $receiverEvents
      *
      * @return void
      */
-    public function addIntakeApiRequests(array $intakeApiRequests): void
+    public function addReceiverEvents(array $receiverEvents): void
     {
-        foreach ($intakeApiRequests as $intakeApiRequest) {
-            $dataFromAgent = IntakeApiRequestDeserializer::deserialize($intakeApiRequest);
-            TestCase::assertCount(1, $dataFromAgent->metadatas);
-            $metadata = $dataFromAgent->metadatas[0];
-            TestCase::assertNotNull($metadata->service->agent);
-            TestCase::assertNotNull(
-                $metadata->service->agent->ephemeralId,
-                LoggableToString::convert(
-                    [
-                        '$intakeApiRequests' => $intakeApiRequests,
-                        '$metadata'          => $metadata,
-                    ]
-                )
-            );
-            $intakeApiRequest->agentEphemeralId = $metadata->service->agent->ephemeralId;
-            $this->result->intakeApiRequests[] = $intakeApiRequest;
-            foreach (get_object_vars($dataFromAgent) as $propName => $propValue) {
-                TestCase::assertIsArray($propValue);
-                TestCase::assertIsArray($this->result->$propName);
-                $this->result->$propName = array_merge($this->result->$propName, $propValue);
-            }
+        foreach ($receiverEvents as $receiverEvent) {
+            $receiverEvent->visit($this);
+        }
+    }
+
+    public function visitConnectionStarted(RawDataFromAgentReceiverEventConnectionStarted $event): void
+    {
+        $this->addNewConnection($event);
+    }
+
+    public function visitRequest(RawDataFromAgentReceiverEventRequest $event): void
+    {
+        $this->addIntakeApiRequest($event->request);
+    }
+
+    /** @noinspection PhpUnusedParameterInspection */
+    private function addNewConnection(RawDataFromAgentReceiverEventConnectionStarted $event): void
+    {
+        if (!$this->isOpenIntakeApiConnection) {
+            $this->isOpenIntakeApiConnection = true;
+            Assert::assertCount(0, $this->openIntakeApiConnectionRequests);
+            return;
+        }
+
+        $this->closedIntakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnectionRequests);
+        $this->openIntakeApiConnectionRequests = [];
+    }
+
+    private function addIntakeApiRequest(IntakeApiRequest $intakeApiRequest): void
+    {
+        $this->openIntakeApiConnectionRequests[] = $intakeApiRequest;
+
+        $newDataParsed = IntakeApiRequestDeserializer::deserialize($intakeApiRequest);
+        TestCase::assertCount(1, $newDataParsed->metadatas);
+        $metadata = $newDataParsed->metadatas[0];
+        TestCase::assertNotNull($metadata->service->agent);
+        $dbgCtx = ['intakeApiRequest' => $intakeApiRequest, '$metadata' => $metadata];
+        TestCase::assertNotNull($metadata->service->agent->ephemeralId, LoggableToString::convert($dbgCtx));
+        $intakeApiRequest->agentEphemeralId = $metadata->service->agent->ephemeralId;
+        $this->appendParsedData($newDataParsed, $this->dataParsed);
+    }
+
+    private static function appendParsedData(DataFromAgent $from, DataFromAgent $to): void
+    {
+        foreach (get_object_vars($from) as $propName => $propValue) {
+            TestCase::assertIsArray($propValue);
+            TestCase::assertIsArray($to->$propName);
+            ArrayUtilForTests::append(/* from */ $propValue, /* to, ref */ $to->$propName);
         }
     }
 
     public function hasReachedEventCounts(ExpectedEventCounts $expectedEventCounts): bool
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $dbgCtx->pushSubScope();
         foreach (ApmDataKind::all() as $apmDataKind) {
-            $actualCount = $this->result->getApmDataCountForKind($apmDataKind);
-            $ctx = [
-                '$apmDataKind'                      => $apmDataKind,
-                '$expectedEventCounts'              => $expectedEventCounts,
-                '$actualCount'                      => $actualCount
-            ];
+            $dbgCtx->clearCurrentSubScope(['apmDataKind' => $apmDataKind]);
+            $actualCount = $this->dataParsed->getApmDataCountForKind($apmDataKind);
+            $logCtx = ['$apmDataKind' => $apmDataKind, '$expectedEventCounts' => $expectedEventCounts, '$actualCount' => $actualCount];
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Checking if has reached expected event count...', $ctx);
+            && $loggerProxy->log('Checking if has reached expected event count...', $logCtx);
             $hasReachedEventCounts = $expectedEventCounts->hasReachedCountForKind($apmDataKind, $actualCount);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Checked if has reached expected event count',
-                array_merge(['$hasReachedEventCounts' => $hasReachedEventCounts], $ctx)
-            );
+            && $loggerProxy->log('Checked if has reached expected event count', array_merge(['$hasReachedEventCounts' => $hasReachedEventCounts], $logCtx));
             if (!$hasReachedEventCounts) {
                 return false;
             }
         }
+        $dbgCtx->popSubScope();
         return true;
     }
 
     public function getAccumulatedData(): DataFromAgentPlusRaw
     {
-        return $this->result;
+        $intakeApiConnections = $this->closedIntakeApiConnections;
+        if (!ArrayUtil::isEmpty($this->openIntakeApiConnectionRequests)) {
+            $intakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnectionRequests);
+        }
+        $result = new DataFromAgentPlusRaw(new RawDataFromAgent($intakeApiConnections));
+        self::appendParsedData($this->dataParsed, $result);
+        return $result;
     }
 }

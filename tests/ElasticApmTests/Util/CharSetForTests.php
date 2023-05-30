@@ -26,6 +26,7 @@ namespace ElasticApmTests\Util;
 use Ds\Set;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use IteratorAggregate;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Traversable;
 
@@ -114,14 +115,14 @@ final class CharSetForTests implements IteratorAggregate
 
     public function getRandom(): string
     {
-        TestCase::assertGreaterThan(0, $this->chars->count());
+        Assert::assertGreaterThan(0, $this->chars->count());
         $randomIndex = mt_rand(0, $this->chars->count() - 1);
         return $this->chars->get($randomIndex);
     }
 
     public function generateString(int $length): string
     {
-        TestCase::assertGreaterThanOrEqual(0, $length);
+        Assert::assertGreaterThan(0, $length);
         $result = '';
         while (true) {
             foreach ($this as $char) {

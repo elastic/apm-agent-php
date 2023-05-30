@@ -19,8 +19,6 @@
  * under the License.
  */
 
-/** @noinspection RequiredAttributes */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl;
@@ -66,4 +64,7 @@ final class Constants
     public const OUTCOME_SUCCESS = 'success';
     public const OUTCOME_FAILURE = 'failure';
     public const OUTCOME_UNKNOWN = 'unknown';
+
+    public const COMPRESSION_STRATEGY_EXACT_MATCH = 'exact_match';
+    public const COMPRESSION_STRATEGY_SAME_KIND = 'same_kind';
 }

@@ -23,15 +23,12 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Config\EnvVarsRawSnapshotSource;
 use Elastic\Apm\Impl\Config\IniRawSnapshotSource;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
-use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
 use RuntimeException;
 
@@ -70,13 +67,29 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     }
 
     /**
+     * @param array<string, string> $envVars
+     *
+     * @return array<string, string>
+     */
+    private function addEnvVarsForAgentOptions(array $envVars): array
+    {
+        $result = $envVars;
+        $agentOptionsToEnvVars = $this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::envVars());
+        foreach ($agentOptionsToEnvVars as $optName => $optVal) {
+            $result[ConfigUtilForTests::agentOptionNameToEnvVarName($optName)]
+                = ConfigUtilForTests::optionValueToString($optVal);
+        }
+        return $result;
+    }
+
+    /**
      * @param array<string, string> $baseEnvVars
      *
      * @return array<string, string>
      */
     public function getEnvVars(array $baseEnvVars): array
     {
-        return $this->addEnvVarsForAgentOptions($this->selectEnvVarsToInherit($baseEnvVars));
+        return $this->addEnvVarsForAgentOptions($this->appCodeHostParams->selectEnvVarsToInherit($baseEnvVars));
     }
 
     /**
@@ -89,76 +102,6 @@ final class AgentConfigSourceBuilder implements LoggableInterface
         }
 
         return $this->ensureTempIniFileCreated();
-    }
-
-    /**
-     * @param array<string, string> $baseEnvVars
-     *
-     * @return array<string, string>
-     */
-    private function selectEnvVarsToInherit(array $baseEnvVars): array
-    {
-        $envVars = $baseEnvVars;
-
-        foreach ($this->appCodeHostParams->getSetAgentOptionNames() as $optName) {
-            $envVarName = EnvVarsRawSnapshotSource::optionNameToEnvVarName(
-                EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX,
-                $optName
-            );
-            if (array_key_exists($envVarName, $envVars)) {
-                unset($envVars[$envVarName]);
-            }
-        }
-
-        return array_filter(
-            $envVars,
-            function (string $envVarName): bool {
-                // Return false for entries to be removed
-
-                // Keep environment variables related to testing infrastructure
-                if (TextUtil::isPrefixOfIgnoreCase(ConfigUtilForTests::ENV_VAR_NAME_PREFIX, $envVarName)) {
-                    return true;
-                }
-
-                // Keep environment variables related to agent's logging
-                if (
-                    TextUtil::isPrefixOfIgnoreCase(
-                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_',
-                        $envVarName
-                    )
-                ) {
-                    return true;
-                }
-
-                // Keep environment variables explicitly configured to be passed through
-                if (AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
-                    return true;
-                }
-
-                // Keep environment variables NOT related to Elastic APM
-                if (!TextUtil::isPrefixOfIgnoreCase(EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX, $envVarName)) {
-                    return true;
-                }
-
-                return false;
-            },
-            ARRAY_FILTER_USE_KEY
-        );
-    }
-
-    /**
-     * @param array<string, string> $envVars
-     *
-     * @return array<string, string>
-     */
-    private function addEnvVarsForAgentOptions(array $envVars): array
-    {
-        $result = $envVars;
-        $agentOptionsToEnvVars = $this->appCodeHostParams->getAgentOptions(AgentConfigSourceKind::envVars());
-        foreach ($agentOptionsToEnvVars as $optName => $optVal) {
-            $result[ConfigUtilForTests::envVarNameForAgentOption($optName)] = self::optionValueToString($optVal);
-        }
-        return $result;
     }
 
     /**
@@ -177,20 +120,10 @@ final class AgentConfigSourceBuilder implements LoggableInterface
      *
      * @return string
      */
-    private static function optionValueToString($optVal): string
-    {
-        return is_bool($optVal) ? BoolUtil::toString($optVal) : strval($optVal);
-    }
-
-    /**
-     * @param string|int|float|bool $optVal
-     *
-     * @return string
-     */
     private static function processOptionValueBeforeWriteToIni($optVal): string
     {
         if (!is_string($optVal)) {
-            return self::optionValueToString($optVal);
+            return ConfigUtilForTests::optionValueToString($optVal);
         }
 
         /**
@@ -309,8 +242,10 @@ final class AgentConfigSourceBuilder implements LoggableInterface
             return $this->tempIniFileFullPath;
         }
 
-        $shouldBeDeletedOnTestExit = AmbientContextForTests::testConfig()->deleteTempPhpIni;
-        $tempIniFileFullPath = $this->resourcesClient->createTempFile('php_ini', $shouldBeDeletedOnTestExit);
+        $tempIniFileFullPath = $this->resourcesClient->createTempFile(
+            'php.ini for app code host' /* <- dbgTempFilePurpose */,
+            AmbientContextForTests::testConfig()->deleteTempPhpIni /* <- shouldBeDeletedOnTestExit */
+        );
 
         $this->writeTempIniContent($tempIniFileFullPath);
 

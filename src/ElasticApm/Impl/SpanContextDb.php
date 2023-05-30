@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\SpanContextDbInterface;
 
 /**
@@ -60,9 +61,9 @@ final class SpanContextDb extends ContextPartWrapper implements SpanContextDbInt
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return ($this->statement !== null);
+        return BoolUtil::toInt($this->statement !== null);
     }
 
     /** @inheritDoc */

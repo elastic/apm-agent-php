@@ -27,8 +27,17 @@
 #include "numbered_intercepting_callbacks.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "lifecycle.h"
+#include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_API
+
+ResultCode elasticApmApiEntered( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    return elasticApmEnterAgentCode( dbgCalledFromFile, dbgCalledFromLine, dbgCalledFromFunction );
+}
 
 bool elasticApmIsEnabled()
 {
@@ -89,6 +98,12 @@ static uint32_t g_interceptedCallInProgressRegistrationId = 0;
 static
 void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zend_execute_data* execute_data, zval* return_value )
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmEnterAgentCode( __FILE__, __LINE__, __FUNCTION__ ) );
+
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
 
     bool shouldCallPostHook;
@@ -105,15 +120,21 @@ void internalFunctionCallInterceptingImpl( uint32_t interceptRegistrationId, zen
 
     g_interceptedCallInProgressRegistrationId = interceptRegistrationId;
 
-    shouldCallPostHook = tracerPhpPartInterceptedCallPreHook( interceptRegistrationId, execute_data );
+    shouldCallPostHook = tracerPhpPartInternalFuncCallPreHook( interceptRegistrationId, execute_data );
     g_functionsToInterceptData[ interceptRegistrationId ].originalHandler( execute_data, return_value );
     if ( shouldCallPostHook ) {
-        tracerPhpPartInterceptedCallPostHook( interceptRegistrationId, return_value );
+        tracerPhpPartInternalFuncCallPostHook( interceptRegistrationId, return_value );
     }
 
     g_interceptedCallInProgressRegistrationId = 0;
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", interceptRegistrationId );
+    resultCode = resultSuccess;
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 
 void resetCallInterceptionOnRequestShutdown()
@@ -228,26 +249,16 @@ static inline bool longToBool( long longVal )
     return longVal != 0;
 }
 
-ResultCode elasticApmSendToServer(
-        long disableSend
-        , double serverTimeoutMilliseconds
-        , StringView userAgentHttpHeader
-        , StringView serializedEvents )
+ResultCode elasticApmSendToServer( StringView userAgentHttpHeader, StringView serializedEvents )
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO(
-            sendEventsToApmServer( longToBool( disableSend )
-                                   , serverTimeoutMilliseconds
-                                   , getTracerCurrentConfigSnapshot( tracer )
-                                   , userAgentHttpHeader
-                                   , serializedEvents ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( sendEventsToApmServer( getTracerCurrentConfigSnapshot( tracer ), userAgentHttpHeader, serializedEvents ) );
 
     resultCode = resultSuccess;
-
     finally:
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
@@ -336,7 +347,7 @@ typedef enum SleepFuncRetVal SleepFuncRetVal;
 SleepFuncRetVal sleep_parseRetVal( const zval* return_value )
 {
 
-#   if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 ) /* if PHP version from 8.0.0 */ || defined( PHP_SLEEP_NON_VOID )
 
     if ( Z_TYPE_P( return_value ) != IS_LONG )
     {
@@ -346,24 +357,24 @@ SleepFuncRetVal sleep_parseRetVal( const zval* return_value )
     zend_long retValAsLong = Z_LVAL_P( return_value );
     return retValAsLong == 0 ? sleepFuncRetVal_success : sleepFuncRetVal_interrupted;
 
-#   else // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   else
 
     return sleepFuncRetVal_void;
 
-#   endif // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   endif
 }
 
 void sleep_setSuccessRetVal( const zval* retValCopyBeforeCallToOriginalFunc, zval* return_value )
 {
-#   if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 ) /* if PHP version from 8.0.0 */ || defined( PHP_SLEEP_NON_VOID )
 
     RETURN_LONG( 0 );
 
-#   else // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   else
 
     *return_value = *retValCopyBeforeCallToOriginalFunc;
 
-#   endif // if PHP_VERSION_ID >= 80000 || defined( PHP_SLEEP_NON_VOID )
+#   endif
 }
 
 SleepFuncRetVal usleep_parseRetVal( const zval* retVal )

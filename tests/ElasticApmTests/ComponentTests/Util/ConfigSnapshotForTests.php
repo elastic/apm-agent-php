@@ -60,8 +60,20 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var ?WildcardListMatcher */
     public $envVarsToPassThrough;
 
+    /** @var int */
+    public $escalatedRerunsMaxCount;
+
+    /** @var ?string */
+    public $escalatedRerunsProdCodeLogLevelOptionName;
+
     /** @var ?string */
     public $group;
+
+    /** @var bool */
+    public $isLongRunMode;
+
+    /** @var ?bool */
+    public $isInContainer;
 
     /** @var int */
     public $logLevel;
@@ -83,6 +95,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
 
     /** @var ?string */
     public $runBeforeEachTest;
+
+    /** @var ?string */
+    public $thisContainerImageName;
 
     /**
      * Snapshot constructor.
@@ -108,7 +123,7 @@ final class ConfigSnapshotForTests implements LoggableInterface
     {
         if ($this->appCodeHostKind === null) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_HOST_KIND_OPTION_NAME;
-            $envVarName = ConfigUtilForTests::envVarNameForTestOption($optionName);
+            $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optionName);
             throw new RuntimeException(
                 'Required configuration option ' . $optionName
                 . " (environment variable $envVarName)" . ' is not set'

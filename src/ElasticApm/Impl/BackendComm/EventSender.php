@@ -152,10 +152,8 @@ final class EventSender implements EventSinkInterface
             && $loggerProxy->log(
                 'Calling elastic_apm_send_to_server...',
                 [
-                    'disableSend'                 => $this->config->disableSend(),
-                    'serverTimeout'               => $this->config->serverTimeout(),
-                    'strlen(userAgentHttpHeader)' => strlen($this->userAgentHttpHeader),
-                    'strlen(serializedEvents)'    => strlen($serializedEvents),
+                    'userAgentHttpHeader'      => $this->userAgentHttpHeader,
+                    'strlen(serializedEvents)' => strlen($serializedEvents),
                 ]
             );
 
@@ -165,17 +163,7 @@ final class EventSender implements EventSinkInterface
              * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
              * @phpstan-ignore-next-line
              */
-            \elastic_apm_send_to_server(
-                self::boolToInt($this->config->disableSend()),
-                $this->config->serverTimeout(),
-                $this->userAgentHttpHeader,
-                $serializedEvents
-            );
+            \elastic_apm_send_to_server($this->userAgentHttpHeader, $serializedEvents);
         }
-    }
-
-    private static function boolToInt(bool $boolVal): int
-    {
-        return $boolVal ? 1 : 0;
     }
 }

@@ -18,9 +18,10 @@ RUN apt-get -qq update \
 RUN docker-php-ext-install \
     mysqli \
     pcntl \
-    pdo_mysql
+    pdo_mysql \
+    opcache
 
-COPY --from=composer:2.3.5 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.20.5/cmake-3.20.5-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz \
       && mkdir /usr/bin/cmake \
@@ -48,3 +49,11 @@ CMD phpize \
     && CFLAGS="-std=gnu99" ./configure --enable-elastic_apm \
     && make clean \
     && make
+
+# Create a link to extensions directory to make it easier accessible (paths are different between php releases)
+RUN ln -s `find /usr/local/lib/php/extensions/ -name opcache.so | head -n1 | xargs dirname` /tmp/extensions
+
+# Patch run-tests.php to handle SKIPIF correctly in tests with agent debug logs enabled
+RUN find /usr/local/lib/php/ -name run-tests.php | xargs sed -i 's#if (!strncasecmp(\x27skip\x27, ltrim(\$output), 4))#if (!strncasecmp(\x27skip\x27, ltrim(\$output), 4) || strstr(\$output, \x27ElasticApmSkipTest\x27))#g'
+
+RUN find /usr/local/lib/php/ -name run-tests.php | xargs sed -i 's#system_with_timeout("\$extra \$php \$pass_options -q \$ini_settings \$no_file_cache -d display_errors=0 \\"\$test_skipif\\"", \$env)#system_with_timeout("\$extra \$php \$pass_options -q \$ini_settings \$no_file_cache -d display_errors=0 \\"\$test_skipif\\" 2>\&1", \$env)#g'

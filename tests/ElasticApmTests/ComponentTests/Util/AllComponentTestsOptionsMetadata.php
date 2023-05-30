@@ -24,7 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Config\BoolOptionMetadata;
+use Elastic\Apm\Impl\Config\IntOptionMetadata;
 use Elastic\Apm\Impl\Config\LogLevelOptionMetadata;
+use Elastic\Apm\Impl\Config\NullableBoolOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableIntOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableStringOptionMetadata;
 use Elastic\Apm\Impl\Config\NullableWildcardListOptionMetadata;
@@ -45,14 +47,14 @@ final class AllComponentTestsOptionsMetadata
     public const APP_CODE_PHP_INI_OPTION_NAME = 'app_code_php_ini';
     public const DATA_PER_PROCESS_OPTION_NAME = 'data_per_process';
     public const DATA_PER_REQUEST_OPTION_NAME = 'data_per_request';
+    public const ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME = 'escalated_reruns_max_count';
+    public const LOG_LEVEL_OPTION_NAME = 'log_level';
 
     /** @var ?array<string, OptionMetadata<mixed>> */
     private static $vaLue = null;
 
     /**
-     * @return array<string, OptionMetadata> Option name to metadata
-     *
-     * @phpstan-return array<string, OptionMetadata<mixed>> Option name to metadata
+     * @return array<string, OptionMetadata<mixed>> Option name to metadata
      */
     public static function get(): array
     {
@@ -60,35 +62,42 @@ final class AllComponentTestsOptionsMetadata
             return self::$vaLue;
         }
 
-        /** @var array<string, OptionMetadata<mixed>> */
+        /** @var array<string, OptionMetadata<mixed>> $optNameToMeta */
         $optNameToMeta = [
             self::APP_CODE_HOST_KIND_OPTION_NAME => new NullableAppCodeHostKindOptionMetadata(),
-            'app_code_php_exe' => new NullableStringOptionMetadata(),
-            self::APP_CODE_PHP_INI_OPTION_NAME => new NullableStringOptionMetadata(),
-            self::DATA_PER_PROCESS_OPTION_NAME => new NullableCustomOptionMetadata(
+            'app_code_php_exe'                   => new NullableStringOptionMetadata(),
+            self::APP_CODE_PHP_INI_OPTION_NAME   => new NullableStringOptionMetadata(),
+            self::DATA_PER_PROCESS_OPTION_NAME   => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerProcess {
                     $deserializedObj = new TestInfraDataPerProcess();
                     $deserializedObj->deserializeFromString($rawValue);
                     return $deserializedObj;
                 }
             ),
-            self::DATA_PER_REQUEST_OPTION_NAME => new NullableCustomOptionMetadata(
+            self::DATA_PER_REQUEST_OPTION_NAME   => new NullableCustomOptionMetadata(
                 function (string $rawValue): TestInfraDataPerRequest {
                     $deserializedObj = new TestInfraDataPerRequest();
                     $deserializedObj->deserializeFromString($rawValue);
                     return $deserializedObj;
                 }
             ),
-            'delete_temp_php_ini'      => new BoolOptionMetadata(true),
-            'env_vars_to_pass_through' => new NullableWildcardListOptionMetadata(),
-            'group'                    => new NullableStringOptionMetadata(),
-            'log_level'                => new LogLevelOptionMetadata(LogLevel::INFO),
-            'mysql_host'               => new NullableStringOptionMetadata(),
-            'mysql_port'               => new NullableIntOptionMetadata(1, 65535),
-            'mysql_user'               => new NullableStringOptionMetadata(),
-            'mysql_password'           => new NullableStringOptionMetadata(),
-            'mysql_db'                 => new NullableStringOptionMetadata(),
-            'run_before_each_test'     => new NullableStringOptionMetadata(),
+            'delete_temp_php_ini'                => new BoolOptionMetadata(true),
+            'env_vars_to_pass_through'           => new NullableWildcardListOptionMetadata(),
+            self::ESCALATED_RERUNS_MAX_COUNT_OPTION_NAME
+                                                 => new IntOptionMetadata(/* min: */ 0, /* max: */ null, /* default: */ 10),
+            'escalated_reruns_prod_code_log_level_option_name'
+                                                 => new NullableStringOptionMetadata(),
+            'group'                              => new NullableStringOptionMetadata(),
+            'is_in_container'                    => new NullableBoolOptionMetadata(),
+            'is_long_run_mode'                   => new BoolOptionMetadata(false),
+            self::LOG_LEVEL_OPTION_NAME          => new LogLevelOptionMetadata(LogLevel::INFO),
+            'mysql_host'                         => new NullableStringOptionMetadata(),
+            'mysql_port'                         => new NullableIntOptionMetadata(1, 65535),
+            'mysql_user'                         => new NullableStringOptionMetadata(),
+            'mysql_password'                     => new NullableStringOptionMetadata(),
+            'mysql_db'                           => new NullableStringOptionMetadata(),
+            'run_before_each_test'               => new NullableStringOptionMetadata(),
+            'this_container_image_name'          => new NullableStringOptionMetadata(),
         ];
 
         self::$vaLue = $optNameToMeta;

@@ -36,9 +36,16 @@ final class InfraUtilForTests
         return IdGenerator::generateId(/* idLengthInBytes */ 16);
     }
 
+    /**
+     * @param string                  $targetSpawnedProcessInternalId
+     * @param int[]                   $targetServerPorts
+     * @param ?ResourcesCleanerHandle $resourcesCleaner
+     *
+     * @return TestInfraDataPerProcess
+     */
     public static function buildTestInfraDataPerProcess(
         string $targetSpawnedProcessInternalId,
-        ?int $targetServerPort,
+        array $targetServerPorts,
         ?ResourcesCleanerHandle $resourcesCleaner
     ): TestInfraDataPerProcess {
         $result = new TestInfraDataPerProcess();
@@ -51,11 +58,11 @@ final class InfraUtilForTests
 
         if ($resourcesCleaner !== null) {
             $result->resourcesCleanerSpawnedProcessInternalId = $resourcesCleaner->getSpawnedProcessInternalId();
-            $result->resourcesCleanerPort = $resourcesCleaner->getPort();
+            $result->resourcesCleanerPort = $resourcesCleaner->getMainPort();
         }
 
         $result->thisSpawnedProcessInternalId = $targetSpawnedProcessInternalId;
-        $result->thisServerPort = $targetServerPort;
+        $result->thisServerPorts = $targetServerPorts;
 
         return $result;
     }
@@ -63,7 +70,7 @@ final class InfraUtilForTests
     /**
      * @param array<string, string>   $baseEnvVars
      * @param string                  $targetSpawnedProcessInternalId
-     * @param ?int                    $targetServerPort
+     * @param int[]                   $targetServerPorts
      * @param ?ResourcesCleanerHandle $resourcesCleaner
      * @param string                  $dbgProcessName
      *
@@ -72,14 +79,17 @@ final class InfraUtilForTests
     public static function addTestInfraDataPerProcessToEnvVars(
         array $baseEnvVars,
         string $targetSpawnedProcessInternalId,
-        ?int $targetServerPort,
+        array $targetServerPorts,
         ?ResourcesCleanerHandle $resourcesCleaner,
         string $dbgProcessName
     ): array {
         $dataPerProcessOptName = AllComponentTestsOptionsMetadata::DATA_PER_PROCESS_OPTION_NAME;
-        $dataPerProcessEnvVarName = ConfigUtilForTests::envVarNameForTestOption($dataPerProcessOptName);
-        $dataPerProcess
-            = self::buildTestInfraDataPerProcess($targetSpawnedProcessInternalId, $targetServerPort, $resourcesCleaner);
+        $dataPerProcessEnvVarName = ConfigUtilForTests::testOptionNameToEnvVarName($dataPerProcessOptName);
+        $dataPerProcess = self::buildTestInfraDataPerProcess(
+            $targetSpawnedProcessInternalId,
+            $targetServerPorts,
+            $resourcesCleaner
+        );
         return $baseEnvVars
                + [
                    SpawnedProcessBase::DBG_PROCESS_NAME_ENV_VAR_NAME => $dbgProcessName,

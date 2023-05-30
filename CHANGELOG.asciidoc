@@ -20,6 +20,43 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.8.4]]
+=== v1.8.4 - 2023/05/17
+[float]
+==== Bug fixes
+* Fixed deadlock caused by use of pthread_atfork {pull}964[#964]
+* Fixed verify_server_cert=false not disabling all the checks related to HTTPS certificate {pull}965[#965]
+* Fixed not joining background sender thread if there was fork after module init {pull}959[#959]
+
+[[release-notes-v1.8.3]]
+=== v1.8.3 - 2023/04/21
+[float]
+==== Bug fixes
+* Fixed issue with missing transaction details on some setups {pull}916[#916]
+
+[[release-notes-v1.8.2]]
+=== v1.8.2 - 2023/04/12
+[float]
+==== Bug fixes
+* Fixed agent issue causing PHP to crash when opcache preload feature was enabled {pull}913[#913]
+
+[[release-notes-v1.8.1]]
+=== v1.8.1 - 2023/03/09
+[float]
+==== Bug fixes
+* Fix for the agent causing very high CPU usage because it's creating frequent connections to Elastic APM Server {pull}877[#877]
+
+[[release-notes-v1.8.0]]
+=== v1.8.0 - 2023/02/27
+[float]
+==== Features
+* Added support for PHP 8.2 {pull}868[#868]
+
+[[release-notes-v1.7.2]]
+=== v1.7.2 - 2023/02/24
+[float]
+==== Bug fixes
+* Fixed: case when process fork happens during request processing {pull}857[#857]
 
 [[release-notes-v1.7.1]]
 === v1.7.1 - 2023/01/16

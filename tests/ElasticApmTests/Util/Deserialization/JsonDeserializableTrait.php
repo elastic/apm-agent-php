@@ -26,39 +26,27 @@ namespace ElasticApmTests\Util\Deserialization;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\TestCaseBase;
 
 trait JsonDeserializableTrait
 {
-    /**
-     * @return array<string, mixed>
-     *
-     * Called by json_encode
-     * @noinspection PhpUnused
-     */
-    public function jsonSerialize(): array
-    {
-        $result = [];
-
-        $className = ClassNameUtil::fqToShort(get_class($this));
-        foreach (get_object_vars($this) as $propName => $propValue) {
-            JsonUtilForTests::assertJsonDeserializable($propValue, $className . '->' . $propName);
-            $result[$propName] = $propValue;
-        }
-
-        return $result;
-    }
-
     /**
      * @param array<string, mixed> $decodedJson
      */
     public function deserializeFromDecodedJson(array $decodedJson): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $thisClassName = ClassNameUtil::fqToShort(get_called_class());
+        $dbgCtx->add(['thisClassName' => $thisClassName]);
+        $dbgCtx->pushSubScope();
         foreach ($decodedJson as $jsonKey => $jsonVal) {
-            TestCase::assertIsString($jsonKey);
-            TestCase::assertTrue(property_exists($this, $jsonKey));
+            $dbgCtx->clearCurrentSubScope(['jsonKey' => $jsonKey, 'jsonVal' => $jsonVal]);
+            TestCaseBase::assertIsString($jsonKey);
+            TestCaseBase::assertTrue(property_exists($this, $jsonKey));
             $this->$jsonKey = $this->deserializePropertyValue($jsonKey, $jsonVal);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**

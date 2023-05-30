@@ -30,6 +30,7 @@
 #include <zend_builtin_functions.h>
 #include "php_elastic_apm.h"
 #include "log.h"
+#include "ConfigSnapshot.h"
 #include "SystemMetrics.h"
 #include "php_error.h"
 #include "util_for_PHP.h"
@@ -45,6 +46,8 @@
 
 static const char JSON_METRICSET[] =
         "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
+
+static uint64_t requestCounter = 0;
 
 static
 String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoBuffer )
@@ -101,7 +104,6 @@ void logSupportabilityInfo( LogLevel logLevel )
     goto finally;
 }
 
-static pid_t g_pidOnModuleInit = -1;
 static pid_t g_pidOnRequestInit = -1;
 
 bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
@@ -111,123 +113,11 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
     {
         ELASTIC_APM_LOG_DEBUG( "Process ID on %s init doesn't match the current process ID"
                                " (maybe the current process is a child process forked after the init step?)"
-                               "; pidOnInit: %d, currentPid: %d"
-                               , dbgDesc, (int)pidOnInit, (int)currentPid );
+                               "; PID on init: %d, current PID: %d, parent PID: %d"
+                               , dbgDesc, (int)pidOnInit, (int)currentPid, (int)(getParentProcessId()) );
         return false;
     }
     return true;
-}
-
-void elasticApmModuleInit( int type, int moduleNumber )
-{
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
-
-    registerOsSignalHandler();
-
-    g_pidOnModuleInit = getCurrentProcessId();
-
-    ResultCode resultCode;
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* config = NULL;
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
-
-    if ( ! tracer->isInited )
-    {
-        ELASTIC_APM_LOG_DEBUG( "Extension is not initialized" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-    }
-
-    registerElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
-
-    logSupportabilityInfo( logLevel_debug );
-
-    config = getTracerCurrentConfigSnapshot( tracer );
-
-    if ( ! config->enabled )
-    {
-        resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG( "Extension is disabled" );
-        goto finally;
-    }
-
-    if ( getGlobalLogger()->maxEnabledLevel >= logLevel_debug )
-    {
-        registerAtExitLogging();
-    }
-
-    CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
-    if ( curlCode != CURLE_OK )
-    {
-        resultCode = resultFailure;
-        ELASTIC_APM_LOG_ERROR( "curl_global_init failed: %s (%d)", curl_easy_strerror( curlCode ), (int)curlCode );
-        goto finally;
-    }
-    tracer->curlInited = true;
-
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnModuleInit( config ) );
-
-    resultCode = resultSuccess;
-    finally:
-
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    return;
-
-    failure:
-    moveTracerToFailedState( tracer );
-    goto finally;
-}
-
-void elasticApmModuleShutdown( int type, int moduleNumber )
-{
-    ELASTIC_APM_UNUSED( type );
-
-    ResultCode resultCode;
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, moduleNumber: %d", type, moduleNumber );
-
-    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnModuleInit, "module" ) )
-    {
-        resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
-        ELASTIC_APM_UNUSED( resultCode );
-        return;
-    }
-
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
-
-    if ( ! config->enabled )
-    {
-        resultCode = resultSuccess;
-        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
-        goto finally;
-    }
-
-    backgroundBackendCommOnModuleShutdown();
-
-    if ( tracer->curlInited )
-    {
-        curl_global_cleanup();
-        tracer->curlInited = false;
-    }
-
-    unregisterElasticApmIniEntries( moduleNumber, &tracer->iniEntriesRegistrationState );
-
-    resultCode = resultSuccess;
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
-
-    finally:
-    destructTracer( tracer );
-
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
 }
 
 typedef void (* ZendThrowExceptionHook )(
@@ -238,7 +128,8 @@ typedef void (* ZendThrowExceptionHook )(
 #endif
 );
 
-static bool isOriginalZendThrowExceptionHookSet = false;
+static bool elasticApmZendErrorCallbackSet = false;
+static bool elasticApmZendThrowExceptionHookSet = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
 static bool g_isLastThrownSet = false;
 static zval g_lastThrown;
@@ -297,7 +188,17 @@ void elasticApmZendThrowExceptionHook(
 #endif
 )
 {
-    elasticApmZendThrowExceptionHookImpl( thrownObj );
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+    if (config->captureErrors) {
+        elasticApmZendThrowExceptionHookImpl( thrownObj );
+    }
+
+    if (originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook) {
+        ELASTIC_APM_LOG_CRITICAL( "originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook" );
+        return;
+    }
+
 
     if ( originalZendThrowExceptionHook != NULL )
     {
@@ -305,7 +206,7 @@ void elasticApmZendThrowExceptionHook(
     }
 }
 // In PHP 8.1 filename parameter of zend_error_cb() was changed from "const char*" to "zend_string*"
-#if PHP_VERSION_ID < 80100
+#if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 1
 #else
 #   define ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING 0
@@ -365,7 +266,6 @@ const char* zendErrorCallbackFileNameToCString( ZendErrorCallbackFileName fileNa
 
 typedef void (* ZendErrorCallback )( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() );
 
-static bool isOriginalZendErrorCallbackSet = false;
 static ZendErrorCallback originalZendErrorCallback = NULL;
 
 struct PhpErrorData
@@ -454,6 +354,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
     tempPhpErrorData.type = type;
     tempPhpErrorData.lineNumber = lineNumber;
 
+    freeAndZeroLastPhpErrorData( &g_lastPhpErrorData );
     shallowCopyLastPhpErrorData( &tempPhpErrorData, &g_lastPhpErrorData );
     zeroLastPhpErrorData( &tempPhpErrorData );
     g_lastPhpErrorDataSet = true;
@@ -523,6 +424,180 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
     goto finally;
 }
 
+void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
+{
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+    if (config->captureErrors) {
+        elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
+    }
+
+
+    if (originalZendErrorCallback == elasticApmZendErrorCallback) {
+        ELASTIC_APM_LOG_CRITICAL( "originalZendErrorCallback == elasticApmZendErrorCallback" );
+        return;
+    }
+
+    if ( originalZendErrorCallback != NULL )
+    {
+        originalZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
+    }
+}
+
+
+static void registerErrorAndExceptionHooks() {
+    if (!elasticApmZendErrorCallbackSet) {
+        originalZendErrorCallback = zend_error_cb;
+        zend_error_cb = elasticApmZendErrorCallback;
+        elasticApmZendErrorCallbackSet = true;
+        ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
+                            , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
+                            , elasticApmZendErrorCallback );
+    } else {
+        ELASTIC_APM_LOG_WARNING( "zend_error_cb already set: %p. Original: %p, Elastic: %p", zend_error_cb, originalZendErrorCallback, elasticApmZendErrorCallback );
+    }
+
+
+    if (!elasticApmZendThrowExceptionHookSet) {
+        originalZendThrowExceptionHook = zend_throw_exception_hook;
+        zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+        elasticApmZendThrowExceptionHookSet = true;
+        ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                            , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                            , elasticApmZendThrowExceptionHook );
+    } else {
+        ELASTIC_APM_LOG_WARNING( "zend_erzend_throw_exception_hook already set: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
+    }
+}
+
+
+static void unregisterErrorAndExceptionHooks() {
+    if (elasticApmZendThrowExceptionHookSet) {
+        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
+        zend_throw_exception_hook = originalZendThrowExceptionHook;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
+                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
+                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
+        originalZendThrowExceptionHook = NULL;
+    } else {
+        ELASTIC_APM_LOG_DEBUG("zend_throw_exception_hook not restored: %p, elastic: %p", zend_throw_exception_hook, elasticApmZendThrowExceptionHook);
+    }
+
+    if (!elasticApmZendErrorCallbackSet) {
+        ZendErrorCallback zendErrorCallbackBeforeRestore = zend_error_cb;
+        zend_error_cb = originalZendErrorCallback;
+        ELASTIC_APM_LOG_DEBUG( "Restored zend_error_cb: %p (%s elasticApmZendErrorCallback: %p) -> %p"
+                               , zendErrorCallbackBeforeRestore, zendErrorCallbackBeforeRestore == elasticApmZendErrorCallback ? "==" : "!="
+                               , elasticApmZendErrorCallback, originalZendErrorCallback );
+        originalZendErrorCallback = NULL;
+    } else {
+        ELASTIC_APM_LOG_DEBUG("zend_error_cb not restored: %p, elastic: %p", zend_error_cb, elasticApmZendErrorCallback);
+    }
+
+}
+
+void elasticApmModuleInit( int moduleType, int moduleNumber )
+{
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
+
+    registerOsSignalHandler();
+
+    ResultCode resultCode;
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* config = NULL;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
+
+    if ( ! tracer->isInited )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Extension is not initialized" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    registerElasticApmIniEntries( moduleType, moduleNumber, &tracer->iniEntriesRegistrationState );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
+
+    logSupportabilityInfo( logLevel_debug );
+
+    config = getTracerCurrentConfigSnapshot( tracer );
+
+    if ( ! config->enabled )
+    {
+        resultCode = resultSuccess;
+        ELASTIC_APM_LOG_DEBUG( "Extension is disabled" );
+        goto finally;
+    }
+
+    registerCallbacksToLogFork();
+    registerAtExitLogging();
+    registerErrorAndExceptionHooks();
+
+    CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
+    if ( curlCode != CURLE_OK )
+    {
+        resultCode = resultFailure;
+        ELASTIC_APM_LOG_ERROR( "curl_global_init failed: %s (%d)", curl_easy_strerror( curlCode ), (int)curlCode );
+        goto finally;
+    }
+    tracer->curlInited = true;
+
+    resultCode = resultSuccess;
+    finally:
+
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    return;
+
+    failure:
+    moveTracerToFailedState( tracer );
+    goto finally;
+}
+
+void elasticApmModuleShutdown( int moduleType, int moduleNumber )
+{
+    ResultCode resultCode;
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "moduleType: %d, moduleNumber: %d", moduleType, moduleNumber );
+
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
+
+    if ( ! config->enabled )
+    {
+        resultCode = resultSuccess;
+        ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG( "Because extension is not enabled" );
+        goto finally;
+    }
+
+    unregisterErrorAndExceptionHooks();
+
+    backgroundBackendCommOnModuleShutdown( config );
+
+    if ( tracer->curlInited )
+    {
+        curl_global_cleanup();
+        tracer->curlInited = false;
+    }
+
+    unregisterElasticApmIniEntries( moduleType, moduleNumber, &tracer->iniEntriesRegistrationState );
+
+    resultCode = resultSuccess;
+
+    finally:
+    destructTracer( tracer );
+
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    ELASTIC_APM_UNUSED( resultCode );
+
+    unregisterOsSignalHandler();
+
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s exiting...", __FUNCTION__ );
+}
+
 void elasticApmGetLastPhpError( zval* return_value )
 {
     if ( ! g_lastPhpErrorDataSet )
@@ -539,28 +614,20 @@ void elasticApmGetLastPhpError( zval* return_value )
     ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
-void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
-{
-    elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
-
-    if ( originalZendErrorCallback != NULL )
-    {
-        originalZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_ARGS() );
-    }
-}
-
 void elasticApmRequestInit()
 {
+    requestCounter++;
+
+    TimePoint requestInitStartTime;
+    getCurrentTime( &requestInitStartTime );
+
 #if defined(ZTS) && defined(COMPILE_DL_ELASTIC_APM)
     ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
     g_pidOnRequestInit = getCurrentProcessId();
 
-    TimePoint requestInitStartTime;
-    getCurrentTime( &requestInitStartTime );
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "parent PID: %d", (int)(getParentProcessId()) );
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -585,12 +652,21 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommOnRequestInit( config ) );
-
     if ( isMemoryTrackingEnabled( &tracer->memTracker ) ) memoryTrackerRequestInit( &tracer->memTracker );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
     logSupportabilityInfo( logLevel_trace );
+
+    enableAccessToServerGlobal();
+
+    if (requestCounter == 1) {
+        bool preloadDetected = detectOpcachePreload();
+        if (preloadDetected) {
+            ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
+            resultCode = resultSuccess;
+            goto finally;
+        }
+    }
 
     if ( config->profilingInferredSpansEnabled ) {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
@@ -600,24 +676,7 @@ void elasticApmRequestInit()
 
 //    readSystemMetrics( &tracer->startSystemMetricsReading );
 
-    if ( config->captureErrors )
-    {
-        originalZendErrorCallback = zend_error_cb;
-        isOriginalZendErrorCallbackSet = true;
-        zend_error_cb = elasticApmZendErrorCallback;
-        ELASTIC_APM_LOG_DEBUG( "Set zend_error_cb: %p (%s elasticApmZendErrorCallback) -> %p"
-                               , originalZendErrorCallback, originalZendErrorCallback == elasticApmZendErrorCallback ? "==" : "!="
-                               , elasticApmZendErrorCallback );
-
-        originalZendThrowExceptionHook = zend_throw_exception_hook;
-        isOriginalZendThrowExceptionHookSet = true;
-        zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-        ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                               , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                               , elasticApmZendThrowExceptionHook );
-    }
-    else
-    {
+    if (!config->captureErrors) {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
     }
 
@@ -680,26 +739,11 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-    if ( isOriginalZendThrowExceptionHookSet )
-    {
-        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
-        zend_throw_exception_hook = originalZendThrowExceptionHook;
-        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
-                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
-                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
-        originalZendThrowExceptionHook = NULL;
-        isOriginalZendThrowExceptionHookSet = false;
-    }
-
-    if ( isOriginalZendErrorCallbackSet )
-    {
-        ZendErrorCallback zendErrorCallbackBeforeRestore = zend_error_cb;
-        zend_error_cb = originalZendErrorCallback;
-        ELASTIC_APM_LOG_DEBUG( "Restored zend_error_cb: %p (%s elasticApmZendErrorCallback: %p) -> %p"
-                               , zendErrorCallbackBeforeRestore, zendErrorCallbackBeforeRestore == elasticApmZendErrorCallback ? "==" : "!="
-                               , elasticApmZendErrorCallback, originalZendErrorCallback );
-        originalZendErrorCallback = NULL;
-        isOriginalZendErrorCallbackSet = false;
+    bool preloadDetected = requestCounter == 1 && detectOpcachePreload();
+    if (preloadDetected) {
+        ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
+        resultCode = resultSuccess;
+        goto finally;
     }
 
     // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
@@ -725,6 +769,58 @@ void elasticApmRequestShutdown()
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
     return;
+
+    failure:
+    goto finally;
+}
+
+static pid_t g_lastDetectedCurrentProcessId = -1;
+
+ResultCode resetStateIfForkedChild( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    ResultCode resultCode;
+    pid_t lastDetectedCurrentProcessIdSaved;
+
+    if ( g_lastDetectedCurrentProcessId == -1 )
+    {
+        g_lastDetectedCurrentProcessId = getCurrentProcessId();
+        resultCode = resultSuccess;
+        goto finally;
+    }
+
+    if ( g_lastDetectedCurrentProcessId == getCurrentProcessId() )
+    {
+        resultCode = resultSuccess;
+        goto finally;
+    }
+    lastDetectedCurrentProcessIdSaved = g_lastDetectedCurrentProcessId;
+    g_lastDetectedCurrentProcessId = getCurrentProcessId();
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetLoggingStateInForkedChild() );
+    ELASTIC_APM_LOG_DEBUG( "Detected change in current process ID (PID) - handling it..."
+                           "; old PID: %d; parent PID: %d"
+                           , (int)lastDetectedCurrentProcessIdSaved, (int)(getParentProcessId()) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetBackgroundBackendCommStateInForkedChild() );
+
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
+
+    failure:
+    goto finally;
+}
+
+ResultCode elasticApmEnterAgentCode( String dbgCalledFromFile, int dbgCalledFromLine, String dbgCalledFromFunction )
+{
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( resetStateIfForkedChild( dbgCalledFromFile, dbgCalledFromLine, dbgCalledFromFunction ) );
+
+    resultCode = resultSuccess;
+    finally:
+    return resultCode;
 
     failure:
     goto finally;

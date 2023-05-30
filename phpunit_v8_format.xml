@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	beStrictAboutOutputDuringTests="false"
+	bootstrap="tests/bootstrap.php"
+	colors="true"
+	failOnRisky="true"
+	stopOnDefect="true"
+	stopOnError="true"
+	stopOnFailure="true"
+	stopOnIncomplete="true"
+	stopOnRisky="true"
+	stopOnWarning="true"
+	verbose="true"
+	testdox="true"
+	noInteraction="true"
+>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src/ElasticApm/</directory>
+        </whitelist>
+    </filter>
+    <php>
+        <ini name="memory_limit" value="2G"/>
+    </php>
+    <logging>
+        <log type="junit" target="./build/unit-tests-phpunit-junit.xml"/>
+    </logging>
+    <testsuites>
+        <testsuite name="Tests">
+            <directory>./tests/ElasticApmTests/UnitTests</directory>
+        </testsuite>
+    </testsuites>
+    <extensions>
+        <extension class="\ElasticApmTests\UnitTests\Util\UnitTestsPhpUnitExtension"/>
+    </extensions>
+</phpunit>

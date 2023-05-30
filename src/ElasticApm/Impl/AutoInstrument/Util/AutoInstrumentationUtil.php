@@ -19,16 +19,16 @@
  * under the License.
  */
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
 use Closure;
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
@@ -41,8 +41,6 @@ use Throwable;
  */
 final class AutoInstrumentationUtil
 {
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX = 'Elastic_APM_dynamically_attached_property_';
-
     /** @var Logger */
     private $logger;
 
@@ -59,6 +57,18 @@ final class AutoInstrumentationUtil
     public static function buildSpanNameFromCall(?string $className, string $funcName): string
     {
         return ($className === null) ? $funcName : ($className . '->' . $funcName);
+    }
+
+    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
+
+        if ($span instanceof Span) {
+            // Mark all spans created by auto-instrumentation as compressible
+            $span->setCompressible(true);
+        }
+
+        return $span;
     }
 
     /**
@@ -93,7 +103,7 @@ final class AutoInstrumentationUtil
      *
      * @return null|callable(int, bool, mixed): void
      */
-    public static function createPostHookFromEndSpan(
+    public static function createInternalFuncPostHookFromEndSpan(
         SpanInterface $span,
         ?Closure $doBeforeSpanEnd = null
     ): ?callable {
@@ -142,215 +152,112 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed  $val
-     */
-    public function setDynamicallyAttachedProperty(object $obj, string $propName, $val): void
-    {
-        /** @noinspection PhpIssetCanBeReplacedWithCoalesceInspection */
-        $oldVal = isset($obj->{$propName}) ? $obj->{$propName} : 'not set';
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Setting dynamically attached property...',
-            [
-                'obj type'      => DbgUtil::getType($obj),
-                'obj ID'        => spl_object_id($obj),
-                'property name' => $propName,
-                'old value'     => $oldVal,
-                'new value'     => $val,
-            ]
-        );
-
-        $obj->{$propName} = $val;
-    }
-
-    /**
-     * @param object               $obj
-     * @param array<string, mixed> $propNameValues
-     */
-    public function setDynamicallyAttachedProperties(object $obj, array $propNameValues): void
-    {
-        foreach ($propNameValues as $propName => $propVal) {
-            $this->setDynamicallyAttachedProperty($obj, $propName, $propVal);
-        }
-    }
-
-    /**
-     * @param object $obj
-     * @param string $propName
-     * @param mixed &$value
+     * @param bool    $isOfExpectedType
+     * @param string  $dbgExpectedType
+     * @param mixed   $dbgActualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    private function getDynamicallyAttachedPropertyImpl(object $obj, string $propName, &$value): bool
-    {
-        $isSet = isset($obj->{$propName});
-        if ($isSet) {
-            $value = $obj->{$propName};
-        }
-        /** @noinspection PhpIssetCanBeReplacedWithCoalesceInspection */
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Getting dynamically attached property...',
-            [
-                'obj type'      => DbgUtil::getType($obj),
-                'obj ID'        => spl_object_id($obj),
-                'property name' => $propName,
-                'value'         => $isSet ? $value : 'not set',
-            ]
-        );
-        return $isSet;
-    }
-
-
-    /**
-     * @param object $obj
-     * @param string  $propName
-     * @param mixed   $defaultValue
-     *
-     * @return mixed
-     */
-    public function getDynamicallyAttachedProperty(object $obj, string $propName, $defaultValue)
-    {
-        /** @var mixed $value */
-        $value = null;
-        return $this->getDynamicallyAttachedPropertyImpl($obj, $propName, /* ref */ $value) ? $value : $defaultValue;
-    }
-
-    /**
-     * @param object  $obj
-     * @param string[] $propNames
-     *
-     * @return array<string, mixed>
-     */
-    public function getDynamicallyAttachedProperties(object $obj, array $propNames): array
-    {
-        $propNameValues = [];
-        foreach ($propNames as $propName) {
-            $value = null;
-            if ($this->getDynamicallyAttachedPropertyImpl($obj, $propName, /* ref */ $value)) {
-                $propNameValues[$propName] = $value;
-            }
-        }
-        return $propNameValues;
-    }
-
-    /**
-     * @param bool   $isOfExpectedType
-     * @param string $dbgExpectedType
-     * @param mixed  $dbgActualValue
-     *
-     * @return bool
-     */
-    public function verifyType(bool $isOfExpectedType, string $dbgExpectedType, $dbgActualValue): bool
+    public function verifyType(bool $isOfExpectedType, string $dbgExpectedType, $dbgActualValue, ?string $dbgParamName = null): bool
     {
         if ($isOfExpectedType) {
             return true;
         }
 
+        $ctx = [
+            'expected type' => $dbgExpectedType,
+            'actual type'   => DbgUtil::getType($dbgActualValue),
+            'actual value'  => $this->logger->possiblySecuritySensitive($dbgActualValue),
+        ];
+        if ($dbgParamName !== null) {
+            $ctx = array_merge(['parameter name' => $dbgParamName], $ctx);
+        }
+
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Actual type does not match the expected type',
-            [
-                'expected type' => $dbgExpectedType,
-                'actual type'   => DbgUtil::getType($dbgActualValue),
-                'actual value'  => $this->logger->possiblySecuritySensitive($dbgActualValue),
-            ]
-        );
+        && $loggerProxy->includeStackTrace()->log('Actual type does not match the expected type', $ctx);
         return false;
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsString($actualValue): bool
+    public function verifyIsString($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_string($actualValue), 'string', $actualValue);
+        return $this->verifyType(is_string($actualValue), 'string', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsInt($actualValue): bool
+    public function verifyIsInt($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_int($actualValue), 'int', $actualValue);
+        return $this->verifyType(is_int($actualValue), 'int', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsBool($actualValue): bool
+    public function verifyIsBool($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_bool($actualValue), 'bool', $actualValue);
+        return $this->verifyType(is_bool($actualValue), 'bool', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsArray($actualValue): bool
+    public function verifyIsArray($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_array($actualValue), 'array', $actualValue);
+        return $this->verifyType(is_array($actualValue), 'array', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsObject($actualValue): bool
+    public function verifyIsObject($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_object($actualValue), 'object', $actualValue);
+        return $this->verifyType(is_object($actualValue), 'object', $actualValue, $dbgParamName);
     }
 
     /**
      * @param class-string $expectedClass
      * @param mixed        $actualValue
+     * @param ?string      $dbgParamName
      *
      * @return bool
      */
-    public function verifyInstanceOf(string $expectedClass, $actualValue): bool
+    public function verifyInstanceOf(string $expectedClass, $actualValue, ?string $dbgParamName = null): bool
     {
-        if ($actualValue === null) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is null and thus it is not an instance the expected class',
-                ['expected class' => $expectedClass]
-            );
+        if (!$this->verifyIsObject($actualValue, $dbgParamName)) {
             return false;
         }
-
-        if (!is_object($actualValue)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is not an object and thus it is not an instance the expected class',
-                [
-                    'expected class' => $expectedClass,
-                    'actual type'    => DbgUtil::getType($actualValue),
-                    'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
-                ]
-            );
-            return false;
-        }
-
         if (!($actualValue instanceof $expectedClass)) {
+            $ctx = [
+                'expected class' => $expectedClass,
+                'actual type'    => DbgUtil::getType($actualValue),
+                'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
+            ];
+            if ($dbgParamName !== null) {
+                $ctx = array_merge(['parameter name' => $dbgParamName], $ctx);
+            }
+
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is not an instance the expected class',
-                [
-                    'expected class' => $expectedClass,
-                    'actual type'    => DbgUtil::getType($actualValue),
-                    'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
-                ]
-            );
+            && $loggerProxy->log('Actual value is not an instance the expected class', $ctx);
             return false;
         }
 
@@ -358,14 +265,14 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param int     $expectedMinNumberOfArgs
+     * @param int     $expectedMinArgsCount
      * @param mixed[] $interceptedCallArgs
      *
      * @return bool
      */
-    public function verifyMinArgsCount(int $expectedMinNumberOfArgs, array $interceptedCallArgs): bool
+    public function verifyMinArgsCount(int $expectedMinArgsCount, array $interceptedCallArgs): bool
     {
-        if (count($interceptedCallArgs) >= $expectedMinNumberOfArgs) {
+        if (count($interceptedCallArgs) >= $expectedMinArgsCount) {
             return true;
         }
 
@@ -373,9 +280,9 @@ final class AutoInstrumentationUtil
         && $loggerProxy->log(
             'Actual number of arguments is less than expected',
             [
-                'expected min number of arguments' => $expectedMinNumberOfArgs,
-                'actual number of arguments'       => count($interceptedCallArgs),
-                'actual arguments'                 => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+                'expected minimal number of arguments' => $expectedMinArgsCount,
+                'actual number of arguments'           => count($interceptedCallArgs),
+                'actual arguments'                     => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         return false;

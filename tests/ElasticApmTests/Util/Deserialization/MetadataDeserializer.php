@@ -168,7 +168,8 @@ final class MetadataDeserializer
     }
 
     /**
-     * @param mixed $value
+     * @param mixed       $value
+     * @param ServiceData $result
      */
     private static function deserializeServiceNodeSubObject($value, ServiceData $result): void
     {
@@ -207,6 +208,9 @@ final class MetadataDeserializer
                     case 'configured_hostname':
                         $result->configuredHostname = self::assertValidKeywordString($value);
                         return true;
+                    case 'container':
+                        self::deserializeContainer($value, $result);
+                        return true;
                     default:
                         return false;
                 }
@@ -217,7 +221,27 @@ final class MetadataDeserializer
     }
 
     /**
-     * @param mixed  $value
+     * @param mixed      $value
+     * @param SystemData $result
+     */
+    private static function deserializeContainer($value, SystemData $result): void
+    {
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'id':
+                        $result->containerId = self::assertValidKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+    }
+
+    /**
+     * @param mixed $value
      *
      * @return NameVersionData
      */

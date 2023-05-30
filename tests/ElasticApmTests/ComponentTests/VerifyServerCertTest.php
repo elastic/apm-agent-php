@@ -25,11 +25,11 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group smoke
@@ -49,13 +49,10 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
         }
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeForConfigTest(array $args): void
+    public static function appCodeForConfigTest(MixedMap $appCodeArgs): void
     {
         $tx = ElasticApm::getCurrentTransaction();
-        $verifyServerCertConfigVal = ArrayUtil::getValueIfKeyExistsElse('verifyServerCertConfigVal', $args, null);
+        $verifyServerCertConfigVal = $appCodeArgs->getIfKeyExistsElse('verifyServerCertConfigVal', null);
         /** @var ?bool $verifyServerCertConfigVal */
         $tx->context()->setLabel('verifyServerCertConfigVal', $verifyServerCertConfigVal);
     }
@@ -81,9 +78,7 @@ final class VerifyServerCertTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForConfigTest']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($verifyServerCertConfigVal): void {
-                $appCodeRequestParams->setAppCodeArgs(
-                    ['verifyServerCertConfigVal' => $verifyServerCertConfigVal]
-                );
+                $appCodeRequestParams->setAppCodeArgs(['verifyServerCertConfigVal' => $verifyServerCertConfigVal]);
             }
         );
         $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);

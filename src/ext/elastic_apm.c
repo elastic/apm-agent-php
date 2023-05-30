@@ -57,10 +57,21 @@ static inline ResultCode zendToResultCode( ZEND_RESULT_CODE zendResultCode )
  */
 PHP_RINIT_FUNCTION(elastic_apm)
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    elasticApmRequestInit();
+
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    elasticApmRequestInit();
+    finally:
     return SUCCESS;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -68,10 +79,21 @@ PHP_RINIT_FUNCTION(elastic_apm)
  */
 PHP_RSHUTDOWN_FUNCTION(elastic_apm)
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    elasticApmRequestShutdown();
+
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    elasticApmRequestShutdown();
+    finally:
     return SUCCESS;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -79,7 +101,21 @@ PHP_RSHUTDOWN_FUNCTION(elastic_apm)
  */
 PHP_MINFO_FUNCTION(elastic_apm)
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     elasticApmModuleInfo( zend_module );
+
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -108,6 +144,7 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND )
     ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENABLED )
@@ -138,6 +175,9 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NAME )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_NODE_NAME )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE )
@@ -150,9 +190,9 @@ PHP_INI_END()
 #undef ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY
 #undef ELASTIC_APM_SECRET_INI_ENTRY
 
-ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
+ResultCode registerElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
-    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "module: { type: %d, number: %d }", type, module_number );
 
     ELASTIC_APM_ASSERT_VALID_PTR( iniEntriesRegistrationState );
 
@@ -186,21 +226,41 @@ ResultCode registerElasticApmIniEntries( int module_number, IniEntriesRegistrati
     return resultCode;
 
     failure:
-    unregisterElasticApmIniEntries( module_number, iniEntriesRegistrationState );
+    unregisterElasticApmIniEntries( type, module_number, iniEntriesRegistrationState );
     goto finally;
 }
 
-void unregisterElasticApmIniEntries( int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
+void unregisterElasticApmIniEntries( int type, int module_number, IniEntriesRegistrationState* iniEntriesRegistrationState )
 {
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "module: { type: %d, number: %d }", type, module_number );
+
     if ( iniEntriesRegistrationState->entriesRegistered )
     {
         UNREGISTER_INI_ENTRIES();
         iniEntriesRegistrationState->entriesRegistered = false;
     }
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_EXIT();
+}
+
+static PHP_GINIT_FUNCTION(elastic_apm)
+{
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GINIT called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
+}
+
+static PHP_GSHUTDOWN_FUNCTION(elastic_apm)
+{
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GSHUTDOWN called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
 }
 
 PHP_MINIT_FUNCTION(elastic_apm)
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_NOT_SET", logLevel_not_set, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_OFF", logLevel_off, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_LOG_LEVEL_CRITICAL", logLevel_critical, CONST_CS|CONST_PERSISTENT );
@@ -223,27 +283,55 @@ PHP_MINIT_FUNCTION(elastic_apm)
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_MEMORY_TRACKING_LEVEL_EACH_ALLOCATION_WITH_STACK_TRACE", memoryTrackingLevel_eachAllocationWithStackTrace, CONST_CS|CONST_PERSISTENT );
     REGISTER_LONG_CONSTANT( "ELASTIC_APM_MEMORY_TRACKING_LEVEL_ALL", memoryTrackingLevel_all, CONST_CS|CONST_PERSISTENT );
 
+    elasticApmModuleInit( type, module_number );
+
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    elasticApmModuleInit( type, module_number );
+    finally:
     return SUCCESS;
+
+    failure:
+    goto finally;
 }
 
 PHP_MSHUTDOWN_FUNCTION(elastic_apm)
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    elasticApmModuleShutdown( type, module_number );
+
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
-    elasticApmModuleShutdown( type, module_number );
+    finally:
     return SUCCESS;
+
+    failure:
+    goto finally;
 }
 
 /* {{{ bool elastic_apm_is_enabled()
  */
 PHP_FUNCTION( elastic_apm_is_enabled )
 {
-    ZEND_PARSE_PARAMETERS_NONE();
+    ResultCode resultCode;
+    bool retVal = false;
 
-    RETURN_BOOL( elasticApmIsEnabled() );
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    ZEND_PARSE_PARAMETERS_NONE();
+    retVal = elasticApmIsEnabled();
+
+    finally:
+    RETURN_BOOL( retVal );
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -255,6 +343,13 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_get_config_option_by_name )
 {
+    ResultCode resultCode;
+    ZVAL_NULL( return_value );
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     char* optionName = NULL;
     size_t optionNameLength = 0;
 
@@ -262,7 +357,13 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
         Z_PARAM_STRING( optionName, optionNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmGetConfigOption( optionName, return_value ) != resultSuccess ) RETURN_NULL();
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmGetConfigOption( optionName, /* out */ return_value ) );
+
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -270,10 +371,22 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
  */
 PHP_FUNCTION( elastic_apm_get_number_of_dynamic_config_options )
 {
+    ResultCode resultCode;
+    long retVal = 0;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     ZEND_PARSE_PARAMETERS_NONE();
 
-    long result = elasticApmGetNumberOfDynamicConfigOptions(); // NOLINT(cppcoreguidelines-narrowing-conversions)
-    RETURN_LONG( result );
+    retVal = elasticApmGetNumberOfDynamicConfigOptions(); // NOLINT(cppcoreguidelines-narrowing-conversions)
+
+    finally:
+    RETURN_LONG( retVal );
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -285,6 +398,13 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
 {
+    ResultCode resultCode;
+    long retVal = -1;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     char* className = NULL;
     size_t classNameLength = 0;
     char* methodName = NULL;
@@ -296,10 +416,14 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
     Z_PARAM_STRING( methodName, methodNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmInterceptCallsToInternalMethod( className, methodName, &interceptRegistrationId ) != resultSuccess )
-        RETURN_LONG( -1 );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmInterceptCallsToInternalMethod( className, methodName, &interceptRegistrationId ) );
+    retVal = (long)interceptRegistrationId;
 
-    RETURN_LONG( interceptRegistrationId );
+    finally:
+    RETURN_LONG( retVal );
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -310,6 +434,13 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
 {
+    ResultCode resultCode;
+    long retVal = -1;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     char* functionName = NULL;
     size_t functionNameLength = 0;
     uint32_t interceptRegistrationId;
@@ -318,56 +449,55 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
     Z_PARAM_STRING( functionName, functionNameLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    if ( elasticApmInterceptCallsToInternalFunction( functionName, &interceptRegistrationId ) != resultSuccess )
-        RETURN_LONG( -1 );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmInterceptCallsToInternalFunction( functionName, &interceptRegistrationId ) );
+    retVal = (long)interceptRegistrationId;
 
-    RETURN_LONG( interceptRegistrationId );
+    finally:
+    RETURN_LONG( retVal );
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 4 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, disableSend, IS_LONG, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serverTimeoutMilliseconds, IS_DOUBLE, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, userAgentHttpHeader, IS_STRING, /* allow_null: */ 0 )
-                ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedEvents, IS_STRING, /* allow_null: */ 0 )
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_send_to_server_arginfo, /* _unused: */ 0, /* return_reference: */ 0, /* required_num_args: */ 2 )
+    ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, userAgentHttpHeader, IS_STRING, /* allow_null: */ 0 )
+    ZEND_ARG_TYPE_INFO( /* pass_by_ref: */ 0, serializedEvents, IS_STRING, /* allow_null: */ 0 )
 ZEND_END_ARG_INFO()
 
 /* {{{ elastic_apm_send_to_server(
- *          int $disableSend
- *          float $serverTimeoutMilliseconds,
  *          string userAgentHttpHeader,
  *          string $serializedEvents ): bool
  */
 PHP_FUNCTION( elastic_apm_send_to_server )
 {
-    long disableSend = 0;
-    double serverTimeoutMilliseconds = 0.0;
+    ResultCode resultCode;
+    bool retVal = false;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     char* userAgentHttpHeader = NULL;
     size_t userAgentHttpHeaderLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
-    ResultCode resultCode;
 
-    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 4, /* max_num_args: */ 4 )
-    Z_PARAM_LONG( disableSend )
-    Z_PARAM_DOUBLE( serverTimeoutMilliseconds )
-    Z_PARAM_STRING( userAgentHttpHeader, userAgentHttpHeaderLength )
-    Z_PARAM_STRING( serializedEvents, serializedEventsLength )
+    ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
+        Z_PARAM_STRING( userAgentHttpHeader, userAgentHttpHeaderLength )
+        Z_PARAM_STRING( serializedEvents, serializedEventsLength )
     ZEND_PARSE_PARAMETERS_END();
 
-    resultCode = elasticApmSendToServer(
-            disableSend
-            , serverTimeoutMilliseconds
-            , makeStringView( userAgentHttpHeader, userAgentHttpHeaderLength )
-            , makeStringView( serializedEvents, serializedEventsLength ) );
-    if ( resultCode == resultSuccess )
-    {
-        RETURN_TRUE;
-    }
-    else
-    {
-        RETURN_FALSE;
-    }
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmSendToServer(
+            makeStringView( userAgentHttpHeader, userAgentHttpHeaderLength )
+            , makeStringView( serializedEvents, serializedEventsLength ) ) );
+
+    retVal = true;
+    finally:
+    RETURN_BOOL( retVal );
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -393,6 +523,12 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_log )
 {
+    ResultCode resultCode;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
     zend_long isForced = 0;
     zend_long level = 0;
     char* file = NULL;
@@ -425,16 +561,12 @@ PHP_FUNCTION( elastic_apm_log )
             , /* funcName: */ makeStringView( func, funcLength )
             , /* msgPrintfFmt: */ "%s"
             ,  /* msgPrintfFmtArgs: */ message );
-}
-/* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_force_init_server_global_var_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
-ZEND_END_ARG_INFO()
-/* {{{ elastic_apm_force_init_server_global_var(): void
- */
-PHP_FUNCTION( elastic_apm_force_init_server_global_var )
-{
-    zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -444,7 +576,20 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_get_last_thrown )
 {
-    elasticApmGetLastThrown( return_value );
+    ResultCode resultCode;
+    ZVAL_NULL( /* out */ return_value );
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    elasticApmGetLastThrown( /* out */ return_value );
+
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -454,7 +599,20 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_get_last_php_error )
 {
-    elasticApmGetLastPhpError( return_value );
+    ResultCode resultCode;
+    ZVAL_NULL( /* out */ return_value );
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+    elasticApmGetLastPhpError( /* out */ return_value );
+
+    finally:
+    return;
+
+    failure:
+    goto finally;
 }
 /* }}} */
 
@@ -475,7 +633,6 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
-    PHP_FE( elastic_apm_force_init_server_global_var, elastic_apm_force_init_server_global_var_arginfo )
     PHP_FE( elastic_apm_get_last_thrown, elastic_apm_get_last_thrown_arginfo )
     PHP_FE( elastic_apm_get_last_php_error, elastic_apm_get_last_php_error_arginfo )
     PHP_FE_END
@@ -486,18 +643,18 @@ static const zend_function_entry elastic_apm_functions[] =
  */
 zend_module_entry elastic_apm_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"elastic_apm",					/* Extension name */
-	elastic_apm_functions,			/* zend_function_entry */
-	PHP_MINIT(elastic_apm),		    /* PHP_MINIT - Module initialization */
-	PHP_MSHUTDOWN(elastic_apm),		/* PHP_MSHUTDOWN - Module shutdown */
-	PHP_RINIT(elastic_apm),			/* PHP_RINIT - Request initialization */
-	PHP_RSHUTDOWN(elastic_apm),		/* PHP_RSHUTDOWN - Request shutdown */
-	PHP_MINFO(elastic_apm),			/* PHP_MINFO - Module info */
-	PHP_ELASTIC_APM_VERSION,		    /* Version */
+	"elastic_apm",					 /* Extension name */
+	elastic_apm_functions,			 /* zend_function_entry */
+	PHP_MINIT(elastic_apm),		     /* PHP_MINIT - Module initialization */
+	PHP_MSHUTDOWN(elastic_apm),		 /* PHP_MSHUTDOWN - Module shutdown */
+	PHP_RINIT(elastic_apm),			 /* PHP_RINIT - Request initialization */
+	PHP_RSHUTDOWN(elastic_apm),		 /* PHP_RSHUTDOWN - Request shutdown */
+	PHP_MINFO(elastic_apm),			 /* PHP_MINFO - Module info */
+	PHP_ELASTIC_APM_VERSION,		 /* Version */
 	PHP_MODULE_GLOBALS(elastic_apm), /* PHP_MODULE_GLOBALS */
-	NULL, 					        /* PHP_GINIT */
-	NULL,		                    /* PHP_GSHUTDOWN */
-	NULL,
+    PHP_GINIT(elastic_apm), 	     /* PHP_GINIT */
+    PHP_GSHUTDOWN(elastic_apm),		 /* PHP_GSHUTDOWN */
+	NULL,                            /* post deactivate */
 	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */

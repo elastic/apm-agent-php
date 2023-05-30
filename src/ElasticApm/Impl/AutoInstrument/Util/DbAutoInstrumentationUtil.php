@@ -19,14 +19,12 @@
  * under the License.
  */
 
-/** @noinspection PhpComposerExtensionStubsInspection */
-
 declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\SpanInterface;
@@ -40,21 +38,13 @@ final class DbAutoInstrumentationUtil
 {
     use StaticClassTrait;
 
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX
-        = AutoInstrumentationUtil::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'DB_';
+    public const PER_OBJECT_KEY_DB_TYPE = 'DB_type';
+    public const PER_OBJECT_KEY_DB_NAME = 'DB_name';
+    public const PER_OBJECT_KEY_DB_QUERY = 'DB_query';
 
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_TYPE = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'type';
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_NAME = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'name';
-    public const DYNAMICALLY_ATTACHED_PROPERTY_KEY_DB_QUERY = self::DYNAMICALLY_ATTACHED_PROPERTY_KEY_PREFIX . 'query';
-
-    public static function beginDbSpan(
-        ?string $className,
-        string $funcName,
-        string $dbType,
-        ?string $dbName,
-        ?string $statement
-    ): SpanInterface {
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan(
+    public static function beginDbSpan(?string $className, string $funcName, string $dbType, ?string $dbName, ?string $statement): SpanInterface
+    {
+        $span = AutoInstrumentationUtil::beginCurrentSpan(
             $statement ?? AutoInstrumentationUtil::buildSpanNameFromCall($className, $funcName),
             Constants::SPAN_TYPE_DB,
             $dbType /* <- subtype */,
@@ -74,8 +64,7 @@ final class DbAutoInstrumentationUtil
         if ($dbName !== null && !TextUtil::isEmptyString($dbName)) {
             $destinationServiceResource .= '/' . $dbName;
         }
-        $span->context()->destination()->setService($destinationServiceResource, $destinationServiceResource, $dbType);
-        $span->context()->service()->target()->setName($dbName);
-        $span->context()->service()->target()->setType($dbType);
+
+        Span::setServiceFor($span, $dbType, $dbName, /* destinationName: */ $destinationServiceResource, $destinationServiceResource, /* destinationType: */ $dbType);
     }
 }

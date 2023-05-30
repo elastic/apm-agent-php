@@ -58,6 +58,7 @@ final class SyslogClearerClient
             ClassNameUtil::fqToShort(SyslogClearer::class) /* <- dbgServerDesc */,
             'runSyslogClearer.php' /* <- runScriptName */,
             [HttpServerStarter::PORTS_RANGE_END - 2] /* <- portsInUse */,
+            1 /* <- portsToAllocateCount */,
             null /* <- resourcesCleaner */
         );
 
@@ -109,7 +110,7 @@ final class SyslogClearerClient
         );
 
         ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['argv' => $argv, 'getenv()' => getenv()]);
+        && $loggerProxy->log('Entered', ['argv' => $argv, 'Environment variables' => EnvVarUtilForTests::getAll()]);
 
         return $localLogger;
     }

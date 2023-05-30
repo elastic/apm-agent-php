@@ -30,8 +30,6 @@ namespace Elastic\Apm\Impl\Log;
  */
 final class Logger implements LoggableInterface
 {
-    use LoggableTrait;
-
     /** @var LoggerData */
     private $data;
 
@@ -41,11 +39,12 @@ final class Logger implements LoggableInterface
     }
 
     /**
-     * @param string       $category
-     * @param string       $namespace
-     * @param class-string $fqClassName
-     * @param string       $srcCodeFile
-     * @param Backend      $backend
+     * @param string               $category
+     * @param string               $namespace
+     * @param class-string         $fqClassName
+     * @param string               $srcCodeFile
+     * @param array<string, mixed> $context
+     * @param Backend              $backend
      *
      * @return static
      */
@@ -54,9 +53,10 @@ final class Logger implements LoggableInterface
         string $namespace,
         string $fqClassName,
         string $srcCodeFile,
+        array $context,
         Backend $backend
     ): self {
-        return new self(LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $backend));
+        return new self(LoggerData::makeRoot($category, $namespace, $fqClassName, $srcCodeFile, $context, $backend));
     }
 
     public function inherit(): self
@@ -70,7 +70,7 @@ final class Logger implements LoggableInterface
      *
      * @return Logger
      */
-    public function addContext(string $key, $value): Logger
+    public function addContext(string $key, $value): self
     {
         $this->data->context[$key] = $value;
         return $this;
@@ -81,12 +81,22 @@ final class Logger implements LoggableInterface
      *
      * @return Logger
      */
-    public function addAllContext(array $keyValuePairs): Logger
+    public function addAllContext(array $keyValuePairs): self
     {
         foreach ($keyValuePairs as $key => $value) {
             $this->addContext($key, $value);
         }
         return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @noinspection PhpUnused
+     */
+    public function getContext(): array
+    {
+        return $this->data->context;
     }
 
     public function ifCriticalLevelEnabled(int $srcCodeLine, string $srcCodeFunc): ?EnabledLoggerProxy
@@ -119,6 +129,36 @@ final class Logger implements LoggableInterface
         return $this->ifLevelEnabled(Level::TRACE, $srcCodeLine, $srcCodeFunc);
     }
 
+    /** @noinspection PhpUnused */
+    public function ifCriticalLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::CRITICAL, $srcCodeFunc);
+    }
+
+    /** @noinspection PhpUnused */
+    public function ifErrorLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::ERROR, $srcCodeFunc);
+    }
+
+    /** @noinspection PhpUnused */
+    public function ifWarningLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::WARNING, $srcCodeFunc);
+    }
+
+    /** @noinspection PhpUnused */
+    public function ifInfoLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::INFO, $srcCodeFunc);
+    }
+
+    /** @noinspection PhpUnused */
+    public function ifDebugLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
+    {
+        return $this->ifLevelEnabledNoLine(Level::DEBUG, $srcCodeFunc);
+    }
+
     public function ifTraceLevelEnabledNoLine(string $srcCodeFunc): ?EnabledLoggerProxyNoLine
     {
         return $this->ifLevelEnabledNoLine(Level::TRACE, $srcCodeFunc);
@@ -138,6 +178,16 @@ final class Logger implements LoggableInterface
             : null;
     }
 
+    public function isEnabledForLevel(int $level): bool
+    {
+        return $this->data->backend->isEnabledForLevel($level);
+    }
+
+    public function isTraceLevelEnabled(): bool
+    {
+        return $this->isEnabledForLevel(Level::TRACE);
+    }
+
     /**
      * @param mixed $value
      *
@@ -149,5 +199,10 @@ final class Logger implements LoggableInterface
             return $value;
         }
         return 'REDUCTED (POSSIBLY SECURITY SENSITIVE) DATA';
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs($this->data);
     }
 }

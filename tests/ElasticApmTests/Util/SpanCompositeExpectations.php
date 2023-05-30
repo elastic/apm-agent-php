@@ -19,24 +19,28 @@
  * under the License.
  */
 
-/** @noinspection PhpUnhandledExceptionInspection */
-
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests;
+namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\MetadataDiscoverer;
-use ElasticApmTests\Util\TestCaseBase;
-
-class MetadataTest extends TestCaseBase
+/**
+ * @extends ExpectationsBase<SpanCompositeDto>
+ */
+final class SpanCompositeExpectations extends ExpectationsBase
 {
-    public function testDefaultServiceNameUsesAgentName(): void
+    /** @var Optional<string> */
+    public $compressionStrategy;
+
+    /** @var Optional<int> */
+    public $count;
+
+    /** @var Optional<float> */
+    public $durationsSum;
+
+    public function __construct()
     {
-        // https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#zero-configuration-support
-        // ... the default value: unknown-${service.agent.name}-service ...
-        self::assertSame(
-            'unknown-' . MetadataDiscoverer::AGENT_NAME . '-service',
-            MetadataDiscoverer::DEFAULT_SERVICE_NAME
-        );
+        $this->compressionStrategy = new Optional();
+        $this->count = new Optional();
+        $this->durationsSum = new Optional();
     }
 }

@@ -11,7 +11,13 @@ thisScriptDir="$( realpath "${thisScriptDir}" )"
 source "${thisScriptDir}/shared.sh"
 
 function onScriptExit () {
-    copySyslogFileAndPrintTheLastOne
+    if [ -n "${scriptFinishedSuccessfully}" ] && [ "${scriptFinishedSuccessfully}" == "true" ] ; then
+        local shouldPrintTheMostRecentSyslogFile=false
+    else
+        local shouldPrintTheMostRecentSyslogFile=true
+    fi
+
+    copySyslogFilesAndPrintTheMostRecentOne ${shouldPrintTheMostRecentSyslogFile}
     if [ -n "${CHOWN_RESULTS_UID}" ] && [ -n "${CHOWN_RESULTS_GID}" ]; then
         chown --recursive "${CHOWN_RESULTS_UID}:${CHOWN_RESULTS_GID}" "${APP_FOLDER}"
     fi
@@ -90,8 +96,15 @@ env | grep ELASTIC || true
 # Install 3rd party dependencies
 composer install
 
-# Run static_check_and_run_unit_tests
-composer run-script static_check_and_run_unit_tests
+# Run static checks
+composer run-script static_check
+
+# Run unit tests
+phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=unit)
+composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
+ls -l ./build/unit-tests-phpunit-junit.xml
 
 # Generate junit output for phpstan
 composer phpstan-junit-report-for-ci
+
+scriptFinishedSuccessfully=true

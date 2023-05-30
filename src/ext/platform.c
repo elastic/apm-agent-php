@@ -45,6 +45,7 @@
 
 #include "util.h"
 #include "log.h"
+#include "TextOutputStream.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
@@ -69,7 +70,20 @@ pid_t getCurrentThreadId()
 
     #else
 
-    return syscall( SYS_gettid );
+    return (pid_t) syscall( SYS_gettid );
+
+    #endif
+}
+
+pid_t getParentProcessId()
+{
+    #ifdef PHP_WIN32
+
+    return (pid_t)( -1 );
+
+    #else
+
+    return getppid();
 
     #endif
 }
@@ -179,7 +193,7 @@ String streamStackTraceLinux(
 
 #ifdef ELASTIC_APM_PLATFORM_HAS_BACKTRACE
 
-    char** addressesAsSymbols = backtrace_symbols( addresses, addressesCount );
+    char** addressesAsSymbols = backtrace_symbols( addresses, (int)addressesCount );
     if ( addressesAsSymbols == NULL )
     {
         streamPrintf( txtOutStream, "backtrace_symbols returned NULL (i.e., failed to resolve addresses to symbols). Addresses:\n" );
@@ -225,34 +239,47 @@ String streamStackTrace(
 }
 
 #ifndef PHP_WIN32
-static
-String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE* procSelfCmdLineFile, TextOutputStream* txtOutStream )
-{
-    TextOutputStreamState txtOutStreamStateOnEntryStart;
-    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+static String g_procSelfCmdLineFileName = "/proc/self/cmdline";
 
-    txtOutStream->autoTermZero = false;
+void streamCharUpToMaxLength( TextOutputStream* txtOutStream, char value, size_t maxLength, size_t* numberOfCharsProcessed )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( numberOfCharsProcessed );
+
+    if ( *numberOfCharsProcessed < maxLength )
+    {
+        streamChar( value, txtOutStream );
+    }
+
+    ++(*numberOfCharsProcessed);
+}
+
+void streamCurrentProcessCommandLineImpl( TextOutputStream* txtOutStream, size_t maxLength, FILE* procSelfCmdLineFile )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( procSelfCmdLineFile );
 
     enum { auxBufferSize = 100 };
     char auxBuffer[ auxBufferSize ];
     bool reachedEndOfFile = false;
-    unsigned int partsCount = 0;
-    bool shouldPrefixWithSpace = false;
+    bool isRightAfterSeparator = false;
+    size_t numberOfCharsProcessed = 0;
     while ( ! reachedEndOfFile )
     {
         size_t actuallyReadBytes = fread( auxBuffer, /* data item size: */ 1, /* max data items count: */ auxBufferSize, procSelfCmdLineFile );
-        if ( actuallyReadBytes < auxBufferSize)
+        if ( actuallyReadBytes < auxBufferSize )
         {
             if ( ferror( procSelfCmdLineFile ) != 0 )
             {
-                return "Failed to read from /proc/self/cmdline";
+                streamPrintf( txtOutStream, "<Failed to read from %s>", g_procSelfCmdLineFileName );
+                return;
             }
 
             reachedEndOfFile = ( feof( procSelfCmdLineFile ) != 0 );
             if ( ! reachedEndOfFile )
             {
-                return "Failed to read full buffer from /proc/self/cmdline but feof() returned false";
+                streamPrintf( txtOutStream, "<fread did not read full buffer from %s but feof() returned false>", g_procSelfCmdLineFileName );
+                return;
             }
         }
 
@@ -260,63 +287,65 @@ String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE
         {
             if ( auxBuffer[ i ] == '\0' )
             {
-                ++partsCount;
-                if ( partsCount == maxPartsCount )
-                {
-                    goto finally;
-                }
-                shouldPrefixWithSpace = true;
+                isRightAfterSeparator = true;
                 continue;
             }
 
-            if ( shouldPrefixWithSpace )
+            if ( isRightAfterSeparator )
             {
-                streamChar( ' ', txtOutStream );
-                shouldPrefixWithSpace = false;
+                streamCharUpToMaxLength( txtOutStream, ' ', maxLength, &numberOfCharsProcessed );
+                isRightAfterSeparator = false;
             }
 
-            char bufferToEscape[ escapeNonPrintableCharBufferSize ];
-            streamPrintf( txtOutStream, "%s", escapeNonPrintableChar( auxBuffer[ i ], bufferToEscape ) );
+            streamCharUpToMaxLength( txtOutStream, auxBuffer[ i ], maxLength, &numberOfCharsProcessed );
         }
     }
 
-    finally:
-
-    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
+    if ( numberOfCharsProcessed > maxLength )
+    {
+        streamPrintf( txtOutStream, " <skipped remaining %"PRIu64" characters>", (UInt64)( numberOfCharsProcessed - maxLength ) );
+    }
 }
 #endif
 
-static
-String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutputStream* txtOutStream )
+String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream, size_t maxLength )
 {
-    if ( maxPartsCount == 0 )
+    if ( maxLength == 0 )
     {
         return "";
     }
 
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+
 #ifdef PHP_WIN32
-    return "Not implemented on Windows";
+    return ELASTIC_APM_STRING_LITERAL_TO_VIEW( "<Not implemented on Windows>" );
 #else
-    FILE* procSelfCmdLineFile = procSelfCmdLineFile = fopen( "/proc/self/cmdline", "rb" );
-    if ( procSelfCmdLineFile == NULL )
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
+    FILE* procSelfCmdLineFile = NULL;
+
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return "Failed to open /proc/self/cmdline";
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+    }
+    txtOutStream->autoTermZero = false;
+
+    int openFileErrNo = openFile( g_procSelfCmdLineFileName, "rb", /* out */ &procSelfCmdLineFile );
+    if ( openFileErrNo != 0 )
+    {
+        char auxTxtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream auxTxtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( auxTxtOutStreamBuf );
+        streamPrintf( txtOutStream, "<Failed to open %s, errno: %s>", g_procSelfCmdLineFileName, streamErrNo( openFileErrNo, &auxTxtOutStream ) );
+        goto finally;
     }
 
-    String retVal = streamCurrentProcessCommandLineExHelper( maxPartsCount, procSelfCmdLineFile, txtOutStream );
-    fclose( procSelfCmdLineFile );
-    return retVal;
+    streamCurrentProcessCommandLineImpl( txtOutStream, maxLength, procSelfCmdLineFile );
+    finally:
+    if ( procSelfCmdLineFile != NULL )
+    {
+        fclose( procSelfCmdLineFile );
+    }
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
 #endif
-}
-
-String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream )
-{
-    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ UINT_MAX, txtOutStream );
-}
-
-String streamCurrentProcessExeName( TextOutputStream* txtOutStream )
-{
-    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ 1, txtOutStream );
 }
 
 #ifdef ELASTIC_APM_PLATFORM_HAS_LIBUNWIND
@@ -469,30 +498,19 @@ static String osSignalIdToName( int signalId )
     #undef ELASTIC_APM_OS_SIGNAL_ID_TO_NAME_SWITCH_CASE
 }
 
-#define ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ... ) \
-    do { \
-        syslog( syslogLevel, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
-            " [PID: %d] [TID: %d] [" levelName "] " fmt \
-            , getCurrentProcessId(), getCurrentThreadId() \
-            , ##__VA_ARGS__ ); \
-    } while ( 0 )
-
-#define ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_CRIT, "CRITICAL", fmt, ##__VA_ARGS__ )
-#define ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
-
-#define ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_WRITE_TO_SYSLOG_CRITICAL( fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( fmt, ... ) ELASTIC_APM_SIGNAL_SAFE_LOG_CRITICAL( fmt, ##__VA_ARGS__ )
 
 #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 void handleOsSignalLinux_writeStackTraceFrameToSyslog( String frameDesc, void* ctx )
 {
     ELASTIC_APM_UNUSED( ctx );
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "    Call stack frame: %s", frameDesc == NULL ? "<N/A>" : frameDesc );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "    Call stack frame: %s", frameDesc == NULL ? "<N/A>" : frameDesc );
 }
 
 void handleOsSignalLinux_writeStackTraceToSyslog_logError( String errorDesc, void* ctx )
 {
     ELASTIC_APM_UNUSED( ctx );
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "%s", errorDesc );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "%s", errorDesc );
 }
 #endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 
@@ -500,60 +518,37 @@ void handleOsSignalLinux_writeStackTraceToSyslog()
 {
 #   ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call stack:" );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Call stack:" );
     iterateOverCStackTrace( /* numberOfFramesToSkip */ 0, &handleOsSignalLinux_writeStackTraceFrameToSyslog, &handleOsSignalLinux_writeStackTraceToSyslog_logError, /* callbackCtx */ NULL );
 
 #   else // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER("C call stack capture is not supported by the platform");
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "C call stack capture is not supported by the platform");
 #   endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
 }
 
 typedef void (* OsSignalHandler )( int );
-bool isOldSignalHandlerSet = false;
-OsSignalHandler oldSignalHandler = NULL;
+bool g_isOldSignalHandlerSet = false;
+OsSignalHandler g_oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
-    ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
     handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
-    if ( isOldSignalHandlerSet )
+    if ( g_isOldSignalHandlerSet )
     {
-        signal( signalId, oldSignalHandler );
-        isOldSignalHandlerSet = false;
-        oldSignalHandler = NULL;
+        signal( signalId, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
     }
     else
     {
         signal( signalId, SIG_DFL );
     }
-    raise ( signalId );
+    raise( signalId );
 }
 #endif // #ifndef PHP_WIN32
-
-#define ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ... ) \
-    do { \
-        fprintf( stderr, ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART \
-            " [PID: %d] [TID: %d] [" levelName "] " fmt "\n" \
-            , getCurrentProcessId(), getCurrentThreadId(), ##__VA_ARGS__ ); \
-        fflush( stderr ); \
-    } while ( 0 )
-
-#ifdef PHP_WIN32
-#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
-        do { \
-            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
-        } while ( 0 )
-#else // #ifdef PHP_WIN32
-#   define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( syslogLevel, levelName, fmt, ... ) \
-        do { \
-            ELASTIC_APM_WRITE_TO_SYSLOG( syslogLevel, levelName, fmt, ##__VA_ARGS__ ); \
-            ELASTIC_APM_WRITE_TO_STDERR( levelName, fmt, ##__VA_ARGS__ ); \
-        } while ( 0 )
-#endif // #ifndef PHP_WIN32
-
-#define ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( fmt, ... ) ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS( LOG_DEBUG, "DEBUG", fmt, ##__VA_ARGS__ )
 
 void registerOsSignalHandler()
 {
@@ -565,20 +560,33 @@ void registerOsSignalHandler()
 
         char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
         TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-        ELASTIC_APM_LOG_FROM_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
+        ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Call to signal() to register handler failed - errno: %s", streamErrNo( signal_errno, &txtOutStream ) );
     }
     else
     {
-        isOldSignalHandlerSet = true;
-        oldSignalHandler = signal_retVal;
-        ELASTIC_APM_WRITE_TO_SYSLOG_DEBUG( "Successfully registered signal handler" );
+        g_isOldSignalHandlerSet = true;
+        g_oldSignalHandler = signal_retVal;
+        ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully registered signal handler" );
+    }
+#endif
+}
+
+void unregisterOsSignalHandler()
+{
+#ifndef PHP_WIN32
+    if ( g_isOldSignalHandlerSet )
+    {
+        signal( SIGSEGV, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
+        ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully unregistered signal handler" );
     }
 #endif
 }
 
 void atExitLogging()
 {
-    ELASTIC_APM_WRITE_TO_ALL_LOG_SINKS_DEBUG( "Callback registered with atexit() has been called" );
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "Callback registered with atexit() has been called" );
 }
 
 void registerAtExitLogging()
@@ -588,11 +596,38 @@ void registerAtExitLogging()
     // atexit returns 0 if successful, or a nonzero value if an error occurs
     if ( atexit_retVal != 0 )
     {
-        ELASTIC_APM_LOG_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
+        ELASTIC_APM_LOG_DIRECT_DEBUG( "Call to atexit() to register process on-exit logging func failed" );
     }
     else
     {
-        ELASTIC_APM_LOG_DEBUG( "Registered callback with atexit()" );
+        ELASTIC_APM_LOG_DIRECT_DEBUG( "Registered callback with atexit()" );
     }
 #endif
 }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+int openFile( String fileName, String mode, /* out */ FILE** pFile )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( fileName );
+    ELASTIC_APM_ASSERT_VALID_PTR( mode );
+    ELASTIC_APM_ASSERT_VALID_OUT_PTR_TO_PTR( pFile );
+
+#ifdef PHP_WIN32
+
+    return (int)fopen_s( /* out */ pFile, fileName, mode );
+
+#else // #ifdef PHP_WIN32
+
+    FILE* file = fopen( fileName, mode );
+    if ( file == NULL )
+    {
+        return (int)errno;
+    }
+
+    *pFile = file;
+    return 0;
+
+#endif // #ifdef PHP_WIN32
+}
+#pragma clang diagnostic pop

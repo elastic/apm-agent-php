@@ -34,9 +34,10 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 #include "basic_types.h"
 #include "basic_macros.h"
-#include "TextOutputStream.h"
+#include "TextOutputStream_forward_decl.h"
 #include "ResultCode.h"
 #include "platform_threads.h"
 
@@ -47,6 +48,8 @@ typedef int pid_t;
 pid_t getCurrentProcessId();
 
 pid_t getCurrentThreadId();
+
+pid_t getParentProcessId();
 
 #ifdef PHP_WIN32
 void writeToWindowsSystemDebugger( String msg );
@@ -79,11 +82,10 @@ size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferS
 
 String streamStackTrace( void* const* addresses, size_t addressesCount, String linePrefix, TextOutputStream* txtOutStream );
 
-String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream );
-
-String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
+String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream, size_t maxLength );
 
 void registerOsSignalHandler();
+void unregisterOsSignalHandler();
 
 void registerAtExitLogging();
 
@@ -92,3 +94,5 @@ typedef void (* IterateOverCStackTraceCallback )( String frameDesc, void* ctx );
 typedef void (* IterateOverCStackTraceLogErrorCallback )( String errorDesc, void* ctx );
 void iterateOverCStackTrace( size_t numberOfFramesToSkip, IterateOverCStackTraceCallback callback, IterateOverCStackTraceLogErrorCallback logErrorCallback, void* callbackCtx );
 #endif // #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
+
+int openFile( String fileName, String mode, /* out */ FILE** pFile );

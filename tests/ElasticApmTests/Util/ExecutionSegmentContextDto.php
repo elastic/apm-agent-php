@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\ExecutionSegmentContext;
-use PHPUnit\Framework\TestCase;
 
 abstract class ExecutionSegmentContextDto
 {
@@ -35,33 +34,78 @@ abstract class ExecutionSegmentContextDto
     public $labels = null;
 
     /**
-     * @param mixed $map
+     * @param mixed $actual
      *
-     * @return array<string, string|bool|int|float|null>
+     * @phpstan-assert array<string, string|bool|int|float|null> $actual
      */
-    protected static function assertValidKeyValueMap($map, bool $shouldBeKeywordString): array
+    private static function assertValidKeyValueMap($actual, bool $shouldKeyValueStringsBeKeyword): void
     {
-        $maxLength = $shouldBeKeywordString ? Constants::KEYWORD_STRING_MAX_LENGTH : null;
-        TestCase::assertIsArray($map);
-        foreach ($map as $key => $value) {
+        $maxLength = $shouldKeyValueStringsBeKeyword ? Constants::KEYWORD_STRING_MAX_LENGTH : null;
+        TestCaseBase::assertIsArray($actual);
+        foreach ($actual as $key => $value) {
             self::assertValidString($key, /* isNullable: */ false, $maxLength);
-            TestCase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
+            TestCaseBase::assertTrue(ExecutionSegmentContext::doesValueHaveSupportedLabelType($value));
             if (is_string($value)) {
                 self::assertValidString($value, /* isNullable: */ false, $maxLength);
             }
         }
-        /** @var array<string, string|bool|int|float|null> $map */
-        return $map;
     }
 
     /**
-     * @param mixed $labels
+     * @param Optional<?array<string, string|bool|int|float|null>> $expected
+     * @param mixed                                                $actual
+     * @param bool                                                 $shouldKeyValueStringsBeKeyword
      *
-     * @return array<string, string|bool|int|float|null>
+     * @phpstan-assert ?array<string, string|bool|int|float|null> $actual
      */
-    private static function assertValidLabels($labels): array
+    protected static function assertKeyValueMapsMatch(Optional $expected, $actual, bool $shouldKeyValueStringsBeKeyword): void
     {
-        return self::assertValidKeyValueMap($labels, /* shouldBeKeywordString */ true);
+        if ($actual === null) {
+            TestCaseBase::assertNull($expected->getValueOr(null));
+            return;
+        }
+
+        self::assertValidKeyValueMap($actual, $shouldKeyValueStringsBeKeyword);
+        /** @var array<string, string|bool|int|float|null> $actual */
+
+        if (!$expected->isValueSet()) {
+            return;
+        }
+
+        $expectedArray = $expected->getValue();
+        TestCaseBase::assertNotNull($expectedArray);
+        /** @var array<string, string|bool|int|float|null> $expectedArray */
+        TestCaseBase::assertSameCount($expectedArray, $actual);
+        foreach ($expectedArray as $expectedKey => $expectedValue) {
+            TestCaseBase::assertSameValueInArray($expectedKey, $expectedValue, $actual);
+        }
+    }
+
+    /**
+     * @param Optional<?array<string, string|bool|int|float|null>> $expected
+     * @param mixed                                                $actual
+     *
+     * @phpstan-assert ?array<string, string|bool|int|float|null> $actual
+     */
+    private static function assertLabelsMatch(Optional $expected, $actual): void
+    {
+        self::assertKeyValueMapsMatch($expected, $actual, /* shouldKeyValueStringsBeKeyword */ true);
+    }
+
+    /**
+     * @param mixed $actual
+     *
+     * @return ?array<string, string|bool|int|float|null>
+     */
+    private static function assertValidLabels($actual): ?array
+    {
+        /**
+         * @var Optional<?array<string, string|bool|int|float|null>> $expected
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $expected = new Optional();
+        self::assertLabelsMatch($expected, $actual);
+        return $actual;
     }
 
     /**
@@ -82,13 +126,8 @@ abstract class ExecutionSegmentContextDto
         }
     }
 
-    /**
-     * @return void
-     */
-    public function assertValid(): void
+    protected function assertMatchesExecutionSegment(ExecutionSegmentContextExpectations $expectations): void
     {
-        if ($this->labels !== null) {
-            self::assertValidLabels($this->labels);
-        }
+        self::assertLabelsMatch($expectations->labels, $this->labels);
     }
 }
