@@ -438,7 +438,13 @@ class TestCaseBase extends TestCase
     protected static function addMessageStackToException(Exception $ex): void
     {
         $formattedContextsStack = LoggableToString::convert(AssertMessageStack::getContextsStack(), /* prettyPrint */ true);
-        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . $formattedContextsStack);
+        AssertMessageStackExceptionHelper::setMessage(
+            $ex,
+            $ex->getMessage()
+            . "\n" . 'AssertMessageStack begin' . "\n"
+            . $formattedContextsStack
+            . "\n" . 'AssertMessageStack end'
+        );
     }
 
     /**
