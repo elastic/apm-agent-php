@@ -94,7 +94,7 @@ echo 'Set Elastic related environment variables:'
 env | grep ELASTIC || true
 
 # Install 3rd party dependencies
-composer install
+runPhpCoposerInstall
 
 # Run static checks
 composer run-script static_check

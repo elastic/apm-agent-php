@@ -61,25 +61,6 @@ function runComponentTests () {
     exit ${composerCommandExitCode}
 }
 
-function runPhpCoposerInstall () {
-    local run_command_with_timeout_and_retries_args=(--max-tries=3)
-    run_command_with_timeout_and_retries_args=(--retry-on-error=yes "${run_command_with_timeout_and_retries_args[@]}")
-    local initialTimeoutInMinutes=5
-    local initialTimeoutInSeconds=$((initialTimeoutInMinutes*60))
-    run_command_with_timeout_and_retries_args=(--timeout="${initialTimeoutInSeconds}" "${run_command_with_timeout_and_retries_args[@]}")
-    run_command_with_timeout_and_retries_args=(--increase-timeout-exponentially=yes "${run_command_with_timeout_and_retries_args[@]}")
-    run_command_with_timeout_and_retries_args=(--wait-time-before-retry="${initialTimeoutInSeconds}" "${run_command_with_timeout_and_retries_args[@]}")
-
-    set +e
-    .ci/run_command_with_timeout_and_retries.sh "${run_command_with_timeout_and_retries_args[@]}" -- composer install
-    local composerCommandExitCode=$?
-    set -e
-
-    if [ ${composerCommandExitCode} -ne 0 ] ; then
-        exit ${composerCommandExitCode}
-    fi
-}
-
 function main () {
     thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
     thisScriptDir="$( realpath "${thisScriptDir}" )"
