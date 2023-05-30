@@ -12,44 +12,41 @@ on:
 
 jobs:
   build:
+    name: build-agent-library
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        php-version:
-          - "7.2"
-          - "7.3"
-          - "7.4"
-          - "8.0"
-          - "8.1"
-          - "8.2"
-        dockerfile:
-          - "Dockerfile"
-          - "Dockerfile.alpine"
+        arch:
+          - "linux-x86-64"
+          - "linuxmusl-x86-64"
     env:
-      PHP_VERSION: ${{ matrix.php-version }}
-      DOCKERFILE: ${{ matrix.dockerfile }}
+      BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: make -f .ci/Makefile build
-      - name: Build parts for packages
-        run: make -f .ci/Makefile generate-for-package
+        run: make -f .ci/Makefile modernbuild
       - uses: actions/upload-artifact@v3
         with:
-          name: package-parts
-          path: src/ext/modules/*.so
-  generate-packages:
+          name: package-parts-${{ matrix.arch }}
+          path: |
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+  build-packages:
     runs-on: ubuntu-latest
     needs:
-      - test
+      - build
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: package-parts
-          path: src/ext/modules
+          name: package-parts-linux-x86-64
+          path: build/ext/linux-x86-64
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: build/ext/linuxmusl-x86-64
       - name: package
         run: make -C packaging package
       - name: package info
