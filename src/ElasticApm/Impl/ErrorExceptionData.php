@@ -30,7 +30,6 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
@@ -94,7 +93,7 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
      */
     public $type = null;
 
-    public static function build(Tracer $tracer, ?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable): ErrorExceptionData
+    public static function build(Tracer $tracer, ?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ErrorExceptionData
     {
         $result = new ErrorExceptionData();
 
@@ -117,7 +116,7 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
             $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
-            $result->stacktrace = StackTraceUtil::convertThrowableTraceToApmFormat($throwable, $tracer->loggerFactory());
+            $result->stacktrace = $tracer->stackTraceUtil()->convertThrowableTraceToApmFormat($throwable);
         }
 
         if ($customErrorData !== null) {
@@ -140,10 +139,9 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
 
         if ($result->stacktrace === null) {
             if ($phpErrorData === null) {
-                $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
-                $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+                $result->stacktrace = $tracer->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip);
             } elseif ($phpErrorData->stackTrace !== null) {
-                $result->stacktrace = StackTraceUtil::convertExternallyCapturedToApmFormat($phpErrorData->stackTrace, $tracer->loggerFactory());
+                $result->stacktrace = $tracer->stackTraceUtil()->convertExternallyCapturedToApmFormat($phpErrorData->stackTrace);
             }
         }
 

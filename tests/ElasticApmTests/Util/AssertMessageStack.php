@@ -126,8 +126,7 @@ final class AssertMessageStack implements LoggableInterface
     public static function funcArgs(): array
     {
         $result = [];
-        $frames = StackTraceUtil::captureInClassicFormat(
-            NoopLoggerFactory::singletonInstance(),
+        $frames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(
             1 /* <- offset */,
             1 /* <- maxNumberOfFrames */,
             true /* <- includeElasticApmFrames */,

@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ObserverSet;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
@@ -258,11 +257,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
     public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         $spanForError = $this->shouldBeSentToApmServer() ? $this : null;
-        return $this->containingTransaction->tracer()->doCreateError(
-            $errorExceptionData,
-            $this->containingTransaction,
-            $spanForError
-        );
+        return $this->containingTransaction->tracer()->doCreateError($errorExceptionData, $this->containingTransaction, $spanForError);
     }
 
     public function isCompressionEligible(): bool
@@ -490,7 +485,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
              */
             $stackTraceLimit = $this->containingTransaction->getStackTraceLimitConfig();
             if ($stackTraceLimit !== 0) {
-                $this->stackTrace = StackTraceUtil::captureInApmFormat($numberOfStackFramesToSkip + 1, $this->containingTransaction()->tracer()->loggerFactory());
+                $this->stackTrace = $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip + 1);
             }
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);

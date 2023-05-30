@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
@@ -90,9 +89,9 @@ final class InferredSpansBuilder implements LoggableInterface
     /**
      * @return ClassicFormatStackTraceFrame[]
      */
-    public static function captureStackTrace(int $offset, LoggerFactory $loggerFactory): array
+    public function captureStackTrace(int $offset): array
     {
-        return StackTraceUtil::captureInClassicFormatExcludeElasticApm($loggerFactory, $offset + 1);
+        return $this->tracer->stackTraceUtil()->captureInClassicFormatExcludeElasticApm($offset + 1);
     }
 
     /**

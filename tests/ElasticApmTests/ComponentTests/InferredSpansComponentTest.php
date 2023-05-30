@@ -120,7 +120,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
             default:
                 self::fail('Unknown sleepFuncToUse: `' . $sleepFuncToUse . '\'');
         }
-        $stackTraceClassic = StackTraceUtil::captureInClassicFormat(AmbientContextForTests::loggerFactory());
+        $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
         $stackTraces[$sleepFuncToUse] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
     }
@@ -133,7 +133,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         self::mySleep(self::SLEEP_DURATION_SECONDS, self::USLEEP_FUNC_NAME, /* ref */ $stackTraces);
         self::mySleep(self::SLEEP_DURATION_SECONDS, self::TIME_NANOSLEEP_FUNC_NAME, /* ref */ $stackTraces);
         $sleepCallLine = __LINE__ - 1;
-        $stackTraceClassic = StackTraceUtil::captureInClassicFormat(AmbientContextForTests::loggerFactory());
+        $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
         $stackTraces[self::APP_CODE_SPAN_STACK_TRACE] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
 

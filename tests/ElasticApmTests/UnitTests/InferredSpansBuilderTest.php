@@ -25,7 +25,6 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\InferredSpansBuilder;
-use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\Transaction;
@@ -100,14 +99,6 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $tx->end();
     }
 
-    /**
-     * @return ClassicFormatStackTraceFrame[]
-     */
-    private static function captureStackTrace(): array
-    {
-        return InferredSpansBuilder::captureStackTrace(/* offset */ 1, NoopLoggerFactory::singletonInstance());
-    }
-
     public function testNoStackTraces(): void
     {
         // Act
@@ -142,7 +133,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
      */
     private function helperForTestOneStackTrace(InferredSpansBuilder $builder): array
     {
-        $stackTrace = self::captureStackTrace();
+        $stackTrace = $builder->captureStackTrace(/* offset */ 0);
         $builder->addStackTrace($stackTrace);
         return $stackTrace;
     }
