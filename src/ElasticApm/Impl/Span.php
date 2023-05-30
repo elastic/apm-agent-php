@@ -485,10 +485,8 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
              */
             $stackTraceLimit = $this->containingTransaction->getStackTraceLimitConfig();
             if ($stackTraceLimit !== 0) {
-                // This method is part of public API so it should be kept in the stack trace
-                // if $numberOfStackFramesToSkip is 0
                 $this->stackTrace = $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip + 1);
-            }	
+            }
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);
         }
