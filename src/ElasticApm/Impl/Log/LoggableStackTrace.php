@@ -57,7 +57,7 @@ final class LoggableStackTrace
             }
         };
 
-        $classicFormatFrames = StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
+        $classicFormatFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
         $result = [];
 
         foreach ($classicFormatFrames as $classicFormatFrame) {

@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
@@ -45,6 +44,18 @@ use ElasticApmTests\Util\TestCaseBase;
 class StackTraceUtilTest extends TestCaseBase
 {
     private const VERY_LARGE_STACK_TRACE_SIZE_LIMIT = 1000;
+
+    /** @var ?StackTraceUtil */
+    private static $stackTraceUtil = null;
+
+    private static function stackTraceUtil(): StackTraceUtil
+    {
+        if (self::$stackTraceUtil === null) {
+            self::$stackTraceUtil = new StackTraceUtil(AmbientContextForTests::loggerFactory());
+        }
+
+        return self::$stackTraceUtil;
+    }
 
     /**
      * @return iterable<array{?string, ?bool, ?string, ?string}>
@@ -117,16 +128,8 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function helperForTestSimpleCaptureClassicFormat(int $param, int &$topFrameExpectedLine): array
     {
-        $captureArgs = [
-            NoopLoggerFactory::singletonInstance(),
-            0 /* <- offset */,
-            null /* <- maxNumberOfFrames */,
-            true /* <- includeElasticApmFrames */,
-            true /* <- includeArgs */,
-            true /* <- includeThisObj */,
-        ];
         $topFrameExpectedLine = __LINE__ + 1;
-        return StackTraceUtil::captureInClassicFormat(...$captureArgs);
+        return self::stackTraceUtil()->captureInClassicFormat(/* offset */ 0, /* maxNumberOfFrames */ null, /* keepElasticApmFrames */ true, /* includeArgs */ true, /* includeThisObj */ true);
     }
 
     public function testSimpleCaptureClassicFormat(): void
@@ -299,7 +302,7 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function captureInPhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        return StackTraceUtil::captureInPhpFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, $includeArgs, $includeThisObj);
+        return self::stackTraceUtil()->captureInPhpFormat(/* offset */ 1, $maxNumberOfFrames, $includeArgs, $includeThisObj);
     }
 
     /**
@@ -307,7 +310,7 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function captureInClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        return StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, /* includeElasticApmFrames */ true, $includeArgs, $includeThisObj);
+        return self::stackTraceUtil()->captureInClassicFormat(/* offset */ 1, $maxNumberOfFrames, /* includeElasticApmFrames */ true, $includeArgs, $includeThisObj);
     }
 
     /**
@@ -961,7 +964,7 @@ class StackTraceUtilTest extends TestCaseBase
         $func = function () use ($numberOfStackFramesToSkip, &$manuallyBuiltStackTrace): array {
             $manuallyBuiltStackTrace[] = new StackTraceFrame(DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME, DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER, __FUNCTION__);
             self::assertCount(self::MANUALLY_BUILT_STACK_TRACE_COUNT, $manuallyBuiltStackTrace);
-            return StackTraceUtil::captureInApmFormat($numberOfStackFramesToSkip + 1, AmbientContextForTests::loggerFactory());
+            return self::stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip + 1);
         };
         $manuallyBuiltStackTrace[] = new StackTraceFrame(__FILE__, __LINE__ + 1, 'dummyFuncForTestsWithoutNamespace');
         return dummyFuncForTestsWithoutNamespace($func);

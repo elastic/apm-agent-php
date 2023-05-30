@@ -275,28 +275,21 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
      */
     abstract public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string;
 
-    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable): ?string
+    private function createError(?CustomErrorData $customErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ?string
     {
-        return $this->dispatchCreateError(
-            ErrorExceptionData::build(
-                $this->containingTransaction()->tracer(),
-                $customErrorData,
-                null /* <- phpErrorData */,
-                $throwable
-            )
-        );
+        return $this->dispatchCreateError(ErrorExceptionData::build($this->containingTransaction()->tracer(), $customErrorData, /* phpErrorData */ null, $throwable, $numberOfStackFramesToSkip + 1));
     }
 
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->createError(/* customErrorData: */ null, $throwable);
+        return $this->createError(/* customErrorData: */ null, $throwable, /* numberOfStackFramesToSkip */ 1);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->createError($customErrorData, /* throwable: */ null);
+        return $this->createError($customErrorData, /* throwable: */ null, /* numberOfStackFramesToSkip */ 1);
     }
 
     public function beforeMutating(): bool

@@ -34,8 +34,6 @@ use Throwable;
  */
 final class StackTraceUtil
 {
-    use StaticClassTrait;
-
     public const FILE_KEY = 'file';
     public const LINE_KEY = 'line';
     public const FUNCTION_KEY = 'function';
@@ -55,41 +53,43 @@ final class StackTraceUtil
     /** @var ?string */
     private static $cachedElasticApmFilePrefix = null;
 
-    /**
-     * @return ClassicFormatStackTraceFrame[]
-     */
-    public static function captureInClassicFormatExcludeElasticApm(LoggerFactory $loggerFactory, int $offset = 0): array
+    /** @var LoggerFactory */
+    private $loggerFactory;
+
+    public function __construct(LoggerFactory $loggerFactory)
     {
-        return self::captureInClassicFormat($loggerFactory, $offset + 1, /* framesCountLimit */ null, /* includeElasticApmFrames */ false);
+        $this->loggerFactory = $loggerFactory;
     }
 
     /**
      * @return ClassicFormatStackTraceFrame[]
      */
-    public static function captureInClassicFormat(
-        LoggerFactory $loggerFactory,
-        int $offset = 0,
-        ?int $maxNumberOfFrames = null,
-        bool $includeElasticApmFrames = true,
-        bool $includeArgs = false,
-        bool $includeThisObj = false
-    ): array {
+    public function captureInClassicFormatExcludeElasticApm(int $offset = 0): array
+    {
+        return $this->captureInClassicFormat($offset + 1, /* framesCountLimit */ null, /* keepElasticApmFrames */ false);
+    }
+
+    /**
+     * @return ClassicFormatStackTraceFrame[]
+     */
+    public function captureInClassicFormat(int $offset = 0, ?int $maxNumberOfFrames = null, bool $keepElasticApmFrames = true, bool $includeArgs = false, bool $includeThisObj = false): array
+    {
         if ($maxNumberOfFrames === 0) {
             return [];
         }
 
         // If there is non-null $maxNumberOfFrames we need to capture one more frame in PHP format
-        $phpFormatFrames = self::captureInPhpFormat($loggerFactory, $offset + 1, $maxNumberOfFrames === null ? null : ($maxNumberOfFrames + 1), $includeArgs, $includeThisObj);
+        $phpFormatFrames = $this->captureInPhpFormat($offset + 1, $maxNumberOfFrames === null ? null : ($maxNumberOfFrames + 1), $includeArgs, $includeThisObj);
         $classicFormatFrames = self::convertPhpToClassicFormat($phpFormatFrames);
         $classicFormatFrames = $maxNumberOfFrames === null ? $classicFormatFrames : array_slice($classicFormatFrames, /* offset */ 0, $maxNumberOfFrames);
 
-        return $includeElasticApmFrames ? $classicFormatFrames : self::excludeElasticApmInClassicFormat($classicFormatFrames);
+        return $keepElasticApmFrames ? $classicFormatFrames : self::excludeElasticApmInClassicFormat($classicFormatFrames);
     }
 
     /**
      * @return PhpFormatStackTraceFrame[]
      */
-    public static function captureInPhpFormat(LoggerFactory $loggerFactory, int $offset = 0, ?int $maxNumberOfFrames = null, bool $includeArgs = false, bool $includeThisObj = false): array
+    public function captureInPhpFormat(int $offset = 0, ?int $maxNumberOfFrames = null, bool $includeArgs = false, bool $includeThisObj = false): array
     {
         if ($maxNumberOfFrames === 0) {
             return [];
@@ -119,23 +119,22 @@ final class StackTraceUtil
             }
         }
 
-        return self::convertDebugBacktraceToPhpFormat($srcFrames, /* includeValuesOnStack */ $includeArgs || $includeThisObj, $loggerFactory);
+        return self::convertDebugBacktraceToPhpFormat($srcFrames, /* includeValuesOnStack */ $includeArgs || $includeThisObj);
     }
 
     /**
      * @param array<string, mixed>[] $srcFrames
      * @param bool                   $includeValuesOnStack
-     * @param LoggerFactory          $loggerFactory
      *
      * @return PhpFormatStackTraceFrame[]
      */
-    public static function convertDebugBacktraceToPhpFormat(array $srcFrames, bool $includeValuesOnStack, LoggerFactory $loggerFactory): array
+    public function convertDebugBacktraceToPhpFormat(array $srcFrames, bool $includeValuesOnStack): array
     {
         /** @var PhpFormatStackTraceFrame[] $result */
         $result = [];
         foreach ($srcFrames as $srcFrame) {
             $newFrame = new PhpFormatStackTraceFrame();
-            $newFrame->copyDataFromFromDebugBacktraceFrame($srcFrame, $includeValuesOnStack, $loggerFactory);
+            $newFrame->copyDataFromFromDebugBacktraceFrame($srcFrame, $includeValuesOnStack, $this->loggerFactory);
             $result[] = $newFrame;
         }
         return $result;
@@ -295,42 +294,37 @@ final class StackTraceUtil
     }
 
     /**
-     * @param int           $numberOfStackFramesToSkip
-     * @param LoggerFactory $loggerFactory
+     * @param int $numberOfStackFramesToSkip
      *
      * @return StackTraceFrame[]
      */
-    public static function captureInApmFormat(int $numberOfStackFramesToSkip, LoggerFactory $loggerFactory): array
+    public function captureInApmFormat(int $numberOfStackFramesToSkip): array
     {
-        return self::convertClassicToApmFormat(
-            self::captureInClassicFormat($loggerFactory, /* offset */ $numberOfStackFramesToSkip + 1, /* $maxNumberOfFrames */ null, /* $includeElasticApmFrames */ false)
-        );
+        return self::convertClassicToApmFormat($this->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, /* $maxNumberOfFrames */ null, /* $keepElasticApmFrames */ false));
     }
 
     /**
      * @param array<string, mixed>[] $debugBacktraceFormatFrames
-     * @param LoggerFactory          $loggerFactory
      *
      * @return StackTraceFrame[]
      */
-    public static function convertExternallyCapturedToApmFormat(array $debugBacktraceFormatFrames, LoggerFactory $loggerFactory): array
+    public function convertExternallyCapturedToApmFormat(array $debugBacktraceFormatFrames): array
     {
-        $phpFormatFrames = self::convertDebugBacktraceToPhpFormat($debugBacktraceFormatFrames, /* includeValuesOnStack */ false, $loggerFactory);
+        $phpFormatFrames = $this->convertDebugBacktraceToPhpFormat($debugBacktraceFormatFrames, /* includeValuesOnStack */ false);
         $classicFormatFrames = self::convertPhpToClassicFormat($phpFormatFrames);
         return self::convertClassicToApmFormat(self::excludeElasticApmInClassicFormat($classicFormatFrames));
     }
 
     /**
-     * @param Throwable     $throwable
-     * @param LoggerFactory $loggerFactory
+     * @param Throwable $throwable
      *
      * @return StackTraceFrame[]
      */
-    public static function convertThrowableTraceToApmFormat(Throwable $throwable, LoggerFactory $loggerFactory): array
+    public function convertThrowableTraceToApmFormat(Throwable $throwable): array
     {
         $debugBacktraceFormatFrames = $throwable->getTrace();
         $frameForThrowLocation = [StackTraceUtil::FILE_KEY => $throwable->getFile(), StackTraceUtil::LINE_KEY => $throwable->getLine()];
         array_unshift(/* ref */ $debugBacktraceFormatFrames, $frameForThrowLocation);
-        return self::convertExternallyCapturedToApmFormat($debugBacktraceFormatFrames, $loggerFactory);
+        return $this->convertExternallyCapturedToApmFormat($debugBacktraceFormatFrames);
     }
 }
