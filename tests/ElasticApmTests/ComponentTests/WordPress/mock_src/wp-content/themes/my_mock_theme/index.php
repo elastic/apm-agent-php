@@ -16,3 +16,6 @@ class MyMockTheme
 }
 
 add_filter(WordPressMockBridge::MOCK_THEME_HOOK_NAME, MyMockTheme::class . '::filterCallback');
+WordPressMockBridge::$removeFilterCalls[] = function () {
+    remove_filter(WordPressMockBridge::MOCK_THEME_HOOK_NAME, MyMockTheme::class . '::filterCallback');
+};

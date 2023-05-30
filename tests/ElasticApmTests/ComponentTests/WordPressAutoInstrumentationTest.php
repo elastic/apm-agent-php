@@ -516,14 +516,16 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         WordPressMockBridge::runMockSource($appCodeArgs);
     }
 
+    public static function isWordPressDataToBeExpected(MixedMap $testArgs): bool
+    {
+        return $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY) && $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
+    }
+
     private function implTestOnMockSource(MixedMap $testArgs): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        $isAstProcessEnabled = $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY);
-        $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
-        $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
-        $isWordPressDataToBeExpected = $isAstProcessEnabled && $isInstrumentationEnabled;
+        $isWordPressDataToBeExpected = self::isWordPressDataToBeExpected($testArgs);
         $expectedTheme = $testArgs->getNullableString(self::EXPECTED_THEME_KEY);
         $expectedMuPluginCallsCount = $testArgs->getInt(self::MU_PLUGIN_CALLS_COUNT_KEY);
         $expectedPluginCallsCount = $testArgs->getInt(self::PLUGIN_CALLS_COUNT_KEY);
@@ -532,9 +534,9 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
-            function (AppCodeHostParams $appCodeParams) use ($isAstProcessEnabled, $disableInstrumentationsOptVal): void {
-                $appCodeParams->setAgentOptionIfNotDefaultValue(OptionNames::AST_PROCESS_ENABLED, $isAstProcessEnabled);
-                $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
+            function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
+                $appCodeParams->setAgentOptionIfNotDefaultValue(OptionNames::AST_PROCESS_ENABLED, $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY));
+                $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY));
                 // Disable span compression to have all the expected spans individually
                 $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
                 $appCodeParams->setAgentOption(OptionNames::NON_KEYWORD_STRING_MAX_LENGTH, self::NON_KEYWORD_STRING_MAX_LENGTH);
@@ -600,10 +602,19 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         self::assertSame($applyFiltersCallsCount + $doActionCallsCount, $expectedMuPluginCallsCount + $expectedPluginCallsCount + $actualThemeCallsCount + $expectedPartOfCoreCallsCount);
 
         if (!$isWordPressDataToBeExpected) {
+            self::assertCount(0, $dataFromAgent->idToSpan);
             return;
         }
 
         $expectedSpanIndex = 0;
+        /**
+         * This closure helps us set expected stack trace for the first span in each call batch
+         *
+         * @param string $key
+         * @param int    $callsCount
+         *
+         * @return void
+         */
         $setExpectedSpanStackTrace = function (string $key, int $callsCount) use ($tx, $dbgCtx, $expectedSpans, &$expectedSpanIndex): void {
             self::assertNotNull($tx->context);
             if ($callsCount === 0) {
@@ -618,6 +629,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             /** @var StackTraceFrame[] $stackTrace */
             self::assertFalse($expectedSpans[$expectedSpanIndex]->stackTrace->isValueSet());
             $expectedSpans[$expectedSpanIndex]->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, /* allowToBePrefixOfActual */ false));
+            // Jump to the index of the beginning of the batch of call of the next callback
             $expectedSpanIndex += $callsCount;
         };
 

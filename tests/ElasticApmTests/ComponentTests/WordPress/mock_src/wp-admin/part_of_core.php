@@ -24,7 +24,11 @@ class MyMockPartOfCore
 
     public static function registerCallback(): void
     {
-        add_filter(WordPressMockBridge::MOCK_PART_OF_CORE_HOOK_NAME, [new self(), self::IMPLICIT_METHOD_NAME]);
+        $callback = [new self(), self::IMPLICIT_METHOD_NAME];
+        add_filter(WordPressMockBridge::MOCK_PART_OF_CORE_HOOK_NAME, $callback);
+        WordPressMockBridge::$removeFilterCalls[] = function () use ($callback) {
+            remove_filter(WordPressMockBridge::MOCK_PART_OF_CORE_HOOK_NAME, $callback);
+        };
     }
 }
 

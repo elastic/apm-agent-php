@@ -72,4 +72,9 @@ abstract class WordPressMockWpHook
         }
         return $retVal;
     }
+
+    public function getFilterCount(): int
+    {
+        return count($this->idToCallback);
+    }
 }

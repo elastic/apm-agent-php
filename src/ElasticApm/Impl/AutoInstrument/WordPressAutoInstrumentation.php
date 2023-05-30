@@ -587,6 +587,8 @@ final class WordPressAutoInstrumentation extends AutoInstrumentationBase
                 'isReadyToWrapFilterCallbacks' => $this->isReadyToWrapFilterCallbacks,
                 'isServiceFrameworkSet'        => $this->isServiceFrameworkSet,
                 'serviceFramework'             => $this->serviceFramework,
+                'wrapper ctor calls count'     => WordPressFilterCallbackWrapper::$ctorCalls,
+                'wrapper dtor calls count'     => WordPressFilterCallbackWrapper::$dtorCalls,
             ]
         );
     }

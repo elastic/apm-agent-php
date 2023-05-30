@@ -23,3 +23,6 @@ add_filter(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, $my_mock_mu_plugin_cal
 Assert::assertTrue(remove_filter(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, $my_mock_mu_plugin_callback));
 Assert::assertFalse(remove_filter(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, $my_mock_mu_plugin_callback));
 add_filter(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, $my_mock_mu_plugin_callback);
+WordPressMockBridge::$removeFilterCalls[] = function () use ($my_mock_mu_plugin_callback) {
+    remove_filter(WordPressMockBridge::MOCK_MU_PLUGIN_HOOK_NAME, $my_mock_mu_plugin_callback);
+};

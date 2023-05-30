@@ -21,3 +21,6 @@ function my_mock_plugin_filter_callback()
 // Register the same callback twice - it should be the same as registering once
 add_filter(WordPressMockBridge::MOCK_PLUGIN_HOOK_NAME, 'my_mock_plugin_filter_callback');
 add_filter(WordPressMockBridge::MOCK_PLUGIN_HOOK_NAME, 'my_mock_plugin_filter_callback');
+WordPressMockBridge::$removeFilterCalls[] = function () {
+    remove_filter(WordPressMockBridge::MOCK_PLUGIN_HOOK_NAME, 'my_mock_plugin_filter_callback');
+};

@@ -51,6 +51,12 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
     /** @var ?string */
     private $callbackGroupName;
 
+    /** @var int */
+    public static $ctorCalls = 0;
+
+    /** @var int */
+    public static $dtorCalls = 0;
+
     /**
      * @param string  $hookName
      * @param mixed   $callback
@@ -59,10 +65,16 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
      */
     public function __construct(string $hookName, $callback, string $callbackGroupKind, ?string $callbackGroupName)
     {
+        ++self::$ctorCalls;
         $this->hookName = $hookName;
         $this->callback = $callback;
         $this->callbackGroupKind = $callbackGroupKind;
         $this->callbackGroupName = $callbackGroupName;
+    }
+
+    public function __destruct()
+    {
+        ++self::$dtorCalls;
     }
 
     /**

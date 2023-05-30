@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\WordPress;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\AutoInstrument\WordPressFilterCallbackWrapper;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\TransactionContext;
 use Elastic\Apm\Impl\Util\RangeUtil;
@@ -85,6 +86,12 @@ final class WordPressMockBridge
 
     /** @var mixed */
     public static $expectedWordPressVersion = self::EXPECTED_WORDPRESS_VERSION_DEFAULT;
+
+    /** @var ?bool */
+    public static $shouldExpectCallbacksToBeWrapped = null;
+
+    /** @var array<callable(): void> */
+    public static $removeFilterCalls = [];
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
     public const MOCK_PLUGIN_HOOK_NAME = 'media_upload_newtab';
@@ -164,6 +171,7 @@ final class WordPressMockBridge
         $pluginCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::PLUGIN_CALLS_COUNT_KEY);
         $themeCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::THEME_CALLS_COUNT_KEY);
         $partOfCoreCallsCount = $appCodeArgs->getInt(WordPressAutoInstrumentationTest::PART_OF_CORE_CALLS_COUNT_KEY);
+        self::$shouldExpectCallbacksToBeWrapped = WordPressAutoInstrumentationTest::isWordPressDataToBeExpected($appCodeArgs);
 
         // Have instrumented get_template() return non-string value first to test that instrumentation handles it correctly
         WordPressMockBridge::$activeTheme = false;
@@ -234,6 +242,8 @@ final class WordPressMockBridge
             $invokeCallbacks(self::MOCK_PART_OF_CORE_HOOK_NAME);
         }
 
+        self::invokeRemoveFilterCalls();
+
         $txCtx = ElasticApm::getCurrentTransaction()->context();
         $txCtx->setLabel(WordPressAutoInstrumentationTest::APPLY_FILTERS_CALLS_COUNT_KEY, $applyFiltersCallsCount);
         $txCtx->setLabel(WordPressAutoInstrumentationTest::DO_ACTION_CALLS_COUNT_KEY, $doActionCallsCount);
@@ -303,6 +313,8 @@ final class WordPressMockBridge
      */
     public static function mockImplAddFiler(array &$wpFilterGlobal, string $hookName, callable $callback, int $priority, int $acceptedArgsCount): void
     {
+        self::assertInvariant($wpFilterGlobal);
+
         if (!array_key_exists($hookName, $wpFilterGlobal)) {
             $wpFilterGlobal[$hookName] = self::newWpHook();
         }
@@ -311,6 +323,8 @@ final class WordPressMockBridge
          * @phpstan-ignore-next-line
          */
         $wpFilterGlobal[$hookName]->add_filter($hookName, $callback, $priority, $acceptedArgsCount);
+
+        self::assertInvariant($wpFilterGlobal);
     }
 
     /**
@@ -323,6 +337,8 @@ final class WordPressMockBridge
      */
     public static function mockImplRemoveFilter(array &$wpFilterGlobal, string $hookName, callable $callback, int $priority): bool
     {
+        self::assertInvariant($wpFilterGlobal);
+
         if (!array_key_exists($hookName, $wpFilterGlobal)) {
             return false;
         }
@@ -333,6 +349,7 @@ final class WordPressMockBridge
             unset($wpFilterGlobal[$hookName]);
         }
 
+        self::assertInvariant($wpFilterGlobal);
         return true;
     }
 
@@ -346,6 +363,8 @@ final class WordPressMockBridge
      */
     public static function mockImplApplyFilters(array $wpFilterGlobal, string $hookName, $firstArg, ...$restOfArgs)
     {
+        self::assertInvariant($wpFilterGlobal);
+
         if (!array_key_exists($hookName, $wpFilterGlobal)) {
             return $firstArg;
         }
@@ -363,6 +382,8 @@ final class WordPressMockBridge
      */
     public static function mockImplDoAction(array $wpFilterGlobal, string $hookName, ...$args): void
     {
+        self::assertInvariant($wpFilterGlobal);
+
         if (!array_key_exists($hookName, $wpFilterGlobal)) {
             return;
         }
@@ -386,5 +407,58 @@ final class WordPressMockBridge
              */
             $var = StackTraceUtil::captureInApmFormat(/* numberOfStackFramesToSkip */ 3, AmbientContextForTests::loggerFactory());
         }
+    }
+
+    /**
+     * @param array<string, WordPressMockWpHook> $wpFilterGlobal
+     *
+     * @return int
+     */
+    private static function getFilterCount(array $wpFilterGlobal): int
+    {
+        $result = 0;
+        foreach ($wpFilterGlobal as $wpHook) {
+            $result += $wpHook->getFilterCount();
+        }
+        return $result;
+    }
+
+    /**
+     * @param array<string, WordPressMockWpHook> $wpFilterGlobal
+     */
+    private static function assertInvariant(array $wpFilterGlobal): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['$shouldExpectCallbacksToBeWrapped' => self::$shouldExpectCallbacksToBeWrapped]);
+
+        if (self::$shouldExpectCallbacksToBeWrapped === null) {
+            return;
+        }
+
+        $dbgCtx->add(['WordPressFilterCallbackWrapper' => ['ctorCalls' => WordPressFilterCallbackWrapper::$ctorCalls, 'dtorCalls' => WordPressFilterCallbackWrapper::$dtorCalls]]);
+        if (self::$shouldExpectCallbacksToBeWrapped) {
+            $filterCount = self::getFilterCount($wpFilterGlobal);
+            TestCaseBase::assertSame($filterCount, WordPressFilterCallbackWrapper::$ctorCalls - WordPressFilterCallbackWrapper::$dtorCalls);
+        } else {
+            TestCaseBase::assertSame(0, WordPressFilterCallbackWrapper::$ctorCalls);
+            TestCaseBase::assertSame(0, WordPressFilterCallbackWrapper::$dtorCalls);
+        }
+    }
+
+    private static function invokeRemoveFilterCalls(): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        global $wp_filter;
+        self::assertInvariant($wp_filter);
+
+        foreach (self::$removeFilterCalls as $removeFilterCalls) {
+            $removeFilterCalls();
+        }
+
+        self::assertInvariant($wp_filter);
+        $dbgCtx->add(['wp_filter' => $wp_filter]);
+        $dbgCtx->add(['WordPressFilterCallbackWrapper' => ['ctorCalls' => WordPressFilterCallbackWrapper::$ctorCalls, 'dtorCalls' => WordPressFilterCallbackWrapper::$dtorCalls]]);
+        TestCaseBase::assertSame(0, WordPressFilterCallbackWrapper::$ctorCalls - WordPressFilterCallbackWrapper::$dtorCalls);
     }
 }

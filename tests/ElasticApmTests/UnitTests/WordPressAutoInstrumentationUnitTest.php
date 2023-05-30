@@ -25,7 +25,6 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
-use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
 use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\TestCaseBase;
