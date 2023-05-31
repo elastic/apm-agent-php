@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: make -f .ci/Makefile modernbuild
+        run: make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}

@@ -39,18 +39,8 @@ prepare:  ## Build docker image for building and testing the project
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"
 
-# .PHONY: build
-# build: prepare  ## Build the project
-# 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-# 	# docker as the current user
-# 	docker run --rm -t \
-# 		-u $(CURRENT_UID):$(CURRENT_GID) \
-# 		-v $(PWD):/app \
-# 		$(IMAGE):${PHP_VERSION}$(SUFFIX)
-# 	@echo "::endgroup::"
-
-.PHONY: modernbuild
-modernbuild:
+.PHONY: build
+build:
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \

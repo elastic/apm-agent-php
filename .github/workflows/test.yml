@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: make -f .ci/Makefile modernbuild
+        run: make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
@@ -105,8 +105,6 @@ jobs:
         run: make -f .ci/Makefile prepare
       - name: Static Check / Unit tests
         run: make -f .ci/Makefile static-check-unit-test
-      # - name: Build parts for packages
-      #   run: make -f .ci/Makefile generate-for-package
       - if: success() || failure()
         name: Prepare Upload
         run: >-

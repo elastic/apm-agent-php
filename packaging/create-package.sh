@@ -34,7 +34,7 @@ fpm --input-type dir \
 		--before-remove=packaging/before-uninstall.sh \
 		--directories ${PHP_AGENT_DIR}/etc \
 		--config-files ${PHP_AGENT_DIR}/etc \
-		--exclude ${BUILD_EXT_DIR}/*.debug \
+		--exclude *.debug \
 		packaging/post-install.sh=${PHP_AGENT_DIR}/bin/post-install.sh \
 		build/elastic-apm.ini=${PHP_AGENT_DIR}/etc/ \
 		packaging/elastic-apm-custom-template.ini=${PHP_AGENT_DIR}/etc/elastic-apm-custom.ini \
@@ -67,8 +67,8 @@ fpm --input-type dir \
 		--description "PHP debug symbols agent for Elastic APM\nGit Commit: ${GIT_SHA}" \
 		--package "${OUTPUT}" \
 		--chdir /app ${FPM_FLAGS} \
-		--exclude ${BUILD_EXT_DIR}/*.so \
-		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}
+		--exclude *.so \
+		${BUILD_EXT_DIR}=${PHP_AGENT_DIR}/extensions
 
 ## Create sha512
 BINARY=$(ls -1 "${OUTPUT}"/${NAME}*."${TYPE}")
