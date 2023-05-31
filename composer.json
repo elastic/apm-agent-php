@@ -39,7 +39,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Elastic\\Apm\\": "./src/ElasticApm/"
+            "Elastic\\Apm\\": "./agent/php/ElasticApm/"
         }
     },
     "autoload-dev": {
@@ -57,25 +57,25 @@
     },
     "scripts": {
         "parallel-lint": [
-            "parallel-lint ./src/ElasticApm/ ./tests/ --exclude ./tests/polyfills/"
+            "parallel-lint ./agent/php/ElasticApm/ ./tests/ --exclude ./tests/polyfills/"
         ],
         "php_codesniffer_check": [
-            "phpcs -s ./src/ElasticApm/",
+            "phpcs -s ./agent/php/ElasticApm/",
             "phpcs -s ./tests/",
             "phpcs -s ./examples/"
         ],
         "php_codesniffer_fix": [
-            "phpcbf ./src/ElasticApm",
+            "phpcbf ./agent/php/ElasticApm",
             "phpcbf ./tests",
             "phpcbf ./examples/"
         ],
         "phpstan-junit-report-for-ci": [
-            "phpstan analyse --error-format=junit -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=1G | tee build/elasticapm-phpstan-junit.xml",
+            "phpstan analyse --error-format=junit -c ./phpstan.neon ./agent/php/ElasticApm/ --level max --memory-limit=1G | tee build/elasticapm-phpstan-junit.xml",
             "phpstan analyse --error-format=junit -c ./phpstan.neon ./tests/ --level max --memory-limit=1G --error-format=junit | tee build/tests-phpstan-junit.xml",
             "phpstan analyse --error-format=junit -c ./phpstan.neon ./examples/ --level max --memory-limit=1G --error-format=junit | tee build/examples-phpstan-junit.xml"
         ],
         "phpstan": [
-            "phpstan analyse -c ./phpstan.neon ./src/ElasticApm/ --level max --memory-limit=1G",
+            "phpstan analyse -c ./phpstan.neon ./agent/php/ElasticApm/ --level max --memory-limit=1G",
             "phpstan analyse -c ./phpstan.neon ./tests/ --level max --memory-limit=1G",
             "phpstan analyse -c ./phpstan.neon ./examples/ --level max --memory-limit=1G"
         ],

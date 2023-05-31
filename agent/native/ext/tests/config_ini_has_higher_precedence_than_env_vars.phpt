@@ -6,7 +6,7 @@ ELASTIC_APM_LOG_FILE=log_file_from_env_vars.txt
 ELASTIC_APM_LOG_LEVEL_FILE=off
 --INI--
 elastic_apm.log_file=log_file_from_ini.txt
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

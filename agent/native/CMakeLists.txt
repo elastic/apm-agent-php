@@ -3,17 +3,17 @@ cmake_minimum_required(VERSION 3.26.0)
 # set path for our local includes
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/building/cmake")
 
-include(elastic_get_git_version)
-elastic_get_git_version(_ELASTIC_PROJECT_VERSION _ELASTIC_SIMPLE_VERSION _ELASTIC_PROJECT_REVISION)
+#include(elastic_get_git_version)
+#elastic_get_git_version(_ELASTIC_PROJECT_VERSION _ELASTIC_SIMPLE_VERSION _ELASTIC_PROJECT_REVISION)
 
-message(STATUS "Project version: ${_ELASTIC_PROJECT_VERSION} (${_ELASTIC_SIMPLE_VERSION}) / ${_ELASTIC_PROJECT_REVISION}")
+#message(STATUS "Project version: ${_ELASTIC_PROJECT_VERSION} (${_ELASTIC_SIMPLE_VERSION}) / ${_ELASTIC_PROJECT_REVISION}")
 
 project("apm-agent-php"
 #TODO need to handle versioning somehow and generate C++ and PHP version automatically
-    VERSION "${_ELASTIC_PROJECT_VERSION}"
+ #   VERSION "${_ELASTIC_PROJECT_VERSION}"
+    VERSION "1.0"
     LANGUAGES C CXX
 )
-
 
 set(RELEASE_BUILD false)
 set(DEBUG_BUILD false)

@@ -1,3 +1,10 @@
+ifeq ($(DOCKERFILE),)
+	ifeq ($(BUILD_ARCHITECTURE), linuxmusl-x86-64)
+		DOCKERFILE := Dockerfile.alpine
+	else
+		DOCKERFILE := Dockerfile
+	endif
+endif
 
 SHELL=/bin/bash -o pipefail
 MAKEFLAGS += --no-print-directory
@@ -15,6 +22,7 @@ endif
 
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
+CURRENT_USER_HOME := $(shell echo ~)
 
 .PHONY: help
 .DEFAULT_GOAL := help
@@ -32,13 +40,16 @@ prepare:  ## Build docker image for building and testing the project
 	@echo "::endgroup::"
 
 .PHONY: build
-build: prepare  ## Build the project
+build:
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \
 		-u $(CURRENT_UID):$(CURRENT_GID) \
-		-v $(PWD):/app \
-		$(IMAGE):${PHP_VERSION}$(SUFFIX)
+		-v $(PWD):/source \
+		-w /source/agent/native \
+		-e CONAN_USER_HOME=/tmp/conan \
+		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.1 \
+		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release && cmake --build --preset $(BUILD_ARCHITECTURE)-release && /source/agent/native/_build/$(BUILD_ARCHITECTURE)-release/ext/unit_tests/unit_tests"
 	@echo "::endgroup::"
 
 .PHONY: static-check-unit-test
@@ -52,15 +63,16 @@ static-check-unit-test: prepare  ## Test the static check and unit tests
 		/app/.ci/static-check-unit-test.sh
 	@echo "::endgroup::"
 
-.PHONY: generate-for-package
-generate-for-package: prepare  ## Generate the agent extension for the package
+.PHONY: run-phpt-tests
+run-phpt-tests: prepare  ## Runs phpt tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as the current user
 	docker run --rm -t \
+		-e CHOWN_RESULTS_UID=$(CURRENT_UID) -e CHOWN_RESULTS_GID=$(CURRENT_GID) \
+		-e BUILD_ARCHITECTURE=$(BUILD_ARCHITECTURE) \
 		-v $(PWD):/app \
-		-u $(CURRENT_UID):$(CURRENT_GID) \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		/app/.ci/generate-for-package.sh
+		/app/.ci/run-phpt-tests.sh
 	@echo "::endgroup::"
 
 .PHONY: interactive

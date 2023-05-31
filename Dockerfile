@@ -30,7 +30,7 @@ RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.20.5/cmake-3.2
 
 ENV PATH="/usr/bin/cmake/bin:${PATH}"
 
-WORKDIR /app/src/ext
+WORKDIR /app/agent/native/ext
 
 ENV REPORT_EXIT_STATUS=1
 ENV TEST_PHP_DETAILED=1

@@ -39,7 +39,7 @@ final class Snapshot implements LoggableInterface
     //
     // Steps to add new configuration option (let's assume new option name is `my_new_option'):
     //
-    //      1) Follow the steps in <repo root>/src/ext/ConfigManager.h to add the new option for C part of the agent.
+    //      1) Follow the steps in <repo root>/agent/native/ext/ConfigManager.h to add the new option for C part of the agent.
     //         NOTE: Build C part of the agent after making the changes above and before proceeding to the steps below.
     //
     //

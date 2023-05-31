@@ -32,7 +32,7 @@ RUN docker-php-ext-install \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-WORKDIR /app/src/ext
+WORKDIR /app/agent/native/ext
 
 ENV REPORT_EXIT_STATUS=1
 ENV TEST_PHP_DETAILED=1

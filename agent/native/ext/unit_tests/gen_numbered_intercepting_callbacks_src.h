@@ -23,7 +23,7 @@
 
 void gen_numbered_intercepting_callbacks_src(int numberedInterceptingCallbacksCount)
 {
-    // See "src/ext/numbered_intercepting_callbacks.h"
+    // See "agent/native/ext/numbered_intercepting_callbacks.h"
 
     ELASTIC_APM_FOR_EACH_INDEX_EX( unsigned int, i, numberedInterceptingCallbacksCount )
     {

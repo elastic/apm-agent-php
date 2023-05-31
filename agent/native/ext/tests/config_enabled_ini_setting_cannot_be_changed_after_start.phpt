@@ -3,7 +3,7 @@ Check that elastic_apm.enabled cannot be set with ini_set()
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 --INI--
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

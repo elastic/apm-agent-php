@@ -8,7 +8,7 @@ ELASTIC_APM_VERIFY_SERVER_CERT=false
 --INI--
 elastic_apm.memory_tracking_level=not a valid memory tracking level
 elastic_apm.verify_server_cert=not a valid bool
-elastic_apm.bootstrap_php_part_file=../bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
 --FILE--
 <?php
 declare(strict_types=1);

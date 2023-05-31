@@ -4,6 +4,7 @@ services:
         build:
             context: .
             dockerfile: images/Dockerfile_glibc
+        image: elasticobservability/apm-agent-php-dev/native-build-gcc-12.2.0-linux-x86-64-0.0.1
         volumes:
           - ../../../../:/source
         command: sh -c "cd /source/agent/native && cmake --preset linux-x86-64-release && cmake --build --preset linux-x86-64-release"
@@ -12,6 +13,7 @@ services:
         build:
             context: .
             dockerfile: images/Dockerfile_musl
+        image: elasticobservability/apm-agent-php-dev/native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.1
         volumes:
           - ../../../../:/source
         command: sh -c "cd /source/agent/native && cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"

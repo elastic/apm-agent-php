@@ -186,9 +186,9 @@ function agent_extension_not_supported() {
 function get_extension_file() {
     PHP_API=$(php_api)
     ## If alpine then add another suffix
-    if grep -q -i alpine /etc/os-release; then
-        SUFFIX=-alpine
-    fi
+#    if grep -q -i alpine /etc/os-release; then
+#        SUFFIX=-alpine
+#    fi
     echo "${EXTENSION_DIR}/elastic_apm-${PHP_API}${SUFFIX}.so"
 }
 

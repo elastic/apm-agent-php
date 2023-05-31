@@ -40,7 +40,7 @@ numberedInterceptingCallback( uint32_t index, zend_execute_data* execute_data, z
 /**/
 
 // Uncomment // gen_numbered_intercepting_callbacks_src( 1000 );
-// in main() in "src/ext/unit_tests/main.c" to generate the part below
+// in main() in "agent/native/ext/unit_tests/main.c" to generate the part below
 
 ELASTIC_APM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK( 0 )
 ELASTIC_APM_DEFINE_NUMBERED_INTERCEPTING_CALLBACK( 1 )
