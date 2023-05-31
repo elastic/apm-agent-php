@@ -79,7 +79,7 @@ elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
     rpm -ivh build/local/*.rpm
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf $BUILD_PACKAGES/*-linux-x86-64*.tar -C /
+    tar -xf $BUILD_PACKAGES/apm-agent-php-linux-x86-64.tar -C /
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
 fi

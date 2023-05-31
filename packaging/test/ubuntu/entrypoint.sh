@@ -78,7 +78,7 @@ elif [ "${TYPE}" == "agent-upgrade-local" ] ; then
     dpkg -i build/local/*.deb
 else
     ## Install tar package and configure the agent accordingly
-    tar -xf $BUILD_PACKAGES/*-linux-x86-64*.tar -C /
+    tar -xf $BUILD_PACKAGES/apm-agent-php-linux-x86-64.tar -C /
     ls -ltrah /opt/elastic/apm-agent-php/bin
     # shellcheck disable=SC1091
     source /opt/elastic/apm-agent-php/bin/post-install.sh
