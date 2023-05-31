@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
@@ -51,7 +51,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
 
-    /** @var ClassicFormatStackTraceFrame */
+    /** @var ClassicFormatStackTraceFrameOld */
     public $stackFrame;
 
     /** @var ?float In milliseconds with 3 decimal points */
@@ -88,7 +88,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     public function __construct(
         float $systemClockBeginTime,
         float $monotonicBeginTime,
-        ClassicFormatStackTraceFrame $stackFrame
+        ClassicFormatStackTraceFrameOld $stackFrame
     ) {
         $this->timestamp = $systemClockBeginTime;
         $this->monotonicBeginTime = $monotonicBeginTime;
@@ -96,11 +96,11 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     }
 
     /**
-     * @param ClassicFormatStackTraceFrame $stackFrame
+     * @param ClassicFormatStackTraceFrameOld $stackFrame
      *
      * @return bool
      */
-    public function canBeExtendedWith(ClassicFormatStackTraceFrame $stackFrame): bool
+    public function canBeExtendedWith(ClassicFormatStackTraceFrameOld $stackFrame): bool
     {
         return $this->stackFrame->class === $stackFrame->class
                && $this->stackFrame->function === $stackFrame->function

@@ -25,12 +25,11 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\InferredSpansBuilder;
-use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TracerInterface;
 use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
@@ -100,14 +99,6 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $tx->end();
     }
 
-    /**
-     * @return ClassicFormatStackTraceFrame[]
-     */
-    private static function captureStackTrace(): array
-    {
-        return InferredSpansBuilder::captureStackTrace(/* offset */ 1, NoopLoggerFactory::singletonInstance());
-    }
-
     public function testNoStackTraces(): void
     {
         // Act
@@ -138,11 +129,11 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
     /**
      * @param InferredSpansBuilder $builder
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      */
     private function helperForTestOneStackTrace(InferredSpansBuilder $builder): array
     {
-        $stackTrace = self::captureStackTrace();
+        $stackTrace = $builder->captureStackTrace(/* offset */ 0);
         $builder->addStackTrace($stackTrace);
         return $stackTrace;
     }
@@ -152,7 +143,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $expectedTimestampMicroseconds = 123.0;
         $expectedDurationMilliseconds = self::DEFAULT_MIN_DURATION + 45.0;
 
-        /** @var null|ClassicFormatStackTraceFrame[] $expectedStackTrace */
+        /** @var null|ClassicFormatStackTraceFrameOld[] $expectedStackTrace */
         $expectedStackTrace = null;
         //
         // Act
@@ -201,9 +192,9 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         StackTraceUtilTest::assertEqualApmStackTraces($expectedStackTraceConvertedToApm, $span->stackTrace);
     }
 
-    private function charDiagramFuncNameToStackTraceFrame(string $funcName): ClassicFormatStackTraceFrame
+    private function charDiagramFuncNameToStackTraceFrame(string $funcName): ClassicFormatStackTraceFrameOld
     {
-        $result = new ClassicFormatStackTraceFrame();
+        $result = new ClassicFormatStackTraceFrameOld();
         $result->function = $funcName;
         $result->file = $funcName . '.php';
         $result->line = ord($funcName) - ord('a') + 1;
@@ -213,7 +204,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
     /**
      * @param string[] $inputStackTracesLines
      *
-     * @return ClassicFormatStackTraceFrame[][]
+     * @return ClassicFormatStackTraceFrameOld[][]
      */
     private function charDiagramProcessInputStackTraces(array $inputStackTracesLines): array
     {
@@ -231,7 +222,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         }
 
         for ($columnIndex = 0; $columnIndex < $stackTracesCount; ++$columnIndex) {
-            /** @var ClassicFormatStackTraceFrame[] $newStackTrace */
+            /** @var ClassicFormatStackTraceFrameOld[] $newStackTrace */
             $newStackTrace = [];
             $hasReachedTopOfStackTrace = false;
             foreach (ArrayUtilForTests::iterateListInReverse($inputStackTracesLines) as $line) {
@@ -421,7 +412,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
                 $expectedSpansStackTraces = $args[self::EXPECTED_STACK_TRACES_KEY];
                 $expectedStackTraceAsLetterList = $expectedSpansStackTraces[$i];
             }
-            /** @var ClassicFormatStackTraceFrame[] $expectedStackTraceClassicFormat */
+            /** @var ClassicFormatStackTraceFrameOld[] $expectedStackTraceClassicFormat */
             $expectedStackTraceClassicFormat = [];
             foreach ($expectedStackTraceAsLetterList as $funcName) {
                 $expectedStackTraceClassicFormat[] = self::charDiagramFuncNameToStackTraceFrame($funcName);

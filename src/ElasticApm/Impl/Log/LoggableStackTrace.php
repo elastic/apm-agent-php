@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 
@@ -42,7 +42,7 @@ final class LoggableStackTrace
      * @param int $numberOfStackFramesToSkip
      * @param int $maxNumberOfStackFrames
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      */
     public static function buildForCurrent(int $numberOfStackFramesToSkip, int $maxNumberOfStackFrames = self::MAX_NUMBER_OF_STACK_FRAMES): array
     {
@@ -57,7 +57,7 @@ final class LoggableStackTrace
             }
         };
 
-        $classicFormatFrames = StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
+        $classicFormatFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
         $result = [];
 
         foreach ($classicFormatFrames as $classicFormatFrame) {

@@ -405,7 +405,7 @@ final class WordPressMockBridge
              *      2) callback
              *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
              */
-            $var = StackTraceUtil::captureInApmFormat(/* numberOfStackFramesToSkip */ 3, AmbientContextForTests::loggerFactory());
+            $var = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 3);
         }
     }
 

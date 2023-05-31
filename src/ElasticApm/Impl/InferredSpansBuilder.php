@@ -28,10 +28,9 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\Assert;
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
@@ -88,30 +87,30 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      */
-    public static function captureStackTrace(int $offset, LoggerFactory $loggerFactory): array
+    public function captureStackTrace(int $offset): array
     {
-        return StackTraceUtil::captureInClassicFormatExcludeElasticApm($loggerFactory, $offset + 1);
+        return $this->tracer->stackTraceUtil()->captureInClassicFormatExcludeElasticApm($offset + 1);
     }
 
     /**
-     * @param ClassicFormatStackTraceFrame[] $newStackTrace
-     * @param int                            $bottomNotExtendedFrameIndex
-     * @param ?ClassicFormatStackTraceFrame  $frameCopy
-     * @param ?int                           $frameCopyIndex
+     * @param ClassicFormatStackTraceFrameOld[] $newStackTrace
+     * @param int                               $bottomNotExtendedFrameIndex
+     * @param ?ClassicFormatStackTraceFrameOld  $frameCopy
+     * @param ?int                              $frameCopyIndex
      *
      * @return void
      */
     private function extendOpenFrames(
-        array $newStackTrace,
-        int &$bottomNotExtendedFrameIndex,
-        ?ClassicFormatStackTraceFrame &$frameCopy,
-        ?int &$frameCopyIndex
+        array                            $newStackTrace,
+        int                              &$bottomNotExtendedFrameIndex,
+        ?ClassicFormatStackTraceFrameOld &$frameCopy,
+        ?int                             &$frameCopyIndex
     ): void {
         $openFramesCount = count($this->openFramesReverseOrder);
         $newStackTraceCount = count($newStackTrace);
-        /** @var ?ClassicFormatStackTraceFrame $newStackTraceParentFrame */
+        /** @var ?ClassicFormatStackTraceFrameOld $newStackTraceParentFrame */
         $newStackTraceParentFrame = null;
         /** @var ?InferredSpanFrame $openParentFrame */
         $openParentFrame = null;
@@ -157,16 +156,16 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
-     * @param int                           $forFrameIndex
-     * @param ?ClassicFormatStackTraceFrame $frameCopy
-     * @param ?int                          $frameCopyIndex
+     * @param int                              $forFrameIndex
+     * @param ?ClassicFormatStackTraceFrameOld $frameCopy
+     * @param ?int                             $frameCopyIndex
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      */
     private function buildStackTrace(
-        int $forFrameIndex,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
+        int                              $forFrameIndex,
+        ?ClassicFormatStackTraceFrameOld $frameCopy,
+        ?int                             $frameCopyIndex
     ): array {
         $openFramesCount = count($this->openFramesReverseOrder);
         $result = [];
@@ -178,18 +177,18 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
-     * @param int                           $openFrameIndex
-     * @param string                        $parentId
-     * @param ?ClassicFormatStackTraceFrame $frameCopy
-     * @param ?int                          $frameCopyIndex
+     * @param int                              $openFrameIndex
+     * @param string                           $parentId
+     * @param ?ClassicFormatStackTraceFrameOld $frameCopy
+     * @param ?int                             $frameCopyIndex
      *
      * @return void
      */
     private function sendFrameAsSpan(
-        int $openFrameIndex,
-        string $parentId,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
+        int                              $openFrameIndex,
+        string                           $parentId,
+        ?ClassicFormatStackTraceFrameOld $frameCopy,
+        ?int                             $frameCopyIndex
     ): void {
         $frame = $this->openFramesReverseOrder[$openFrameIndex];
         $stackTraceClassic = $this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex);
@@ -286,20 +285,20 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
-     * @param int                           $bottomNotExtendedFrameIndex
-     * @param ?ClassicFormatStackTraceFrame $frameCopy
-     * @param ?int                          $frameCopyIndex
-     * @param float                         $systemClockNow
-     * @param float                         $monotonicClockNow
+     * @param int                              $bottomNotExtendedFrameIndex
+     * @param ?ClassicFormatStackTraceFrameOld $frameCopy
+     * @param ?int                             $frameCopyIndex
+     * @param float                            $systemClockNow
+     * @param float                            $monotonicClockNow
      *
      * @return void
      */
     private function processNotExtendedOpenFrames(
-        int $bottomNotExtendedFrameIndex,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex,
-        float $systemClockNow,
-        float $monotonicClockNow
+        int                              $bottomNotExtendedFrameIndex,
+        ?ClassicFormatStackTraceFrameOld $frameCopy,
+        ?int                             $frameCopyIndex,
+        float                            $systemClockNow,
+        float                            $monotonicClockNow
     ): void {
         $openFramesCount = count($this->openFramesReverseOrder);
         /** @var ?int $toBeSentDescendantIndex */
@@ -325,7 +324,7 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
-     * @param ClassicFormatStackTraceFrame[] $newStackTrace
+     * @param ClassicFormatStackTraceFrameOld[] $newStackTrace
      */
     public function addStackTrace(array $newStackTrace): void
     {
@@ -345,7 +344,7 @@ final class InferredSpansBuilder implements LoggableInterface
 
         $openFramesCount = count($this->openFramesReverseOrder);
         $bottomNotExtendedFrameIndex = $openFramesCount;
-        /** @var ?ClassicFormatStackTraceFrame $frameCopy */
+        /** @var ?ClassicFormatStackTraceFrameOld $frameCopy */
         $frameCopy = null;
         /** @var ?int $frameCopyIndex */
         $frameCopyIndex = null;

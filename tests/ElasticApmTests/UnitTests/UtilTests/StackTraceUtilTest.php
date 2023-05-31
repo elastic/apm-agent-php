@@ -24,10 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
 use Elastic\Apm\Impl\Util\PhpFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\StackTraceFrameBase;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
@@ -45,6 +44,18 @@ use ElasticApmTests\Util\TestCaseBase;
 class StackTraceUtilTest extends TestCaseBase
 {
     private const VERY_LARGE_STACK_TRACE_SIZE_LIMIT = 1000;
+
+    /** @var ?StackTraceUtil */
+    private static $stackTraceUtil = null;
+
+    private static function stackTraceUtil(): StackTraceUtil
+    {
+        if (self::$stackTraceUtil === null) {
+            self::$stackTraceUtil = new StackTraceUtil(AmbientContextForTests::loggerFactory());
+        }
+
+        return self::$stackTraceUtil;
+    }
 
     /**
      * @return iterable<array{?string, ?bool, ?string, ?string}>
@@ -97,11 +108,11 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @param array<string, mixed> $debugBacktraceFormatFrame
      *
-     * @return ClassicFormatStackTraceFrame
+     * @return ClassicFormatStackTraceFrameOld
      */
-    private static function buildClassicFormatFrame(array $debugBacktraceFormatFrame): ClassicFormatStackTraceFrame
+    private static function buildClassicFormatFrame(array $debugBacktraceFormatFrame): ClassicFormatStackTraceFrameOld
     {
-        $newFrame = new ClassicFormatStackTraceFrame();
+        $newFrame = new ClassicFormatStackTraceFrameOld();
         $newFrame->copyDataFromFromDebugBacktraceFrame($debugBacktraceFormatFrame);
         return $newFrame;
     }
@@ -110,23 +121,15 @@ class StackTraceUtilTest extends TestCaseBase
      * @param int  $param
      * @param int &$topFrameExpectedLine
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      *
      * @noinspection PhpSameParameterValueInspection
      * @noinspection PhpUnusedParameterInspection
      */
     private static function helperForTestSimpleCaptureClassicFormat(int $param, int &$topFrameExpectedLine): array
     {
-        $captureArgs = [
-            NoopLoggerFactory::singletonInstance(),
-            0 /* <- offset */,
-            null /* <- maxNumberOfFrames */,
-            true /* <- includeElasticApmFrames */,
-            true /* <- includeArgs */,
-            true /* <- includeThisObj */,
-        ];
         $topFrameExpectedLine = __LINE__ + 1;
-        return StackTraceUtil::captureInClassicFormat(...$captureArgs);
+        return self::stackTraceUtil()->captureInClassicFormat(/* offset */ 0, /* maxNumberOfFrames */ null, /* keepElasticApmFrames */ true, /* includeArgs */ true, /* includeThisObj */ true);
     }
 
     public function testSimpleCaptureClassicFormat(): void
@@ -299,15 +302,15 @@ class StackTraceUtilTest extends TestCaseBase
      */
     private static function captureInPhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        return StackTraceUtil::captureInPhpFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, $includeArgs, $includeThisObj);
+        return self::stackTraceUtil()->captureInPhpFormat(/* offset */ 1, $maxNumberOfFrames, $includeArgs, $includeThisObj);
     }
 
     /**
-     * @return ClassicFormatStackTraceFrame[]
+     * @return ClassicFormatStackTraceFrameOld[]
      */
     private static function captureInClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): array
     {
-        return StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ 1, $maxNumberOfFrames, /* includeElasticApmFrames */ true, $includeArgs, $includeThisObj);
+        return self::stackTraceUtil()->captureInClassicFormat(/* offset */ 1, $maxNumberOfFrames, /* includeElasticApmFrames */ true, $includeArgs, $includeThisObj);
     }
 
     /**
@@ -525,7 +528,7 @@ class StackTraceUtilTest extends TestCaseBase
             $result[self::EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY] = [];
         }
 
-        $currentFrame = new ClassicFormatStackTraceFrame();
+        $currentFrame = new ClassicFormatStackTraceFrameOld();
         $currentFrame->file = __FILE__;
         $currentFrame->line = $expectedConvertedLine;
         $currentFrame->function = __FUNCTION__;
@@ -535,20 +538,20 @@ class StackTraceUtilTest extends TestCaseBase
             $currentFrame->args = func_get_args();
         }
 
-        $callingFuncFrame = new ClassicFormatStackTraceFrame();
+        $callingFuncFrame = new ClassicFormatStackTraceFrameOld();
         $callingFuncFrame->file = __FILE__;
         $callingFuncFrame->line = $lineNumberWithCallToFuncImpl;
         $callingFuncFrame->function = $funcNameCalledFrom;
         $callingFuncFrame->class = __CLASS__;
         $callingFuncFrame->isStaticMethod = $isFuncCalledFromStatic;
 
-        /** @var ClassicFormatStackTraceFrame[] $expectedConvertedClassicStackTraceTop */
+        /** @var ClassicFormatStackTraceFrameOld[] $expectedConvertedClassicStackTraceTop */
         $expectedConvertedClassicStackTraceTop = &$result[self::EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY];
         $expectedConvertedClassicStackTraceTop[] = $currentFrame;
         $expectedConvertedClassicStackTraceTop[] = $callingFuncFrame;
         unset($expectedConvertedClassicStackTraceTop);
 
-        /** @var ClassicFormatStackTraceFrame[] $expectedCapturedClassicStackTraceTop */
+        /** @var ClassicFormatStackTraceFrameOld[] $expectedCapturedClassicStackTraceTop */
         $expectedCapturedClassicStackTraceTop = &$result[self::EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY];
         $currentFrameAdapted = clone $currentFrame;
         $currentFrameAdapted->line = $expectedCapturedLine;
@@ -592,8 +595,8 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @param PhpFormatStackTraceFrame[]     $phpFormatStackTrace
-     * @param ClassicFormatStackTraceFrame[] $classicFormatStackTrace
+     * @param PhpFormatStackTraceFrame[]        $phpFormatStackTrace
+     * @param ClassicFormatStackTraceFrameOld[] $classicFormatStackTrace
      *
      * @return void
      */
@@ -845,7 +848,7 @@ class StackTraceUtilTest extends TestCaseBase
 
         /** @var PhpFormatStackTraceFrame[] $actualCapturedPhp */
         $actualCapturedPhp = $result[self::ACTUAL_CAPTURED_PHP_STACK_TRACE_KEY];
-        /** @var ClassicFormatStackTraceFrame[] $actualCapturedClassic */
+        /** @var ClassicFormatStackTraceFrameOld[] $actualCapturedClassic */
         $actualCapturedClassic = $result[self::ACTUAL_CAPTURED_CLASSIC_STACK_TRACE_KEY];
 
         $isLimitEffective = $maxNumberOfFrames !== null && $maxNumberOfFrames !== self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT;
@@ -859,15 +862,15 @@ class StackTraceUtilTest extends TestCaseBase
 
         /** @var PhpFormatStackTraceFrame[] $expectedConvertedClassicTop */
         $expectedConvertedClassicTop = $result[self::EXPECTED_CONVERTED_CLASSIC_STACK_TRACE_TOP_KEY];
-        /** @var ClassicFormatStackTraceFrame[] $expectedConvertedClassic */
+        /** @var ClassicFormatStackTraceFrameOld[] $expectedConvertedClassic */
         $expectedConvertedClassic = array_merge($expectedConvertedClassicTop, $classicStackTraceToHere);
         if ($isLimitEffective) {
             $expectedConvertedClassic = array_slice($expectedConvertedClassic, 0, $maxNumberOfFrames);
         }
 
-        /** @var ClassicFormatStackTraceFrame[] $expectedCapturedClassicTop */
+        /** @var ClassicFormatStackTraceFrameOld[] $expectedCapturedClassicTop */
         $expectedCapturedClassicTop = $result[self::EXPECTED_CAPTURED_CLASSIC_STACK_TRACE_TOP_KEY];
-        /** @var ClassicFormatStackTraceFrame[] $expectedCapturedClassic */
+        /** @var ClassicFormatStackTraceFrameOld[] $expectedCapturedClassic */
         $expectedCapturedClassic = array_merge($expectedCapturedClassicTop, $classicStackTraceToHere);
         if ($isLimitEffective) {
             $expectedCapturedClassic = array_slice($expectedCapturedClassic, 0, $maxNumberOfFrames);
@@ -961,7 +964,7 @@ class StackTraceUtilTest extends TestCaseBase
         $func = function () use ($numberOfStackFramesToSkip, &$manuallyBuiltStackTrace): array {
             $manuallyBuiltStackTrace[] = new StackTraceFrame(DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME, DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER, __FUNCTION__);
             self::assertCount(self::MANUALLY_BUILT_STACK_TRACE_COUNT, $manuallyBuiltStackTrace);
-            return StackTraceUtil::captureInApmFormat($numberOfStackFramesToSkip + 1, AmbientContextForTests::loggerFactory());
+            return self::stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip + 1);
         };
         $manuallyBuiltStackTrace[] = new StackTraceFrame(__FILE__, __LINE__ + 1, 'dummyFuncForTestsWithoutNamespace');
         return dummyFuncForTestsWithoutNamespace($func);

@@ -23,39 +23,11 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
-use Elastic\Apm\Impl\Log\NoopLoggerFactory;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class DbgUtil
+final class ClassicFormatStackTraceFrameOld extends StackTraceFrameBase
 {
-    use StaticClassTrait;
-
-    public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
-    {
-        $stackFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, /* framesCountLimit */ 1);
-
-        if (ArrayUtil::isEmpty($stackFrames)) {
-            return new CallerInfo(null, null, null, null);
-        }
-
-        $stackFrame = $stackFrames[0];
-        return new CallerInfo($stackFrame->file, $stackFrame->line, $stackFrame->class, $stackFrame->function);
-    }
-
-    /**
-     * @param mixed $value
-     *
-     * @return string
-     */
-    public static function getType($value): string
-    {
-        if (is_object($value)) {
-            return get_class($value);
-        }
-        return gettype($value);
-    }
 }

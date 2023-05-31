@@ -23,11 +23,192 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Log\LogCategory;
+use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\Log\LoggerFactory;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class ClassicFormatStackTraceFrame extends StackTraceFrameBase
+final class ClassicFormatStackTraceFrame
 {
+    /** @var ?string */
+    public $file = null;
+
+    /** @var ?int */
+    public $line = null;
+
+    /** @var ?string */
+    public $class = null;
+
+    /** @var ?string */
+    public $function = null;
+
+    /** @var ?bool */
+    public $isStaticMethod = null;
+
+    /** @var ?object */
+    public $thisObj = null;
+
+    /** @var null|mixed[] */
+    public $args = null;
+
+    /**
+     * @param array<string, mixed> $debugBacktraceFormatFrame
+     */
+    public function copyDataFromFromDebugBacktraceFrame(array $debugBacktraceFormatFrame, bool $includeValuesOnStack = true, ?LoggerFactory $loggerFactory = null): void
+    {
+        /** @var ?Logger $logger */
+        $logger = null;
+        if ($loggerFactory !== null && $loggerFactory->isEnabledForLevel(LogLevel::ERROR)) {
+            $logger = $loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__) ->addContext('debugBacktraceFormatFrame', $debugBacktraceFormatFrame);
+        }
+
+        $this->file = self::getNullableStringValue(StackTraceUtil::FILE_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->line = self::getNullableIntValue(StackTraceUtil::LINE_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->class = self::getNullableStringValue(StackTraceUtil::CLASS_KEY, $debugBacktraceFormatFrame, $logger);
+        $this->function = self::getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $debugBacktraceFormatFrame, $logger);
+        if ($includeValuesOnStack) {
+            $this->thisObj = self::getNullableObjectValue(StackTraceUtil::THIS_OBJECT_KEY, $debugBacktraceFormatFrame, $logger);
+            $this->args = self::getNullableArrayValue(StackTraceUtil::ARGS_KEY, $debugBacktraceFormatFrame, $logger);
+        }
+
+        $type = self::getNullableStringValue(StackTraceUtil::TYPE_KEY, $debugBacktraceFormatFrame, $logger);
+        if ($type !== null) {
+            switch ($type) {
+                case StackTraceUtil::FUNCTION_IS_STATIC_METHOD_TYPE_VALUE:
+                    $this->isStaticMethod = true;
+                    break;
+                case StackTraceUtil::FUNCTION_IS_METHOD_TYPE_VALUE:
+                    $this->isStaticMethod = false;
+                    break;
+                default:
+                    $logger && ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                    && $loggerProxy->log('Unexpected `' . StackTraceUtil::TYPE_KEY . '\' value', ['type' => $type]);
+                    break;
+            }
+        }
+    }
+
+    /**
+     * @param string               $key
+     * @param array<string, mixed> $debugBacktraceFormatFrame
+     * @param ?Logger              $logger
+     *
+     * @return ?string
+     */
+    private static function getNullableStringValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?string
+    {
+        /** @var ?string $value */
+        $value = self::getNullableValue($key, 'is_string', 'string', $debugBacktraceFormatFrame, $logger);
+        return $value;
+    }
+
+    /**
+     * @param string               $key
+     * @param array<string, mixed> $debugBacktraceFormatFrame
+     * @param ?Logger              $logger
+     *
+     * @return ?int
+     *
+     * @noinspection PhpSameParameterValueInspection
+     */
+    private static function getNullableIntValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?int
+    {
+        /** @var ?int $value */
+        $value = self::getNullableValue($key, 'is_int', 'int', $debugBacktraceFormatFrame, $logger);
+        return $value;
+    }
+
+    /**
+     * @param string               $key
+     * @param array<string, mixed> $debugBacktraceFormatFrame
+     * @param ?Logger              $logger
+     *
+     * @return ?object
+     *
+     * @noinspection PhpSameParameterValueInspection
+     */
+    private static function getNullableObjectValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?object
+    {
+        /** @var ?object $value */
+        $value = self::getNullableValue($key, 'is_object', 'object', $debugBacktraceFormatFrame, $logger);
+        return $value;
+    }
+
+    /**
+     * @param string               $key
+     * @param array<string, mixed> $debugBacktraceFormatFrame
+     * @param ?Logger              $logger
+     *
+     * @return null|mixed[]
+     *
+     * @noinspection PhpSameParameterValueInspection
+     */
+    private static function getNullableArrayValue(string $key, array $debugBacktraceFormatFrame, ?Logger $logger): ?array
+    {
+        /** @var ?array<mixed> $value */
+        $value = self::getNullableValue($key, 'is_array', 'array', $debugBacktraceFormatFrame, $logger);
+        return $value;
+    }
+
+    /**
+     * @param string                $key
+     * @param callable(mixed): bool $isValueTypeFunc
+     * @param string                $dbgExpectedType
+     * @param array<string, mixed>  $debugBacktraceFormatFrame
+     * @param ?Logger               $logger
+     *
+     * @return mixed
+     */
+    private static function getNullableValue(string $key, callable $isValueTypeFunc, string $dbgExpectedType, array $debugBacktraceFormatFrame, ?Logger $logger)
+    {
+        if (!array_key_exists($key, $debugBacktraceFormatFrame)) {
+            return null;
+        }
+
+        $value = $debugBacktraceFormatFrame[$key];
+        if ($value === null) {
+            return null;
+        }
+
+        if (!$isValueTypeFunc($value)) {
+            $logger && ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log(
+                'Unexpected type for value under key (expected ' . $dbgExpectedType . ')',
+                ['$key' => $key, 'value type' => DbgUtil::getType($value), 'value' => $value]
+            );
+            return null;
+        }
+
+        return $value;
+    }
+
+    public function copyLocationPropertiesFrom(StackTraceFrameBase $src): void
+    {
+        $this->file = $src->file;
+        $this->line = $src->line;
+    }
+
+    public function copyNonLocationPropertiesFrom(StackTraceFrameBase $src): void
+    {
+        $this->class = $src->class;
+        $this->function = $src->function;
+        $this->isStaticMethod = $src->isStaticMethod;
+        $this->thisObj = $src->thisObj;
+        $this->args = $src->args;
+    }
+
+    public function hasLocationProperties(): bool
+    {
+        return $this->file !== null || $this->line !== null;
+    }
+
+    public function hasNonLocationProperties(): bool
+    {
+        return $this->function !== null;
+    }
 }
