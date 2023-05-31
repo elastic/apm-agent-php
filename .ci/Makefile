@@ -75,17 +75,6 @@ run-phpt-tests: prepare  ## Runs phpt tests
 		/app/.ci/run-phpt-tests.sh
 	@echo "::endgroup::"
 
-# .PHONY: generate-for-package
-# generate-for-package: prepare  ## Generate the agent extension for the package
-# 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-# 	# docker as the current user
-# 	docker run --rm -t \
-# 		-v $(PWD):/app \
-# 		-u $(CURRENT_UID):$(CURRENT_GID) \
-# 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
-# 		/app/.ci/generate-for-package.sh
-# 	@echo "::endgroup::"
-
 .PHONY: interactive
 interactive: prepare  ## Run an interactive docker shell
 	docker run -it --rm \
