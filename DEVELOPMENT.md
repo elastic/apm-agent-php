@@ -7,26 +7,26 @@
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
 
 ```bash
-## To prepare the build docker container
+## To compile the library for all supported PHP releases for glibc Linux distributions
+BUILD_ARCHITECTURE=linux-x86-64 make -f .ci/Makefile build
+
+## To compile the library for all supported PHP releases for musl libc Linux distributions
+BUILD_ARCHITECTURE=linuxmusl-x86-64 make -f .ci/Makefile build
+
+## To prepare the docker container for testing
 PHP_VERSION=7.2 make -f .ci/Makefile prepare
 
-## To compile the library
-PHP_VERSION=7.2 make -f .ci/Makefile build
+## To run PHP tests of native extension (phpt)
+PHP_VERSION=7.2  make -f .ci/Makefile run-phpt-tests
 
 ## To run the unit test and static check
 PHP_VERSION=7.2 make -f .ci/Makefile static-check-unit-test
-
-## To generate the agent extension with the existing PHP API
-PHP_VERSION=7.2 make -f .ci/Makefile generate-for-package
 
 ## To run the component tests
 PHP_VERSION=7.2 make -f .ci/Makefile component-test
 
 ## To release given the GITHUB_TOKEN and TAG_NAME, it creates a draft release
 GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile draft-release
-
-## To generate the agent extension with the existing PHP API for alpine
-PHP_VERSION=7.2 DOCKERFILE=Dockerfile.alpine make -f .ci/Makefile generate-for-package
 
 ## Help goal will provide further details
 make -f .ci/Makefile help
