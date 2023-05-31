@@ -154,7 +154,7 @@ class MetadataDiscovererUnitTest extends TestCaseBase
         $expectedContainerId = $testArgs->getNullableString(self::EXPECTED_CONTAINER_ID_KEY);
         $tracer = TracerBuilderForTests::startNew()->build();
         self::assertInstanceOf(Tracer::class, $tracer);
-        $actualContainerId = (new MetadataDiscoverer($tracer->getConfig(), NoopLoggerFactory::singletonInstance()))->detectContainerIdImpl(
+        $actualContainerId = (new MetadataDiscoverer($tracer->getConfig(), NoopLoggerFactory::singletonInstance()))->discoverContainerIdImpl(
             function (string $fileName) use ($fileNameToContentsKey): ?string {
                 self::assertArrayHasKey($fileName, $fileNameToContentsKey);
                 $fileContentsKey = $fileNameToContentsKey[$fileName];

@@ -125,10 +125,7 @@ final class ComponentTestsPhpUnitExtension extends PhpUnitExtensionBase implemen
         }
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Test starting...',
-            ['test' => $test, 'Environment variables' => EnvVarUtilForTests::getAll()]
-        );
+        && $loggerProxy->log('Test starting...', ['test' => $test, 'Environment variables' => EnvVarUtilForTests::getAll()]);
 
         ConfigUtilForTests::assertAgentDisabled();
     }

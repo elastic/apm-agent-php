@@ -35,7 +35,7 @@ use Elastic\Apm\Impl\Tracer;
 abstract class PluginBase implements PluginInterface
 {
     /** @var AutoInstrumentationInterface[] */
-    private $enabledInstrumentations;
+    protected $enabledInstrumentations;
 
     /** @var Logger */
     private $logger;
@@ -68,7 +68,7 @@ abstract class PluginBase implements PluginInterface
         }
     }
 
-    protected function checkIfInstrumentationEnabled(AutoInstrumentationInterface $instr): bool
+    private function checkIfInstrumentationEnabled(AutoInstrumentationInterface $instr): bool
     {
         $isEnabled = $instr->isEnabled(/* ref */ $reasonIfDisabled);
 

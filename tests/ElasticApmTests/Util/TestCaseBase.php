@@ -682,6 +682,15 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCountAtLeast(int $expectedMinCount, $haystack): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+    }
+
+    /**
      * @inheritDoc
      *
      * @param int|float  $expected
@@ -1048,6 +1057,24 @@ class TestCaseBase extends TestCase
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;
+        }
+    }
+
+    public static function assertDirectoryDoesNotExist(string $directory, string $message = ''): void
+    {
+        /**
+         * Method assertDirectoryDoesNotExist was added in PHPUnit 9 as an alias for already existing assertDirectoryNotExists
+         * and assertDirectoryNotExists was deprecated.
+         * We still use PHPUnit 8.5 when testing under older PHP versions so we need a facade to work on both
+         *  - PHPUnit 8.5, where assertDirectoryDoesNotExist does not exist
+         *      and
+         *  - PHPUnit 9, where assertDirectoryNotExists is deprecated
+         */
+        if (method_exists(Assert::class, __FUNCTION__)) {
+            Assert::assertDirectoryDoesNotExist($directory, $message);
+        } else {
+            /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */
+            Assert::assertDirectoryNotExists($directory, $message);
         }
     }
 }
