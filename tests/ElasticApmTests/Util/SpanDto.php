@@ -161,11 +161,9 @@ class SpanDto extends ExecutionSegmentDto
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        TestCaseBase::assertSame($expectations->filename, $actual->filename);
-        TestCaseBase::assertSame($expectations->function, $actual->function);
-        if ($expectations->lineno->isValueSet()) {
-            TestCaseBase::assertSame($expectations->lineno->getValue(), $actual->lineno);
-        }
+        TestCaseBase::assertSameExpectedOptional($expectations->filename, $actual->filename);
+        TestCaseBase::assertSameExpectedOptional($expectations->function, $actual->function);
+        TestCaseBase::assertSameExpectedOptional($expectations->lineno, $actual->lineno);
     }
 
     public function assertEquals(SpanToSendInterface $original): void

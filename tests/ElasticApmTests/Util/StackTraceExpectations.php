@@ -44,12 +44,23 @@ final class StackTraceExpectations extends ExpectationsBase
      */
     public static function fromFrames(array $inputFrames, bool $allowToBePrefixOfActual): self
     {
-        $result = new self();
-
+        $framesExpectations = [];
         foreach ($inputFrames as $inputFrame) {
-            $result->frames[] = StackTraceFrameExpectations::fromFrame($inputFrame);
+            $framesExpectations[] = StackTraceFrameExpectations::fromFrame($inputFrame);
         }
+        return self::fromFramesExpectations($framesExpectations, $allowToBePrefixOfActual);
+    }
 
+    /**
+     * @param StackTraceFrameExpectations[] $framesExpectations
+     * @param bool                          $allowToBePrefixOfActual
+     *
+     * @return self
+     */
+    public static function fromFramesExpectations(array $framesExpectations, bool $allowToBePrefixOfActual): self
+    {
+        $result = new self();
+        $result->frames = $framesExpectations;
         $result->allowToBePrefixOfActual = $allowToBePrefixOfActual;
 
         return $result;

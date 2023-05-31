@@ -30,10 +30,10 @@ use Elastic\Apm\Impl\StackTraceFrame;
  */
 final class StackTraceFrameExpectations extends ExpectationsBase
 {
-    /** @var string */
+    /** @var Optional<string> */
     public $filename;
 
-    /** @var ?string */
+    /** @var Optional<?string> */
     public $function;
 
     /** @var Optional<int> */
@@ -41,14 +41,16 @@ final class StackTraceFrameExpectations extends ExpectationsBase
 
     public function __construct()
     {
+        $this->filename = new Optional();
+        $this->function = new Optional();
         $this->lineno = new Optional();
     }
 
     public static function fromFrame(StackTraceFrame $frame): self
     {
         $result = new self();
-        $result->filename = $frame->filename;
-        $result->function = $frame->function;
+        $result->filename->setValue($frame->filename);
+        $result->function->setValue($frame->function);
         $result->lineno->setValue($frame->lineno);
         return $result;
     }
@@ -56,9 +58,16 @@ final class StackTraceFrameExpectations extends ExpectationsBase
     public static function fromProps(string $filename, int $lineNumber, ?string $function = null): self
     {
         $result = new self();
-        $result->filename = $filename;
+        $result->filename->setValue($filename);
         $result->lineno->setValue($lineNumber);
-        $result->function = $function;
+        $result->function->setValue($function);
+        return $result;
+    }
+
+    public static function fromFunction(?string $function = null): self
+    {
+        $result = new self();
+        $result->function->setValue($function);
         return $result;
     }
 }
