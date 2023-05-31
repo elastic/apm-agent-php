@@ -89,9 +89,13 @@ rpm-info:  ## Show the rpm package metadata
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*-linux-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linux-x86-64*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*-linuxmusl-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linux-x86-64*.tar) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linuxmusl-x86-64*.tar) ;\
+	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linuxmusl-x86-64*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: prepare-apk
