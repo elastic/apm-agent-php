@@ -59,16 +59,53 @@ final class AutoInstrumentationUtil
         return ($className === null) ? $funcName : ($className . '->' . $funcName);
     }
 
-    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    private static function processNewSpan(SpanInterface $span): void
     {
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
-
         if ($span instanceof Span) {
             // Mark all spans created by auto-instrumentation as compressible
             $span->setCompressible(true);
         }
+    }
+
+    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
+
+        self::processNewSpan($span);
 
         return $span;
+    }
+
+    /**
+     * @template T
+     *
+     * @param string      $name      New span's name
+     * @param string      $type      New span's type
+     * @param Closure(SpanInterface $newSpan): T $callback
+     * @param string|null $subtype   New span's subtype
+     * @param string|null $action    New span's action
+     * @param float|null  $timestamp Start time of the new span
+     *
+     * @return  T The return value of $callback
+     */
+    public static function captureCurrentSpan(string $name, string $type, Closure $callback, ?string $subtype = null, ?string $action = null, ?float $timestamp = null)
+    {
+        return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
+            $name,
+            $type,
+            /**
+             * @param SpanInterface $newSpan
+             *
+             * @return  T The return value of $callback
+             */
+            function (SpanInterface $newSpan) use ($callback) {
+                self::processNewSpan($newSpan);
+                return $callback($newSpan);
+            },
+            $subtype,
+            $action,
+            $timestamp
+        );
     }
 
     /**
@@ -265,6 +302,19 @@ final class AutoInstrumentationUtil
     }
 
     /**
+     * @param mixed   $actualValue
+     * @param bool    $shouldCheckSyntaxOnly
+     * @param ?string $dbgParamName
+     *
+     * @return bool
+     */
+    public function verifyIsCallable($actualValue, bool $shouldCheckSyntaxOnly, ?string $dbgParamName = null): bool
+    {
+        $isCallable = is_callable($actualValue, $shouldCheckSyntaxOnly);
+        return $this->verifyType($isCallable, 'callable', $actualValue, $dbgParamName);
+    }
+
+    /**
      * @param int     $expectedMinArgsCount
      * @param mixed[] $interceptedCallArgs
      *
@@ -283,6 +333,30 @@ final class AutoInstrumentationUtil
                 'expected minimal number of arguments' => $expectedMinArgsCount,
                 'actual number of arguments'           => count($interceptedCallArgs),
                 'actual arguments'                     => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+            ]
+        );
+        return false;
+    }
+
+    /**
+     * @param int     $expectedArgsCount
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    public function verifyExactArgsCount(int $expectedArgsCount, array $interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) === $expectedArgsCount) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Actual number of arguments does not equal the expected number',
+            [
+                'expected number of arguments' => $expectedArgsCount,
+                'actual number of arguments'   => count($interceptedCallArgs),
+                'actual arguments'             => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         return false;

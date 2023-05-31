@@ -117,13 +117,15 @@ class SpanDto extends ExecutionSegmentDto
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
         if ($this->stackTrace === null) {
-            TestCaseBase::assertNull($expectations->stackTrace);
-            TestCaseBase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+            if ($expectations->stackTrace->isValueSet()) {
+                TestCaseBase::assertNull($expectations->stackTrace->getValue());
+            }
         } else {
             self::assertValidStacktrace($this->stackTrace);
-            if ($expectations->stackTrace !== null) {
-                TestCaseBase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
-                self::assertStackTraceMatches($expectations->stackTrace, $expectations->allowExpectedStackTraceToBePrefix, $this->stackTrace);
+            if ($expectations->stackTrace->isValueSet()) {
+                $stackTraceExpectations = $expectations->stackTrace->getValue();
+                TestCaseBase::assertNotNull($stackTraceExpectations);
+                self::assertStackTraceMatches($stackTraceExpectations, $this->stackTrace);
             }
         }
 
@@ -132,35 +134,38 @@ class SpanDto extends ExecutionSegmentDto
     }
 
     /**
-     * @param StackTraceFrame[] $expectedStackTrace
-     * @param bool              $allowExpectedStackTraceToBePrefix
-     * @param StackTraceFrame[] $actualStackTrace
+     * @param StackTraceExpectations $expectations
+     * @param StackTraceFrame[]      $actual
      *
      * @return void
      */
-    public static function assertStackTraceMatches(array $expectedStackTrace, bool $allowExpectedStackTraceToBePrefix, array $actualStackTrace): void
+    public static function assertStackTraceMatches(StackTraceExpectations $expectations, array $actual): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        if ($allowExpectedStackTraceToBePrefix) {
-            TestCaseBase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace));
+        if ($expectations->allowToBePrefixOfActual) {
+            TestCaseBase::assertGreaterThanOrEqual(count($expectations->frames), count($actual));
         } else {
-            TestCaseBase::assertSame(count($expectedStackTrace), count($actualStackTrace));
+            TestCaseBase::assertSame(count($expectations->frames), count($actual));
         }
-        $expectedStackTraceCount = count($expectedStackTrace);
-        $actualStackTraceCount = count($actualStackTrace);
+        $expectedStackTraceCount = count($expectations->frames);
+        $actualStackTraceCount = count($actual);
         $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
             $dbgCtx->clearCurrentSubScope(['i' => $i]);
-            $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
-            $dbgCtx->add(['$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1, 'expectedApmFrame' => $expectedApmFrame]);
-            $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
-            $dbgCtx->add(['$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1, 'actualApmFrame' => $actualApmFrame]);
-            TestCaseBase::assertSame(count($expectedApmFrame), count($actualApmFrame));
-            foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
-                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame);
-            }
+            self::assertStackTraceFrameMatches($expectations->frames[$i], $actual[$i]);
         }
         $dbgCtx->popSubScope();
+    }
+
+    public static function assertStackTraceFrameMatches(StackTraceFrameExpectations $expectations, StackTraceFrame $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        TestCaseBase::assertSame($expectations->filename, $actual->filename);
+        TestCaseBase::assertSame($expectations->function, $actual->function);
+        if ($expectations->lineno->isValueSet()) {
+            TestCaseBase::assertSame($expectations->lineno->getValue(), $actual->lineno);
+        }
     }
 
     public function assertEquals(SpanToSendInterface $original): void

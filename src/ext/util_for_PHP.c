@@ -310,3 +310,38 @@ bool detectOpcachePreload() {
 void enableAccessToServerGlobal() {
     zend_is_auto_global_str(ZEND_STRL("_SERVER"));
 }
+
+String streamZVal( const zval* zVal, TextOutputStream* txtOutStream )
+{
+    if ( zVal == NULL )
+    {
+        return "NULL";
+    }
+
+    int zValType = (int)Z_TYPE_P( zVal );
+    switch ( zValType )
+    {
+        case IS_STRING:
+        {
+            StringView strVw = zStringToStringView( Z_STR_P( zVal ) );
+            return streamPrintf( txtOutStream, "type: string, value [length: %"PRIu64"]: %.*s", (UInt64)(strVw.length), (int)(strVw.length), strVw.begin );
+        }
+
+        case IS_LONG:
+            return streamPrintf( txtOutStream, "type: long, value: %"PRId64, (Int64)(Z_LVAL_P( zVal )) );
+
+        case IS_DOUBLE:
+            return streamPrintf( txtOutStream, "type: double, value: %f", (double)(Z_DVAL_P( zVal )) );
+
+        case IS_NULL:
+            return streamPrintf( txtOutStream, "type: null" );
+
+        case IS_FALSE:
+            return streamPrintf( txtOutStream, "type: false" );
+        case IS_TRUE:
+            return streamPrintf( txtOutStream, "type: true " );
+
+        default:
+            return streamPrintf( txtOutStream, "type: %s (type ID as int: %d)", zend_get_type_by_const( zValType ), (int)zValType );
+    }
+}

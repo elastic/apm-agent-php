@@ -24,12 +24,13 @@
 #include "ConfigSnapshot_forward_decl.h"
 #include "time_util.h"
 
-ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
-
-void shutdownTracerPhpPart( const ConfigSnapshot* config );
+ResultCode tracerPhpPartOnRequestInit( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
+void tracerPhpPartOnRequestShutdown();
 
 bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
-
 void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
 
 void tracerPhpPartInterceptedCallEmptyMethod();
+
+void tracerPhpPartAstInstrumentationCallPreHook( zend_execute_data* execute_data, zval* return_value );
+void tracerPhpPartAstInstrumentationDirectCall( zend_execute_data* execute_data );

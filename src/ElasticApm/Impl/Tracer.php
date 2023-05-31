@@ -82,8 +82,11 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var bool */
     private $isRecording = true;
 
-    /** @var Metadata */
-    private $currentMetadata;
+    /** @var MetadataDiscoverer */
+    private $metadataDiscoverer;
+
+    /** @var ?Metadata */
+    private $cachedMetadata = null;
 
     /** @var HttpDistributedTracing */
     private $httpDistributedTracing;
@@ -98,8 +101,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->logBackend = new LogBackend($this->config->effectiveLogLevel(), $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
-        $this->logger = $this->loggerFactory
-            ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+        $this->logger = $this->loggerFactory->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -119,7 +121,7 @@ final class Tracer implements TracerInterface, LoggableInterface
                                ? new EventSender($this->config, $this->loggerFactory)
                                : NoopEventSink::singletonInstance());
 
-        $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config, $this->loggerFactory);
+        $this->metadataDiscoverer = new MetadataDiscoverer($this->config, $this->loggerFactory);
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
 
@@ -132,6 +134,11 @@ final class Tracer implements TracerInterface, LoggableInterface
     public function getConfig(): ConfigSnapshot
     {
         return $this->config;
+    }
+
+    public function getMetadataDiscoverer(): MetadataDiscoverer
+    {
+        return $this->metadataDiscoverer;
     }
 
     private function newTransactionBuilder(
@@ -466,12 +473,8 @@ final class Tracer implements TracerInterface, LoggableInterface
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
      * @param ?Transaction                    $transaction
      */
-    private function sendEventsToApmServer(
-        array $spans,
-        array $errors,
-        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?Transaction $transaction
-    ): void {
+    private function sendEventsToApmServer(array $spans, array $errors, ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction, ?Transaction $transaction): void
+    {
         if ($this->config->devInternal()->dropEventAfterEnd()) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
@@ -482,8 +485,12 @@ final class Tracer implements TracerInterface, LoggableInterface
             return;
         }
 
+        if ($this->cachedMetadata === null) {
+            $this->cachedMetadata = $this->metadataDiscoverer->discover();
+        }
+
         $this->eventSink->consume(
-            $this->currentMetadata,
+            $this->cachedMetadata,
             $spans,
             $errors,
             $breakdownMetricsPerTransaction,
@@ -526,22 +533,17 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @inheritDoc */
     public function setAgentEphemeralId(?string $ephemeralId): void
     {
-        assert(isset($this->currentMetadata->service->agent));
-        $this->currentMetadata->service->agent->ephemeralId = $this->limitNullableKeywordString($ephemeralId);
+        $this->metadataDiscoverer->setAgentEphemeralId($ephemeralId);
     }
 
     /** @inheritDoc */
     public function getSerializedCurrentDistributedTracingData(): string
     {
         /** @noinspection PhpDeprecationInspection */
-        $distTracingData = $this->currentTransaction !== null
-            ? $this->currentTransaction->getDistributedTracingData()
-            : null;
+        $distTracingData = $this->currentTransaction !== null ? $this->currentTransaction->getDistributedTracingData() : null;
 
         /** @noinspection PhpDeprecationInspection */
-        return $distTracingData !== null
-            ? $distTracingData->serializeToString()
-            : NoopDistributedTracingData::serializedToString();
+        return $distTracingData !== null ? $distTracingData->serializeToString() : NoopDistributedTracingData::serializedToString();
     }
 
     /** @inheritDoc */

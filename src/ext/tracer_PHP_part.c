@@ -22,6 +22,7 @@
 #include "Tracer.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "elastic_apm_API.h"
 #include "ConfigSnapshot.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
@@ -32,30 +33,93 @@
 #define ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "internalFuncCallPreHook"
 #define ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_POST_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "internalFuncCallPostHook"
 #define ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "emptyMethod"
+#define ELASTIC_APM_PHP_PART_AST_INSTRUMENTATION_PRE_HOOK_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "astInstrumentationPreHook"
+#define ELASTIC_APM_PHP_PART_AST_INSTRUMENTATION_DIRECT_CALL_FUNC ELASTIC_APM_PHP_PART_FUNC_PREFIX "astInstrumentationDirectCall"
+
+enum TracerPhpPartState
+{
+    tracerPhpPartState_before_bootstrap,
+    tracerPhpPartState_after_bootstrap,
+    tracerPhpPartState_after_shutdown,
+    tracerPhpPartState_failed,
+
+    numberOfTracerPhpPartState
+};
+typedef enum TracerPhpPartState TracerPhpPartState;
+
+StringView tracerPhpPartStateNames[ numberOfTracerPhpPartState ] =
+{
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( tracerPhpPartState_before_bootstrap ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( tracerPhpPartState_after_bootstrap ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( tracerPhpPartState_after_shutdown ),
+    ELASTIC_APM_ENUM_NAMES_ARRAY_PAIR( tracerPhpPartState_failed ),
+};
+
+#define ELASTIC_APM_UNKNOWN_TRACER_PHP_PART_STATE_AS_STRING "<UNKNOWN TracerPhpPartState>"
+
+static inline
+bool isValidTracerPhpPartState( TracerPhpPartState value )
+{
+    return ( tracerPhpPartState_before_bootstrap <= value ) && ( value < numberOfTracerPhpPartState );
+}
+
+static inline
+String tracerPhpPartStateToString( TracerPhpPartState value )
+{
+    if ( isValidTracerPhpPartState( value ) )
+    {
+        return tracerPhpPartStateNames[ value ].begin;
+    }
+    return ELASTIC_APM_UNKNOWN_TRACER_PHP_PART_STATE_AS_STRING;
+}
+
+static TracerPhpPartState g_tracerPhpPartState = numberOfTracerPhpPartState;
+
+void switchTracerPhpPartStateToFailed( String reason, String dbgCalledFromFunc )
+{
+    if ( g_tracerPhpPartState == tracerPhpPartState_failed )
+    {
+        return;
+    }
+
+    ELASTIC_APM_LOG_ERROR( "Switching tracer PHP part state to failed; reason: %s, current state: %s, called from %s"
+                           , reason, tracerPhpPartStateToString( g_tracerPhpPartState ), dbgCalledFromFunc );
+
+    g_tracerPhpPartState = tracerPhpPartState_failed;
+}
 
 ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
 {
-    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s"
-                                              , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ) );
-
     ResultCode resultCode;
+    bool shouldRevertLoadingAgentPhpCode = false;
     bool bootstrapTracerPhpPartRetVal;
     zval maxEnabledLevel;
     ZVAL_UNDEF( &maxEnabledLevel );
     zval requestInitStartTimeZval;
     ZVAL_UNDEF( &requestInitStartTimeZval );
 
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "config->bootstrapPhpPartFile: %s, g_tracerPhpPartState: %s"
+                                              , streamUserString( config->bootstrapPhpPartFile, &txtOutStream ), tracerPhpPartStateToString( g_tracerPhpPartState ) );
+    textOutputStreamRewind( &txtOutStream );
+
+    if ( g_tracerPhpPartState != tracerPhpPartState_before_bootstrap )
+    {
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
     if ( config->bootstrapPhpPartFile == NULL )
     {
-        // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
         GetConfigManagerOptionMetadataResult getMetaRes;
         getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTIC_APM_LOG_ERROR( "Configuration option `%s' is not set", getMetaRes.optName );
-        resultCode = resultSuccess;
-        goto finally;
+        switchTracerPhpPartStateToFailed( /* reason */ streamPrintf( &txtOutStream, "Configuration option `%s' is not set", getMetaRes.optName ), __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
+
+    elasticApmBeforeLoadingAgentPhpCode();
+    shouldRevertLoadingAgentPhpCode = true;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( loadPhpFile( config->bootstrapPhpPartFile ) );
 
@@ -73,32 +137,34 @@ ResultCode bootstrapTracerPhpPart( const ConfigSnapshot* config, const TimePoint
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
+    g_tracerPhpPartState = tracerPhpPartState_after_bootstrap;
     resultCode = resultSuccess;
 
     finally:
     zval_dtor( &requestInitStartTimeZval );
     zval_dtor( &maxEnabledLevel );
+    if ( shouldRevertLoadingAgentPhpCode )
+    {
+        elasticApmAfterLoadingAgentPhpCode();
+    }
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
 
     failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to bootstrap tracer PHP part", __FUNCTION__ );
     goto finally;
 }
 
-void shutdownTracerPhpPart( const ConfigSnapshot* config )
+void shutdownTracerPhpPart()
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;
 
-    if ( config->bootstrapPhpPartFile == NULL )
+    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
     {
-        // For now, we don't consider `bootstrap_php_part_file' option not being set as a failure
-        GetConfigManagerOptionMetadataResult getMetaRes;
-        getConfigManagerOptionMetadata( getGlobalTracer()->configManager, optionId_bootstrapPhpPartFile, &getMetaRes );
-        ELASTIC_APM_LOG_ERROR( "Configuration option `%s' is not set", getMetaRes.optName );
-        resultCode = resultSuccess;
-        goto finally;
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetVoid(
@@ -106,6 +172,7 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
             , /* argsCount */ 0
             , /* args */ NULL ) );
 
+    g_tracerPhpPartState = tracerPhpPartState_after_shutdown;
     resultCode = resultSuccess;
 
     finally:
@@ -116,8 +183,11 @@ void shutdownTracerPhpPart( const ConfigSnapshot* config )
     return;
 
     failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to shut down tracer PHP part", __FUNCTION__ );
     goto finally;
 }
+
+static uint32_t g_maxInterceptedCallArgsCount = 100;
 
 bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data )
 {
@@ -125,16 +195,17 @@ bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zen
 
     ResultCode resultCode;
     zval preHookRetVal;
-    bool shouldCallPostHook;
-
+    ZVAL_UNDEF( &preHookRetVal );
+    bool shouldCallPostHook = false;
     zval interceptRegistrationIdAsZval;
     ZVAL_UNDEF( &interceptRegistrationIdAsZval );
+    zval phpPartArgs[ g_maxInterceptedCallArgsCount + 2 ];
 
-    enum
+    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
     {
-        maxInterceptedCallArgsCount = 100
-    };
-    zval phpPartArgs[maxInterceptedCallArgsCount + 2];
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
 
     // The first argument to PHP part's interceptedCallPreHook() is $interceptRegistrationId
     ZVAL_LONG( &interceptRegistrationIdAsZval, interceptRegistrationId );
@@ -151,7 +222,7 @@ bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zen
     }
 
     uint32_t interceptedCallArgsCount;
-    getArgsFromZendExecuteData( execute_data, maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
+    getArgsFromZendExecuteData( execute_data, g_maxInterceptedCallArgsCount, &( phpPartArgs[ 2 ] ), &interceptedCallArgsCount );
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetZval(
                     ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_INTERNAL_FUNC_CALL_PRE_HOOK_FUNC )
@@ -177,6 +248,7 @@ bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zen
     return shouldCallPostHook;
 
     failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to call tracer PHP part", __FUNCTION__ );
     goto finally;
 }
 
@@ -187,6 +259,12 @@ void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId,
 
     ResultCode resultCode;
     zval phpPartArgs[ 2 ];
+
+    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
+    {
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
 
     // The first argument to PHP part's interceptedCallPostHook() is $hasExitedByException (bool)
     ZVAL_FALSE( &( phpPartArgs[ 0 ] ) );
@@ -211,6 +289,7 @@ void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId,
     return;
 
     failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to call tracer PHP part", __FUNCTION__ );
     goto finally;
 }
 
@@ -222,6 +301,12 @@ void tracerPhpPartInterceptedCallEmptyMethod()
     zval phpPartDummyArgs[ 1 ];
     ZVAL_UNDEF( &( phpPartDummyArgs[ 0 ] ) );
 
+    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
+    {
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             callPhpFunctionRetVoid(
                     ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_EMPTY_METHOD_FUNC )
@@ -230,7 +315,6 @@ void tracerPhpPartInterceptedCallEmptyMethod()
     ELASTIC_APM_LOG_TRACE( "Successfully finished call to PHP part" );
 
     resultCode = resultSuccess;
-
     finally:
 
     ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT();
@@ -238,5 +322,76 @@ void tracerPhpPartInterceptedCallEmptyMethod()
     return;
 
     failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to call tracer PHP part", __FUNCTION__ );
     goto finally;
+}
+
+void tracerPhpPartLogArguments( LogLevel logLevel, uint32_t argsCount, zval args[] )
+{
+    if ( maxEnabledLogLevel() < logLevel )
+    {
+        return;
+    }
+
+    char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_FOR_EACH_INDEX( i, argsCount )
+    {
+        ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Argument #%u: %s", (unsigned)i, streamZVal( &( args[ i ] ), &txtOutStream ) );
+    }
+}
+
+void tracerPhpPartForwardCall( StringView phpFuncName, zend_execute_data* execute_data, /* out */ zval* retVal, String dbgCalledFrom )
+{
+    ResultCode resultCode;
+    uint32_t callArgsCount;
+    zval callArgs[ g_maxInterceptedCallArgsCount ];
+
+    ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "phpFuncName: %s, dbgCalledFrom: %s", phpFuncName.begin, dbgCalledFrom );
+
+    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
+    {
+        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    getArgsFromZendExecuteData( execute_data, g_maxInterceptedCallArgsCount, &( callArgs[ 0 ] ), &callArgsCount );
+    tracerPhpPartLogArguments( logLevel_trace, callArgsCount, callArgs );
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( callPhpFunctionRetZval( phpFuncName, callArgsCount, callArgs, /* out */ retVal ) );
+
+    resultCode = resultSuccess;
+    finally:
+
+    ELASTIC_APM_LOG_TRACE_RESULT_CODE_FUNCTION_EXIT_MSG( "retVal type: %s (type ID as int: %d)", zend_get_type_by_const( (int)Z_TYPE_P( retVal ) ), (int)Z_TYPE_P( retVal ) );
+    ELASTIC_APM_UNUSED( resultCode );
+    return;
+
+    failure:
+    switchTracerPhpPartStateToFailed( /* reason */ "Failed to call tracer PHP part", __FUNCTION__ );
+    ZVAL_NULL( retVal );
+    goto finally;
+}
+
+void tracerPhpPartAstInstrumentationCallPreHook( zend_execute_data* execute_data, zval* return_value )
+{
+    tracerPhpPartForwardCall( ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_AST_INSTRUMENTATION_PRE_HOOK_FUNC ), execute_data, /* out */ return_value, __FUNCTION__ );
+}
+
+void tracerPhpPartAstInstrumentationDirectCall( zend_execute_data* execute_data )
+{
+    zval unusedRetVal;
+    tracerPhpPartForwardCall( ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_PHP_PART_AST_INSTRUMENTATION_DIRECT_CALL_FUNC ), execute_data, /* out */ &unusedRetVal, __FUNCTION__ );
+}
+
+ResultCode tracerPhpPartOnRequestInit( const ConfigSnapshot* config, const TimePoint* requestInitStartTime )
+{
+    g_tracerPhpPartState = tracerPhpPartState_before_bootstrap;
+    return bootstrapTracerPhpPart( config, requestInitStartTime );
+}
+
+void tracerPhpPartOnRequestShutdown()
+{
+    shutdownTracerPhpPart();
 }
