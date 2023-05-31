@@ -36,6 +36,8 @@ use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\MixedMap;
+use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use stdClass;
 
@@ -92,6 +94,9 @@ final class WordPressMockBridge
 
     /** @var array<callable(): void> */
     public static $removeFilterCalls = [];
+
+    /** @var StackTraceFrame */
+    public static $expectedCallbackStackTraceTopFrame;
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
     public const MOCK_PLUGIN_HOOK_NAME = 'media_upload_newtab';
@@ -392,20 +397,25 @@ final class WordPressMockBridge
     }
 
     /**
-     * @param null|StackTraceFrame[] &$var
+     * @param null|StackTraceFrame[] &$stackTrace
      *
      * @return void
      */
-    public static function setCallbackStackTrace(/* ref */ ?array &$var): void
+    public static function setCallbackStackTrace(/* ref */ ?array &$stackTrace): void
     {
-        if ($var === null) {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        if ($stackTrace === null) {
             /**
              * numberOfStackFramesToSkip is 3 to skip
              *      1) This method
              *      2) callback
-             *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
+             *      3) call_user_func_array in WordPressFilterCallbackWrapper::__invoke (or WordPressMockWpHook::mockApplyFilters if WordPress instrumentation is disabled)
              */
-            $var = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 3);
+            $stackTrace = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 3);
+            $dbgCtx->add(['stackTrace' => $stackTrace]);
+            TestCaseBase::assertCountAtLeast(1, $stackTrace);
+            SpanDto::assertStackTraceFrameMatches(StackTraceFrameExpectations::fromFrame(self::$expectedCallbackStackTraceTopFrame), $stackTrace[0]);
         }
     }
 

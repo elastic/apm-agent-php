@@ -147,10 +147,8 @@ class SpanDto extends ExecutionSegmentDto
         } else {
             TestCaseBase::assertSame(count($expectations->frames), count($actual));
         }
-        $expectedStackTraceCount = count($expectations->frames);
-        $actualStackTraceCount = count($actual);
         $dbgCtx->pushSubScope();
-        foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
+        foreach (RangeUtil::generateUpTo(count($expectations->frames)) as $i) {
             $dbgCtx->clearCurrentSubScope(['i' => $i]);
             self::assertStackTraceFrameMatches($expectations->frames[$i], $actual[$i]);
         }
