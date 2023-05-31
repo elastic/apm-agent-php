@@ -397,7 +397,7 @@ final class WordPressMockBridge
     }
 
     /**
-     * @param null|StackTraceFrame[] &$var
+     * @param null|StackTraceFrame[] &$stackTrace
      *
      * @return void
      */
