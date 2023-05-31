@@ -129,11 +129,11 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linux-x86-64
-          path: build/ext/linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/ext
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linuxmusl-x86-64
-          path: build/ext/linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/ext
       - name: package
         run: make -C packaging package
       - name: package info
@@ -182,11 +182,11 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linux-x86-64
-          path: build/ext/linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/ext
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linuxmusl-x86-64
-          path: build/ext/linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/ext
           
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
