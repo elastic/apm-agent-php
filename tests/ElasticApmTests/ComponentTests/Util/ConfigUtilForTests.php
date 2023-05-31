@@ -110,4 +110,16 @@ final class ConfigUtilForTests
             }
         }
     }
+
+    /**
+     * @param string                $optName
+     * @param string|int|float|bool $optVal
+     *
+     * @return bool
+     */
+    public static function isAgentOptionDefaultValue(string $optName, $optVal): bool
+    {
+        $optMeta = AllOptionsMetadata::get()[$optName];
+        return $optVal === $optMeta->defaultValue();
+    }
 }

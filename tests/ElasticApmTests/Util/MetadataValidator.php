@@ -96,6 +96,16 @@ final class MetadataValidator
         TestCaseBase::assertSameExpectedOptional($expected->serviceNodeConfiguredName, $actual->nodeConfiguredName);
         TestCaseBase::assertSameExpectedOptional($expected->serviceVersion, $actual->version);
         TestCaseBase::assertSameExpectedOptional($expected->serviceEnvironment, $actual->environment);
+
+        if ($expected->serviceFramework->isValueSet()) {
+            if ($expected->serviceFramework->getValue() === null) {
+                TestCaseBase::assertNull($actual->framework);
+            } else {
+                TestCaseBase::assertNotNull($actual->framework);
+                TestCaseBase::assertSame($expected->serviceFramework->getValue()->name, $actual->framework->name);
+                TestCaseBase::assertSame($expected->serviceFramework->getValue()->version, $actual->framework->version);
+            }
+        }
     }
 
     public static function validateServiceDataEx(ServiceData $serviceData): void

@@ -35,6 +35,10 @@ final class OptionNames
     use StaticClassTrait;
 
     public const API_KEY = 'api_key';
+    public const AST_PROCESS_ENABLED = 'ast_process_enabled';
+    public const AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE = 'ast_process_debug_dump_converted_back_to_source';
+    public const AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX = 'ast_process_debug_dump_for_path_prefix';
+    public const AST_PROCESS_DEBUG_DUMP_OUT_DIR = 'ast_process_debug_dump_out_dir';
     public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const CAPTURE_ERRORS = 'capture_errors';

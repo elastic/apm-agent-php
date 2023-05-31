@@ -26,7 +26,6 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 
 /**
@@ -153,12 +152,14 @@ class Error implements SerializableDataInterface, LoggableInterface
             $result->parentId = ($span === null ? $transaction->getId() : $span->getId());
         }
 
-        if (
-            $errorExceptionData->stacktrace !== null
-            && !ArrayUtil::isEmpty($errorExceptionData->stacktrace)
-            && ($topFrameFunction = $errorExceptionData->stacktrace[0]->function) !== null
-        ) {
-            $result->culprit = Tracer::limitKeywordString($topFrameFunction);
+        // Set culprit to the highest frame non-null 'function'
+        if ($errorExceptionData->stacktrace !== null) {
+            foreach ($errorExceptionData->stacktrace as $stackTraceFrame) {
+                if ($stackTraceFrame->function !== null) {
+                    $result->culprit = Tracer::limitKeywordString($stackTraceFrame->function);
+                    break;
+                }
+            }
         }
 
         $result->exception = $errorExceptionData;

@@ -7,7 +7,7 @@ function printInfoAboutEnvironment () {
     echo 'Installed PHP extensions:'
     php -m
     echo 'Set Elastic related environment variables:'
-    env | grep ELASTIC || true
+    env | grep -i elastic | sort || true
 }
 
 function runComponentTests () {

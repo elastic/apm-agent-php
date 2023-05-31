@@ -159,7 +159,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
          * @phpstan-ignore-next-line
          */
         $shortClassName = $this->stackFrame->class === null ? null : ClassNameUtil::fqToShort($this->stackFrame->class);
-        $this->name = StackTraceUtil::convertClassAndMethodToFunctionName(
+        $this->name = StackTraceUtil::buildFunctionNameForClassMethod(
             $shortClassName,
             $this->stackFrame->isStaticMethod,
             $this->stackFrame->function

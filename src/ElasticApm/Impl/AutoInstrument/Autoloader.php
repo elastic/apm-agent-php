@@ -83,7 +83,25 @@ final class Autoloader
                 __LINE__,
                 __FUNCTION__
             );
+
+            /**
+             * elastic_apm_* functions are provided by the elastic_apm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            \elastic_apm_before_loading_agent_php_code();
+
             require $classSrcFileAbsolute;
+
+            /**
+             * elastic_apm_* functions are provided by the elastic_apm extension
+             *
+             * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
+             * @phpstan-ignore-next-line
+             */
+            \elastic_apm_after_loading_agent_php_code();
+
             BootstrapStageLogger::logTrace(
                 "After require `$classSrcFileAbsolute' ...",
                 __LINE__,

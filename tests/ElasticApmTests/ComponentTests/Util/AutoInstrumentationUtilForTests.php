@@ -29,8 +29,8 @@ final class AutoInstrumentationUtilForTests
 {
     use StaticClassTrait;
 
-    public const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
-    public const IS_INSTRUMENTATION_ENABLED_KEY = 'IS_INSTRUMENTATION_ENABLED';
+    public const DISABLE_INSTRUMENTATIONS_KEY = 'disable_instrumentations';
+    public const IS_INSTRUMENTATION_ENABLED_KEY = 'is_instrumentation_enabled';
 
     /**
      * @param array<string, bool> $disableInstrumentationsVariants
