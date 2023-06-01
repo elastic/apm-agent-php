@@ -17,7 +17,7 @@ BUILD_ARCHITECTURE=linuxmusl-x86-64 make -f .ci/Makefile build
 PHP_VERSION=7.2 make -f .ci/Makefile prepare
 
 ## To run PHP tests of native extension (phpt)
-PHP_VERSION=7.2  make -f .ci/Makefile run-phpt-tests
+BUILD_ARCHITECTURE=linux-x86-64 PHP_VERSION=7.2  make -f .ci/Makefile run-phpt-tests
 
 ## To run the unit test and static check
 PHP_VERSION=7.2 make -f .ci/Makefile static-check-unit-test
