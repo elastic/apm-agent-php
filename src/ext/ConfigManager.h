@@ -66,6 +66,10 @@ enum OptionId
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
+    optionId_astProcessEnabled,
+    optionId_astProcessDebugDumpConvertedBackToSource,
+    optionId_astProcessDebugDumpForPathPrefix,
+    optionId_astProcessDebugDumpOutDir,
     optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
@@ -218,6 +222,20 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 #define ELASTIC_APM_CFG_OPT_NAME_ASSERT_LEVEL "assert_level"
 #   endif
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED "ast_process_enabled"
+
+/**
+ * Internal configuration options (not included in public documentation)
+ * In addition to supportability this option is used by component tests as well.
+ * @see tests/ElasticApmTests/ComponentTests/WordPressAutoInstrumentationTest.php
+ */
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE "ast_process_debug_dump_converted_back_to_source"
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX "ast_process_debug_dump_for_path_prefix"
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_OUT_DIR "ast_process_debug_dump_out_dir"
 
 /**
  * Internal configuration option (not included in public documentation)

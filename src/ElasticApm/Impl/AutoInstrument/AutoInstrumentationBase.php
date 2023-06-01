@@ -55,6 +55,14 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
             return false;
         }
 
+        $isUserlandCodeInstrumentationEnabled = $this->tracer->getConfig()->astProcessEnabled();
+        if ($this->requiresUserlandCodeInstrumentation() && (!$isUserlandCodeInstrumentationEnabled)) {
+            $reason = 'Instrumentation ' . $this->name() . ' needs userland code instrumentation'
+                      . ' but AST-process is the only currently supported mechanism to instrument userland code and it is DISABLED'
+                      . ' (via ' . OptionNames::AST_PROCESS_ENABLED . ' configuration option)';
+            return false;
+        }
+
         $disabledInstrumentationsMatcher = $this->tracer->getConfig()->disableInstrumentations();
         if ($disabledInstrumentationsMatcher === null) {
             return true;
@@ -81,6 +89,14 @@ abstract class AutoInstrumentationBase implements AutoInstrumentationInterface, 
      * @return bool
      */
     public function requiresAttachContextToExternalObjects(): bool
+    {
+        return false;
+    }
+
+    /**
+     * @return bool
+     */
+    public function requiresUserlandCodeInstrumentation(): bool
     {
         return false;
     }

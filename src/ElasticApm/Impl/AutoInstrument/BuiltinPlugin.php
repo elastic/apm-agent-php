@@ -32,20 +32,32 @@ use Elastic\Apm\Impl\Tracer;
  */
 final class BuiltinPlugin extends PluginBase
 {
+    /** @var ?WordPressAutoInstrumentation */
+    private $wordPressAutoInstrumentationIfEnabled;
+
     public function __construct(Tracer $tracer)
     {
+        $wordPressAutoInstrumentation = new WordPressAutoInstrumentation($tracer);
         parent::__construct(
             $tracer,
             [
                 new CurlAutoInstrumentation($tracer),
                 new PDOAutoInstrumentation($tracer),
                 new MySQLiAutoInstrumentation($tracer),
+                $wordPressAutoInstrumentation
             ]
         );
+
+        $this->wordPressAutoInstrumentationIfEnabled = in_array($wordPressAutoInstrumentation, $this->enabledInstrumentations, /* strict */ true)  ? $wordPressAutoInstrumentation : null;
     }
 
     public function getDescription(): string
     {
         return 'BUILT-IN';
+    }
+
+    public function getWordPressAutoInstrumentationIfEnabled(): ?WordPressAutoInstrumentation
+    {
+        return $this->wordPressAutoInstrumentationIfEnabled;
     }
 }

@@ -105,3 +105,6 @@ void enableAccessToServerGlobal();
         } \
     } while( 0 ) \
     /**/
+
+
+String streamZVal( const zval* zVal, TextOutputStream* txtOutStream );

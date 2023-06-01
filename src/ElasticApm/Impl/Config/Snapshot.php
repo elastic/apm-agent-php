@@ -99,6 +99,18 @@ final class Snapshot implements LoggableInterface
     private $apiKey;
 
     /** @var bool */
+    private $astProcessEnabled;
+
+    /** @var bool */
+    private $astProcessDebugDumpConvertedBackToSource;
+
+    /** @var string */
+    private $astProcessDebugDumpForPathPrefix;
+
+    /** @var string */
+    private $astProcessDebugDumpOutDir;
+
+    /** @var bool */
     private $asyncBackendComm;
 
     /** @var bool */
@@ -244,6 +256,11 @@ final class Snapshot implements LoggableInterface
     public function parsedValueFor(string $optName)
     {
         return $this->optNameToParsedValue[$optName];
+    }
+
+    public function astProcessEnabled(): bool
+    {
+        return $this->astProcessEnabled;
     }
 
     public function breakdownMetrics(): bool

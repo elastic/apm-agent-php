@@ -26,19 +26,18 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\SpanInterface;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
-use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
+use ElasticApmTests\TestsSharedCode\SpanStackTraceTestSharedCode;
 
 /**
  * @group smoke
  * @group does_not_require_external_services
  */
-class StackTraceComponentTest extends ComponentTestCaseBase
+class SpanStackTraceComponentTest extends ComponentTestCaseBase
 {
     /**
      * Tests in this class specifiy expected spans individually
@@ -58,10 +57,10 @@ class StackTraceComponentTest extends ComponentTestCaseBase
     {
         /** @var array<string, mixed> */
         $expectedData = [];
-        $createSpanApis = StackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
+        $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
 
         foreach ($createSpanApis as $createSpan) {
-            (new StackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
+            (new SpanStackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
         }
 
         return ['expectedData' => $expectedData, 'createSpanApis' => $createSpanApis];
@@ -95,7 +94,7 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans($expectedMinSpansCount, PHP_INT_MAX)
         );
-        StackTraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
+        SpanStackTraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
     }
 
     public function testTopLevelTransactionBeginCurrentSpanApi(): void
@@ -117,17 +116,11 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $actualStacktrace = $span->stackTrace;
         self::assertNotNull($actualStacktrace);
         self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
-        /** @var string */
+        /** @var string $expectedFileName */
         $expectedFileName = self::getLabel($span, 'top_level_code_span_end_file_name');
         self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);
         self::assertSame($expectedFileName, $actualStacktrace[0]->filename);
-        self::assertSame(
-            self::getLabel($span, 'top_level_code_span_end_line_number'),
-            $actualStacktrace[0]->lineno
-        );
-        self::assertSame(
-            StackTraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
-            $actualStacktrace[0]->function
-        );
+        self::assertSame(self::getLabel($span, 'top_level_code_span_end_line_number'), $actualStacktrace[0]->lineno);
+        self::assertNull($actualStacktrace[0]->function);
     }
 }

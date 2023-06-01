@@ -63,10 +63,11 @@ final class StackTraceFrame implements SerializableDataInterface, LoggableInterf
      */
     public $lineno;
 
-    public function __construct(string $filename, int $lineno)
+    public function __construct(string $filename, int $lineno, ?string $function = null)
     {
         $this->filename = $filename;
         $this->lineno = $lineno;
+        $this->function = $function;
     }
 
     /** @inheritDoc */

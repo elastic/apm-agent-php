@@ -84,7 +84,7 @@ pipeline {
             }
           }
         }
-        stage('Build binaries and basic testing') {
+        stage('DUMMY change - Build binaries and basic testing') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true

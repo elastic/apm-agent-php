@@ -26,17 +26,20 @@ namespace ElasticApmTests\UnitTests\UtilTests;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\PhpFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\StackTraceFrameBase;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\StackTraceExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 
 class StackTraceUtilTest extends TestCaseBase
@@ -73,7 +76,7 @@ class StackTraceUtilTest extends TestCaseBase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        $actualFuncName = StackTraceUtil::convertClassAndMethodToFunctionName($classicName, $isStaticMethod, $methodName);
+        $actualFuncName = StackTraceUtil::buildFunctionNameForClassMethod($classicName, $isStaticMethod, $methodName);
         $dbgCtx->add(['actualFuncName' => $actualFuncName]);
 
         self::assertSame($expectedFuncName, $actualFuncName);
@@ -103,7 +106,62 @@ class StackTraceUtilTest extends TestCaseBase
         return $newFrame;
     }
 
-    public function testSimpleConvertPhpVsClassicFormats(): void
+    /**
+     * @param int  $param
+     * @param int &$topFrameExpectedLine
+     *
+     * @return ClassicFormatStackTraceFrame[]
+     *
+     * @noinspection PhpSameParameterValueInspection
+     * @noinspection PhpUnusedParameterInspection
+     */
+    private static function helperForTestSimpleCaptureClassicFormat(int $param, int &$topFrameExpectedLine): array
+    {
+        $captureArgs = [
+            NoopLoggerFactory::singletonInstance(),
+            0 /* <- offset */,
+            null /* <- maxNumberOfFrames */,
+            true /* <- includeElasticApmFrames */,
+            true /* <- includeArgs */,
+            true /* <- includeThisObj */,
+        ];
+        $topFrameExpectedLine = __LINE__ + 1;
+        return StackTraceUtil::captureInClassicFormat(...$captureArgs);
+    }
+
+    public function testSimpleCaptureClassicFormat(): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        $topFrameExpectedLine = 0;
+        $secondFrameExpectedLine = __LINE__ + 1;
+        $actualCapturedStackTrace = self::helperForTestSimpleCaptureClassicFormat(123, /* out */ $topFrameExpectedLine);
+        $dbgCtx->add(['actualCapturedStackTrace' => $actualCapturedStackTrace, 'topFrameExpectedLine' => $topFrameExpectedLine, 'secondFrameExpectedLine' => $secondFrameExpectedLine]);
+
+        $topFrame = $actualCapturedStackTrace[0];
+        self::assertSame(__FILE__, $topFrame->file);
+        self::assertSame($topFrameExpectedLine, $topFrame->line);
+        self::assertSame('helperForTestSimpleCaptureClassicFormat', $topFrame->function);
+        self::assertSame(__CLASS__, $topFrame->class);
+        self::assertTrue($topFrame->isStaticMethod);
+        self::assertNull($topFrame->thisObj);
+        self::assertNotNull($topFrame->args);
+        self::assertCount(2, $topFrame->args);
+        self::assertSame(123, $topFrame->args[0]);
+
+        self::assertGreaterThanOrEqual(2, count($actualCapturedStackTrace));
+        $secondFrame = $actualCapturedStackTrace[1];
+        self::assertSame(__FILE__, $secondFrame->file);
+        self::assertSame($secondFrameExpectedLine, $secondFrame->line);
+        self::assertSame(__FUNCTION__, $secondFrame->function);
+        self::assertSame(__CLASS__, $secondFrame->class);
+        self::assertFalse($secondFrame->isStaticMethod);
+        self::assertNotNull($secondFrame->thisObj);
+        self::assertNotNull($secondFrame->args);
+        self::assertCount(0, $secondFrame->args);
+    }
+
+    public function testSimpleConvertPhpToFromClassicFormat(): void
     {
         $phpFormatStackTrace = [
             self::buildPhpFormatFrame(
@@ -133,6 +191,11 @@ class StackTraceUtilTest extends TestCaseBase
         $expectedPhpFormatConvertedToClassic = [
             self::buildClassicFormatFrame(
                 [
+                    StackTraceUtil::FUNCTION_KEY => 'someOtherHelperMethod',
+                ]
+            ),
+            self::buildClassicFormatFrame(
+                [
                     StackTraceUtil::FILE_KEY     => 'Helper.php',
                     StackTraceUtil::LINE_KEY     => 333,
                     StackTraceUtil::CLASS_KEY    => 'Helper',
@@ -153,43 +216,8 @@ class StackTraceUtilTest extends TestCaseBase
                 ]
             ),
         ];
-        $actualPhpFormatConvertedToClassic = StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($phpFormatStackTrace);
-        self::assertStackTraceMatchesExpected($expectedPhpFormatConvertedToClassic, $actualPhpFormatConvertedToClassic);
-
-        $expectedConvertedBackToPhpFormat = [
-            self::buildPhpFormatFrame(
-                [
-                    StackTraceUtil::FILE_KEY => 'Helper.php',
-                    StackTraceUtil::LINE_KEY => 333,
-                ]
-            ),
-            self::buildPhpFormatFrame(
-                [
-                    StackTraceUtil::FILE_KEY     => 'main.php',
-                    StackTraceUtil::LINE_KEY     => 22,
-                    StackTraceUtil::CLASS_KEY    => 'Helper',
-                    StackTraceUtil::FUNCTION_KEY => 'someHelperMethod',
-                    'any_other_key'              => 'any_other_key value for Helper::someHelperMethod',
-                ]
-            ),
-            self::buildPhpFormatFrame(
-                [
-                    StackTraceUtil::FILE_KEY     => 'bootstrap.php',
-                    StackTraceUtil::LINE_KEY     => 1,
-                    StackTraceUtil::FUNCTION_KEY => 'main',
-                    'any_other_key'              => 'any_other_key value for main',
-                ]
-            ),
-        ];
-        $actualConvertedBackToPhpFormat = StackTraceUtil::convertClassicToPhpFormat($actualPhpFormatConvertedToClassic);
-        self::assertStackTraceMatchesExpected($expectedConvertedBackToPhpFormat, $actualConvertedBackToPhpFormat);
-    }
-
-    private static function buildApmFormatFrame(string $file, int $line, ?string $func): StackTraceFrame
-    {
-        $newFrame = new StackTraceFrame($file, $line);
-        $newFrame->function = $func;
-        return $newFrame;
+        self::assertStackTraceMatchesExpected($expectedPhpFormatConvertedToClassic, StackTraceUtil::convertPhpToClassicFormat($phpFormatStackTrace));
+        self::assertStackTraceMatchesExpected($phpFormatStackTrace, StackTraceUtil::convertClassicToPhpFormat($expectedPhpFormatConvertedToClassic));
     }
 
     /**
@@ -200,7 +228,7 @@ class StackTraceUtilTest extends TestCaseBase
      */
     public static function assertEqualApmStackTraces(array $expectedStackTrace, array $actualStackTrace): void
     {
-        SpanDto::assertStackTraceMatches($expectedStackTrace, false /* <- allowExpectedStackTraceToBePrefix */, $actualStackTrace);
+        SpanDto::assertStackTraceMatches(StackTraceExpectations::fromFrames($expectedStackTrace, /* allowExpectedStackTraceToBePrefix */ false), $actualStackTrace);
     }
 
     public function testSimpleConvertClassicToApmFormat(): void
@@ -211,7 +239,7 @@ class StackTraceUtilTest extends TestCaseBase
                     StackTraceUtil::FILE_KEY     => 'Helper2.php',
                     StackTraceUtil::LINE_KEY     => 4444,
                     StackTraceUtil::CLASS_KEY    => 'Helper2',
-                    StackTraceUtil::FUNCTION_KEY => 'someStaticHelperMethod',
+                    StackTraceUtil::FUNCTION_KEY => 'helper2StaticMethod',
                     StackTraceUtil::TYPE_KEY     => '::',
                 ]
             ),
@@ -220,7 +248,7 @@ class StackTraceUtilTest extends TestCaseBase
                     StackTraceUtil::FILE_KEY     => 'Helper.php',
                     StackTraceUtil::LINE_KEY     => 333,
                     StackTraceUtil::CLASS_KEY    => 'Helper',
-                    StackTraceUtil::FUNCTION_KEY => 'someHelperMethod',
+                    StackTraceUtil::FUNCTION_KEY => 'helperMethod',
                     StackTraceUtil::TYPE_KEY     => '->',
                 ]
             ),
@@ -240,10 +268,10 @@ class StackTraceUtilTest extends TestCaseBase
         ];
 
         $expectedApmFormatStackTrace = [
-            self::buildApmFormatFrame('Helper2.php', 4444, 'Helper2::someStaticHelperMethod'),
-            self::buildApmFormatFrame('Helper.php', 333, 'Helper->someHelperMethod'),
-            self::buildApmFormatFrame('main.php', 22, 'main'),
-            self::buildApmFormatFrame('bootstrap.php', 1, null),
+            new StackTraceFrame('Helper2.php', 4444, null),
+            new StackTraceFrame('Helper.php', 333, 'Helper2::helper2StaticMethod'),
+            new StackTraceFrame('main.php', 22, 'Helper->helperMethod'),
+            new StackTraceFrame('bootstrap.php', 1, 'main'),
         ];
 
         $actualApmFormatStackTrace = StackTraceUtil::convertClassicToApmFormat($classicFormatStackTrace);
@@ -285,7 +313,7 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @return iterable<string, array{bool, bool, ?int}>
      */
-    public function dataProviderForTestSimpleCapture(): iterable
+    public function dataProviderForTestCapture(): iterable
     {
         /**
          * @return iterable<array<string, mixed>>
@@ -294,7 +322,11 @@ class StackTraceUtilTest extends TestCaseBase
             foreach ([null, 0, 1, 2, 3, self::VERY_LARGE_STACK_TRACE_SIZE_LIMIT] as $maxNumberOfFrames) {
                 foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeArgs) {
                     foreach (IterableUtilForTests::ALL_BOOL_VALUES as $includeThisObj) {
-                        yield [$maxNumberOfFrames, $includeArgs, $includeThisObj];
+                        yield [
+                            'maxNumberOfFrames' => $maxNumberOfFrames,
+                            'includeArgs'       => $includeArgs,
+                            'includeThisObj'    => $includeThisObj,
+                        ];
                     }
                 }
             }
@@ -303,9 +335,9 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderForTestSimpleCapture
+     * @dataProvider dataProviderForTestCapture
      */
-    public function testSimpleCapturePhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
+    public function testCapturePhpFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
@@ -394,9 +426,9 @@ class StackTraceUtilTest extends TestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderForTestSimpleCapture
+     * @dataProvider dataProviderForTestCapture
      */
-    public function testSimpleCaptureClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
+    public function testCaptureClassicFormat(?int $maxNumberOfFrames, bool $includeArgs, bool $includeThisObj): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
@@ -554,6 +586,11 @@ class StackTraceUtilTest extends TestCaseBase
         return self::funcImpl(/* thisObj */ null, $funcDepth, $testArgs, __FUNCTION__, /* isStatic */ true, __LINE__);
     }
 
+    private static function isLocationProperty(string $propName): bool
+    {
+        return $propName === 'file' || $propName === 'line';
+    }
+
     /**
      * @param PhpFormatStackTraceFrame[]     $phpFormatStackTrace
      * @param ClassicFormatStackTraceFrame[] $classicFormatStackTrace
@@ -580,7 +617,7 @@ class StackTraceUtilTest extends TestCaseBase
                     continue;
                 }
                 $dbgCtx->clearCurrentSubScope(['propName' => $propName, 'classicVal' => $classicVal]);
-                if (StackTraceFrameBase::isLocationProperty($propName)) {
+                if (self::isLocationProperty($propName)) {
                     self::assertSame($classicVal, $phpFrameWithLocationData->{$propName});
                 } else {
                     if ($phpFrameWithNonLocationData !== null) {
@@ -782,6 +819,15 @@ class StackTraceUtilTest extends TestCaseBase
         return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($generator);
     }
 
+    private static function resetNonLocationProperties(StackTraceFrameBase $frame): void
+    {
+        $frame->class = null;
+        $frame->function = null;
+        $frame->isStaticMethod = null;
+        $frame->thisObj = null;
+        $frame->args = null;
+    }
+
     /**
      * @dataProvider dataProviderForTestConvertPhpFormatToClassic
      */
@@ -852,9 +898,9 @@ class StackTraceUtilTest extends TestCaseBase
         $expectedConvertedClassicAdapted = $expectedConvertedClassic;
         if ($isLimitEffective) {
             $bottomFrame = $expectedConvertedClassicAdapted[count($expectedConvertedClassicAdapted) - 1];
-            $bottomFrame->resetNonLocationProperties();
+            self::resetNonLocationProperties($bottomFrame);
         }
-        self::assertStackTraceMatchesExpected($expectedConvertedClassicAdapted, StackTraceUtil::convertPhpToClassicFormatOmitTopFrame($actualCapturedPhp));
+        self::assertStackTraceMatchesExpected($expectedConvertedClassicAdapted, StackTraceUtil::convertPhpToClassicFormat($actualCapturedPhp));
 
         $actualCapturedPhpAdapted = $actualCapturedPhp;
         $actualCapturedPhpAdapted[0] = clone $actualCapturedPhpAdapted[0];
@@ -862,5 +908,87 @@ class StackTraceUtilTest extends TestCaseBase
         self::assertPhpFormatMatchesClassic($actualCapturedPhpAdapted, $expectedCapturedClassic);
         self::assertPhpFormatMatchesClassic($actualCapturedPhpAdapted, $actualCapturedClassic);
         self::assertStackTraceMatchesExpected($actualCapturedPhpAdapted, StackTraceUtil::convertClassicToPhpFormat($actualCapturedClassic));
+    }
+
+    public static function buildFunctionNameForClassMethod(string $className, string $methodName): string
+    {
+        return $className . '->' . $methodName;
+    }
+
+    public static function buildFunctionNameForClassStaticMethod(string $className, string $methodName): string
+    {
+        return $className . '::' . $methodName;
+    }
+
+    private const MANUALLY_BUILT_STACK_TRACE_COUNT = 4;
+    private const NUMBER_OF_STACK_FRAMES_TO_SKIP_KEY = 'number_of_stack_frames_to_skip';
+
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public function dataProviderForTestCaptureInApmFormat(): iterable
+    {
+        $result = (new DataProviderForTestBuilder())
+            ->addKeyedDimensionAllValuesCombinable(self::NUMBER_OF_STACK_FRAMES_TO_SKIP_KEY, DataProviderForTestBuilder::rangeUpTo(self::MANUALLY_BUILT_STACK_TRACE_COUNT))
+            ->build();
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap($result);
+    }
+
+    /**
+     * @param int                $numberOfStackFramesToSkip
+     * @param int                $calledFromLineNumber
+     * @param StackTraceFrame[] &$manuallyBuiltStackTrace
+     *
+     * @return StackTraceFrame[]
+     */
+    private function helper1ForTestCaptureInApmFormat(int $numberOfStackFramesToSkip, int $calledFromLineNumber, array &$manuallyBuiltStackTrace): array
+    {
+        $manuallyBuiltStackTrace[] = new StackTraceFrame(__FILE__, $calledFromLineNumber, self::buildFunctionNameForClassMethod(__CLASS__, __FUNCTION__));
+        return self::helper2ForTestCaptureInApmFormat($numberOfStackFramesToSkip, __LINE__, /* ref */ $manuallyBuiltStackTrace);
+    }
+
+    /**
+     * @param int                $numberOfStackFramesToSkip
+     * @param int                $calledFromLineNumber
+     * @param StackTraceFrame[] &$manuallyBuiltStackTrace
+     *
+     * @return StackTraceFrame[]
+     */
+    private static function helper2ForTestCaptureInApmFormat(int $numberOfStackFramesToSkip, int $calledFromLineNumber, array &$manuallyBuiltStackTrace): array
+    {
+        $manuallyBuiltStackTrace[] = new StackTraceFrame(__FILE__, $calledFromLineNumber, self::buildFunctionNameForClassStaticMethod(__CLASS__, __FUNCTION__));
+        $func = function () use ($numberOfStackFramesToSkip, &$manuallyBuiltStackTrace): array {
+            $manuallyBuiltStackTrace[] = new StackTraceFrame(DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME, DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER, __FUNCTION__);
+            self::assertCount(self::MANUALLY_BUILT_STACK_TRACE_COUNT, $manuallyBuiltStackTrace);
+            return StackTraceUtil::captureInApmFormat($numberOfStackFramesToSkip + 1, AmbientContextForTests::loggerFactory());
+        };
+        $manuallyBuiltStackTrace[] = new StackTraceFrame(__FILE__, __LINE__ + 1, 'dummyFuncForTestsWithoutNamespace');
+        return dummyFuncForTestsWithoutNamespace($func);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestCaptureInApmFormat
+     */
+    public function testCaptureInApmFormat(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $numberOfStackFramesToSkip = $testArgs->getInt(self::NUMBER_OF_STACK_FRAMES_TO_SKIP_KEY);
+
+        $manuallyBuiltStackTrace = [];
+        $actualStackTrace = $this->helper1ForTestCaptureInApmFormat($numberOfStackFramesToSkip, __LINE__, /* ref */ $manuallyBuiltStackTrace);
+        self::assertCount(self::MANUALLY_BUILT_STACK_TRACE_COUNT, $manuallyBuiltStackTrace);
+        $manuallyBuiltStackTrace = array_reverse($manuallyBuiltStackTrace);
+        $dbgCtx->add(['actualStackTrace' => $actualStackTrace, 'manuallyBuiltStackTrace' => $manuallyBuiltStackTrace]);
+        self::assertGreaterThanOrEqual($numberOfStackFramesToSkip, count($manuallyBuiltStackTrace));
+        /** @var StackTraceFrame[] $expectedStackTracePrefix */
+        $expectedStackTracePrefix = array_slice($manuallyBuiltStackTrace, /* offset */ $numberOfStackFramesToSkip);
+        if (!ArrayUtil::isEmpty($expectedStackTracePrefix)) {
+            /**
+             * top frame should not have 'function' property because StackTraceUtil::captureInApmFormat assumees that the function being called is from Elastic APM API
+             */
+            $expectedStackTracePrefix[0]->function = null;
+        }
+        SpanDto::assertStackTraceMatches(StackTraceExpectations::fromFrames($expectedStackTracePrefix, /* allowToBePrefixOfActual */ true), $actualStackTrace);
     }
 }

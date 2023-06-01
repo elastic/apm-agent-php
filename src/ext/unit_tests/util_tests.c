@@ -226,12 +226,41 @@ void test_sizeToBytes( void** testFixtureState )
     }
 }
 
+static
+bool isStringViewSuffixWrapperForTest( String str, String suffix )
+{
+    return isStringViewSuffix( stringToView(str), stringToView(suffix) );
+}
+
+static
+void isStringViewSuffix_test( void** testFixtureState )
+{
+    ELASTIC_APM_UNUSED( testFixtureState );
+
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "", "" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "a", "a" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "ab", "b" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "ab", "ab" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "abc", "bc" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( isStringViewSuffixWrapperForTest( "abc", "abc" ) );
+
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "", "a" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "a", "A" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "A", "a" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "a", "ab" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "ab", "aB" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "ab", "abc" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "abc", "abC" ) );
+    ELASTIC_APM_CMOCKA_ASSERT( ! isStringViewSuffixWrapperForTest( "abc", "abcd" ) );
+}
+
 int run_util_tests()
 {
     const struct CMUnitTest tests [] =
     {
         ELASTIC_APM_CMOCKA_UNIT_TEST( areStringViewsEqual_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( areStringsEqualIgnoringCase_test ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( isStringViewSuffix_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( calcAlignedSize_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( trim_StringView_test ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_parseDecimalInteger ),
