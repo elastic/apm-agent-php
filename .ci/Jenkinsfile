@@ -84,7 +84,74 @@ pipeline {
             }
           }
         }
-        stage('Build binaries and basic testing') {
+        stage('Build binaries') {
+          options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
+          }
+          failFast false
+          matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
+            axes {
+              axis {
+                name 'BUILD_ARCHITECTURE'
+                values 'linux-x86-64', 'linuxmusl-x86-64'
+              }
+            }
+
+            stages {
+              stage('Build PHP extension') {
+                steps {
+                  // paplo - not sure if should be here
+                  initWorkspace(context: "Build-${BUILD_ARCHITECTURE}") {
+                    sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} make -f .ci/Makefile build", label: 'build'
+                  }
+                }
+              }
+            }
+          }
+        }
+        stage('PHP tests of extension') {
+          options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
+          }
+          failFast false
+          matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
+            axes {
+              axis {
+                name 'BUILD_ARCHITECTURE'
+                values 'linux-x86-64', 'linuxmusl-x86-64'
+              }
+              axis {
+                name 'PHP_VERSION'
+                // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
+                // See the comment in .ci/shared.sh
+                values '7.2', '7.3', '7.4', '8.0', '8.1', '8.2'
+              }
+            }
+
+            stages {
+              stage('Build PHP extension') {
+                steps {
+                  // paplo - not sure if should be here
+                  initWorkspace(context: "PHPT-${PHP_VERSION}") {
+                    // When running in the CI with multiple parallel stages
+                    // the access could be considered as a DDOS attack.
+                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                    }
+                    sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile run-phpt-tests", label: 'run-phpt-tests'
+                  }
+                }
+              }
+            }
+          }
+        }
+        stage('Static analysis and tests') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -99,27 +166,13 @@ pipeline {
                 // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
                 // See the comment in .ci/shared.sh
                 values '7.2', '7.3', '7.4', '8.0', '8.1', '8.2'
-              }
+              } 
               axis {
                 name 'DOCKERFILE'
                 values 'Dockerfile', 'Dockerfile.alpine'
               }
             }
             stages {
-              stage('Build PHP extension') {
-                steps {
-                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
-                  echo "params.ADD_LIBUNWIND_DEPENDENCY: ${params.ADD_LIBUNWIND_DEPENDENCY}"
-                  initWorkspace(context: "Build-${PHP_VERSION}") {
-                    // When running in the CI with multiple parallel stages
-                    // the access could be considered as a DDOS attack.
-                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
-                    }
-                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
-                  }
-                }
-              }
               stage('Static analysis and unit tests') {
                 when {
                   beforeAgent true
@@ -144,16 +197,6 @@ pipeline {
                 post {
                   always {
                     junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
-                  }
-                }
-              }
-              stage('Build parts for packages') {
-                steps {
-                  withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-                      stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
-                    }
                   }
                 }
               }
