@@ -18,7 +18,14 @@ run_command_with_timeout_and_retries_args=(--retry-on-error=yes)
 run_command_with_timeout_and_retries_args=(--max-tries=3 "${run_command_with_timeout_and_retries_args[@]}")
 run_command_with_timeout_and_retries_args=(--wait-time-before-retry=60 "${run_command_with_timeout_and_retries_args[@]}")
 run_command_with_timeout_and_retries_args=(--increase-wait-time-before-retry-exponentially=yes "${run_command_with_timeout_and_retries_args[@]}")
-"${this_script_dir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- gh release download "${release_tag}"
+#"${this_script_dir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- gh release download "${release_tag}"
+
+# Sergey Kleyman:
+# 		Replaced target repo for publishing release to my fork (SergeyKleyman) to avoid noise while testing changes to release CI pipeline.
+#		This change should be kept in a temporary (for tests only) PR
+#		and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+#
+"${this_script_dir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- gh release download "${release_tag}" --repo "intuibase/apm-agent-php"
 
 ls -l .
 echo 'Verifying that downloaded artifacts pass the downloaded checksums...'

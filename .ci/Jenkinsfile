@@ -373,8 +373,18 @@ pipeline {
           }
           options { skipDefaultCheckout() }
           steps {
-            withGhEnv(version: '2.4.0') {
-              githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+            // withGhEnv(version: '2.4.0') {
+            //   githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+            // }
+            // Sergey Kleyman:
+            //        Replaced target repo for publishing release to my fork (intuibase) to avoid noise while testing changes to release CI pipeline.
+            //        This change should be kept in a temporary (for tests only) PR
+            //        and IT SHOULD NEVER BE MERGED TO ANY "RELEASABLE" BRANCHES.
+            //
+            withEnv(["ORG_NAME=intuibase", "REPO_NAME=apm-agent-php"]) {
+              withGhEnv(version: '2.4.0') {
+                githubReleasePublish(id: "${env.RELEASE_ID}", name: "${env.TAG_NAME}")
+              }
             }
           }
           post {
@@ -483,12 +493,12 @@ def prepareWorkspace(def args = [:], Closure body){
 }
 
 def notifyStatus(def args = [:]) {
-  releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
-                      slackColor: args.slackStatus,
-                      slackCredentialsId: 'jenkins-slack-integration-token',
-                      to: "${env.NOTIFY_TO}",
-                      subject: args.subject,
-                      body: args.body)
+  // releaseNotification(slackChannel: "${env.SLACK_CHANNEL}",
+  //                     slackColor: args.slackStatus,
+  //                     slackCredentialsId: 'jenkins-slack-integration-token',
+  //                     to: "${env.NOTIFY_TO}",
+  //                     subject: args.subject,
+  //                     body: args.body)
 }
 
 def prepareRelease() {
