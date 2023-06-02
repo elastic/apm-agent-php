@@ -199,12 +199,12 @@ pipeline {
                   echo pwd()
 
                   initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: "tests") {
+                    echo pwd()
+
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
                       echo pwd()
-                      sh script: pwd
-                      sh script: ls -al
                       sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                     }
                   }
