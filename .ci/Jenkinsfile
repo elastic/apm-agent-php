@@ -142,6 +142,11 @@ pipeline {
               stage('Execute phpt tests') {
                 steps {
                   initWorkspace(context: "PHPT-${PHP_VERSION}") {
+                    // When running in the CI with multiple parallel stages
+                    // the access could be considered as a DDOS attack.
+                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                        sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                    }
                     unstash "built-extensions-${BUILD_ARCHITECTURE}"
                     sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile run-phpt-tests", label: 'run-phpt-tests'
                   }
