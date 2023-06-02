@@ -178,12 +178,13 @@ pipeline {
                   expression { return params.INCLUDE_TESTING }
                 }
                 steps {
+                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
                   echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
                   echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
                   echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
-                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
+                  initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
