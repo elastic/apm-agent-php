@@ -105,7 +105,12 @@ pipeline {
                 steps {
                   initWorkspace(context: "Build-${BUILD_ARCHITECTURE}") {
                     sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} make -f .ci/Makefile build", label: 'build'
+                    echo pwd()
+                  }
+                  withGithubNotify(context: "Build-${BUILD_ARCHITECTURE}") {
+                    echo pwd()
                     dir("${BASE_DIR}"){
+                      echo pwd()
                       stash includes: "agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-*", name: "built-extensions-${BUILD_ARCHITECTURE}"
                     }
                   }
@@ -191,10 +196,13 @@ pipeline {
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
                   echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
                   echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
+                  echo pwd()
+
                   initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: "tests") {
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
+                      echo pwd()
                       sh script: pwd
                       sh script: ls -al
                       sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
