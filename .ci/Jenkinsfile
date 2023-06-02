@@ -105,8 +105,6 @@ pipeline {
                 steps {
                   initWorkspace(context: "Build-${BUILD_ARCHITECTURE}") {
                     sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} make -f .ci/Makefile build", label: 'build'
-                  }
-                  withGithubNotify(context: "Build-${BUILD_ARCHITECTURE}") {
                     dir("${BASE_DIR}"){
                       stash includes: "agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-*", name: "built-extensions-${BUILD_ARCHITECTURE}"
                     }
@@ -140,8 +138,12 @@ pipeline {
 
             stages {
               stage('Execute phpt tests') {
+                when {
+                  beforeAgent true
+                  expression { return params.INCLUDE_TESTING }
+                }
                 steps {
-                  initWorkspace(context: "PHPT-${PHP_VERSION}") {
+                  initWorkspace(context: "PHPT-${PHP_VERSION}", tab: "tests") {
                     // When running in the CI with multiple parallel stages
                     // the access could be considered as a DDOS attack.
                     retryWithSleep(retries: 3, seconds: 5, backoff: true) {
@@ -189,13 +191,13 @@ pipeline {
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
                   echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
                   echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
-                  initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
+                  initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: "tests") {
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
-                      dir("${BASE_DIR}"){
-                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
-                      }
+                      sh script: pwd
+                      sh script: ls -al
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                     }
                   }
                 }
