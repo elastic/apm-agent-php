@@ -148,7 +148,7 @@ pipeline {
                   initWorkspace(context: "PHPT-${PHP_VERSION}", tab: "tests") {
                     // When running in the CI with multiple parallel stages
                     // the access could be considered as a DDOS attack.
-                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                    retryWithSleep(retries: 3, seconds: 45, backoff: true) {
                         sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
                     }
                     unstash "built-extensions-${BUILD_ARCHITECTURE}"
@@ -199,7 +199,7 @@ pipeline {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
 
-                      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+                      retryWithSleep(retries: 3, seconds: 45, backoff: true) {
                           sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
                       }
 
@@ -445,7 +445,7 @@ def packageGeneration(def args = [:]) {
       archiveArtifacts(allowEmptyArchive: true, artifacts: 'agent/native/_build/*-release/ext/elastic_apm-*')
 
 
-      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+      retryWithSleep(retries: 3, seconds: 45, backoff: true) {
         sh script: "make -C packaging build-docker-images", label: 'build docker images'
       }
 
@@ -480,7 +480,7 @@ def packageWorkspace(def args = [:], Closure body){
       unstash (args.shouldUseSignedBinaries ? env.SIGNED_ARTIFACTS : 'package')
       // When running in the CI sometimes the docker build might fail for
       // some environmental issues, let's retry
-      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
+      retryWithSleep(retries: 3, seconds: 45, backoff: true) {
         sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
       }
       body()
