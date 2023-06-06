@@ -158,9 +158,9 @@ deb-install: ## Install the deb installer to run some smoke tests
 	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 
 .PHONY: tar-install
-tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
+tar-install: ## Install the tar installer to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=tar $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
+	TYPE=tar $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-install
@@ -170,15 +170,15 @@ rpm-install: ## Install the rpm installer to run some smoke tests
 	@echo "::endgroup::"
 
 .PHONY: deb-install-in-apache
-deb-install-in-apache: prepare-deb-apache  ## Install the deb installer to run some smoke tests in apache
+deb-install-in-apache: ## Install the deb installer to run some smoke tests in apache
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-apache
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-apache-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-install-in-fpm
-deb-install-in-fpm: prepare-deb-fpm  ## Install the deb installer to run some smoke tests in fpm
+deb-install-in-fpm: ## Install the deb installer to run some smoke tests in fpm
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-fpm
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-fpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: install
@@ -203,9 +203,9 @@ rpm-install-release-github: ## Install the rpm installer from a given release to
 	@echo "::endgroup::"
 
 .PHONY: tar-install-release-github
-tar-install-release-github: prepare-tar  ## Install the tar installer from a given release to run some smoke tests
+tar-install-release-github: ## Install the tar installer from a given release to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) VERSION=$(RELEASE_VERSION) TYPE=release-tar-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
+	GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) VERSION=$(RELEASE_VERSION) TYPE=release-tar-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: install-release-github
@@ -227,15 +227,15 @@ deb-lifecycle-testing: ## Lifecycle testing for the deb installer
 	@echo "::endgroup::"
 
 .PHONY: deb-lifecycle-testing-in-apache
-deb-lifecycle-testing-in-apache: prepare-deb-apache  ## Lifecycle testing for the deb installer with apache
+deb-lifecycle-testing-in-apache: ## Lifecycle testing for the deb installer with apache
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-apache
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-apache-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-lifecycle-testing-in-fpm
-deb-lifecycle-testing-in-fpm: prepare-deb-fpm  ## Lifecycle testing for the deb installer with fpm
+deb-lifecycle-testing-in-fpm: ## Lifecycle testing for the deb installer with fpm
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb-fpm
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-fpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-lifecycle-testing
@@ -245,16 +245,18 @@ rpm-lifecycle-testing:  ## Lifecycle testing for the rpm installer
 	@echo "::endgroup::"
 
 .PHONY: tar-lifecycle-testing
-tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
+tar-lifecycle-testing: ## Lifecycle testing for the tar installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=tar-uninstall $(PWD)/.ci/run_docker_with_component_tests.sh prepare-tar
+	TYPE=tar-uninstall $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-php-upgrade-testing
-rpm-php-upgrade-testing: PHP_VERSION="7.2"  ### Force the PHP version to start with.
+### Force the PHP version to start with.
+rpm-php-upgrade-testing: PHP_VERSION=7.2
 rpm-php-upgrade-testing: ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=php-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	echo "'$(PHP_VERSION)'"
+	TYPE=php-upgrade PHP_VERSION=$(PHP_VERSION) PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing
