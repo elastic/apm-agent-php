@@ -147,15 +147,15 @@ prepare-rpm:  ## Build the docker image for the rpm smoke tests
 	@echo "::endgroup::"
 
 .PHONY: apk-install
-apk-install: prepare-apk  ## Install the apk installer to run some smoke tests
+apk-install: ## Install the apk installer to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	$(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
+	$(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-apk-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-install
-deb-install: prepare-deb  ## Install the deb installer to run some smoke tests
+deb-install: ## Install the deb installer to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
+	TYPE=deb $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 
 .PHONY: tar-install
 tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
@@ -185,15 +185,15 @@ deb-install-in-fpm: prepare-deb-fpm  ## Install the deb installer to run some sm
 install: apk-install deb-install rpm-install tar-install  ## Install all the distributions
 
 .PHONY: apk-install-release-github
-apk-install-release-github: prepare-apk  ## Install the apk installer from a given release to run some smoke tests
+apk-install-release-github: ## Install the apk installer from a given release to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-apk-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-install-release-github
-deb-install-release-github: prepare-deb  ## Install the deb installer from a given release to run some smoke tests
+deb-install-release-github: ## Install the deb installer from a given release to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-install-release-github
@@ -215,15 +215,15 @@ install-release-github: apk-install-release-github deb-install-release-github rp
 lifecycle-testing: apk-lifecycle-testing deb-lifecycle-testing rpm-lifecycle-testing tar-lifecycle-testing ## Lifecycle testing all the distributions
 
 .PHONY: apk-lifecycle-testing
-apk-lifecycle-testing: prepare-apk  ## Lifecycle testing for the apk installer
+apk-lifecycle-testing: ## Lifecycle testing for the apk installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=apk-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-apk
+	TYPE=apk-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-apk-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-lifecycle-testing
-deb-lifecycle-testing: prepare-deb  ## Lifecycle testing for the deb installer
+deb-lifecycle-testing: ## Lifecycle testing for the deb installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
+	TYPE=deb-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-lifecycle-testing-in-apache
@@ -264,9 +264,9 @@ rpm-agent-upgrade-testing:  ## Agent upgrade, from 1.0.0 to the current generate
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing
-deb-agent-upgrade-testing: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
+deb-agent-upgrade-testing: ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing-local
@@ -276,7 +276,7 @@ rpm-agent-upgrade-testing-local:  ## Agent upgrade, from 1.0.0 to the current ge
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing-local
-deb-agent-upgrade-testing-local: prepare-deb  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
+deb-agent-upgrade-testing-local: ## Agent upgrade, from 1.0.0 to the current generated one, testing for the deb installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-deb
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-deb-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"

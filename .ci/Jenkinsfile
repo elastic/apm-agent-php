@@ -476,7 +476,9 @@ def packageWorkspace(def args = [:], Closure body){
       // When running in the CI sometimes the docker build might fail for
       // some environmental issues, let's retry
       retryWithSleep(retries: 3, seconds: 45, backoff: true) {
-        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
+        if (args.prepareGoal != null) {
+          sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
+        }
       }
       body()
     }
@@ -630,7 +632,6 @@ def buildLabel(def args = [:]) {
 def lifecycleTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}",
       testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing"
     ]
   )
@@ -648,7 +649,6 @@ def lifecycleTestingOnProdServerKind(def args = [:]) {
 def phpUpgradeTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}",
       testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxPackageType}-php-upgrade-testing"
     ]
   )
