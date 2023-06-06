@@ -164,9 +164,9 @@ tar-install: prepare-tar  ## Install the tar installer to run some smoke tests
 	@echo "::endgroup::"
 
 .PHONY: rpm-install
-rpm-install: prepare-rpm  ## Install the rpm installer to run some smoke tests
+rpm-install: ## Install the rpm installer to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=rpm $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	TYPE=rpm $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-install-in-apache
@@ -197,9 +197,9 @@ deb-install-release-github: prepare-deb  ## Install the deb installer from a giv
 	@echo "::endgroup::"
 
 .PHONY: rpm-install-release-github
-rpm-install-release-github: prepare-rpm  ## Install the rpm installer from a given release to run some smoke tests
+rpm-install-release-github: ## Install the rpm installer from a given release to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: tar-install-release-github
@@ -239,9 +239,9 @@ deb-lifecycle-testing-in-fpm: prepare-deb-fpm  ## Lifecycle testing for the deb 
 	@echo "::endgroup::"
 
 .PHONY: rpm-lifecycle-testing
-rpm-lifecycle-testing: prepare-rpm  ## Lifecycle testing for the rpm installer
+rpm-lifecycle-testing:  ## Lifecycle testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=rpm-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	TYPE=rpm-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: tar-lifecycle-testing
@@ -252,15 +252,15 @@ tar-lifecycle-testing: prepare-tar  ## Lifecycle testing for the tar installer
 
 .PHONY: rpm-php-upgrade-testing
 rpm-php-upgrade-testing: PHP_VERSION="7.2"  ### Force the PHP version to start with.
-rpm-php-upgrade-testing: prepare-rpm  ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
+rpm-php-upgrade-testing: ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=php-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	TYPE=php-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing
-rpm-agent-upgrade-testing: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
+rpm-agent-upgrade-testing:  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing
@@ -270,9 +270,9 @@ deb-agent-upgrade-testing: prepare-deb  ## Agent upgrade, from 1.0.0 to the curr
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing-local
-rpm-agent-upgrade-testing-local: prepare-rpm  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
+rpm-agent-upgrade-testing-local:  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh prepare-rpm
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing-local
