@@ -640,7 +640,6 @@ def lifecycleTesting(def args = [:]) {
 def lifecycleTestingOnProdServerKind(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}-${args.prodServerKind}",
       testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing-in-${args.prodServerKind}",
     ]
   )
