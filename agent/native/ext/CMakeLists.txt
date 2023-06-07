@@ -41,9 +41,14 @@ foreach(_php_version ${_supported_php_versions})
                                                 "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}/TSRM"
                                                 "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}/Zend"
                                                 "${CONAN_INCLUDE_DIRS_LIBCURL}"
+                                                "${CONAN_INCLUDE_DIRS_LIBUNWIND}"
+
                                             )
 
-    target_link_libraries(${_Target} PRIVATE CONAN_PKG::libcurl)
+    target_link_libraries(${_Target}
+                PRIVATE CONAN_PKG::libcurl
+                PRIVATE CONAN_PKG::libunwind
+    )
 
     get_php_api_from_release(${_php_version} _ZEND_API_version)
 

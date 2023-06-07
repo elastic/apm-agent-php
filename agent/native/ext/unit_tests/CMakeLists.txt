@@ -123,6 +123,9 @@ IF ( NOT WIN32 )
     SET( link_with_libraries ${link_with_libraries} m )
 ENDIF()
 
+target_include_directories(unit_tests PRIVATE
+                                ${CONAN_INCLUDE_DIRS_LIBUNWIND} )
+
 target_link_libraries( unit_tests PRIVATE CONAN_PKG::cmocka
                                 PRIVATE CONAN_PKG::libunwind
                                 Threads::Threads
