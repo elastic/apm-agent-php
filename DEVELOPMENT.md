@@ -1,6 +1,5 @@
 # Local development
-
-## Build/package
+## Build and package
 
 ### Using the docker approach
 
@@ -35,7 +34,7 @@ make -f .ci/Makefile help
 _NOTE_: 
 
 * `PHP_VERSION` can be set to a different PHP version.
-* Alpine specific binaries can be generated if using `DOCKERFILE=Dockerfile.alpine`
+* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image. 
 
 To generate the packages then you can use the `packaging/Dockerfile`, see the below commands:
 
@@ -98,3 +97,59 @@ Jenkins build parameters can be used to run build+test CI pipeline with a custom
 - Go to `Build with Parameters`
 - Select log level for agent and/or tests' infrastructure
 - Click `Build`
+
+
+# Updating docker images used for building and testing
+## Building and updating docker images used to build the agent extension
+
+If you want to update images used to build native extension, you need to go into `agent/native/building/dockerized` folder and modify Dockerfile stored in images folder. In this moment, there are two Dockerfiles:
+`Dockerfile_musl` for Linux x86_64 with musl libc implementation and `Dockerfile_glibc` for all other x86_64 distros with glibc implementation. 
+Then you need to increment image version in `docker-compose.yml`. Remember to update Dockerfiles for all architectures, if needed. To build new images, you just need to call:
+```bash
+docker-compose build
+```
+It will build images for all supported architectures. As a result you should get summary like this:
+```bash
+Successfully tagged elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.1
+Successfully tagged elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.1
+```
+
+To test freshly built images, you need to udate image version in `build:` task in ```.ci/Makefile``` and run build task described in [Build/package](#build-and-package)
+)
+
+\
+If everything works as you expected, you just need to push new image to dockerhub by calling:
+```bash
+docker push elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.1
+```
+
+## Building and updating docker images used to execute tests
+If you want to update images used for testing, you need to go into `packaging/test` folder and modify Dockerfiles stored in folders:
+|Folder name|Usage|
+|-|-|
+|alpine|Testing of apk packages|
+|centos|Testing of rpm packages|
+|ubuntu|Testing of deb packages|
+|ubuntu/apache|Tesing of deb packages with Apache/mod_php| 
+|ubuntu/fpm|Tesing of deb packages with Apache/php-fpm| 
+
+Then you need to increment image version in `docker-compose.yml`.\
+To build new images, you just need to call:
+```bash
+docker-compose build
+```
+It will build and tag images for all test scenarios. As a result you should get summary like this:
+```bash
+Successfully tagged elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
+...
+```
+
+\
+To test freshly built images, you need to udate images version in ```packaging/Makefile```. Note that one particular image can be specified multiple times inside this file. Please check carefully that you have updated all the places where the image has been used
+
+\
+If everything works as you expected, you just need to push new image to dockerhub by calling:
+```bash
+docker push elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
+```
+It should be done for all images you modified.
