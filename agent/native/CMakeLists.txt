@@ -71,9 +71,9 @@ endforeach()
 # TODO implement multiarray with mapping of library->version
 
 set(dependencies
-    "libcurl/8.0.1@elastic/stable"
-    "cmocka/1.1.5@elastic/stable"
-    "libunwind/1.6.2@elastic/stable"
+    "libcurl/8.0.1"
+    "cmocka/1.1.5@"
+    "libunwind/1.6.2"
 )
 
 foreach(_php_version ${_supported_php_versions})
