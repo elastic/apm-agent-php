@@ -88,7 +88,7 @@ ARG USER_NAME=build
 COPY --from=devtools /opt /opt
 
 RUN yum -y update && yum -y install sudo curl wget git make autoconf bzip2 \
-    perl-Thread-Queue \
+    perl-Thread-Queue perl-IPC-Cmd perl-Digest-SHA \
     file \
     glibc-devel
 

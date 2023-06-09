@@ -71,9 +71,9 @@ endforeach()
 # TODO implement multiarray with mapping of library->version
 
 set(dependencies
-    "libcurl/8.0.1"
-    "cmocka/1.1.5"
-    "libunwind/1.6.2"
+    "libcurl/8.0.1@elastic/stable"
+    "cmocka/1.1.5@elastic/stable"
+    "libunwind/1.6.2@elastic/stable"
 )
 
 foreach(_php_version ${_supported_php_versions})
@@ -82,12 +82,8 @@ endforeach()
 
 conan_cmake_run(REQUIRES ${dependencies}
                 OPTIONS Pkg/*:shared=False
-                        boost:header_only=True
-                        boost:error_code_header_only=True
-                        libcurl:shared=False
-                        libcurl:with_libssh2=False
-                        libcurl:with_ssl=False
-                        cmocka:shared=False
+                        libcurl:shared=True
+                        libcurl:with_libssh2=True
                 BUILD missing
                 PROFILE ${_CONAN_PROFILE}
                 PROFILE_BUILD ${_CONAN_PROFILE}
