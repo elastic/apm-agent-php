@@ -79,14 +79,16 @@ final class AutoInstrumentationUtil
     /**
      * @template T
      *
-     * @param string      $name      New span's name
-     * @param string      $type      New span's type
+     * @param string                             $name      New span's name
+     * @param string                             $type      New span's type
      * @param Closure(SpanInterface $newSpan): T $callback
-     * @param string|null $subtype   New span's subtype
-     * @param string|null $action    New span's action
-     * @param float|null  $timestamp Start time of the new span
+     * @param ?string                            $subtype   New span's subtype
+     * @param ?string                            $action    New span's action
+     * @param ?float                             $timestamp Start time of the new span
      *
      * @return  T The return value of $callback
+     *
+     * @noinspection PhpUnused
      */
     public static function captureCurrentSpan(string $name, string $type, Closure $callback, ?string $subtype = null, ?string $action = null, ?float $timestamp = null)
     {
@@ -114,14 +116,11 @@ final class AutoInstrumentationUtil
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown
      * @param ?float          $duration
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public static function endSpan(
-        int $numberOfStackFramesToSkip,
-        SpanInterface $span,
-        bool $hasExitedByException,
-        $returnValueOrThrown,
-        ?float $duration = null
-    ): void {
+    public static function endSpan(int $numberOfStackFramesToSkip, SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown, ?float $duration = null): void
+    {
         if ($hasExitedByException && ($returnValueOrThrown instanceof Throwable)) {
             $span->createErrorFromThrowable($returnValueOrThrown);
         }
@@ -140,10 +139,8 @@ final class AutoInstrumentationUtil
      *
      * @return null|callable(int, bool, mixed): void
      */
-    public static function createInternalFuncPostHookFromEndSpan(
-        SpanInterface $span,
-        ?Closure $doBeforeSpanEnd = null
-    ): ?callable {
+    public static function createInternalFuncPostHookFromEndSpan(SpanInterface $span, ?Closure $doBeforeSpanEnd = null): ?callable
+    {
         if ($span->isNoop()) {
             return null;
         }
@@ -152,24 +149,15 @@ final class AutoInstrumentationUtil
          * @param int   $numberOfStackFramesToSkip
          * @param bool  $hasExitedByException
          * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         *
+         * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
          */
-        return function (
-            int $numberOfStackFramesToSkip,
-            bool $hasExitedByException,
-            $returnValueOrThrown
-        ) use (
-            $span,
-            $doBeforeSpanEnd
-        ): void {
+        return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($span, $doBeforeSpanEnd): void {
             if ($doBeforeSpanEnd !== null) {
                 $doBeforeSpanEnd($hasExitedByException, $returnValueOrThrown);
             }
-            self::endSpan(
-                $numberOfStackFramesToSkip + 1,
-                $span,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
+            /** @var 0|positive-int $numberOfStackFramesToSkip */
+            self::endSpan($numberOfStackFramesToSkip + 1, $span, $hasExitedByException, $returnValueOrThrown);
         };
     }
 

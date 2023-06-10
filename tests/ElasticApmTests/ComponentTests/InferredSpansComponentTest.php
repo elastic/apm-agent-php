@@ -122,7 +122,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         }
         $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
-        $stackTraces[$sleepFuncToUse] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTraces[$sleepFuncToUse] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic, /* maxNumberOfFrames */ null);
     }
 
     public static function appCodeForTestInferredSpans(): void
@@ -135,7 +135,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         $sleepCallLine = __LINE__ - 1;
         $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
-        $stackTraces[self::APP_CODE_SPAN_STACK_TRACE] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTraces[self::APP_CODE_SPAN_STACK_TRACE] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic, /* maxNumberOfFrames */ null);
 
         $txCtx = ElasticApm::getCurrentTransaction()->context();
         if ($txCtx instanceof TransactionContext) {

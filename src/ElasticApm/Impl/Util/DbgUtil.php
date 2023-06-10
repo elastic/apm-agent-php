@@ -34,9 +34,16 @@ final class DbgUtil
 {
     use StaticClassTrait;
 
+    /**
+     * @param int $numberOfStackFramesToSkip
+     *
+     * @return CallerInfo
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public static function getCallerInfoFromStacktrace(int $numberOfStackFramesToSkip): CallerInfo
     {
-        $stackFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, /* framesCountLimit */ 1);
+        $stackFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, /* maxNumberOfFrames */ 1);
 
         if (ArrayUtil::isEmpty($stackFrames)) {
             return new CallerInfo(null, null, null, null);

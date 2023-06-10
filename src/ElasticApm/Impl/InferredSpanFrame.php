@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\LoggerFactory;
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrameOld;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
@@ -51,7 +51,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     /** @var float Monotonic time since some unspecified starting point, in microseconds */
     private $monotonicBeginTime;
 
-    /** @var ClassicFormatStackTraceFrameOld */
+    /** @var ClassicFormatStackTraceFrame */
     public $stackFrame;
 
     /** @var ?float In milliseconds with 3 decimal points */
@@ -85,22 +85,19 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     /** @var null|StackTraceFrame[] */
     public $stackTrace = null;
 
-    public function __construct(
-        float $systemClockBeginTime,
-        float $monotonicBeginTime,
-        ClassicFormatStackTraceFrameOld $stackFrame
-    ) {
+    public function __construct(float $systemClockBeginTime, float $monotonicBeginTime, ClassicFormatStackTraceFrame $stackFrame)
+    {
         $this->timestamp = $systemClockBeginTime;
         $this->monotonicBeginTime = $monotonicBeginTime;
         $this->stackFrame = $stackFrame;
     }
 
     /**
-     * @param ClassicFormatStackTraceFrameOld $stackFrame
+     * @param ClassicFormatStackTraceFrame $stackFrame
      *
      * @return bool
      */
-    public function canBeExtendedWith(ClassicFormatStackTraceFrameOld $stackFrame): bool
+    public function canBeExtendedWith(ClassicFormatStackTraceFrame $stackFrame): bool
     {
         return $this->stackFrame->class === $stackFrame->class
                && $this->stackFrame->function === $stackFrame->function
@@ -159,7 +156,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
          * @phpstan-ignore-next-line
          */
         $shortClassName = $this->stackFrame->class === null ? null : ClassNameUtil::fqToShort($this->stackFrame->class);
-        $this->name = StackTraceUtil::buildFunctionNameForClassMethod(
+        $this->name = StackTraceUtil::buildApmFormatFunctionForClassMethod(
             $shortClassName,
             $this->stackFrame->isStaticMethod,
             $this->stackFrame->function

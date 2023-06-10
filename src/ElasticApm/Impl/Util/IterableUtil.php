@@ -28,6 +28,36 @@ namespace Elastic\Apm\Impl\Util;
  *
  * @internal
  */
-final class PhpFormatStackTraceFrame extends StackTraceFrameBase
+final class IterableUtil
 {
+    use StaticClassTrait;
+
+    /**
+     * @template TValue
+     *
+     * @param TValue           $headVal
+     * @param iterable<TValue> $tail
+     *
+     * @return iterable<TValue>
+     */
+    public static function prepend($headVal, iterable $tail): iterable
+    {
+        yield $headVal;
+        yield from $tail;
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param TValue[] $inArray
+     * @param int      $suffixStartIndex
+     *
+     * @return iterable<TValue>
+     */
+    public static function arraySuffix(array $inArray, int $suffixStartIndex): iterable
+    {
+        foreach (RangeUtil::generateFromToIncluding($suffixStartIndex, count($inArray) - 1) as $index) {
+            yield $inArray[$index];
+        }
+    }
 }

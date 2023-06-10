@@ -208,14 +208,13 @@ final class TextUtil
             return true;
         }
 
-        /** @noinspection PhpStrictComparisonWithOperandsOfDifferentTypesInspection */
         return substr_compare(
             $text /* <- haystack */,
             $suffix /* <- needle */,
             -$suffixLen /* <- offset */,
             $suffixLen /* <- length */,
             !$isCaseSensitive /* <- case_insensitivity */
-        ) === 0;
+        ) == 0;
     }
 
     public static function contains(string $haystack, string $needle): bool

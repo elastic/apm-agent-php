@@ -400,12 +400,13 @@ final class WordPressMockBridge
     {
         if ($var === null) {
             /**
-             * numberOfStackFramesToSkip is 3 to skip
+             * numberOfStackFramesToSkip is 4 to skip
              *      1) This method
              *      2) callback
              *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
+             *      4) WordPressFilterCallbackWrapper::__invoke
              */
-            $var = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 3);
+            $var = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 4, /* maxNumberOfFrames */ null);
         }
     }
 

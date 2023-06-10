@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
  * @extends ExpectationsBase<StackTraceFrame>
@@ -55,19 +56,67 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         return $result;
     }
 
-    public static function fromProps(string $filename, int $lineNumber, ?string $function = null): self
+    private static function buildFunctionFromClassMethod(string $class, bool $isStatic, string $method): string
     {
-        $result = new self();
-        $result->filename->setValue($filename);
+        return $class . ($isStatic ? '::' : '->') . $method;
+    }
+
+    public static function fromClassMethod(string $fileName, int $lineNumber, string $class, bool $isStatic, string $method): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, $method);
+        $result->filename->setValue($fileName);
         $result->lineno->setValue($lineNumber);
-        $result->function->setValue($function);
         return $result;
     }
 
-    public static function fromFunction(?string $function = null): self
+    public static function fromClassMethodUnknownLocation(string $class, bool $isStatic, string $method): self
     {
         $result = new self();
-        $result->function->setValue($function);
+        $result->function->setValue(self::buildFunctionFromClassMethod($class, $isStatic, $method));
         return $result;
+    }
+
+    public static function fromClassMethodNoLocation(string $class, bool $isStatic, string $method): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, $method);
+        $result->filename->setValue(StackTraceUtil::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE);
+        $result->lineno->setValue(StackTraceUtil::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+        return $result;
+    }
+
+    public static function fromStandaloneFunction(string $fileName, int $lineNumber, string $func): self
+    {
+        $result = new self();
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        $result->function->setValue($func);
+        return $result;
+    }
+
+    public static function fromClosure(string $fileName, int $lineNumber, ?string $namespace, string $class, bool $isStatic): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        return $result;
+    }
+
+    public static function fromLocationOnly(string $fileName, int $lineNumber): self
+    {
+        $result = new self();
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        $result->function->setValue(null);
+        return $result;
+    }
+
+    public function assertMatches(StackTraceFrame $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
+
+        TestCaseBase::assertSameExpectedOptional($this->filename, $actual->filename);
+        TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
+        TestCaseBase::assertSameExpectedOptional($this->lineno, $actual->lineno);
     }
 }
