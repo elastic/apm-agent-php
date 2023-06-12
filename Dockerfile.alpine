@@ -3,19 +3,10 @@ FROM php:${PHP_VERSION}-fpm-alpine
 
 RUN apk update \
   && apk add \
-    autoconf \
     bash \
-    build-base \
-    cmake \
-    cmocka-dev \
-    curl \
-    curl-dev \
-    git \
     logrotate \
     procps \
     rsyslog \
-    sqlite-dev \
-    unzip \
     util-linux
 
 ARG ADD_LIBUNWIND_DEPENDENCY=false
@@ -38,19 +29,9 @@ ENV REPORT_EXIT_STATUS=1
 ENV TEST_PHP_DETAILED=1
 ENV NO_INTERACTION=1
 ENV TEST_PHP_JUNIT=/app/build/junit.xml
-ENV CMOCKA_MESSAGE_OUTPUT=XML
-ENV CMOCKA_XML_FILE=/app/build/alpine-${PHP_VERSION}-%g-unit-tests-junit.xml
 
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 ENV ELASTIC_APM_ENABLED=false
-
-CMD export CFLAGS="-std=gnu99 ${CFLAGS}" ; \
-    if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then export LDFLAGS="-lunwind ${LDFLAGS}" ; fi ; \
-    echo "CFLAGS: ${CFLAGS}, ADD_LIBUNWIND_DEPENDENCY: ${ADD_LIBUNWIND_DEPENDENCY}, LDFLAGS: ${LDFLAGS}" ; \
-    phpize \
-    && ./configure --enable-elastic_apm \
-    && make clean \
-    && make
 
 # Create a link to extensions directory to make it easier accessible (paths are different between php releases)
 RUN ln -s `find /usr/local/lib/php/extensions/ -name opcache.so | head -n1 | xargs dirname` /tmp/extensions

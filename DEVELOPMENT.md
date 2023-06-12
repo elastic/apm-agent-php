@@ -22,7 +22,7 @@ BUILD_ARCHITECTURE=linux-x86-64 PHP_VERSION=7.2  make -f .ci/Makefile run-phpt-t
 PHP_VERSION=7.2 make -f .ci/Makefile static-check-unit-test
 
 ## To run the component tests
-PHP_VERSION=7.2 make -f .ci/Makefile component-test
+BUILD_ARCHITECTURE=linux-x86-64 PHP_VERSION=7.2 make -f .ci/Makefile component-test
 
 ## To release given the GITHUB_TOKEN and TAG_NAME, it creates a draft release
 GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile draft-release

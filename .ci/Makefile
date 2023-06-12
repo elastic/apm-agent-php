@@ -87,6 +87,7 @@ component-test: prepare  ## Run component-test
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	# docker as root to install the extension
 	docker run -t --rm \
+		-e BUILD_ARCHITECTURE=$(BUILD_ARCHITECTURE) \
 		-v $(PWD):/app \
 		$(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		sh -c '/app/.ci/component-test.sh'
