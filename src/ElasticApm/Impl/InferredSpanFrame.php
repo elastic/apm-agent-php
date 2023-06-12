@@ -85,11 +85,8 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     /** @var null|StackTraceFrame[] */
     public $stackTrace = null;
 
-    public function __construct(
-        float $systemClockBeginTime,
-        float $monotonicBeginTime,
-        ClassicFormatStackTraceFrame $stackFrame
-    ) {
+    public function __construct(float $systemClockBeginTime, float $monotonicBeginTime, ClassicFormatStackTraceFrame $stackFrame)
+    {
         $this->timestamp = $systemClockBeginTime;
         $this->monotonicBeginTime = $monotonicBeginTime;
         $this->stackFrame = $stackFrame;
@@ -159,7 +156,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
          * @phpstan-ignore-next-line
          */
         $shortClassName = $this->stackFrame->class === null ? null : ClassNameUtil::fqToShort($this->stackFrame->class);
-        $this->name = StackTraceUtil::buildFunctionNameForClassMethod(
+        $this->name = StackTraceUtil::buildApmFormatFunctionForClassMethod(
             $shortClassName,
             $this->stackFrame->isStaticMethod,
             $this->stackFrame->function

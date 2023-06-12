@@ -23,10 +23,28 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Util\IterableUtil;
 use Generator;
 
 final class IterableUtilTest extends TestCaseBase
 {
+    public static function testPrepend(): void
+    {
+        self::assertEqualLists([1, 2], IterableUtilForTests::toList(IterableUtil::prepend(1, [2])));
+        self::assertEqualLists([1, 2, 3], IterableUtilForTests::toList(IterableUtil::prepend(1, [2, 3])));
+        self::assertEqualLists([1], IterableUtilForTests::toList(IterableUtil::prepend(1, [])));
+    }
+
+    public static function testArraySuffix(): void
+    {
+        self::assertEqualLists([1, 2], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 0)));
+        self::assertEqualLists([2], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 1)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 2)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 3)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([], 0)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([], 1)));
+    }
+
     /**
      * @return iterable<array{mixed[][], mixed[][]}>
      */

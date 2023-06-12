@@ -120,10 +120,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->clock = $providedDependencies->clock ?? new Clock($this->loggerFactory);
 
-        $this->eventSink = $providedDependencies->eventSink ??
-                           (ElasticApmExtensionUtil::isLoaded()
-                               ? new EventSender($this->config, $this->loggerFactory)
-                               : NoopEventSink::singletonInstance());
+        $this->eventSink = $providedDependencies->eventSink ?? (ElasticApmExtensionUtil::isLoaded() ? new EventSender($this->config, $this->loggerFactory) : NoopEventSink::singletonInstance());
 
         $this->metadataDiscoverer = new MetadataDiscoverer($this->config, $this->loggerFactory);
 
@@ -133,8 +130,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->onNewCurrentTransactionHasBegun = new ObserverSet();
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Constructed Tracer successfully');
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Constructed Tracer successfully');
     }
 
     public function getConfig(): ConfigSnapshot
@@ -282,6 +278,15 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
+    /**
+     * @param PhpErrorData $phpErrorData
+     * @param ?Throwable   $relatedThrowable
+     * @param int          $numberOfStackFramesToSkip
+     *
+     * @return void
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable, int $numberOfStackFramesToSkip): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -330,6 +335,16 @@ final class Tracer implements TracerInterface, LoggableInterface
         $this->createError($customErrorData, $phpErrorData, $relatedThrowable, $numberOfStackFramesToSkip + 1);
     }
 
+    /**
+     * @param ?CustomErrorData $customErrorData
+     * @param ?PhpErrorData    $phpErrorData
+     * @param ?Throwable       $throwable
+     * @param int              $numberOfStackFramesToSkip
+     *
+     * @return ?string
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     private function createError(?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ?string
     {
         return $this->dispatchCreateError(ErrorExceptionData::build($this, $customErrorData, $phpErrorData, $throwable, $numberOfStackFramesToSkip + 1));

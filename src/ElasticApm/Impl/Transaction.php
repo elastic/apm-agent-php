@@ -95,7 +95,10 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ?bool */
     private $cachedIsSpanCompressionEnabled = null;
 
-    /** @var ?int */
+    /**
+     * @var ?int
+     * @phpstan-var null|-1|0|positive-int
+     */
     private $cachedStackTraceLimitConfig = null;
 
     public function __construct(TransactionBuilder $builder)
@@ -570,7 +573,11 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->cachedIsSpanCompressionEnabled;
     }
 
-    public function getStackTraceLimitConfig(): int
+    /**
+     * @return int
+     * @phpstan-return -1|0|positive-int
+     */
+    private function getStackTraceLimitConfig(): int
     {
         if ($this->cachedStackTraceLimitConfig === null) {
             $this->cachedStackTraceLimitConfig = $this->getConfig()->stackTraceLimit();
@@ -589,7 +596,28 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::STACK_TRACE_LIMIT . '\')');
         }
+        /** @phpstan-ignore-next-line */
         return $this->cachedStackTraceLimitConfig;
+    }
+
+    /**
+     * @param int $numberOfStackFramesToSkip
+     *
+     * @return null|StackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public function captureApmFormatStackTrace(int $numberOfStackFramesToSkip): ?array
+    {
+        /**
+         * stack_trace_limit
+         *      0 - stack trace collection should be disabled
+         *      any positive integer value - the value is the maximum number of frames to collect
+         *      -1  - all frames should be collected
+         */
+        return ($stackTraceLimit = $this->getStackTraceLimitConfig()) === 0
+            ? null
+            : $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $stackTraceLimit === -1 ? null : $stackTraceLimit);
     }
 
     private function prepareForSerialization(): void

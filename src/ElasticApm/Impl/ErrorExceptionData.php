@@ -93,6 +93,17 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
      */
     public $type = null;
 
+    /**
+     * @param Tracer           $tracer
+     * @param ?CustomErrorData $customErrorData
+     * @param ?PhpErrorData    $phpErrorData
+     * @param ?Throwable       $throwable
+     * @param int              $numberOfStackFramesToSkip
+     *
+     * @return ErrorExceptionData
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public static function build(Tracer $tracer, ?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ErrorExceptionData
     {
         $result = new ErrorExceptionData();
@@ -116,7 +127,7 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
             $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
-            $result->stacktrace = $tracer->stackTraceUtil()->convertThrowableTraceToApmFormat($throwable);
+            $result->stacktrace = $tracer->stackTraceUtil()->convertThrowableTraceToApmFormat($throwable, /* maxNumberOfFrames */ null);
         }
 
         if ($customErrorData !== null) {
@@ -139,9 +150,9 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
 
         if ($result->stacktrace === null) {
             if ($phpErrorData === null) {
-                $result->stacktrace = $tracer->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip);
+                $result->stacktrace = $tracer->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip, /* maxNumberOfFrames */ null);
             } elseif ($phpErrorData->stackTrace !== null) {
-                $result->stacktrace = $tracer->stackTraceUtil()->convertExternallyCapturedToApmFormat($phpErrorData->stackTrace);
+                $result->stacktrace = $tracer->stackTraceUtil()->convertPhpToApmFormat($phpErrorData->stackTrace, /* maxNumberOfFrames */ null);
             }
         }
 

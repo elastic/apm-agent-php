@@ -467,7 +467,11 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         $this->hasChildren = true;
     }
 
-    /** @inheritDoc */
+    /**
+     * @inheritDoc
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
         if (!$this->endExecutionSegment($duration)) {
@@ -477,16 +481,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         $this->onAboutToEnd->callCallbacks($this);
 
         if ($this->shouldBeSentToApmServer()) {
-            /**
-             * stack_trace_limit
-             *      0 - stack trace collection should be disabled
-             *      any positive integer value - the value is the maximum number of frames to collect
-             *      -1  - all frames should be collected
-             */
-            $stackTraceLimit = $this->containingTransaction->getStackTraceLimitConfig();
-            if ($stackTraceLimit !== 0) {
-                $this->stackTrace = $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip + 1);
-            }
+            $this->stackTrace = $this->containingTransaction->captureApmFormatStackTrace($numberOfStackFramesToSkip + 1);
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);
         }

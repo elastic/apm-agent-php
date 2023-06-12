@@ -36,7 +36,6 @@ use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\MixedMap;
-use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use stdClass;
@@ -95,7 +94,7 @@ final class WordPressMockBridge
     /** @var array<callable(): void> */
     public static $removeFilterCalls = [];
 
-    /** @var StackTraceFrame */
+    /** @var StackTraceFrameExpectations */
     public static $expectedCallbackStackTraceTopFrame;
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
@@ -268,7 +267,7 @@ final class WordPressMockBridge
          * @return void
          */
         $setContextCustomWithStackTrace = function (string $key, ?array $stackTrace, int $callsCount) use ($txCtx): void {
-            if ($callsCount === 0) {
+            if (!self::$shouldExpectCallbacksToBeWrapped || $callsCount === 0) {
                 TestCaseBase::assertNull($stackTrace);
                 return;
             }
@@ -405,17 +404,18 @@ final class WordPressMockBridge
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx);
 
-        if ($stackTrace === null) {
+        if (self::$shouldExpectCallbacksToBeWrapped && $stackTrace === null) {
             /**
-             * numberOfStackFramesToSkip is 3 to skip
+             * numberOfStackFramesToSkip is 4 to skip
              *      1) This method
              *      2) callback
-             *      3) call_user_func_array in WordPressFilterCallbackWrapper::__invoke (or WordPressMockWpHook::mockApplyFilters if WordPress instrumentation is disabled)
+             *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
+             *      4) WordPressFilterCallbackWrapper::__invoke
              */
-            $stackTrace = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 3);
+            $stackTrace = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 4, /* maxNumberOfFrames */ null);
             $dbgCtx->add(['stackTrace' => $stackTrace]);
             TestCaseBase::assertCountAtLeast(1, $stackTrace);
-            SpanDto::assertStackTraceFrameMatches(StackTraceFrameExpectations::fromFrame(self::$expectedCallbackStackTraceTopFrame), $stackTrace[0]);
+            self::$expectedCallbackStackTraceTopFrame->assertMatches($stackTrace[0]);
         }
     }
 

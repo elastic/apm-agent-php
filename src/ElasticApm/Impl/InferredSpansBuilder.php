@@ -31,7 +31,6 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -87,7 +86,11 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
+     * @param int  $offset
+     *
      * @return ClassicFormatStackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $offset
      */
     public function captureStackTrace(int $offset): array
     {
@@ -160,20 +163,15 @@ final class InferredSpansBuilder implements LoggableInterface
      * @param ?ClassicFormatStackTraceFrame $frameCopy
      * @param ?int                          $frameCopyIndex
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return iterable<ClassicFormatStackTraceFrame>
      */
-    private function buildStackTrace(
-        int $forFrameIndex,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
-    ): array {
+    private function buildStackTrace(int $forFrameIndex, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): iterable
+    {
         $openFramesCount = count($this->openFramesReverseOrder);
-        $result = [];
         for ($i = $forFrameIndex; $i >= 0 && $i < $openFramesCount; --$i) {
             $useFrameCopy = $frameCopy !== null && $frameCopyIndex === $i; // @phpstan-ignore-line
-            $result[] = $useFrameCopy ? $frameCopy : $this->openFramesReverseOrder[$i]->stackFrame;
+            yield $useFrameCopy ? $frameCopy : $this->openFramesReverseOrder[$i]->stackFrame;
         }
-        return $result;
     }
 
     /**
@@ -184,15 +182,10 @@ final class InferredSpansBuilder implements LoggableInterface
      *
      * @return void
      */
-    private function sendFrameAsSpan(
-        int $openFrameIndex,
-        string $parentId,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
-    ): void {
+    private function sendFrameAsSpan(int $openFrameIndex, string $parentId, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): void
+    {
         $frame = $this->openFramesReverseOrder[$openFrameIndex];
-        $stackTraceClassic = $this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex);
-        $stackTrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTrace = $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), /* maxNumberOfFrames */ null);
         $frame->prepareForSerialization($this->transaction, $parentId, $stackTrace);
         $this->tracer->sendSpanToApmServer($frame);
     }

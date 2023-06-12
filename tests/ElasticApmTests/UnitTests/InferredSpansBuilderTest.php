@@ -36,10 +36,10 @@ use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\UnitTests\Util\MockClockTracerUnitTestCaseBase;
-use ElasticApmTests\UnitTests\UtilTests\StackTraceUtilTest;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\StackTraceExpectations;
 use ElasticApmTests\Util\TimeUtilForTests;
 use ElasticApmTests\Util\TraceActual;
 use ElasticApmTests\Util\TracerBuilderForTests;
@@ -187,9 +187,9 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         self::assertSame($expectedDurationMilliseconds, $span->duration);
         TraceValidator::validate(new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan()));
 
-        $expectedStackTraceConvertedToApm = StackTraceUtil::convertClassicToApmFormat($expectedStackTrace);
+        $expectedStackTraceConvertedToApm = StackTraceUtil::convertClassicToApmFormat($expectedStackTrace, /* maxNumberOfFrames */ null);
         self::assertNotNull($span->stackTrace);
-        StackTraceUtilTest::assertEqualApmStackTraces($expectedStackTraceConvertedToApm, $span->stackTrace);
+        StackTraceExpectations::fromFrames($expectedStackTraceConvertedToApm)->assertMatches($span->stackTrace);
     }
 
     private function charDiagramFuncNameToStackTraceFrame(string $funcName): ClassicFormatStackTraceFrame
@@ -418,7 +418,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
                 $expectedStackTraceClassicFormat[] = self::charDiagramFuncNameToStackTraceFrame($funcName);
             }
             self::assertNotNull($actualSpan->stackTrace);
-            StackTraceUtilTest::assertEqualApmStackTraces(StackTraceUtil::convertClassicToApmFormat($expectedStackTraceClassicFormat), $actualSpan->stackTrace);
+            StackTraceExpectations::fromFrames(StackTraceUtil::convertClassicToApmFormat($expectedStackTraceClassicFormat, /* maxNumberOfFrames */ null))->assertMatches($actualSpan->stackTrace);
         }
         $dbgCtx->popSubScope();
     }

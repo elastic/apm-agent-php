@@ -194,14 +194,11 @@ final class CurlHandleTracker implements LoggableInterface
      * @param int     $numberOfStackFramesToSkip
      * @param mixed[] $interceptedCallArgs
      * @param mixed   $returnValue
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public function postHook(
-        string $dbgFuncName,
-        int $funcId,
-        int $numberOfStackFramesToSkip,
-        array $interceptedCallArgs,
-        $returnValue
-    ): void {
+    public function postHook(string $dbgFuncName, int $funcId, int $numberOfStackFramesToSkip, array $interceptedCallArgs, $returnValue): void
+    {
         ($assertProxy = Assert::ifEnabled())
         && $this->assertCurlHandleInArgsMatches($assertProxy, $dbgFuncName, $interceptedCallArgs);
 
@@ -219,12 +216,7 @@ final class CurlHandleTracker implements LoggableInterface
                 return;
 
             default:
-                throw new InternalFailureException(
-                    ExceptionUtil::buildMessage(
-                        'Unexpected function name',
-                        ['funcId' => $funcId, 'this' => $this]
-                    )
-                );
+                throw new InternalFailureException(ExceptionUtil::buildMessage('Unexpected function name', ['funcId' => $funcId, 'this' => $this]));
         }
     }
 
@@ -235,11 +227,8 @@ final class CurlHandleTracker implements LoggableInterface
      *
      * @return bool
      */
-    private function assertCurlHandleInArgsMatches(
-        EnabledAssertProxy $assertProxy,
-        string $dbgFuncName,
-        array $interceptedCallArgs
-    ): bool {
+    private function assertCurlHandleInArgsMatches(EnabledAssertProxy $assertProxy, string $dbgFuncName, array $interceptedCallArgs): bool
+    {
         $curlHandle
             = CurlAutoInstrumentation::extractCurlHandleFromArgs($this->logger, $dbgFuncName, $interceptedCallArgs);
 
@@ -591,17 +580,14 @@ final class CurlHandleTracker implements LoggableInterface
     /**
      * @param int   $numberOfStackFramesToSkip
      * @param mixed $returnValue
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     private function curlExecPostHook(int $numberOfStackFramesToSkip, $returnValue): void
     {
         $this->setContextPostHook();
 
-        AutoInstrumentationUtil::endSpan(
-            $numberOfStackFramesToSkip + 1,
-            $this->span,
-            false /* <- hasExitedByException */,
-            $returnValue
-        );
+        AutoInstrumentationUtil::endSpan($numberOfStackFramesToSkip + 1, $this->span, /* hasExitedByException */ false, $returnValue);
     }
 
     /**

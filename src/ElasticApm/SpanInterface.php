@@ -75,8 +75,10 @@ interface SpanInterface extends ExecutionSegmentInterface
     /**
      * Extended version of ExecutionSegmentInterface::end()
      *
-     * @param int        $numberOfStackFramesToSkip Number of stack frames to skip when capturing stack trace.
-     * @param float|null $duration                  In milliseconds with 3 decimal points.
+     * @param int    $numberOfStackFramesToSkip Number of stack frames to skip when capturing stack trace.
+     * @param ?float $duration                  In milliseconds with 3 decimal points.
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      *
      * @see ExecutionSegmentInterface::end() For the description
      */

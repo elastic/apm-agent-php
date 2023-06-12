@@ -28,29 +28,36 @@ namespace Elastic\Apm\Impl\Util;
  *
  * @internal
  */
-final class EnabledAssertProxy
+final class IterableUtil
 {
-    public function that(bool $condition): bool
-    {
-        // Return the opposite so that $assertProxy->info() is invoked and throws AssertException
-        //
-        //         ($assertProxy = Assert::ifEnabled())
-        //         && $assertProxy->that($condition)
-        //         && $assertProxy->info(...);
+    use StaticClassTrait;
 
-        return !$condition;
+    /**
+     * @template TValue
+     *
+     * @param TValue           $headVal
+     * @param iterable<TValue> $tail
+     *
+     * @return iterable<TValue>
+     */
+    public static function prepend($headVal, iterable $tail): iterable
+    {
+        yield $headVal;
+        yield from $tail;
     }
 
     /**
-     * @param string               $conditionAsString
-     * @param array<string, mixed> $context
+     * @template TValue
      *
-     * @return bool
-     * @throws AssertException
+     * @param TValue[] $inArray
+     * @param int      $suffixStartIndex
+     *
+     * @return iterable<TValue>
      */
-    public function withContext(string $conditionAsString, array $context): bool
+    public static function arraySuffix(array $inArray, int $suffixStartIndex): iterable
     {
-        $callerInfo = DbgUtil::getCallerInfoFromStacktrace(/* numberOfStackFramesToSkip: */ 1);
-        throw new AssertException(ExceptionUtil::buildMessage('Assertion failed', ['condition' => $conditionAsString, 'location' => $callerInfo] + $context));
+        foreach (RangeUtil::generateFromToIncluding($suffixStartIndex, count($inArray) - 1) as $index) {
+            yield $inArray[$index];
+        }
     }
 }

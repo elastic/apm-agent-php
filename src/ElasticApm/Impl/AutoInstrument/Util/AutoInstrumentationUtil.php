@@ -77,35 +77,29 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @template T
+     * @param string   $name
+     * @param string   $type
+     * @param ?string  $subtype
+     * @param ?string  $action
+     * @param callable $callback
+     * @param mixed[]  $callbackArgs
+     * @param int      $numberOfStackFramesToSkip
      *
-     * @param string      $name      New span's name
-     * @param string      $type      New span's type
-     * @param Closure(SpanInterface $newSpan): T $callback
-     * @param string|null $subtype   New span's subtype
-     * @param string|null $action    New span's action
-     * @param float|null  $timestamp Start time of the new span
+     * @return mixed
      *
-     * @return  T The return value of $callback
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public static function captureCurrentSpan(string $name, string $type, Closure $callback, ?string $subtype = null, ?string $action = null, ?float $timestamp = null)
+    public static function captureCurrentSpan(string $name, string $type, ?string $subtype, ?string $action, callable $callback, array $callbackArgs, int $numberOfStackFramesToSkip)
     {
-        return ElasticApm::getCurrentTransaction()->captureCurrentSpan(
-            $name,
-            $type,
-            /**
-             * @param SpanInterface $newSpan
-             *
-             * @return  T The return value of $callback
-             */
-            function (SpanInterface $newSpan) use ($callback) {
-                self::processNewSpan($newSpan);
-                return $callback($newSpan);
-            },
-            $subtype,
-            $action,
-            $timestamp
-        );
+        $span = self::beginCurrentSpan($name, $type, $subtype, $action);
+        try {
+            return call_user_func_array($callback, $callbackArgs);
+        } catch (Throwable $throwable) {
+            $span->createErrorFromThrowable($throwable);
+            throw $throwable;
+        } finally {
+            $span->endSpanEx($numberOfStackFramesToSkip + 1);
+        }
     }
 
     /**
@@ -114,14 +108,11 @@ final class AutoInstrumentationUtil
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown
      * @param ?float          $duration
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public static function endSpan(
-        int $numberOfStackFramesToSkip,
-        SpanInterface $span,
-        bool $hasExitedByException,
-        $returnValueOrThrown,
-        ?float $duration = null
-    ): void {
+    public static function endSpan(int $numberOfStackFramesToSkip, SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown, ?float $duration = null): void
+    {
         if ($hasExitedByException && ($returnValueOrThrown instanceof Throwable)) {
             $span->createErrorFromThrowable($returnValueOrThrown);
         }
@@ -140,10 +131,8 @@ final class AutoInstrumentationUtil
      *
      * @return null|callable(int, bool, mixed): void
      */
-    public static function createInternalFuncPostHookFromEndSpan(
-        SpanInterface $span,
-        ?Closure $doBeforeSpanEnd = null
-    ): ?callable {
+    public static function createInternalFuncPostHookFromEndSpan(SpanInterface $span, ?Closure $doBeforeSpanEnd = null): ?callable
+    {
         if ($span->isNoop()) {
             return null;
         }
@@ -152,24 +141,15 @@ final class AutoInstrumentationUtil
          * @param int   $numberOfStackFramesToSkip
          * @param bool  $hasExitedByException
          * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         *
+         * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
          */
-        return function (
-            int $numberOfStackFramesToSkip,
-            bool $hasExitedByException,
-            $returnValueOrThrown
-        ) use (
-            $span,
-            $doBeforeSpanEnd
-        ): void {
+        return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($span, $doBeforeSpanEnd): void {
             if ($doBeforeSpanEnd !== null) {
                 $doBeforeSpanEnd($hasExitedByException, $returnValueOrThrown);
             }
-            self::endSpan(
-                $numberOfStackFramesToSkip + 1,
-                $span,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
+            /** @var 0|positive-int $numberOfStackFramesToSkip */
+            self::endSpan($numberOfStackFramesToSkip + 1, $span, $hasExitedByException, $returnValueOrThrown);
         };
     }
 

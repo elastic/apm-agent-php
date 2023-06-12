@@ -643,7 +643,7 @@ class TestCaseBase extends TestCase
     /**
      * @inheritDoc
      *
-     * @return never-return
+     * @return never
      */
     public static function fail(string $message = ''): void
     {
@@ -750,6 +750,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertSame($expected, $actual, string $message = ''): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         try {
             Assert::assertSame($expected, $actual, $message);
         } catch (AssertionFailedError $ex) {

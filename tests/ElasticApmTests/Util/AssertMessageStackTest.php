@@ -381,4 +381,20 @@ class AssertMessageStackTest extends TestCase
             self::assertSame($expectedArgs[$expectedParamName], $actualArgs[$actualParamName], LoggableToString::convert($dbgCtxPerArg));
         }
     }
+
+    public function testCaptureVarByRef(): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        $localVar = 1;
+        $dbgCtx->add(['localVar' => &$localVar]);
+
+        $localVar = 2;
+
+        $capturedCtxStack = AssertMessageStack::getContextsStack();
+        self::assertCount(1, $capturedCtxStack);
+        $thisFuncCtx = ArrayUtilForTests::getFirstValue($capturedCtxStack);
+        self::assertArrayHasKey('localVar', $thisFuncCtx);
+        self::assertSame(2, $thisFuncCtx['localVar']);
+    }
 }
