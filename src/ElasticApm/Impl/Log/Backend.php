@@ -104,6 +104,8 @@ final class Backend implements LoggableInterface
      * @param LoggerData           $loggerData
      * @param bool|null            $includeStacktrace
      * @param int                  $numberOfStackFramesToSkip
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     public function log(
         int $statementLevel,
@@ -128,6 +130,7 @@ final class Backend implements LoggableInterface
         );
     }
 
+    /** @noinspection PhpUnused */
     public function getSink(): SinkInterface
     {
         return $this->logSink;

@@ -133,12 +133,8 @@ class Error implements SerializableDataInterface, LoggableInterface
      */
     public $exception = null;
 
-    public static function build(
-        Tracer $tracer,
-        ErrorExceptionData $errorExceptionData,
-        ?Transaction $transaction,
-        ?Span $span
-    ): Error {
+    public static function build(Tracer $tracer, ErrorExceptionData $errorExceptionData, ?Transaction $transaction, ?Span $span): Error
+    {
         $result = new Error();
 
         $result->timestamp = $tracer->getClock()->getSystemClockCurrentTime();

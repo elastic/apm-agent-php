@@ -69,7 +69,7 @@ abstract class WordPressMockWpHook
     {
         $retVal = null;
         foreach ($this->idToCallback as $callback) {
-            WordPressMockBridge::$expectedCallbackStackTraceTopFrame = new StackTraceFrame(__FILE__, __LINE__ + 1);
+            WordPressMockBridge::$expectedCallbackStackTraceTopFrame = new StackTraceFrame(__FILE__, __LINE__ + 1, 'call_user_func_array');
             $retVal = call_user_func_array($callback, $args);
         }
         return $retVal;

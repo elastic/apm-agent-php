@@ -46,7 +46,7 @@ class SpanExpectationsBuilder
     public function fromClassMethodNames(string $className, string $methodName, bool $isStatic = false): SpanExpectations
     {
         $result = $this->startNew();
-        $name = StackTraceUtil::buildFunctionNameForClassMethod($className, $isStatic, $methodName);
+        $name = StackTraceUtil::buildApmFormatFunctionForClassMethod($className, $isStatic, $methodName);
         TestCase::assertNotNull($name);
         $result->name->setValue($name);
         return $result;

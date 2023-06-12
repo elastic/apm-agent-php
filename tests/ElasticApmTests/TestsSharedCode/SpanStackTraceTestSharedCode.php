@@ -25,12 +25,11 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\SpanInterface;
-use ElasticApmTests\UnitTests\UtilTests\StackTraceUtilTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\StackTraceExpectations;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 
 use function ElasticApmTests\dummyFuncForTestsWithNamespace;
@@ -118,56 +117,57 @@ final class SpanStackTraceTestSharedCode
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        $funcNameForClosureWithThisCaptured = StackTraceUtilTest::buildFunctionNameForClassMethod(__CLASS__, __NAMESPACE__ . '\{closure}');
-        $funcNameForClosureWithoutThisCaptured = StackTraceUtilTest::buildFunctionNameForClassStaticMethod(__CLASS__, __NAMESPACE__ . '\{closure}');
-
         /** @var string $spanCreatingApi */
         $spanCreatingApi = TestCaseBase::getLabel($span, self::SPAN_CREATING_API_LABEL_KEY);
 
-        /** @var StackTraceFrame[] $expectedStacktrace */
-        $expectedStacktrace = [];
-        $expectedStacktrace[] = new StackTraceFrame(
-            __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberForSpanCreatingApiKey($spanCreatingApi)),
-            null /* function - top frame should not have 'function' property because the function being called is from Elastic APM API */
-        );
-        $expectedStacktrace[] = new StackTraceFrame(__FILE__, self::getIntFromExpectedData($expectedData, self::lineNumberKey('$createSpan')), $funcNameForClosureWithoutThisCaptured);
-        $expectedStacktrace[] = new StackTraceFrame(
+        /** @var StackTraceFrameExpectations[] $frameExpectations */
+        $frameExpectations = [];
+        $frameExpectations[] = StackTraceFrameExpectations::fromLocationOnly(__FILE__, self::getIntFromExpectedData($expectedData, self::lineNumberForSpanCreatingApiKey($spanCreatingApi)));
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(__FILE__, self::getIntFromExpectedData($expectedData, self::lineNumberKey('$createSpan')), __NAMESPACE__, __CLASS__, true);
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(
             DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME,
             DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER,
-            $funcNameForClosureWithoutThisCaptured
+            __NAMESPACE__,
+            __CLASS__,
+            true /* <- isStatic */
         );
-        $expectedStacktrace[] = new StackTraceFrame(
+        $frameExpectations[] = StackTraceFrameExpectations::fromStandaloneFunction(
             __FILE__,
             self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithNamespace')),
             DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE . '\\' . 'dummyFuncForTestsWithNamespace'
         );
-        $expectedStacktrace[] = new StackTraceFrame(
+        $frameExpectations[] = StackTraceFrameExpectations::fromClassMethod(
             __FILE__,
             self::getIntFromExpectedData($expectedData, self::lineNumberKey('myStaticMethod')),
-            StackTraceUtilTest::buildFunctionNameForClassStaticMethod(__CLASS__, 'myStaticMethod')
+            __CLASS__,
+            true /* <- isStatic */,
+            'myStaticMethod'
         );
-        $expectedStacktrace[] = new StackTraceFrame(
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(
             DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME,
             DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER,
-            $funcNameForClosureWithThisCaptured
+            __NAMESPACE__,
+            __CLASS__,
+            false /* <- isStatic */
         );
-        $expectedStacktrace[] = new StackTraceFrame(
+        $frameExpectations[] = StackTraceFrameExpectations::fromStandaloneFunction(
             __FILE__,
             self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithoutNamespace')),
             'dummyFuncForTestsWithoutNamespace'
         );
-        $expectedStacktrace[] = new StackTraceFrame(
+        $frameExpectations[] = StackTraceFrameExpectations::fromClassMethod(
             __FILE__,
             self::getIntFromExpectedData($expectedData, self::lineNumberKey('myInstanceMethod')),
-            StackTraceUtilTest::buildFunctionNameForClassMethod(__CLASS__, 'myInstanceMethod')
+            __CLASS__,
+            false /* <- isStatic */,
+            'myInstanceMethod'
         );
-        $dbgCtx->add(['expectedStacktrace' => $expectedStacktrace]);
+        $dbgCtx->add(['frameExpectations' => $frameExpectations]);
 
         $actualStacktrace = $span->stackTrace;
         $dbgCtx->add(['actualStacktrace' => $actualStacktrace]);
         TestCaseBase::assertNotNull($actualStacktrace);
-        SpanDto::assertStackTraceMatches(StackTraceExpectations::fromFrames($expectedStacktrace, /* allowToBePrefixOfActual */ true), $actualStacktrace);
+        StackTraceExpectations::fromFramesExpectations($frameExpectations, /* allowToBePrefixOfActual */ true)->assertMatches($actualStacktrace);
     }
 
     /**
