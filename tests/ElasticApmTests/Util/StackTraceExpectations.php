@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\RangeUtil;
 
 /**
  * @extends ExpectationsBase<StackTraceFrame[]>
@@ -42,16 +43,51 @@ final class StackTraceExpectations extends ExpectationsBase
      *
      * @return self
      */
-    public static function fromFrames(array $inputFrames, bool $allowToBePrefixOfActual): self
+    public static function fromFrames(array $inputFrames, bool $allowToBePrefixOfActual = false): self
+    {
+        $framesExpectations = [];
+        foreach ($inputFrames as $inputFrame) {
+            $framesExpectations[] = StackTraceFrameExpectations::fromFrame($inputFrame);
+        }
+        return self::fromFramesExpectations($framesExpectations, $allowToBePrefixOfActual);
+    }
+
+    /**
+     * @param StackTraceFrameExpectations[] $framesExpectations
+     * @param bool                          $allowToBePrefixOfActual
+     *
+     * @return self
+     */
+    public static function fromFramesExpectations(array $framesExpectations, bool $allowToBePrefixOfActual = false): self
     {
         $result = new self();
-
-        foreach ($inputFrames as $inputFrame) {
-            $result->frames[] = StackTraceFrameExpectations::fromFrame($inputFrame);
-        }
-
+        $result->frames = $framesExpectations;
         $result->allowToBePrefixOfActual = $allowToBePrefixOfActual;
 
         return $result;
+    }
+
+    /**
+     * @param StackTraceFrame[] $actual
+     *
+     * @return void
+     */
+    public function assertMatches(array $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
+
+        $dbgCtx->pushSubScope();
+        foreach (RangeUtil::generateUpTo(min(count($this->frames), count($actual))) as $i) {
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
+            $this->frames[$i]->assertMatches($actual[$i]);
+        }
+        $dbgCtx->popSubScope();
+
+        if ($this->allowToBePrefixOfActual) {
+            TestCaseBase::assertGreaterThanOrEqual(count($this->frames), count($actual));
+        } else {
+            TestCaseBase::assertSame(count($this->frames), count($actual));
+        }
     }
 }

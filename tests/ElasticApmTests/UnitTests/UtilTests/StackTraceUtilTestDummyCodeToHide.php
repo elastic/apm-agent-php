@@ -21,13 +21,11 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class PhpFormatStackTraceFrame extends StackTraceFrameBase
+final class StackTraceUtilTestDummyCodeToHide
 {
+    use StackTraceUtilTestDummyCodeTrait;
+
+    public const NAME_PREFIX = __CLASS__;
 }

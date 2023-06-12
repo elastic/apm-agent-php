@@ -43,6 +43,9 @@ final class LoggableStackTrace
      * @param int $maxNumberOfStackFrames
      *
      * @return ClassicFormatStackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     * @phpstan-param 0|positive-int $maxNumberOfStackFrames
      */
     public static function buildForCurrent(int $numberOfStackFramesToSkip, int $maxNumberOfStackFrames = self::MAX_NUMBER_OF_STACK_FRAMES): array
     {
@@ -57,7 +60,7 @@ final class LoggableStackTrace
             }
         };
 
-        $classicFormatFrames = StackTraceUtil::captureInClassicFormat(NoopLoggerFactory::singletonInstance(), /* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
+        $classicFormatFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
         $result = [];
 
         foreach ($classicFormatFrames as $classicFormatFrame) {

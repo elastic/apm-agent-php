@@ -31,7 +31,6 @@ use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DummyExceptionForTests;
-use ElasticApmTests\Util\SpanDto;
 use ElasticApmTests\Util\StackTraceFrameExpectations;
 
 class CapturePublicApiTest extends TracerUnitTestCaseBase
@@ -298,11 +297,9 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             self::assertSame(ClassNameUtil::fqToShort(DummyExceptionForTests::FQ_CLASS_NAME), $error->exception->type);
             self::assertNotNull($error->exception->stacktrace);
             self::assertCountAtLeast(2, $error->exception->stacktrace);
-            SpanDto::assertStackTraceFrameMatches(StackTraceFrameExpectations::fromProps(__FILE__, self::$throwingDummyExceptionForTestsLineNumber), $error->exception->stacktrace[0]);
-            SpanDto::assertStackTraceFrameMatches(
-                StackTraceFrameExpectations::fromProps(__FILE__, self::$callToMethodThrowingDummyExceptionForTestsLineNumber, __CLASS__ . '::methodThrowingDummyExceptionForTests'),
-                $error->exception->stacktrace[1]
-            );
+            StackTraceFrameExpectations::fromLocationOnly(__FILE__, self::$throwingDummyExceptionForTestsLineNumber)->assertMatches($error->exception->stacktrace[0]);
+            StackTraceFrameExpectations::fromClassMethod(__FILE__, self::$callToMethodThrowingDummyExceptionForTestsLineNumber, __CLASS__, /* isStatic */ true, 'methodThrowingDummyExceptionForTests')
+                                       ->assertMatches($error->exception->stacktrace[1]);
         }
         $dbgCtx->popSubScope();
     }

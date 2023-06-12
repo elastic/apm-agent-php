@@ -72,11 +72,7 @@ final class ArrayUtilForTests
      */
     public static function addUnique($key, $value, array &$result): void
     {
-        Assert::assertArrayNotHasKey(
-            $key,
-            $result,
-            LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result])
-        );
+        Assert::assertArrayNotHasKey($key, $result, LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result]));
         $result[$key] = $value;
     }
 
@@ -139,6 +135,8 @@ final class ArrayUtilForTests
      * @param TKey                $keyToFind
      *
      * @return  int
+     *
+     * @noinspection PhpUnused
      */
     public static function getAdditionOrderIndex(array $map, $keyToFind): int
     {
@@ -175,5 +173,18 @@ final class ArrayUtilForTests
         $val = self::getFromMap($argKey, $argsMap);
         Assert::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
         return $val;
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param TValue   $value
+     * @param TValue[] $list
+     */
+    public static function addToListIfNotAlreadyPresent($value, array &$list, bool $shouldUseStrictEq = true): void
+    {
+        if (!in_array($value, $list, /*strict */ $shouldUseStrictEq)) {
+            $list[] = $value;
+        }
     }
 }

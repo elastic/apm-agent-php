@@ -172,7 +172,7 @@ final class InferredSpansManager implements LoggableInterface
         && $loggerProxy->log('Entered');
 
         if (!$this->isShutdown() && $this->builder !== null) {
-            $stackTrace = InferredSpansBuilder::captureStackTrace(/* offset */ 1, $this->tracer->loggerFactory());
+            $stackTrace = $this->builder->captureStackTrace(/* offset */ 1);
             $this->builder->addStackTrace($stackTrace);
             $this->setAlarmTimer();
         }

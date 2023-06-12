@@ -24,16 +24,17 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
  * @extends ExpectationsBase<StackTraceFrame>
  */
 final class StackTraceFrameExpectations extends ExpectationsBase
 {
-    /** @var string */
+    /** @var Optional<string> */
     public $filename;
 
-    /** @var ?string */
+    /** @var Optional<?string> */
     public $function;
 
     /** @var Optional<int> */
@@ -41,24 +42,81 @@ final class StackTraceFrameExpectations extends ExpectationsBase
 
     public function __construct()
     {
+        $this->filename = new Optional();
+        $this->function = new Optional();
         $this->lineno = new Optional();
     }
 
     public static function fromFrame(StackTraceFrame $frame): self
     {
         $result = new self();
-        $result->filename = $frame->filename;
-        $result->function = $frame->function;
+        $result->filename->setValue($frame->filename);
+        $result->function->setValue($frame->function);
         $result->lineno->setValue($frame->lineno);
         return $result;
     }
 
-    public static function fromProps(string $filename, int $lineNumber, ?string $function = null): self
+    private static function buildFunctionFromClassMethod(string $class, bool $isStatic, string $method): string
+    {
+        return $class . ($isStatic ? '::' : '->') . $method;
+    }
+
+    public static function fromClassMethod(string $fileName, int $lineNumber, string $class, bool $isStatic, string $method): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, $method);
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        return $result;
+    }
+
+    public static function fromClassMethodUnknownLocation(string $class, bool $isStatic, string $method): self
     {
         $result = new self();
-        $result->filename = $filename;
-        $result->lineno->setValue($lineNumber);
-        $result->function = $function;
+        $result->function->setValue(self::buildFunctionFromClassMethod($class, $isStatic, $method));
         return $result;
+    }
+
+    public static function fromClassMethodNoLocation(string $class, bool $isStatic, string $method): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, $method);
+        $result->filename->setValue(StackTraceUtil::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE);
+        $result->lineno->setValue(StackTraceUtil::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+        return $result;
+    }
+
+    public static function fromStandaloneFunction(string $fileName, int $lineNumber, string $func): self
+    {
+        $result = new self();
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        $result->function->setValue($func);
+        return $result;
+    }
+
+    public static function fromClosure(string $fileName, int $lineNumber, ?string $namespace, string $class, bool $isStatic): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        return $result;
+    }
+
+    public static function fromLocationOnly(string $fileName, int $lineNumber): self
+    {
+        $result = new self();
+        $result->filename->setValue($fileName);
+        $result->lineno->setValue($lineNumber);
+        $result->function->setValue(null);
+        return $result;
+    }
+
+    public function assertMatches(StackTraceFrame $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
+
+        TestCaseBase::assertSameExpectedOptional($this->filename, $actual->filename);
+        TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
+        TestCaseBase::assertSameExpectedOptional($this->lineno, $actual->lineno);
     }
 }
