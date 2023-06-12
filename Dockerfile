@@ -5,6 +5,9 @@ RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install \
         procps \
         rsyslog \
+        curl \
+        unzip \
+        wget \
  && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install \

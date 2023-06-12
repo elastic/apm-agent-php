@@ -7,7 +7,10 @@ RUN apk update \
     logrotate \
     procps \
     rsyslog \
-    util-linux
+    util-linux \
+    curl \
+    git \
+    unzip
 
 ARG ADD_LIBUNWIND_DEPENDENCY=false
 RUN echo "ADD_LIBUNWIND_DEPENDENCY: ${ADD_LIBUNWIND_DEPENDENCY}"
