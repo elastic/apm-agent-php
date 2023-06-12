@@ -90,21 +90,14 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
      */
     public function __invoke()
     {
-        $args = func_get_args();
-        $span = AutoInstrumentationUtil::beginCurrentSpan(
+        return AutoInstrumentationUtil::captureCurrentSpan(
             $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
             $this->callbackGroupKind /* <- type */,
             $this->callbackGroupName /* <- subtype */,
-            $this->hookName /* <- action */
+            $this->hookName /* <- action */,
+            $this->callback,
+            func_get_args() /* <- callbackArgs */,
+            1 /* <- numberOfStackFramesToSkip - 1 because we don't want the current method (i.e., WordPressFilterCallbackWrapper->__invoke) to be kept */
         );
-        try {
-            return call_user_func_array($this->callback, $args); // @phpstan-ignore-line - $this->callback should have type callable
-        } catch (Throwable $throwable) {
-            $span->createErrorFromThrowable($throwable);
-            throw $throwable;
-        } finally {
-            // numberOfStackFramesToSkip is 1 because we don't want the current method (i.e., WordPressFilterCallbackWrapper->__invoke) to be kept
-            $span->endSpanEx(/* numberOfStackFramesToSkip: */ 1);
-        }
     }
 }
