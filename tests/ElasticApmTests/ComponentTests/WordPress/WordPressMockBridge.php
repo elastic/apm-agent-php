@@ -94,7 +94,7 @@ final class WordPressMockBridge
     /** @var array<callable(): void> */
     public static $removeFilterCalls = [];
 
-    /** @var StackTraceFrame */
+    /** @var StackTraceFrameExpectations */
     public static $expectedCallbackStackTraceTopFrame;
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
@@ -415,7 +415,7 @@ final class WordPressMockBridge
             $stackTrace = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 4, /* maxNumberOfFrames */ null);
             $dbgCtx->add(['stackTrace' => $stackTrace]);
             TestCaseBase::assertCountAtLeast(1, $stackTrace);
-            StackTraceFrameExpectations::fromFrame(self::$expectedCallbackStackTraceTopFrame)->assertMatches($stackTrace[0]);
+            self::$expectedCallbackStackTraceTopFrame->assertMatches($stackTrace[0]);
         }
     }
 
