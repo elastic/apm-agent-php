@@ -77,17 +77,17 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @template T
+     * @param string   $name
+     * @param string   $type
+     * @param ?string  $subtype
+     * @param ?string  $action
+     * @param callable $callback
+     * @param mixed[]  $callbackArgs
+     * @param int      $numberOfStackFramesToSkip
      *
-     * @param string                 $name
-     * @param string                 $type
-     * @param ?string                $subtype
-     * @param ?string                $action
-     * @param callable(mixed ...): T $callback
-     * @param mixed[]                $callbackArgs
-     * @param int                    $numberOfStackFramesToSkip
+     * @return mixed
      *
-     * @return T
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     public static function captureCurrentSpan(string $name, string $type, ?string $subtype, ?string $action, callable $callback, array $callbackArgs, int $numberOfStackFramesToSkip)
     {
