@@ -79,6 +79,7 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
 
     /**
      * @return mixed
+     * @noinspection PhpReturnDocTypeMismatchInspection
      */
     public function getWrappedCallback()
     {
