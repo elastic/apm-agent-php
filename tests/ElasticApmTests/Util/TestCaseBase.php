@@ -783,6 +783,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertArrayHasKey($key, $array, string $message = ''): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         try {
             Assert::assertArrayHasKey($key, $array, $message);
         } catch (AssertionFailedError $ex) {
