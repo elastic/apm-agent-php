@@ -27,10 +27,27 @@ trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
+phpt_timeout_seconds=${ELASTIC_APM_PHP_TESTS_PHPT_TIMEOUT_SECONDS:-60}
+run_phpt_test_with_timeout_and_retries_args=(--retry-on-error=no)
+run_phpt_test_with_timeout_and_retries_args=(--max-tries=1 "${run_phpt_test_with_timeout_and_retries_args[@]}")
+run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "${run_phpt_test_with_timeout_and_retries_args[@]}")
+
 ## This make runs PHPT
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false
 for phptFile in ./tests/*.phpt; do
+    phptFileName="$(basename -- ${phptFile})"
+
+#    if [[ "${phptFileName}" == "opcache_preload_detection.phpt" ]]; then
+#        echo "Skipping tests in \`${phptFile}' ..."
+#        continue
+#    fi
+
+#    if [[ "${phptFileName}" == "opcache_preload_detection_double.phpt" ]]; then
+#        echo "Skipping tests in \`${phptFile}' ..."
+#        continue
+#    fi
+
     msg="Running tests in \`${phptFile}' ..."
     echo "${msg}"
     this_script_name="$( basename "${BASH_SOURCE[0]}" )"
@@ -38,7 +55,7 @@ for phptFile in ./tests/*.phpt; do
 
     # Disable exit-on-error
     set +e
-    make test TESTS="--show-all ${phptFile}"
+    "${thisScriptDir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- make test TESTS="--show-all ${phptFile}"
     exitCode=$?
 
     if [ ${exitCode} -ne 0 ] ; then
