@@ -27,6 +27,7 @@ trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
+echo "Starting .phpt tests at $(date +"%Y-%m-%d %H:%M:%S")"
 ## This make runs PHPT
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false
@@ -52,7 +53,9 @@ for phptFile in ./tests/*.phpt; do
     # Re-enable exit-on-error
     set -e
 done
+echo "Finished .phpt tests at $(date +"%Y-%m-%d %H:%M:%S")"
 
+echo "Starting native part unit tests (using cmocka) at $(date +"%Y-%m-%d %H:%M:%S")"
 # Disable exit-on-error
 set +e
 ## Run cmocka tests
@@ -74,6 +77,7 @@ function buildAndRunUnitTests () {
 buildAndRunUnitTests
 ## Save errorlevel to be reported later on
 ret=$?
+echo "Finished native part unit tests (using cmocka) at $(date +"%Y-%m-%d %H:%M:%S")"
 
 ## Manipulate JUnit report without multiple testsuites entries.
 for file in "${BUILD_FOLDER}"/*-unit-tests-junit.xml; do
@@ -101,7 +105,9 @@ composer run-script static_check
 
 # Run unit tests
 phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=unit)
+echo "Starting PHP part unit tests (using PHPUnit) at $(date +"%Y-%m-%d %H:%M:%S")"
 composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
+echo "Finished PHP part unit tests (using PHPUnit) at $(date +"%Y-%m-%d %H:%M:%S")"
 ls -l ./build/unit-tests-phpunit-junit.xml
 
 # Generate junit output for phpstan
