@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
-use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Config\OptionNames;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
