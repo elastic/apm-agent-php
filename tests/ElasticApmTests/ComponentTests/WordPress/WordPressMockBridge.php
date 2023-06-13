@@ -36,6 +36,7 @@ use ElasticApmTests\ComponentTests\WordPressAutoInstrumentationTest;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\MixedMap;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use stdClass;
 
@@ -92,6 +93,9 @@ final class WordPressMockBridge
 
     /** @var array<callable(): void> */
     public static $removeFilterCalls = [];
+
+    /** @var StackTraceFrameExpectations */
+    public static $expectedCallbackStackTraceTopFrame;
 
     public const MOCK_MU_PLUGIN_HOOK_NAME = 'save_post';
     public const MOCK_PLUGIN_HOOK_NAME = 'media_upload_newtab';
@@ -263,7 +267,7 @@ final class WordPressMockBridge
          * @return void
          */
         $setContextCustomWithStackTrace = function (string $key, ?array $stackTrace, int $callsCount) use ($txCtx): void {
-            if ($callsCount === 0) {
+            if (!self::$shouldExpectCallbacksToBeWrapped || $callsCount === 0) {
                 TestCaseBase::assertNull($stackTrace);
                 return;
             }
@@ -392,13 +396,15 @@ final class WordPressMockBridge
     }
 
     /**
-     * @param null|StackTraceFrame[] &$var
+     * @param null|StackTraceFrame[] &$stackTrace
      *
      * @return void
      */
-    public static function setCallbackStackTrace(/* ref */ ?array &$var): void
+    public static function setCallbackStackTrace(/* ref */ ?array &$stackTrace): void
     {
-        if ($var === null) {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        if (self::$shouldExpectCallbacksToBeWrapped && $stackTrace === null) {
             /**
              * numberOfStackFramesToSkip is 4 to skip
              *      1) This method
@@ -406,7 +412,9 @@ final class WordPressMockBridge
              *      3) call_user_func in WordPressFilterCallbackWrapper::__invoke
              *      4) WordPressFilterCallbackWrapper::__invoke
              */
-            $var = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 4, /* maxNumberOfFrames */ null);
+            $stackTrace = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInApmFormat(/* numberOfStackFramesToSkip */ 4, /* maxNumberOfFrames */ null);
+            $dbgCtx->add(['stackTrace' => $stackTrace]);
+            self::$expectedCallbackStackTraceTopFrame->assertMatches($stackTrace[0]);
         }
     }
 
@@ -453,8 +461,8 @@ final class WordPressMockBridge
         global $wp_filter;
         self::assertInvariant($wp_filter);
 
-        foreach (self::$removeFilterCalls as $removeFilterCalls) {
-            $removeFilterCalls();
+        foreach (self::$removeFilterCalls as $removeFilterCall) {
+            $removeFilterCall();
         }
 
         self::assertInvariant($wp_filter);

@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\WordPress;
 
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -68,6 +69,7 @@ abstract class WordPressMockWpHook
     {
         $retVal = null;
         foreach ($this->idToCallback as $callback) {
+            WordPressMockBridge::$expectedCallbackStackTraceTopFrame = StackTraceFrameExpectations::fromStandaloneFunction(__FILE__, __LINE__ + 1, 'call_user_func_array');
             $retVal = call_user_func_array($callback, $args);
         }
         return $retVal;
