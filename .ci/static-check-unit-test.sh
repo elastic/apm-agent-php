@@ -27,7 +27,7 @@ trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
-phpt_timeout_seconds=${ELASTIC_APM_PHP_TESTS_PHPT_TIMEOUT_SECONDS:-60}
+phpt_timeout_seconds=60
 run_phpt_test_with_timeout_and_retries_args=(--retry-on-error=no)
 run_phpt_test_with_timeout_and_retries_args=(--max-tries=1 "${run_phpt_test_with_timeout_and_retries_args[@]}")
 run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "${run_phpt_test_with_timeout_and_retries_args[@]}")
