@@ -31,6 +31,8 @@
  * Minimum required PHP version: 7.1.0
  */
 
+/* Elastic: original file https://raw.githubusercontent.com/php/php-src/PHP-8.0/run-tests.php */
+
 function show_usage(): void
 {
     echo <<<HELP
@@ -1262,13 +1264,6 @@ function system_with_timeout(
         unset($pipes[0]);
     }
 
-    if ($captureStdOut) {
-        stream_set_blocking($pipes[1], false);
-    }
-    if ($captureStdErr) {
-        stream_set_blocking($pipes[2], false);
-    }
-
     $timeout = $valgrind ? 300 : ($env['TEST_TIMEOUT'] ?? 60);
 
     $stdout_data = '';
@@ -2244,7 +2239,7 @@ TEST $file
                 @unlink($test_skipif);
             }
  
-            if (!strncasecmp('skip', $output, 4) || strstr($output, 'ElasticApmSkipTest')) {
+            if (!strncasecmp('skip', $output, 4) || strstr($output, 'ElasticApmSkipTest')) { //Elastic: check for additional string in output to detect skip
                 if (preg_match('/^skip\s*(.+)/i', $output, $m)) {
                     show_result('SKIP', $tested, $tested_file, "reason: $m[1]", $temp_filenames);
                 } else {
