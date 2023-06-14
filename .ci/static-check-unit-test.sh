@@ -36,18 +36,6 @@ run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "
 # Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false
 for phptFile in ./tests/*.phpt; do
-    phptFileName="$(basename -- ${phptFile})"
-
-#    if [[ "${phptFileName}" == "opcache_preload_detection.phpt" ]]; then
-#        echo "Skipping tests in \`${phptFile}' ..."
-#        continue
-#    fi
-
-#    if [[ "${phptFileName}" == "opcache_preload_detection_double.phpt" ]]; then
-#        echo "Skipping tests in \`${phptFile}' ..."
-#        continue
-#    fi
-
     msg="Running tests in \`${phptFile}' ..."
     echo "${msg}"
     this_script_name="$( basename "${BASH_SOURCE[0]}" )"
