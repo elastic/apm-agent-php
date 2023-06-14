@@ -1264,6 +1264,13 @@ function system_with_timeout(
         unset($pipes[0]);
     }
 
+    // if ($captureStdOut) {
+    //     stream_set_blocking($pipes[1], false);
+    // }
+    // if ($captureStdErr) {
+    //     stream_set_blocking($pipes[2], false);
+    // }
+
     $timeout = $valgrind ? 300 : ($env['TEST_TIMEOUT'] ?? 60);
 
     $stdout_data = '';
@@ -1289,17 +1296,20 @@ function system_with_timeout(
             if ($captureStdOut) {
                 $line = fread($pipes[1], 8192);
                 $stdout_data .= $line;
-                if (feof($pipes[1])) {
-                    break;
+                if (strlen($line) == 0) {
+                    $captureStdOut = false;
                 }
-            }
-            if ($captureStdErr) {
-                $line = fread($pipes[2], 8192);
+            } else if ($captureStdErr) {
+                $line = fread($pipes[2], 1);
                 $stderr_data .= $line;
-                if (feof($pipes[2])) {
-                    break;
+                if (strlen($line) == 0) {
+                    $captureStdErr = false;
                 }
             }
+        }
+
+        if (!$captureStdOut && !$captureStdErr) {
+            break;
         }
     }
 
