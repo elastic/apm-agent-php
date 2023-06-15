@@ -32,9 +32,15 @@ run_phpt_test_with_timeout_and_retries_args=(--retry-on-error=no)
 run_phpt_test_with_timeout_and_retries_args=(--max-tries=1 "${run_phpt_test_with_timeout_and_retries_args[@]}")
 run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "${run_phpt_test_with_timeout_and_retries_args[@]}")
 
-## This make runs PHPT
-# Disable agent for auxiliary PHP processes to reduce noise in logs
-export ELASTIC_APM_ENABLED=false
+PHP_EXECUTABLE=$(which php)
+
+RUN_TESTS=$APP_FOLDER/src/ext/tests/run-tests.php
+AGENT_EXTENSION_DIR=$APP_FOLDER/src/ext/modules
+AGENT_EXTENSION=$AGENT_EXTENSION_DIR/elastic_apm.so
+
+# ## This runs PHPT
+# # Disable agent for auxiliary PHP processes to reduce noise in logs
+export ELASTIC_APM_ENABLED=true
 for phptFile in ./tests/*.phpt; do
     msg="Running tests in \`${phptFile}' ..."
     echo "${msg}"
@@ -42,9 +48,21 @@ for phptFile in ./tests/*.phpt; do
     logger -t "${this_script_name}" "${msg}"
 
     # Disable exit-on-error
-    set +e
-    "${thisScriptDir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- make test TESTS="--show-all ${phptFile}"
+    # set +e
+    TESTS="--show-all ${phptFile}"
+
+    INI_FILE=`php -d 'display_errors=stderr' -r 'echo php_ini_loaded_file();' 2> /dev/null`
+
+    if test "$INI_FILE"; then
+        egrep -h -v $PHP_DEPRECATED_DIRECTIVES_REGEX "$INI_FILE" > /tmp/tmp-php.ini
+    else
+        echo > /tmp/tmp-php.ini
+    fi
+
+    TEST_PHP_SRCDIR=$APP_FOLDER/src/ext TEST_PHP_EXECUTABLE=$PHP_EXECUTABLE "${thisScriptDir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- $PHP_EXECUTABLE -n -c /tmp/tmp-php.ini $PHP_TEST_SETTINGS $RUN_TESTS -n -c /tmp/tmp-php.ini -d extension_dir=$AGENT_EXTENSION_DIR -d extension=$AGENT_EXTENSION  $PHP_TEST_SHARED_EXTENSIONS $TESTS
     exitCode=$?
+    rm /tmp/tmp-php.ini
+
 
     if [ ${exitCode} -ne 0 ] ; then
         echo "Tests in \`${phptFile}' failed"
