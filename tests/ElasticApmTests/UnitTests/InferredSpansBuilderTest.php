@@ -334,7 +334,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $inputOptions = ArrayUtil::getValueIfKeyExistsElse(self::INPUT_OPTIONS_KEY, $args, []);
         $this->setUpTestEnv(
             function (TracerBuilderForTests $tracerBuilder) use ($inputOptions): void {
-                // Set SPAN_STACK_TRACE_MIN_DURATION to 0 by default
+                // Enable span stack trace collection for span with any duration
                 $tracerBuilder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, '0');
                 foreach ($inputOptions as $optName => $optVal) {
                     $tracerBuilder->withConfig($optName, strval($optVal));

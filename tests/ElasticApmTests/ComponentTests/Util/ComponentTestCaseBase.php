@@ -556,4 +556,12 @@ class ComponentTestCaseBase extends TestCaseBase
         self::assertSame($receivedCrc, $calculatedCrc);
         return unserialize(base64_decode($valueSerialized));
     }
+
+    protected static function disableTimingDependentFeatures(AppCodeHostParams $appCodeParams)
+    {
+        // Disable Span Compression feature to have all the expected spans individually
+        $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+        // Enable span stack trace collection for span with any duration
+        $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
+    }
 }
