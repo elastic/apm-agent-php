@@ -22,14 +22,19 @@
 #include "basic_types.h"
 #include "time_util.h"
 
-struct BackendCommBackoffState;
-typedef struct BackendCommBackoffState BackendCommBackoffState;
+typedef UInt (* GenerateRandomUInt )( void* ctx );
 
-typedef UInt (* GenerateRandomUInt )();
+struct BackendCommBackoff
+{
+    GenerateRandomUInt generateRandomUInt;
+    void* generateRandomUIntCtx;
+    UInt sequentialErrorsCount;
+};
+typedef struct BackendCommBackoff BackendCommBackoff;
 
-UInt backendCommBackoff_defaultGenerateRandomUInt();
-void backendCommBackoff_init( GenerateRandomUInt genRandomUInt, BackendCommBackoffState* thisObj );
-void backendCommBackoff_onSuccess( BackendCommBackoffState* thisObj );
-void backendCommBackoff_onError( BackendCommBackoffState* thisObj );
-UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoffState* thisObj );
+void backendCommBackoff_init( GenerateRandomUInt generateRandomUInt, void* generateRandomUIntCtx, BackendCommBackoff* thisObj );
+void backendCommBackoff_onSuccess( BackendCommBackoff* thisObj );
+void backendCommBackoff_onError( BackendCommBackoff* thisObj );
+UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoff* thisObj );
 int backendCommBackoff_convertRandomUIntToJitter( UInt randomVal, UInt jitterHalfRange );
+UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx );

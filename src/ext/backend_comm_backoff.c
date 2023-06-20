@@ -28,45 +28,45 @@
  * @see https://github.com/elastic/apm/blob/d8cb5607dbfffea819ab5efc9b0743044772fb23/specs/agents/transport.md#transport-errors
  */
 
-struct BackendCommBackoffState
-{
-    GenerateRandomUInt genRandomUInt;
-    UInt sequentialErrorsCount;
-};
-
-void backendCommBackoff_init( GenerateRandomUInt genRandomUInt, BackendCommBackoffState* thisObj )
+void backendCommBackoff_init( GenerateRandomUInt generateRandomUInt, void* generateRandomUIntCtx, BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
+    ELASTIC_APM_ASSERT_VALID_PTR( thisObj->generateRandomUInt );
 
-    thisObj->genRandomUInt = genRandomUInt;
+    thisObj->generateRandomUInt = generateRandomUInt;
+    thisObj->generateRandomUIntCtx = generateRandomUIntCtx;
     thisObj->sequentialErrorsCount = 0;
 }
 
-void backendCommBackoff_onSuccess( BackendCommBackoffState* thisObj )
+void backendCommBackoff_onSuccess( BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
     thisObj->sequentialErrorsCount = 0;
 }
 
-void backendCommBackoff_onError( BackendCommBackoffState* thisObj )
+void backendCommBackoff_onError( BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
     /**
      *  The grace period should be calculated in seconds using the algorithm min(reconnectCount++, 6) ** 2 ± 10%
      */
-    enum { maxSequentialErrorsCount = 6 };
+    enum { maxSequentialErrorsCount = 7 };
 
-    thisObj->sequentialErrorsCount = ELASTIC_APM_MIN( maxSequentialErrorsCount, thisObj->sequentialErrorsCount + 1 );
+    if ( thisObj->sequentialErrorsCount < maxSequentialErrorsCount )
+    {
+        ++thisObj->sequentialErrorsCount;
+    }
 }
 
 int backendCommBackoff_convertRandomUIntToJitter( UInt randomVal, UInt jitterHalfRange )
 {
-    return ( (int) floor( ( 2.0 * jitterHalfRange * randomVal ) / ( (double)( RAND_MAX ) ) ) ) - ( (int) jitterHalfRange );
+    double diff = randomVal - ( RAND_MAX / 2.0 );
+    return ( diff >= 0 ? 1 : -1 ) * ( (int) floor( ( jitterHalfRange * fabs( diff ) ) / ( RAND_MAX / 2.0 ) ) );
 }
 
-UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoffState* thisObj )
+UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
@@ -76,14 +76,17 @@ UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoffState* t
     }
 
     UInt reconnectCount = (thisObj->sequentialErrorsCount - 1);
-    double timeToWaitWithoutJitter = pow( 2, reconnectCount );
+    double timeToWaitWithoutJitter = pow( reconnectCount, 2 );
     double jitterHalfRange = timeToWaitWithoutJitter * 0.1;
-    double jitter = jitterHalfRange < 1 ? 0 : backendCommBackoff_convertRandomUIntToJitter( thisObj->genRandomUInt(), (UInt) floor( jitterHalfRange ) );
+    UInt jitter = jitterHalfRange < 1 ? 0 : backendCommBackoff_convertRandomUIntToJitter( thisObj->generateRandomUInt( thisObj->generateRandomUIntCtx ), (UInt) floor( jitterHalfRange ) );
 
     return (int)( round( timeToWaitWithoutJitter ) ) + jitter;
 }
 
-UInt backendCommBackoff_defaultGenerateRandomUInt()
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnusedParameter"
+UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx )
+#pragma clang diagnostic pop
 {
-    return (UInt) rand();
+    return (UInt) rand(); // NOLINT(cert-msc50-cpp)
 }

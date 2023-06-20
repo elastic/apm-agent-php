@@ -82,6 +82,7 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     AST_debug.c \
     AST_instrumentation.c \
     backend_comm.c \
+    backend_comm_backoff.c \
     ConfigManager.c \
     elastic_apm.c \
     elastic_apm_API.c \
