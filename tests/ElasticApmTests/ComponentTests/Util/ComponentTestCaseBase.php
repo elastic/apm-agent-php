@@ -557,7 +557,7 @@ class ComponentTestCaseBase extends TestCaseBase
         return unserialize(base64_decode($valueSerialized));
     }
 
-    protected static function disableTimingDependentFeatures(AppCodeHostParams $appCodeParams)
+    protected static function disableTimingDependentFeatures(AppCodeHostParams $appCodeParams): void
     {
         // Disable Span Compression feature to have all the expected spans individually
         $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
