@@ -49,7 +49,6 @@ final class StackTraceLimitComponentTest extends ComponentTestCaseBase
 
     public static function appCodeForTestVariousConfigValues(MixedMap $appCodeArgs): void
     {
-        ElasticApm::getCurrentTransaction()->context()->setLabel(OptionNames::STACK_TRACE_LIMIT, self::getTracerFromAppCode()->getConfig()->stackTraceLimit());
         $expectedMaxNumberOfFrames = $appCodeArgs->getNullablePositiveOrZeroInt(StackTraceLimitTestSharedCode::EXPECTED_MAX_NUMBER_OF_FRAMES_KEY);
         StackTraceLimitTestSharedCode::implTestVariousConfigValuesActPart($expectedMaxNumberOfFrames);
     }

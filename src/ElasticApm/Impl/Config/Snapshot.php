@@ -188,10 +188,7 @@ final class Snapshot implements LoggableInterface
     /** @var float */
     private $spanCompressionSameKindMaxDuration;
 
-    /**
-     * @var int
-     * @phpstan-var -1|0|positive-int
-     */
+    /** @var int */
     private $stackTraceLimit;
 
     /** @var ?WildcardListMatcher */
@@ -374,10 +371,6 @@ final class Snapshot implements LoggableInterface
         return $this->spanCompressionSameKindMaxDuration;
     }
 
-    /**
-     * @return int
-     * @phpstan-return -1|0|positive-int
-     */
     public function stackTraceLimit(): int
     {
         return $this->stackTraceLimit;
