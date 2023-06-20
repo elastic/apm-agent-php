@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
