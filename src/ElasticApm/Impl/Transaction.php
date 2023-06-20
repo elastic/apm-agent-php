@@ -608,7 +608,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     {
         return ($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->getStackTraceLimitConfig())) === 0
             ? null
-            : $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfFrames);
+            : $this->tracer->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfFrames);
     }
 
     private function prepareForSerialization(): void
