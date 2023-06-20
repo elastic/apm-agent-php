@@ -188,6 +188,9 @@ final class Snapshot implements LoggableInterface
     /** @var float */
     private $spanCompressionSameKindMaxDuration;
 
+    /** @var float */
+    private $spanStackTraceMinDuration;
+
     /** @var int */
     private $stackTraceLimit;
 
@@ -369,6 +372,11 @@ final class Snapshot implements LoggableInterface
     public function spanCompressionSameKindMaxDuration(): float
     {
         return $this->spanCompressionSameKindMaxDuration;
+    }
+
+    public function spanStackTraceMinDuration(): float
+    {
+        return $this->spanStackTraceMinDuration;
     }
 
     public function stackTraceLimit(): int
