@@ -112,6 +112,12 @@ Duration makeDuration( Int64 valueInUnits, DurationUnits units )
     return (Duration){ .valueInUnits = valueInUnits, .units = units };
 }
 
+static inline
+Duration makeZeroDuration( DurationUnits units )
+{
+    return (Duration){ .valueInUnits = 0, .units = units };
+}
+
 ResultCode parseDuration( StringView inputString, DurationUnits defaultUnits, /* out */ Duration* result );
 
 String streamDuration( Duration duration, TextOutputStream* txtOutStream );

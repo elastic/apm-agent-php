@@ -91,7 +91,7 @@ void StringView_from_literal( void** testFixtureState )
     }
 }
 
-int run_basic_types_tests_tests()
+int run_basic_types_tests()
 {
     const struct CMUnitTest tests [] =
     {
