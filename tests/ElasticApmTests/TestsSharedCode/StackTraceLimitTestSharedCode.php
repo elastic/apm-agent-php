@@ -41,9 +41,11 @@ final class StackTraceLimitTestSharedCode
     public const BASE_STACK_TRACE_DEPTH_KEY = 'base_stack_trace_depth';
 
     /**
+     * @param ?callable $adaptDataSets
+     *
      * @return iterable<string, array{MixedMap}>
      */
-    public static function dataProviderForTestVariousConfigValues(): iterable
+    public static function dataProviderForTestVariousConfigValues(?callable $adaptDataSets = null): iterable
     {
         /**
          * @return iterable<array<string, mixed>>
@@ -68,7 +70,15 @@ final class StackTraceLimitTestSharedCode
             }
         };
 
-        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc($genDataSets);
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc(
+            /**
+             * @return iterable<array<string, mixed>>
+             */
+            function () use ($genDataSets, $adaptDataSets): iterable {
+                $dataSets = $genDataSets();
+                return $adaptDataSets === null ? $dataSets : $adaptDataSets($dataSets);
+            }
+        );
     }
 
     /**

@@ -96,10 +96,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ?bool */
     private $cachedIsSpanCompressionEnabled = null;
 
-    /**
-     * @var ?int
-     * @phpstan-var null|-1|0|positive-int
-     */
+    /** @var ?int */
     private $cachedStackTraceLimitConfig = null;
 
     public function __construct(TransactionBuilder $builder)
@@ -593,6 +590,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::STACK_TRACE_LIMIT . '\')');
         }
+
         /** @phpstan-ignore-next-line */
         return $this->cachedStackTraceLimitConfig;
     }
