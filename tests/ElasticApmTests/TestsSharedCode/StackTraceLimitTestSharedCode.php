@@ -127,17 +127,6 @@ final class StackTraceLimitTestSharedCode
         return $lineSpanEnd;
     }
 
-    // TODO: Sergey Kleyman: UNCOMMENT
-    // private static function throwExceptionWithAdditionalStackDepth(int $additionalDepth): void
-    // {
-    //     if ($additionalDepth > 1) {
-    //         self::throwExceptionWithAdditionalStackDepth($additionalDepth - 1);
-    //         return;
-    //     }
-    //
-    //     throw new DummyExceptionForTests('Exception to create APM error');
-    // }
-
     /**
      * @param ?int $expectedMaxNumberOfFrames
      *
@@ -156,21 +145,6 @@ final class StackTraceLimitTestSharedCode
             self::createSpanWithAdditionalStackDepth(/* isDummyCallToGetLineNumber */ false, 'test_span_' . $index, 'test_span_' . $index . '_type', $stackDepthVariants[$index]);
         }
     }
-
-    // TODO: Sergey Kleyman: UNCOMMENT
-    // /**
-    //  * @param ?int $expectedMaxNumberOfFrames
-    //  * @param int  $baseStackTraceDepth
-    //  *
-    //  * @return int
-    //  *
-    //  * @phpstan-param null|0|positive-int $expectedMaxNumberOfFrames
-    //  * @noinspection PhpVarTagWithoutVariableNameInspection
-    //  */
-    // public static function implTestVariousConfigValuesExpectedErrorCount(?int $expectedMaxNumberOfFrames, int $baseStackTraceDepth): int
-    // {
-    //     return count(self::additionalStackDepthVariants($expectedMaxNumberOfFrames, $baseStackTraceDepth));
-    // }
 
     /**
      * @param ?int          $expectedMaxNumberOfFrames
