@@ -591,7 +591,6 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::STACK_TRACE_LIMIT . '\')');
         }
 
-        /** @phpstan-ignore-next-line */
         return $this->cachedStackTraceLimitConfig;
     }
 
