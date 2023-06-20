@@ -707,11 +707,11 @@ for the "quick" spans.
 
 If the value is
 
-- any positive value (e.g. `5ms`) - it limits stack trace collection to spans with durations
+- any positive value (e.g. `5ms`) - it limits stack trace collection to spans with duration
     equal to or greater than the given value (e.g. 5 milliseconds).
 - `0` (or `0` with any duration units e.g. `0ms`) - it instructs the agent
-    to collect stack traces for all spans
-- any negative value (e.g. `-1ms`) - disable stack trace collection for spans completely
+    to collect stack traces for spans with any duration
+- any negative value (e.g. `-1ms`) - it disable stack trace collection for spans completely
 
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.
