@@ -50,6 +50,8 @@ class StackTraceLimitUnitTest extends TracerUnitTestCaseBase
 
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder) use ($testArgs): void {
+                // Enable span stack trace collection for span with any duration
+                $builder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, '0');
                 if (($optVal = $testArgs->getNullableString(OptionNames::STACK_TRACE_LIMIT)) !== null) {
                     $builder->withConfig(OptionNames::STACK_TRACE_LIMIT, $optVal);
                 }

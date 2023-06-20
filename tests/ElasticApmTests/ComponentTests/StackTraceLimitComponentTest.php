@@ -64,6 +64,8 @@ final class StackTraceLimitComponentTest extends ComponentTestCaseBase
 
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
+                // Enable span stack trace collection for span with any duration
+                $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
                 if (($optVal = $testArgs->getNullableString(OptionNames::STACK_TRACE_LIMIT)) !== null) {
                     $appCodeParams->setAgentOption(OptionNames::STACK_TRACE_LIMIT, $optVal);
                 }
