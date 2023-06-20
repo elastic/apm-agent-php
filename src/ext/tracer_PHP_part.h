@@ -34,3 +34,4 @@ void tracerPhpPartInterceptedCallEmptyMethod();
 
 void tracerPhpPartAstInstrumentationCallPreHook( zend_execute_data* execute_data, zval* return_value );
 void tracerPhpPartAstInstrumentationDirectCall( zend_execute_data* execute_data );
+void tracerPhpPartOnRequestInitSetInitialTracerState();

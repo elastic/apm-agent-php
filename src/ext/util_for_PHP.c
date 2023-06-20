@@ -274,6 +274,61 @@ bool isPhpRunningAsCliScript()
     return strcmp( sapi_module.name, "cli" ) == 0;
 }
 
+int call_internal_function(zval *object, const char *functionName, zval parameters[], int32_t parametersCount, zval *returnValue) {
+	zval funcName;
+	ZVAL_STRING(&funcName, functionName);
+
+	int result = resultFailure;
+	zend_try {
+#if PHP_VERSION_ID >= 80000
+		result = _call_user_function_impl(object, &funcName, returnValue, parametersCount, parameters, NULL);
+#else
+		result = _call_user_function_ex(object, &funcName, returnValue, parametersCount, parameters, 0);
+#endif
+	} zend_catch {
+        ELASTIC_APM_LOG_ERROR("Call of '%s' failed", functionName);
+	} zend_end_try();
+
+	zval_ptr_dtor(&funcName);
+	return result;
+}
+
+
+bool detectOpcacheRestartPending() {
+    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
+    if (!opcacheEnabled) {
+        return false;
+    }
+    if (EG(function_table) && !zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("opcache_get_status"))) {
+        return false;
+    }
+
+	zval rv;
+    ZVAL_NULL(&rv);
+	zval parameters[1];
+	ZVAL_BOOL(&parameters[0], false);
+
+    int result = call_internal_function(NULL, "opcache_get_status", parameters, 1, &rv);
+    if (result == resultFailure) {
+        zval_ptr_dtor(&rv);
+        return false;
+    }
+
+    if (Z_TYPE(rv) != IS_ARRAY) {
+        zval_ptr_dtor(&rv);
+        return false;
+    }
+
+	zval *restartPending = zend_hash_str_find(Z_ARRVAL(rv), ZEND_STRL("restart_pending"));
+    if (restartPending && Z_TYPE_P(restartPending) == IS_TRUE) {
+        zval_ptr_dtor(&rv);
+        return true;
+    }
+    zval_ptr_dtor(&rv);
+    return false;
+}
+
+
 bool detectOpcachePreload() {
     if (PHP_VERSION_ID < 70400) {
         return false;
