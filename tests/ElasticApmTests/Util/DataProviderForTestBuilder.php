@@ -262,6 +262,8 @@ final class DataProviderForTestBuilder
      * @param mixed $value
      *
      * @return $this
+     *
+     * @noinspection PhpUnused
      */
     public function addSingleValueKeyedDimension(string $dimensionKey, $value): self
     {

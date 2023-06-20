@@ -5,10 +5,6 @@ set -e
 # run-test-command-with-timeout.sh --timeout=<number of seconds> --max-tries=<number> --wait-time-before-retry=<number of seconds> --retry-on-error=<yes|no> -- <command_to_run>
 #
 
-thisScriptDir="$( dirname "${BASH_SOURCE[0]}" )"
-thisScriptDir="$( realpath "${thisScriptDir}" )"
-source "${thisScriptDir}/shared.sh"
-
 timeout_default=0
 timeout=${timeout_default}
 increase_timeout_exponentially_default=no
@@ -134,8 +130,6 @@ function main () {
         fi
 
         echo "Running \`${command_to_run[*]}' (try ${try_count} out of ${max_tries}, current timeout: ${current_timeout} seconds) ..."
-        local saved_shell_attribute_e
-        saveCurrentShellAttribute e saved_shell_attribute_e
         set +e
         if [ "${current_timeout}" -eq "0" ]; then
             "${command_to_run[@]}"
@@ -143,7 +137,7 @@ function main () {
             timeout "${current_timeout}" "${command_to_run[@]}"
         fi
         exit_code=$?
-        restoreSavedShellAttribute e saved_shell_attribute_e
+        set -e
         if [ "${exit_code}" -eq "0" ]; then
             echo "\`${command_to_run[*]}' (try ${try_count} out of ${max_tries}) finished successfully"
             break

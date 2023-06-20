@@ -684,6 +684,30 @@ For example: `10ms`.
 This option's default unit is `ms`, so `5` is interpreted as `5ms`.
 
 [float]
+[[config-stack-trace-limit]]
+==== `stack_trace_limit`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_STACK_TRACE_LIMIT` | `elastic_apm.stack_trace_limit`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `50`       | Integer
+|============
+
+This option controls how many frames are included in stack traces captured by the agent.
+
+If the value is
+
+- any positive integer - the value is be used as the maximum number of frames
+- `0` - it disables stack trace capture
+- any negative integer - it instructs the agent to capture all the frames
+
+[float]
 [[config-transaction-ignore-urls]]
 ==== `transaction_ignore_urls`
 

@@ -33,8 +33,8 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class TestCaseHandle implements LoggableInterface
@@ -120,7 +120,7 @@ final class TestCaseHandle implements LoggableInterface
      */
     public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
     {
-        TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
+        TestCaseBase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
         $appCodeHostHandle = $this->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeHostParams) use ($setParamsFunc): void {
                 Assert::assertInstanceOf(HttpAppCodeHostParams::class, $appCodeHostParams);
@@ -130,7 +130,7 @@ final class TestCaseHandle implements LoggableInterface
                 }
             }
         );
-        TestCase::assertInstanceOf(HttpAppCodeHostHandle::class, $appCodeHostHandle);
+        TestCaseBase::assertInstanceOf(HttpAppCodeHostHandle::class, $appCodeHostHandle);
         return $appCodeHostHandle;
     }
 
@@ -155,11 +155,9 @@ final class TestCaseHandle implements LoggableInterface
         return $this->additionalHttpAppCodeHost;
     }
 
-    public function waitForDataFromAgent(
-        ExpectedEventCounts $expectedEventCounts,
-        bool $shouldValidate = true
-    ): DataFromAgentPlusRaw {
-        TestCase::assertNotEmpty($this->appCodeInvocations);
+    public function waitForDataFromAgent(ExpectedEventCounts $expectedEventCounts, bool $shouldValidate = true): DataFromAgentPlusRaw
+    {
+        TestCaseBase::assertNotEmpty($this->appCodeInvocations);
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
         $hasPassed = (new PollingCheck(
             __FUNCTION__ . ' passes',
@@ -169,7 +167,7 @@ final class TestCaseHandle implements LoggableInterface
                 return $this->pollForDataFromAgent($expectedEventCounts, $dataFromAgentAccumulator);
             }
         );
-        TestCase::assertTrue(
+        TestCaseBase::assertTrue(
             $hasPassed,
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
@@ -265,7 +263,7 @@ final class TestCaseHandle implements LoggableInterface
     private function addPortsInUse(array $ports): void
     {
         foreach ($ports as $port) {
-            TestCase::assertNotContains($port, $this->portsInUse);
+            TestCaseBase::assertNotContains($port, $this->portsInUse);
             $this->portsInUse[] = $port;
         }
     }

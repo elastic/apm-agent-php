@@ -23,29 +23,6 @@ export ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES=("${ELASTIC_APM_PHP
 export ELASTIC_APM_PHP_TESTS_LEAF_GROUPS_SHORT_NAMES=(no_ext_svc with_ext_svc)
 export ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES=("${ELASTIC_APM_PHP_TESTS_LEAF_GROUPS_SHORT_NAMES[@]}" smoke)
 
-
-function saveCurrentShellAttribute() {
-    local attributeSymbol=$1 # attribute, like "e"
-    # $2 should be the name of the environment variable to hold the result
-    # local -n makes `result' reference to the variable named by $2
-    local -n result=$2
-
-    if [[ "$-" == *"${attributeSymbol}"* ]]; then
-        result="-"
-    else
-        result="+"
-    fi
-}
-
-function restoreSavedShellAttribute() {
-    local attributeSymbol=$1 # attribute, like "e"
-    # $2 should be the name of the environment variable to hold the result
-    # local -n makes `saveAttributeState' reference to the variable named by $2
-    local -n saveAttributeState=$2
-
-    set ${saveAttributeState}${attributeSymbol}
-}
-
 function ensureSyslogIsRunningImpl () {
     if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
         echo 'Syslog is already started.'

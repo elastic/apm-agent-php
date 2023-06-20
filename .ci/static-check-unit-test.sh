@@ -27,10 +27,6 @@ trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
-phpt_timeout_seconds=60
-run_phpt_test_with_timeout_and_retries_args=(--retry-on-error=no)
-run_phpt_test_with_timeout_and_retries_args=(--max-tries=1 "${run_phpt_test_with_timeout_and_retries_args[@]}")
-run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "${run_phpt_test_with_timeout_and_retries_args[@]}")
 
 PHP_EXECUTABLE=$(which php)
 
@@ -59,7 +55,7 @@ for phptFile in ./tests/*.phpt; do
         echo > /tmp/tmp-php.ini
     fi
 
-    TEST_PHP_SRCDIR=$APP_FOLDER/src/ext TEST_PHP_EXECUTABLE=$PHP_EXECUTABLE "${thisScriptDir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- $PHP_EXECUTABLE -n -c /tmp/tmp-php.ini $PHP_TEST_SETTINGS $RUN_TESTS -n -c /tmp/tmp-php.ini -d extension_dir=$AGENT_EXTENSION_DIR -d extension=$AGENT_EXTENSION  $PHP_TEST_SHARED_EXTENSIONS $TESTS
+    TEST_PHP_SRCDIR=$APP_FOLDER/src/ext TEST_PHP_EXECUTABLE=$PHP_EXECUTABLE $PHP_EXECUTABLE -n -c /tmp/tmp-php.ini $PHP_TEST_SETTINGS $RUN_TESTS -n -c /tmp/tmp-php.ini -d extension_dir=$AGENT_EXTENSION_DIR -d extension=$AGENT_EXTENSION  $PHP_TEST_SHARED_EXTENSIONS $TESTS
     exitCode=$?
     rm /tmp/tmp-php.ini
 
