@@ -28,6 +28,46 @@ namespace Elastic\Apm\Impl\Util;
  *
  * @internal
  */
-final class ClassicFormatStackTraceFrame extends StackTraceFrameBase
+final class ClassicFormatStackTraceFrame
 {
+    /** @var ?string */
+    public $file = null;
+
+    /** @var ?int */
+    public $line = null;
+
+    /** @var ?string */
+    public $class = null;
+
+    /** @var ?string */
+    public $function = null;
+
+    /** @var ?bool */
+    public $isStaticMethod = null;
+
+    /** @var ?object */
+    public $thisObj = null;
+
+    /** @var null|mixed[] */
+    public $args = null;
+
+    /**
+     * @param ?string      $file
+     * @param ?int         $line
+     * @param ?string      $class
+     * @param ?bool        $isStaticMethod
+     * @param ?string      $function
+     * @param ?object      $thisObj
+     * @param null|mixed[] $args
+     */
+    public function __construct(?string $file = null, ?int $line = null, ?string $class = null, ?bool $isStaticMethod = null, ?string $function = null, ?object $thisObj = null, ?array $args = null)
+    {
+        $this->file = $file;
+        $this->line = $line;
+        $this->class = $class;
+        $this->function = $function;
+        $this->isStaticMethod = $isStaticMethod;
+        $this->thisObj = $thisObj;
+        $this->args = $args;
+    }
 }

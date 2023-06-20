@@ -51,11 +51,6 @@ final class EnabledAssertProxy
     public function withContext(string $conditionAsString, array $context): bool
     {
         $callerInfo = DbgUtil::getCallerInfoFromStacktrace(/* numberOfStackFramesToSkip: */ 1);
-        throw new AssertException(
-            ExceptionUtil::buildMessage(
-                'Assertion failed',
-                ['condition' => $conditionAsString, 'location' => $callerInfo] + $context
-            )
-        );
+        throw new AssertException(ExceptionUtil::buildMessage('Assertion failed', ['condition' => $conditionAsString, 'location' => $callerInfo] + $context));
     }
 }

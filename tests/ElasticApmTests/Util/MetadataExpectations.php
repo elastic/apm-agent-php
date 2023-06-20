@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\NameVersionData;
+
 final class MetadataExpectations extends EventExpectations
 {
     /** @var Optional<?string> */
@@ -32,13 +34,22 @@ final class MetadataExpectations extends EventExpectations
     public $configuredHostname;
 
     /** @var Optional<?string> */
-    public $detectedHostname;
+    public $containerId;
 
-    /** @var Optional<string> */
-    public $serviceName;
+    /** @var Optional<?string> */
+    public $detectedHostname;
 
     /** @var Optional<?string> */
     public $serviceEnvironment;
+
+    /** @var Optional<?NameVersionData> */
+    public static $serviceFrameworkDefault;
+
+    /** @var Optional<?NameVersionData> */
+    public $serviceFramework;
+
+    /** @var Optional<string> */
+    public $serviceName;
 
     /** @var Optional<?string> */
     public $serviceNodeConfiguredName;
@@ -46,14 +57,27 @@ final class MetadataExpectations extends EventExpectations
     /** @var Optional<?string> */
     public $serviceVersion;
 
+    public static function setDefaults(): void
+    {
+        /**
+         * @var Optional<?NameVersionData> $serviceFrameworkDefault
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $serviceFrameworkDefault = new Optional();
+        self::$serviceFrameworkDefault = $serviceFrameworkDefault;
+        self::$serviceFrameworkDefault->setValue(null);
+    }
+
     public function __construct()
     {
         parent::__construct();
 
         $this->agentEphemeralId = new Optional();
         $this->configuredHostname = new Optional();
+        $this->containerId = new Optional();
         $this->detectedHostname = new Optional();
         $this->serviceEnvironment = new Optional();
+        $this->serviceFramework = self::$serviceFrameworkDefault;
         $this->serviceName = new Optional();
         $this->serviceNodeConfiguredName = new Optional();
         $this->serviceVersion = new Optional();

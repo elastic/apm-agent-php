@@ -1,5 +1,3 @@
-<?php
-
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -19,15 +17,14 @@
  * under the License.
  */
 
-declare(strict_types=1);
+#pragma once
 
-namespace Elastic\Apm\Impl\Util;
+#include <zend_ast.h>
+#include "StringView.h"
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class PhpFormatStackTraceFrame extends StackTraceFrameBase
-{
-}
+void wordPressInstrumentationOnRequestInit();
+void wordPressInstrumentationOnRequestShutdown();
+
+bool wordPressInstrumentationShouldTransformAstInFile( StringView compiledFileFullPath, /* out */ size_t* pFileIndex );
+void wordPressInstrumentationTransformAst( size_t fileIndex, StringView compiledFileFullPath, zend_ast* ast );
+

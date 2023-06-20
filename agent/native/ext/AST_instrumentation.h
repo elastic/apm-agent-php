@@ -19,6 +19,34 @@
 
 #pragma once
 
-void astInstrumentationInit();
+#include <zend_ast.h>
+#include "ConfigSnapshot_forward_decl.h"
+#include "StringView.h"
+#include "TextOutputStream.h"
+#include "ResultCode.h"
+#include "ArrayView.h"
 
-void astInstrumentationShutdown();
+enum ArgCaptureSpec
+{
+    captureArgByValue,
+    captureArgByRef,
+    dontCaptureArg
+};
+typedef enum ArgCaptureSpec ArgCaptureSpec;
+ELASTIC_APM_DECLARE_ARRAY_VIEW( ArgCaptureSpec, ArgCaptureSpecArrayView );
+
+void astInstrumentationOnModuleInit( const ConfigSnapshot* config );
+void astInstrumentationOnModuleShutdown();
+
+void astInstrumentationOnRequestInit( const ConfigSnapshot* config );
+void astInstrumentationOnRequestShutdown();
+
+zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView namespace, StringView funcName, size_t minParamsCount );
+zend_ast_decl* findClassAst( zend_ast* rootAst, StringView namespace, StringView className );
+zend_ast_decl** findChildSlotForMethodAst( zend_ast_decl* astClass, StringView methodName, size_t minParamsCount );
+
+ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs );
+ResultCode appendDirectCallToInstrumentation( zend_ast_decl** pAstChildSlot, StringView constNameForMethodName );
+ResultCode wrapStandaloneFunctionAstWithPrePostHooks( zend_ast_decl** pAstChildSlot );
+
+String streamZendAstKind( zend_ast_kind kind, TextOutputStream* txtOutStream );

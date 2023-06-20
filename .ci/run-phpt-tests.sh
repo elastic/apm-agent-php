@@ -46,7 +46,7 @@ AGENT_EXTENSION=$AGENT_EXTENSION_DIR/elastic_apm-$PHP_API.so
 
 ls -al $AGENT_EXTENSION_DIR
 
-RUN_TESTS=$(find /usr/local/lib/php -type f -name run-tests.php)
+RUN_TESTS=./tests/run-tests.php
 
 #Disable agent for auxiliary PHP processes to reduce noise in logs
 export ELASTIC_APM_ENABLED=false

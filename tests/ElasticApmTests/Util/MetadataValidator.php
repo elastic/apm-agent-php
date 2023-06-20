@@ -96,6 +96,16 @@ final class MetadataValidator
         TestCaseBase::assertSameExpectedOptional($expected->serviceNodeConfiguredName, $actual->nodeConfiguredName);
         TestCaseBase::assertSameExpectedOptional($expected->serviceVersion, $actual->version);
         TestCaseBase::assertSameExpectedOptional($expected->serviceEnvironment, $actual->environment);
+
+        if ($expected->serviceFramework->isValueSet()) {
+            if ($expected->serviceFramework->getValue() === null) {
+                TestCaseBase::assertNull($actual->framework);
+            } else {
+                TestCaseBase::assertNotNull($actual->framework);
+                TestCaseBase::assertSame($expected->serviceFramework->getValue()->name, $actual->framework->name);
+                TestCaseBase::assertSame($expected->serviceFramework->getValue()->version, $actual->framework->version);
+            }
+        }
     }
 
     public static function validateServiceDataEx(ServiceData $serviceData): void
@@ -162,6 +172,8 @@ final class MetadataValidator
         if ($this->expectations->configuredHostname->isValueSet()) {
             self::verifyHostnames($this->expectations->configuredHostname->getValue(), $this->expectations->detectedHostname->getValue(), $this->actual->system);
         }
+
+        TestCaseBase::assertSameExpectedOptional($this->expectations->containerId, $this->actual->system->containerId);
     }
 
     public static function verifyHostnames(?string $expectedConfiguredHostname, ?string $expectedDetectedHostname, SystemData $systemData): void

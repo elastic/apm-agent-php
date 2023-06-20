@@ -181,12 +181,41 @@ class MixedMap implements LoggableInterface, ArrayAccess
         TestCaseBase::fail('Value is not a int');
     }
 
-    /** @noinspection PhpUnused */
+    /**
+     * @param string $key
+     *
+     * @return null|positive-int|0
+     */
+    public function getNullablePositiveOrZeroInt(string $key): ?int
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $value = $this->getNullableInt($key);
+        if ($value !== null) {
+            TestCaseBase::assertGreaterThanOrEqual(0, $value);
+        }
+        /** @var null|positive-int|0 $value */
+        return $value;
+    }
+
     public function getInt(string $key): int
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->getNullableInt($key);
         TestCaseBase::assertNotNull($value);
+        return $value;
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return positive-int|0
+     */
+    public function getPositiveOrZeroInt(string $key): int
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $value = $this->getInt($key);
+        TestCaseBase::assertGreaterThanOrEqual(0, $value);
+        /** @var positive-int|0 $value */
         return $value;
     }
 

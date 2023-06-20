@@ -29,7 +29,6 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ObserverSet;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use Elastic\Apm\SpanContextInterface;
 use Elastic\Apm\SpanInterface;
@@ -258,11 +257,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
     public function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
     {
         $spanForError = $this->shouldBeSentToApmServer() ? $this : null;
-        return $this->containingTransaction->tracer()->doCreateError(
-            $errorExceptionData,
-            $this->containingTransaction,
-            $spanForError
-        );
+        return $this->containingTransaction->tracer()->doCreateError($errorExceptionData, $this->containingTransaction, $spanForError);
     }
 
     public function isCompressionEligible(): bool
@@ -472,23 +467,21 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         $this->hasChildren = true;
     }
 
-    /** @inheritDoc */
+    /**
+     * @inheritDoc
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public function endSpanEx(int $numberOfStackFramesToSkip, ?float $duration = null): void
     {
         if (!$this->endExecutionSegment($duration)) {
             return;
         }
 
-        // This method is part of public API so it should be kept in the stack trace
-        // if $numberOfStackFramesToSkip is 0
-        $this->stackTrace = StackTraceUtil::captureCurrent(
-            $numberOfStackFramesToSkip,
-            true /* <- hideElasticApmImpl */
-        );
-
         $this->onAboutToEnd->callCallbacks($this);
 
         if ($this->shouldBeSentToApmServer()) {
+            $this->stackTrace = $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, /* maxNumberOfFrames */ null);
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);
         }

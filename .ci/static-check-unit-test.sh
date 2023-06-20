@@ -36,7 +36,6 @@ ensureSyslogIsRunning
 #     echo "${msg}"
 #     this_script_name="$( basename "${BASH_SOURCE[0]}" )"
 #     logger -t "${this_script_name}" "${msg}"
-
 #     # Disable exit-on-error
 #     set +e
 #     make test TESTS="--show-all ${phptFile}"
@@ -97,7 +96,7 @@ echo 'Set Elastic related environment variables:'
 env | grep ELASTIC || true
 
 # Install 3rd party dependencies
-composer install
+runPhpCoposerInstall
 
 # Run static checks
 composer run-script static_check

@@ -43,6 +43,7 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Elastic\Apm\TransactionBuilderInterface;
 use Elastic\Apm\TransactionInterface;
@@ -82,14 +83,20 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @var bool */
     private $isRecording = true;
 
-    /** @var Metadata */
-    private $currentMetadata;
+    /** @var MetadataDiscoverer */
+    private $metadataDiscoverer;
+
+    /** @var ?Metadata */
+    private $cachedMetadata = null;
 
     /** @var HttpDistributedTracing */
     private $httpDistributedTracing;
 
     /** @var ObserverSet<Transaction> */
     public $onNewCurrentTransactionHasBegun;
+
+    /** @var StackTraceUtil */
+    private $stackTraceUtil;
 
     public function __construct(TracerDependencies $providedDependencies, ConfigSnapshot $config)
     {
@@ -98,8 +105,7 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->logBackend = new LogBackend($this->config->effectiveLogLevel(), $providedDependencies->logSink);
         $this->loggerFactory = new LoggerFactory($this->logBackend);
-        $this->logger = $this->loggerFactory
-            ->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
+        $this->logger = $this->loggerFactory->loggerForClass(LogCategory::PUBLIC_API, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -114,24 +120,27 @@ final class Tracer implements TracerInterface, LoggableInterface
 
         $this->clock = $providedDependencies->clock ?? new Clock($this->loggerFactory);
 
-        $this->eventSink = $providedDependencies->eventSink ??
-                           (ElasticApmExtensionUtil::isLoaded()
-                               ? new EventSender($this->config, $this->loggerFactory)
-                               : NoopEventSink::singletonInstance());
+        $this->eventSink = $providedDependencies->eventSink ?? (ElasticApmExtensionUtil::isLoaded() ? new EventSender($this->config, $this->loggerFactory) : NoopEventSink::singletonInstance());
 
-        $this->currentMetadata = MetadataDiscoverer::discoverMetadata($this->config, $this->loggerFactory);
+        $this->metadataDiscoverer = new MetadataDiscoverer($this->config, $this->loggerFactory);
 
         $this->httpDistributedTracing = new HttpDistributedTracing($this->loggerFactory);
 
+        $this->stackTraceUtil = new StackTraceUtil($this->loggerFactory);
+
         $this->onNewCurrentTransactionHasBegun = new ObserverSet();
 
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Constructed Tracer successfully');
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Constructed Tracer successfully');
     }
 
     public function getConfig(): ConfigSnapshot
     {
         return $this->config;
+    }
+
+    public function getMetadataDiscoverer(): MetadataDiscoverer
+    {
+        return $this->metadataDiscoverer;
     }
 
     private function newTransactionBuilder(
@@ -269,7 +278,16 @@ final class Tracer implements TracerInterface, LoggableInterface
         }
     }
 
-    public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable): void
+    /**
+     * @param PhpErrorData $phpErrorData
+     * @param ?Throwable   $relatedThrowable
+     * @param int          $numberOfStackFramesToSkip
+     *
+     * @return void
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable, int $numberOfStackFramesToSkip): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
@@ -314,34 +332,34 @@ final class Tracer implements TracerInterface, LoggableInterface
             $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
         }
 
-        $this->createError($customErrorData, $phpErrorData, $relatedThrowable);
+        $this->createError($customErrorData, $phpErrorData, $relatedThrowable, $numberOfStackFramesToSkip + 1);
     }
 
-    private function createError(
-        ?CustomErrorData $customErrorData,
-        ?PhpErrorData $phpErrorData,
-        ?Throwable $throwable
-    ): ?string {
-        return $this->dispatchCreateError(
-            ErrorExceptionData::build(
-                $this,
-                $customErrorData,
-                $phpErrorData,
-                $throwable
-            )
-        );
+    /**
+     * @param ?CustomErrorData $customErrorData
+     * @param ?PhpErrorData    $phpErrorData
+     * @param ?Throwable       $throwable
+     * @param int              $numberOfStackFramesToSkip
+     *
+     * @return ?string
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    private function createError(?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ?string
+    {
+        return $this->dispatchCreateError(ErrorExceptionData::build($this, $customErrorData, $phpErrorData, $throwable, $numberOfStackFramesToSkip + 1));
     }
 
     /** @inheritDoc */
     public function createErrorFromThrowable(Throwable $throwable): ?string
     {
-        return $this->createError(/* customErrorData: */ null, /* phpErrorData: */ null, $throwable);
+        return $this->createError(/* customErrorData: */ null, /* phpErrorData: */ null, $throwable, /* numberOfStackFramesToSkip */ 1);
     }
 
     /** @inheritDoc */
     public function createCustomError(CustomErrorData $customErrorData): ?string
     {
-        return $this->createError($customErrorData, /* phpErrorData: */ null, /* throwable: */ null);
+        return $this->createError($customErrorData, /* phpErrorData: */ null, /* throwable: */ null, /* numberOfStackFramesToSkip */ 1);
     }
 
     private function dispatchCreateError(ErrorExceptionData $errorExceptionData): ?string
@@ -353,11 +371,8 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->currentTransaction->dispatchCreateError($errorExceptionData);
     }
 
-    public function doCreateError(
-        ErrorExceptionData $errorExceptionData,
-        ?Transaction $transaction,
-        ?Span $span
-    ): ?string {
+    public function doCreateError(ErrorExceptionData $errorExceptionData, ?Transaction $transaction, ?Span $span): ?string
+    {
         if (!$this->isRecording) {
             return null;
         }
@@ -442,6 +457,11 @@ final class Tracer implements TracerInterface, LoggableInterface
         return $this->httpDistributedTracing;
     }
 
+    public function stackTraceUtil(): StackTraceUtil
+    {
+        return $this->stackTraceUtil;
+    }
+
     /** @inheritDoc */
     public function pauseRecording(): void
     {
@@ -466,12 +486,8 @@ final class Tracer implements TracerInterface, LoggableInterface
      * @param ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction
      * @param ?Transaction                    $transaction
      */
-    private function sendEventsToApmServer(
-        array $spans,
-        array $errors,
-        ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction,
-        ?Transaction $transaction
-    ): void {
+    private function sendEventsToApmServer(array $spans, array $errors, ?BreakdownMetricsPerTransaction $breakdownMetricsPerTransaction, ?Transaction $transaction): void
+    {
         if ($this->config->devInternal()->dropEventAfterEnd()) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log(
@@ -482,8 +498,12 @@ final class Tracer implements TracerInterface, LoggableInterface
             return;
         }
 
+        if ($this->cachedMetadata === null) {
+            $this->cachedMetadata = $this->metadataDiscoverer->discover();
+        }
+
         $this->eventSink->consume(
-            $this->currentMetadata,
+            $this->cachedMetadata,
             $spans,
             $errors,
             $breakdownMetricsPerTransaction,
@@ -526,22 +546,17 @@ final class Tracer implements TracerInterface, LoggableInterface
     /** @inheritDoc */
     public function setAgentEphemeralId(?string $ephemeralId): void
     {
-        assert(isset($this->currentMetadata->service->agent));
-        $this->currentMetadata->service->agent->ephemeralId = $this->limitNullableKeywordString($ephemeralId);
+        $this->metadataDiscoverer->setAgentEphemeralId($ephemeralId);
     }
 
     /** @inheritDoc */
     public function getSerializedCurrentDistributedTracingData(): string
     {
         /** @noinspection PhpDeprecationInspection */
-        $distTracingData = $this->currentTransaction !== null
-            ? $this->currentTransaction->getDistributedTracingData()
-            : null;
+        $distTracingData = $this->currentTransaction !== null ? $this->currentTransaction->getDistributedTracingData() : null;
 
         /** @noinspection PhpDeprecationInspection */
-        return $distTracingData !== null
-            ? $distTracingData->serializeToString()
-            : NoopDistributedTracingData::serializedToString();
+        return $distTracingData !== null ? $distTracingData->serializeToString() : NoopDistributedTracingData::serializedToString();
     }
 
     /** @inheritDoc */

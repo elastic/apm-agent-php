@@ -54,7 +54,7 @@ function appCodeForTestCaughtExceptionResponded500Impl(): void
 
 const APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER = 61;
 
-function appCodeForTestCaughtExceptionResponded500(): void
+function appCodeForTestCaughtExceptionResponded500(): int
 {
     TestCase::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 2);
     try {
@@ -62,4 +62,5 @@ function appCodeForTestCaughtExceptionResponded500(): void
     } catch (Throwable $throwable) {
         http_response_code(HttpConstantsForTests::STATUS_INTERNAL_SERVER_ERROR);
     }
+    return 0;
 }

@@ -95,7 +95,7 @@ final class TransactionForExtensionRequest
             function (Transaction $transaction): void {
                 PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
                 $transaction->onAboutToEnd->add(
-                    function (Transaction $ignored): void {
+                    function (/** @noinspection PhpUnusedParameterInspection */ Transaction $ignored): void {
                         PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
                     }
                 );
@@ -104,7 +104,7 @@ final class TransactionForExtensionRequest
                         PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
                         if ($span !== null) {
                             $span->onAboutToEnd->add(
-                                function (Span $ignored): void {
+                                function (/** @noinspection PhpUnusedParameterInspection */ Span $ignored): void {
                                     PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
                                 }
                             );
@@ -156,6 +156,8 @@ final class TransactionForExtensionRequest
          * Disable PHPStan complaining:
          *      Variable $_SERVER in isset() always exists and is not nullable.
          *
+         * @noinspection PhpConditionCheckedByNextConditionInspection
+         *
          * @phpstan-ignore-next-line
          */
         return isset($_SERVER) && !empty($_SERVER);
@@ -179,9 +181,9 @@ final class TransactionForExtensionRequest
             }
         }
 
-        /** @var ?string */
+        /** @var ?string $urlPath */
         $urlPath = null;
-        /** @var ?string */
+        /** @var ?string $urlQuery */
         $urlQuery = null;
 
         $pathQuery = $this->getMandatoryServerVarStringElement('REQUEST_URI');
@@ -341,7 +343,7 @@ final class TransactionForExtensionRequest
             $relatedThrowable = $this->lastThrown;
             $this->lastThrown = null;
         }
-        $this->tracer->onPhpError($phpErrorData, $relatedThrowable);
+        $this->tracer->onPhpError($phpErrorData, $relatedThrowable, /* numberOfStackFramesToSkip */ 1);
     }
 
     /**
@@ -422,6 +424,7 @@ final class TransactionForExtensionRequest
     {
         global $argc, $argv;
 
+        /** @noinspection PhpConditionAlreadyCheckedInspection */
         if (
             !isset($argc)
             || ($argc <= 0)

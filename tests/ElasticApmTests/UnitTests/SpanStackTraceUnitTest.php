@@ -24,10 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
+use ElasticApmTests\TestsSharedCode\SpanStackTraceTestSharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 
-class StackTraceUnitTest extends TracerUnitTestCaseBase
+class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 {
     /**
      * Tests in this class specifiy expected spans individually
@@ -49,9 +49,9 @@ class StackTraceUnitTest extends TracerUnitTestCaseBase
         /** @var array<string, mixed> $expectedData */
         $expectedData = [];
 
-        $createSpanApis = StackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
+        $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
         foreach ($createSpanApis as $createSpan) {
-            (new StackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
+            (new SpanStackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
         }
 
         $tx->end();
@@ -59,10 +59,6 @@ class StackTraceUnitTest extends TracerUnitTestCaseBase
         // Assert
 
         $this->assertSame(__FUNCTION__, $this->mockEventSink->singleTransaction()->name);
-        StackTraceTestSharedCode::assertPartImpl(
-            count($createSpanApis),
-            $expectedData,
-            $this->mockEventSink->idToSpan()
-        );
+        SpanStackTraceTestSharedCode::assertPartImpl(count($createSpanApis), $expectedData, $this->mockEventSink->idToSpan());
     }
 }

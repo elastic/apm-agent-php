@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\SpanToSendInterface;
 use Elastic\Apm\Impl\StackTraceFrame;
-use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
 
@@ -117,50 +116,20 @@ class SpanDto extends ExecutionSegmentDto
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
         if ($this->stackTrace === null) {
-            TestCaseBase::assertNull($expectations->stackTrace);
-            TestCaseBase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+            if ($expectations->stackTrace->isValueSet()) {
+                TestCaseBase::assertNull($expectations->stackTrace->getValue());
+            }
         } else {
             self::assertValidStacktrace($this->stackTrace);
-            if ($expectations->stackTrace !== null) {
-                TestCaseBase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
-                self::assertStackTraceMatches($expectations->stackTrace, $expectations->allowExpectedStackTraceToBePrefix, $this->stackTrace);
+            if ($expectations->stackTrace->isValueSet()) {
+                $stackTraceExpectations = $expectations->stackTrace->getValue();
+                TestCaseBase::assertNotNull($stackTraceExpectations);
+                $stackTraceExpectations->assertMatches($this->stackTrace);
             }
         }
 
         SpanCompositeExpectations::assertNullableMatches($expectations->composite, $this->composite);
         SpanContextExpectations::assertNullableMatches($expectations->context, $this->context);
-    }
-
-    /**
-     * @param StackTraceFrame[] $expectedStackTrace
-     * @param bool              $allowExpectedStackTraceToBePrefix
-     * @param StackTraceFrame[] $actualStackTrace
-     *
-     * @return void
-     */
-    public static function assertStackTraceMatches(array $expectedStackTrace, bool $allowExpectedStackTraceToBePrefix, array $actualStackTrace): void
-    {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        if ($allowExpectedStackTraceToBePrefix) {
-            TestCaseBase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace));
-        } else {
-            TestCaseBase::assertSame(count($expectedStackTrace), count($actualStackTrace));
-        }
-        $expectedStackTraceCount = count($expectedStackTrace);
-        $actualStackTraceCount = count($actualStackTrace);
-        $dbgCtx->pushSubScope();
-        foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
-            $dbgCtx->clearCurrentSubScope(['i' => $i]);
-            $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
-            $dbgCtx->add(['$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1, 'expectedApmFrame' => $expectedApmFrame]);
-            $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
-            $dbgCtx->add(['$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1, 'actualApmFrame' => $actualApmFrame]);
-            TestCaseBase::assertSame(count($expectedApmFrame), count($actualApmFrame));
-            foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
-                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame);
-            }
-        }
-        $dbgCtx->popSubScope();
     }
 
     public function assertEquals(SpanToSendInterface $original): void

@@ -14,6 +14,7 @@
         "psr/log": "^1.0"
     },
     "require-dev": {
+        "clue/docker-react": "^1.4",
         "ext-ctype": "*",
         "ext-curl": "*",
         "ext-mysqli": "*",
@@ -29,6 +30,7 @@
         "phpstan/phpstan": "1.10.14",
         "phpstan/phpstan-phpunit": "^1.1.1",
         "phpunit/phpunit": "^8.5||^9.5",
+        "react/async": "^3.0",
         "react/http": "^1.6",
         "slevomat/coding-standard": "8.11.1",
         "squizlabs/php_codesniffer": "3.7.2"

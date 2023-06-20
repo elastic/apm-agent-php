@@ -29,14 +29,24 @@ use Throwable;
 
 const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE = 'Message for uncaught exception';
 
-function appCodeForTestPhpErrorUncaughtExceptionImpl2(): void
+/**
+ * @return never
+ *
+ * @throws Exception
+ */
+function appCodeForTestPhpErrorUncaughtExceptionImpl2()
 {
     throw new Exception('Message for caught exception');
 }
 
-const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER = 47;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER = 57;
 
-function appCodeForTestPhpErrorUncaughtExceptionImpl(): void
+/**
+ * @return never
+ *
+ * @throws Exception
+ */
+function appCodeForTestPhpErrorUncaughtExceptionImpl()
 {
     try {
         appCodeForTestPhpErrorUncaughtExceptionImpl2();
@@ -47,9 +57,14 @@ function appCodeForTestPhpErrorUncaughtExceptionImpl(): void
     throw new Exception(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE);
 }
 
-const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 55;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 70;
 
-function appCodeForTestPhpErrorUncaughtException(): void
+/**
+ * @return never
+ *
+ * @throws Exception
+ */
+function appCodeForTestPhpErrorUncaughtException(): int
 {
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
     appCodeForTestPhpErrorUncaughtExceptionImpl();

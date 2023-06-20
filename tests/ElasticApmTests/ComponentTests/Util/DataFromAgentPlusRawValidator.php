@@ -25,15 +25,19 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Tracer;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgentValidator;
 use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\TestCaseBase;
 
-final class DataFromAgentPlusRawValidator
+final class DataFromAgentPlusRawValidator implements LoggableInterface
 {
     use AssertValidTrait;
+    use LoggableTrait;
 
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
     private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
@@ -57,6 +61,8 @@ final class DataFromAgentPlusRawValidator
 
     private function validateImpl(): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['this' => $this]);
+
         DataFromAgentValidator::validate($this->actual, $this->expectations);
 
         foreach ($this->actual->getAllIntakeApiRequests() as $intakeApiRequest) {
