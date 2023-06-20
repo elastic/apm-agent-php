@@ -705,8 +705,7 @@ If the value is
 
 - any positive integer - the value is be used as the maximum number of frames
 - `0` - it disables stack trace capture
-- `-1` - it instructs the agent to capture all the frames
-- any other value - it is invalid and the default value is used by the agent
+- any negative integer - it instructs the agent to capture all the frames
 
 [float]
 [[config-transaction-ignore-urls]]
