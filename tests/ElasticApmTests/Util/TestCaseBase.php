@@ -644,6 +644,7 @@ class TestCaseBase extends TestCase
      * @inheritDoc
      *
      * @return never
+     * @psalm-return never-return
      */
     public static function fail(string $message = ''): void
     {
@@ -678,7 +679,7 @@ class TestCaseBase extends TestCase
     public static function assertCount(int $expectedCount, $haystack, string $message = ''): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['count($haystack)' => count($haystack)]);
+        $dbgCtx->add(['haystack count' => count($haystack)]);
         try {
             Assert::assertCount($expectedCount, $haystack, $message);
         } catch (AssertionFailedError $ex) {

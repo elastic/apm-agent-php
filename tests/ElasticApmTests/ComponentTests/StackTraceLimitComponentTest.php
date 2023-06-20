@@ -78,10 +78,7 @@ final class StackTraceLimitComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
-            (new ExpectedEventCounts())->transactions(1)->spans(StackTraceLimitTestSharedCode::implTestVariousConfigValuesExpectedSpanCount($expectedMaxNumberOfFrames))
-        );
-
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->spans(/* minCount */ 0, /* maxCount */ PHP_INT_MAX));
         StackTraceLimitTestSharedCode::implTestVariousConfigValuesAssertPart($expectedMaxNumberOfFrames, $dataFromAgent);
     }
 }

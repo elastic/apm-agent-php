@@ -35,6 +35,7 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\RandomUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
@@ -573,11 +574,7 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         return $this->cachedIsSpanCompressionEnabled;
     }
 
-    /**
-     * @return int
-     * @phpstan-return -1|0|positive-int
-     */
-    private function getStackTraceLimitConfig(): int
+    public function getStackTraceLimitConfig(): int
     {
         if ($this->cachedStackTraceLimitConfig === null) {
             $this->cachedStackTraceLimitConfig = $this->getConfig()->stackTraceLimit();
@@ -585,8 +582,8 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             /**
              * stack_trace_limit
              *      0 - stack trace collection should be disabled
-             *      any positive integer value - the value is the maximum number of frames to collect
-             *      -1  - all frames should be collected
+             *      any positive value - the value is the maximum number of frames to collect
+             *      any negative value - all frames should be collected
              */
             $msgPrefix = $this->cachedStackTraceLimitConfig === 0
                 ? 'Span stack trace collection is DISABLED'
@@ -609,15 +606,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
      */
     public function captureApmFormatStackTrace(int $numberOfStackFramesToSkip): ?array
     {
-        /**
-         * stack_trace_limit
-         *      0 - stack trace collection should be disabled
-         *      any positive integer value - the value is the maximum number of frames to collect
-         *      -1  - all frames should be collected
-         */
-        return ($stackTraceLimit = $this->getStackTraceLimitConfig()) === 0
+        return ($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->getStackTraceLimitConfig())) === 0
             ? null
-            : $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $stackTraceLimit === -1 ? null : $stackTraceLimit);
+            : $this->containingTransaction()->tracer()->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfFrames);
     }
 
     private function prepareForSerialization(): void
