@@ -55,7 +55,7 @@ class SpanStackTraceComponentTest extends ComponentTestCaseBase
      */
     private static function sharedCodeForTestAllSpanCreatingApis(): array
     {
-        /** @var array<string, mixed> */
+        /** @var array<string, mixed> $expectedData */
         $expectedData = [];
         $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
 
@@ -74,12 +74,9 @@ class SpanStackTraceComponentTest extends ComponentTestCaseBase
     public function testAllSpanCreatingApis(): void
     {
         $sharedCodeResult = self::sharedCodeForTestAllSpanCreatingApis();
-        /** @var array<string, mixed> */
+        /** @var array<string, mixed> $expectedData */
         $expectedData = $sharedCodeResult['expectedData'];
-        /**
-         * @var array<callable>
-         * @phpstan-var array<callable(): void>
-         */
+        /** @var array<callable(): void> $createSpanApis */
         $createSpanApis = $sharedCodeResult['createSpanApis'];
 
         $testCaseHandle = $this->getTestCaseHandle();
@@ -87,6 +84,8 @@ class SpanStackTraceComponentTest extends ComponentTestCaseBase
             function (AppCodeHostParams $appCodeParams): void {
                 // Disable Span Compression feature to have all the expected spans individually
                 $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                // Enable span stack trace collection for span with any duration
+                $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
             }
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllSpanCreatingApis']));
