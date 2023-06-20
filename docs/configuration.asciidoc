@@ -735,11 +735,11 @@ This option's default unit is `ms`, so `5` is interpreted as `5ms`.
 
 This option controls how many frames are included in stack traces captured by the agent.
 
-If the value is
+Set this config to:
 
-- any positive integer - the value is be used as the maximum number of frames
-- `0` - it disables stack trace capture
-- any negative integer - it instructs the agent to capture all the frames
+- any positive integer - to define the maximum number of frames included in stack traces
+- `0` - to disable stack trace capturing
+- any negative integer - to capture all frames
 
 [float]
 [[config-transaction-ignore-urls]]
