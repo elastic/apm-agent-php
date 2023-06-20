@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
@@ -44,7 +43,7 @@ final class StackTraceLimitComponentTest extends ComponentTestCaseBase
      */
     public static function dataProviderForTestVariousConfigValues(): iterable
     {
-        return StackTraceLimitTestSharedCode::dataProviderForTestVariousConfigValues();
+        return StackTraceLimitTestSharedCode::dataProviderForTestVariousConfigValues(self::adaptToSmokeAsCallable());
     }
 
     public static function appCodeForTestVariousConfigValues(MixedMap $appCodeArgs): void
