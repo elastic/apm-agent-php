@@ -27,6 +27,11 @@ trap onScriptExit EXIT
 
 ensureSyslogIsRunning
 
+echo "Starting .phpt tests at $(date +"%Y-%m-%d %H:%M:%S")"
+phpt_timeout_seconds=60
+run_phpt_test_with_timeout_and_retries_args=(--retry-on-error=no)
+run_phpt_test_with_timeout_and_retries_args=(--max-tries=1 "${run_phpt_test_with_timeout_and_retries_args[@]}")
+run_phpt_test_with_timeout_and_retries_args=(--timeout=${phpt_timeout_seconds} "${run_phpt_test_with_timeout_and_retries_args[@]}")
 
 PHP_EXECUTABLE=$(which php)
 
@@ -55,7 +60,7 @@ for phptFile in ./tests/*.phpt; do
         echo > /tmp/tmp-php.ini
     fi
 
-    TEST_PHP_SRCDIR=$APP_FOLDER/src/ext TEST_PHP_EXECUTABLE=$PHP_EXECUTABLE $PHP_EXECUTABLE -n -c /tmp/tmp-php.ini $PHP_TEST_SETTINGS $RUN_TESTS -n -c /tmp/tmp-php.ini -d extension_dir=$AGENT_EXTENSION_DIR -d extension=$AGENT_EXTENSION  $PHP_TEST_SHARED_EXTENSIONS $TESTS
+    TEST_PHP_SRCDIR=$APP_FOLDER/src/ext TEST_PHP_EXECUTABLE=$PHP_EXECUTABLE "${thisScriptDir}/run_command_with_timeout_and_retries.sh" "${run_command_with_timeout_and_retries_args[@]}" -- $PHP_EXECUTABLE -n -c /tmp/tmp-php.ini $PHP_TEST_SETTINGS $RUN_TESTS -n -c /tmp/tmp-php.ini -d extension_dir=$AGENT_EXTENSION_DIR -d extension=$AGENT_EXTENSION  $PHP_TEST_SHARED_EXTENSIONS $TESTS
     exitCode=$?
     rm /tmp/tmp-php.ini
 
@@ -71,7 +76,9 @@ for phptFile in ./tests/*.phpt; do
     # Re-enable exit-on-error
     set -e
 done
+echo "Finished .phpt tests at $(date +"%Y-%m-%d %H:%M:%S")"
 
+echo "Starting native part unit tests (using cmocka) at $(date +"%Y-%m-%d %H:%M:%S")"
 # Disable exit-on-error
 set +e
 ## Run cmocka tests
@@ -93,6 +100,7 @@ function buildAndRunUnitTests () {
 buildAndRunUnitTests
 ## Save errorlevel to be reported later on
 ret=$?
+echo "Finished native part unit tests (using cmocka) at $(date +"%Y-%m-%d %H:%M:%S")"
 
 ## Manipulate JUnit report without multiple testsuites entries.
 for file in "${BUILD_FOLDER}"/*-unit-tests-junit.xml; do
@@ -120,7 +128,9 @@ composer run-script static_check
 
 # Run unit tests
 phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=unit)
+echo "Starting PHP part unit tests (using PHPUnit) at $(date +"%Y-%m-%d %H:%M:%S")"
 composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
+echo "Finished PHP part unit tests (using PHPUnit) at $(date +"%Y-%m-%d %H:%M:%S")"
 ls -l ./build/unit-tests-phpunit-junit.xml
 
 # Generate junit output for phpstan

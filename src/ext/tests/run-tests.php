@@ -1264,13 +1264,6 @@ function system_with_timeout(
         unset($pipes[0]);
     }
 
-    // if ($captureStdOut) {
-    //     stream_set_blocking($pipes[1], false);
-    // }
-    // if ($captureStdErr) {
-    //     stream_set_blocking($pipes[2], false);
-    // }
-
     $timeout = $valgrind ? 300 : ($env['TEST_TIMEOUT'] ?? 60);
 
     $stdout_data = '';
