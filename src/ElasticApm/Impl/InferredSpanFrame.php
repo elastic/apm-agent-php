@@ -130,11 +130,11 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
     }
 
     /**
-     * @param Transaction       $transaction
-     * @param string            $parentId
-     * @param StackTraceFrame[] $stackTrace
+     * @param Transaction            $transaction
+     * @param string                 $parentId
+     * @param null|StackTraceFrame[] $stackTrace
      */
-    public function prepareForSerialization(Transaction $transaction, string $parentId, array $stackTrace): void
+    public function prepareForSerialization(Transaction $transaction, string $parentId, ?array $stackTrace): void
     {
         $this->traceId = $transaction->getTraceId();
         $this->transactionId = $transaction->getId();
@@ -156,11 +156,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
          * @phpstan-ignore-next-line
          */
         $shortClassName = $this->stackFrame->class === null ? null : ClassNameUtil::fqToShort($this->stackFrame->class);
-        $this->name = StackTraceUtil::buildApmFormatFunctionForClassMethod(
-            $shortClassName,
-            $this->stackFrame->isStaticMethod,
-            $this->stackFrame->function
-        );
+        $this->name = StackTraceUtil::buildApmFormatFunctionForClassMethod($shortClassName, $this->stackFrame->isStaticMethod, $this->stackFrame->function);
         if ($this->name === null) {
             if ($this->stackFrame->file !== null && $this->stackFrame->line !== null) {
                 $this->name = $this->stackFrame->file . ':' . $this->stackFrame->line;
@@ -183,7 +179,7 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
 
         SerializationUtil::addNameValueIfNotNull('sample_rate', $this->sampleRate, /* ref */ $result);
 
-        SerializationUtil::addNameValueAssumeNotNull('stacktrace', $this->stackTrace, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('stacktrace', $this->stackTrace, /* ref */ $result);
 
         return $result;
     }
