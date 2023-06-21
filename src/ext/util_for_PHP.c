@@ -323,7 +323,10 @@ bool detectOpcacheRestartPending() {
     if (restartPending && Z_TYPE_P(restartPending) == IS_TRUE) {
         zval_ptr_dtor(&rv);
         return true;
+    } else if (!restartPending || Z_TYPE_P(restartPending) != IS_FALSE) {
+        ELASTIC_APM_LOG_ERROR("opcache_get_status returned unexpected data ptr: %p t:%d", restartPending, restartPending ? Z_TYPE_P(restartPending) : -1);
     }
+
     zval_ptr_dtor(&rv);
     return false;
 }

@@ -75,6 +75,11 @@ String tracerPhpPartStateToString( TracerPhpPartState value )
 
 static TracerPhpPartState g_tracerPhpPartState = numberOfTracerPhpPartState;
 
+bool canInvokeTracerPhpPart() {
+    return g_tracerPhpPartState == tracerPhpPartState_after_bootstrap;
+}
+
+// returns true if state was changed or false it was same before
 bool switchTracerPhpPartStateToFailed( String reason, String dbgCalledFromFunc )
 {
     if ( g_tracerPhpPartState == tracerPhpPartState_failed )
@@ -202,10 +207,12 @@ bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zen
     ZVAL_UNDEF( &interceptRegistrationIdAsZval );
     zval phpPartArgs[ g_maxInterceptedCallArgsCount + 2 ];
 
-    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
-    {
-        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    if (!canInvokeTracerPhpPart()) {
+        if (switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ )) {
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        } else {
+            ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+        }
     }
 
     // The first argument to PHP part's interceptedCallPreHook() is $interceptRegistrationId
@@ -261,10 +268,12 @@ void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId,
     ResultCode resultCode;
     zval phpPartArgs[ 2 ];
 
-    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
-    {
-        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    if (!canInvokeTracerPhpPart()) {
+        if (switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ )) {
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        } else {
+            ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+        }
     }
 
     // The first argument to PHP part's interceptedCallPostHook() is $hasExitedByException (bool)
@@ -302,10 +311,12 @@ void tracerPhpPartInterceptedCallEmptyMethod()
     zval phpPartDummyArgs[ 1 ];
     ZVAL_UNDEF( &( phpPartDummyArgs[ 0 ] ) );
 
-    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
-    {
-        switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    if (!canInvokeTracerPhpPart()) {
+        if (switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ )) {
+            ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        } else {
+            ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+        }
     }
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
@@ -352,14 +363,14 @@ void tracerPhpPartForwardCall( StringView phpFuncName, zend_execute_data* execut
 
     ELASTIC_APM_LOG_TRACE_FUNCTION_ENTRY_MSG( "phpFuncName: %s, dbgCalledFrom: %s", phpFuncName.begin, dbgCalledFrom );
 
-    if ( g_tracerPhpPartState != tracerPhpPartState_after_bootstrap )
-    {
+    if (!canInvokeTracerPhpPart()) {
         if (switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ )) {
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
-        } else { // no need to print same error message from function - state can't go back to after_bootstrap
-            return;
+        } else {
+            ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
         }
     }
+
 
     getArgsFromZendExecuteData( execute_data, g_maxInterceptedCallArgsCount, &( callArgs[ 0 ] ), &callArgsCount );
     tracerPhpPartLogArguments( logLevel_trace, callArgsCount, callArgs );
