@@ -68,41 +68,27 @@ final class StackTraceUtil
     }
 
     /**
-     * @param int $offset
-     * @param ?int $maxNumberOfFrames
+     * @param int           $offset
+     * @param ?positive-int $maxNumberOfFrames
      *
      * @return StackTraceFrame[]
      *
-     * @noinspection PhpVarTagWithoutVariableNameInspection
-     *
-     * @phpstan-param 0|positive-int      $offset
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
+     * @phpstan-param 0|positive-int $offset
      */
     public function captureInApmFormat(int $offset, ?int $maxNumberOfFrames): array
     {
-        if ($maxNumberOfFrames === 0) {
-            return [];
-        }
-
         $phpFormatFrames = debug_backtrace(/* options */ DEBUG_BACKTRACE_IGNORE_ARGS, /* limit */ $maxNumberOfFrames === null ? 0 : ($offset + $maxNumberOfFrames));
         return $this->convertPhpToApmFormat(IterableUtil::arraySuffix($phpFormatFrames, $offset), $maxNumberOfFrames);
     }
 
     /**
      * @param iterable<array<string, mixed>> $inputFrames
-     * @param ?int                           $maxNumberOfFrames
+     * @param ?positive-int                  $maxNumberOfFrames
      *
      * @return StackTraceFrame[]
-     *
-     * @noinspection PhpVarTagWithoutVariableNameInspection
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
      */
     public function convertPhpToApmFormat(iterable $inputFrames, ?int $maxNumberOfFrames): array
     {
-        if ($maxNumberOfFrames === 0) {
-            return [];
-        }
-
         /** @var StackTraceFrame[] $outputFrames */
         $outputFrames = [];
         $this->excludeCodeToHide(
@@ -133,15 +119,12 @@ final class StackTraceUtil
     }
 
     /**
-     * @param int  $offset
-     * @param ?int $maxNumberOfFrames
+     * @param int           $offset
+     * @param ?positive-int $maxNumberOfFrames
      *
      * @return ClassicFormatStackTraceFrame[]
      *
-     * @noinspection PhpVarTagWithoutVariableNameInspection
-     *
-     * @phpstan-param 0|positive-int      $offset
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
+     * @phpstan-param 0|positive-int $offset
      */
     public function captureInClassicFormatExcludeElasticApm(int $offset = 0, ?int $maxNumberOfFrames = null): array
     {
@@ -149,25 +132,18 @@ final class StackTraceUtil
     }
 
     /**
-     * @param int  $offset
-     * @param ?int $maxNumberOfFrames
-     * @param bool $keepElasticApmFrames
-     * @param bool $includeArgs
-     * @param bool $includeThisObj
+     * @param int           $offset
+     * @param ?positive-int $maxNumberOfFrames
+     * @param bool          $keepElasticApmFrames
+     * @param bool          $includeArgs
+     * @param bool          $includeThisObj
      *
      * @return ClassicFormatStackTraceFrame[]
      *
-     * @noinspection       PhpVarTagWithoutVariableNameInspection
-     *
-     * @phpstan-param 0|positive-int      $offset
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
+     * @phpstan-param 0|positive-int $offset
      */
     public function captureInClassicFormat(int $offset = 0, ?int $maxNumberOfFrames = null, bool $keepElasticApmFrames = true, bool $includeArgs = false, bool $includeThisObj = false): array
     {
-        if ($maxNumberOfFrames === 0) {
-            return [];
-        }
-
         $options = ($includeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) | ($includeThisObj ? DEBUG_BACKTRACE_PROVIDE_OBJECT : 0);
         // If there is non-null $maxNumberOfFrames we need to capture one more frame in PHP format
         $phpFormatFrames = debug_backtrace($options, /* limit */ $maxNumberOfFrames === null ? 0 : ($offset + $maxNumberOfFrames + 1));
@@ -628,12 +604,10 @@ final class StackTraceUtil
     }
 
     /**
-     * @param Throwable $throwable
-     * @param ?int      $maxNumberOfFrames
+     * @param Throwable     $throwable
+     * @param ?positive-int $maxNumberOfFrames
      *
      * @return StackTraceFrame[]
-     *
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
      */
     public function convertThrowableTraceToApmFormat(Throwable $throwable, ?int $maxNumberOfFrames): array
     {
@@ -643,18 +617,12 @@ final class StackTraceUtil
 
     /**
      * @param iterable<ClassicFormatStackTraceFrame> $inputFrames
+     * @param ?positive-int                          $maxNumberOfFrames
      *
      * @return StackTraceFrame[]
-     *
-     * @phpstan-param null|0|positive-int $maxNumberOfFrames
-     * @noinspection PhpVarTagWithoutVariableNameInspection
      */
     public static function convertClassicToApmFormat(iterable $inputFrames, ?int $maxNumberOfFrames): array
     {
-        if ($maxNumberOfFrames === 0) {
-            return [];
-        }
-
         $outputFrames = [];
         /** @var ?ClassicFormatStackTraceFrame $prevInputFrame */
         $prevInputFrame = null;
@@ -692,5 +660,22 @@ final class StackTraceUtil
         }
 
         return $outputFrames;
+    }
+
+    /**
+     * @param int $stackTraceLimit
+     *
+     * @return ?int
+     * @phpstan-return null|0|positive-int
+     */
+    public static function convertLimitConfigToMaxNumberOfFrames(int $stackTraceLimit): ?int
+    {
+        /**
+         * stack_trace_limit
+         *      0 - stack trace collection should be disabled
+         *      any positive value - the value is the maximum number of frames to collect
+         *      any negative value - all frames should be collected
+         */
+        return $stackTraceLimit < 0 ? null : $stackTraceLimit;
     }
 }

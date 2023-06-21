@@ -166,7 +166,7 @@ class StackTraceUtilTest extends TestCaseBase
         $phpFormatStackTrace = debug_backtrace();
         $dbgCtx->add(['phpFormatStackTrace' => $phpFormatStackTrace]);
         $lineCaptureCall = __LINE__ + 1;
-        $actualCapturedStackTrace = self::stackTraceUtil()->captureInApmFormat($numberOfFramesToSkip, $maxNumberOfFrames);
+        $actualCapturedStackTrace = $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->captureInApmFormat($numberOfFramesToSkip, $maxNumberOfFrames);
         $dbgCtx->add(['actualCapturedStackTrace' => $actualCapturedStackTrace]);
 
         if ($maxNumberOfFrames === 0 || $numberOfFramesToSkip >= count($phpFormatStackTrace)) {
@@ -236,7 +236,7 @@ class StackTraceUtilTest extends TestCaseBase
             $maxNumberOfFrames = $testArgs->getNullablePositiveOrZeroInt(self::MAX_NUMBER_OF_FRAMES_KEY);
             $dbgStackTrace = debug_backtrace();
             array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1, StackTraceUtil::FUNCTION_KEY => __FUNCTION__]);
-            return self::stackTraceUtil()->captureInApmFormat($numberOfFramesToSkip, $maxNumberOfFrames);
+            return $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->captureInApmFormat($numberOfFramesToSkip, $maxNumberOfFrames);
         };
 
         array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1]);
@@ -484,7 +484,7 @@ class StackTraceUtilTest extends TestCaseBase
         /** @var iterable<array<string, mixed>> $inputFrames */
         $fullExpectedOutput = $testArgs->getArray(self::FULL_EXPECTED_OUTPUT_KEY);
         /** @var StackTraceFrameExpectations[] $fullExpectedOutput */
-        $actualOutputFrames = self::stackTraceUtil()->convertPhpToApmFormat($inputFrames, $maxNumberOfFrames);
+        $actualOutputFrames = $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->convertPhpToApmFormat($inputFrames, $maxNumberOfFrames);
         $dbgCtx->add(['actualOutputFrames' => $actualOutputFrames]);
         $expectedOutput = $maxNumberOfFrames === null ? $fullExpectedOutput : array_slice($fullExpectedOutput, /* offset */ 0, /* length */ $maxNumberOfFrames);
         StackTraceExpectations::fromFramesExpectations($expectedOutput)->assertMatches($actualOutputFrames);
@@ -764,8 +764,13 @@ class StackTraceUtilTest extends TestCaseBase
 
         $phpFormatStackTrace = debug_backtrace();
         $dbgCtx->add(['phpFormatStackTrace' => $phpFormatStackTrace]);
-        $lineCaptureCall = __LINE__ + 1;
-        $actualCapturedStackTrace = self::stackTraceUtil()->captureInClassicFormat($numberOfFramesToSkip, $maxNumberOfFrames, $keepElasticApmFrames, $includeArgs, $includeThisObj);
+        if ($maxNumberOfFrames === 0) {
+            $lineCaptureCall = -1;
+            $actualCapturedStackTrace = [];
+        } else {
+            $lineCaptureCall = __LINE__ + 1;
+            $actualCapturedStackTrace = self::stackTraceUtil()->captureInClassicFormat($numberOfFramesToSkip, $maxNumberOfFrames, $keepElasticApmFrames, $includeArgs, $includeThisObj);
+        }
         $dbgCtx->add(['actualCapturedStackTrace' => $actualCapturedStackTrace]);
 
         if ($maxNumberOfFrames === 0 || $numberOfFramesToSkip >= count($phpFormatStackTrace)) {
@@ -825,7 +830,7 @@ class StackTraceUtilTest extends TestCaseBase
             $includeThisObj = $testArgs->getBool(self::INCLUDE_THIS_OBJ_KEY);
             $dbgStackTrace = debug_backtrace();
             array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1, StackTraceUtil::FUNCTION_KEY => __FUNCTION__]);
-            return self::stackTraceUtil()->captureInClassicFormat($numberOfFramesToSkip, $maxNumberOfFrames, $keepElasticApmFrames, $includeArgs, $includeThisObj);
+            return $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->captureInClassicFormat($numberOfFramesToSkip, $maxNumberOfFrames, $keepElasticApmFrames, $includeArgs, $includeThisObj);
         };
 
         array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1]);
@@ -1064,7 +1069,7 @@ class StackTraceUtilTest extends TestCaseBase
         $fullExpectedOutput = $testArgs->getArray(self::FULL_EXPECTED_OUTPUT_KEY);
         /** @var StackTraceFrame[] $fullExpectedOutput */
 
-        $actualOutputFrames = self::stackTraceUtil()->convertClassicToApmFormat($input, $maxNumberOfFrames);
+        $actualOutputFrames = $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->convertClassicToApmFormat($input, $maxNumberOfFrames);
         $dbgCtx->add(['actualOutputFrames' => $actualOutputFrames]);
         $expectedOutput = $maxNumberOfFrames === null ? $fullExpectedOutput : array_slice($fullExpectedOutput, /* offset */ 0, /* length */ $maxNumberOfFrames);
         StackTraceExpectations::fromFrames($expectedOutput)->assertMatches($actualOutputFrames);
@@ -1095,7 +1100,7 @@ class StackTraceUtilTest extends TestCaseBase
         $func = function () use ($testArgs, &$lineWithThrow, &$directlyCapturedStackTrace): void {
             $maxNumberOfFrames = $testArgs->getNullablePositiveOrZeroInt(self::MAX_NUMBER_OF_FRAMES_KEY);
             $lineWithThrow = __LINE__ + 2;
-            $directlyCapturedStackTrace = self::stackTraceUtil()->captureInApmFormat(/* numberOfFramesToSkip */ 0, $maxNumberOfFrames);
+            $directlyCapturedStackTrace = $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->captureInApmFormat(/* numberOfFramesToSkip */ 0, $maxNumberOfFrames);
             throw new DummyExceptionForTests('Dummy message');
         };
 
@@ -1120,7 +1125,7 @@ class StackTraceUtilTest extends TestCaseBase
             self::helperForTestConvertThrowableTraceToApmFormat($testArgs, /* out */ $lineWithThrow, /* out */ $lineWithCallToDummyFunc, /* out */ $directlyCapturedStackTrace);
         } catch (DummyExceptionForTests $e) {
             self::assertSame('Dummy message', $e->getMessage());
-            $thrownStackTrace = self::stackTraceUtil()->convertThrowableTraceToApmFormat($e, $maxNumberOfFrames);
+            $thrownStackTrace = $maxNumberOfFrames === 0 ? [] : self::stackTraceUtil()->convertThrowableTraceToApmFormat($e, $maxNumberOfFrames);
         }
         $dbgCtx->add(['lineWithThrow' => $lineWithThrow, 'directlyCapturedStackTrace' => $directlyCapturedStackTrace, 'thrownExStackTrace' => $thrownStackTrace]);
         self::assertNotNull($thrownStackTrace);
@@ -1190,5 +1195,17 @@ class StackTraceUtilTest extends TestCaseBase
             self::assertNotNull($frame->function);
             self::assertStringNotContainsString(__FUNCTION__, $frame->function);
         }
+    }
+
+    public function testLimitConfigToMaxNumberOfFrames(): void
+    {
+        self::assertSame(null, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(-1));
+        self::assertSame(null, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(-2));
+        self::assertSame(null, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(-5));
+
+        self::assertSame(0, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(0));
+        self::assertSame(1, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(1));
+        self::assertSame(2, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(2));
+        self::assertSame(5, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(5));
     }
 }

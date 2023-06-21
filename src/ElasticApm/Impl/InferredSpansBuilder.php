@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -185,7 +186,9 @@ final class InferredSpansBuilder implements LoggableInterface
     private function sendFrameAsSpan(int $openFrameIndex, string $parentId, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): void
     {
         $frame = $this->openFramesReverseOrder[$openFrameIndex];
-        $stackTrace = $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), /* maxNumberOfFrames */ null);
+        $stackTrace = ($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->transaction->getStackTraceLimitConfig())) === 0
+            ? null
+            : $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), $maxNumberOfFrames);
         $frame->prepareForSerialization($this->transaction, $parentId, $stackTrace);
         $this->tracer->sendSpanToApmServer($frame);
     }
@@ -328,11 +331,7 @@ final class InferredSpansBuilder implements LoggableInterface
         && $loggerTrace->log(
             __LINE__,
             'Entered',
-            [
-                'newStackTrace'     => $newStackTrace,
-                'systemClockNow'    => $systemClockNow,
-                'monotonicClockNow' => $monotonicClockNow,
-            ]
+            ['newStackTrace' => $newStackTrace, 'systemClockNow' => $systemClockNow, 'monotonicClockNow' => $monotonicClockNow]
         );
 
         $openFramesCount = count($this->openFramesReverseOrder);
@@ -341,12 +340,7 @@ final class InferredSpansBuilder implements LoggableInterface
         $frameCopy = null;
         /** @var ?int $frameCopyIndex */
         $frameCopyIndex = null;
-        $this->extendOpenFrames(
-            $newStackTrace,
-            $bottomNotExtendedFrameIndex /* <- out */,
-            $frameCopy /* <- out */,
-            $frameCopyIndex /* <- out */
-        );
+        $this->extendOpenFrames($newStackTrace, /* out */  $bottomNotExtendedFrameIndex, /* out */ $frameCopy, /* out */ $frameCopyIndex);
 
         if ($bottomNotExtendedFrameIndex === $openFramesCount) {
             $loggerTrace && $loggerTrace->log(__LINE__, 'All open frames were extended');
@@ -357,20 +351,13 @@ final class InferredSpansBuilder implements LoggableInterface
                 ['not extended frames' => array_slice($this->openFramesReverseOrder, $bottomNotExtendedFrameIndex)]
             );
 
-            $this->processNotExtendedOpenFrames(
-                $bottomNotExtendedFrameIndex,
-                $frameCopy,
-                $frameCopyIndex,
-                $systemClockNow,
-                $monotonicClockNow
-            );
+            $this->processNotExtendedOpenFrames($bottomNotExtendedFrameIndex, $frameCopy, $frameCopyIndex, $systemClockNow, $monotonicClockNow);
         }
 
         $newStackTraceCount = count($newStackTrace);
         for ($i = $bottomNotExtendedFrameIndex; $i != $newStackTraceCount; ++$i) {
             $newFrame = $newStackTrace[$newStackTraceCount - $i - 1];
-            $this->openFramesReverseOrder[]
-                = new InferredSpanFrame($systemClockNow, $monotonicClockNow, $newFrame);
+            $this->openFramesReverseOrder[] = new InferredSpanFrame($systemClockNow, $monotonicClockNow, $newFrame);
             $loggerTrace && $loggerTrace->log(__LINE__, 'Appended new frame on top of open frames');
         }
     }
