@@ -699,11 +699,9 @@ This option's default unit is `ms`, so `5` is interpreted as `5ms`.
 | `5ms`      | Duration
 |============
 
-While this is very helpful to find the exact place in your code that causes the span,
-collecting this stack trace does have some overhead.
-This configuration option controls minimal duration that a span should have
-for the agent to collect stack trace for it thus allowing to avoid the overhead
-for the "quick" spans.
+This configuration controls the minimum span duration at which stack traces are collected.
+A higher value means lower overhead as stack trace collection is skipped for quick spans. 
+This option is very helpful in finding the exact location in your code that causes a span, but collecting stack traces does have some overhead.
 
 Set this config to:
 
