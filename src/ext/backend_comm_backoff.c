@@ -51,7 +51,7 @@ bool backendCommBackoff_getCurrentTime( BackendCommBackoff* thisObj, /* out */ T
     return resultCode == resultSuccess;
 
     failure:
-    ELASTIC_APM_LOG_ERROR( "Failed to get current time - switching to failed mode" );
+    ELASTIC_APM_LOG_ERROR( "Failed to get current time" );
     goto finally;
 }
 
@@ -59,12 +59,7 @@ void backendCommBackoff_onError( BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isInFailedMode: %s", boolToString( thisObj->isInFailedMode ) );
-
-    if ( thisObj->isInFailedMode )
-    {
-        return;
-    }
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     /**
      *  The grace period should be calculated in seconds using the algorithm min(reconnectCount++, 6) ** 2 ± 10%
@@ -80,6 +75,8 @@ void backendCommBackoff_onError( BackendCommBackoff* thisObj )
 
     if ( ! backendCommBackoff_getCurrentTime( thisObj, /* out */ &thisObj->waitEndTime ) )
     {
+        // If we cannot get current time we just reset the state to that of no errors
+        backendCommBackoff_onSuccess( thisObj );
         return;
     }
     addDelayToAbsTimeSpec( /* in, out */ &thisObj->waitEndTime, /* delayInNanoseconds */ (long)backendCommBackoff_getTimeToWaitInSeconds( thisObj ) * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND );
@@ -118,11 +115,6 @@ UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx )
 
 bool backendCommBackoff_shouldWait( BackendCommBackoff* thisObj )
 {
-    if ( thisObj->isInFailedMode )
-    {
-        return true;
-    }
-
     if ( thisObj->errorCount == 0 )
     {
         return false;
@@ -131,7 +123,9 @@ bool backendCommBackoff_shouldWait( BackendCommBackoff* thisObj )
     TimeSpec currentTime;
     if ( ! backendCommBackoff_getCurrentTime( thisObj, /* out */ &currentTime ) )
     {
-        return true;
+        // If we cannot get current time we just reset the state to that of no errors
+        backendCommBackoff_onSuccess( thisObj );
+        return false;
     }
 
     if ( compareAbsTimeSpecs( &thisObj->waitEndTime, &currentTime ) <= 0 )

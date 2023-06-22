@@ -30,7 +30,6 @@ struct BackendCommBackoff
     void* generateRandomUIntCtx;
     UInt errorCount;
     TimeSpec waitEndTime;
-    bool isInFailedMode;
 };
 typedef struct BackendCommBackoff BackendCommBackoff;
 
@@ -48,7 +47,6 @@ UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx );
         .generateRandomUInt = &backendCommBackoff_defaultGenerateRandomUInt, \
         .generateRandomUIntCtx = NULL, \
         .errorCount = 0, \
-        .waitEndTime = { 0 }, \
-        .isInFailedMode = false \
+        .waitEndTime = { 0 } \
     }) \
     /**/
