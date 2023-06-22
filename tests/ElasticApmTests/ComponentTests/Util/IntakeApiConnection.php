@@ -36,14 +36,18 @@ final class IntakeApiConnection implements JsonSerializable, JsonDeserializableI
     use JsonDeserializableTrait;
     use LoggableTrait;
 
+    /** @var float Monotonic time since some unspecified starting point, in microseconds */
+    public $timestampMonotonic;
+
     /** @var IntakeApiRequest[] */
     private $requests;
 
     /**
      * @param IntakeApiRequest[] $requests
      */
-    public function __construct(array $requests)
+    public function __construct(RawDataFromAgentReceiverEventConnectionStarted $startedEvent, array $requests)
     {
+        $this->timestampMonotonic = $startedEvent->timestampMonotonic;
         $this->requests = $requests;
     }
 

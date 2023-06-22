@@ -23,30 +23,26 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
-use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
-final class RawDataFromAgentReceiverEventConnectionStarted extends RawDataFromAgentReceiverEvent implements JsonDeserializableInterface
+class MockApmServerBehavior
 {
-    use JsonDeserializableTrait;
+    /** @var MockApmServer */
+    private $mockApmServer;
 
-    /** @var float Monotonic time since some unspecified starting point, in microseconds */
-    public $timestampMonotonic;
-
-    /**
-     * @param array<string, mixed> $decodedJson
-     *
-     * @return self
-     */
-    public static function leafDeserializeFromDecodedJson(array $decodedJson): self
+    public function __construct(MockApmServer $mockApmServer)
     {
-        $result = new self();
-        $result->deserializeFromDecodedJson($decodedJson);
-        return $result;
+        $this->mockApmServer = $mockApmServer;
     }
 
-    public function visit(RawDataFromAgentReceiverEventVisitorInterface $visitor): void
+    /**
+     * @param ServerRequestInterface $request
+     *
+     * @return ResponseInterface
+     */
+    public function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
     {
-        $visitor->visitConnectionStarted($this);
+        return $this->mockApmServer->doProcessIntakeApiRequest($request);
     }
 }

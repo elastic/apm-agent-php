@@ -254,6 +254,27 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @template TExecutionSegment of ExecutionSegmentDto
+     *
+     * @param array<array-key, TExecutionSegment> $executionSegments
+     * @param string                              $labelKey
+     * @param mixed                               $labelVal
+     *
+     * @return TExecutionSegment[]
+     * @noinspection PhpUndefinedClassInspection
+     */
+    public static function findExecutionSegmentsWithLabelValue(array $executionSegments, string $labelKey, $labelVal): array
+    {
+        $result = [];
+        foreach ($executionSegments as $executionSegment) {
+            if (self::getLabel($executionSegment, $labelKey) === $labelVal) {
+                $result[] = $executionSegment;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * @param array<mixed> $actual
      */
     public static function assertArrayIsList(array $actual): void

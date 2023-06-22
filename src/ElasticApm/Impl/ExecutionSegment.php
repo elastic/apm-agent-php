@@ -149,8 +149,7 @@ abstract class ExecutionSegment implements ExecutionSegmentInterface, Serializab
                 ]
             );
         }
-        $this->diffStartTimeWithSystemClockOnBeginInMicroseconds
-            = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timestamp, $systemClockNow);
+        $this->diffStartTimeWithSystemClockOnBeginInMicroseconds = TimeUtil::calcDurationInMicrosecondsClampNegativeToZero($this->timestamp, $systemClockNow);
         $this->monotonicBeginTime = $monotonicClockNow;
         $this->traceId = $traceId;
         $this->setName($name);
