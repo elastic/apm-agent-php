@@ -256,9 +256,9 @@ final class BackendCommTest extends ComponentTestCaseBase
             }
             $loggerProxyTrace && $loggerProxyTrace->log(
                 __LINE__,
-                'Finished iteration',
+                'Finished iteration (after reverting mock APM Server to normal behavior)',
                 [
-                    'requests count'                                  => ($nextTransactionIndex - $nextTransactionIndexAfterSwitch),
+                    'requests count (after revert)'                   => ($nextTransactionIndex - $nextTransactionIndexAfterSwitch),
                     'transactionsWithApmServerReturningSuccess count' => count($transactionsWithApmServerReturningSuccess),
                 ]
             );
