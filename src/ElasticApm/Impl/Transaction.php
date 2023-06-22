@@ -99,6 +99,9 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
     /** @var ?int */
     private $cachedStackTraceLimitConfig = null;
 
+    /** @var ?float */
+    private $cachedSpanStackTraceMinDurationConfig = null;
+
     public function __construct(TransactionBuilder $builder)
     {
         $this->tracer = $builder->tracer;
@@ -592,6 +595,40 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
         }
 
         return $this->cachedStackTraceLimitConfig;
+    }
+
+    private function getSpanStackTraceMinDurationConfig(): float
+    {
+        if ($this->cachedSpanStackTraceMinDurationConfig === null) {
+            $this->cachedSpanStackTraceMinDurationConfig = $this->getConfig()->spanStackTraceMinDuration();
+
+            /**
+             * span_stack_trace_min_duration
+             *      0 - collect stack traces for spans with any duration
+             *      any positive value - it limits stack trace collection to spans with duration equal to or greater than
+             *      any negative value - it disable stack trace collection for spans completely
+             */
+            $msgPrefix = $this->cachedSpanStackTraceMinDurationConfig === 0.0
+                ? 'Span stack trace collection is enabled for spans with any duration'
+                : ($this->cachedSpanStackTraceMinDurationConfig < 0
+                    ? 'Span stack trace collection is DISABLED for spans with any duration'
+                    : 'Span stack trace collection is enabled for spans with duration >= ' . $this->cachedSpanStackTraceMinDurationConfig . ' ms');
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::SPAN_STACK_TRACE_MIN_DURATION . '\')');
+        }
+
+        return $this->cachedSpanStackTraceMinDurationConfig;
+    }
+
+    public function shouldCollectStackTraceForSpanDuration(float $durationInMilliseconds): bool
+    {
+        /**
+         * span_stack_trace_min_duration
+         *      0 - collect stack traces for spans with any duration
+         *      any positive value - it limits stack trace collection to spans with duration equal to or greater than
+         *      any negative value - it disable stack trace collection for spans completely
+         */
+        return (($stackTraceMinDuration = $this->getSpanStackTraceMinDurationConfig()) >= 0) && $durationInMilliseconds >= $stackTraceMinDuration;
     }
 
     /**

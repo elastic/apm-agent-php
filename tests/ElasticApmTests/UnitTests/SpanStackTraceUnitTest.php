@@ -24,8 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use ElasticApmTests\TestsSharedCode\SpanStackTraceTestSharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
 class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 {
@@ -42,7 +44,20 @@ class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 
     public function testAllSpanCreatingApis(): void
     {
-        // Act
+        /**
+         * Arrange
+         */
+
+        $this->setUpTestEnv(
+            function (TracerBuilderForTests $builder): void {
+                // Enable span stack trace collection for span with any duration
+                $builder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, '0');
+            }
+        );
+
+        /**
+         * Act
+         */
 
         $tx = ElasticApm::beginCurrentTransaction(__FUNCTION__, 'test_TX_type');
 
@@ -56,7 +71,9 @@ class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 
         $tx->end();
 
-        // Assert
+        /**
+         * Assert
+         */
 
         $this->assertSame(__FUNCTION__, $this->mockEventSink->singleTransaction()->name);
         SpanStackTraceTestSharedCode::assertPartImpl(count($createSpanApis), $expectedData, $this->mockEventSink->idToSpan());

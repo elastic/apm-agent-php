@@ -66,6 +66,7 @@ final class OptionNames
     public const SPAN_COMPRESSION_ENABLED = 'span_compression_enabled';
     public const SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION = 'span_compression_exact_match_max_duration';
     public const SPAN_COMPRESSION_SAME_KIND_MAX_DURATION = 'span_compression_same_kind_max_duration';
+    public const SPAN_STACK_TRACE_MIN_DURATION = 'span_stack_trace_min_duration';
     public const STACK_TRACE_LIMIT = 'stack_trace_limit';
     public const TRANSACTION_IGNORE_URLS = 'transaction_ignore_urls';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';

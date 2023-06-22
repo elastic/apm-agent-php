@@ -186,9 +186,15 @@ final class InferredSpansBuilder implements LoggableInterface
     private function sendFrameAsSpan(int $openFrameIndex, string $parentId, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): void
     {
         $frame = $this->openFramesReverseOrder[$openFrameIndex];
-        $stackTrace = ($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->transaction->getStackTraceLimitConfig())) === 0
-            ? null
-            : $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), $maxNumberOfFrames);
+        $stackTrace = null;
+        /** @var float $spanDurationInMilliseconds */
+        $spanDurationInMilliseconds = $frame->duration;
+        if (
+            $this->transaction->shouldCollectStackTraceForSpanDuration($spanDurationInMilliseconds)
+            && (($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->transaction->getStackTraceLimitConfig())) !== 0)
+        ) {
+            $stackTrace = $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), $maxNumberOfFrames);
+        }
         $frame->prepareForSerialization($this->transaction, $parentId, $stackTrace);
         $this->tracer->sendSpanToApmServer($frame);
     }
