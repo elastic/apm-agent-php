@@ -188,6 +188,10 @@ final class BackendCommTest extends ComponentTestCaseBase
 
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
 
+        // In the first stage of the test we make mock APM Server return failure
+        // to the agent's requests to Intake API.
+        // We continue sending requests to app code until agent makes at least $waitForReconnectAfterErrorCount connections
+
         $testCaseHandle->setMockApmServerBehavior([__CLASS__, 'mockApmServerBehaviorForTestBackoff'], [self::IS_APM_SERVER_RETURNING_SUCCESS_KEY => false]);
 
         $microsecondsToSleepAfterRequestToAppCode = 1000 * 1000 /* = 1s */;
@@ -221,8 +225,15 @@ final class BackendCommTest extends ComponentTestCaseBase
             $expectedJitter = ($expectedWaitTimeWithoutJitter >= 10) ? intval(floor($expectedWaitTimeWithoutJitter * 0.1)) : 0;
             $expectedMinWaitTime = $expectedWaitTimeWithoutJitter - $expectedJitter;
             self::assertGreaterThanOrEqual($expectedMinWaitTime, $currentConnection->timestampMonotonic - $prevConnection->timestampMonotonic);
+
+            // After error from APM Server agent should not reuse the connection so each connection should have exactly one request
+            self::assertCount(1, $prevConnection->getIntakeApiRequests());
+            self::assertCount(1, $currentConnection->getIntakeApiRequests());
         }
         $dbgCtx->popSubScope();
+
+        // In the second stage of the test we revert mock APM Server to normal behavior.
+        // We expect that after some delay agent should start sending data without any gaps.
 
         $testCaseHandle->setMockApmServerBehavior([__CLASS__, 'mockApmServerBehaviorForTestBackoff'], [self::IS_APM_SERVER_RETURNING_SUCCESS_KEY => true]);
         $nextTransactionIndexAfterSwitch = $nextTransactionIndex;
@@ -239,7 +250,8 @@ final class BackendCommTest extends ComponentTestCaseBase
             $dataFromAgentAccumulator->addReceiverEvents($testCaseHandle->fetchNewDataFromMockApmServer(/* shouldWait */ false));
             $dataFromAgent = $dataFromAgentAccumulator->getAccumulatedData();
             $transactionsWithApmServerReturningSuccess = self::findExecutionSegmentsWithLabelValue($dataFromAgent->idToTransaction, self::IS_APM_SERVER_RETURNING_SUCCESS_KEY, true);
-            if (count($transactionsWithApmServerReturningSuccess) >= 2) {
+            // We wait until there is at least 10 transactions created after mock APM Server was reverted to normal behavior
+            if (count($transactionsWithApmServerReturningSuccess) >= 10) {
                 break;
             }
             $loggerProxyTrace && $loggerProxyTrace->log(
@@ -260,7 +272,7 @@ final class BackendCommTest extends ComponentTestCaseBase
             self::assertIsInt($prevTxIndex);
             $currTxIndex = self::getLabel($transactionsWithApmServerReturningSuccess[$i], self::TRANSACTION_INDEX_KEY);
             self::assertIsInt($currTxIndex);
-            // After to switch to mock APM Server returning success there should not be gaps in sent data
+            // After reverting mock APM Server to normal behavior agent should drop any data so there should not be any gaps
             self::assertSame($prevTxIndex + 1, $currTxIndex);
         }
         $dbgCtx->popSubScope();
