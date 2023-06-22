@@ -50,6 +50,11 @@ final class AllOptionsMetadata
         return new DurationOptionMetadata(floatval($min), /* max */ null, DurationUnits::MILLISECONDS, floatval($default));
     }
 
+    private static function buildDurationMetadataInMillisecondsNoMin(int $default): DurationOptionMetadata
+    {
+        return new DurationOptionMetadata(/* min */ null, /* max */ null, DurationUnits::MILLISECONDS, floatval($default));
+    }
+
     private static function buildDurationMetadataInMilliseconds(int $default): DurationOptionMetadata
     {
         return self::buildDurationMetadataInMillisecondsWithMin(/* min */ 0, $default);
@@ -107,6 +112,7 @@ final class AllOptionsMetadata
             OptionNames::SPAN_COMPRESSION_ENABLED                   => new BoolOptionMetadata(/* default */ true),
             OptionNames::SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION  => self::buildDurationMetadataInMilliseconds(/* default */ 50),
             OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION    => self::buildDurationMetadataInMilliseconds(/* default */ 0),
+            OptionNames::SPAN_STACK_TRACE_MIN_DURATION              => self::buildDurationMetadataInMillisecondsNoMin(/* default */ OptionDefaultValues::SPAN_STACK_TRACE_MIN_DURATION),
             OptionNames::STACK_TRACE_LIMIT                          => new IntOptionMetadata(/* min */ null, /* max */ null, /* default */ OptionDefaultValues::STACK_TRACE_LIMIT),
             OptionNames::TRANSACTION_IGNORE_URLS                    => new NullableWildcardListOptionMetadata(),
             OptionNames::TRANSACTION_MAX_SPANS                      => self::buildPositiveOrZeroIntMetadata(OptionDefaultValues::TRANSACTION_MAX_SPANS),

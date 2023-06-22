@@ -481,7 +481,9 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
         $this->onAboutToEnd->callCallbacks($this);
 
         if ($this->shouldBeSentToApmServer()) {
-            $this->stackTrace = $this->containingTransaction->captureApmFormatStackTrace($numberOfStackFramesToSkip + 1);
+            if ($this->containingTransaction->shouldCollectStackTraceForSpanDuration($this->duration)) {
+                $this->stackTrace = $this->containingTransaction->captureApmFormatStackTrace($numberOfStackFramesToSkip + 1);
+            }
             $this->prepareForSerialization();
             $this->parentExecutionSegment->onChildSpanEnded($this);
         }

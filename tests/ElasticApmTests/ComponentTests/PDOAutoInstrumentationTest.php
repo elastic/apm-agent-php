@@ -291,8 +291,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
                 if (!empty($disableInstrumentationsOptVal)) {
                     $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal);
                 }
-                // Disable Span Compression feature to have all the expected spans individually
-                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                self::disableTimingDependentFeatures($appCodeParams);
             }
         );
         $appCodeHost->sendRequest(
