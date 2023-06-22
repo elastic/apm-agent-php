@@ -28,13 +28,27 @@ struct BackendCommBackoff
 {
     GenerateRandomUInt generateRandomUInt;
     void* generateRandomUIntCtx;
-    UInt sequentialErrorsCount;
+    UInt errorCount;
+    TimeSpec waitEndTime;
+    bool isInFailedMode;
 };
 typedef struct BackendCommBackoff BackendCommBackoff;
 
-void backendCommBackoff_init( GenerateRandomUInt generateRandomUInt, void* generateRandomUIntCtx, BackendCommBackoff* thisObj );
 void backendCommBackoff_onSuccess( BackendCommBackoff* thisObj );
 void backendCommBackoff_onError( BackendCommBackoff* thisObj );
+bool backendCommBackoff_shouldWait( BackendCommBackoff* thisObj );
+
 UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoff* thisObj );
 int backendCommBackoff_convertRandomUIntToJitter( UInt randomVal, UInt jitterHalfRange );
 UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx );
+
+#define ELASTIC_APM_DEFAULT_BACKEND_COMM_BACKOFF \
+    ((BackendCommBackoff) \
+    { \
+        .generateRandomUInt = &backendCommBackoff_defaultGenerateRandomUInt, \
+        .generateRandomUIntCtx = NULL, \
+        .errorCount = 0, \
+        .waitEndTime = { 0 }, \
+        .isInFailedMode = false \
+    }) \
+    /**/

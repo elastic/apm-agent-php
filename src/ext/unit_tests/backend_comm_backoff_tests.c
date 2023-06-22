@@ -80,8 +80,9 @@ void test_backendCommBackoff_getTimeToWaitInSeconds( void** testFixtureState )
 
     // Init random generator to get 0 jitter
     GenerateRandomUIntForTests randomGenerator = { .valueToReturn = RAND_MAX / 2 };
-    BackendCommBackoff backendCommBackoff;
-    backendCommBackoff_init( &generateRandomUIntForTests, &randomGenerator, &backendCommBackoff );
+    BackendCommBackoff backoff = ELASTIC_APM_DEFAULT_BACKEND_COMM_BACKOFF;
+    backoff.generateRandomUInt = &generateRandomUIntForTests;
+    backoff.generateRandomUIntCtx = &randomGenerator;
 
     /**
      *  the delay after the first error is 0 seconds, then circa 1, 4, 9, 16, 25 and finally 36 seconds
@@ -90,25 +91,25 @@ void test_backendCommBackoff_getTimeToWaitInSeconds( void** testFixtureState )
      */
     UInt expectedWaitTimes[] = { 0, 0, 1, 4, 9, 16, 25, 36, 36, 36 };
 
-    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
-    backendCommBackoff_onSuccess( &backendCommBackoff );
-    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
+    backendCommBackoff_onSuccess( &backoff );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
     ELASTIC_APM_FOR_EACH_INDEX( errorCount, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedWaitTimes ) )
     {
-        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedWaitTimes[ errorCount ], backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
-        backendCommBackoff_onError( &backendCommBackoff );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedWaitTimes[ errorCount ], backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
+        backendCommBackoff_onError( &backoff );
     }
     UInt expectedMaxWaitTime = expectedWaitTimes[ ELASTIC_APM_STATIC_ARRAY_SIZE( expectedWaitTimes ) - 1];
-    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedMaxWaitTime, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
-    backendCommBackoff_onSuccess( &backendCommBackoff );
-    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedMaxWaitTime, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
+    backendCommBackoff_onSuccess( &backoff );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
 
     ELASTIC_APM_FOR_EACH_INDEX_START_END( UInt, seqLenToSimulate, 1, 10 )
     {
-        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
         ELASTIC_APM_FOR_EACH_INDEX_EX( UInt, callIndex, seqLenToSimulate )
         {
-            backendCommBackoff_onError( &backendCommBackoff );
+            backendCommBackoff_onError( &backoff );
             double expectedJitterScale = 0;
             switch ( callIndex % 3 )
             {
@@ -133,11 +134,11 @@ void test_backendCommBackoff_getTimeToWaitInSeconds( void** testFixtureState )
                 expectedJitter = (int)( ( expectedJitterScale >= 0 ? 1 : -1 ) * floor( fabs( expectedTimeToWaitWithoutJitter * expectedJitterScale ) ) );
             }
             UInt expectedWaitTime = expectedTimeToWaitWithoutJitter + expectedJitter;
-            ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedWaitTime, backendCommBackoff_getTimeToWaitInSeconds( &backendCommBackoff ) );
+            ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( expectedWaitTime, backendCommBackoff_getTimeToWaitInSeconds( &backoff ) );
         }
         ELASTIC_APM_FOR_EACH_INDEX( callIndex, seqLenToSimulate )
         {
-            backendCommBackoff_onSuccess( &backendCommBackoff );
+            backendCommBackoff_onSuccess( &backoff );
         }
     }
 }

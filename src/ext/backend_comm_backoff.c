@@ -18,9 +18,13 @@
  */
 
 #include "backend_comm_backoff.h"
-#include "basic_macros.h"
 #include <stdlib.h>
 #include <math.h>
+#include "basic_macros.h"
+#include "log.h"
+#include "time_util.h"
+
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
 /**
  * Algorithm is based on Elastic APM agent spec's "Transport errors" section
@@ -28,26 +32,39 @@
  * @see https://github.com/elastic/apm/blob/d8cb5607dbfffea819ab5efc9b0743044772fb23/specs/agents/transport.md#transport-errors
  */
 
-void backendCommBackoff_init( GenerateRandomUInt generateRandomUInt, void* generateRandomUIntCtx, BackendCommBackoff* thisObj )
-{
-    ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
-    ELASTIC_APM_ASSERT_VALID_PTR( thisObj->generateRandomUInt );
-
-    thisObj->generateRandomUInt = generateRandomUInt;
-    thisObj->generateRandomUIntCtx = generateRandomUIntCtx;
-    thisObj->sequentialErrorsCount = 0;
-}
-
 void backendCommBackoff_onSuccess( BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
-    thisObj->sequentialErrorsCount = 0;
+    thisObj->errorCount = 0;
+    thisObj->waitEndTime = (TimeSpec){ 0 };
+}
+
+bool backendCommBackoff_getCurrentTime( BackendCommBackoff* thisObj, /* out */ TimeSpec* currentTime )
+{
+    ResultCode resultCode;
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( getClockTimeSpec( /* isRealTime */ false, /* out */ currentTime ) );
+
+    resultCode = resultSuccess;
+    finally:
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    return resultCode == resultSuccess;
+
+    failure:
+    ELASTIC_APM_LOG_ERROR( "Failed to get current time - switching to failed mode" );
+    goto finally;
 }
 
 void backendCommBackoff_onError( BackendCommBackoff* thisObj )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "isInFailedMode: %s", boolToString( thisObj->isInFailedMode ) );
+
+    if ( thisObj->isInFailedMode )
+    {
+        return;
+    }
 
     /**
      *  The grace period should be calculated in seconds using the algorithm min(reconnectCount++, 6) ** 2 ± 10%
@@ -56,10 +73,16 @@ void backendCommBackoff_onError( BackendCommBackoff* thisObj )
      */
     enum { maxSequentialErrorsCount = 7 };
 
-    if ( thisObj->sequentialErrorsCount < maxSequentialErrorsCount )
+    if ( thisObj->errorCount < maxSequentialErrorsCount )
     {
-        ++thisObj->sequentialErrorsCount;
+        ++thisObj->errorCount;
     }
+
+    if ( ! backendCommBackoff_getCurrentTime( thisObj, /* out */ &thisObj->waitEndTime ) )
+    {
+        return;
+    }
+    addDelayToAbsTimeSpec( /* in, out */ &thisObj->waitEndTime, /* delayInNanoseconds */ (long)backendCommBackoff_getTimeToWaitInSeconds( thisObj ) * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND );
 }
 
 int backendCommBackoff_convertRandomUIntToJitter( UInt randomVal, UInt jitterHalfRange )
@@ -72,12 +95,12 @@ UInt backendCommBackoff_getTimeToWaitInSeconds( const BackendCommBackoff* thisOb
 {
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
-    if ( thisObj->sequentialErrorsCount == 0 )
+    if ( thisObj->errorCount == 0 )
     {
         return 0;
     }
 
-    UInt reconnectCount = (thisObj->sequentialErrorsCount - 1);
+    UInt reconnectCount = ( thisObj->errorCount - 1);
     double timeToWaitWithoutJitter = pow( reconnectCount, 2 );
     double jitterHalfRange = timeToWaitWithoutJitter * 0.1;
     UInt jitter = jitterHalfRange < 1 ? 0 : backendCommBackoff_convertRandomUIntToJitter( thisObj->generateRandomUInt( thisObj->generateRandomUIntCtx ), (UInt) floor( jitterHalfRange ) );
@@ -91,4 +114,33 @@ UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx )
 #pragma clang diagnostic pop
 {
     return (UInt) rand(); // NOLINT(cert-msc50-cpp)
+}
+
+bool backendCommBackoff_shouldWait( BackendCommBackoff* thisObj )
+{
+    if ( thisObj->isInFailedMode )
+    {
+        return true;
+    }
+
+    if ( thisObj->errorCount == 0 )
+    {
+        return false;
+    }
+
+    TimeSpec currentTime;
+    if ( ! backendCommBackoff_getCurrentTime( thisObj, /* out */ &currentTime ) )
+    {
+        return true;
+    }
+
+    if ( compareAbsTimeSpecs( &thisObj->waitEndTime, &currentTime ) <= 0 )
+    {
+        return false;
+    }
+
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    ELASTIC_APM_LOG_TRACE( "Left to wait: %s, errorCount: %u", streamTimeSpecDiff( &currentTime, &thisObj->waitEndTime, &txtOutStream ), thisObj->errorCount );
+    return true;
 }

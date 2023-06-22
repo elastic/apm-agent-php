@@ -30,6 +30,7 @@
 #include "util.h"
 #include "util_for_PHP.h"
 #include "basic_macros.h"
+#include "backend_comm_backoff.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -190,9 +191,10 @@ struct ConnectionData
 {
     CURL* curlHandle;
     struct curl_slist* requestHeaders;
+    BackendCommBackoff backoff;
 };
 typedef struct ConnectionData ConnectionData;
-ConnectionData g_connectionData = { .curlHandle = NULL, .requestHeaders = NULL };
+ConnectionData g_connectionData = { .curlHandle = NULL, .requestHeaders = NULL, .backoff = ELASTIC_APM_DEFAULT_BACKEND_COMM_BACKOFF };
 
 void cleanupConnectionData( ConnectionData* connectionData )
 {
@@ -465,11 +467,16 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    long responseCode;
+    long responseCode = 0;
     curl_easy_getinfo( connectionData->curlHandle, CURLINFO_RESPONSE_CODE, &responseCode );
-    ELASTIC_APM_LOG_DEBUG( "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
-
-    resultCode = resultSuccess;
+    /**
+     *  If the HTTP response status code isn’t 2xx or if a request is prematurely closed (either on the TCP or HTTP level) the request MUST be considered failed.
+     *
+     * @see https://github.com/elastic/apm/blob/d8cb5607dbfffea819ab5efc9b0743044772fb23/specs/agents/transport.md#transport-errors
+     */
+    bool isFailed = ( responseCode / 100 ) != 2;
+    ELASTIC_APM_LOG_WITH_LEVEL( isFailed ? logLevel_error : logLevel_debug, "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
+    resultCode = isFailed ? resultFailure : resultSuccess;
     finally:
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
     return resultCode;
@@ -505,12 +512,19 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
         ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
     }
 
+    if ( backendCommBackoff_shouldWait( &connectionData->backoff ) )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Backoff wait time has not elapsed yet - discarding events instead of sending" );
+        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+    }
+
     if ( connectionData->curlHandle == NULL )
     {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( initConnectionData( config, connectionData, userAgentHttpHeader ) );
     }
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServerWithConn( config, connectionData, serializedEvents ) );
+    backendCommBackoff_onSuccess( &connectionData->backoff );
 
     resultCode = resultSuccess;
     finally:
@@ -518,6 +532,7 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
     return resultCode;
 
     failure:
+    backendCommBackoff_onError( &connectionData->backoff );
     cleanupConnectionData( connectionData );
     goto finally;
 }
