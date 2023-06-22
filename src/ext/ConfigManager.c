@@ -764,11 +764,16 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, apiKey )
 #   if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( AssertLevel, assertLevel )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, astProcessEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, astProcessDebugDumpConvertedBackToSource )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, astProcessDebugDumpForPathPrefix )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, astProcessDebugDumpOutDir )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalBackendCommLogVerbose )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
@@ -799,6 +804,11 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serverUrl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceNodeName )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, serviceVersion )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, spanCompressionEnabled )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionExactMatchMaxDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanCompressionSameKindMaxDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, spanStackTraceMinDuration )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, stackTraceLimit )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionIgnoreUrls )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionMaxSpans )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, transactionSampleRate )
@@ -919,6 +929,30 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
     #endif
 
     ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            astProcessEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            astProcessDebugDumpConvertedBackToSource,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            astProcessDebugDumpForPathPrefix,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            astProcessDebugDumpOutDir,
+            ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_OUT_DIR,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
             buildOptionalBoolOptionMetadata,
             asyncBackendComm,
             ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM,
@@ -947,6 +981,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             devInternal,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
             /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            devInternalBackendCommLogVerbose,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE,
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
@@ -1087,6 +1127,36 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             serviceVersion,
             ELASTIC_APM_CFG_OPT_NAME_SERVICE_VERSION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            spanCompressionEnabled,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED,
+            /* defaultValue: */ true );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionExactMatchMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanCompressionSameKindMaxDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            spanStackTraceMinDuration,
+            ELASTIC_APM_CFG_OPT_NAME_SPAN_STACK_TRACE_MIN_DURATION,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            stackTraceLimit,
+            ELASTIC_APM_CFG_OPT_NAME_STACK_TRACE_LIMIT,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(
@@ -1569,7 +1639,6 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
     ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
-static
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerMeta );

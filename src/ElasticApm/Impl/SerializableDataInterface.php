@@ -40,6 +40,8 @@ interface SerializableDataInterface extends JsonSerializable
      *
      * @noinspection PhpFullyQualifiedNameUsageInspection
      * @noinspection PhpLanguageLevelInspection
+     * @noinspection PhpUndefinedClassInspection
+     * @noinspection RedundantSuppression
      */
     #[\ReturnTypeWillChange]
     public function jsonSerialize();

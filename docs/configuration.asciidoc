@@ -52,6 +52,8 @@ network utilization, and the amount of storage required by {es}.
 
 - <<config-transaction-sample-rate>>
 - <<config-breakdown-metrics>>
+- <<configure-php-error-reporting>>
+- <<config-capture-errors>>
 
 [float]
 [[configure-logging]]
@@ -104,6 +106,16 @@ except for `syslog`, where the log level is set to `TRACE`.
 elastic_apm.log_level=WARNING
 elastic_apm.log_level_syslog=TRACE
 ----
+
+[float]
+[[configure-php-error-reporting]]
+=== PHP errors as APM error events
+The agent automatically creates APM error events for PHP errors triggered by the monitored application.
+APM error events are created only for PHP errors which level is included in
+PHP https://www.php.net/manual/en/function.error-reporting.php[`error_reporting`] setting.
+
+In addition <<config-capture-errors>> configuration option controls
+if the agent captures any PHP errors.
 
 [float]
 [[configure-duration-format]]
@@ -166,8 +178,8 @@ Examples: `*foo*`, `/foo/*/bar, /*/baz*`.
 
 Matching is case insensitive by default.
 Prepending an element with `(?-i)` makes the matching case sensitive.
-For example `(?-i)/bar, /foo` matches /bar` and `/FOO` `but it doesn't match `/BAR`
-on the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
+For example `(?-i)/bar, /foo` matches `/bar` and `/FOO` but it doesn't match `/BAR`.
+On the other hand `(?-i)/bar, (?-i)/foo` matches `/bar` and `/foo`
 but doesn't match neither `/BAR` nor `/FOO`.
 
 Whitespace around commas separating wildcard expressions in the list is ignored.
@@ -241,6 +253,28 @@ breakdown metrics, which can reduce the overhead of the agent.
 NOTE: This feature requires APM Server and Kibana >= 7.3.
 
 [float]
+[[config-capture-errors]]
+==== `capture_errors`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_CAPTURE_ERRORS` | `elastic_apm.capture_errors`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+If this configuration option is set to `true` the agent will collect and report error events.
+Set it to `false` to disable the collection and reporting of APM
+error events, which can reduce the overhead of the agent.
+
+Also see <<configure-php-error-reporting>>.
+
+[float]
 [[config-disable-instrumentations]]
 ==== `disable_instrumentations`
 
@@ -259,10 +293,25 @@ NOTE: This feature requires APM Server and Kibana >= 7.3.
 A comma-separated list of wildcard expressions to match
 instrumentation names which should be disabled.
 When an instrumentation is disabled, no spans will be created for that instrumentation.
-An instrumentation may match more than one name -
-for example PDO instrumentation matches both `db` and  `pdo`.
+Each instrumentation has a name and any number of keywords.
+If the instrumentation's name or any of its keywords match this configuration option
+then the instrumentation is disabled.
 
-Valid instrumentation names are `curl`, `db`, `http-client`, `pdo`.
+See <<configure-wildcard>> for more details on how to use wildcard expressions.
+
+Supported instrumentations:
+[options="header"]
+|============
+| Name      | Keywords
+| `curl`    | `HTTP-client`
+| `PDO`     | `DB`
+| `MySQLi`  | `DB`
+|============
+
+Examples:
+
+- `db` disables both PDO and MySQLi instrumentations
+- `*HTTP*` disables curl instrumentation
 
 [float]
 [[config-disable-send]]
@@ -525,8 +574,10 @@ Characters in service name that don't match regular expression will be replaced 
 |============
 
 If it's set, this name is used to distinguish between different nodes of a service.
-If it's not set, data aggregations will be done based on the reported
-hostname (automatically discovered or manually configured using <<config-hostname>>).
+If it's not set, data aggregations will be done based on the container ID
+if the monitored application runs in a container.
+Otherwise data aggregations will be done based on the reported hostname
+(automatically discovered or manually configured using <<config-hostname>>).
 
 [float]
 [[config-service-version]]
@@ -547,6 +598,147 @@ hostname (automatically discovered or manually configured using <<config-hostnam
 The version of the currently deployed service. If your deployments are not versioned,
 the recommended value for this field is the commit identifier of the deployed revision, e.g.,
 the output of git rev-parse HEAD.
+
+[float]
+[[config-span-compression-enabled]]
+==== `span_compression_enabled`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_ENABLED` | `elastic_apm.span_compression_enabled`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| true       | Boolean
+|============
+
+Setting this option to true will enable span compression feature.
+Span compression reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that some information
+such as DB statements of all the compressed spans will not be collected.
+
+[float]
+[[config-span-compression-exact-match-max-duration]]
+==== `span_compression_exact_match_max_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION` | `elastic_apm.span_compression_exact_match_max_duration`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `50ms`       | Duration
+|============
+
+Consecutive spans that are exact match and that are under this threshold
+will be compressed into a single composite span.
+This option does not apply to composite spans.
+This reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+Since it is *max* duration threshold setting this configuration option to 0
+effectively disables this compression strategy
+because only spans with duration 0 will be considered eligible for compression with this strategy.
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-span-compression-same-kind-max-duration]]
+==== `span_compression_same_kind_max_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION` | `elastic_apm.span_compression_same_kind_max_duration`
+|============
+
+[options="header"]
+|============
+| Default                          | Type
+| `0ms`       | Duration
+|============
+
+Consecutive spans to the same destination that are under this threshold
+will be compressed into a single composite span.
+This option does not apply to composite spans.
+This reduces the collection, processing, and storage overhead,
+and removes clutter from the UI.
+The tradeoff is that the DB statements of all the compressed spans will not be collected.
+
+Since it is *max* duration threshold setting this configuration option to 0
+effectively disables this compression strategy
+because only spans with duration 0 will be considered eligible for compression with this strategy.
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-span-stack-trace-min-duration]]
+==== `span_stack_trace_min_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_STACK_TRACE_MIN_DURATION` | `elastic_apm.span_stack_trace_min_duration`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `5ms`      | Duration
+|============
+
+While it might be very helpful to have stack trace attached to a span,
+collecting stack traces does have some overhead.
+This configuration controls the minimum span duration at which stack traces are collected.
+A higher value means lower overhead as stack trace collection is skipped for quick spans. 
+
+Set this config to:
+
+- any positive value (e.g. `5ms`) - to limit stack trace collection to spans with duration
+    equal to or greater than the given value (e.g. 5 milliseconds)
+- `0` (or `0` with any duration units e.g. `0ms`) - to collect stack traces
+    for spans with any duration
+- any negative value (e.g. `-1ms`) - to disable stack trace collection for spans completely
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-stack-trace-limit]]
+==== `stack_trace_limit`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_STACK_TRACE_LIMIT` | `elastic_apm.stack_trace_limit`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `50`       | Integer
+|============
+
+This option controls how many frames are included in stack traces captured by the agent.
+
+Set this config to:
+
+- any positive integer - to define the maximum number of frames included in stack traces
+- `0` - to disable stack trace capturing
+- any negative integer - to capture all frames
 
 [float]
 [[config-transaction-ignore-urls]]

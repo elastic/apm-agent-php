@@ -87,6 +87,7 @@ void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArra
 
 bool isPhpRunningAsCliScript();
 bool detectOpcachePreload();
+bool detectOpcacheRestartPending();
 void enableAccessToServerGlobal();
 
 #define ELASTIC_APM_ZEND_ADD_ASSOC( map, key, valueType, value ) ELASTIC_APM_PP_CONCAT( ELASTIC_APM_PP_CONCAT( add_assoc_, valueType ), _ex)( (map), (key), sizeof( key ) - 1, (value) )
@@ -105,3 +106,6 @@ void enableAccessToServerGlobal();
         } \
     } while( 0 ) \
     /**/
+
+
+String streamZVal( const zval* zVal, TextOutputStream* txtOutStream );

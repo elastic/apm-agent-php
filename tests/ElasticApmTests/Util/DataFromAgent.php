@@ -24,13 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\ComponentTests\Util\ApmDataKind;
-use PHPUnit\Framework\TestCase;
 
 class DataFromAgent implements LoggableInterface
 {
@@ -107,12 +105,10 @@ class DataFromAgent implements LoggableInterface
      */
     public function singleSpanByName(string $name): SpanDto
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this' => $this]);
         $spans = $this->findSpansByName($name);
-        TestCase::assertCount(
-            1,
-            $spans,
-            LoggableToString::convert(['name' => $name, 'spans' => $spans, 'this' => $this])
-        );
+        TestCaseBase::assertCount(1, $spans);
         return $spans[0];
     }
 
@@ -138,6 +134,8 @@ class DataFromAgent implements LoggableInterface
      * @param TransactionDto $transaction
      *
      * @return array<string, ErrorDto>
+     *
+     * @noinspection PhpUnused
      */
     public function errorsForTransaction(TransactionDto $transaction): array
     {
@@ -170,6 +168,8 @@ class DataFromAgent implements LoggableInterface
      * @param string $parentId
      *
      * @return iterable<ErrorDto>
+     *
+     * @noinspection PhpUnused
      */
     public function findChildErrors(string $parentId): iterable
     {
@@ -220,6 +220,7 @@ class DataFromAgent implements LoggableInterface
         return self::executionSegmentByIdOrNullEx($this->idToTransaction, $this->idToSpan, $id);
     }
 
+    /** @noinspection PhpUnused */
     public function executionSegmentById(string $id): ExecutionSegmentDto
     {
         return self::executionSegmentByIdEx($this->idToTransaction, $this->idToSpan, $id);
@@ -239,7 +240,7 @@ class DataFromAgent implements LoggableInterface
             case ApmDataKind::transaction():
                 return count($this->idToTransaction);
             default:
-                TestCase::fail('Unknown $apmDataKind: ' . $apmDataKind->asString());
+                TestCaseBase::fail('Unknown $apmDataKind: ' . $apmDataKind->asString());
         }
     }
 }

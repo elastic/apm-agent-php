@@ -367,16 +367,13 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
                 : (isset($senderTransaction) ? $senderTransaction->getId() : null);
 
             if (isset($senderTransaction)) {
-                self::assertEquals(
-                    [$senderTransaction->getId()],
-                    self::getIdsFromIdToMap($senderEventSink->idToTransaction())
-                );
+                self::assertEqualsEx([$senderTransaction->getId()], self::getIdsFromIdToMap($senderEventSink->idToTransaction()));
             } else {
                 self::assertEmpty($senderEventSink->idToTransaction());
             }
 
             if (isset($senderSpan)) {
-                self::assertEquals([$senderSpan->getId()], self::getIdsFromIdToMap($senderEventSink->idToSpan()));
+                self::assertEqualsEx([$senderSpan->getId()], self::getIdsFromIdToMap($senderEventSink->idToSpan()));
             } else {
                 self::assertEmpty($senderEventSink->idToSpan());
             }
@@ -391,10 +388,7 @@ class DistributedTracingTest extends TracerUnitTestCaseBase
         }
 
         if ($isReceiverTracerEnabled) {
-            self::assertEquals(
-                [$receiverTransaction->getId()],
-                self::getIdsFromIdToMap($receiverEventSink->idToTransaction())
-            );
+            self::assertEqualsEx([$receiverTransaction->getId()], self::getIdsFromIdToMap($receiverEventSink->idToTransaction()));
             $receiverTxData = $receiverEventSink->idToTransaction()[$receiverTransaction->getId()];
             self::assertSame($expectedParentId, $receiverTxData->parentId);
         } else {

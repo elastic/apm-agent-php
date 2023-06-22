@@ -82,11 +82,10 @@ size_t captureStackTraceWindows( void** addressesBuffer, size_t addressesBufferS
 
 String streamStackTrace( void* const* addresses, size_t addressesCount, String linePrefix, TextOutputStream* txtOutStream );
 
-String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream );
-
-String streamCurrentProcessExeName( TextOutputStream* txtOutStream );
+String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream, size_t maxLength );
 
 void registerOsSignalHandler();
+void unregisterOsSignalHandler();
 
 void registerAtExitLogging();
 

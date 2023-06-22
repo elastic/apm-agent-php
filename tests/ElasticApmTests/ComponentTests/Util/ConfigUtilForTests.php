@@ -56,10 +56,8 @@ final class ConfigUtilForTests
         return EnvVarsRawSnapshotSource::optionNameToEnvVarName(self::ENV_VAR_NAME_PREFIX, $optName);
     }
 
-    public static function read(
-        ?RawSnapshotSourceInterface $additionalConfigSource,
-        LoggerFactory $loggerFactory
-    ): ConfigSnapshotForTests {
+    public static function read(?RawSnapshotSourceInterface $additionalConfigSource, LoggerFactory $loggerFactory): ConfigSnapshotForTests
+    {
         $envVarConfigSource = new EnvVarsRawSnapshotSource(ConfigUtilForTests::ENV_VAR_NAME_PREFIX);
         $configSource =  $additionalConfigSource === null
             ? $envVarConfigSource
@@ -111,5 +109,17 @@ final class ConfigUtilForTests
                 yield $optName;
             }
         }
+    }
+
+    /**
+     * @param string                $optName
+     * @param string|int|float|bool $optVal
+     *
+     * @return bool
+     */
+    public static function isAgentOptionDefaultValue(string $optName, $optVal): bool
+    {
+        $optMeta = AllOptionsMetadata::get()[$optName];
+        return $optVal === $optMeta->defaultValue();
     }
 }

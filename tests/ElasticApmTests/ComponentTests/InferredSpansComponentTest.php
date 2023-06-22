@@ -35,8 +35,10 @@ use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\InferredSpanExpectationsBuilder;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\TransactionExpectations;
 
@@ -59,29 +61,25 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
     private const TIME_NANOSLEEP_FUNC_NAME = 'time_nanosleep';
     private const SLEEP_FUNC_NAMES = [self::SLEEP_FUNC_NAME, self::USLEEP_FUNC_NAME, self::TIME_NANOSLEEP_FUNC_NAME];
 
-    private const STACK_TRACES_LABEL_KEY = 'STACK_TRACES_LABEL';
-    private const STACK_TRACES_CRC_LABEL_KEY = 'STACK_TRACES_CRC_LABEL';
+    private const STACK_TRACES_KEY = 'stack_traces';
     private const APP_CODE_SPAN_STACK_TRACE = 'app_code_span_stack_trace';
 
     private const NON_KEYWORD_STRING_MAX_LENGTH = 100 * 1024;
 
     /**
-     * @return iterable<array{array<string, mixed>}>
+     * @return iterable<array{MixedMap}>
      */
     public function dataProviderForTestInferredSpans(): iterable
     {
-        /** @var iterable<array{array<string, mixed>}> $result */
         $result = (new DataProviderForTestBuilder())
-            // TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             // ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
-            // TODO: Sergey Kleyman: Remove addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
-            ->addSingleValueKeyedDimension(self::IS_INFERRED_SPANS_ENABLED_KEY, false)
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY, DataProviderForTestBuilder::isLongRunMode() ? [true, false] : [false])
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_TRANSACTION_SAMPLED_KEY)
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::CAPTURE_SLEEPS_KEY)
-            ->wrapResultIntoArray()
             ->build();
 
-        return self::adaptToSmoke($result);
+        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
     }
 
     private static function usleep(int $secondsToSleep): void
@@ -121,9 +119,9 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
             default:
                 self::fail('Unknown sleepFuncToUse: `' . $sleepFuncToUse . '\'');
         }
-        $stackTraceClassic = StackTraceUtil::captureInClassicFormat(AmbientContextForTests::loggerFactory());
+        $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
-        $stackTraces[$sleepFuncToUse] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTraces[$sleepFuncToUse] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic, /* maxNumberOfFrames */ null);
     }
 
     public static function appCodeForTestInferredSpans(): void
@@ -134,61 +132,32 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         self::mySleep(self::SLEEP_DURATION_SECONDS, self::USLEEP_FUNC_NAME, /* ref */ $stackTraces);
         self::mySleep(self::SLEEP_DURATION_SECONDS, self::TIME_NANOSLEEP_FUNC_NAME, /* ref */ $stackTraces);
         $sleepCallLine = __LINE__ - 1;
-        $stackTraceClassic = StackTraceUtil::captureInClassicFormat(AmbientContextForTests::loggerFactory());
+        $stackTraceClassic = (new StackTraceUtil(AmbientContextForTests::loggerFactory()))->captureInClassicFormat();
         $stackTraceClassic[0]->line = $sleepCallLine;
-        $stackTraces[self::APP_CODE_SPAN_STACK_TRACE] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTraces[self::APP_CODE_SPAN_STACK_TRACE] = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic, /* maxNumberOfFrames */ null);
 
         $txCtx = ElasticApm::getCurrentTransaction()->context();
         if ($txCtx instanceof TransactionContext) {
-            $stackTracesSerialized = base64_encode(serialize($stackTraces));
-            $nonKeywordStringMaxLength = self::getTracerFromAppCode()->getConfig()->nonKeywordStringMaxLength();
-            self::assertLessThanOrEqual($nonKeywordStringMaxLength, strlen($stackTracesSerialized));
-            $stackTracesSerializedCrc = crc32($stackTracesSerialized);
-            $txCtx->setCustom(self::STACK_TRACES_LABEL_KEY, $stackTracesSerialized);
-            $txCtx->setCustom(self::STACK_TRACES_CRC_LABEL_KEY, $stackTracesSerializedCrc);
+            self::setContextCustom($txCtx, self::STACK_TRACES_KEY, $stackTraces);
         }
     }
 
-    /**
-     * @dataProvider dataProviderForTestInferredSpans
-     *
-     * @param array<string, mixed> $testArgs
-     */
-    public function testInferredSpans(array $testArgs): void
+    private function implTestInferredSpans(MixedMap $testArgs): void
     {
-        $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
-        ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        $isInferredSpansEnabled = self::getBoolFromMap(self::IS_INFERRED_SPANS_ENABLED_KEY, $testArgs);
-        $isTransactionSampled = self::getBoolFromMap(self::IS_TRANSACTION_SAMPLED_KEY, $testArgs);
-        $shouldCaptureSleeps = self::getBoolFromMap(self::CAPTURE_SLEEPS_KEY, $testArgs);
+        $isInferredSpansEnabled = $testArgs->getBool(self::IS_INFERRED_SPANS_ENABLED_KEY);
+        $isTransactionSampled = $testArgs->getBool(self::IS_TRANSACTION_SAMPLED_KEY);
+        $shouldCaptureSleeps = $testArgs->getBool(self::CAPTURE_SLEEPS_KEY);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
-            function (
-                AppCodeHostParams $appCodeParams
-            ) use (
-                $isInferredSpansEnabled,
-                $isTransactionSampled,
-                $shouldCaptureSleeps
-            ): void {
+            function (AppCodeHostParams $appCodeParams) use ($isInferredSpansEnabled, $isTransactionSampled, $shouldCaptureSleeps): void {
                 $appCodeParams->setAgentOption(OptionNames::PROFILING_INFERRED_SPANS_ENABLED, $isInferredSpansEnabled);
-                $inferredMinDuration = $shouldCaptureSleeps
-                    ? self::INFERRED_MIN_DURATION_SECONDS_TO_CAPTURE_SLEEPS
-                    : self::INFERRED_MIN_DURATION_SECONDS_TO_OMIT_SLEEPS;
-                $appCodeParams->setAgentOption(
-                    OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION,
-                    $inferredMinDuration . 's'
-                );
-                $appCodeParams->setAgentOption(
-                    OptionNames::TRANSACTION_SAMPLE_RATE,
-                    $isTransactionSampled ? '1' : '0'
-                );
-                $appCodeParams->setAgentOption(
-                    OptionNames::NON_KEYWORD_STRING_MAX_LENGTH,
-                    self::NON_KEYWORD_STRING_MAX_LENGTH
-                );
+                $inferredMinDuration = $shouldCaptureSleeps ? self::INFERRED_MIN_DURATION_SECONDS_TO_CAPTURE_SLEEPS : self::INFERRED_MIN_DURATION_SECONDS_TO_OMIT_SLEEPS;
+                $appCodeParams->setAgentOption(OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION, $inferredMinDuration . 's');
+                $appCodeParams->setAgentOption(OptionNames::TRANSACTION_SAMPLE_RATE, $isTransactionSampled ? '1' : '0');
+                $appCodeParams->setAgentOption(OptionNames::NON_KEYWORD_STRING_MAX_LENGTH, self::NON_KEYWORD_STRING_MAX_LENGTH);
             }
         );
         TransactionExpectations::$defaultIsSampled = $isTransactionSampled;
@@ -212,16 +181,10 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
 
         $tx = $dataFromAgent->singleTransaction();
         self::assertNotNull($tx->context);
-        self::assertNotNull($tx->context->custom);
-        $stackTracesSerialized = $tx->context->custom[self::STACK_TRACES_LABEL_KEY];
-        self::assertIsString($stackTracesSerialized);
-        $receivedCrc = $tx->context->custom[self::STACK_TRACES_CRC_LABEL_KEY];
-        $calculatedCrc = crc32($stackTracesSerialized);
-        self::assertSame($receivedCrc, $calculatedCrc);
         /** @var array<string, StackTraceFrame[]> $stackTraces */
-        $stackTraces = unserialize(base64_decode($stackTracesSerialized));
+        $stackTraces = self::getContextCustom($tx->context, self::STACK_TRACES_KEY);
 
-        $expectationsBuilder = new InferredSpanExpectationsBuilder(InferredSpanExpectationsBuilder::default());
+        $expectationsBuilder = new InferredSpanExpectationsBuilder();
 
         $appCodeSpanExpectations = $expectationsBuilder->fromClassMethodNamesAndStackTrace(
             ClassNameUtil::fqToShort(__CLASS__),
@@ -253,5 +216,18 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
         }
 
         SpanSequenceValidator::assertSequenceAsExpected($expectedSleepSpans, $actualSleepSpans);
+    }
+
+    /**
+     * @dataProvider dataProviderForTestInferredSpans
+     */
+    public function testInferredSpans(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestInferredSpans($testArgs);
+            }
+        );
     }
 }

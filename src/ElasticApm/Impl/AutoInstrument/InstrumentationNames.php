@@ -34,9 +34,8 @@ final class InstrumentationNames
 {
     use StaticClassTrait;
 
-    public const DB = 'db';
     public const CURL = 'curl';
-    public const HTTP_CLIENT = 'http-client';
     public const PDO = 'pdo';
     public const MYSQLI = 'mysqli';
+    public const WORDPRESS = 'wordpress';
 }

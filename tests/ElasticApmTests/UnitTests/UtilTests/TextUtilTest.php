@@ -24,9 +24,9 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Util\TextUtil;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TestCaseBase;
 
-class TextUtilTest extends TestCase
+class TextUtilTest extends TestCaseBase
 {
     /**
      * @return array<array<string>>
@@ -135,9 +135,9 @@ class TextUtilTest extends TestCase
         };
 
         self::assertSame('a', $flipOneLetterString('A'));
-        self::assertNotEquals('A', $flipOneLetterString('A'));
+        self::assertNotEqualsEx('A', $flipOneLetterString('A'));
         self::assertSame('X', $flipOneLetterString('x'));
-        self::assertNotEquals('x', $flipOneLetterString('x'));
+        self::assertNotEqualsEx('x', $flipOneLetterString('x'));
         self::assertSame('0', $flipOneLetterString('0'));
         self::assertSame('#', $flipOneLetterString('#'));
     }

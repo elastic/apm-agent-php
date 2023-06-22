@@ -66,7 +66,7 @@ final class MySQLiResultWrapped implements LoggableInterface
      *      - null if there are no more rows in the result set
      *      - false on failure
      *
-     * @return array<mixed, mixed>|null|false
+     * @return array<mixed>|null|false
      *
      * @noinspection PhpReturnDocTypeMismatchInspection
      */

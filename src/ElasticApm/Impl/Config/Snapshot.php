@@ -99,6 +99,18 @@ final class Snapshot implements LoggableInterface
     private $apiKey;
 
     /** @var bool */
+    private $astProcessEnabled;
+
+    /** @var bool */
+    private $astProcessDebugDumpConvertedBackToSource;
+
+    /** @var string */
+    private $astProcessDebugDumpForPathPrefix;
+
+    /** @var string */
+    private $astProcessDebugDumpOutDir;
+
+    /** @var bool */
     private $asyncBackendComm;
 
     /** @var bool */
@@ -166,6 +178,21 @@ final class Snapshot implements LoggableInterface
 
     /** @var ?string */
     private $serviceVersion;
+
+    /** @var bool */
+    private $spanCompressionEnabled;
+
+    /** @var float */
+    private $spanCompressionExactMatchMaxDuration;
+
+    /** @var float */
+    private $spanCompressionSameKindMaxDuration;
+
+    /** @var float */
+    private $spanStackTraceMinDuration;
+
+    /** @var int */
+    private $stackTraceLimit;
 
     /** @var ?WildcardListMatcher */
     private $transactionIgnoreUrls;
@@ -235,6 +262,11 @@ final class Snapshot implements LoggableInterface
     public function parsedValueFor(string $optName)
     {
         return $this->optNameToParsedValue[$optName];
+    }
+
+    public function astProcessEnabled(): bool
+    {
+        return $this->astProcessEnabled;
     }
 
     public function breakdownMetrics(): bool
@@ -325,6 +357,31 @@ final class Snapshot implements LoggableInterface
     public function serviceVersion(): ?string
     {
         return $this->serviceVersion;
+    }
+
+    public function spanCompressionEnabled(): bool
+    {
+        return $this->spanCompressionEnabled;
+    }
+
+    public function spanCompressionExactMatchMaxDuration(): float
+    {
+        return $this->spanCompressionExactMatchMaxDuration;
+    }
+
+    public function spanCompressionSameKindMaxDuration(): float
+    {
+        return $this->spanCompressionSameKindMaxDuration;
+    }
+
+    public function spanStackTraceMinDuration(): float
+    {
+        return $this->spanStackTraceMinDuration;
+    }
+
+    public function stackTraceLimit(): int
+    {
+        return $this->stackTraceLimit;
     }
 
     public function transactionIgnoreUrls(): ?WildcardListMatcher

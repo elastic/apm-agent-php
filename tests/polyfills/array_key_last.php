@@ -21,13 +21,19 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
-
 /**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ * Get the first key of the given array without affecting the internal array pointer.
  *
- * @internal
+ * @link  https://secure.php.net/array_key_first
+ *
+ * @param array<mixed> $arr
+ *
+ * @return string|int|null Returns the first key of array if the array is not empty; NULL otherwise.
  */
-final class PhpFormatStackTraceFrame extends StackTraceFrameBase
+function array_key_last(array $arr)
 {
+    foreach (array_reverse($arr, /* preserve_keys */ true) as $key => $ignored) {
+        return $key;
+    }
+    return null;
 }

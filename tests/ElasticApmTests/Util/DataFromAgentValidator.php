@@ -23,10 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
-use PHPUnit\Framework\Assert;
 
 class DataFromAgentValidator
 {
@@ -63,6 +61,8 @@ class DataFromAgentValidator
     }
 
     /**
+     * @noinspection PhpUnnecessaryFullyQualifiedNameInspection
+     *
      * @template T of \ElasticApmTests\Util\ExecutionSegmentDto
      *
      * @param array<string, T> $idToExecSegments
@@ -90,16 +90,16 @@ class DataFromAgentValidator
         $spansByTraceId = self::groupByTraceId($this->actual->idToSpan);
         TestCaseBase::assertListArrayIsSubsetOf(array_keys($spansByTraceId), array_keys($transactionsByTraceId));
         foreach ($transactionsByTraceId as $traceId => $idToTransaction) {
-            Assert::assertIsArray($idToTransaction);
+            TestCaseBase::assertIsArray($idToTransaction);
             /** @var array<string, TransactionDto> $idToTransaction */
             $idToSpan = array_key_exists($traceId, $spansByTraceId) ? $spansByTraceId[$traceId] : [];
-            Assert::assertIsArray($idToSpan);
+            TestCaseBase::assertIsArray($idToSpan);
             /** @var array<string, SpanDto> $idToSpan */
 
             $trace = new TraceActual($idToTransaction, $idToSpan);
             $orderReceivedIndex
                 = array_search($trace->rootTransaction, $transactionsInOrderReceived, /* strict */ true);
-            Assert::assertIsInt($orderReceivedIndex);
+            TestCaseBase::assertIsInt($orderReceivedIndex);
             ArrayUtilForTests::addUnique($orderReceivedIndex, $trace, /* ref */ $orderReceivedIndexToTrace);
         }
         ksort(/* ref*/ $orderReceivedIndexToTrace);
@@ -113,10 +113,9 @@ class DataFromAgentValidator
      */
     private function validateTraces(array $tracesInOrderReceived): void
     {
-        $ctx = ['expectations->traces' => $this->expectations->traces];
-        $ctx['tracesInOrderReceived'] = $tracesInOrderReceived;
-        $ctxAsStr = LoggableToString::convert($ctx);
-        Assert::assertSame(count($this->expectations->traces), count($tracesInOrderReceived), $ctxAsStr);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['this->expectations->traces' => $this->expectations->traces]);
+        TestCaseBase::assertSame(count($this->expectations->traces), count($tracesInOrderReceived));
         foreach (RangeUtil::generateUpTo(count($tracesInOrderReceived)) as $indexOrderReceived) {
             $traceExpectations = $this->expectations->traces[$indexOrderReceived];
             TraceValidator::validate($tracesInOrderReceived[$indexOrderReceived], $traceExpectations);
@@ -148,10 +147,12 @@ class DataFromAgentValidator
             return;
         }
 
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $orderTraceReceivedIndexToErrors = [];
         foreach ($this->actual->idToError as $error) {
             $orderTraceReceivedIndex = array_search($error->traceId, $traceIdsInOrderReceived, /* strict */ true);
-            Assert::assertIsInt($orderTraceReceivedIndex);
+            TestCaseBase::assertIsInt($orderTraceReceivedIndex);
             $errors =& ArrayUtil::getOrAdd(
                 $orderTraceReceivedIndex,
                 [] /* <- defaultValue */,
@@ -160,9 +161,8 @@ class DataFromAgentValidator
             $errors[] = $error;
         }
 
-        $msg = new AssertMessageBuilder(['expectations->errors' => $this->expectations->errors]);
-        $msg->add('orderTraceReceivedIndexToErrors', $orderTraceReceivedIndexToErrors);
-        Assert::assertSame(count($orderTraceReceivedIndexToErrors), count($this->expectations->errors), $msg->s());
+        $dbgCtx->add(['this->expectations->errors' => $this->expectations->errors, 'orderTraceReceivedIndexToErrors' => $orderTraceReceivedIndexToErrors]);
+        TestCaseBase::assertSame(count($orderTraceReceivedIndexToErrors), count($this->expectations->errors));
         foreach (RangeUtil::generateUpTo(count($orderTraceReceivedIndexToErrors)) as $indexOrderReceived) {
             $errorExpectations = $this->expectations->errors[$indexOrderReceived];
             $errors = $orderTraceReceivedIndexToErrors[$indexOrderReceived];
@@ -175,15 +175,12 @@ class DataFromAgentValidator
     private function validateMetadatas(): void
     {
         foreach ($this->actual->metadatas as $metadata) {
-            Assert::assertNotNull($metadata->service->agent);
+            TestCaseBase::assertNotNull($metadata->service->agent);
             $agentEphemeralId = $metadata->service->agent->ephemeralId;
-            Assert::assertNotNull($agentEphemeralId);
+            TestCaseBase::assertNotNull($agentEphemeralId);
             self::assertValidNullableKeywordString($agentEphemeralId);
-            Assert::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
-            MetadataValidator::assertValid(
-                $metadata,
-                $this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId]
-            );
+            TestCaseBase::assertArrayHasKey($agentEphemeralId, $this->expectations->agentEphemeralIdToMetadata);
+            MetadataValidator::assertMatches($this->expectations->agentEphemeralIdToMetadata[$agentEphemeralId], $metadata);
         }
     }
 

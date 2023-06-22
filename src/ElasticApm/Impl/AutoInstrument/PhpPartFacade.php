@@ -148,7 +148,7 @@ final class PhpPartFacade
      *
      * @return bool
      */
-    public static function interceptedCallPreHook(
+    public static function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         ...$interceptedCallArgs
@@ -160,7 +160,7 @@ final class PhpPartFacade
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        return $interceptionManager->interceptedCallPreHook(
+        return $interceptionManager->internalFuncCallPreHook(
             $interceptRegistrationId,
             $thisObj,
             $interceptedCallArgs
@@ -175,14 +175,14 @@ final class PhpPartFacade
      * @param bool  $hasExitedByException
      * @param mixed $returnValueOrThrown
      */
-    public static function interceptedCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
+    public static function internalFuncCallPostHook(bool $hasExitedByException, $returnValueOrThrown): void
     {
         $interceptionManager = self::singletonInstance()->interceptionManager;
         assert($interceptionManager !== null);
 
         self::ensureHaveLatestDataDeferredByExtension();
 
-        $interceptionManager->interceptedCallPostHook(
+        $interceptionManager->internalFuncCallPostHook(
             1 /* <- $numberOfStackFramesToSkip */,
             $hasExitedByException,
             $returnValueOrThrown
@@ -197,7 +197,7 @@ final class PhpPartFacade
      *
      * @phpstan-param Closure(self): void $implFunc
      */
-    private static function callFromExtension(string $dbgCallDesc, Closure $implFunc): void
+    private static function callAndSwallowThrowable(string $dbgCallDesc, Closure $implFunc): void
     {
         BootstrapStageLogger::logDebug(
             'Starting to handle ' . $dbgCallDesc . ' call...',
@@ -245,7 +245,7 @@ final class PhpPartFacade
      */
     private static function callWithTransactionForExtensionRequest(string $dbgCallDesc, Closure $implFunc): void
     {
-        self::callFromExtension(
+        self::callAndSwallowThrowable(
             $dbgCallDesc,
             function (PhpPartFacade $singletonInstance) use ($implFunc): void {
                 if ($singletonInstance->transactionForExtensionRequest === null) {
@@ -325,8 +325,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param string              $expectedKey
-     * @param array<mixed, mixed> $actualArray
+     * @param string                  $expectedKey
+     * @param array<array-key, mixed> $actualArray
      *
      * @return bool
      */
@@ -347,8 +347,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed, mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return ?int
      */
@@ -366,8 +366,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed, mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return ?string
      */
@@ -385,8 +385,8 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed, mixed> $dataFromExt
-     * @param string              $key
+     * @param array<array-key, mixed> $dataFromExt
+     * @param string                  $key
      *
      * @return null|array<string, mixed>[]
      */
@@ -416,7 +416,7 @@ final class PhpPartFacade
     }
 
     /**
-     * @param array<mixed, mixed> $dataFromExt
+     * @param array<array-key, mixed> $dataFromExt
      *
      * @return PhpErrorData
      */
@@ -460,7 +460,7 @@ final class PhpPartFacade
             );
             return;
         }
-        /** @var array<mixed, mixed> $lastPhpErrorData */
+        /** @var array<array-key, mixed> $lastPhpErrorData */
 
         $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
     }
@@ -514,5 +514,37 @@ final class PhpPartFacade
      */
     public static function emptyMethod(): void
     {
+    }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     *
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
+     *
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
+     */
+    public static function astInstrumentationPreHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
+    {
+        return (($interceptionManager = self::singletonInstance()->interceptionManager) !== null)
+            ? $interceptionManager->astInstrumentationPreHook($instrumentedClassFullName, $instrumentedFunction, $capturedArgs)
+            : null;
+    }
+
+    /**
+     * Calls to this method are inserted by AST instrumentation.
+     * See src/ext/WordPress_instrumentation.c
+     *
+     * @noinspection PhpUnused
+     */
+    public static function astInstrumentationDirectCall(string $method): void
+    {
+        if (($interceptionManager = self::singletonInstance()->interceptionManager) !== null) {
+            $interceptionManager->astInstrumentationDirectCall($method);
+        }
     }
 }

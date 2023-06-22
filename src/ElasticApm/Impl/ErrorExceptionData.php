@@ -28,8 +28,8 @@ use Elastic\Apm\Impl\AutoInstrument\PhpErrorData;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use Throwable;
 
@@ -93,12 +93,19 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
      */
     public $type = null;
 
-    public static function build(
-        Tracer $tracer,
-        ?CustomErrorData $customErrorData,
-        ?PhpErrorData $phpErrorData,
-        ?Throwable $throwable
-    ): ErrorExceptionData {
+    /**
+     * @param Tracer           $tracer
+     * @param ?CustomErrorData $customErrorData
+     * @param ?PhpErrorData    $phpErrorData
+     * @param ?Throwable       $throwable
+     * @param int              $numberOfStackFramesToSkip
+     *
+     * @return ErrorExceptionData
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public static function build(Tracer $tracer, ?CustomErrorData $customErrorData, ?PhpErrorData $phpErrorData, ?Throwable $throwable, int $numberOfStackFramesToSkip): ErrorExceptionData
+    {
         $result = new ErrorExceptionData();
 
         if ($throwable !== null) {
@@ -120,14 +127,12 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             $result->module = TextUtil::isEmptyString($namespace) ? null : $namespace;
             $result->type = TextUtil::isEmptyString($shortName) ? null : $shortName;
 
-            $result->stacktrace = StackTraceUtil::convertFromPhp($throwable->getTrace());
+            $result->stacktrace = $tracer->stackTraceUtil()->convertThrowableTraceToApmFormat($throwable, /* maxNumberOfFrames */ null);
         }
 
         if ($customErrorData !== null) {
             if ($result->code === null) {
-                $result->code = is_string($customErrorData->code)
-                    ? Tracer::limitKeywordString($customErrorData->code)
-                    : $customErrorData->code;
+                $result->code = is_string($customErrorData->code) ? Tracer::limitKeywordString($customErrorData->code) : $customErrorData->code;
             }
 
             if ($result->message === null) {
@@ -145,14 +150,9 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
 
         if ($result->stacktrace === null) {
             if ($phpErrorData === null) {
-                $stackTraceClassic = StackTraceUtil::captureInClassicFormatExcludeElasticApm($tracer->loggerFactory());
-                $result->stacktrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+                $result->stacktrace = $tracer->stackTraceUtil()->captureInApmFormat($numberOfStackFramesToSkip, /* maxNumberOfFrames */ null);
             } elseif ($phpErrorData->stackTrace !== null) {
-                $result->stacktrace = StackTraceUtil::convertFromPhp(
-                    $phpErrorData->stackTrace,
-                    0 /* <- numberOfStackFramesToSkip */,
-                    true /* <- hideElasticApmImpl */
-                );
+                $result->stacktrace = $tracer->stackTraceUtil()->convertPhpToApmFormat($phpErrorData->stackTrace, /* maxNumberOfFrames */ null);
             }
         }
 
@@ -160,13 +160,15 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
     }
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return $this->code !== null
-               || $this->message !== null
-               || $this->module !== null
-               || $this->stacktrace !== null
-               || $this->type !== null;
+        return BoolUtil::toInt(
+            $this->code !== null
+            || $this->message !== null
+            || $this->module !== null
+            || $this->stacktrace !== null
+            || $this->type !== null
+        );
     }
 
     /** @inheritDoc */

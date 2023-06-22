@@ -23,14 +23,10 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\SpanToSendInterface;
 use Elastic\Apm\Impl\StackTraceFrame;
-use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 use ElasticApmTests\Util\Deserialization\StacktraceDeserializer;
-use PHPUnit\Framework\TestCase;
 
 class SpanDto extends ExecutionSegmentDto
 {
@@ -52,6 +48,9 @@ class SpanDto extends ExecutionSegmentDto
     /** @var ?SpanContextDto */
     public $context = null;
 
+    /** @var ?SpanCompositeDto */
+    public $composite = null;
+
     /**
      * @param mixed $value
      *
@@ -70,6 +69,9 @@ class SpanDto extends ExecutionSegmentDto
                 switch ($key) {
                     case 'action':
                         $result->action = self::assertValidKeywordString($value);
+                        return true;
+                    case 'composite':
+                        $result->composite = SpanCompositeDto::deserialize($value);
                         return true;
                     case 'context':
                         $result->context = SpanContextDto::deserialize($value);
@@ -103,88 +105,59 @@ class SpanDto extends ExecutionSegmentDto
 
     public function assertMatches(SpanExpectations $expectations): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         parent::assertMatchesExecutionSegment($expectations);
 
         self::assertValidId($this->parentId);
+        TestCaseBase::assertSameExpectedOptional($expectations->parentId, $this->parentId);
         self::assertValidId($this->transactionId);
+        TestCaseBase::assertSameExpectedOptional($expectations->transactionId, $this->transactionId);
+
         self::assertSameNullableKeywordStringExpectedOptional($expectations->action, $this->action);
         self::assertSameNullableKeywordStringExpectedOptional($expectations->subtype, $this->subtype);
         if ($this->stackTrace === null) {
-            TestCase::assertNull($expectations->stackTrace);
-            TestCase::assertNull($expectations->allowExpectedStackTraceToBePrefix);
+            if ($expectations->stackTrace->isValueSet()) {
+                TestCaseBase::assertNull($expectations->stackTrace->getValue());
+            }
         } else {
             self::assertValidStacktrace($this->stackTrace);
-            if ($expectations->stackTrace !== null) {
-                TestCase::assertNotNull($expectations->allowExpectedStackTraceToBePrefix);
-                self::assertStackTraceMatches(
-                    $expectations->stackTrace,
-                    $expectations->allowExpectedStackTraceToBePrefix,
-                    $this->stackTrace,
-                    [ClassNameUtil::fqToShort(get_class($this)) => $this]
-                );
+            if ($expectations->stackTrace->isValueSet()) {
+                $stackTraceExpectations = $expectations->stackTrace->getValue();
+                TestCaseBase::assertNotNull($stackTraceExpectations);
+                $stackTraceExpectations->assertMatches($this->stackTrace);
             }
         }
-        SpanContextDto::assertNullableMatches($expectations->context, $this->context);
-    }
 
-    /**
-     * @param StackTraceFrame[]    $expectedStackTrace
-     * @param bool                 $allowExpectedStackTraceToBePrefix
-     * @param StackTraceFrame[]    $actualStackTrace
-     * @param array<string, mixed> $ctxOuter
-     *
-     * @return void
-     */
-    public static function assertStackTraceMatches(
-        array $expectedStackTrace,
-        bool $allowExpectedStackTraceToBePrefix,
-        array $actualStackTrace,
-        array $ctxOuter = []
-    ): void {
-        $ctxTop = array_merge(
-            [
-                'expectedStackTrace'                => $expectedStackTrace,
-                'actualStackTrace'                  => $actualStackTrace,
-                'allowExpectedStackTraceToBePrefix' => $allowExpectedStackTraceToBePrefix,
-            ],
-            $ctxOuter
-        );
-        $ctxTopStr = LoggableToString::convert($ctxTop);
-        if ($allowExpectedStackTraceToBePrefix) {
-            TestCase::assertGreaterThanOrEqual(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
-        } else {
-            TestCase::assertSame(count($expectedStackTrace), count($actualStackTrace), $ctxTopStr);
-        }
-        $expectedStackTraceCount = count($expectedStackTrace);
-        $actualStackTraceCount = count($actualStackTrace);
-        foreach (RangeUtil::generateUpTo($expectedStackTraceCount) as $i) {
-            $expectedApmFrame = get_object_vars($expectedStackTrace[$expectedStackTraceCount - $i - 1]);
-            $actualApmFrame = get_object_vars($actualStackTrace[$actualStackTraceCount - $i - 1]);
-            $ctxPerFrame = array_merge(
-                [
-                    'expectedApmFrame'                  => $expectedApmFrame,
-                    'actualApmFrame'                    => $actualApmFrame,
-                    '$expectedStackTraceCount - $i - 1' => $expectedStackTraceCount - $i - 1,
-                    '$actualStackTraceCount - $i - 1'   => $actualStackTraceCount - $i - 1,
-                ],
-                $ctxTop
-            );
-            $ctxPerFrameStr = LoggableToString::convert($ctxPerFrame);
-            TestCase::assertSame(count($expectedApmFrame), count($actualApmFrame), $ctxPerFrameStr);
-            foreach ($expectedApmFrame as $expectedPropName => $expectedPropVal) {
-                $ctxPerProp = LoggableToString::convert(
-                    array_merge(
-                        ['expectedPropName' => $expectedPropName, 'expectedPropVal' => $expectedPropVal],
-                        $ctxPerFrame
-                    )
-                );
-                TestCaseBase::assertSameValueInArray($expectedPropName, $expectedPropVal, $actualApmFrame, $ctxPerProp);
-            }
-        }
+        SpanCompositeExpectations::assertNullableMatches($expectations->composite, $this->composite);
+        SpanContextExpectations::assertNullableMatches($expectations->context, $this->context);
     }
 
     public function assertEquals(SpanToSendInterface $original): void
     {
         self::assertEqualOriginalAndDto($original, $this);
+    }
+
+    public function assertService(?string $targetType, ?string $targetName, string $destinationName, string $destinationResource, string $destinationType): void
+    {
+        TestCaseBase::assertNotNull($this->context);
+        if ($targetType === null && $targetName === null) {
+            TestCaseBase::assertNull($this->context->service);
+        } else {
+            TestCaseBase::assertNotNull($this->context->service);
+            TestCaseBase::assertNotNull($this->context->service->target);
+            TestCaseBase::assertSame($this->context->service->target->type, $targetType);
+            TestCaseBase::assertSame($this->context->service->target->name, $targetName);
+        }
+
+        TestCaseBase::assertNotNull($this->context->destination);
+        TestCaseBase::assertNotNull($this->context->destination->service);
+        TestCaseBase::assertSame($this->context->destination->service->name, $destinationName);
+        TestCaseBase::assertSame($this->context->destination->service->resource, $destinationResource);
+        TestCaseBase::assertSame($this->context->destination->service->type, $destinationType);
+    }
+
+    public function getServiceTarget(): ?SpanContextServiceTargetDto
+    {
+        return ($this->context === null || $this->context->service === null) ? null : $this->context->service->target;
     }
 }

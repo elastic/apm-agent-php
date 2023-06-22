@@ -29,17 +29,11 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
 {
     public const DEFAULT_SPAN_TYPE = 'inferred';
 
-    public function __construct(SpanExpectations $prototype)
-    {
-        parent::__construct($prototype);
-    }
-
-    public static function default(): SpanExpectations
+    /** @inheritDoc */
+    public function startNew(): SpanExpectations
     {
         $result = new SpanExpectations();
-
         $result->type->setValue(self::DEFAULT_SPAN_TYPE);
-
         return $result;
     }
 
@@ -52,16 +46,10 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
      *
      * @return SpanExpectations
      */
-    public function fromClassMethodNamesAndStackTrace(
-        string $className,
-        string $methodName,
-        bool $isStatic,
-        array $stackTrace,
-        bool $allowExpectedStackTraceToBePrefix
-    ): SpanExpectations {
+    public function fromClassMethodNamesAndStackTrace(string $className, string $methodName, bool $isStatic, array $stackTrace, bool $allowExpectedStackTraceToBePrefix): SpanExpectations
+    {
         $result = self::fromClassMethodNames($className, $methodName, $isStatic);
-        $result->stackTrace = $stackTrace;
-        $result->allowExpectedStackTraceToBePrefix = $allowExpectedStackTraceToBePrefix;
+        $result->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, $allowExpectedStackTraceToBePrefix));
         return $result;
     }
 
@@ -72,14 +60,10 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
      *
      * @return SpanExpectations
      */
-    public function fromFuncNameAndStackTrace(
-        string $funcName,
-        array $stackTrace,
-        bool $allowExpectedStackTraceToBePrefix
-    ): SpanExpectations {
+    public function fromFuncNameAndStackTrace(string $funcName, array $stackTrace, bool $allowExpectedStackTraceToBePrefix): SpanExpectations
+    {
         $result = self::fromFuncName($funcName);
-        $result->stackTrace = $stackTrace;
-        $result->allowExpectedStackTraceToBePrefix = $allowExpectedStackTraceToBePrefix;
+        $result->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, $allowExpectedStackTraceToBePrefix));
         return $result;
     }
 }

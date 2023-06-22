@@ -48,20 +48,21 @@ final class ArrayUtilForTests
      */
     public static function getSingleValue(array $array)
     {
-        Assert::assertCount(1, $array);
+        TestCaseBase::assertCount(1, $array);
         return self::getFirstValue($array);
     }
 
     /**
      * @template T
      *
-     * @param   T[] $array
+     * @param array<array-key, T> $array
      *
      * @return  T
      */
     public static function &getLastValue(array $array)
     {
-        return $array[count($array) - 1];
+        TestCaseBase::assertNotEmpty($array);
+        return $array[array_key_last($array)];
     }
 
     /**
@@ -71,11 +72,7 @@ final class ArrayUtilForTests
      */
     public static function addUnique($key, $value, array &$result): void
     {
-        Assert::assertArrayNotHasKey(
-            $key,
-            $result,
-            LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result])
-        );
+        Assert::assertArrayNotHasKey($key, $result, LoggableToString::convert(['key' => $key, 'value' => $value, 'result' => $result]));
         $result[$key] = $value;
     }
 
@@ -138,6 +135,8 @@ final class ArrayUtilForTests
      * @param TKey                $keyToFind
      *
      * @return  int
+     *
+     * @noinspection PhpUnused
      */
     public static function getAdditionOrderIndex(array $map, $keyToFind): int
     {
@@ -149,5 +148,43 @@ final class ArrayUtilForTests
             ++$additionOrderIndex;
         }
         Assert::fail('Not found key in map; ' . LoggableToString::convert(['keyToFind' => $keyToFind, 'map' => $map]));
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return mixed
+     */
+    public static function getFromMap(string $argKey, array $argsMap)
+    {
+        Assert::assertArrayHasKey($argKey, $argsMap);
+        return $argsMap[$argKey];
+    }
+
+    /**
+     * @param string               $argKey
+     * @param array<string, mixed> $argsMap
+     *
+     * @return bool
+     */
+    public static function getBoolFromMap(string $argKey, array $argsMap): bool
+    {
+        $val = self::getFromMap($argKey, $argsMap);
+        Assert::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
+        return $val;
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param TValue   $value
+     * @param TValue[] $list
+     */
+    public static function addToListIfNotAlreadyPresent($value, array &$list, bool $shouldUseStrictEq = true): void
+    {
+        if (!in_array($value, $list, /*strict */ $shouldUseStrictEq)) {
+            $list[] = $value;
+        }
     }
 }

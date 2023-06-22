@@ -29,21 +29,21 @@ final class AutoInstrumentationUtilForTests
 {
     use StaticClassTrait;
 
-    public const DISABLE_INSTRUMENTATIONS_KEY = 'DISABLE_INSTRUMENTATIONS';
-    public const IS_INSTRUMENTATION_ENABLED_KEY = 'IS_INSTRUMENTATION_ENABLED';
+    public const DISABLE_INSTRUMENTATIONS_KEY = 'disable_instrumentations';
+    public const IS_INSTRUMENTATION_ENABLED_KEY = 'is_instrumentation_enabled';
 
     /**
      * @param array<string, bool> $disableInstrumentationsVariants
      *
-     * @return callable(array<mixed, mixed>): iterable<array<mixed, mixed>>
+     * @return callable(array<mixed>): iterable<array<mixed>>
      */
     public static function disableInstrumentationsDataProviderGenerator(
         array $disableInstrumentationsVariants
     ): callable {
         /**
-         * @param array<mixed, mixed> $resultSoFar
+         * @param array<mixed> $resultSoFar
          *
-         * @return iterable<array<mixed, mixed>>
+         * @return iterable<array<mixed>>
          */
         return function (array $resultSoFar) use ($disableInstrumentationsVariants): iterable {
             foreach ($disableInstrumentationsVariants as $optVal => $isInstrumentationEnabled) {

@@ -74,11 +74,7 @@ final class AmbientContextForTests
         if (self::testConfig()->appCodePhpIni !== null && !file_exists(self::testConfig()->appCodePhpIni)) {
             $optionName = AllComponentTestsOptionsMetadata::APP_CODE_PHP_INI_OPTION_NAME;
             $envVarName = ConfigUtilForTests::testOptionNameToEnvVarName($optionName);
-            throw new RuntimeException(
-                "Option $optionName (environment variable $envVarName)"
-                . ' is set but it points to a file that does not exist: '
-                . self::testConfig()->appCodePhpIni
-            );
+            throw new RuntimeException("Option $optionName (environment variable $envVarName)" . ' is set but it points to a file that does not exist: ' . self::testConfig()->appCodePhpIni);
         }
     }
 

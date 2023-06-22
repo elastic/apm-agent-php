@@ -25,11 +25,14 @@ namespace ElasticApmTests\Util;
 
 use Closure;
 use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
-use PHPUnit\Framework\Assert;
+use ElasticApmTests\ComponentTests\Util\EnvVarUtilForTests;
+use ElasticApmTests\ComponentTests\Util\OsUtilForTests;
+use ElasticApmTests\ComponentTests\Util\ProcessUtilForTests;
 use RuntimeException;
 
 /**
@@ -101,8 +104,7 @@ final class FileUtilForTests
     {
         $tempFileFullPath = tempnam(sys_get_temp_dir(), /* prefix */ 'ElasticApmTests_');
         $logCategory = LogCategoryForTests::TEST;
-        $logger
-            = AmbientContextForTests::loggerFactory()->loggerForClass($logCategory, __NAMESPACE__, __CLASS__, __FILE__);
+        $logger = AmbientContextForTests::loggerFactory()->loggerForClass($logCategory, __NAMESPACE__, __CLASS__, __FILE__);
 
         if ($tempFileFullPath === false) {
             ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
@@ -110,7 +112,7 @@ final class FileUtilForTests
                 'Failed to create a temporary file',
                 ['$dbgTempFilePurpose' => $dbgTempFilePurpose]
             );
-            Assert::fail(LoggableToString::convert(['$dbgTempFilePurpose' => $dbgTempFilePurpose]));
+            TestCaseBase::fail(LoggableToString::convert(['$dbgTempFilePurpose' => $dbgTempFilePurpose]));
         }
 
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
@@ -120,5 +122,64 @@ final class FileUtilForTests
         );
 
         return $tempFileFullPath;
+    }
+
+    private static function buildTempSubDirFullPath(string $subDirName): string
+    {
+        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $subDirName;
+    }
+
+    public static function deleteTempSubDir(string $subDirName): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['subDirName' => $subDirName]);
+
+        $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
+        $dbgCtx->add(['tempSubDirFullPath' => $tempSubDirFullPath]);
+        if (!file_exists($tempSubDirFullPath)) {
+            return;
+        }
+        TestCaseBase::assertTrue(is_dir($tempSubDirFullPath));
+
+        $deleteDirShellCmd = OsUtilForTests::isWindows()
+            ? sprintf('rd /s /q "%s"', $tempSubDirFullPath)
+            : sprintf('rm -rf "%s"', $tempSubDirFullPath);
+
+        ProcessUtilForTests::startProcessAndWaitUntilExit($deleteDirShellCmd, EnvVarUtilForTests::getAll(), /* shouldCaptureStdOutErr */ true, /* $expectedExitCode */ 0);
+    }
+
+    /**
+     * @param class-string $testClassName
+     * @param string       $testMethodName
+     *
+     * @return string
+     */
+    public static function buildTempSubDirName(string $testClassName, string $testMethodName): string
+    {
+        return 'ElasticApmTests_' . ClassNameUtil::fqToShort($testClassName) . '_' . $testMethodName . '_PID=' . getmypid();
+    }
+
+    public static function createTempSubDir(string $subDirName): string
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['subDirName' => $subDirName]);
+
+        $tempSubDirFullPath = self::buildTempSubDirFullPath($subDirName);
+        $dbgCtx->add(['tempSubDirFullPath' => $tempSubDirFullPath]);
+        self::deleteTempSubDir($tempSubDirFullPath);
+        TestCaseBase::assertTrue(mkdir($tempSubDirFullPath));
+        return $tempSubDirFullPath;
+    }
+
+    public static function convertPathRelativeTo(string $absPath, string $relativeToAbsPath): string
+    {
+        TestCaseBase::assertTrue(TextUtil::isPrefixOf($relativeToAbsPath, $absPath));
+        $relPath = substr($absPath, /* offset */ strlen($relativeToAbsPath));
+        foreach (['/', DIRECTORY_SEPARATOR] as $dirSeparator) {
+            while (TextUtil::isPrefixOf($dirSeparator, $relPath)) {
+                $relPath = substr($relPath, /* offset */ strlen($dirSeparator));
+            }
+        }
+        return $relPath;
     }
 }

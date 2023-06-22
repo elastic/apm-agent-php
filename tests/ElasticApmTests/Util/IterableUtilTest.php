@@ -23,11 +23,28 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\IterableUtil;
 use Generator;
 
 final class IterableUtilTest extends TestCaseBase
 {
+    public static function testPrepend(): void
+    {
+        self::assertEqualLists([1, 2], IterableUtilForTests::toList(IterableUtil::prepend(1, [2])));
+        self::assertEqualLists([1, 2, 3], IterableUtilForTests::toList(IterableUtil::prepend(1, [2, 3])));
+        self::assertEqualLists([1], IterableUtilForTests::toList(IterableUtil::prepend(1, [])));
+    }
+
+    public static function testArraySuffix(): void
+    {
+        self::assertEqualLists([1, 2], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 0)));
+        self::assertEqualLists([2], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 1)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 2)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([1, 2], 3)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([], 0)));
+        self::assertEqualLists([], IterableUtilForTests::toList(IterableUtil::arraySuffix([], 1)));
+    }
+
     /**
      * @return iterable<array{mixed[][], mixed[][]}>
      */
@@ -52,6 +69,8 @@ final class IterableUtilTest extends TestCaseBase
      */
     public static function testZip(array $inputArrays, array $expectedOutput): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         /**
          * @param iterable<mixed>[] $inputIterables
          * @param mixed[][]         $expectedOutput
@@ -59,16 +78,14 @@ final class IterableUtilTest extends TestCaseBase
          * @return void
          */
         $test = function (array $inputIterables, array $expectedOutput): void {
+            AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+            $dbgCtx->add(['count($inputIterables)' => count($inputIterables)]);
             $i = 0;
             foreach (IterableUtilForTests::zip(...$inputIterables) as $actualTuple) {
-                $dbgCtx = [
-                    'i'                      => $i,
-                    'count($inputIterables)' => count($inputIterables),
-                    'expectedOutput'         => $expectedOutput,
-                ];
-                self::assertLessThan(count($expectedOutput), $i, LoggableToString::convert($dbgCtx));
+                $dbgCtx->clearCurrentSubScope(['i' => $i, 'actualTuple' => $actualTuple]);
+                self::assertLessThan(count($expectedOutput), $i);
                 $expectedTuple = $expectedOutput[$i];
-                self::assertEqualLists($expectedTuple, $actualTuple, $dbgCtx);
+                self::assertEqualLists($expectedTuple, $actualTuple);
                 ++$i;
             }
             self::assertSame(count($expectedOutput), $i);

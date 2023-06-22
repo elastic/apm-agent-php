@@ -38,7 +38,10 @@ We support automatic instrumentation for the following web frameworks.
 |
 
 |Laravel
-|6, 7, 8, 9
+|6, 7, 8, 9, 10
+
+|WordPress
+|5, 6
 
 |===
 
@@ -51,9 +54,15 @@ We support automatic instrumentation for the following data access technologies.
 |===
 |Data access technology |Supported versions |Notes
 
+
 |PHP Data Objects (PDO)
-|
+|any version bundled with a supported PHP version
 |The agent automatically creates DB spans for all your PDO queries. This includes PDO queries executed by object relational mappers (ORM) like Doctrine & Eloquent.
+
+
+|MySQLi
+|any version bundled with a supported PHP version
+|
 
 |===
 
@@ -76,3 +85,10 @@ The spans are named after the schema `<method> <host>`, for example `GET elastic
 |
 
 |===
+
+[float]
+[[supported-php-errors]]
+=== Capturing PHP errors as APM error events
+
+The agent automatically creates APM error events for PHP errors triggered by the monitored application.
+See <<configure-php-error-reporting>> for the relevant configuration settings.

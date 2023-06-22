@@ -23,30 +23,84 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\StackTraceFrame;
-
 final class SpanExpectations extends ExecutionSegmentExpectations
 {
-    /** @var Optional<?string> */
-    public $action = null;
+    /** @var Optional<string> */
+    public $parentId;
 
-    /** @var SpanContextExpectations */
+    /** @var Optional<string> */
+    public $transactionId;
+
+    /** @var Optional<?string> */
+    public $action;
+
+    /** @var bool */
+    public static $assumeSpanCompressionDisabled = false;
+
+    /** @var Optional<?SpanCompositeExpectations> */
+    public $composite;
+
+    /** @var Optional<?SpanContextExpectations> */
     public $context;
 
     /** @var Optional<?string> */
-    public $subtype = null;
+    public $subtype;
 
-    /** @var null|StackTraceFrame[] */
+    /** @var Optional<?StackTraceExpectations> */
     public $stackTrace = null;
 
-    /** @var ?bool */
-    public $allowExpectedStackTraceToBePrefix = null;
+    public static function setDefaults(): void
+    {
+        self::$assumeSpanCompressionDisabled = false;
+    }
 
     public function __construct()
     {
         parent::__construct();
+        $this->parentId = new Optional();
+        $this->transactionId = new Optional();
         $this->action = new Optional();
-        $this->context = new SpanContextExpectations();
+        $this->composite = new Optional();
+        if (self::$assumeSpanCompressionDisabled) {
+            $this->composite->setValue(null);
+        }
+        $this->context = new Optional();
         $this->subtype = new Optional();
+        $this->stackTrace = new Optional();
+    }
+
+    public function ensureNotNullContext(): SpanContextExpectations
+    {
+        if ($this->context->isValueSet()) {
+            $value = $this->context->getValue();
+            TestCaseBase::assertNotNull($value);
+            return $value;
+        }
+
+        $value = new SpanContextExpectations();
+        $this->context->setValue($value);
+        return $value;
+    }
+
+    public function assumeNotNullContext(): SpanContextExpectations
+    {
+        TestCaseBase::assertNotNull($this->context->isValueSet());
+        $value = $this->context->getValue();
+        TestCaseBase::assertNotNull($value);
+        return $value;
+    }
+
+    public function setService(?string $targetType, ?string $targetName, string $destinationName, string $destinationResource, string $destinationType): void
+    {
+        $context = $this->ensureNotNullContext();
+
+        $contextService = $context->ensureNotNullService();
+        $contextService->target->type->setValue($targetType);
+        $contextService->target->name->setValue($targetName);
+
+        $contextDestination = $context->ensureNotNullDestination();
+        $contextDestination->service->name->setValue($destinationName);
+        $contextDestination->service->resource->setValue($destinationResource);
+        $contextDestination->service->type->setValue($destinationType);
     }
 }

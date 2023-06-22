@@ -29,25 +29,28 @@ use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
+use Elastic\Apm\Impl\TransactionContext;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\IterableUtilForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\TransactionContextDto;
 use ElasticApmTests\Util\TransactionDto;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
+use Throwable;
 
 class ComponentTestCaseBase extends TestCaseBase
 {
     /** @var ?TestCaseHandle */
     private $testCaseHandle = null;
 
-    public const LOG_LEVEL_FOR_PROD_CODE_KEY = 'PROD_CODE';
-    public const LOG_LEVEL_FOR_TEST_CODE_KEY = 'TEST_CODE';
+    public const LOG_LEVEL_FOR_PROD_CODE_KEY = 'log_level_for_prod_code';
+    public const LOG_LEVEL_FOR_TEST_CODE_KEY = 'log_level_for_test_code';
     protected const LOG_LEVEL_FOR_CODE_KEYS = [self::LOG_LEVEL_FOR_PROD_CODE_KEY, self::LOG_LEVEL_FOR_TEST_CODE_KEY];
 
     protected function initTestCaseHandle(?int $escalatedLogLevelForProdCode = null): TestCaseHandle
@@ -56,7 +59,7 @@ class ComponentTestCaseBase extends TestCaseBase
             return $this->testCaseHandle;
         }
         ComponentTestsPhpUnitExtension::initSingletons();
-        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode);
+        $this->testCaseHandle = new TestCaseHandle($escalatedLogLevelForProdCode, $this->isSpanCompressionCompatible());
         return $this->testCaseHandle;
     }
 
@@ -74,6 +77,17 @@ class ComponentTestCaseBase extends TestCaseBase
         }
 
         parent::tearDown();
+    }
+
+    /**
+     * Sub-classes should override this method to return false
+     * in order to disable Span Compression feature and have all the expected spans individually.
+     *
+     * @return bool
+     */
+    protected function isSpanCompressionCompatible(): bool
+    {
+        return true;
     }
 
     public static function appCodeEmpty(): void
@@ -115,103 +129,6 @@ class ComponentTestCaseBase extends TestCaseBase
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
         return $this->waitForOneEmptyTransaction($testCaseHandle);
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return mixed
-     */
-    protected static function getFromMap(string $argKey, array $argsMap)
-    {
-        self::assertArrayHasKey($argKey, $argsMap);
-        return $argsMap[$argKey];
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return bool
-     */
-    protected static function getBoolFromMap(string $argKey, array $argsMap): bool
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsBool($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return int
-     */
-    protected static function getIntFromMap(string $argKey, array $argsMap): int
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsInt($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return ?string
-     */
-    protected static function getNullableStringFromMap(string $argKey, array $argsMap): ?string
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        if ($val !== null) {
-            self::assertIsString($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        }
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return string
-     */
-    protected static function getStringFromMap(string $argKey, array $argsMap): string
-    {
-        $val = self::getNullableStringFromMap($argKey, $argsMap);
-        self::assertNotNull($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return ?float
-     */
-    protected static function getNullableFloatFromMap(string $argKey, array $argsMap): ?float
-    {
-        $value = self::getFromMap($argKey, $argsMap);
-        if ($value === null || is_float($value)) {
-            return $value;
-        }
-        if (is_int($value)) {
-            return floatval($value);
-        }
-        self::fail('Value is not a float' . LoggableToString::convert(['value type' => DbgUtil::getType($value), 'value' => $value, 'argKey' => $argKey, 'argsMap' => $argsMap]));
-    }
-
-    /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
-     *
-     * @return array<mixed, mixed>
-     */
-    protected static function getArrayFromMap(string $argKey, array $argsMap): array
-    {
-        $val = self::getFromMap($argKey, $argsMap);
-        self::assertIsArray($val, LoggableToString::convert(['argKey' => $argKey, 'argsMap' => $argsMap]));
-        return $val;
     }
 
     public static function isSmoke(): bool
@@ -272,9 +189,12 @@ class ComponentTestCaseBase extends TestCaseBase
      */
     protected static function implTestIsAutoInstrumentationEnabled(string $instrClassName, array $expectedNames): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(['instrClassName' => $instrClassName, 'expectedNames' => $expectedNames]);
+
         /** @var AutoInstrumentationBase $instr */
         $instr = new $instrClassName(self::buildTracerForTests()->build());
-        $actualNames = $instr->otherNames();
+        $actualNames = $instr->keywords();
         $actualNames[] = $instr->name();
         self::assertEqualAsSets($expectedNames, $actualNames);
         self::assertTrue($instr->isEnabled());
@@ -295,13 +215,14 @@ class ComponentTestCaseBase extends TestCaseBase
         };
 
         foreach ($expectedNames as $name) {
+            $dbgCtx->pushSubScope();
             foreach ($genDisabledVariants($name) as $disableInstrumentationsOptVal) {
-                $tracer = self::buildTracerForTests()
-                              ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
-                              ->build();
+                $dbgCtx->clearCurrentSubScope(['name' => $name, 'disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+                $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
                 $instr = new $instrClassName($tracer);
-                self::assertFalse($instr->isEnabled(), $disableInstrumentationsOptVal);
+                self::assertFalse($instr->isEnabled());
             }
+            $dbgCtx->popSubScope();
         }
 
         /**
@@ -312,13 +233,24 @@ class ComponentTestCaseBase extends TestCaseBase
             yield '*someOtherDummyInstrumentationA*,  *someOtherDummyInstrumentationB*';
         };
 
+        $dbgCtx->pushSubScope();
         foreach ($genEnabledVariants() as $disableInstrumentationsOptVal) {
-            $tracer = self::buildTracerForTests()
-                          ->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)
-                          ->build();
+            $dbgCtx->clearCurrentSubScope(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
+            $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
             $instr = new $instrClassName($tracer);
-            self::assertTrue($instr->isEnabled(), $disableInstrumentationsOptVal);
+            self::assertTrue($instr->isEnabled());
         }
+        $dbgCtx->popSubScope();
+
+        $dbgCtx->pushSubScope();
+        foreach ([true, false] as $astProcessEnabled) {
+            $dbgCtx->clearCurrentSubScope(['astProcessEnabled' => $astProcessEnabled]);
+            $expectedIsEnabled = $astProcessEnabled || (!$instr->requiresUserlandCodeInstrumentation());
+            $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
+            $instr = new $instrClassName($tracer);
+            self::assertSame($expectedIsEnabled, $instr->isEnabled());
+        }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -328,7 +260,43 @@ class ComponentTestCaseBase extends TestCaseBase
      *
      * @return iterable<T>
      */
-    public function adaptToSmoke(iterable $variants): iterable
+    public static function adaptToSmoke(iterable $variants): iterable
+    {
+        if (!self::isSmoke()) {
+            return $variants;
+        }
+        foreach ($variants as $key => $value) {
+            return [$key => $value];
+        }
+        return [];
+    }
+
+    /**
+     * @return callable(iterable<mixed>): iterable<mixed>
+     */
+    public static function adaptToSmokeAsCallable(): callable
+    {
+        /**
+         * @template T
+         *
+         * @param iterable<T> $dataSets
+         *
+         * @return iterable<T>
+         */
+        return function (iterable $dataSets): iterable {
+            return self::adaptToSmoke($dataSets);
+        };
+    }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param iterable<TKey, TValue> $variants
+     *
+     * @return iterable<TKey, TValue>
+     */
+    public function adaptKeyValueToSmoke(iterable $variants): iterable
     {
         if (!self::isSmoke()) {
             return $variants;
@@ -374,65 +342,48 @@ class ComponentTestCaseBase extends TestCaseBase
         try {
             $testCall();
             return;
-        } catch (AssertionFailedError $ex) {
+        } catch (Throwable $ex) {
             $initiallyFailedTestException = $ex;
         }
 
         $logger = $this->getLogger(__NAMESPACE__, __CLASS__, __FILE__)->addContext('dbgTestDesc', $dbgTestDesc);
+        $loggerProxyOutsideIt = $logger->ifCriticalLevelEnabledNoLine(__FUNCTION__);
         if ($this->testCaseHandle === null) {
-            ($loggerProxy = $logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Test failed but $this->testCaseHandle is null - NOT re-running the test with escalated log levels'
-            );
+            $loggerProxyOutsideIt && $loggerProxyOutsideIt->log(__LINE__, 'Test failed but $this->testCaseHandle is null - NOT re-running the test with escalated log levels');
             throw $initiallyFailedTestException;
         }
         $initiallyFailedTestLogLevels = $this->getCurrentLogLevels($this->testCaseHandle);
-        $logger->addAllContext(
-            [
-                'initiallyFailedTestLogLevels' => self::logLevelsWithNames($initiallyFailedTestLogLevels),
-                'initiallyFailedTestException' => $initiallyFailedTestException,
-            ]
-        );
+        $logger->addAllContext(['initiallyFailedTestLogLevels' => self::logLevelsWithNames($initiallyFailedTestLogLevels), 'initiallyFailedTestException' => $initiallyFailedTestException]);
+        $loggerProxyOutsideIt && $loggerProxyOutsideIt->log(__LINE__, 'Test failed');
 
-        $escalatedLogLevelsSeq = self::generateLevelsForRunAndEscalateLogLevelOnFailure(
-            $initiallyFailedTestLogLevels,
-            AmbientContextForTests::testConfig()->escalatedRerunsMaxCount
-        );
+        $escalatedLogLevelsSeq = self::generateLevelsForRunAndEscalateLogLevelOnFailure($initiallyFailedTestLogLevels, AmbientContextForTests::testConfig()->escalatedRerunsMaxCount);
         $rerunCount = 0;
         foreach ($escalatedLogLevelsSeq as $escalatedLogLevels) {
             $this->tearDown();
 
             ++$rerunCount;
-            $loggerPerIteration = $logger->inherit()->addAllContext(
-                ['rerunCount' => $rerunCount, 'escalatedLogLevels' => self::logLevelsWithNames($escalatedLogLevels)]
-            );
+            $loggerPerIt = $logger->inherit()->addAllContext(['rerunCount' => $rerunCount, 'escalatedLogLevels' => self::logLevelsWithNames($escalatedLogLevels)]);
+            $loggerProxyPerIt = $loggerPerIt->ifCriticalLevelEnabledNoLine(__FUNCTION__);
 
-            ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Re-running failed test with escalated log levels...');
+            $loggerProxyPerIt && $loggerProxyPerIt->log(__LINE__, 'Re-running failed test with escalated log levels...');
 
             AmbientContextForTests::resetLogLevel($escalatedLogLevels[self::LOG_LEVEL_FOR_TEST_CODE_KEY]);
             $this->initTestCaseHandle($escalatedLogLevels[self::LOG_LEVEL_FOR_PROD_CODE_KEY]);
 
             try {
                 $testCall();
-                ($loggerProxy = $loggerPerIteration->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log('Re-run of failed test with escalated log levels did NOT fail (which is bad :(');
-            } catch (AssertionFailedError $ex) {
-                ($loggerProxy = $loggerPerIteration->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
-                && $loggerProxy->log(
-                    'Re-run of failed test with escalated log levels failed (which is good :)',
-                    ['ex' => $ex]
-                );
+                $loggerProxyPerIt && $loggerProxyPerIt->log(__LINE__, 'Re-run of failed test with escalated log levels did NOT fail (which is bad :(');
+            } catch (Throwable $ex) {
+                $loggerProxyPerIt && $loggerProxyPerIt->log(__LINE__, 'Re-run of failed test with escalated log levels failed (which is good :)', ['ex' => $ex]);
                 throw $ex;
             }
         }
 
-        ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'All test re-runs with escalated log levels did NOT fail (which is bad :('
-            . ' - re-throwing original test failure exception'
-        );
-
+        if ($rerunCount === 0) {
+            $loggerProxyOutsideIt && $loggerProxyOutsideIt->log(__LINE__, 'There were no test re-runs with escalated log levels - re-throwing original test failure exception');
+        } else {
+            $loggerProxyOutsideIt && $loggerProxyOutsideIt->log(__LINE__, 'All test re-runs with escalated log levels did NOT fail (which is bad :( - re-throwing original test failure exception');
+        }
         throw $initiallyFailedTestException;
     }
 
@@ -448,16 +399,15 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @param class-string         $testClass
-     * @param string               $testFunc
-     * @param array<string, mixed> $testArgs
+     * @param class-string $testClass
+     * @param string       $testFunc
+     * @param MixedMap     $testArgs
      *
      * @return string
      */
-    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, array $testArgs): string
+    protected static function buildDbgDescForTestWithArtgs(string $testClass, string $testFunc, MixedMap $testArgs): string
     {
-        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc
-               . '(' . LoggableToString::convert($testArgs) . ')';
+        return ClassNameUtil::fqToShort($testClass) . '::' . $testFunc . '(' . LoggableToString::convert($testArgs) . ')';
     }
 
     /**
@@ -556,5 +506,62 @@ class ComponentTestCaseBase extends TestCaseBase
             $result[$levelTypeKey] = LogLevel::intToName($logLevel) . ' (' . $logLevel . ')';
         }
         return $result;
+    }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $array
+     * @param TKey                $key
+     *
+     * @return TValue
+     */
+    public static function &assertAndGetFromArrayByKey(array $array, $key)
+    {
+        self::assertArrayHasKey($key, $array);
+        return $array[$key];
+    }
+
+    /**
+     * @param TransactionContext $ctx
+     * @param string             $key
+     * @param mixed              $value
+     *
+     * @return void
+     */
+    public static function setContextCustom(TransactionContext $ctx, string $key, $value): void
+    {
+        $valueSerialized = base64_encode(serialize($value));
+        $nonKeywordStringMaxLength = self::getTracerFromAppCode()->getConfig()->nonKeywordStringMaxLength();
+        self::assertLessThanOrEqual($nonKeywordStringMaxLength, strlen($valueSerialized));
+        $ctx->setCustom($key, $valueSerialized);
+        $ctx->setCustom($key . '_crc', crc32($valueSerialized));
+    }
+
+    /**
+     * @param TransactionContextDto $ctx
+     * @param string                $key
+     *
+     * @return mixed
+     */
+    public static function getContextCustom(TransactionContextDto $ctx, string $key)
+    {
+        self::assertNotNull($ctx->custom);
+        $valueSerialized = self::assertAndGetFromArrayByKey($ctx->custom, $key);
+        self::assertIsString($valueSerialized);
+        self::assertArrayHasKey($key . '_crc', $ctx->custom);
+        $receivedCrc = self::assertAndGetFromArrayByKey($ctx->custom, $key . '_crc');
+        $calculatedCrc = crc32($valueSerialized);
+        self::assertSame($receivedCrc, $calculatedCrc);
+        return unserialize(base64_decode($valueSerialized));
+    }
+
+    protected static function disableTimingDependentFeatures(AppCodeHostParams $appCodeParams): void
+    {
+        // Disable Span Compression feature to have all the expected spans individually
+        $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+        // Enable span stack trace collection for span with any duration
+        $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
     }
 }

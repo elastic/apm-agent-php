@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
@@ -33,6 +32,8 @@ use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\HttpClientUtilForTests;
 use ElasticApmTests\ComponentTests\Util\HttpServerHandle;
 use ElasticApmTests\ComponentTests\Util\TestInfraDataPerRequest;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\MixedMap;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -50,15 +51,13 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
         TestCase::assertTrue(extension_loaded('curl'));
     }
 
-    /**
-     * @param array<string, mixed> $args
-     */
-    public static function appCodeClient(array $args): void
+    public static function appCodeClient(MixedMap $appCodeArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertCurlExtensionIsLoaded();
-        $serverPort = self::getIntFromMap(self::SERVER_PORT_KEY, $args);
+        $serverPort = $appCodeArgs->getInt(self::SERVER_PORT_KEY);
 
-        $dataPerRequestSerialized = self::getStringFromMap(self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY, $args);
+        $dataPerRequestSerialized = $appCodeArgs->getString(self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY);
         $dataPerRequest = new TestInfraDataPerRequest();
         $dataPerRequest->deserializeFromString($dataPerRequestSerialized);
 
@@ -71,17 +70,15 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
                 self::buildResourcesClientForAppCode()
             );
             $curlExecRetVal = $curlHandle->exec();
-            self::assertNotFalse(
-                $curlExecRetVal,
-                LoggableToString::convert(
-                    [
-                        '$curlHandle->errno()'         => $curlHandle->errno(),
-                        '$curlHandle->error()'         => $curlHandle->error(),
-                        '$curlHandle->verboseOutput()' => $curlHandle->verboseOutput(),
-                        '$dataPerRequest'              => $dataPerRequest,
-                    ]
-                )
+            $dbgCtx->add(
+                [
+                    '$curlHandle->errno()'         => $curlHandle->errno(),
+                    '$curlHandle->error()'         => $curlHandle->error(),
+                    '$curlHandle->verboseOutput()' => $curlHandle->verboseOutput(),
+                    '$dataPerRequest'              => $dataPerRequest,
+                ]
             );
+            self::assertNotFalse($curlExecRetVal);
             $responseStatusCode = $curlHandle->getResponseStatusCode();
             self::assertSame(self::SERVER_RESPONSE_HTTP_STATUS, $responseStatusCode);
         } finally {
@@ -99,7 +96,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public function testLocalClientServer(): void
     {
-        // TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientServer
+        // OLD TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientServer
         if (PHP_MAJOR_VERSION < 9) {
             self::dummyAssert();
             return;
@@ -115,12 +112,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
                     AppCodeTarget::asRouted([__CLASS__, 'appCodeServer'])
                 );
                 $additionalAppCodeHostPort = $serverAppCode->getHttpServerHandle()->getMainPort();
-                $reqParams->setAppCodeArgs(
-                    [
-                        self::SERVER_PORT_KEY                      => $additionalAppCodeHostPort,
-                        self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY => $dataPerRequest->serializeToString(),
-                    ]
-                );
+                $reqParams->setAppCodeArgs([self::SERVER_PORT_KEY => $additionalAppCodeHostPort, self::DATA_PER_REQUEST_FOR_SERVER_SIDE_KEY => $dataPerRequest->serializeToString()]);
             }
         );
 
@@ -133,7 +125,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public function testLocalClientExternalServer(): void
     {
-        // TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientExternalServer
+        // OLD TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientExternalServer
         self::dummyAssert();
     }
 }

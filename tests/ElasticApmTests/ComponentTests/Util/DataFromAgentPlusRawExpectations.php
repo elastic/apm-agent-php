@@ -30,7 +30,7 @@ use ElasticApmTests\Util\ErrorExpectations;
 use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetExpectations;
-use ElasticApmTests\Util\TestCaseBase;
+use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\TraceExpectations;
 use ElasticApmTests\Util\TransactionExpectations;
 use PHPUnit\Framework\Assert;
@@ -68,9 +68,13 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         $transactionExpectations->isSampled = self::deriveIsSampledExpectation($appCodeInvocation);
         $transactionExpectations->timestampBefore = $appCodeInvocation->timestampBefore;
         $transactionExpectations->timestampAfter = $this->timeAllDataReceivedAtApmServer;
-        if (!$appCodeInvocation->appCodeRequestParams->shouldAssumeNoDroppedSpans) {
-            $transactionExpectations->droppedSpansCount = null;
+        if ($appCodeInvocation->appCodeRequestParams->shouldAssumeNoDroppedSpans) {
+            $transactionExpectations->droppedSpansCount->setValue(0);
+        } else {
+            $transactionExpectations->droppedSpansCount->reset();
         }
+
+        SpanExpectations::$assumeSpanCompressionDisabled = self::canAssumeSpanCompressionDisabled($appCodeInvocation);
 
         self::addErrorExpectations($transactionExpectations);
         self::addMetadataExpectations($appCodeInvocation, $transactionExpectations);
@@ -102,12 +106,20 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         return $sampleRate === 0.0 ? false : ($sampleRate === 1.0 ? true : null);
     }
 
+    private static function canAssumeSpanCompressionDisabled(AppCodeInvocation $appCodeInvocation): bool
+    {
+        foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
+            if ($appCodeHostParams->getEffectiveAgentConfig()->spanCompressionEnabled()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private function addErrorExpectations(TransactionExpectations $transactionExpectations): void
     {
         $errorExpectations = new ErrorExpectations();
-        TestCaseBase::assertGreaterThanZero(
-            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $errorExpectations)
-        );
+        Assert::assertGreaterThan(0, self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $errorExpectations));
         $this->errors[] = $errorExpectations;
     }
 
@@ -116,21 +128,16 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
         TransactionExpectations $transactionExpectations
     ): void {
         foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
-            $metadataExpectations
-                = self::buildMetadataExpectationsForHost($appCodeHostParams, $transactionExpectations);
+            $metadataExpectations = self::buildMetadataExpectationsForHost($appCodeHostParams, $transactionExpectations);
             $metadataExpectations->agentEphemeralId->setValue($appCodeHostParams->spawnedProcessInternalId);
             $this->agentEphemeralIdToMetadata[$appCodeHostParams->spawnedProcessInternalId] = $metadataExpectations;
         }
     }
 
-    private static function buildMetadataExpectationsForHost(
-        AppCodeHostParams $appCodeHostParams,
-        TransactionExpectations $transactionExpectations
-    ): MetadataExpectations {
+    private static function buildMetadataExpectationsForHost(AppCodeHostParams $appCodeHostParams, TransactionExpectations $transactionExpectations): MetadataExpectations
+    {
         $metadata = new MetadataExpectations();
-        TestCaseBase::assertGreaterThanZero(
-            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata)
-        );
+        Assert::assertGreaterThan(0, self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metadata));
 
         $agentConfig = $appCodeHostParams->getEffectiveAgentConfig();
         $metadata->serviceName->setValue(MetadataValidator::deriveExpectedServiceName($agentConfig->serviceName()));
@@ -143,9 +150,11 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
 
         $configuredHostname = Tracer::limitNullableKeywordString($agentConfig->hostname());
         $metadata->configuredHostname->setValue($configuredHostname);
-        $metadata->detectedHostname->setValue(
-            $configuredHostname === null ? MetadataDiscoverer::detectHostname() : null
-        );
+        $metadata->detectedHostname->setValue($configuredHostname === null ? MetadataDiscoverer::discoverHostname() : null);
+
+        if (AmbientContextForTests::testConfig()->isInContainer !== null) {
+            $metadata->containerId->setValue(AmbientContextForTests::testConfig()->isInContainer ? DockerUtil::getThisContainerId() : null);
+        }
 
         return $metadata;
     }
@@ -153,9 +162,7 @@ final class DataFromAgentPlusRawExpectations extends DataFromAgentExpectations
     private function addMetricSetExpectations(TransactionExpectations $transactionExpectations): void
     {
         $metricSetExpectations = new MetricSetExpectations();
-        TestCaseBase::assertGreaterThanZero(
-            self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metricSetExpectations)
-        );
+        Assert::assertGreaterThan(0, self::setCommonProperties(/* src */ $transactionExpectations, /* dst */ $metricSetExpectations));
         $this->metricSets[] = $metricSetExpectations;
     }
 

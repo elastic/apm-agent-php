@@ -115,4 +115,14 @@ final class TextUtilForTests
     {
         return (TextUtil::isEmptyString($partToAppend) ? '' : $separator) . $partToAppend;
     }
+
+    /**
+     * @param mixed $input
+     *
+     * @return string
+     */
+    public static function emptyIfNull($input): string
+    {
+        return $input === null ? '' : strval($input);
+    }
 }

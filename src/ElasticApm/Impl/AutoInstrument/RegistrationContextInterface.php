@@ -30,7 +30,7 @@ interface RegistrationContextInterface
      * @param string                                $methodName
      * @param callable(?object, mixed[]): ?callable $preHook
      */
-    public function interceptCallsToMethod(
+    public function interceptCallsToInternalMethod(
         string $className,
         string $methodName,
         callable $preHook
@@ -40,7 +40,7 @@ interface RegistrationContextInterface
      * @param string                       $functionName
      * @param callable(mixed[]): ?callable $preHook
      */
-    public function interceptCallsToFunction(
+    public function interceptCallsToInternalFunction(
         string $functionName,
         callable $preHook
     ): void;

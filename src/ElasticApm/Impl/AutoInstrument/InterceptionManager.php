@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Throwable;
 
@@ -43,17 +44,19 @@ final class InterceptionManager
     /** @var Logger */
     private $logger;
 
+    /** @var BuiltinPlugin */
+    private $builtinPlugin;
+
     /** @var int|null */
-    private $interceptedCallInProgressRegistrationId;
+    private $interceptedCallInProgressRegistrationId = null;
 
     /** @var Registration|null */
-    private $interceptedCallInProgressRegistration;
+    private $interceptedCallInProgressRegistration = null;
 
     /**
-     * @var null|callable
-     * @phpstan-var null|callable(int, bool, mixed): void
+     * @var null|callable(int, bool, mixed): void
      */
-    private $interceptedCallInProgressPreHookRetVal;
+    private $interceptedCallInProgressPreHookRetVal = null;
 
     public function __construct(Tracer $tracer)
     {
@@ -65,20 +68,12 @@ final class InterceptionManager
 
     private function loadPlugins(Tracer $tracer): void
     {
+        $this->builtinPlugin = new BuiltinPlugin($tracer);
         $registerCtx = new RegistrationContext();
-        $this->loadPluginsImpl($tracer, $registerCtx);
-
-        $this->interceptedCallRegistrations = $registerCtx->interceptedCallRegistrations;
-    }
-
-    private function loadPluginsImpl(Tracer $tracer, RegistrationContext $registerCtx): void
-    {
-        $builtinPlugin = new BuiltinPlugin($tracer);
         $registerCtx->dbgCurrentPluginIndex = 0;
-        $registerCtx->dbgCurrentPluginDesc = $builtinPlugin->getDescription();
-        $builtinPlugin->register($registerCtx);
-
-        // self::loadConfiguredPlugins();
+        $registerCtx->dbgCurrentPluginDesc = $this->builtinPlugin->getDescription();
+        $this->builtinPlugin->register($registerCtx);
+        $this->interceptedCallRegistrations = $registerCtx->interceptedCallRegistrations;
     }
 
     /**
@@ -88,7 +83,7 @@ final class InterceptionManager
      *
      * @return bool
      */
-    public function interceptedCallPreHook(
+    public function internalFuncCallPreHook(
         int $interceptRegistrationId,
         ?object $thisObj,
         array $interceptedCallArgs
@@ -102,8 +97,9 @@ final class InterceptionManager
                 'interceptedCallArgs' => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered');
+        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
         $interceptRegistration
             = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
@@ -114,8 +110,7 @@ final class InterceptionManager
         }
         $localLogger->addContext('interceptRegistration', $interceptRegistration);
 
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Calling preHook...');
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling preHook...');
         try {
             $preHookRetVal = ($interceptRegistration->preHook)($thisObj, $interceptedCallArgs);
         } catch (Throwable $throwable) {
@@ -134,8 +129,7 @@ final class InterceptionManager
             $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
         }
 
-        ($loggerProxy = $localLogger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
         return $shouldCallPostHook;
     }
 
@@ -145,13 +139,19 @@ final class InterceptionManager
      * @param mixed|Throwable $returnValueOrThrown                 Return value of the intercepted call
      *                                                             or the object thrown by the intercepted call
      */
-    public function interceptedCallPostHook(
+    public function internalFuncCallPostHook(
         int $numberOfStackFramesToSkip,
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered');
+        $localLogger = $this->logger->inherit()->addAllContext(
+            [
+                'interceptRegistrationId' => $this->interceptedCallInProgressRegistrationId,
+                'interceptRegistration'   => $this->interceptedCallInProgressRegistration,
+            ]
+        );
+        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
         if ($this->interceptedCallInProgressRegistrationId === null) {
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
@@ -161,28 +161,92 @@ final class InterceptionManager
         assert($this->interceptedCallInProgressRegistration !== null);
         assert($this->interceptedCallInProgressPreHookRetVal !== null);
 
-        $localLogger = $this->logger->inherit()->addAllContext(
-            [
-                'interceptRegistrationId' => $this->interceptedCallInProgressRegistrationId,
-                'interceptRegistration'   => $this->interceptedCallInProgressRegistration,
-            ]
-        );
-
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling postHook...');
         try {
             ($this->interceptedCallInProgressPreHookRetVal)(
                 $numberOfStackFramesToSkip + 1,
                 $hasExitedByException,
                 $returnValueOrThrown
             );
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'postHook completed without throwing');
         } catch (Throwable $throwable) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->logThrowable(
-                $throwable,
-                'postHook has let a Throwable to escape'
-            );
+            && $loggerProxy->logThrowable($throwable, 'postHook has thrown');
         }
 
         $this->interceptedCallInProgressRegistrationId = null;
         $this->interceptedCallInProgressPreHookRetVal = null;
+    }
+
+    public function astInstrumentationDirectCall(string $method): void
+    {
+        $localLogger = $this->logger->inherit()->addAllContext(['method' => $method]);
+
+        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+
+        $wordPressAutoInstrumIfEnabled = $this->builtinPlugin->getWordPressAutoInstrumentationIfEnabled();
+        if ($wordPressAutoInstrumIfEnabled === null) {
+            static $loggedOnce = false;
+            if (!$loggedOnce) {
+                $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'WordPress instrumentation is DISABLED');
+                $loggedOnce = true;
+            }
+            return;
+        }
+
+        static $dbgImplFuncDesc = null;
+        if ($dbgImplFuncDesc === null) {
+            $dbgImplFuncDesc = ClassNameUtil::fqToShort(WordPressAutoInstrumentation::class) . '->directCall';
+        }
+        /** @var string $dbgImplFuncDesc */
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling ' . $dbgImplFuncDesc . '...');
+        try {
+            $wordPressAutoInstrumIfEnabled->directCall($method);
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, $dbgImplFuncDesc . ' completed without throwing');
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->logThrowable($throwable, $dbgImplFuncDesc . ' has thrown');
+        }
+    }
+
+    /**
+     * @param ?string $instrumentedClassFullName
+     * @param string  $instrumentedFunction
+     * @param mixed[] $capturedArgs
+     *
+     * @return null|callable(?Throwable $thrown, mixed $returnValue): void
+     */
+    public function astInstrumentationPreHook(?string $instrumentedClassFullName, string $instrumentedFunction, array $capturedArgs): ?callable
+    {
+        $localLogger = $this->logger->inherit()->addAllContext(['instrumentedClassFullName' => $instrumentedClassFullName]);
+
+        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+
+        $wordPressAutoInstrumIfEnabled = $this->builtinPlugin->getWordPressAutoInstrumentationIfEnabled();
+        if ($wordPressAutoInstrumIfEnabled === null) {
+            static $loggedOnce = false;
+            if (!$loggedOnce) {
+                $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'WordPress instrumentation is DISABLED');
+                $loggedOnce = true;
+            }
+            return null;
+        }
+
+        static $dbgImplFuncDesc = null;
+        if ($dbgImplFuncDesc === null) {
+            $dbgImplFuncDesc = ClassNameUtil::fqToShort(WordPressAutoInstrumentation::class) . '->preHook';
+        }
+        /** @var string $dbgImplFuncDesc */
+        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling ' . $dbgImplFuncDesc . '...');
+        try {
+            $retVal = $wordPressAutoInstrumIfEnabled->preHook($instrumentedClassFullName, $instrumentedFunction, $capturedArgs);
+            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, $dbgImplFuncDesc . ' completed without throwing', ['retVal == null' => ($retVal == null)]);
+            return $retVal;
+        } catch (Throwable $throwable) {
+            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->logThrowable($throwable, $dbgImplFuncDesc . ' has thrown');
+            return null;
+        }
     }
 }

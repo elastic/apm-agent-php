@@ -323,6 +323,46 @@ $parentId = $transaction->getParentId();
 ----
 
 [float]
+[[api-transaction-interface-ensure-parent-id]]
+==== `TransactionInterface->ensureParentId()`
+If the transaction does not have a parent-ID yet,
+calling this method generates a new ID,
+sets it as the parent-ID of this transaction,
+and returns it as a `string`.
+
+This enables the correlation of the spans the JavaScript Real User Monitoring (RUM) agent creates for the initial page load
+with the transaction of the backend service.
+If your backend service generates the HTML page dynamically,
+initializing the JavaScript RUM agent with the value of this method allows analyzing the time spent in the browser vs in the backend services.
+
+An example of using this API in Laravel application can be found at https://github.com/elastic/opbeans-php/.
+
+Add `isElasticApmEnabled`, `elasticApmCurrentTransaction` properties to the view
+(https://github.com/elastic/opbeans-php/blob/22df4af76a879d8ce7237d90e953e312fb98e792/app/Providers/AppServiceProvider.php#L33[see the relevant part in opbeans-php's `AppServiceProvider.php`])
+and add a snippet similar to the following one to the body of your HTML page,
+preferably before other JS libraries
+(https://github.com/elastic/opbeans-php/blob/22df4af76a879d8ce7237d90e953e312fb98e792/resources/views/rendered_by_frontend.blade.php[see opbeans-php's `rendered_by_frontend.blade.php`])
+:
+
+[source,html]
+----
+@if ($isElasticApmEnabled)
+    <script>
+        window.rumConfig = {
+            serviceName: "{{ $elasticApmJsServiceName }}",
+            serviceVersion: "{{ $elasticApmJsServiceVersion }}",
+            serverUrl: "{{ $elasticApmJsServerUrl }}",
+            pageLoadTraceId: "{{ $elasticApmCurrentTransaction->getTraceId() }}",
+            pageLoadSpanId: "{{ $elasticApmCurrentTransaction->ensureParentId() }}",
+            pageLoadSampled: {{ $elasticApmCurrentTransaction->isSampled() ? "true" : "false" }}
+        }
+    </script>
+@endif
+----
+
+See the {apm-rum-ref}[JavaScript RUM agent documentation] for more information.
+
+[float]
 [[api-transaction-interface-set-result]]
 ==== `TransactionInterface->setResult`
 Sets the result of the transaction.

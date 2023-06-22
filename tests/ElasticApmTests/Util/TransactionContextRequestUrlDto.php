@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
-use PHPUnit\Framework\TestCase;
 
 final class TransactionContextRequestUrlDto
 {
@@ -105,7 +104,7 @@ final class TransactionContextRequestUrlDto
             return null;
         }
 
-        TestCase::assertIsInt($value);
+        TestCaseBase::assertIsInt($value);
         /** @var int $value */
         return $value;
     }

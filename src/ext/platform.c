@@ -239,34 +239,47 @@ String streamStackTrace(
 }
 
 #ifndef PHP_WIN32
-static
-String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE* procSelfCmdLineFile, TextOutputStream* txtOutStream )
-{
-    TextOutputStreamState txtOutStreamStateOnEntryStart;
-    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
-        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+static String g_procSelfCmdLineFileName = "/proc/self/cmdline";
 
-    txtOutStream->autoTermZero = false;
+void streamCharUpToMaxLength( TextOutputStream* txtOutStream, char value, size_t maxLength, size_t* numberOfCharsProcessed )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( numberOfCharsProcessed );
+
+    if ( *numberOfCharsProcessed < maxLength )
+    {
+        streamChar( value, txtOutStream );
+    }
+
+    ++(*numberOfCharsProcessed);
+}
+
+void streamCurrentProcessCommandLineImpl( TextOutputStream* txtOutStream, size_t maxLength, FILE* procSelfCmdLineFile )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+    ELASTIC_APM_ASSERT_VALID_PTR( procSelfCmdLineFile );
 
     enum { auxBufferSize = 100 };
     char auxBuffer[ auxBufferSize ];
     bool reachedEndOfFile = false;
-    unsigned int partsCount = 0;
-    bool shouldPrefixWithSpace = false;
+    bool isRightAfterSeparator = false;
+    size_t numberOfCharsProcessed = 0;
     while ( ! reachedEndOfFile )
     {
         size_t actuallyReadBytes = fread( auxBuffer, /* data item size: */ 1, /* max data items count: */ auxBufferSize, procSelfCmdLineFile );
-        if ( actuallyReadBytes < auxBufferSize)
+        if ( actuallyReadBytes < auxBufferSize )
         {
             if ( ferror( procSelfCmdLineFile ) != 0 )
             {
-                return "Failed to read from /proc/self/cmdline";
+                streamPrintf( txtOutStream, "<Failed to read from %s>", g_procSelfCmdLineFileName );
+                return;
             }
 
             reachedEndOfFile = ( feof( procSelfCmdLineFile ) != 0 );
             if ( ! reachedEndOfFile )
             {
-                return "Failed to read full buffer from /proc/self/cmdline but feof() returned false";
+                streamPrintf( txtOutStream, "<fread did not read full buffer from %s but feof() returned false>", g_procSelfCmdLineFileName );
+                return;
             }
         }
 
@@ -274,67 +287,65 @@ String streamCurrentProcessCommandLineExHelper( unsigned int maxPartsCount, FILE
         {
             if ( auxBuffer[ i ] == '\0' )
             {
-                ++partsCount;
-                if ( partsCount == maxPartsCount )
-                {
-                    goto finally;
-                }
-                shouldPrefixWithSpace = true;
+                isRightAfterSeparator = true;
                 continue;
             }
 
-            if ( shouldPrefixWithSpace )
+            if ( isRightAfterSeparator )
             {
-                streamChar( ' ', txtOutStream );
-                shouldPrefixWithSpace = false;
+                streamCharUpToMaxLength( txtOutStream, ' ', maxLength, &numberOfCharsProcessed );
+                isRightAfterSeparator = false;
             }
 
-            char bufferToEscape[ escapeNonPrintableCharBufferSize ];
-            streamPrintf( txtOutStream, "%s", escapeNonPrintableChar( auxBuffer[ i ], bufferToEscape ) );
+            streamCharUpToMaxLength( txtOutStream, auxBuffer[ i ], maxLength, &numberOfCharsProcessed );
         }
     }
 
-    finally:
-
-    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
+    if ( numberOfCharsProcessed > maxLength )
+    {
+        streamPrintf( txtOutStream, " <skipped remaining %"PRIu64" characters>", (UInt64)( numberOfCharsProcessed - maxLength ) );
+    }
 }
 #endif
 
-static
-String streamCurrentProcessCommandLineEx( unsigned int maxPartsCount, TextOutputStream* txtOutStream )
+String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream, size_t maxLength )
 {
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "ConstantConditionsOC"
-#pragma ide diagnostic ignored "UnreachableCode"
-    if ( maxPartsCount == 0 )
+    if ( maxLength == 0 )
     {
         return "";
     }
-#pragma clang diagnostic pop
+
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
 
 #ifdef PHP_WIN32
-    return "Not implemented on Windows";
+    return ELASTIC_APM_STRING_LITERAL_TO_VIEW( "<Not implemented on Windows>" );
 #else
+    TextOutputStreamState txtOutStreamStateOnEntryStart;
     FILE* procSelfCmdLineFile = NULL;
-    if ( openFile( "/proc/self/cmdline", "rb", /* out */ &procSelfCmdLineFile ) )
+
+    if ( ! textOutputStreamStartEntry( txtOutStream, &txtOutStreamStateOnEntryStart ) )
     {
-        return "Failed to open /proc/self/cmdline";
+        return ELASTIC_APM_TEXT_OUTPUT_STREAM_NOT_ENOUGH_SPACE_MARKER;
+    }
+    txtOutStream->autoTermZero = false;
+
+    int openFileErrNo = openFile( g_procSelfCmdLineFileName, "rb", /* out */ &procSelfCmdLineFile );
+    if ( openFileErrNo != 0 )
+    {
+        char auxTxtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+        TextOutputStream auxTxtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( auxTxtOutStreamBuf );
+        streamPrintf( txtOutStream, "<Failed to open %s, errno: %s>", g_procSelfCmdLineFileName, streamErrNo( openFileErrNo, &auxTxtOutStream ) );
+        goto finally;
     }
 
-    String retVal = streamCurrentProcessCommandLineExHelper( maxPartsCount, procSelfCmdLineFile, txtOutStream );
-    fclose( procSelfCmdLineFile );
-    return retVal;
+    streamCurrentProcessCommandLineImpl( txtOutStream, maxLength, procSelfCmdLineFile );
+    finally:
+    if ( procSelfCmdLineFile != NULL )
+    {
+        fclose( procSelfCmdLineFile );
+    }
+    return textOutputStreamEndEntry( &txtOutStreamStateOnEntryStart, txtOutStream );
 #endif
-}
-
-String streamCurrentProcessCommandLine( TextOutputStream* txtOutStream )
-{
-    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ UINT_MAX, txtOutStream );
-}
-
-String streamCurrentProcessExeName( TextOutputStream* txtOutStream )
-{
-    return streamCurrentProcessCommandLineEx( /* maxPartsCount */ 1, txtOutStream );
 }
 
 #ifdef ELASTIC_APM_PLATFORM_HAS_LIBUNWIND
@@ -516,8 +527,8 @@ void handleOsSignalLinux_writeStackTraceToSyslog()
 }
 
 typedef void (* OsSignalHandler )( int );
-bool isOldSignalHandlerSet = false;
-OsSignalHandler oldSignalHandler = NULL;
+bool g_isOldSignalHandlerSet = false;
+OsSignalHandler g_oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
@@ -525,11 +536,11 @@ void handleOsSignalLinux( int signalId )
     handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
-    if ( isOldSignalHandlerSet )
+    if ( g_isOldSignalHandlerSet )
     {
-        signal( signalId, oldSignalHandler );
-        isOldSignalHandlerSet = false;
-        oldSignalHandler = NULL;
+        signal( signalId, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
     }
     else
     {
@@ -553,9 +564,22 @@ void registerOsSignalHandler()
     }
     else
     {
-        isOldSignalHandlerSet = true;
-        oldSignalHandler = signal_retVal;
+        g_isOldSignalHandlerSet = true;
+        g_oldSignalHandler = signal_retVal;
         ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully registered signal handler" );
+    }
+#endif
+}
+
+void unregisterOsSignalHandler()
+{
+#ifndef PHP_WIN32
+    if ( g_isOldSignalHandlerSet )
+    {
+        signal( SIGSEGV, g_oldSignalHandler );
+        g_isOldSignalHandlerSet = false;
+        g_oldSignalHandler = NULL;
+        ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Successfully unregistered signal handler" );
     }
 #endif
 }

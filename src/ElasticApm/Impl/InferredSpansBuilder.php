@@ -28,7 +28,6 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
@@ -88,15 +87,15 @@ final class InferredSpansBuilder implements LoggableInterface
     }
 
     /**
+     * @param int  $offset
+     *
      * @return ClassicFormatStackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $offset
      */
-    public static function captureStackTrace(int $offset, LoggerFactory $loggerFactory): array
+    public function captureStackTrace(int $offset): array
     {
-        return StackTraceUtil::captureInClassicFormatExcludeElasticApm(
-            $loggerFactory,
-            $offset + 1,
-            DEBUG_BACKTRACE_IGNORE_ARGS /* <- options */
-        );
+        return $this->tracer->stackTraceUtil()->captureInClassicFormatExcludeElasticApm($offset + 1);
     }
 
     /**
@@ -165,20 +164,15 @@ final class InferredSpansBuilder implements LoggableInterface
      * @param ?ClassicFormatStackTraceFrame $frameCopy
      * @param ?int                          $frameCopyIndex
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return iterable<ClassicFormatStackTraceFrame>
      */
-    private function buildStackTrace(
-        int $forFrameIndex,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
-    ): array {
+    private function buildStackTrace(int $forFrameIndex, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): iterable
+    {
         $openFramesCount = count($this->openFramesReverseOrder);
-        $result = [];
         for ($i = $forFrameIndex; $i >= 0 && $i < $openFramesCount; --$i) {
             $useFrameCopy = $frameCopy !== null && $frameCopyIndex === $i; // @phpstan-ignore-line
-            $result[] = $useFrameCopy ? $frameCopy : $this->openFramesReverseOrder[$i]->stackFrame;
+            yield $useFrameCopy ? $frameCopy : $this->openFramesReverseOrder[$i]->stackFrame;
         }
-        return $result;
     }
 
     /**
@@ -189,15 +183,18 @@ final class InferredSpansBuilder implements LoggableInterface
      *
      * @return void
      */
-    private function sendFrameAsSpan(
-        int $openFrameIndex,
-        string $parentId,
-        ?ClassicFormatStackTraceFrame $frameCopy,
-        ?int $frameCopyIndex
-    ): void {
+    private function sendFrameAsSpan(int $openFrameIndex, string $parentId, ?ClassicFormatStackTraceFrame $frameCopy, ?int $frameCopyIndex): void
+    {
         $frame = $this->openFramesReverseOrder[$openFrameIndex];
-        $stackTraceClassic = $this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex);
-        $stackTrace = StackTraceUtil::convertClassicToApmFormat($stackTraceClassic);
+        $stackTrace = null;
+        /** @var float $spanDurationInMilliseconds */
+        $spanDurationInMilliseconds = $frame->duration;
+        if (
+            $this->transaction->shouldCollectStackTraceForSpanDuration($spanDurationInMilliseconds)
+            && (($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->transaction->getStackTraceLimitConfig())) !== 0)
+        ) {
+            $stackTrace = $this->tracer->stackTraceUtil()->convertClassicToApmFormat($this->buildStackTrace($openFrameIndex, $frameCopy, $frameCopyIndex), $maxNumberOfFrames);
+        }
         $frame->prepareForSerialization($this->transaction, $parentId, $stackTrace);
         $this->tracer->sendSpanToApmServer($frame);
     }
@@ -340,11 +337,7 @@ final class InferredSpansBuilder implements LoggableInterface
         && $loggerTrace->log(
             __LINE__,
             'Entered',
-            [
-                'newStackTrace'     => $newStackTrace,
-                'systemClockNow'    => $systemClockNow,
-                'monotonicClockNow' => $monotonicClockNow,
-            ]
+            ['newStackTrace' => $newStackTrace, 'systemClockNow' => $systemClockNow, 'monotonicClockNow' => $monotonicClockNow]
         );
 
         $openFramesCount = count($this->openFramesReverseOrder);
@@ -353,12 +346,7 @@ final class InferredSpansBuilder implements LoggableInterface
         $frameCopy = null;
         /** @var ?int $frameCopyIndex */
         $frameCopyIndex = null;
-        $this->extendOpenFrames(
-            $newStackTrace,
-            $bottomNotExtendedFrameIndex /* <- out */,
-            $frameCopy /* <- out */,
-            $frameCopyIndex /* <- out */
-        );
+        $this->extendOpenFrames($newStackTrace, /* out */  $bottomNotExtendedFrameIndex, /* out */ $frameCopy, /* out */ $frameCopyIndex);
 
         if ($bottomNotExtendedFrameIndex === $openFramesCount) {
             $loggerTrace && $loggerTrace->log(__LINE__, 'All open frames were extended');
@@ -369,20 +357,13 @@ final class InferredSpansBuilder implements LoggableInterface
                 ['not extended frames' => array_slice($this->openFramesReverseOrder, $bottomNotExtendedFrameIndex)]
             );
 
-            $this->processNotExtendedOpenFrames(
-                $bottomNotExtendedFrameIndex,
-                $frameCopy,
-                $frameCopyIndex,
-                $systemClockNow,
-                $monotonicClockNow
-            );
+            $this->processNotExtendedOpenFrames($bottomNotExtendedFrameIndex, $frameCopy, $frameCopyIndex, $systemClockNow, $monotonicClockNow);
         }
 
         $newStackTraceCount = count($newStackTrace);
         for ($i = $bottomNotExtendedFrameIndex; $i != $newStackTraceCount; ++$i) {
             $newFrame = $newStackTrace[$newStackTraceCount - $i - 1];
-            $this->openFramesReverseOrder[]
-                = new InferredSpanFrame($systemClockNow, $monotonicClockNow, $newFrame);
+            $this->openFramesReverseOrder[] = new InferredSpanFrame($systemClockNow, $monotonicClockNow, $newFrame);
             $loggerTrace && $loggerTrace->log(__LINE__, 'Appended new frame on top of open frames');
         }
     }

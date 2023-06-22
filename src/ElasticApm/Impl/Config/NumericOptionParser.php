@@ -28,24 +28,24 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template   T
+ * @template TParsedValue
  *
- * @extends    OptionParser<T>
+ * @extends  OptionParser<TParsedValue>
  */
 abstract class NumericOptionParser extends OptionParser
 {
-    /** @var ?T */
+    /** @var ?TParsedValue */
     private $minValidValue;
 
     /**
-     * @var ?T */
+     * @var ?TParsedValue */
     private $maxValidValue;
 
     /**
      * NumericOptionMetadata constructor.
      *
-     * @param ?T $minValidValue
-     * @param ?T $maxValidValue
+     * @param ?TParsedValue $minValidValue
+     * @param ?TParsedValue $maxValidValue
      */
     public function __construct($minValidValue, $maxValidValue)
     {
@@ -68,14 +68,14 @@ abstract class NumericOptionParser extends OptionParser
     /**
      * @param string $rawValue
      *
-     * @return T
+     * @return TParsedValue
      */
     abstract protected function stringToNumber(string $rawValue);
 
     /**
      * @param string $rawValue
      *
-     * @return T
+     * @return TParsedValue
      */
     public function parse(string $rawValue)
     {
@@ -104,7 +104,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return ?T
+     * @return ?TParsedValue
      */
     public function minValidValue()
     {
@@ -112,7 +112,7 @@ abstract class NumericOptionParser extends OptionParser
     }
 
     /**
-     * @return ?T
+     * @return ?TParsedValue
      */
     public function maxValidValue()
     {

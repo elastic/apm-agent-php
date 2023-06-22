@@ -10,6 +10,8 @@ parameters:
     excludePaths:
         - tests/polyfills/Stringable.php
         - tests/polyfills/WeakMap.php
+        - tests/ElasticApmTests/ComponentTests/WordPress/mock_src/*.php
+        - tests/ElasticApmTests/ComponentTests/WordPress/expected_process_AST_output/*.php
 
     ignoreErrors:
         #

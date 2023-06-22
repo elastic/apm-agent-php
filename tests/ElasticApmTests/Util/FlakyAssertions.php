@@ -59,17 +59,17 @@ final class FlakyAssertions
     }
 
     /**
-     * @param Closure $assertionCall
-     * @param bool    $forceEnableFlakyAssertions
+     * @param Closure                 $assertionCall
+     * @param ?bool                   $flakyAssertionsEnabled
      *
      * @phpstan-param Closure(): void $assertionCall
      */
-    public static function run(Closure $assertionCall, bool $forceEnableFlakyAssertions = false): void
+    public static function run(Closure $assertionCall, ?bool $flakyAssertionsEnabled = null): void
     {
         try {
             $assertionCall();
         } catch (ExpectationFailedException $ex) {
-            if ($forceEnableFlakyAssertions || self::areEnabled()) {
+            if ($flakyAssertionsEnabled === null ? self::areEnabled() : $flakyAssertionsEnabled) {
                 throw $ex;
             }
 

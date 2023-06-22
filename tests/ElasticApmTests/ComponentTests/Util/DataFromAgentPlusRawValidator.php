@@ -25,15 +25,19 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\BackendComm\EventSender;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableInterface;
+use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Tracer;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgentValidator;
 use ElasticApmTests\Util\AssertValidTrait;
 use ElasticApmTests\Util\MetadataValidator;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TestCaseBase;
 
-final class DataFromAgentPlusRawValidator
+final class DataFromAgentPlusRawValidator implements LoggableInterface
 {
     use AssertValidTrait;
+    use LoggableTrait;
 
     private const AUTH_HTTP_HEADER_NAME = 'Authorization';
     private const USER_AGENT_HTTP_HEADER_NAME = 'User-Agent';
@@ -57,6 +61,8 @@ final class DataFromAgentPlusRawValidator
 
     private function validateImpl(): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['this' => $this]);
+
         DataFromAgentValidator::validate($this->actual, $this->expectations);
 
         foreach ($this->actual->getAllIntakeApiRequests() as $intakeApiRequest) {
@@ -71,9 +77,8 @@ final class DataFromAgentPlusRawValidator
         $this->validateIntakeApiHttpRequestHeaders($intakeApiRequest->headers, $appCodeHostParams);
     }
 
-    private function findAppCodeHostsParamsBySpawnedProcessInternalId(
-        string $spawnedProcessInternalId
-    ): AppCodeHostParams {
+    private function findAppCodeHostsParamsBySpawnedProcessInternalId(string $spawnedProcessInternalId): AppCodeHostParams
+    {
         foreach ($this->expectations->appCodeInvocations as $appCodeInvocation) {
             foreach ($appCodeInvocation->appCodeHostsParams as $appCodeHostParams) {
                 if ($appCodeHostParams->spawnedProcessInternalId === $spawnedProcessInternalId) {
@@ -81,19 +86,15 @@ final class DataFromAgentPlusRawValidator
                 }
             }
         }
-        TestCase::fail(
-            'AppCodeHostParams with spawnedProcessInternalId `' . $spawnedProcessInternalId . '\' not found'
-        );
+        TestCaseBase::fail('AppCodeHostParams with spawnedProcessInternalId `' . $spawnedProcessInternalId . '\' not found');
     }
 
     /**
      * @param array<string, array<string>> $headers
      * @param AppCodeHostParams            $appCodeHostParams
      */
-    private function validateIntakeApiHttpRequestHeaders(
-        array $headers,
-        AppCodeHostParams $appCodeHostParams
-    ): void {
+    private function validateIntakeApiHttpRequestHeaders(array $headers, AppCodeHostParams $appCodeHostParams): void
+    {
         $this->validateAuthIntakeApiHttpRequestHeader($headers, $appCodeHostParams);
         $this->validateUserAgentIntakeApiHttpRequestHeader($headers, $appCodeHostParams);
     }
@@ -101,10 +102,8 @@ final class DataFromAgentPlusRawValidator
     /**
      * @param array<string, array<string>> $headers
      */
-    private function validateAuthIntakeApiHttpRequestHeader(
-        array $headers,
-        AppCodeHostParams $appCodeHostParams
-    ): void {
+    private function validateAuthIntakeApiHttpRequestHeader(array $headers, AppCodeHostParams $appCodeHostParams): void
+    {
         $configuredApiKey = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::API_KEY);
         $configuredSecretToken = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SECRET_TOKEN);
         self::verifyAuthIntakeApiHttpRequestHeader($configuredApiKey, $configuredSecretToken, $headers);
@@ -115,21 +114,18 @@ final class DataFromAgentPlusRawValidator
      * @param ?string                      $configuredSecretToken
      * @param array<string, array<string>> $headers
      */
-    public static function verifyAuthIntakeApiHttpRequestHeader(
-        ?string $configuredApiKey,
-        ?string $configuredSecretToken,
-        array $headers
-    ): void {
+    public static function verifyAuthIntakeApiHttpRequestHeader(?string $configuredApiKey, ?string $configuredSecretToken, array $headers): void
+    {
         $expectedAuthHeaderValue = $configuredApiKey === null
             ? ($configuredSecretToken === null ? null : "Bearer $configuredSecretToken")
             : "ApiKey $configuredApiKey";
 
         if ($expectedAuthHeaderValue === null) {
-            TestCase::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $headers);
+            TestCaseBase::assertArrayNotHasKey(self::AUTH_HTTP_HEADER_NAME, $headers);
         } else {
             $actualAuthHeaderValue = $headers[self::AUTH_HTTP_HEADER_NAME];
-            TestCase::assertCount(1, $actualAuthHeaderValue);
-            TestCase::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
+            TestCaseBase::assertCount(1, $actualAuthHeaderValue);
+            TestCaseBase::assertSame($expectedAuthHeaderValue, $actualAuthHeaderValue[0]);
         }
     }
 
@@ -137,10 +133,8 @@ final class DataFromAgentPlusRawValidator
      * @param array<string, array<string>> $headers
      * @param AppCodeHostParams            $appCodeHostParams
      */
-    private function validateUserAgentIntakeApiHttpRequestHeader(
-        array $headers,
-        AppCodeHostParams $appCodeHostParams
-    ): void {
+    private function validateUserAgentIntakeApiHttpRequestHeader(array $headers, AppCodeHostParams $appCodeHostParams): void
+    {
         $configuredServiceName = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SERVICE_NAME);
         $configuredServiceVersion
             = $appCodeHostParams->getExplicitlySetAgentStringOptionValue(OptionNames::SERVICE_VERSION);
@@ -152,14 +146,13 @@ final class DataFromAgentPlusRawValidator
     }
 
     /**
+     * @param string                       $expectedHeaderValue
      * @param array<string, array<string>> $headers
      */
-    public static function verifyUserAgentIntakeApiHttpRequestHeader(
-        string $expectedHeaderValue,
-        array $headers
-    ): void {
+    public static function verifyUserAgentIntakeApiHttpRequestHeader(string $expectedHeaderValue, array $headers): void
+    {
         $actualHeaderValue = $headers[self::USER_AGENT_HTTP_HEADER_NAME];
-        TestCase::assertCount(1, $actualHeaderValue);
-        TestCase::assertSame($expectedHeaderValue, $actualHeaderValue[0]);
+        TestCaseBase::assertCount(1, $actualHeaderValue);
+        TestCaseBase::assertSame($expectedHeaderValue, $actualHeaderValue[0]);
     }
 }

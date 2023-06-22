@@ -52,7 +52,7 @@ final class ClassNameUtil
      *
      * @return void
      */
-    public static function splitFqClassName(string $fqClassName, string &$namespace, string &$shortName): void
+    public static function splitFqClassName(string $fqClassName, /* out */ string &$namespace, /* out */ string &$shortName): void
     {
         // Check if $fqClassName begin with a back slash(es)
         $firstBackSlashPos = strpos($fqClassName, '\\');

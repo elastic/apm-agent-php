@@ -24,9 +24,11 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl\AutoInstrument\Util;
 
 use Closure;
+use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
+use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Util\Assert;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\SpanInterface;
@@ -57,20 +59,60 @@ final class AutoInstrumentationUtil
         return ($className === null) ? $funcName : ($className . '->' . $funcName);
     }
 
+    private static function processNewSpan(SpanInterface $span): void
+    {
+        if ($span instanceof Span) {
+            // Mark all spans created by auto-instrumentation as compressible
+            $span->setCompressible(true);
+        }
+    }
+
+    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
+
+        self::processNewSpan($span);
+
+        return $span;
+    }
+
+    /**
+     * @param string   $name
+     * @param string   $type
+     * @param ?string  $subtype
+     * @param ?string  $action
+     * @param callable $callback
+     * @param mixed[]  $callbackArgs
+     * @param int      $numberOfStackFramesToSkip
+     *
+     * @return mixed
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public static function captureCurrentSpan(string $name, string $type, ?string $subtype, ?string $action, callable $callback, array $callbackArgs, int $numberOfStackFramesToSkip)
+    {
+        $span = self::beginCurrentSpan($name, $type, $subtype, $action);
+        try {
+            return call_user_func_array($callback, $callbackArgs);
+        } catch (Throwable $throwable) {
+            $span->createErrorFromThrowable($throwable);
+            throw $throwable;
+        } finally {
+            $span->endSpanEx($numberOfStackFramesToSkip + 1);
+        }
+    }
+
     /**
      * @param int             $numberOfStackFramesToSkip
      * @param SpanInterface   $span
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown
      * @param ?float          $duration
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public static function endSpan(
-        int $numberOfStackFramesToSkip,
-        SpanInterface $span,
-        bool $hasExitedByException,
-        $returnValueOrThrown,
-        ?float $duration = null
-    ): void {
+    public static function endSpan(int $numberOfStackFramesToSkip, SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown, ?float $duration = null): void
+    {
         if ($hasExitedByException && ($returnValueOrThrown instanceof Throwable)) {
             $span->createErrorFromThrowable($returnValueOrThrown);
         }
@@ -89,10 +131,8 @@ final class AutoInstrumentationUtil
      *
      * @return null|callable(int, bool, mixed): void
      */
-    public static function createPostHookFromEndSpan(
-        SpanInterface $span,
-        ?Closure $doBeforeSpanEnd = null
-    ): ?callable {
+    public static function createInternalFuncPostHookFromEndSpan(SpanInterface $span, ?Closure $doBeforeSpanEnd = null): ?callable
+    {
         if ($span->isNoop()) {
             return null;
         }
@@ -101,24 +141,15 @@ final class AutoInstrumentationUtil
          * @param int   $numberOfStackFramesToSkip
          * @param bool  $hasExitedByException
          * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         *
+         * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
          */
-        return function (
-            int $numberOfStackFramesToSkip,
-            bool $hasExitedByException,
-            $returnValueOrThrown
-        ) use (
-            $span,
-            $doBeforeSpanEnd
-        ): void {
+        return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($span, $doBeforeSpanEnd): void {
             if ($doBeforeSpanEnd !== null) {
                 $doBeforeSpanEnd($hasExitedByException, $returnValueOrThrown);
             }
-            self::endSpan(
-                $numberOfStackFramesToSkip + 1,
-                $span,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
+            /** @var 0|positive-int $numberOfStackFramesToSkip */
+            self::endSpan($numberOfStackFramesToSkip + 1, $span, $hasExitedByException, $returnValueOrThrown);
         };
     }
 
@@ -138,120 +169,112 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param bool   $isOfExpectedType
-     * @param string $dbgExpectedType
-     * @param mixed  $dbgActualValue
+     * @param bool    $isOfExpectedType
+     * @param string  $dbgExpectedType
+     * @param mixed   $dbgActualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyType(bool $isOfExpectedType, string $dbgExpectedType, $dbgActualValue): bool
+    public function verifyType(bool $isOfExpectedType, string $dbgExpectedType, $dbgActualValue, ?string $dbgParamName = null): bool
     {
         if ($isOfExpectedType) {
             return true;
         }
 
+        $ctx = [
+            'expected type' => $dbgExpectedType,
+            'actual type'   => DbgUtil::getType($dbgActualValue),
+            'actual value'  => $this->logger->possiblySecuritySensitive($dbgActualValue),
+        ];
+        if ($dbgParamName !== null) {
+            $ctx = array_merge(['parameter name' => $dbgParamName], $ctx);
+        }
+
         ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Actual type does not match the expected type',
-            [
-                'expected type' => $dbgExpectedType,
-                'actual type'   => DbgUtil::getType($dbgActualValue),
-                'actual value'  => $this->logger->possiblySecuritySensitive($dbgActualValue),
-            ]
-        );
+        && $loggerProxy->includeStackTrace()->log('Actual type does not match the expected type', $ctx);
         return false;
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsString($actualValue): bool
+    public function verifyIsString($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_string($actualValue), 'string', $actualValue);
+        return $this->verifyType(is_string($actualValue), 'string', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsInt($actualValue): bool
+    public function verifyIsInt($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_int($actualValue), 'int', $actualValue);
+        return $this->verifyType(is_int($actualValue), 'int', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsBool($actualValue): bool
+    public function verifyIsBool($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_bool($actualValue), 'bool', $actualValue);
+        return $this->verifyType(is_bool($actualValue), 'bool', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed  $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsArray($actualValue): bool
+    public function verifyIsArray($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_array($actualValue), 'array', $actualValue);
+        return $this->verifyType(is_array($actualValue), 'array', $actualValue, $dbgParamName);
     }
 
     /**
-     * @param mixed $actualValue
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
      *
      * @return bool
      */
-    public function verifyIsObject($actualValue): bool
+    public function verifyIsObject($actualValue, ?string $dbgParamName = null): bool
     {
-        return $this->verifyType(is_object($actualValue), 'object', $actualValue);
+        return $this->verifyType(is_object($actualValue), 'object', $actualValue, $dbgParamName);
     }
 
     /**
      * @param class-string $expectedClass
      * @param mixed        $actualValue
+     * @param ?string      $dbgParamName
      *
      * @return bool
      */
-    public function verifyInstanceOf(string $expectedClass, $actualValue): bool
+    public function verifyInstanceOf(string $expectedClass, $actualValue, ?string $dbgParamName = null): bool
     {
-        if ($actualValue === null) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is null and thus it is not an instance the expected class',
-                ['expected class' => $expectedClass]
-            );
+        if (!$this->verifyIsObject($actualValue, $dbgParamName)) {
             return false;
         }
-
-        if (!is_object($actualValue)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is not an object and thus it is not an instance the expected class',
-                [
-                    'expected class' => $expectedClass,
-                    'actual type'    => DbgUtil::getType($actualValue),
-                    'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
-                ]
-            );
-            return false;
-        }
-
         if (!($actualValue instanceof $expectedClass)) {
+            $ctx = [
+                'expected class' => $expectedClass,
+                'actual type'    => DbgUtil::getType($actualValue),
+                'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
+            ];
+            if ($dbgParamName !== null) {
+                $ctx = array_merge(['parameter name' => $dbgParamName], $ctx);
+            }
+
             ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Actual value is not an instance the expected class',
-                [
-                    'expected class' => $expectedClass,
-                    'actual type'    => DbgUtil::getType($actualValue),
-                    'actual value'   => $this->logger->possiblySecuritySensitive($actualValue),
-                ]
-            );
+            && $loggerProxy->log('Actual value is not an instance the expected class', $ctx);
             return false;
         }
 
@@ -259,14 +282,27 @@ final class AutoInstrumentationUtil
     }
 
     /**
-     * @param int     $expectedMinNumberOfArgs
+     * @param mixed   $actualValue
+     * @param bool    $shouldCheckSyntaxOnly
+     * @param ?string $dbgParamName
+     *
+     * @return bool
+     */
+    public function verifyIsCallable($actualValue, bool $shouldCheckSyntaxOnly, ?string $dbgParamName = null): bool
+    {
+        $isCallable = is_callable($actualValue, $shouldCheckSyntaxOnly);
+        return $this->verifyType($isCallable, 'callable', $actualValue, $dbgParamName);
+    }
+
+    /**
+     * @param int     $expectedMinArgsCount
      * @param mixed[] $interceptedCallArgs
      *
      * @return bool
      */
-    public function verifyMinArgsCount(int $expectedMinNumberOfArgs, array $interceptedCallArgs): bool
+    public function verifyMinArgsCount(int $expectedMinArgsCount, array $interceptedCallArgs): bool
     {
-        if (count($interceptedCallArgs) >= $expectedMinNumberOfArgs) {
+        if (count($interceptedCallArgs) >= $expectedMinArgsCount) {
             return true;
         }
 
@@ -274,9 +310,33 @@ final class AutoInstrumentationUtil
         && $loggerProxy->log(
             'Actual number of arguments is less than expected',
             [
-                'expected min number of arguments' => $expectedMinNumberOfArgs,
-                'actual number of arguments'       => count($interceptedCallArgs),
-                'actual arguments'                 => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+                'expected minimal number of arguments' => $expectedMinArgsCount,
+                'actual number of arguments'           => count($interceptedCallArgs),
+                'actual arguments'                     => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+            ]
+        );
+        return false;
+    }
+
+    /**
+     * @param int     $expectedArgsCount
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    public function verifyExactArgsCount(int $expectedArgsCount, array $interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) === $expectedArgsCount) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Actual number of arguments does not equal the expected number',
+            [
+                'expected number of arguments' => $expectedArgsCount,
+                'actual number of arguments'   => count($interceptedCallArgs),
+                'actual arguments'             => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         return false;

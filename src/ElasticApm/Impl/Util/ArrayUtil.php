@@ -157,7 +157,7 @@ final class ArrayUtil
     }
 
     /**
-     * @template TKey of string|int
+     * @template TKey of array-key
      * @template TValue
      *
      * @param TKey                $key
@@ -176,7 +176,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */
@@ -186,7 +186,7 @@ final class ArrayUtil
     }
 
     /**
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      *
      * @return bool
      */
@@ -223,17 +223,5 @@ final class ArrayUtil
         if (array_key_exists($key, $array)) {
             unset($array[$key]);
         }
-    }
-
-    /**
-     * @template TKey of string|int
-     * @template TValue
-     *
-     * @param array<TKey, TValue> $from
-     * @param array<TKey, TValue> $to
-     */
-    public static function append(array $from, /* in,out */ array &$to): void
-    {
-        $to = array_merge($to, $from);
     }
 }

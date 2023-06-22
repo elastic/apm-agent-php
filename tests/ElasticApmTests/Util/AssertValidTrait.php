@@ -24,12 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
-use PHPUnit\Framework\TestCase;
 
 trait AssertValidTrait
 {
@@ -41,34 +39,32 @@ trait AssertValidTrait
      */
     protected static function assertValidIdEx($id, int $expectedSizeInBytes): string
     {
-        TestCase::assertIsString($id);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        TestCaseBase::assertIsString($id);
         /** @var string $id */
-        TestCase::assertTrue(
-            IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes),
-            LoggableToString::convert(['$id' => $id, '$expectedSizeInBytes' => $expectedSizeInBytes])
-        );
+        TestCaseBase::assertTrue(IdValidationUtil::isValidHexNumberString($id, $expectedSizeInBytes));
         return $id;
     }
 
     /**
      * @param mixed $stringValue
      * @param bool  $isNullable
-     * @param int   $maxLength
+     * @param ?int  $maxLength
      *
      * @return ?string
      */
     public static function assertValidString($stringValue, bool $isNullable, ?int $maxLength = null): ?string
     {
         if ($stringValue === null) {
-            TestCase::assertTrue($isNullable);
+            TestCaseBase::assertTrue($isNullable);
             return null;
         }
 
-        TestCase::assertIsString($stringValue);
+        TestCaseBase::assertIsString($stringValue);
         /** @var string $stringValue */
 
         if ($maxLength !== null) {
-            TestCase::assertLessThanOrEqual($maxLength, strlen($stringValue));
+            TestCaseBase::assertLessThanOrEqual($maxLength, strlen($stringValue));
         }
         return $stringValue;
     }
@@ -81,6 +77,18 @@ trait AssertValidTrait
     public static function assertValidNullableKeywordString($keywordString): ?string
     {
         return self::assertValidString($keywordString, /* isNullable: */ true, Constants::KEYWORD_STRING_MAX_LENGTH);
+    }
+
+    /**
+     * @param mixed $stringValue
+     *
+     * @return string
+     */
+    public static function assertValidNonNullableString($stringValue): string
+    {
+        /** @var string $result */
+        $result = self::assertValidString($stringValue, /* isNullable: */ false);
+        return $result;
     }
 
     /**
@@ -120,9 +128,19 @@ trait AssertValidTrait
      * @param Optional<?string> $expected
      * @param ?string           $actual
      */
-    public static function assertSameNullableNonKeywordStringExpectedOptional(Optional $expected, ?string $actual): void
+    public static function assertSameNullableStringExpectedOptional(Optional $expected, ?string $actual): void
     {
-        self::assertValidNullableNonKeywordString($actual);
+        self::assertValidNullableString($actual);
+        TestCaseBase::assertSameExpectedOptional($expected, $actual);
+    }
+
+    /**
+     * @param Optional<string> $expected
+     * @param string           $actual
+     */
+    public static function assertSameNonNullableStringExpectedOptional(Optional $expected, string $actual): void
+    {
+        self::assertValidNonNullableString($actual);
         TestCaseBase::assertSameExpectedOptional($expected, $actual);
     }
 
@@ -131,7 +149,7 @@ trait AssertValidTrait
      *
      * @return string
      */
-    public static function assertValidNullableNonKeywordString($nonKeywordString): ?string
+    public static function assertValidNullableString($nonKeywordString): ?string
     {
         return self::assertValidString($nonKeywordString, /* isNullable: */ true);
     }
@@ -161,7 +179,7 @@ trait AssertValidTrait
         TestCaseBase::assertIsNumber($duration);
         /** @var float|int $duration */
 
-        TestCase::assertGreaterThanOrEqual(0, $duration);
+        TestCaseBase::assertGreaterThanOrEqual(0, $duration);
         return floatval($duration);
     }
 
@@ -172,9 +190,9 @@ trait AssertValidTrait
      */
     public static function assertValidStacktraceFrameFilename($filename): string
     {
-        TestCase::assertIsString($filename);
+        TestCaseBase::assertIsString($filename);
         /** @var string $filename */
-        TestCase::assertTrue(!TextUtil::isEmptyString($filename));
+        TestCaseBase::assertTrue(!TextUtil::isEmptyString($filename));
 
         return $filename;
     }
@@ -186,9 +204,9 @@ trait AssertValidTrait
      */
     public static function assertValidStacktraceFrameLineNumber($lineNumber): int
     {
-        TestCase::assertTrue(is_int($lineNumber));
+        TestCaseBase::assertTrue(is_int($lineNumber));
         /** @var int $lineNumber */
-        TestCase::assertTrue($lineNumber >= 0);
+        TestCaseBase::assertTrue($lineNumber >= 0);
 
         return $lineNumber;
     }
@@ -201,9 +219,9 @@ trait AssertValidTrait
     public static function assertValidStacktraceFrameFunction($function): ?string
     {
         if ($function !== null) {
-            TestCase::assertIsString($function);
+            TestCaseBase::assertIsString($function);
             /** @var string $function */
-            TestCase::assertTrue(!TextUtil::isEmptyString($function));
+            TestCaseBase::assertTrue(!TextUtil::isEmptyString($function));
         }
 
         return $function;
@@ -229,7 +247,7 @@ trait AssertValidTrait
     /**
      * @param mixed $value
      *
-     * @return int|null
+     * @return ?int
      */
     public static function assertValidNullableHttpStatusCode($value): ?int
     {
@@ -237,8 +255,7 @@ trait AssertValidTrait
             return null;
         }
 
-        TestCase::assertTrue(is_int($value));
-        assert(is_int($value));
+        TestCaseBase::assertIsInt($value);
         return $value;
     }
 
@@ -249,7 +266,7 @@ trait AssertValidTrait
      */
     public static function assertValidBool($value): bool
     {
-        TestCase::assertIsBool($value);
+        TestCaseBase::assertIsBool($value);
         /** @var bool $value */
         return $value;
     }
@@ -264,54 +281,59 @@ trait AssertValidTrait
     }
 
     /**
+     * @param mixed $count
+     * @param int   $minValue
+     *
+     * @return int
+     */
+    public static function assertValidCount($count, int $minValue = 0): int
+    {
+        TestCaseBase::assertIsInt($count);
+        /** @var int $count */
+        TestCaseBase::assertGreaterThanOrEqual($minValue, $count);
+        return $count;
+    }
+
+    /**
      * @param mixed $original
      * @param mixed $dto
      */
-    public static function assertEqualOriginalAndDto($original, $dto, string $dbgPath = ''): void
+    public static function assertEqualOriginalAndDto($original, $dto): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['original type' => DbgUtil::getType($original), 'dto type' => DbgUtil::getType($dto)]);
+
         if (is_object($dto)) {
-            TestCase::assertIsObject($original);
+            TestCaseBase::assertIsObject($original);
             $originalPropNameToVal = get_object_vars($original);
+            $dbgCtx->add(['originalPropNameToVal' => $originalPropNameToVal]);
+            $dbgCtx->pushSubScope();
             foreach (get_object_vars($dto) as $dtoPropName => $dtoPropVal) {
-                $ctx = LoggableToString::convert(
-                    [
-                        'dtoPropName'           => $dtoPropName,
-                        'originalPropNameToVal' => $originalPropNameToVal,
-                        'original'              => $original,
-                        'original type'         => DbgUtil::getType($original),
-                        'dto'                   => $dto,
-                        'dto type'              => DbgUtil::getType($dto),
-                        'dbgPath'               => $dbgPath,
-                    ]
-                );
+                $dbgCtx->clearCurrentSubScope(['dtoPropName' => $dtoPropName, 'dtoPropVal' => $dtoPropVal]);
                 if ($dtoPropVal !== null) {
-                    TestCase::assertArrayHasKey($dtoPropName, $originalPropNameToVal, $ctx);
+                    TestCaseBase::assertArrayHasKey($dtoPropName, $originalPropNameToVal);
                 }
                 if (array_key_exists($dtoPropName, $originalPropNameToVal)) {
-                    self::assertEqualOriginalAndDto(
-                        $originalPropNameToVal[$dtoPropName],
-                        $dtoPropVal,
-                        ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '->' . $dtoPropName /* dbgPath */
-                    );
+                    self::assertEqualOriginalAndDto($originalPropNameToVal[$dtoPropName], $dtoPropVal);
                 }
             }
+            $dbgCtx->popSubScope();
             return;
         }
 
         if (is_array($dto)) {
-            TestCase::assertIsArray($original);
-            TestCase::assertSame(count($original), count($dto));
+            TestCaseBase::assertIsArray($original);
+            TestCaseBase::assertSameCount($original, $dto);
+            $dbgCtx->pushSubScope();
             foreach ($dto as $dtoArrayKey => $dtoArrayVal) {
-                TestCase::assertArrayHasKey($dtoArrayKey, $original);
-                self::assertEqualOriginalAndDto(
-                    $original[$dtoArrayKey],
-                    $dtoArrayVal,
-                    ($dbgPath === '' ? DbgUtil::getType($original) : $dbgPath) . '[' . $dtoArrayKey . ']' /* dbgPath */
-                );
+                $dbgCtx->clearCurrentSubScope(['dtoArrayKey' => $dtoArrayKey, 'dtoArrayVal' => $dtoArrayVal]);
+                TestCaseBase::assertArrayHasKey($dtoArrayKey, $original);
+                self::assertEqualOriginalAndDto($original[$dtoArrayKey], $dtoArrayVal);
             }
+            $dbgCtx->popSubScope();
             return;
         }
 
-        TestCase::assertSame($original, $dto);
+        TestCaseBase::assertSame($original, $dto);
     }
 }

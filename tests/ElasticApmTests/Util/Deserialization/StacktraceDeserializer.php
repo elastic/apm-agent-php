@@ -45,7 +45,7 @@ final class StacktraceDeserializer
         $nextExpectedIndex = 0;
 
         TestCase::assertIsArray($deserializedRawData);
-        /** @var array<mixed, mixed> $deserializedRawData */
+        /** @var array<mixed> $deserializedRawData */
 
         foreach ($deserializedRawData as $key => $value) {
             TestCase::assertSame($nextExpectedIndex, $key);
@@ -73,7 +73,7 @@ final class StacktraceDeserializer
         $function = null;
 
         TestCase::assertIsArray($deserializedRawData);
-        /** @var array<mixed, mixed> $deserializedRawData */
+        /** @var array<mixed> $deserializedRawData */
         foreach ($deserializedRawData as $key => $value) {
             switch ($key) {
                 case 'filename':

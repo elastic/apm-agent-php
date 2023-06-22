@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Countable;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionWithDefaultValueMetadata;
 use Elastic\Apm\Impl\Constants;
@@ -36,8 +37,11 @@ use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use Exception;
+use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\AssertionFailedError;
+use PHPUnit\Framework\Constraint\Constraint;
 use PHPUnit\Framework\Constraint\Exception as ConstraintException;
-use PHPUnit\Framework\Constraint\GreaterThan;
 use PHPUnit\Framework\Constraint\IsEqual;
 use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\Constraint\LessThan;
@@ -59,12 +63,12 @@ class TestCaseBase extends TestCase
 
     public static function assertTransactionEquals(TransactionDto $expected, TransactionDto $actual): void
     {
-        self::assertEquals($expected, $actual);
+        self::assertEqualsEx($expected, $actual);
     }
 
     public static function assertSpanEquals(SpanDto $expected, SpanDto $actual): void
     {
-        self::assertEquals($expected, $actual);
+        self::assertEqualsEx($expected, $actual);
     }
 
     /**
@@ -106,19 +110,18 @@ class TestCaseBase extends TestCase
      */
     public static function assertListArrayIsSubsetOf(array $subSet, array $largerSet): void
     {
-        self::assertTrue(
-            count(array_intersect($subSet, $largerSet)) === count($subSet),
-            LoggableToString::convert(
-                [
-                    'array_diff'             => array_diff($subSet, $largerSet),
-                    'count(array_intersect)' => count(array_intersect($subSet, $largerSet)),
-                    'count($subSet)'         => count($subSet),
-                    'array_intersect'        => array_intersect($subSet, $largerSet),
-                    '$subSet'                => $subSet,
-                    '$largerSet'             => $largerSet,
-                ]
-            )
+        AssertMessageStack::newScope(
+            $dbgCtx,
+            [
+                'array_diff'             => array_diff($subSet, $largerSet),
+                'count(array_intersect)' => count(array_intersect($subSet, $largerSet)),
+                'count($subSet)'         => count($subSet),
+                'array_intersect'        => array_intersect($subSet, $largerSet),
+                '$subSet'                => $subSet,
+                '$largerSet'             => $largerSet,
+            ]
         );
+        self::assertTrue(count(array_intersect($subSet, $largerSet)) === count($subSet));
     }
 
     /**
@@ -144,23 +147,20 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<mixed, mixed> $subSet
-     * @param array<mixed, mixed> $largerSet
+     * @param array<mixed> $subSet
+     * @param array<mixed> $largerSet
      */
     public static function assertMapArrayIsSubsetOf(array $subSet, array $largerSet): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $dbgCtx->pushSubScope();
         foreach ($subSet as $key => $value) {
-            $ctx = LoggableToString::convert(
-                [
-                    '$key'       => $key,
-                    '$value'     => $value,
-                    '$subSet'    => $subSet,
-                    '$largerSet' => $largerSet,
-                ]
-            );
-            self::assertArrayHasKey($key, $largerSet, $ctx);
-            self::assertSameEx($value, $largerSet[$key], $ctx);
+            $dbgCtx->clearCurrentSubScope(['$key' => $key, '$value' => $value]);
+            self::assertArrayHasKey($key, $largerSet);
+            self::assertSameEx($value, $largerSet[$key]);
         }
+        $dbgCtx->popSubScope();
     }
 
     public static function getExecutionSegmentContext(ExecutionSegmentDto $execSegData): ?ExecutionSegmentContextDto
@@ -196,9 +196,10 @@ class TestCaseBase extends TestCase
      */
     public static function assertLabelsCount(int $expectedCount, ExecutionSegmentDto $execSegData): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $context = self::getExecutionSegmentContext($execSegData);
         if ($context === null || $context->labels === null) {
-            self::assertSame(0, $expectedCount, LoggableToString::convert($execSegData));
+            self::assertSame(0, $expectedCount);
             return;
         }
         self::assertCount($expectedCount, $context->labels);
@@ -233,14 +234,14 @@ class TestCaseBase extends TestCase
         return $context->labels[$key];
     }
 
-    public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key, string $message = ''): void
+    public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $context = self::getExecutionSegmentContext($execSegData);
-        $dbgCtx = ['key' => $key, 'execSegData' => $execSegData, 'message' => $message];
-        $dbgCtxStr = LoggableToString::convert($dbgCtx);
-        self::assertNotNull($context, $dbgCtxStr);
-        self::assertNotNull($context->labels, $dbgCtxStr);
-        self::assertArrayHasKey($key, $context->labels, $dbgCtxStr);
+        self::assertNotNull($context);
+        self::assertNotNull($context->labels);
+        self::assertArrayHasKey($key, $context->labels);
     }
 
     public static function assertNotHasLabel(ExecutionSegmentDto $execSegData, string $key): void
@@ -253,26 +254,28 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<mixed, mixed> $actual
+     * @param array<mixed> $actual
      */
     public static function assertArrayIsList(array $actual): void
     {
-        TestCase::assertTrue(ArrayUtil::isList($actual), LoggableToString::convert(['$actual' => $actual]));
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertTrue(ArrayUtil::isList($actual));
     }
 
     /**
-     * @param mixed[]              $expected
-     * @param mixed[]              $actual
-     * @param array<string, mixed> $dbgCtxOuter
+     * @param mixed[] $expected
+     * @param mixed[] $actual
      */
-    public static function assertEqualLists(array $expected, array $actual, array $dbgCtxOuter = []): void
+    public static function assertEqualLists(array $expected, array $actual): void
     {
-        $dbgCtxTop = array_merge(['expected' => $expected, 'actual' => $actual], $dbgCtxOuter);
-        self::assertSame(count($expected), count($actual), LoggableToString::convert($dbgCtxTop));
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSame(count($expected), count($actual));
+        $dbgCtx->pushSubScope();
         foreach (RangeUtil::generateUpTo(count($expected)) as $i) {
-            $dbgCtxPerIndex = array_merge(['i' => $i], $dbgCtxTop);
-            self::assertSame($expected[$i], $actual[$i], LoggableToString::convert($dbgCtxPerIndex));
+            $dbgCtx->clearCurrentSubScope(['i' => $i]);
+            self::assertSame($expected[$i], $actual[$i]);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -287,29 +290,36 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<mixed, mixed> $subsetMap
-     * @param array<mixed, mixed> $containingMap
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $subsetMap
+     * @param array<TKey, TValue> $containingMap
      */
-    public static function assertMapIsSubsetOf(array $subsetMap, array $containingMap, string $message = ''): void
+    public static function assertMapIsSubsetOf(array $subsetMap, array $containingMap): void
     {
-        $ctx = $message === ''
-            ? LoggableToString::convert(['subsetMap' => $subsetMap, 'containingMap' => $containingMap])
-            : $message;
-        self::assertGreaterThanOrEqual(count($subsetMap), count($containingMap), $ctx);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThanOrEqual(count($subsetMap), count($containingMap));
+        $dbgCtx->pushSubScope();
         foreach ($subsetMap as $subsetMapKey => $subsetMapVal) {
-            self::assertArrayHasKey($subsetMapKey, $containingMap, $ctx);
-            self::assertEquals($subsetMapVal, $containingMap[$subsetMapKey], $ctx);
+            $dbgCtx->clearCurrentSubScope(['subsetMapKey' => $subsetMapKey, 'subsetMapVal' => $subsetMapVal]);
+            self::assertArrayHasKey($subsetMapKey, $containingMap);
+            self::assertEqualsEx($subsetMapVal, $containingMap[$subsetMapKey]);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
-     * @param array<mixed, mixed> $expected
-     * @param array<mixed, mixed> $actual
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $expected
+     * @param array<TKey, TValue> $actual
      */
-    public static function assertEqualMaps(array $expected, array $actual, string $message = ''): void
+    public static function assertEqualMaps(array $expected, array $actual): void
     {
-        self::assertMapIsSubsetOf($expected, $actual, $message);
-        self::assertMapIsSubsetOf($actual, $expected, $message);
+        self::assertMapIsSubsetOf($expected, $actual);
+        self::assertMapIsSubsetOf($actual, $expected);
     }
 
     /**
@@ -375,7 +385,7 @@ class TestCaseBase extends TestCase
     /**
      * @return iterable<array{bool}>
      */
-    public function boolDataProvider(): iterable
+    public static function boolDataProvider(): iterable
     {
         yield [true];
         yield [false];
@@ -425,87 +435,65 @@ class TestCaseBase extends TestCase
         self::assertTrue(true);
     }
 
+    protected static function addMessageStackToException(Exception $ex): void
+    {
+        $formattedContextsStack = LoggableToString::convert(AssertMessageStack::getContextsStack(), /* prettyPrint */ true);
+        AssertMessageStackExceptionHelper::setMessage(
+            $ex,
+            $ex->getMessage()
+            . "\n" . 'AssertMessageStack begin' . "\n"
+            . $formattedContextsStack
+            . "\n" . 'AssertMessageStack end'
+        );
+    }
+
     /**
      * @param mixed  $expected
      * @param mixed  $actual
-     * @param string $message
      */
-    public static function assertSameNullness($expected, $actual, string $message = ''): void
+    public static function assertSameNullness($expected, $actual): void
     {
-        TestCase::assertThat(
-            $actual,
-            ($expected === null) ? TestCase::isNull() : TestCase::logicalNot(TestCase::isNull()),
-            LoggableToString::convert(
-                [
-                    '$expected' => $expected,
-                    '$actual' => $actual,
-                    $message
-                ]
-            )
-        );
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSame($expected === null, $actual === null);
     }
 
     /**
-     * @param mixed  $actual
-     * @param string $message
+     * @param mixed              $actual
      *
-     * @psalm-assert int|float $actual
+     * @phpstan-assert int|float $actual
      */
-    public static function assertIsNumber($actual, string $message = ''): void
+    public static function assertIsNumber($actual): void
     {
-        TestCase::assertThat(
-            $actual,
-            TestCase::logicalOr(new IsType(IsType::TYPE_INT), new IsType(IsType::TYPE_FLOAT)),
-            $message
-        );
-    }
-
-    public static function assertGreaterThanZero(int $actual, string $message = ''): void
-    {
-        TestCase::assertGreaterThan(0, $actual, $message);
+        self::assertThat($actual, Assert::logicalOr(new IsType(IsType::TYPE_INT), new IsType(IsType::TYPE_FLOAT)));
     }
 
     /**
-     * @param int|float $rangeBegin
-     * @param int|float $actual
-     * @param int|float $rangeEnd
-     * @param string    $message
+     * @param int|float  $rangeBegin
+     * @param int|float  $actual
+     * @param int|float  $rangeEnd
      */
-    public static function assertInClosedRange($rangeBegin, $actual, $rangeEnd, string $message = ''): void
+    public static function assertInClosedRange($rangeBegin, $actual, $rangeEnd): void
     {
-        TestCase::assertThat(
-            $actual,
-            TestCase::logicalAnd(
-                TestCase::logicalOr(new IsEqual($rangeBegin), new GreaterThan($rangeBegin)),
-                TestCase::logicalOr(new IsEqual($rangeEnd), new LessThan($rangeEnd))
-            ),
-            $message
-        );
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThanOrEqual($rangeBegin, $actual);
+        self::assertLessThanOrEqual($rangeEnd, $actual);
     }
 
     public static function assertLessThanOrEqualTimestamp(float $before, float $after): void
     {
-        TestCase::assertThat(
-            $before,
-            TestCase::logicalOr(
-                new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS),
-                new LessThan($after)
-            ),
-            LoggableToString::convert(
-                [
-                    'before'         => TimeUtilForTests::timestampToLoggable($before),
-                    'after'          => TimeUtilForTests::timestampToLoggable($after),
-                    'after - before' => TimeUtilForTests::timestampToLoggable($after - $before),
-                ]
-            )
+        AssertMessageStack::newScope(
+            $dbgCtx,
+            [
+                'before'         => TimeUtilForTests::timestampToLoggable($before),
+                'after'          => TimeUtilForTests::timestampToLoggable($after),
+                'after - before' => TimeUtilForTests::timestampToLoggable($after - $before),
+            ]
         );
+        self::assertThat($before, Assert::logicalOr(new IsEqual($after, /* delta: */ self::TIMESTAMP_COMPARISON_PRECISION_MICROSECONDS), new LessThan($after)));
     }
 
-    public static function assertTimestampInRange(
-        float $pastTimestamp,
-        float $timestamp,
-        float $futureTimestamp
-    ): void {
+    public static function assertTimestampInRange(float $pastTimestamp, float $timestamp, float $futureTimestamp): void
+    {
         TestCaseBase::assertLessThanOrEqualTimestamp($pastTimestamp, $timestamp);
         TestCaseBase::assertLessThanOrEqualTimestamp($timestamp, $futureTimestamp);
     }
@@ -518,18 +506,11 @@ class TestCaseBase extends TestCase
     /**
      * @param TransactionDto         $transaction
      * @param array<string, SpanDto> $idToSpan
-     * @param bool                    $forceEnableFlakyAssertions
+     * @param ?bool                  $flakyAssertionsEnabled
      */
-    protected static function assertValidTransactionAndSpans(
-        TransactionDto $transaction,
-        array $idToSpan,
-        bool $forceEnableFlakyAssertions = false
-    ): void {
-        TraceValidator::validate(
-            new TraceActual([$transaction->id => $transaction], $idToSpan),
-            null /* <- expected */,
-            $forceEnableFlakyAssertions
-        );
+    protected static function assertValidTransactionAndSpans(TransactionDto $transaction, array $idToSpan, ?bool $flakyAssertionsEnabled = null): void
+    {
+        TraceValidator::validate(new TraceActual([$transaction->id => $transaction], $idToSpan), /* expectations */ null, $flakyAssertionsEnabled);
     }
 
     /**
@@ -546,25 +527,18 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param string|int           $expectedKey
-     * @param mixed                $expectedVal
-     * @param array<string, mixed> $actualArray
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param TKey                $expectedKey
+     * @param TValue              $expectedVal
+     * @param array<TKey, TValue> $actualArray
      */
-    public static function assertSameValueInArray(
-        $expectedKey,
-        $expectedVal,
-        array $actualArray,
-        string $message = ''
-    ): void {
-        $ctx = (!empty($message)) ? $message : LoggableToString::convert(
-            [
-                'expectedKey' => $expectedKey,
-                'expectedVal' => $expectedVal,
-                'actualArray' => $actualArray,
-            ]
-        );
-        self::assertArrayHasKey($expectedKey, $actualArray, $ctx);
-        self::assertSame($expectedVal, $actualArray[$expectedKey], $ctx);
+    public static function assertSameValueInArray($expectedKey, $expectedVal, array $actualArray): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertArrayHasKey($expectedKey, $actualArray);
+        self::assertSame($expectedVal, $actualArray[$expectedKey]);
     }
 
     /**
@@ -575,17 +549,19 @@ class TestCaseBase extends TestCase
     public static function assertEqualValueInArray(string $expectedKey, $expectedVal, array $actualArray): void
     {
         self::assertArrayHasKey($expectedKey, $actualArray);
-        self::assertEquals($expectedVal, $actualArray[$expectedKey]);
+        self::assertEqualsEx($expectedVal, $actualArray[$expectedKey]);
     }
 
     /**
-     * @template T
+     * @template T of int|float
      *
      * @param T $rangeBegin
      * @param T $val
      * @param T $rangeInclusiveEnd
      *
      * @return void
+     *
+     * @noinspection PhpMissingParamTypeInspection
      */
     public static function assertInRangeInclusive($rangeBegin, $val, $rangeInclusiveEnd): void
     {
@@ -611,7 +587,7 @@ class TestCaseBase extends TestCase
     /**
      * @param string|int          $key
      * @param mixed               $expectedValue
-     * @param array<mixed, mixed> $array
+     * @param array<mixed> $array
      * @param string              $message
      *
      * @return void
@@ -620,6 +596,16 @@ class TestCaseBase extends TestCase
     {
         self::assertArrayHasKey($key, $array, $message);
         self::assertSame($expectedValue, $array[$key], $message);
+    }
+
+    /**
+     * @param array<mixed>|Countable $expected
+     * @param array<mixed>|Countable $actual
+     */
+    public static function assertSameCount($expected, $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSame(count($expected), count($actual));
     }
 
     /**
@@ -639,7 +625,7 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param iterable<array<string, mixed>> $srcDataProvider
+     * @param iterable<array<mixed>> $srcDataProvider
      *
      * @return iterable<string, array<mixed>>
      */
@@ -651,6 +637,455 @@ class TestCaseBase extends TestCase
             $dataSetName .= ' ' . LoggableToString::convert($namedValuesMap);
             yield $dataSetName => array_values($namedValuesMap);
             ++$dataSetIndex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @return never
+     * @psalm-return never-return
+     */
+    public static function fail(string $message = ''): void
+    {
+        try {
+            Assert::fail($message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $condition
+     */
+    public static function assertTrue($condition, string $message = ''): void
+    {
+        try {
+            Assert::assertTrue($condition, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCount(int $expectedCount, $haystack, string $message = ''): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(['haystack count' => count($haystack)]);
+        try {
+            Assert::assertCount($expectedCount, $haystack, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCountAtLeast(int $expectedMinCount, $haystack): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param int|float  $expected
+     * @param int|float  $actual
+     */
+    public static function assertGreaterThanOrEqual($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertGreaterThanOrEqual($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $condition
+     */
+    public static function assertNotFalse($condition, string $message = ''): void
+    {
+        try {
+            Assert::assertNotFalse($condition, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertNotNull($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertNotNull($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertSame($expected, $actual, string $message = ''): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        try {
+            Assert::assertSame($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertNotEmpty($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertNotEmpty($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param array-key    $key
+     * @param array<mixed> $array
+     */
+    public static function assertArrayHasKey($key, $array, string $message = ''): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        try {
+            Assert::assertArrayHasKey($key, $array, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param int|float  $expected
+     * @param int|float  $actual
+     */
+    public static function assertGreaterThan($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertGreaterThan($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertNull($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertNull($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertIsString($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertIsString($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $value
+     */
+    public static function assertThat($value, Constraint $constraint, string $message = ''): void
+    {
+        try {
+            Assert::assertThat($value, $constraint, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertIsInt($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertIsInt($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertIsBool($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertIsBool($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param int|float  $expected
+     * @param int|float  $actual
+     */
+    public static function assertLessThanOrEqual($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertLessThanOrEqual($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertIsArray($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertIsArray($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $actual
+     */
+    public static function assertEmpty($actual, string $message = ''): void
+    {
+        try {
+            Assert::assertEmpty($actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertNotCount(int $expectedCount, $haystack, string $message = ''): void
+    {
+        try {
+            Assert::assertNotCount($expectedCount, $haystack, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param int|float  $expected
+     * @param int|float  $actual
+     */
+    public static function assertLessThan($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertLessThan($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $condition
+     */
+    public static function assertFalse($condition, string $message = ''): void
+    {
+        try {
+            Assert::assertFalse($condition, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param array<mixed>|Countable $expected
+     * @param array<mixed>|Countable $actual
+     */
+    public static function assertSameSize($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertSameSize($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualsCanonicalizing($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertEqualsCanonicalizing($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @template TExpected of object
+     *
+     * @param class-string<TExpected> $expected
+     * @param mixed                   $actual
+     *
+     * @phpstan-assert TExpected $actual
+     */
+    public static function assertInstanceOf(string $expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertInstanceOf($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertNotEqualsEx($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertNotEquals($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualsEx($expected, $actual, string $message = ''): void
+    {
+        try {
+            Assert::assertEquals($expected, $actual, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @param mixed           $needle
+     * @param iterable<mixed> $haystack
+     */
+    public static function assertContainsEx($needle, iterable $haystack, string $message = ''): void
+    {
+        try {
+            Assert::assertContains($needle, $haystack, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    public static function assertDirectoryDoesNotExist(string $directory, string $message = ''): void
+    {
+        /**
+         * Method assertDirectoryDoesNotExist was added in PHPUnit 9 as an alias for already existing assertDirectoryNotExists
+         * and assertDirectoryNotExists was deprecated.
+         * We still use PHPUnit 8.5 when testing under older PHP versions so we need a facade to work on both
+         *  - PHPUnit 8.5, where assertDirectoryDoesNotExist does not exist
+         *      and
+         *  - PHPUnit 9, where assertDirectoryNotExists is deprecated
+         */
+        if (method_exists(Assert::class, __FUNCTION__)) {
+            Assert::assertDirectoryDoesNotExist($directory, $message);
+        } else {
+            /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */
+            Assert::assertDirectoryNotExists($directory, $message);
         }
     }
 }

@@ -36,9 +36,9 @@ final class MySQLiDbSpanDataExpectationsBuilder extends DbSpanExpectationsBuilde
     /** @var bool */
     private $isOOPApi;
 
-    public function __construct(bool $isOOPApi, SpanExpectations $shared)
+    public function __construct(string $dbType, ?string $dbName, bool $isOOPApi)
     {
-        parent::__construct($shared);
+        parent::__construct($dbType, $dbName);
         $this->isOOPApi = $isOOPApi;
     }
 

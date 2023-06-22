@@ -58,12 +58,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     {
         parent::__construct($tracer);
 
-        $this->logger = $tracer->loggerFactory()->loggerForClass(
-            LogCategory::AUTO_INSTRUMENTATION,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
     }
 
     /** @inheritDoc */
@@ -73,9 +68,9 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     }
 
     /** @inheritDoc */
-    public function otherNames(): array
+    public function keywords(): array
     {
-        return [InstrumentationNames::HTTP_CLIENT];
+        return [InstrumentationKeywords::HTTP_CLIENT];
     }
 
     /** @inheritDoc */
@@ -93,12 +88,9 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         $this->registerDelegatingToHandleTracker($ctx, 'curl_close', self::CURL_CLOSE_ID);
     }
 
-    public function registerDelegatingToHandleTracker(
-        RegistrationContextInterface $ctx,
-        string $funcName,
-        int $funcId
-    ): void {
-        $ctx->interceptCallsToFunction(
+    public function registerDelegatingToHandleTracker(RegistrationContextInterface $ctx, string $funcName, int $funcId): void
+    {
+        $ctx->interceptCallsToInternalFunction(
             $funcName,
             /**
              * @param mixed[] $interceptedCallArgs
@@ -129,26 +121,12 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
          * @param int   $numberOfStackFramesToSkip
          * @param bool  $hasExitedByException
          * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         *
+         * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
          */
-        return function (
-            int $numberOfStackFramesToSkip,
-            bool $hasExitedByException,
-            $returnValueOrThrown
-        ) use (
-            $funcName,
-            $funcId,
-            $interceptedCallArgs,
-            $curlHandleTracker
-        ): void {
-            $this->postHook(
-                $funcName,
-                $funcId,
-                $interceptedCallArgs,
-                $curlHandleTracker,
-                $numberOfStackFramesToSkip + 1,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
+        return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($funcName, $funcId, $interceptedCallArgs, $curlHandleTracker): void {
+            /** @var 0|positive-int $numberOfStackFramesToSkip */
+            $this->postHook($funcName, $funcId, $interceptedCallArgs, $curlHandleTracker, $numberOfStackFramesToSkip + 1, $hasExitedByException, $returnValueOrThrown);
         };
     }
 
@@ -160,6 +138,8 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
      * @param int               $numberOfStackFramesToSkip
      * @param bool              $hasExitedByException
      * @param mixed             $returnValueOrThrown Return value of the intercepted call or thrown object
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     private function postHook(
         string $dbgFuncName,
@@ -170,10 +150,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         bool $hasExitedByException,
         $returnValueOrThrown
     ): void {
-        AutoInstrumentationUtil::assertInterceptedCallNotExitedByException(
-            $hasExitedByException,
-            ['functionName' => $dbgFuncName]
-        );
+        AutoInstrumentationUtil::assertInterceptedCallNotExitedByException($hasExitedByException, ['functionName' => $dbgFuncName]);
 
         switch ($funcId) {
             case self::CURL_INIT_ID:
@@ -184,13 +161,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
             // no need to handle self::CURL_CLOSE because null is returned in preHook
 
             default:
-                $curlHandleTracker->postHook(
-                    $dbgFuncName,
-                    $funcId,
-                    $numberOfStackFramesToSkip + 1,
-                    $interceptedCallArgs,
-                    $returnValueOrThrown
-                );
+                $curlHandleTracker->postHook($dbgFuncName, $funcId, $numberOfStackFramesToSkip + 1, $interceptedCallArgs, $returnValueOrThrown);
         }
     }
 
@@ -223,11 +194,8 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
      *
      * @return ?CurlHandleWrapped
      */
-    public static function extractCurlHandleFromArgs(
-        Logger $logger,
-        string $dbgFuncName,
-        array $interceptedCallArgs
-    ): ?CurlHandleWrapped {
+    public static function extractCurlHandleFromArgs(Logger $logger, string $dbgFuncName, array $interceptedCallArgs): ?CurlHandleWrapped
+    {
         if (count($interceptedCallArgs) !== 0) {
             $curlHandle = $interceptedCallArgs[0];
             if (CurlHandleWrapped::isValidValue($curlHandle)) {
@@ -294,11 +262,8 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
      *
      * @return CurlHandleTracker|null
      */
-    public function createHandleTracker(
-        string $dbgFuncName,
-        int $funcId,
-        array $interceptedCallArgs
-    ): ?CurlHandleTracker {
+    public function createHandleTracker(string $dbgFuncName, int $funcId, array $interceptedCallArgs): ?CurlHandleTracker
+    {
         switch ($funcId) {
             case self::CURL_INIT_ID:
                 return $this->curlInitPreHook($interceptedCallArgs);

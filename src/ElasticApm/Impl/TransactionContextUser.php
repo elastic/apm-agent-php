@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\TransactionContextUserInterface;
 
 /**
@@ -62,9 +63,9 @@ final class TransactionContextUser extends ContextPartWrapper implements Transac
 
 
     /** @inheritDoc */
-    public function prepareForSerialization(): bool
+    public function prepareForSerialization(): int
     {
-        return ($this->id !== null) || ($this->email !== null) || ($this->username !== null);
+        return BoolUtil::toInt(($this->id !== null) || ($this->email !== null) || ($this->username !== null));
     }
 
     /** @inheritDoc */

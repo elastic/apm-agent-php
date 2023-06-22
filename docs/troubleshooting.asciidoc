@@ -31,3 +31,34 @@ You'll need to restart your application for the changes to apply.
 // If that doesn't work, or you don't have access to dynamic configuration, you can disable the agent by setting
 // <<config-enabled,`enabled`>> to `false`.
 // You'll need to restart your application for the changes to apply.
+
+[float]
+[[dev-internal-config-disclaimer]]
+=== Disclaimer for `dev_internal_*` configuration options
+Configuration options starting with `dev_internal_` should be used only for supportability.
+It's recommended to have these options in the configuration for the short periods of time
+while resolving an issue with the agent.
+There is no backward compatability guarantee for these options
+so any one can be changed and/or removed even in a minor or patch release.
+
+[float]
+[[enable-verbose-log-backend-comm]]
+=== Enable verbose log for backend communication
+Configuration option `dev_internal_backend_comm_log_verbose` can be used
+to enable verbose log for the agent's communication with Elastic APM Server.
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE` | `elastic_apm.dev_internal_backend_comm_log_verbose`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `false`    | Boolean
+|============
+
+The log is written under `INFO` level - see <<configure-logging>>.
+
+Also see <<dev-internal-config-disclaimer>>.
