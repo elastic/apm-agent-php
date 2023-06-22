@@ -188,10 +188,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 }
             );
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Listening for incoming requests...',
-                ['serverSocket address' => $serverSocket->getAddress()]
-            );
+            && $loggerProxy->log('Listening for incoming requests...', ['serverSocket address' => $serverSocket->getAddress()]);
             $httpServer->listen($serverSocket);
         }
 

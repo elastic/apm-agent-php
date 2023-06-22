@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
 use RuntimeException;
@@ -41,7 +42,7 @@ final class TestCaseHandle implements LoggableInterface
 {
     use LoggableTrait;
 
-    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
+    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * HttpClientUtilForTests::MAX_WAIT_TIME_SECONDS;
 
     public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
     public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
@@ -268,17 +269,9 @@ final class TestCaseHandle implements LoggableInterface
         }
     }
 
-    private function startBuiltinHttpServerAppCodeHost(
-        Closure $setParamsFunc,
-        string $dbgInstanceName
-    ): BuiltinHttpServerAppCodeHostHandle {
-        $result = new BuiltinHttpServerAppCodeHostHandle(
-            $this,
-            $setParamsFunc,
-            $this->resourcesCleaner,
-            $this->portsInUse,
-            $dbgInstanceName
-        );
+    private function startBuiltinHttpServerAppCodeHost(Closure $setParamsFunc, string $dbgInstanceName): BuiltinHttpServerAppCodeHostHandle
+    {
+        $result = new BuiltinHttpServerAppCodeHostHandle($this, $setParamsFunc, $this->resourcesCleaner, $this->portsInUse, $dbgInstanceName);
         $this->addPortsInUse($result->getHttpServerHandle()->getPorts());
         return $result;
     }
@@ -310,17 +303,33 @@ final class TestCaseHandle implements LoggableInterface
         );
     }
 
-    private function pollForDataFromAgent(
-        ExpectedEventCounts $expectedEventCounts,
-        DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
-    ): bool {
-        $newReceiverEvents = $this->mockApmServer->fetchNewData();
-        $dataFromAgentAccumulator->addReceiverEvents($newReceiverEvents);
+    /**
+     * @return RawDataFromAgentReceiverEvent[]
+     */
+    public function fetchNewDataFromMockApmServer(bool $shouldWait): array
+    {
+        return $this->mockApmServer->fetchNewData($shouldWait);
+    }
+
+    private function pollForDataFromAgent(ExpectedEventCounts $expectedEventCounts, DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator): bool
+    {
+        $dataFromAgentAccumulator->addReceiverEvents($this->mockApmServer->fetchNewData(/* shouldWait */ true));
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
     }
 
     public function getResourcesClient(): ResourcesClient
     {
         return $this->resourcesCleaner->getClient();
+    }
+
+    /**
+     * @param callable(MockApmServer $mockApmServer, MixedMap $args): MockApmServerBehavior $buildCallable
+     * @param array<string, mixed>                                                          $args
+     *
+     * @return void
+     */
+    public function setMockApmServerBehavior(callable $buildCallable, array $args = []): void
+    {
+        $this->mockApmServer->setTestScopedBehavior(MockApmServerBehaviorDto::fromData($buildCallable, $args));
     }
 }

@@ -51,6 +51,8 @@ void backendCommBackoff_onError( BackendCommBackoff* thisObj )
 
     /**
      *  The grace period should be calculated in seconds using the algorithm min(reconnectCount++, 6) ** 2 ± 10%
+     *
+     * @see https://github.com/elastic/apm/blob/d8cb5607dbfffea819ab5efc9b0743044772fb23/specs/agents/transport.md#transport-errors
      */
     enum { maxSequentialErrorsCount = 7 };
 
