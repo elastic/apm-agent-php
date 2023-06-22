@@ -29,12 +29,17 @@ use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionInterface;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DummyExceptionForTests;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 
 class CapturePublicApiTest extends TracerUnitTestCaseBase
 {
     /** @var int */
     private static $callToMethodThrowingDummyExceptionForTestsLineNumber;
+
+    /** @var int */
+    private static $throwingDummyExceptionForTestsLineNumber;
 
     // public function setUp(): void
     // {
@@ -211,11 +216,14 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
     private static function methodThrowingDummyExceptionForTests(): void
     {
+        self::$throwingDummyExceptionForTestsLineNumber = __LINE__ + 1;
         throw new DummyExceptionForTests("A message", 123321);
     }
 
     public function testWhenExceptionThrown(): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
         $throwingFunc = function (bool $shouldThrow): bool {
             if ($shouldThrow) {
                 self::$callToMethodThrowingDummyExceptionForTestsLineNumber = __LINE__ + 1;
@@ -258,20 +266,20 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
 
         // Assert
 
+        $dbgCtx->add(['dataFromAgent' => $this->mockEventSink->dataFromAgent]);
         $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToTransaction);
         $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToSpan);
 
         $this->assertCount(2, $this->mockEventSink->dataFromAgent->idToError);
+        $dbgCtx->pushSubScope();
         foreach ($this->mockEventSink->dataFromAgent->idToError as $error) {
+            $dbgCtx->clearCurrentSubScope(['error' => $error]);
             self::assertSame($throwingRunData['traceId'], $error->traceId);
             self::assertSame($throwingRunData['transactionId'], $error->transactionId);
             self::assertArrayHasKey($error->transactionId, $this->mockEventSink->dataFromAgent->idToTransaction);
             self::assertArrayHasKey($throwingRunData['spanId'], $this->mockEventSink->dataFromAgent->idToSpan);
             self::assertArrayHasKey($error->id, $this->mockEventSink->dataFromAgent->idToError);
-            self::assertTrue(
-                $error->parentId === $throwingRunData['spanId']
-                || $error->parentId === $throwingRunData['transactionId']
-            );
+            self::assertTrue($error->parentId === $throwingRunData['spanId'] || $error->parentId === $throwingRunData['transactionId']);
 
             self::assertNotNull($error->transaction);
             self::assertSame('test_throwing_TX_name', $error->transaction->name);
@@ -288,11 +296,12 @@ class CapturePublicApiTest extends TracerUnitTestCaseBase
             self::assertSame(DummyExceptionForTests::NAMESPACE, $error->exception->module);
             self::assertSame(ClassNameUtil::fqToShort(DummyExceptionForTests::FQ_CLASS_NAME), $error->exception->type);
             self::assertNotNull($error->exception->stacktrace);
-            $topFrame = $error->exception->stacktrace[0];
-            self::assertSame(__CLASS__ . '::methodThrowingDummyExceptionForTests()', $topFrame->function);
-            self::assertSame(__FILE__, $topFrame->filename);
-            self::assertSame(self::$callToMethodThrowingDummyExceptionForTestsLineNumber, $topFrame->lineno);
+            self::assertCountAtLeast(2, $error->exception->stacktrace);
+            StackTraceFrameExpectations::fromLocationOnly(__FILE__, self::$throwingDummyExceptionForTestsLineNumber)->assertMatches($error->exception->stacktrace[0]);
+            StackTraceFrameExpectations::fromClassMethod(__FILE__, self::$callToMethodThrowingDummyExceptionForTestsLineNumber, __CLASS__, /* isStatic */ true, 'methodThrowingDummyExceptionForTests')
+                                       ->assertMatches($error->exception->stacktrace[1]);
         }
+        $dbgCtx->popSubScope();
     }
 
     public function testDefaultExecutionSegmentType(): void

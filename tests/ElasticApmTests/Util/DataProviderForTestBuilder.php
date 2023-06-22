@@ -171,11 +171,8 @@ final class DataProviderForTestBuilder
              * @return iterable<array<mixed>>
              */
             function (array $resultSoFar) use ($dimensionKey, $values): iterable {
-                $expectedKeyForList = 0;
-                foreach (self::adaptArrayToMultiUseIterable($values)() as $key => $val) {
-                    TestCaseBase::assertSame($expectedKeyForList, $key);
+                foreach (self::adaptArrayToMultiUseIterable($values)() as $val) {
                     yield array_merge($resultSoFar, [$dimensionKey => $val]);
-                    ++$expectedKeyForList;
                 }
             }
         );
@@ -265,6 +262,8 @@ final class DataProviderForTestBuilder
      * @param mixed $value
      *
      * @return $this
+     *
+     * @noinspection PhpUnused
      */
     public function addSingleValueKeyedDimension(string $dimensionKey, $value): self
     {

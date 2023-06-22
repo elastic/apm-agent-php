@@ -41,6 +41,7 @@
 #include "elastic_apm_API.h"
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
+#include "AST_instrumentation.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -72,11 +73,14 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 
 void logSupportabilityInfo( LogLevel logLevel )
 {
-    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
-
     ResultCode resultCode;
     enum { supportInfoBufferSize = 100 * 1000 + 1 };
     char* supportInfoBuffer = NULL;
+    char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
+    TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
+    ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Current process command line: %s", streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ) );
 
     ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
     String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
@@ -93,8 +97,7 @@ void logSupportabilityInfo( LogLevel logLevel )
     }
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "%.*s", (int)( textEnd - textRemainder.begin), textRemainder.begin );
 
-    // resultCode = resultSuccess;
-
+    resultCode = resultSuccess;
     finally:
     ELASTIC_APM_PEFREE_STRING_SIZE_AND_SET_TO_NULL( supportInfoBufferSize, supportInfoBuffer );
     ELASTIC_APM_UNUSED( resultCode );
@@ -498,9 +501,9 @@ static void unregisterErrorAndExceptionHooks() {
 
 void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
-    registerOsSignalHandler();
-
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
+
+    registerOsSignalHandler();
 
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
@@ -543,6 +546,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     }
     tracer->curlInited = true;
 
+    astInstrumentationOnModuleInit( config );
+
     resultCode = resultSuccess;
     finally:
 
@@ -572,6 +577,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         goto finally;
     }
 
+    astInstrumentationOnModuleShutdown();
+
     unregisterErrorAndExceptionHooks();
 
     backgroundBackendCommOnModuleShutdown( config );
@@ -592,6 +599,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     ELASTIC_APM_UNUSED( resultCode );
+
+    unregisterOsSignalHandler();
 
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s exiting...", __FUNCTION__ );
 }
@@ -615,6 +624,8 @@ void elasticApmGetLastPhpError( zval* return_value )
 void elasticApmRequestInit()
 {
     requestCounter++;
+
+    tracerPhpPartOnRequestInitSetInitialTracerState();
 
     TimePoint requestInitStartTime;
     getCurrentTime( &requestInitStartTime );
@@ -641,6 +652,12 @@ void elasticApmRequestInit()
     {
         ELASTIC_APM_LOG_ERROR( "Extension is in failed state" );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+    }
+
+    if (detectOpcacheRestartPending()) {
+        ELASTIC_APM_LOG_ERROR("Detected that opcache reset is in a pending state. Instrumentation has been disabled for this request. There may be warnings or errors logged for this request.");
+        resultCode = resultSuccess;
+        goto finally;
     }
 
     if ( ! config->enabled )
@@ -670,13 +687,16 @@ void elasticApmRequestInit()
         ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( bootstrapTracerPhpPart( config, &requestInitStartTime ) );
-
-//    readSystemMetrics( &tracer->startSystemMetricsReading );
-
     if (!config->captureErrors) {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
     }
+
+    if ( config->astProcessEnabled )
+    {
+        astInstrumentationOnRequestInit( config );
+    }
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
 
     resultCode = resultSuccess;
 
@@ -743,11 +763,13 @@ void elasticApmRequestShutdown()
         resultCode = resultSuccess;
         goto finally;
     }
+	
+    tracerPhpPartOnRequestShutdown();
 
-    // We should shutdown PHP part first because sendMetrics() uses metadata sent by PHP part on shutdown
-    shutdownTracerPhpPart( config );
-
-    // sendMetrics( tracer, config );
+    if ( config->astProcessEnabled )
+    {
+        astInstrumentationOnRequestShutdown();
+    }
 
     resetCallInterceptionOnRequestShutdown();
 

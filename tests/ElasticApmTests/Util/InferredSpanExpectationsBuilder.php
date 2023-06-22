@@ -46,16 +46,10 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
      *
      * @return SpanExpectations
      */
-    public function fromClassMethodNamesAndStackTrace(
-        string $className,
-        string $methodName,
-        bool $isStatic,
-        array $stackTrace,
-        bool $allowExpectedStackTraceToBePrefix
-    ): SpanExpectations {
+    public function fromClassMethodNamesAndStackTrace(string $className, string $methodName, bool $isStatic, array $stackTrace, bool $allowExpectedStackTraceToBePrefix): SpanExpectations
+    {
         $result = self::fromClassMethodNames($className, $methodName, $isStatic);
-        $result->stackTrace = $stackTrace;
-        $result->allowExpectedStackTraceToBePrefix = $allowExpectedStackTraceToBePrefix;
+        $result->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, $allowExpectedStackTraceToBePrefix));
         return $result;
     }
 
@@ -66,14 +60,10 @@ class InferredSpanExpectationsBuilder extends SpanExpectationsBuilder
      *
      * @return SpanExpectations
      */
-    public function fromFuncNameAndStackTrace(
-        string $funcName,
-        array $stackTrace,
-        bool $allowExpectedStackTraceToBePrefix
-    ): SpanExpectations {
+    public function fromFuncNameAndStackTrace(string $funcName, array $stackTrace, bool $allowExpectedStackTraceToBePrefix): SpanExpectations
+    {
         $result = self::fromFuncName($funcName);
-        $result->stackTrace = $stackTrace;
-        $result->allowExpectedStackTraceToBePrefix = $allowExpectedStackTraceToBePrefix;
+        $result->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, $allowExpectedStackTraceToBePrefix));
         return $result;
     }
 }

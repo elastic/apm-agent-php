@@ -54,6 +54,7 @@ class DbSpanTest extends MockClockTracerUnitTestCaseBase
     }
 
     private const SPAN_DURATION_IN_MILLISECONDS = 1;
+
     /**
      * @dataProvider dataProviderForTestDbSpanSerialization
      */

@@ -107,6 +107,32 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
 
+#define ELASTIC_APM_CMOCKA_ASSERT_INT_LESS_THAN_OR_EQUAL( actual, expected ) \
+    do { \
+        if ( (actual) > (expected) ) \
+            ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
+                "%s >= %s: " \
+                "%"PRId64" >= %"PRId64, \
+                (#actual), (#expected), \
+                (Int64)(actual), (Int64)(expected) ); \
+    } while ( 0 )
+
+#define ELASTIC_APM_CMOCKA_ASSERT_INT_GREATER_THAN_OR_EQUAL( actual, expected ) \
+    do { \
+        if ( (actual) < (expected) ) \
+            ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
+                "%s < %s: " \
+                "%"PRId64" >= %"PRId64, \
+                (#actual), (#expected), \
+                (Int64)(actual), (Int64)(expected) ); \
+    } while ( 0 )
+
+#define ELASTIC_APM_CMOCKA_ASSERT_INT_IN_RANGE( expectedRangeMin, actual, expectedRangeMax ) \
+    do { \
+        ELASTIC_APM_CMOCKA_ASSERT_INT_GREATER_THAN_OR_EQUAL( actual, expectedRangeMin ); \
+        ELASTIC_APM_CMOCKA_ASSERT_INT_LESS_THAN_OR_EQUAL( actual, expectedRangeMax ); \
+    } while ( 0 )
+
 #define ELASTIC_APM_CMOCKA_ASSERT_CHAR_EQUAL( actual, expected ) \
     do { \
         char bufferForActual[ escapeNonPrintableCharBufferSize ]; \

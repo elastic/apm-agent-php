@@ -122,6 +122,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
 
         return [
             OptionNames::API_KEY                        => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
+            OptionNames::AST_PROCESS_ENABLED            => $boolRawToParsedValues(),
+            OptionNames::AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE
+                                                        => $boolRawToParsedValues(),
+            OptionNames::AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX
+                                                        => $stringRawToParsedValues(['/', '/myDir']),
+            OptionNames::AST_PROCESS_DEBUG_DUMP_OUT_DIR => $stringRawToParsedValues(['/', '/myDir']),
             OptionNames::ASYNC_BACKEND_COMM             => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS              => $boolRawToParsedValues(),
             OptionNames::CAPTURE_ERRORS                 => $boolRawToParsedValues(),
@@ -154,6 +160,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
                                                         => $durationRawToParsedValues,
             OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION
                                                         => $durationRawToParsedValues,
+            OptionNames::SPAN_STACK_TRACE_MIN_DURATION  => $durationRawToParsedValues,
+            OptionNames::STACK_TRACE_LIMIT              => $intRawToParsedValues,
             OptionNames::TRANSACTION_IGNORE_URLS        => $wildcardListRawToParsedValues,
             OptionNames::TRANSACTION_MAX_SPANS          => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE        => $doubleRawToParsedValues,

@@ -79,8 +79,10 @@ if test "$PHP_ELASTIC_APM" != "no"; then
   AC_DEFINE(HAVE_ELASTIC_APM, 1, [ Have elastic_apm support ])
 
   ELASTIC_APM_PHP_EXT_SOURCES="\
+    AST_debug.c \
     AST_instrumentation.c \
     backend_comm.c \
+    backend_comm_backoff.c \
     ConfigManager.c \
     elastic_apm.c \
     elastic_apm_API.c \
@@ -101,6 +103,7 @@ if test "$PHP_ELASTIC_APM" != "no"; then
     tracer_PHP_part.c \
     util.c \
     util_for_PHP.c \
+    WordPress_instrumentation.c \
   "
 
   PHP_NEW_EXTENSION(elastic_apm, $ELASTIC_APM_PHP_EXT_SOURCES, $ext_shared)

@@ -34,13 +34,13 @@ final class Level
 {
     use StaticClassTrait;
 
-    public const OFF = 0;
-    public const CRITICAL = self::OFF + 1;
-    public const ERROR = self::CRITICAL + 1;
-    public const WARNING = self::ERROR + 1;
-    public const INFO = self::WARNING + 1;
-    public const DEBUG = self::INFO + 1;
-    public const TRACE = self::DEBUG + 1;
+    public const OFF        = 0;
+    public const CRITICAL   = 1;
+    public const ERROR      = 2;
+    public const WARNING    = 3;
+    public const INFO       = 4;
+    public const DEBUG      = 5;
+    public const TRACE      = 6;
 
     /** @var array<array{string, int}> */
     private static $nameIntPairs

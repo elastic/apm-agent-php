@@ -574,8 +574,10 @@ Characters in service name that don't match regular expression will be replaced 
 |============
 
 If it's set, this name is used to distinguish between different nodes of a service.
-If it's not set, data aggregations will be done based on the reported
-hostname (automatically discovered or manually configured using <<config-hostname>>).
+If it's not set, data aggregations will be done based on the container ID
+if the monitored application runs in a container.
+Otherwise data aggregations will be done based on the reported hostname
+(automatically discovered or manually configured using <<config-hostname>>).
 
 [float]
 [[config-service-version]]
@@ -680,6 +682,63 @@ because only spans with duration 0 will be considered eligible for compression w
 This configuration option supports the duration suffixes: `ms`, `s` and `m`.
 For example: `10ms`.
 This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-span-stack-trace-min-duration]]
+==== `span_stack_trace_min_duration`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_SPAN_STACK_TRACE_MIN_DURATION` | `elastic_apm.span_stack_trace_min_duration`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `5ms`      | Duration
+|============
+
+While it might be very helpful to have stack trace attached to a span,
+collecting stack traces does have some overhead.
+This configuration controls the minimum span duration at which stack traces are collected.
+A higher value means lower overhead as stack trace collection is skipped for quick spans. 
+
+Set this config to:
+
+- any positive value (e.g. `5ms`) - to limit stack trace collection to spans with duration
+    equal to or greater than the given value (e.g. 5 milliseconds)
+- `0` (or `0` with any duration units e.g. `0ms`) - to collect stack traces
+    for spans with any duration
+- any negative value (e.g. `-1ms`) - to disable stack trace collection for spans completely
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `10ms`.
+This option's default unit is `ms`, so `5` is interpreted as `5ms`.
+
+[float]
+[[config-stack-trace-limit]]
+==== `stack_trace_limit`
+
+[options="header"]
+|============
+| Environment variable name      | Option name in `php.ini`
+| `ELASTIC_APM_STACK_TRACE_LIMIT` | `elastic_apm.stack_trace_limit`
+|============
+
+[options="header"]
+|============
+| Default    | Type
+| `50`       | Integer
+|============
+
+This option controls how many frames are included in stack traces captured by the agent.
+
+Set this config to:
+
+- any positive integer - to define the maximum number of frames included in stack traces
+- `0` - to disable stack trace capturing
+- any negative integer - to capture all frames
 
 [float]
 [[config-transaction-ignore-urls]]

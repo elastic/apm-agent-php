@@ -23,22 +23,20 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
-use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\TextUtil;
-use Elastic\Apm\SpanInterface;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\Util\TopLevelCodeId;
-use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
+use ElasticApmTests\TestsSharedCode\SpanStackTraceTestSharedCode;
 
 /**
  * @group smoke
  * @group does_not_require_external_services
  */
-class StackTraceComponentTest extends ComponentTestCaseBase
+class SpanStackTraceComponentTest extends ComponentTestCaseBase
 {
     /**
      * Tests in this class specifiy expected spans individually
@@ -56,12 +54,12 @@ class StackTraceComponentTest extends ComponentTestCaseBase
      */
     private static function sharedCodeForTestAllSpanCreatingApis(): array
     {
-        /** @var array<string, mixed> */
+        /** @var array<string, mixed> $expectedData */
         $expectedData = [];
-        $createSpanApis = StackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
+        $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
 
         foreach ($createSpanApis as $createSpan) {
-            (new StackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
+            (new SpanStackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
         }
 
         return ['expectedData' => $expectedData, 'createSpanApis' => $createSpanApis];
@@ -75,19 +73,15 @@ class StackTraceComponentTest extends ComponentTestCaseBase
     public function testAllSpanCreatingApis(): void
     {
         $sharedCodeResult = self::sharedCodeForTestAllSpanCreatingApis();
-        /** @var array<string, mixed> */
+        /** @var array<string, mixed> $expectedData */
         $expectedData = $sharedCodeResult['expectedData'];
-        /**
-         * @var array<callable>
-         * @phpstan-var array<callable(): void>
-         */
+        /** @var array<callable(): void> $createSpanApis */
         $createSpanApis = $sharedCodeResult['createSpanApis'];
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams): void {
-                // Disable Span Compression feature to have all the expected spans individually
-                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                self::disableTimingDependentFeatures($appCodeParams);
             }
         );
         $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAllSpanCreatingApis']));
@@ -95,7 +89,7 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
             (new ExpectedEventCounts())->transactions(1)->spans($expectedMinSpansCount, PHP_INT_MAX)
         );
-        StackTraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
+        SpanStackTraceTestSharedCode::assertPartImpl($expectedMinSpansCount, $expectedData, $dataFromAgent->idToSpan);
     }
 
     public function testTopLevelTransactionBeginCurrentSpanApi(): void
@@ -103,8 +97,7 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams): void {
-                // Disable Span Compression feature to have all the expected spans individually
-                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                self::disableTimingDependentFeatures($appCodeParams);
             }
         );
         $appCodeHost->sendRequest(AppCodeTarget::asTopLevel(TopLevelCodeId::SPAN_BEGIN_END));
@@ -117,17 +110,11 @@ class StackTraceComponentTest extends ComponentTestCaseBase
         $actualStacktrace = $span->stackTrace;
         self::assertNotNull($actualStacktrace);
         self::assertCount(1, $actualStacktrace, LoggableToString::convert($actualStacktrace));
-        /** @var string */
+        /** @var string $expectedFileName */
         $expectedFileName = self::getLabel($span, 'top_level_code_span_end_file_name');
         self::assertTrue(TextUtil::isSuffixOf('.php', $expectedFileName), $expectedFileName);
         self::assertSame($expectedFileName, $actualStacktrace[0]->filename);
-        self::assertSame(
-            self::getLabel($span, 'top_level_code_span_end_line_number'),
-            $actualStacktrace[0]->lineno
-        );
-        self::assertSame(
-            StackTraceTestSharedCode::buildMethodName(SpanInterface::class, 'end'),
-            $actualStacktrace[0]->function
-        );
+        self::assertSame(self::getLabel($span, 'top_level_code_span_end_line_number'), $actualStacktrace[0]->lineno);
+        self::assertNull($actualStacktrace[0]->function);
     }
 }

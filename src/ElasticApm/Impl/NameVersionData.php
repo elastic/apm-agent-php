@@ -54,6 +54,12 @@ class NameVersionData implements SerializableDataInterface, LoggableInterface
      */
     public $version = null;
 
+    public function __construct(?string $name = null, ?string $version = null)
+    {
+        $this->name = $name;
+        $this->version = $version;
+    }
+
     /** @inheritDoc */
     public function jsonSerialize()
     {

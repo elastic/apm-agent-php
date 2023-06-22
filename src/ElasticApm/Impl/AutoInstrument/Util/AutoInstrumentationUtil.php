@@ -59,16 +59,47 @@ final class AutoInstrumentationUtil
         return ($className === null) ? $funcName : ($className . '->' . $funcName);
     }
 
-    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    private static function processNewSpan(SpanInterface $span): void
     {
-        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
-
         if ($span instanceof Span) {
             // Mark all spans created by auto-instrumentation as compressible
             $span->setCompressible(true);
         }
+    }
+
+    public static function beginCurrentSpan(string $name, string $type, ?string $subtype = null, ?string $action = null): SpanInterface
+    {
+        $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan($name, $type, $subtype, $action);
+
+        self::processNewSpan($span);
 
         return $span;
+    }
+
+    /**
+     * @param string   $name
+     * @param string   $type
+     * @param ?string  $subtype
+     * @param ?string  $action
+     * @param callable $callback
+     * @param mixed[]  $callbackArgs
+     * @param int      $numberOfStackFramesToSkip
+     *
+     * @return mixed
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public static function captureCurrentSpan(string $name, string $type, ?string $subtype, ?string $action, callable $callback, array $callbackArgs, int $numberOfStackFramesToSkip)
+    {
+        $span = self::beginCurrentSpan($name, $type, $subtype, $action);
+        try {
+            return call_user_func_array($callback, $callbackArgs);
+        } catch (Throwable $throwable) {
+            $span->createErrorFromThrowable($throwable);
+            throw $throwable;
+        } finally {
+            $span->endSpanEx($numberOfStackFramesToSkip + 1);
+        }
     }
 
     /**
@@ -77,14 +108,11 @@ final class AutoInstrumentationUtil
      * @param bool            $hasExitedByException
      * @param mixed|Throwable $returnValueOrThrown
      * @param ?float          $duration
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
-    public static function endSpan(
-        int $numberOfStackFramesToSkip,
-        SpanInterface $span,
-        bool $hasExitedByException,
-        $returnValueOrThrown,
-        ?float $duration = null
-    ): void {
+    public static function endSpan(int $numberOfStackFramesToSkip, SpanInterface $span, bool $hasExitedByException, $returnValueOrThrown, ?float $duration = null): void
+    {
         if ($hasExitedByException && ($returnValueOrThrown instanceof Throwable)) {
             $span->createErrorFromThrowable($returnValueOrThrown);
         }
@@ -103,10 +131,8 @@ final class AutoInstrumentationUtil
      *
      * @return null|callable(int, bool, mixed): void
      */
-    public static function createInternalFuncPostHookFromEndSpan(
-        SpanInterface $span,
-        ?Closure $doBeforeSpanEnd = null
-    ): ?callable {
+    public static function createInternalFuncPostHookFromEndSpan(SpanInterface $span, ?Closure $doBeforeSpanEnd = null): ?callable
+    {
         if ($span->isNoop()) {
             return null;
         }
@@ -115,24 +141,15 @@ final class AutoInstrumentationUtil
          * @param int   $numberOfStackFramesToSkip
          * @param bool  $hasExitedByException
          * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+         *
+         * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
          */
-        return function (
-            int $numberOfStackFramesToSkip,
-            bool $hasExitedByException,
-            $returnValueOrThrown
-        ) use (
-            $span,
-            $doBeforeSpanEnd
-        ): void {
+        return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($span, $doBeforeSpanEnd): void {
             if ($doBeforeSpanEnd !== null) {
                 $doBeforeSpanEnd($hasExitedByException, $returnValueOrThrown);
             }
-            self::endSpan(
-                $numberOfStackFramesToSkip + 1,
-                $span,
-                $hasExitedByException,
-                $returnValueOrThrown
-            );
+            /** @var 0|positive-int $numberOfStackFramesToSkip */
+            self::endSpan($numberOfStackFramesToSkip + 1, $span, $hasExitedByException, $returnValueOrThrown);
         };
     }
 
@@ -265,6 +282,19 @@ final class AutoInstrumentationUtil
     }
 
     /**
+     * @param mixed   $actualValue
+     * @param bool    $shouldCheckSyntaxOnly
+     * @param ?string $dbgParamName
+     *
+     * @return bool
+     */
+    public function verifyIsCallable($actualValue, bool $shouldCheckSyntaxOnly, ?string $dbgParamName = null): bool
+    {
+        $isCallable = is_callable($actualValue, $shouldCheckSyntaxOnly);
+        return $this->verifyType($isCallable, 'callable', $actualValue, $dbgParamName);
+    }
+
+    /**
      * @param int     $expectedMinArgsCount
      * @param mixed[] $interceptedCallArgs
      *
@@ -283,6 +313,30 @@ final class AutoInstrumentationUtil
                 'expected minimal number of arguments' => $expectedMinArgsCount,
                 'actual number of arguments'           => count($interceptedCallArgs),
                 'actual arguments'                     => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+            ]
+        );
+        return false;
+    }
+
+    /**
+     * @param int     $expectedArgsCount
+     * @param mixed[] $interceptedCallArgs
+     *
+     * @return bool
+     */
+    public function verifyExactArgsCount(int $expectedArgsCount, array $interceptedCallArgs): bool
+    {
+        if (count($interceptedCallArgs) === $expectedArgsCount) {
+            return true;
+        }
+
+        ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Actual number of arguments does not equal the expected number',
+            [
+                'expected number of arguments' => $expectedArgsCount,
+                'actual number of arguments'   => count($interceptedCallArgs),
+                'actual arguments'             => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         return false;

@@ -33,15 +33,16 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\TimeUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MixedMap;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class TestCaseHandle implements LoggableInterface
 {
     use LoggableTrait;
 
-    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS;
+    public const MAX_WAIT_TIME_DATA_FROM_AGENT_SECONDS = 3 * HttpClientUtilForTests::MAX_WAIT_TIME_SECONDS;
 
     public const SERIALIZED_EXPECTATIONS_KEY = 'serialized_expectations';
     public const SERIALIZED_DATA_FROM_AGENT_KEY = 'serialized_data_from_agent';
@@ -120,7 +121,7 @@ final class TestCaseHandle implements LoggableInterface
      */
     public function ensureMainHttpAppCodeHost(?Closure $setParamsFunc = null): HttpAppCodeHostHandle
     {
-        TestCase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
+        TestCaseBase::assertTrue(ComponentTestCaseBase::isMainAppCodeHostHttp());
         $appCodeHostHandle = $this->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeHostParams) use ($setParamsFunc): void {
                 Assert::assertInstanceOf(HttpAppCodeHostParams::class, $appCodeHostParams);
@@ -130,7 +131,7 @@ final class TestCaseHandle implements LoggableInterface
                 }
             }
         );
-        TestCase::assertInstanceOf(HttpAppCodeHostHandle::class, $appCodeHostHandle);
+        TestCaseBase::assertInstanceOf(HttpAppCodeHostHandle::class, $appCodeHostHandle);
         return $appCodeHostHandle;
     }
 
@@ -155,11 +156,9 @@ final class TestCaseHandle implements LoggableInterface
         return $this->additionalHttpAppCodeHost;
     }
 
-    public function waitForDataFromAgent(
-        ExpectedEventCounts $expectedEventCounts,
-        bool $shouldValidate = true
-    ): DataFromAgentPlusRaw {
-        TestCase::assertNotEmpty($this->appCodeInvocations);
+    public function waitForDataFromAgent(ExpectedEventCounts $expectedEventCounts, bool $shouldValidate = true): DataFromAgentPlusRaw
+    {
+        TestCaseBase::assertNotEmpty($this->appCodeInvocations);
         $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
         $hasPassed = (new PollingCheck(
             __FUNCTION__ . ' passes',
@@ -169,7 +168,7 @@ final class TestCaseHandle implements LoggableInterface
                 return $this->pollForDataFromAgent($expectedEventCounts, $dataFromAgentAccumulator);
             }
         );
-        TestCase::assertTrue(
+        TestCaseBase::assertTrue(
             $hasPassed,
             'The expected data from agent has not arrived.'
             . ' ' . LoggableToString::convert(
@@ -213,7 +212,7 @@ final class TestCaseHandle implements LoggableInterface
     {
         if ($this->escalatedLogLevelForProdCode !== null) {
             $escalatedLogLevelForProdCodeAsString = LogLevel::intToName($this->escalatedLogLevelForProdCode);
-            $params->setAgentOption(OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
+            $params->setAgentOption(AmbientContextForTests::testConfig()->escalatedRerunsProdCodeLogLevelOptionName ?? OptionNames::LOG_LEVEL_SYSLOG, $escalatedLogLevelForProdCodeAsString);
         }
         $params->setAgentOption(OptionNames::SERVER_URL, 'http://localhost:' . $this->mockApmServer->getPortForAgent());
 
@@ -265,22 +264,14 @@ final class TestCaseHandle implements LoggableInterface
     private function addPortsInUse(array $ports): void
     {
         foreach ($ports as $port) {
-            TestCase::assertNotContains($port, $this->portsInUse);
+            TestCaseBase::assertNotContains($port, $this->portsInUse);
             $this->portsInUse[] = $port;
         }
     }
 
-    private function startBuiltinHttpServerAppCodeHost(
-        Closure $setParamsFunc,
-        string $dbgInstanceName
-    ): BuiltinHttpServerAppCodeHostHandle {
-        $result = new BuiltinHttpServerAppCodeHostHandle(
-            $this,
-            $setParamsFunc,
-            $this->resourcesCleaner,
-            $this->portsInUse,
-            $dbgInstanceName
-        );
+    private function startBuiltinHttpServerAppCodeHost(Closure $setParamsFunc, string $dbgInstanceName): BuiltinHttpServerAppCodeHostHandle
+    {
+        $result = new BuiltinHttpServerAppCodeHostHandle($this, $setParamsFunc, $this->resourcesCleaner, $this->portsInUse, $dbgInstanceName);
         $this->addPortsInUse($result->getHttpServerHandle()->getPorts());
         return $result;
     }
@@ -312,17 +303,33 @@ final class TestCaseHandle implements LoggableInterface
         );
     }
 
-    private function pollForDataFromAgent(
-        ExpectedEventCounts $expectedEventCounts,
-        DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator
-    ): bool {
-        $newReceiverEvents = $this->mockApmServer->fetchNewData();
-        $dataFromAgentAccumulator->addReceiverEvents($newReceiverEvents);
+    /**
+     * @return RawDataFromAgentReceiverEvent[]
+     */
+    public function fetchNewDataFromMockApmServer(bool $shouldWait): array
+    {
+        return $this->mockApmServer->fetchNewData($shouldWait);
+    }
+
+    private function pollForDataFromAgent(ExpectedEventCounts $expectedEventCounts, DataFromAgentPlusRawAccumulator $dataFromAgentAccumulator): bool
+    {
+        $dataFromAgentAccumulator->addReceiverEvents($this->mockApmServer->fetchNewData(/* shouldWait */ true));
         return $dataFromAgentAccumulator->hasReachedEventCounts($expectedEventCounts);
     }
 
     public function getResourcesClient(): ResourcesClient
     {
         return $this->resourcesCleaner->getClient();
+    }
+
+    /**
+     * @param callable(MockApmServer $mockApmServer, MixedMap $args): MockApmServerBehavior $buildCallable
+     * @param array<string, mixed>                                                          $args
+     *
+     * @return void
+     */
+    public function setMockApmServerBehavior(callable $buildCallable, array $args = []): void
+    {
+        $this->mockApmServer->setTestScopedBehavior(MockApmServerBehaviorDto::fromData($buildCallable, $args));
     }
 }

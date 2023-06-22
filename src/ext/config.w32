@@ -13,8 +13,10 @@ if (PHP_ELASTIC_APM != 'no') {
 	    && CHECK_LIB("normaliz.lib", "elastic_apm", PHP_ELASTIC_APM)
     ) {
         ELASTIC_APM_PHP_EXT_SOURCES =
+            "AST_debug.c" + " " +
             "AST_instrumentation.c" + " " +
             "backend_comm.c" + " " +
+            "backend_comm_backoff.c" + " " +
             "ConfigManager.c" + " " +
             "elastic_apm.c" + " " +
             "elastic_apm_API.c" + " " +
@@ -34,6 +36,7 @@ if (PHP_ELASTIC_APM != 'no') {
             "tracer_PHP_part.c" + " " +
             "util.c" + " " +
             "util_for_PHP.c" + " " +
+            "WordPress_instrumentation.c" + " " +
             "";
 
         EXTENSION('elastic_apm', ELASTIC_APM_PHP_EXT_SOURCES, null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');

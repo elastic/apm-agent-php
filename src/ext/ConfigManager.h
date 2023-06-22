@@ -66,11 +66,16 @@ enum OptionId
     #if ( ELASTIC_APM_ASSERT_ENABLED_01 != 0 )
     optionId_assertLevel,
     #endif
+    optionId_astProcessEnabled,
+    optionId_astProcessDebugDumpConvertedBackToSource,
+    optionId_astProcessDebugDumpForPathPrefix,
+    optionId_astProcessDebugDumpOutDir,
     optionId_asyncBackendComm,
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
     optionId_captureErrors,
     optionId_devInternal,
+    optionId_devInternalBackendCommLogVerbose,
     optionId_disableInstrumentations,
     optionId_disableSend,
     optionId_enabled,
@@ -104,6 +109,8 @@ enum OptionId
     optionId_spanCompressionEnabled,
     optionId_spanCompressionExactMatchMaxDuration,
     optionId_spanCompressionSameKindMaxDuration,
+    optionId_spanStackTraceMinDuration,
+    optionId_stackTraceLimit,
     optionId_transactionIgnoreUrls,
     optionId_transactionMaxSpans,
     optionId_transactionSampleRate,
@@ -221,6 +228,20 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 /**
  * Internal configuration option (not included in public documentation)
  */
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED "ast_process_enabled"
+
+/**
+ * Internal configuration options (not included in public documentation)
+ * In addition to supportability this option is used by component tests as well.
+ * @see tests/ElasticApmTests/ComponentTests/WordPressAutoInstrumentationTest.php
+ */
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE "ast_process_debug_dump_converted_back_to_source"
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX "ast_process_debug_dump_for_path_prefix"
+#define ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_DEBUG_DUMP_OUT_DIR "ast_process_debug_dump_out_dir"
+
+/**
+ * Internal configuration option (not included in public documentation)
+ */
 #define ELASTIC_APM_CFG_OPT_NAME_ASYNC_BACKEND_COMM "async_backend_comm"
 
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
@@ -235,6 +256,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
  * Internal configuration option (not included in public documentation)
  */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE "dev_internal_backend_comm_log_verbose"
 
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
@@ -296,6 +318,8 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_ENABLED "span_compression_enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION "span_compression_exact_match_max_duration"
 #define ELASTIC_APM_CFG_OPT_NAME_SPAN_COMPRESSION_SAME_KIND_MAX_DURATION "span_compression_same_kind_max_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_SPAN_STACK_TRACE_MIN_DURATION "span_stack_trace_min_duration"
+#define ELASTIC_APM_CFG_OPT_NAME_STACK_TRACE_LIMIT "stack_trace_limit"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_IGNORE_URLS "transaction_ignore_urls"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_MAX_SPANS "transaction_max_spans"
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"

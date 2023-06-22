@@ -27,8 +27,8 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Log\NoopLoggerFactory;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\RangeUtil;
-use Elastic\Apm\Impl\Util\StackTraceFrameBase;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use PHPUnit\Framework\Assert;
 use ReflectionClass;
@@ -66,6 +66,8 @@ final class AssertMessageStack implements LoggableInterface
      *
      * @return AssertMessageStackScopeAutoRef
      *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     *
      * @noinspection PhpSameParameterValueInspection
      */
     private function newScopeImpl(int $numberOfStackFramesToSkip, array $initialCtx): AssertMessageStackScopeAutoRef
@@ -99,7 +101,7 @@ final class AssertMessageStack implements LoggableInterface
     /**
      * @return null|ReflectionParameter[]
      */
-    private static function getReflectionParametersForStackFrame(StackTraceFrameBase $frame): ?array
+    private static function getReflectionParametersForStackFrame(ClassicFormatStackTraceFrame $frame): ?array
     {
         if ($frame->function === null) {
             return null;
@@ -126,8 +128,7 @@ final class AssertMessageStack implements LoggableInterface
     public static function funcArgs(): array
     {
         $result = [];
-        $frames = StackTraceUtil::captureInClassicFormat(
-            NoopLoggerFactory::singletonInstance(),
+        $frames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(
             1 /* <- offset */,
             1 /* <- maxNumberOfFrames */,
             true /* <- includeElasticApmFrames */,

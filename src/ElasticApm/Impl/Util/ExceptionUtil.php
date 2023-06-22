@@ -40,22 +40,19 @@ final class ExceptionUtil
     /**
      * @param string               $messagePrefix
      * @param array<string, mixed> $context
-     * @param int                  $numberOfStackTraceFramesToSkip PHP_INT_MAX means no stack trace
+     * @param ?int                 $numberOfStackFramesToSkip PHP_INT_MAX means no stack trace
      *
      * @return string
+     *
+     * @phpstan-param null|0|positive-int $numberOfStackFramesToSkip
+     * @noinspection PhpVarTagWithoutVariableNameInspection
      */
-    public static function buildMessage(
-        string $messagePrefix,
-        array $context = [],
-        int $numberOfStackTraceFramesToSkip = PHP_INT_MAX
-    ): string {
+    public static function buildMessage(string $messagePrefix, array $context = [], ?int $numberOfStackFramesToSkip = null): string
+    {
         $messageSuffixObj = new AdhocLoggableObject($context);
-        if ($numberOfStackTraceFramesToSkip !== PHP_INT_MAX) {
-            $stacktrace = LoggableStackTrace::buildForCurrent($numberOfStackTraceFramesToSkip + 1);
-            $messageSuffixObj->addProperties(
-                [LoggableStackTrace::STACK_TRACE_KEY => $stacktrace],
-                PropertyLogPriority::MUST_BE_INCLUDED
-            );
+        if ($numberOfStackFramesToSkip !== null) {
+            $stacktrace = LoggableStackTrace::buildForCurrent($numberOfStackFramesToSkip + 1);
+            $messageSuffixObj->addProperties([LoggableStackTrace::STACK_TRACE_KEY => $stacktrace], PropertyLogPriority::MUST_BE_INCLUDED);
         }
         $messageSuffix = LoggableToString::convert($messageSuffixObj, /* prettyPrint */ true);
         return $messagePrefix . (TextUtil::isEmptyString($messageSuffix) ? '' : ('. ' . $messageSuffix));

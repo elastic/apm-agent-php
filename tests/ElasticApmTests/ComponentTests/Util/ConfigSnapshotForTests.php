@@ -48,6 +48,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var ?string */
     public $appCodePhpIni;
 
+    /** @var bool */
+    public $compareAstConvertedBackToSource;
+
     /** @var TestInfraDataPerProcess */
     public $dataPerProcess;
 
@@ -64,10 +67,16 @@ final class ConfigSnapshotForTests implements LoggableInterface
     public $escalatedRerunsMaxCount;
 
     /** @var ?string */
+    public $escalatedRerunsProdCodeLogLevelOptionName;
+
+    /** @var ?string */
     public $group;
 
     /** @var bool */
     public $isLongRunMode;
+
+    /** @var ?bool */
+    public $isInContainer;
 
     /** @var int */
     public $logLevel;
@@ -89,6 +98,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
 
     /** @var ?string */
     public $runBeforeEachTest;
+
+    /** @var ?string */
+    public $thisContainerImageName;
 
     /**
      * Snapshot constructor.

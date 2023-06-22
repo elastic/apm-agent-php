@@ -78,14 +78,14 @@ Int64 durationToMilliseconds( Duration duration )
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 #endif
-ResultCode getCurrentAbsTimeSpec( TimeSpec* currentAbsTimeSpec )
+ResultCode getClockTimeSpec( bool isRealTime, /* out */ TimeSpec* currentAbsTimeSpec )
 {
     ResultCode resultCode;
 
 #ifdef PHP_WIN32
     ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
 #else // #ifdef PHP_WIN32
-    int clock_gettime_retVal = clock_gettime( CLOCK_REALTIME, currentAbsTimeSpec );
+    int clock_gettime_retVal = clock_gettime( isRealTime ? CLOCK_REALTIME : CLOCK_MONOTONIC, currentAbsTimeSpec );
     if ( clock_gettime_retVal != 0 )
     {
         int clock_gettime_errno = errno;
@@ -109,6 +109,11 @@ ResultCode getCurrentAbsTimeSpec( TimeSpec* currentAbsTimeSpec )
 #ifdef PHP_WIN32
 #pragma clang diagnostic pop
 #endif
+
+ResultCode getCurrentAbsTimeSpec( /* out */ TimeSpec* currentAbsTimeSpec )
+{
+    return getClockTimeSpec( /* isRealTime */ true, /* out */ currentAbsTimeSpec );
+}
 
 void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNanoseconds )
 {
@@ -229,6 +234,31 @@ String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* 
     utcTimeVal.tv_usec = utcTimeSpec->tv_nsec / 1000 /* nanoseconds to microseconds */;
 
     return streamUtcTimeValAsLocal( &utcTimeVal, txtOutStream );
+}
+
+String streamTimeSpecDiff( const TimeSpec* fromTimeSpec, const TimeSpec* toTimeSpec, TextOutputStream* txtOutStream )
+{
+    ELASTIC_APM_ASSERT_VALID_PTR( fromTimeSpec );
+    ELASTIC_APM_ASSERT_VALID_PTR( toTimeSpec );
+    ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
+
+    bool isDiffNegative = compareAbsTimeSpecs( fromTimeSpec, toTimeSpec ) > 0;
+    const TimeSpec* from = isDiffNegative ? toTimeSpec : fromTimeSpec;
+    const TimeSpec* to = isDiffNegative ? fromTimeSpec : toTimeSpec;
+    UInt64 diffSecondsPart = to->tv_sec - from->tv_sec;
+    Int64 diffNanosecondsPart = to->tv_nsec - from->tv_nsec;
+    if ( diffNanosecondsPart < 0 )
+    {
+        --diffSecondsPart;
+        diffNanosecondsPart += ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_SECOND;
+    }
+
+    if ( diffNanosecondsPart == 0 )
+    {
+        return streamPrintf( txtOutStream, "%"PRIu64"s", diffSecondsPart );
+    }
+
+    streamPrintf( txtOutStream, "%s%"PRIu64"s %"PRId64"ns", isDiffNegative ? "-" : "", diffSecondsPart, diffNanosecondsPart );
 }
 
 int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b )

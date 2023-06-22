@@ -23,18 +23,26 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-final class RawDataFromAgentReceiverEventConnectionStarted extends RawDataFromAgentReceiverEvent
+use ElasticApmTests\Util\Deserialization\JsonDeserializableInterface;
+use ElasticApmTests\Util\Deserialization\JsonDeserializableTrait;
+
+final class RawDataFromAgentReceiverEventConnectionStarted extends RawDataFromAgentReceiverEvent implements JsonDeserializableInterface
 {
+    use JsonDeserializableTrait;
+
+    /** @var float Monotonic time since some unspecified starting point, in microseconds */
+    public $timestampMonotonic;
+
     /**
-     * @noinspection PhpUnusedParameterInspection
-     *
      * @param array<string, mixed> $decodedJson
      *
      * @return self
      */
     public static function leafDeserializeFromDecodedJson(array $decodedJson): self
     {
-        return new self();
+        $result = new self();
+        $result->deserializeFromDecodedJson($decodedJson);
+        return $result;
     }
 
     public function visit(RawDataFromAgentReceiverEventVisitorInterface $visitor): void

@@ -404,7 +404,7 @@ static void openAndAppendToFile( Logger* logger, String text )
 {
     size_t textLen = strlen( text );
 
-// TODO: Sergey Kleyman: Uncomment: Fix lower level system calls - "open" and "write" to get stronger guarantee
+// OLD TODO: Uncomment: Fix lower level system calls - "open" and "write" to get stronger guarantee
 //#ifdef PHP_WIN32
     FILE* file = fopen( logger->config.file, "a" );
     if ( file == NULL )

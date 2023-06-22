@@ -42,6 +42,13 @@ final class AssertMessageStackScopeData implements LoggableInterface
         $this->subScopesStack = [new Pair($name, $initialCtx)];
     }
 
+    /**
+     * @param int $numberOfStackFramesToSkip
+     *
+     * @return string
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
     public static function buildContextName(int $numberOfStackFramesToSkip): string
     {
         $callerInfo = DbgUtil::getCallerInfoFromStacktrace($numberOfStackFramesToSkip + 1);

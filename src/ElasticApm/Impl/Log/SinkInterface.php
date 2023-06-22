@@ -38,8 +38,10 @@ interface SinkInterface
      * @param string                 $srcCodeFile
      * @param int                    $srcCodeLine
      * @param string                 $srcCodeFunc
-     * @param bool|null              $includeStacktrace
+     * @param ?bool                  $includeStacktrace
      * @param int                    $numberOfStackFramesToSkip
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     public function consume(
         int $statementLevel,

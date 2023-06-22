@@ -101,6 +101,7 @@ LIST( APPEND source_files ${unit_tests_source_files} )
 
 LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h )
 
+LIST( APPEND source_files ${src_ext_dir}/backend_comm_backoff.h ${src_ext_dir}/backend_comm_backoff.c )
 LIST( APPEND source_files ${src_ext_dir}/ConfigManager.h ${src_ext_dir}/ConfigManager.c )
 LIST( APPEND source_files ${src_ext_dir}/elastic_apm_assert.h ${src_ext_dir}/elastic_apm_assert.c )
 LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/internal_checks.c )

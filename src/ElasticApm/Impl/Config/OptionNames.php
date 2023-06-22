@@ -35,6 +35,10 @@ final class OptionNames
     use StaticClassTrait;
 
     public const API_KEY = 'api_key';
+    public const AST_PROCESS_ENABLED = 'ast_process_enabled';
+    public const AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE = 'ast_process_debug_dump_converted_back_to_source';
+    public const AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX = 'ast_process_debug_dump_for_path_prefix';
+    public const AST_PROCESS_DEBUG_DUMP_OUT_DIR = 'ast_process_debug_dump_out_dir';
     public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const CAPTURE_ERRORS = 'capture_errors';
@@ -62,6 +66,8 @@ final class OptionNames
     public const SPAN_COMPRESSION_ENABLED = 'span_compression_enabled';
     public const SPAN_COMPRESSION_EXACT_MATCH_MAX_DURATION = 'span_compression_exact_match_max_duration';
     public const SPAN_COMPRESSION_SAME_KIND_MAX_DURATION = 'span_compression_same_kind_max_duration';
+    public const SPAN_STACK_TRACE_MIN_DURATION = 'span_stack_trace_min_duration';
+    public const STACK_TRACE_LIMIT = 'stack_trace_limit';
     public const TRANSACTION_IGNORE_URLS = 'transaction_ignore_urls';
     public const TRANSACTION_MAX_SPANS = 'transaction_max_spans';
     public const TRANSACTION_SAMPLE_RATE = 'transaction_sample_rate';

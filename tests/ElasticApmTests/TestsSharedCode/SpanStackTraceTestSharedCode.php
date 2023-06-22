@@ -25,12 +25,12 @@ namespace ElasticApmTests\TestsSharedCode;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Log\LoggableToString;
-use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\SpanInterface;
-use Elastic\Apm\TransactionInterface;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\StackTraceExpectations;
+use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
-use PHPUnit\Framework\TestCase;
 
 use function ElasticApmTests\dummyFuncForTestsWithNamespace;
 
@@ -38,7 +38,7 @@ use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME
 use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER;
 use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE;
 
-final class StackTraceTestSharedCode
+final class SpanStackTraceTestSharedCode
 {
     public const SPAN_CREATING_API_LABEL_KEY = 'stacktrace / span creating API';
 
@@ -47,9 +47,9 @@ final class StackTraceTestSharedCode
         return 'stacktrace / ' . $methodName . ' / line number';
     }
 
-    private static function spanCreatingApiKey(string $spanCreatingApi, string $suffix): string
+    private static function lineNumberForSpanCreatingApiKey(string $spanCreatingApi): string
     {
-        return 'stacktrace / span creating API: ' . $spanCreatingApi . ' / ' . $suffix;
+        return 'stacktrace / span creating API: ' . $spanCreatingApi . ' / line number';
     }
 
     /**
@@ -100,25 +100,12 @@ final class StackTraceTestSharedCode
      * @param array<string, mixed> $expectedData
      * @param string               $key
      *
-     * @return string
-     */
-    private static function getStringFromExpectedData(array $expectedData, string $key): string
-    {
-        $value = $expectedData[$key];
-        TestCase::assertIsString($value, LoggableToString::convert(['$key' => $key]));
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $expectedData
-     * @param string               $key
-     *
      * @return int
      */
     private static function getIntFromExpectedData(array $expectedData, string $key): int
     {
         $value = $expectedData[$key];
-        TestCase::assertIsInt($value, LoggableToString::convert(['$key' => $key]));
+        TestCaseBase::assertIsInt($value, LoggableToString::convert(['$key' => $key]));
         return $value;
     }
 
@@ -128,105 +115,83 @@ final class StackTraceTestSharedCode
      */
     private static function assertPartImplOneSpan(array $expectedData, SpanDto $span): void
     {
-        $buildFuncName = function (string $funcName): string {
-            return $funcName . '()';
-        };
-
-        $buildStaticMethodName = function (string $fullClassName, string $funcName): string {
-            return $fullClassName . '::' . $funcName . '()';
-        };
-
-        $buildStacktraceFrame = function (string $function, string $fileName, int $lineNumber): StackTraceFrame {
-            $result = new StackTraceFrame($fileName, $lineNumber);
-            $result->function = $function;
-            return $result;
-        };
-
-        $funcNameForClosureWithThisCaptured = self::buildMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
-        $funcNameForClosureWithoutThisCaptured = $buildStaticMethodName(__CLASS__, __NAMESPACE__ . '\{closure}');
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         /** @var string $spanCreatingApi */
         $spanCreatingApi = TestCaseBase::getLabel($span, self::SPAN_CREATING_API_LABEL_KEY);
 
-        /** @var StackTraceFrame[] $expectedStacktrace */
-        $expectedStacktrace = [];
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            self::getStringFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'function')),
-            __FILE__,
-            self::getIntFromExpectedData($expectedData, self::spanCreatingApiKey($spanCreatingApi, 'line number'))
-        );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $funcNameForClosureWithoutThisCaptured,
-            __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberKey('$createSpan'))
-        );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $funcNameForClosureWithoutThisCaptured,
+        /** @var StackTraceFrameExpectations[] $frameExpectations */
+        $frameExpectations = [];
+        $frameExpectations[] = StackTraceFrameExpectations::fromLocationOnly(__FILE__, self::getIntFromExpectedData($expectedData, self::lineNumberForSpanCreatingApiKey($spanCreatingApi)));
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(__FILE__, self::getIntFromExpectedData($expectedData, self::lineNumberKey('$createSpan')), __NAMESPACE__, __CLASS__, true);
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(
             DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME,
-            DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER
+            DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_LINE_NUMBER,
+            __NAMESPACE__,
+            __CLASS__,
+            true /* <- isStatic */
         );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $buildFuncName(
-                DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE . '\\' . 'dummyFuncForTestsWithNamespace'
-            ),
+        $frameExpectations[] = StackTraceFrameExpectations::fromStandaloneFunction(
             __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithNamespace'))
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithNamespace')),
+            DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_NAMESPACE . '\\' . 'dummyFuncForTestsWithNamespace'
         );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $buildStaticMethodName(__CLASS__, 'myStaticMethod'),
+        $frameExpectations[] = StackTraceFrameExpectations::fromClassMethod(
             __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myStaticMethod'))
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myStaticMethod')),
+            __CLASS__,
+            true /* <- isStatic */,
+            'myStaticMethod'
         );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $funcNameForClosureWithThisCaptured,
+        $frameExpectations[] = StackTraceFrameExpectations::fromClosure(
             DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME,
-            DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER
+            DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_LINE_NUMBER,
+            __NAMESPACE__,
+            __CLASS__,
+            false /* <- isStatic */
         );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            $buildFuncName('dummyFuncForTestsWithoutNamespace'),
+        $frameExpectations[] = StackTraceFrameExpectations::fromStandaloneFunction(
             __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithoutNamespace'))
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('dummyFuncForTestsWithoutNamespace')),
+            'dummyFuncForTestsWithoutNamespace'
         );
-        $expectedStacktrace[] = $buildStacktraceFrame(
-            self::buildMethodName(__CLASS__, 'myInstanceMethod'),
+        $frameExpectations[] = StackTraceFrameExpectations::fromClassMethod(
             __FILE__,
-            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myInstanceMethod'))
+            self::getIntFromExpectedData($expectedData, self::lineNumberKey('myInstanceMethod')),
+            __CLASS__,
+            false /* <- isStatic */,
+            'myInstanceMethod'
         );
+        $dbgCtx->add(['frameExpectations' => $frameExpectations]);
 
         $actualStacktrace = $span->stackTrace;
-        TestCase::assertNotNull($actualStacktrace);
-        for ($i = 0; $i < count($expectedStacktrace); ++$i) {
-            $infoMsg = LoggableToString::convert(
-                ['expected' => $expectedStacktrace[$i], 'actual' => $actualStacktrace[$i]]
-            );
-            TestCase::assertSame($expectedStacktrace[$i]->function, $actualStacktrace[$i]->function, $infoMsg);
-            TestCase::assertSame($expectedStacktrace[$i]->filename, $actualStacktrace[$i]->filename, $infoMsg);
-            TestCase::assertSame($expectedStacktrace[$i]->lineno, $actualStacktrace[$i]->lineno, $infoMsg);
-        }
+        $dbgCtx->add(['actualStacktrace' => $actualStacktrace]);
+        TestCaseBase::assertNotNull($actualStacktrace);
+        StackTraceExpectations::fromFramesExpectations($frameExpectations, /* allowToBePrefixOfActual */ true)->assertMatches($actualStacktrace);
     }
 
     /**
-     * @param int                     $expectedSpansToCheckCount
-     * @param array<string, mixed>    $expectedData
+     * @param int                    $expectedSpansToCheckCount
+     * @param array<string, mixed>   $expectedData
      * @param array<string, SpanDto> $idToSpan
      */
     public static function assertPartImpl(int $expectedSpansToCheckCount, array $expectedData, array $idToSpan): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $checkedSpansCount = 0;
+        $dbgCtx->pushSubScope();
         foreach ($idToSpan as $span) {
+            $dbgCtx->clearCurrentSubScope(['checkedSpansCount' => $checkedSpansCount, 'span' => $span]);
             $labels = $span->context === null ? [] : $span->context->labels;
-            TestCase::assertNotNull($labels);
+            TestCaseBase::assertNotNull($labels);
             if (array_key_exists(self::SPAN_CREATING_API_LABEL_KEY, $labels)) {
                 self::assertPartImplOneSpan($expectedData, $span);
                 ++$checkedSpansCount;
             }
         }
-        TestCase::assertSame($expectedSpansToCheckCount, $checkedSpansCount);
-    }
-
-    public static function buildMethodName(string $fullClassName, string $funcName): string
-    {
-        return $fullClassName . '->' . $funcName . '()';
+        $dbgCtx->popSubScope();
+        TestCaseBase::assertSame($expectedSpansToCheckCount, $checkedSpansCount);
     }
 
     /**
@@ -244,9 +209,7 @@ final class StackTraceTestSharedCode
                 $span = ElasticApm::getCurrentTransaction()->beginCurrentSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(SpanInterface::class, 'end');
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ + 1;
                 $span->end();
             },
             function () use (&$expectedData): void {
@@ -255,18 +218,14 @@ final class StackTraceTestSharedCode
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
                 ElasticApm::getCurrentTransaction()->captureCurrentSpan('test_span_name', 'test_span_type', $func);
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(TransactionInterface::class, 'captureCurrentSpan');
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ - 1;
             },
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Transaction::beginChildSpan';
                 $span = ElasticApm::getCurrentTransaction()->beginChildSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(SpanInterface::class, 'end');
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ + 1;
                 $span->end();
             },
             function () use (&$expectedData): void {
@@ -275,34 +234,26 @@ final class StackTraceTestSharedCode
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
                 ElasticApm::getCurrentTransaction()->captureChildSpan('test_span_name', 'test_span_type', $func);
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(TransactionInterface::class, 'captureChildSpan');
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ - 1;
             },
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Span::beginChildSpan';
-                $parentSpan = ElasticApm::getCurrentTransaction()
-                                        ->beginChildSpan('parent_span_name', 'parent_span_type');
+                $parentSpan = ElasticApm::getCurrentTransaction()->beginChildSpan('parent_span_name', 'parent_span_type');
                 $span = $parentSpan->beginChildSpan('test_span_name', 'test_span_type');
                 $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
 
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(SpanInterface::class, 'end');
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ + 1;
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ + 1;
                 $span->end();
                 $parentSpan->end();
             },
             function () use (&$expectedData): void {
                 $spanCreatingApi = 'Span::captureChildSpan';
-                $parentSpan = ElasticApm::getCurrentTransaction()
-                                        ->beginChildSpan('parent_span_name', 'parent_span_type');
+                $parentSpan = ElasticApm::getCurrentTransaction()->beginChildSpan('parent_span_name', 'parent_span_type');
                 $func = function (SpanInterface $span) use ($spanCreatingApi): void {
                     $span->context()->setLabel(self::SPAN_CREATING_API_LABEL_KEY, $spanCreatingApi);
                 };
                 $parentSpan->captureChildSpan('test_span_name', 'test_span_type', $func);
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'line number')] = __LINE__ - 1;
-                $expectedData[self::spanCreatingApiKey($spanCreatingApi, 'function')]
-                    = self::buildMethodName(SpanInterface::class, 'captureChildSpan');
+                $expectedData[self::lineNumberForSpanCreatingApiKey($spanCreatingApi)] = __LINE__ - 1;
                 $parentSpan->end();
             },
         ];

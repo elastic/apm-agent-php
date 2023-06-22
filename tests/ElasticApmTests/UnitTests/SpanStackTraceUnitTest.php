@@ -24,10 +24,12 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
-use ElasticApmTests\TestsSharedCode\StackTraceTestSharedCode;
+use Elastic\Apm\Impl\Config\OptionNames;
+use ElasticApmTests\TestsSharedCode\SpanStackTraceTestSharedCode;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
+use ElasticApmTests\Util\TracerBuilderForTests;
 
-class StackTraceUnitTest extends TracerUnitTestCaseBase
+class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 {
     /**
      * Tests in this class specifiy expected spans individually
@@ -42,27 +44,38 @@ class StackTraceUnitTest extends TracerUnitTestCaseBase
 
     public function testAllSpanCreatingApis(): void
     {
-        // Act
+        /**
+         * Arrange
+         */
+
+        $this->setUpTestEnv(
+            function (TracerBuilderForTests $builder): void {
+                // Enable span stack trace collection for span with any duration
+                $builder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, '0');
+            }
+        );
+
+        /**
+         * Act
+         */
 
         $tx = ElasticApm::beginCurrentTransaction(__FUNCTION__, 'test_TX_type');
 
         /** @var array<string, mixed> $expectedData */
         $expectedData = [];
 
-        $createSpanApis = StackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
+        $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
         foreach ($createSpanApis as $createSpan) {
-            (new StackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
+            (new SpanStackTraceTestSharedCode())->actPartImpl($createSpan, /* ref */ $expectedData);
         }
 
         $tx->end();
 
-        // Assert
+        /**
+         * Assert
+         */
 
         $this->assertSame(__FUNCTION__, $this->mockEventSink->singleTransaction()->name);
-        StackTraceTestSharedCode::assertPartImpl(
-            count($createSpanApis),
-            $expectedData,
-            $this->mockEventSink->idToSpan()
-        );
+        SpanStackTraceTestSharedCode::assertPartImpl(count($createSpanApis), $expectedData, $this->mockEventSink->idToSpan());
     }
 }
