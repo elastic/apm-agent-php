@@ -353,8 +353,26 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualMaps(array $expected, array $actual): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSameCount($expected, $actual);
         self::assertMapIsSubsetOf($expected, $actual);
-        self::assertMapIsSubsetOf($actual, $expected);
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualRecursively($expected, $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        if (is_array($actual)) {
+            self::assertIsArray($expected);
+            self::assertEqualMaps($expected, $actual);
+            return;
+        }
+
+        self::assertSame($expected, $actual);
     }
 
     /**

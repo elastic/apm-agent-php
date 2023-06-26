@@ -28,11 +28,16 @@ use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
 use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DockerUtil;
+use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
+use ElasticApmTests\TestsSharedCode\MetadataDiscovererTestSharedCode;
 use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MetadataValidator;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group smoke
@@ -246,5 +251,47 @@ final class MetadataDiscovererComponentTest extends ComponentTestCaseBase
         foreach ($dataFromAgent->metadatas as $metadata) {
             self::assertSame($expectedContainerId, $metadata->system->containerId);
         }
+    }
+
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function dataProviderForTestGlobalLabels(): iterable
+    {
+        return MetadataDiscovererTestSharedCode::dataProviderForTestGlobalLabels(self::adaptToSmokeAsCallable());
+    }
+
+    /**
+     * @dataProvider dataProviderForTestGlobalLabels
+     */
+    public function testGlobalLabelsDefaultConfig(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestGlobalLabelsDefaultConfig($testArgs);
+            }
+        );
+    }
+
+    private function implTestGlobalLabelsDefaultConfig(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, ['testConfig' => AmbientContextForTests::testConfig()]);
+        /** @var ?array<string|bool|int|float|null> $expectedLabels */
+        $expectedLabels = $testArgs->getNullableArray(MetadataDiscovererTestSharedCode::EXPECTED_LABELS_KEY);
+
+        MetadataExpectations::$labelsDefault->setValue($expectedLabels);
+
+        $testCaseHandle = $this->getTestCaseHandle();
+
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
+                self::setConfigIfNotNull($testArgs, OptionNames::GLOBAL_LABELS, $appCodeParams);
+            }
+        );
+        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
+
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1));
+        MetadataDiscovererTestSharedCode::implTestGlobalLabelsAssertPart($expectedLabels, $dataFromAgent);
     }
 }

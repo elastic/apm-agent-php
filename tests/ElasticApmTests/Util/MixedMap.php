@@ -222,13 +222,27 @@ class MixedMap implements LoggableInterface, ArrayAccess
     /**
      * @param string $key
      *
+     * @return ?array<mixed>
+     */
+    public function getNullableArray(string $key): ?array
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $value = $this->get($key);
+        if ($value !== null) {
+            TestCaseBase::assertIsArray($value);
+        }
+        return $value;
+    }
+
+    /**
+     * @param string $key
+     *
      * @return array<mixed>
      */
     public function getArray(string $key): array
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
-        $value = $this->get($key);
-        TestCaseBase::assertIsArray($value);
+        $value = $this->getNullableArray($key);
+        TestCaseBase::assertNotNull($value);
         return $value;
     }
 

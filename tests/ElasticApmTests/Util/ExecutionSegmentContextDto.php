@@ -99,7 +99,7 @@ abstract class ExecutionSegmentContextDto
      *
      * @return ?array<string|bool|int|float|null>
      */
-    private static function assertValidLabels($actual): ?array
+    public static function assertValidLabels($actual): ?array
     {
         /**
          * @var Optional<?array<string|bool|int|float|null>> $expected
@@ -133,7 +133,7 @@ abstract class ExecutionSegmentContextDto
      *
      * @return ?array<array-key, mixed>
      */
-    protected static function deserializeApmMap($value): ?array
+    public static function deserializeApmMap($value): ?array
     {
         if ($value === null) {
             return null;

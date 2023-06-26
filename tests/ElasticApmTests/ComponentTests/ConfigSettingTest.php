@@ -120,6 +120,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             self::isMainAppCodeHostHttp() ? null : true /* <- valueToExclude */
         );
 
+        $keyValuePairsRawToParsedValues = [
+            'dept=engineering,rack=number8'                    => ['dept' => 'engineering', 'rack' => 'number8'],
+            " \t key1 = \t value1 \t, \t  key2 \n=  value2 \t" => ['key1' => 'value1', 'key2' => 'value2'],
+            " 0 = \t 0 \t, \t  1 \n=  123.5 \t"                => [0 => '0', 1 => '123.5'],
+        ];
+
         return [
             OptionNames::API_KEY                        => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
             OptionNames::AST_PROCESS_ENABLED            => $boolRawToParsedValues(),
@@ -136,7 +142,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),
-            OptionNames::GLOBAL_LABELS                  => $stringRawToParsedValues(['dept=engineering,rack=number8']),
+            OptionNames::GLOBAL_LABELS                  => $keyValuePairsRawToParsedValues,
             OptionNames::HOSTNAME                       => $stringRawToParsedValues([" \t my_hostname"]),
             OptionNames::LOG_LEVEL                      => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,

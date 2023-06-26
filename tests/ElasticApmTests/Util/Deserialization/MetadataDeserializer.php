@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\ServiceData;
 use Elastic\Apm\Impl\SystemData;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use ElasticApmTests\Util\AssertValidTrait;
+use ElasticApmTests\Util\ExecutionSegmentContextDto;
 use ElasticApmTests\Util\MetadataValidator;
 
 final class MetadataDeserializer
@@ -50,6 +51,10 @@ final class MetadataDeserializer
             DeserializationUtil::assertDecodedJsonMap($value),
             function ($key, $value) use ($result): bool {
                 switch ($key) {
+                    case 'labels':
+                        $result->labels = ExecutionSegmentContextDto::assertValidLabels(ExecutionSegmentContextDto::deserializeApmMap($value));
+                        return true;
+
                     case 'process':
                         $result->process = self::deserializeProcessData($value);
                         return true;

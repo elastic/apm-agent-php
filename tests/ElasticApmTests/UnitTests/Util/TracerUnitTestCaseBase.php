@@ -27,6 +27,7 @@ use Closure;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\TracerInterface;
+use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
@@ -91,5 +92,13 @@ class TracerUnitTestCaseBase extends TestCaseBase
         GlobalTracerHolder::unsetValue();
 
         parent::tearDown();
+    }
+
+    protected static function setConfigIfNotNull(MixedMap $testArgs, string $optName, TracerBuilderForTests $builder): void
+    {
+        $optVal = $testArgs->getNullableString($optName);
+        if ($optVal !== null) {
+            $builder->withConfig($optName, $optVal);
+        }
     }
 }
