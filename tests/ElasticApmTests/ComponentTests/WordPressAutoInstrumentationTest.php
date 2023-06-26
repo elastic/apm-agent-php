@@ -627,7 +627,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertIsArray($stackTrace);
             /** @var StackTraceFrame[] $stackTrace */
             self::assertFalse($expectedSpans[$expectedSpanIndex]->stackTrace->isValueSet());
-            $expectedSpans[$expectedSpanIndex]->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace, /* allowToBePrefixOfActual */ false));
+            $expectedSpans[$expectedSpanIndex]->stackTrace->setValue(StackTraceExpectations::fromFrames($stackTrace));
             // Jump to the index of the beginning of the batch of call of the next callback
             $expectedSpanIndex += $callsCount;
         };

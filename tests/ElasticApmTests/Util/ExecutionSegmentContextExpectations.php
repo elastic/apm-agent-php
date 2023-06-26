@@ -28,7 +28,7 @@ namespace ElasticApmTests\Util;
  */
 class ExecutionSegmentContextExpectations extends ExpectationsBase
 {
-    /** @var Optional<?array<string, string|bool|int|float|null>> */
+    /** @var Optional<?array<string|bool|int|float|null>> */
     public $labels;
 
     public function __construct()
