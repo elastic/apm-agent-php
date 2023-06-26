@@ -778,6 +778,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, environment )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, globalLabels )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, hostname )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( InternalChecksLevel, internalChecksLevel )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, logFile )
@@ -1010,6 +1011,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             environment,
             ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT,
+            /* defaultValue: */ NULL );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildStringOptionMetadata,
+            globalLabels,
+            ELASTIC_APM_CFG_OPT_NAME_GLOBAL_LABELS,
             /* defaultValue: */ NULL );
 
     ELASTIC_APM_INIT_METADATA(

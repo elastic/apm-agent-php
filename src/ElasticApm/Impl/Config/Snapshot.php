@@ -138,6 +138,9 @@ final class Snapshot implements LoggableInterface
     private $environment;
 
     /** @var ?string */
+    private $globalLabels;
+
+    /** @var ?string */
     private $hostname;
 
     /** @var ?int */
@@ -307,6 +310,11 @@ final class Snapshot implements LoggableInterface
     public function environment(): ?string
     {
         return $this->environment;
+    }
+
+    public function globalLabels(): ?string
+    {
+        return $this->globalLabels;
     }
 
     public function hostname(): ?string

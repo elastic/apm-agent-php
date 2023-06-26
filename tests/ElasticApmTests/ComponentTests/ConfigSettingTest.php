@@ -136,12 +136,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),
+            OptionNames::GLOBAL_LABELS                  => $stringRawToParsedValues(['dept=engineering,rack=number8']),
             OptionNames::HOSTNAME                       => $stringRawToParsedValues([" \t my_hostname"]),
             OptionNames::LOG_LEVEL                      => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
-            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
-                                                        => $intRawToParsedValues,
+            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH  => $intRawToParsedValues,
             // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
                                                         => $boolRawToParsedValues(/* valueToExclude: */ true),
