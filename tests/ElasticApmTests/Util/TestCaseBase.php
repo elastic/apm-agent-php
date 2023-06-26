@@ -208,7 +208,7 @@ class TestCaseBase extends TestCase
     /**
      * @param ExecutionSegmentDto $execSegData
      *
-     * @return array<string, string|bool|int|float|null>
+     * @return array<string|bool|int|float|null>
      */
     public static function getLabels(ExecutionSegmentDto $execSegData): array
     {
@@ -232,6 +232,20 @@ class TestCaseBase extends TestCase
         self::assertNotNull($context->labels);
         self::assertArrayHasKey($key, $context->labels);
         return $context->labels[$key];
+    }
+
+    /**
+     * @param TransactionDto $tx
+     * @param string         $key
+     *
+     * @return string|bool|int|float|null
+     */
+    public static function getTransactionContextCustom(TransactionDto $tx, string $key)
+    {
+        self::assertNotNull($tx->context);
+        self::assertNotNull($tx->context->custom);
+        self::assertArrayHasKey($key, $tx->context->custom);
+        return $tx->context->custom[$key];
     }
 
     public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key): void
@@ -716,6 +730,14 @@ class TestCaseBase extends TestCase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+    }
+
+    /**
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCountableNotEmpty($haystack): void
+    {
+        self::assertCountAtLeast(1, $haystack);
     }
 
     /**

@@ -27,6 +27,7 @@ namespace ElasticApmTests\UnitTests;
 
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Constants;
+use Elastic\Apm\Impl\TransactionContext;
 use Elastic\Apm\Impl\TransactionContextRequest;
 use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
@@ -569,5 +570,19 @@ class PublicApiTest extends TracerUnitTestCaseBase
         $this->assertSame($id, $reportedTx->context->user->id);
         $this->assertSame($email, $reportedTx->context->user->email);
         $this->assertSame($username, $reportedTx->context->user->username);
+    }
+
+    public function testNumericStringForLabelKey(): void
+    {
+        $tx = $this->tracer->beginTransaction('test_TX_name', 'test_TX_type');
+        $tx->context()->setLabel('123', 'label_value_for_key_123');
+        $txCtx = $tx->context();
+        self::assertInstanceOf(TransactionContext::class, $txCtx);
+        $txCtx->setCustom('456', 'custom_value_for_key_456');
+        $tx->end();
+
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        self::assertSame('label_value_for_key_123', self::getLabel($reportedTx, '123'));
+        self::assertSame('custom_value_for_key_456', self::getTransactionContextCustom($reportedTx, '456'));
     }
 }

@@ -25,8 +25,8 @@ namespace ElasticApmTests\Util;
 
 class TransactionContextExpectations extends ExecutionSegmentContextExpectations
 {
-    /** @var Optional<?array<string, string|bool|int|float|null>> */
-    public $custom = null;
+    /** @var Optional<?array<string|bool|int|float|null>> */
+    public $custom;
 
     public function __construct()
     {
