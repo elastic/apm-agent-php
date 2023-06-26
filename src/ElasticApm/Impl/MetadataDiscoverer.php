@@ -82,6 +82,7 @@ final class MetadataDiscoverer
     {
         $result = new Metadata();
 
+        $result->labels = $this->config->globalLabels();
         $result->process = $this->discoverProcessData();
         $result->service = $this->discoverServiceData();
         $result->system = $this->discoverSystemData();

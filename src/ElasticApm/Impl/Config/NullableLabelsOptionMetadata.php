@@ -28,14 +28,14 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @extends OptionWithDefaultValueMetadata<string>
+ * @extends NullableOptionMetadata<array<string|bool|int|float|null>>
  *
  * @noinspection PhpUnused
  */
-final class NullableKeyValuePairsOptionMetadata extends NullableOptionMetadata
+final class NullableLabelsOptionMetadata extends NullableOptionMetadata
 {
     public function __construct()
     {
-        parent::__construct(new KeyValuePairsOptionParser());
+        parent::__construct(new LabelsOptionParser());
     }
 }

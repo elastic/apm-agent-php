@@ -229,7 +229,7 @@ final class LoggableToJsonEncodable
     {
         $result = [];
         foreach ($mapArrayValue as $key => $value) {
-            $result[] = [self::convert($key, $depth), self::convert($value, $depth)];
+            $result[] = ['key' => self::convert($key, $depth), 'value' => self::convert($value, $depth)];
         }
         return $result;
     }

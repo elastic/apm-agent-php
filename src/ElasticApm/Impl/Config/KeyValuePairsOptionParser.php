@@ -23,18 +23,50 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
+use Elastic\Apm\Impl\Log\LoggableToString;
+use Elastic\Apm\Impl\Util\TextUtil;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  *
- * @extends OptionParser<string>
+ * @extends OptionParser<array<string>>
  */
 final class KeyValuePairsOptionParser extends OptionParser
 {
-    public function parse(string $rawValue): string
+    /**
+     * @param string $rawValue
+     *
+     * @return array<string>
+     */
+    public function parse(string $rawValue): array
     {
-        // TODO: Sergey Kleyman: Implement: KeyValuePairsOptionParser::parse
-        return $rawValue;
+        // Value format:
+        //                  key=value[,key=value[,...]]
+
+        // Treat empty string as zero key-value pairs
+        if (TextUtil::isEmptyString($rawValue)) {
+            return [];
+        }
+
+        $pairs = explode(',', $rawValue);
+        $result = [];
+        foreach ($pairs as $keyValuePair) {
+            $keyValueSeparatorPos = strpos($keyValuePair, '=');
+            if ($keyValueSeparatorPos === false) {
+                throw new ParseException('One of key-value pairs is missing key-value separator' . ' ;' . LoggableToString::convert(['keyValuePair' => $keyValuePair, 'rawValue' => $rawValue]));
+            }
+            $key = trim(substr($keyValuePair, /* offset */ 0, /* length */ $keyValueSeparatorPos));
+            $value = ($keyValueSeparatorPos === (strlen($keyValuePair) - 1)) ? '' : trim(substr($keyValuePair, /* offset */ $keyValueSeparatorPos + 1));
+            if (array_key_exists($key, $result)) {
+                throw new ParseException(
+                    'Key is present more than once'
+                    . ' ;' . LoggableToString::convert(['key' => $key, '1st value' => $result[$key], '2nd value' => $value, '2nd keyValuePair' => $keyValuePair, 'rawValue' => $rawValue])
+                );
+            }
+            $result[$key] = $value;
+        }
+        return $result;
     }
 }

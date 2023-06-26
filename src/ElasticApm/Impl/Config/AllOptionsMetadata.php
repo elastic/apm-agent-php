@@ -95,7 +95,7 @@ final class AllOptionsMetadata
             OptionNames::DISABLE_SEND                               => new BoolOptionMetadata(/* default */ false),
             OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ true),
             OptionNames::ENVIRONMENT                                => new NullableStringOptionMetadata(),
-            OptionNames::GLOBAL_LABELS                              => new NullableKeyValuePairsOptionMetadata(),
+            OptionNames::GLOBAL_LABELS                              => new NullableLabelsOptionMetadata(),
             OptionNames::HOSTNAME                                   => new NullableStringOptionMetadata(),
             OptionNames::LOG_LEVEL                                  => new NullableLogLevelOptionMetadata(),
             OptionNames::LOG_LEVEL_STDERR                           => new NullableLogLevelOptionMetadata(),

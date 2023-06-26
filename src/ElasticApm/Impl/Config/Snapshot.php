@@ -137,7 +137,7 @@ final class Snapshot implements LoggableInterface
     /** @var ?string */
     private $environment;
 
-    /** @var ?string */
+    /** @var ?array<string|bool|int|float|null> */
     private $globalLabels;
 
     /** @var ?string */
@@ -312,7 +312,10 @@ final class Snapshot implements LoggableInterface
         return $this->environment;
     }
 
-    public function globalLabels(): ?string
+    /**
+     * @return ?array<string|bool|int|float|null>
+     */
+    public function globalLabels(): ?array
     {
         return $this->globalLabels;
     }
