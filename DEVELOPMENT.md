@@ -31,6 +31,24 @@ GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile draft-release
 make -f .ci/Makefile help
 ```
 
+### Local development with direct calls to cmake inside docker container
+\
+If you want to make local development easier, you can call build directly via docker commands.\
+All you need to do is mount the path with the sources to the `/source` directory inside the container.\
+\
+To further speed up build, it is a good idea to mount the local conan cache so that it uses a folder outside the container. The location is arbitrary, but should preferably point outside the source folder. This is optional, if you omit it, conan will place the cache inside the container in the `/home/build/.conan` folder.
+\
+Make sure to always use the latest version of the image you are using for the build. You can find the current version inside the `.ci/Makefile` in `build:` section
+
+```bash
+# this will build agent for linux-x86-64
+docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/home/build/.conan:rw"  -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.2  sh -c  "cmake --preset linux-x86-64-release && cmake --build --preset linux-x86-64-release"
+# this will build agent for linuxmusl-x86-64
+docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/home/build/.conan:rw"  -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.2  sh -c  "cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"
+
+```
+
+
 _NOTE_: 
 
 * `PHP_VERSION` can be set to a different PHP version.
